@@ -237,6 +237,11 @@ async function run(): Promise<void> {
         ));
 
         const cacheVersionRef = doc(ownerDb, 'answerlattice_cacheVersions', 'canonical_1_101');
+        await assertSucceeds(getDoc(cacheVersionRef));
+        await assertSucceeds(getDoc(doc(ownerDb, 'answerlattice_cacheVersions', 'kb_1_101')));
+        await assertFails(getDoc(doc(otherDb, 'answerlattice_cacheVersions', 'canonical_1_101')));
+        await assertFails(getDoc(doc(ownerDb, 'answerlattice_cacheVersions', 'canonical_2_202')));
+        await assertFails(getDoc(doc(ownerDb, 'answerlattice_cacheVersions', 'other_1_101')));
         await assertFails(setDoc(cacheVersionRef, scoped({
             source: 'kb',
             version: 1,

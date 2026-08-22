@@ -28,6 +28,9 @@
 | WD-024 | Legacy weekly metric names | Parser maps them into the precise current DTO until regeneration. |
 | WD-025 | Existing insight contains retired merged fields | Schema-v2 replacement removes them. |
 | WD-026 | Positive-feedback share changes from 50% to 80% | UI/export report `+30.0` percentage points, not `+60%` satisfaction. |
+| WD-027 | Missing exact `weekly` insight in an active workspace | Authorized readiness viewer receives an empty result rather than a rules error. |
+| WD-028 | Missing insight uses another workspace or a non-`weekly` ID | Dedicated and shared rules deny the read. |
+| WD-029 | Existing insight has forged product or scope data | The missing-document exception does not apply; data-bound rules deny the read. |
 
 ## Focused Commands
 

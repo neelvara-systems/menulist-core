@@ -31,7 +31,7 @@ const scope: AnswerlatticeProvisioningScope = {
     userId: 'answerlattice-onboarding-owner',
 };
 
-const scopedDocument = {
+const provisioningDocument = {
     active: true,
     onboardingAttemptId: scope.attemptId,
     onboardingRequestFingerprint: scope.requestFingerprint,
@@ -39,21 +39,28 @@ const scopedDocument = {
     onboardingStatus: ANSWERLATTICE_ONBOARDING_STATUS.PROVISIONING,
     pId: PRODUCT_IDS.ANSWERLATTICE,
     productId: PRODUCT_IDS.ANSWERLATTICE,
-    sId: scope.storeId,
+};
+
+const tenantDocument = {
+    ...provisioningDocument,
+    tenantId: scope.tenantId,
+};
+
+const workspaceDocument = {
+    ...provisioningDocument,
     storeId: scope.storeId,
-    tId: scope.tenantId,
     tenantId: scope.tenantId,
 };
 
 async function seedProvisioningScope(): Promise<void> {
     await Promise.all([
-        db.collection(DB_COLLECTIONS.TENANTS).doc(String(scope.tenantId)).set(scopedDocument),
+        db.collection(DB_COLLECTIONS.TENANTS).doc(String(scope.tenantId)).set(tenantDocument),
         db.collection(DB_COLLECTIONS.STORES).doc(String(scope.storeId)).set({
-            ...scopedDocument,
+            ...workspaceDocument,
             name: 'Contract product',
         }),
         db.collection(DB_COLLECTIONS.USERS).doc(scope.userId).set({
-            ...scopedDocument,
+            ...workspaceDocument,
             id: scope.userId,
             storeIds: [scope.storeId],
             stores: [{ name: 'Contract product', role: 'owner', storeId: scope.storeId }],
@@ -64,11 +71,11 @@ async function seedProvisioningScope(): Promise<void> {
 async function run(): Promise<void> {
     await seedProvisioningScope();
     assert.equal(
-        answerlatticeProvisioningOwnershipMatches({ ...scopedDocument, productId: PRODUCT_IDS.MENULIST }, scope),
+        answerlatticeProvisioningOwnershipMatches({ ...workspaceDocument, productId: PRODUCT_IDS.MENULIST }, scope),
         false,
         'conflicting product aliases must not own an Answerlattice provisioning scope',
     );
-    const missingProductAlias = { ...scopedDocument } as Record<string, unknown>;
+    const missingProductAlias = { ...workspaceDocument } as Record<string, unknown>;
     delete missingProductAlias.productId;
     assert.equal(
         answerlatticeProvisioningOwnershipMatches(missingProductAlias, scope),
@@ -76,21 +83,49 @@ async function run(): Promise<void> {
         'incomplete product identity must not own an Answerlattice provisioning scope',
     );
     assert.equal(
-        answerlatticeProvisioningOwnershipMatches({ ...scopedDocument, tenantId: scope.tenantId + 1 }, scope),
+        answerlatticeProvisioningOwnershipMatches({ ...workspaceDocument, tenantId: scope.tenantId + 1 }, scope),
         false,
         'conflicting tenant aliases must not own an Answerlattice provisioning scope',
     );
     assert.equal(
-        answerlatticeProvisioningOwnershipMatches({ ...scopedDocument, storeId: scope.storeId + 1 }, scope),
+        answerlatticeProvisioningOwnershipMatches({ ...workspaceDocument, storeId: scope.storeId + 1 }, scope),
         false,
         'conflicting store aliases must not own an Answerlattice provisioning scope',
     );
-    const missingScopeAlias = { ...scopedDocument } as Record<string, unknown>;
+    const missingScopeAlias = { ...workspaceDocument } as Record<string, unknown>;
     delete missingScopeAlias.tenantId;
     assert.equal(
         answerlatticeProvisioningOwnershipMatches(missingScopeAlias, scope),
         false,
-        'incomplete tenant identity must not own an Answerlattice provisioning scope',
+        'a workspace with no tenant identity must not own an Answerlattice provisioning scope',
+    );
+    assert.equal(
+        answerlatticeProvisioningOwnershipMatches(tenantDocument, scope, 'tenant'),
+        true,
+        'a tenant provisioning document must not require a store identity',
+    );
+    assert.equal(
+        answerlatticeProvisioningOwnershipMatches(tenantDocument, scope),
+        false,
+        'a tenant-only document must not be admitted as a store or user workspace document',
+    );
+    assert.equal(
+        answerlatticeProvisioningOwnershipMatches({
+            ...workspaceDocument,
+            sId: scope.storeId,
+            tId: scope.tenantId,
+        }, scope),
+        true,
+        'canonical-only recovery documents and future dual-alias documents must share ownership semantics',
+    );
+    assert.equal(
+        answerlatticeProvisioningOwnershipMatches({
+            ...workspaceDocument,
+            sId: scope.storeId + 1,
+            tId: scope.tenantId,
+        }, scope),
+        false,
+        'conflicting present compact and canonical aliases must fail closed',
     );
     const recoveryAvailableAtMillis = 1_700_000_900_000;
     await markAnswerlatticeOnboardingProviderRecoveryPending({
@@ -106,13 +141,17 @@ async function run(): Promise<void> {
         db.collection(DB_COLLECTIONS.STORES).doc(String(scope.storeId)).get(),
         db.collection(DB_COLLECTIONS.USERS).doc(scope.userId).get(),
     ]);
-    for (const snapshot of [tenantRecovery, storeRecovery, userRecovery]) {
+    for (const [snapshot, kind] of [
+        [tenantRecovery, 'tenant'],
+        [storeRecovery, 'workspace'],
+        [userRecovery, 'workspace'],
+    ] as const) {
         const data = snapshot.data() || {};
         assert.equal(data.active, true, 'provider recovery must preserve the provisional scope');
         assert.equal(data.onboardingStatus, ANSWERLATTICE_ONBOARDING_STATUS.PROVIDER_RECOVERY_PENDING);
         assert.equal(data.onboardingProviderSubscriptionId, null);
         assert.equal(data.onboardingProviderRecoveryAvailableAt.toMillis(), recoveryAvailableAtMillis);
-        assert.equal(answerlatticeProvisioningOwnershipMatches(data, scope), true);
+        assert.equal(answerlatticeProvisioningOwnershipMatches(data, scope, kind), true);
     }
 
     await assert.rejects(
@@ -278,16 +317,20 @@ async function run(): Promise<void> {
         userId: 'answerlattice-onboarding-before-provider',
     };
     const failedDocument = {
-        ...scopedDocument,
+        ...provisioningDocument,
         onboardingAttemptId: failedScope.attemptId,
         onboardingRequestFingerprint: failedScope.requestFingerprint,
-        sId: failedScope.storeId,
         storeId: failedScope.storeId,
-        tId: failedScope.tenantId,
+        tenantId: failedScope.tenantId,
+    };
+    const failedTenantDocument = {
+        ...provisioningDocument,
+        onboardingAttemptId: failedScope.attemptId,
+        onboardingRequestFingerprint: failedScope.requestFingerprint,
         tenantId: failedScope.tenantId,
     };
     await Promise.all([
-        db.collection(DB_COLLECTIONS.TENANTS).doc(String(failedScope.tenantId)).set(failedDocument),
+        db.collection(DB_COLLECTIONS.TENANTS).doc(String(failedScope.tenantId)).set(failedTenantDocument),
         db.collection(DB_COLLECTIONS.STORES).doc(String(failedScope.storeId)).set(failedDocument),
         db.collection(DB_COLLECTIONS.USERS).doc(failedScope.userId).set({
             ...failedDocument,

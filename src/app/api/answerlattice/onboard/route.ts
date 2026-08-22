@@ -124,6 +124,22 @@ const ANSWERLATTICE_ONBOARDING_ACTIVE_ATTEMPT_MS = 2 * 60 * 1000;
 const ANSWERLATTICE_PROVIDER_RECOVERY_WINDOW_MS = 15 * 60 * 1000;
 const ANSWERLATTICE_PROVIDER_RECOVERY_PAGE_SIZE = 100;
 const ANSWERLATTICE_PROVIDER_RECOVERY_MAX_PAGES = 3;
+type AnswerlatticeOnboardingProviderContractErrorCode =
+    | 'answerlattice_onboarding_provider_checkout_url_invalid'
+    | 'answerlattice_onboarding_provider_subscription_id_missing'
+    | 'answerlattice_onboarding_provider_subscription_invalid'
+    | 'answerlattice_onboarding_provider_total_count_invalid';
+
+class AnswerlatticeOnboardingProviderContractError extends Error {
+    readonly code: AnswerlatticeOnboardingProviderContractErrorCode;
+
+    constructor(code: AnswerlatticeOnboardingProviderContractErrorCode) {
+        super(code);
+        this.name = 'AnswerlatticeOnboardingProviderContractError';
+        this.code = code;
+    }
+}
+
 const PRIVATE_NO_STORE_HEADERS = {
     'Cache-Control': 'private, no-store',
     'X-Content-Type-Options': 'nosniff',
@@ -1005,6 +1021,14 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                     },
                 });
 
+                transaction.set(db!.collection(DB_COLLECTIONS.TENANTS).doc(String(core.tenantId)), {
+                    tId: core.tenantId,
+                }, { merge: true });
+                transaction.set(db!.collection(DB_COLLECTIONS.STORES).doc(String(core.storeId)), {
+                    sId: core.storeId,
+                    tId: core.tenantId,
+                }, { merge: true });
+
                 transaction.set(userRef, {
                     active: true,
                     createdOn: currentUserSnapshot.exists ? currentUserData.createdOn || core.now : core.now,
@@ -1156,7 +1180,11 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         }
 
         providerSubscriptionId = normalizeAnswerlatticeSubscriptionId(razorpaySubscription.id);
-        if (!providerSubscriptionId) throw new Error('answerlattice_onboarding_provider_subscription_id_missing');
+        if (!providerSubscriptionId) {
+            throw new AnswerlatticeOnboardingProviderContractError(
+                'answerlattice_onboarding_provider_subscription_id_missing',
+            );
+        }
         const admittedProviderSubscription = findAnswerlatticeProviderSubscriptionForAttempt({
             attemptId: provisioningScope.attemptId,
             candidates: [razorpaySubscription],
@@ -1166,18 +1194,24 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             tenantId: result.tenantId,
         });
         if (!admittedProviderSubscription) {
-            throw new Error('answerlattice_onboarding_provider_subscription_invalid');
+            throw new AnswerlatticeOnboardingProviderContractError(
+                'answerlattice_onboarding_provider_subscription_invalid',
+            );
         }
         razorpaySubscription = admittedProviderSubscription;
         const providerTotalCount = razorpaySubscription.total_count === undefined
             ? totalCount
             : getAnswerlatticeOnboardingPositiveInteger(razorpaySubscription.total_count);
         if (providerTotalCount === null) {
-            throw new Error('answerlattice_onboarding_provider_total_count_invalid');
+            throw new AnswerlatticeOnboardingProviderContractError(
+                'answerlattice_onboarding_provider_total_count_invalid',
+            );
         }
         const shortUrl = getAnswerlatticeProviderSubscriptionCheckoutUrl(razorpaySubscription);
         if (!shortUrl) {
-            throw new Error('answerlattice_onboarding_provider_checkout_url_invalid');
+            throw new AnswerlatticeOnboardingProviderContractError(
+                'answerlattice_onboarding_provider_checkout_url_invalid',
+            );
         }
         const creditsLastResetMonth = new Date().getFullYear() * 100 + (new Date().getMonth() + 1);
         const subscriptionPayload: Omit<FirestoreSubscriptionDoc, 'id'> = {

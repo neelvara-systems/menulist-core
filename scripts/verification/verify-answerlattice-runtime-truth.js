@@ -3676,7 +3676,8 @@ function verifyAnswerlatticeOnboardRouteGuards() {
   assertIncludes(onboard, 'if (snapshot.size !== 1)', 'Answerlattice onboarding duplicate email fail-closed boundary');
   assertIncludes(onboard, "interval: z.literal('MONTH').optional().default('MONTH')", 'Answerlattice public onboarding accepts monthly billing only');
   assertIncludes(onboard, 'getAnswerlatticeProviderSubscriptionCheckoutUrl(razorpaySubscription)', 'Answerlattice onboarding normalizes provider checkout URL');
-  assertIncludes(onboard, "throw new Error('answerlattice_onboarding_provider_checkout_url_invalid')", 'Answerlattice onboarding rejects missing or unsafe provider checkout before finalization');
+  assertIncludes(onboard, "'answerlattice_onboarding_provider_checkout_url_invalid',", 'Answerlattice onboarding rejects missing or unsafe provider checkout before finalization');
+  assertIncludes(onboard, 'class AnswerlatticeOnboardingProviderContractError extends Error', 'Answerlattice onboarding emits bounded provider contract failure codes');
   assertIncludes(onboard, 'normalizeRazorpaySubscriptionCheckoutUrl(raw.shortUrl)', 'Answerlattice onboarding normalizes recovered checkout URL');
   assertIncludes(onboard, 'answerlatticeProvisioningOwnershipMatches(storeData, existingScope)', 'Answerlattice onboarding resume exact store ownership guard');
   assertIncludes(onboard, 'user.pId !== PRODUCT_IDS.ANSWERLATTICE', 'Answerlattice onboarding resume requires exact primary product alias');
@@ -3686,8 +3687,11 @@ function verifyAnswerlatticeOnboardRouteGuards() {
   assertIncludes(onboardingProvisioningServer, 'answerlatticeProvisioningOwnershipMatches', 'Answerlattice onboarding transaction product and attempt ownership helper');
   assertIncludes(onboardingProvisioningServer, 'data.pId === PRODUCT_IDS.ANSWERLATTICE', 'Answerlattice onboarding ownership requires exact primary product alias');
   assertIncludes(onboardingProvisioningServer, 'data.productId === PRODUCT_IDS.ANSWERLATTICE', 'Answerlattice onboarding ownership requires exact compatibility product alias');
-  assertIncludes(onboardingProvisioningServer, "hasExactProvisioningScopeId(data, ['tId', 'tenantId'], scope.tenantId, 'tenantId')", 'Answerlattice onboarding ownership requires exact tenant aliases');
-  assertIncludes(onboardingProvisioningServer, "hasExactProvisioningScopeId(data, ['sId', 'storeId'], scope.storeId, 'storeId')", 'Answerlattice onboarding ownership requires exact store aliases');
+  assertIncludes(onboardingProvisioningServer, "hasConsistentProvisioningScopeId(data, ['tId', 'tenantId'], scope.tenantId, 'tenantId')", 'Answerlattice onboarding ownership requires at least one exact tenant identity and rejects conflicting aliases');
+  assertIncludes(onboardingProvisioningServer, "kind === 'tenant'", 'Answerlattice tenant ownership does not require one store identity');
+  assertIncludes(onboardingProvisioningServer, "hasConsistentProvisioningScopeId(data, ['sId', 'storeId'], scope.storeId, 'storeId')", 'Answerlattice workspace ownership requires at least one exact store identity and rejects conflicting aliases');
+  assertIncludes(onboard, "transaction.set(db!.collection(DB_COLLECTIONS.TENANTS).doc(String(core.tenantId)), {", 'Answerlattice onboarding persists compact tenant identity after counter allocation');
+  assertIncludes(onboard, "transaction.set(db!.collection(DB_COLLECTIONS.STORES).doc(String(core.storeId)), {", 'Answerlattice onboarding persists compact workspace identity after counter allocation');
   assertIncludes(onboardingProvisioningServer, 'isAnswerlatticeSubscriptionInScope(params.subscriptionPayload, {', 'Answerlattice onboarding rejects contradictory pending subscription payload scope');
   assertIncludes(onboardingProvisioningServer, 'isAnswerlatticeSubscriptionInScope(subscriptionData, {', 'Answerlattice onboarding subscription mutations use exact persisted product and scope authority');
   assertIncludes(onboardingProvisioningServer, 'tenantId,', 'Answerlattice onboarding pending subscription projects canonical verbose tenant scope');

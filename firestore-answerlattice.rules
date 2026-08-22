@@ -205,6 +205,21 @@ service cloud.firestore {
     }
 
     match /answerlattice_cacheVersions/{docId} {
+      // Client invalidation transactions must read a missing version document
+      // before creating version 1. Keep that bootstrap read path-bound to the
+      // authenticated workspace; existing documents still use data-bound reads.
+      allow get: if !exists(/databases/$(database)/documents/answerlattice_cacheVersions/$(docId))
+        && isAuthenticated()
+        && (
+          isPlatformAdmin()
+          || (
+            isAnswerlatticeCurrentWorkspaceCacheVersionDocument(docId)
+            && (
+              hasAnswerlatticeKnowledgeControlPermission()
+              || hasAnswerlatticePermission('canManageWidget')
+            )
+          )
+        );
       allow read: if isAnswerlatticeScopedReadWithKnowledgeControl()
         || isAnswerlatticeScopedReadWithPermission('canManageWidget');
       allow create: if (
@@ -240,6 +255,19 @@ service cloud.firestore {
     }
 
     match /insights/{tId}/stores/{sId}/ai/{docId} {
+      // A not-yet-generated insight is a valid empty state. Permit only the
+      // exact authenticated workspace path; existing documents remain subject
+      // to the data-bound AL scope checks below.
+      allow get: if !exists(/databases/$(database)/documents/insights/$(tId)/stores/$(sId)/ai/$(docId))
+        && docId == 'weekly'
+        && isAuthenticated()
+        && (
+          isPlatformSupportOperator()
+          || (
+            isAnswerlatticeTenantPath(tId, sId)
+            && hasAnswerlatticeReadinessPermission()
+          )
+        );
       allow read: if isAuthenticated()
         && (
           isPlatformSupportOperator()
@@ -1561,6 +1589,26 @@ service cloud.firestore {
             + string(request.auth.token.get('tenantId', null))
             + '_'
             + string(request.auth.token.get('storeId', null))
+        );
+    }
+
+    function isAnswerlatticeCurrentWorkspaceCacheVersionDocument(document) {
+      return request.auth != null
+        && request.auth.token.get('tenantId', null) != null
+        && request.auth.token.get('storeId', null) != null
+        && (
+          document == 'kb_'
+            + string(request.auth.token.get('tenantId', null))
+            + '_'
+            + string(request.auth.token.get('storeId', null))
+          || document == 'canonical_'
+            + string(request.auth.token.get('tenantId', null))
+            + '_'
+            + string(request.auth.token.get('storeId', null))
+        )
+        && isAnswerlatticeActiveWorkspace(
+          request.auth.token.get('tenantId', null),
+          request.auth.token.get('storeId', null)
         );
     }
 

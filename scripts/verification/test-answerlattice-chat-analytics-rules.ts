@@ -20,6 +20,7 @@ async function run(): Promise<void> {
     try {
         await testEnv.withSecurityRulesDisabled(async (context) => {
             await seedActiveAnswerlatticeRuleWorkspace(context.firestore());
+            await seedActiveAnswerlatticeRuleWorkspace(context.firestore(), { tenantId: 3, storeId: 303 });
             await setDoc(doc(context.firestore(), 'chatAnalytics', '1_101_2026-07-10'), {
                 pId: 'AL', tId: 1, sId: 101, date: '2026-07-10', totalChats: 1,
             });
@@ -56,6 +57,16 @@ async function run(): Promise<void> {
         const platformSupportDb = testEnv.authenticatedContext('platform-support-1', {
             platformRole: 'PLATFORM_SUPPORT', role: 'PLATFORM_SUPPORT', uId: 'platform-support-1',
         }).firestore();
+        const emptyOwnerDb = testEnv.authenticatedContext('owner-3', {
+            role: 'OWNER', tenantId: '3', storeId: '303', uId: 'owner-3',
+        }).firestore();
+        const emptyViewerDb = testEnv.authenticatedContext('viewer-3', {
+            role: 'VIEWER', tenantId: '3', storeId: '303', uId: 'viewer-3',
+        }).firestore();
+        const emptySupportDb = testEnv.authenticatedContext('support-3', {
+            role: 'STAFF', tenantId: '3', storeId: '303', uId: 'support-3',
+            canManageSupport: true,
+        }).firestore();
         const analyticsRef = doc(ownerDb, 'chatAnalytics', '1_101_2026-07-10');
         await assertSucceeds(getDoc(analyticsRef));
         await assertFails(getDoc(doc(noSupportDb, 'chatAnalytics', '1_101_2026-07-10')));
@@ -64,11 +75,17 @@ async function run(): Promise<void> {
         await assertFails(setDoc(analyticsRef, { pId: 'AL', tId: 1, sId: 101 }, { merge: true }));
 
         const weeklyInsightRef = doc(ownerDb, 'insights', '1', 'stores', '101', 'ai', 'weekly');
+        const missingInsightRef = doc(emptyOwnerDb, 'insights', '3', 'stores', '303', 'ai', 'weekly');
         await assertSucceeds(getDoc(weeklyInsightRef));
+        await assertSucceeds(getDoc(missingInsightRef));
         await assertFails(getDoc(doc(noSupportDb, 'insights', '1', 'stores', '101', 'ai', 'weekly')));
+        await assertFails(getDoc(doc(emptyViewerDb, 'insights', '3', 'stores', '303', 'ai', 'weekly')));
         await assertFails(getDoc(doc(supportOnlyDb, 'insights', '1', 'stores', '101', 'ai', 'weekly')));
+        await assertFails(getDoc(doc(emptySupportDb, 'insights', '3', 'stores', '303', 'ai', 'weekly')));
         await assertSucceeds(getDoc(doc(platformSupportDb, 'insights', '1', 'stores', '101', 'ai', 'weekly')));
+        await assertSucceeds(getDoc(doc(platformSupportDb, 'insights', '3', 'stores', '303', 'ai', 'weekly')));
         await assertFails(getDoc(doc(ownerDb, 'insights', '2', 'stores', '202', 'ai', 'weekly')));
+        await assertFails(getDoc(doc(ownerDb, 'insights', '3', 'stores', '303', 'ai', 'weekly')));
         await assertFails(getDoc(doc(ownerDb, 'insights', '1', 'stores', '101', 'ai', 'forged')));
         await assertFails(setDoc(weeklyInsightRef, { narrative: 'Forged' }, { merge: true }));
 

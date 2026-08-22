@@ -39,34 +39,42 @@ export type AnswerlatticeProvisioningScope = {
     userId: string;
 };
 
+export type AnswerlatticeProvisioningDocumentKind = 'tenant' | 'workspace';
+
 const requireScopeId = (value: unknown, field: 'storeId' | 'tenantId'): number => {
     const scopeId = normalizeAnswerlatticeScopeDocumentId(value);
     if (!scopeId) throw new Error(`answerlattice_onboarding_${field}_invalid`);
     return scopeId;
 };
 
-const hasExactProvisioningScopeId = (
+const hasConsistentProvisioningScopeId = (
     data: Record<string, unknown>,
     fields: readonly [string, string],
     expected: number,
     label: 'storeId' | 'tenantId',
 ): boolean => {
-    const values = fields.map(field => data[field]);
-    if (values.some(value => value === undefined)) return false;
+    const values = fields
+        .map(field => data[field])
+        .filter(value => value !== undefined && value !== null && value !== '');
+    if (values.length === 0) return false;
     return values.every(value => requireScopeId(value, label) === expected);
 };
 
 export const answerlatticeProvisioningOwnershipMatches = (
     data: Record<string, unknown>,
     scope: AnswerlatticeProvisioningScope,
+    kind: AnswerlatticeProvisioningDocumentKind = 'workspace',
 ): boolean => {
     try {
         return data.pId === PRODUCT_IDS.ANSWERLATTICE
             && data.productId === PRODUCT_IDS.ANSWERLATTICE
             && String(data.onboardingAttemptId || '') === scope.attemptId
             && String(data.onboardingRequestFingerprint || '') === scope.requestFingerprint
-            && hasExactProvisioningScopeId(data, ['tId', 'tenantId'], scope.tenantId, 'tenantId')
-            && hasExactProvisioningScopeId(data, ['sId', 'storeId'], scope.storeId, 'storeId');
+            && hasConsistentProvisioningScopeId(data, ['tId', 'tenantId'], scope.tenantId, 'tenantId')
+            && (
+                kind === 'tenant'
+                || hasConsistentProvisioningScopeId(data, ['sId', 'storeId'], scope.storeId, 'storeId')
+            );
     } catch {
         return false;
     }
@@ -77,7 +85,8 @@ const assertProvisioningOwnership = (
     scope: AnswerlatticeProvisioningScope,
     label: string,
 ) => {
-    if (!answerlatticeProvisioningOwnershipMatches(data, scope)) {
+    const kind: AnswerlatticeProvisioningDocumentKind = label === 'tenant' ? 'tenant' : 'workspace';
+    if (!answerlatticeProvisioningOwnershipMatches(data, scope, kind)) {
         throw new Error(`answerlattice_onboarding_${label}_ownership_mismatch`);
     }
 };
@@ -283,7 +292,10 @@ export async function compensateAnswerlatticeOnboardingProvisioning(params: {
             onboardingStatus: status,
         };
 
-        if (tenantSnap.exists && answerlatticeProvisioningOwnershipMatches(tenantSnap.data() || {}, params.scope)) {
+        if (
+            tenantSnap.exists
+            && answerlatticeProvisioningOwnershipMatches(tenantSnap.data() || {}, params.scope, 'tenant')
+        ) {
             transaction.set(tenantRef, failureFields, { merge: true });
         }
         if (storeSnap.exists && answerlatticeProvisioningOwnershipMatches(storeSnap.data() || {}, params.scope)) {

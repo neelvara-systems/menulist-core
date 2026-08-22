@@ -22,6 +22,8 @@ Dedicated Answerlattice rules require:
 
 Client writes are denied. The shared recovery rules require the same readiness authority in addition to exact Answerlattice product and tenant/store scope. A support-only staff role cannot read the digest merely because it can review conversations.
 
+The absence of the `weekly` document is an admitted empty state. Dedicated and shared rules allow one missing-document `get` only for the exact `weekly` ID and either the authenticated workspace with `canViewReadiness` or a platform support operator. Existing documents still require stored `pId == 'AL'` and matching `tId`/`sId`; forged IDs, cross-workspace paths, and support-only workspace roles remain denied.
+
 ## Read and Write Cost
 
 | Path | Bounded operations |

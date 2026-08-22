@@ -2,7 +2,7 @@
 
 > **Category:** Answerlattice infrastructure and release operations
 > **Last updated:** August 22, 2026
-> **Status:** QA and production provider/infrastructure setup complete; testing, certification, and optional providers remain gated
+> **Status:** Core QA and production infrastructure plus the unchanged Razorpay Test binding are prepared; onboarding release activation remains open before managed QA
 
 This folder is the canonical entry point for Answerlattice environment setup.
 Answerlattice shares the repository and Vercel project with MenuList, but it
@@ -85,12 +85,10 @@ The following was verified through August 22, 2026:
   GitHub, MCP, WhatsApp, SMTP, paid Redis, optional analytics, and a global
   public widget key remain intentionally absent; they are not MenuList parity
   requirements.
-- The Vercel QA activation gap is closed. Deployment
-  `dpl_91Uj4beXQWDCppJQK88VqvT56ZHQ` reached READY in custom environment `qa`
-  from exact staging commit
-  `a6afeafd25ee05235c06ce2199fa15e9f3945177`. Both Canonica hosts serve that
-  build with Answerlattice identity and QA crawler isolation. Its OIDC token
-  reports custom environment `qa` and subject
+- The Vercel QA activation gap is closed. Current live readback confirms the
+  custom environment `qa` serves the refreshed `staging` branch tip on both
+  Canonica hosts with Answerlattice identity and QA crawler isolation. Its OIDC
+  token reports custom environment `qa` and subject
   `owner:neelvara-systems:project:menulist-core:environment:qa`.
 - Answerlattice QA EmailOS inbound setup is active without enabling outbound
   email. Function revision `answerlatticeemailoswebhook-00006-zer` binds only
@@ -100,11 +98,9 @@ The following was verified through August 22, 2026:
   key is now stored as a sensitive value only in Vercel custom `qa` and as
   enabled Secret Manager version 1 in `neelvara-answerlattice-qa`; it was
   transferred through standard input without display or repository persistence.
-  Approved redeployment `dpl_BdKiiGMKCR5hsdpLywDTTn1PqBLf` reached READY in
-  custom environment `qa` from the same certified staging commit
-  `a6afeafd25ee05235c06ce2199fa15e9f3945177`. Both Canonica hosts serve the
-  redeployment with Answerlattice identity and QA crawler isolation. The
-  sensitive sending key is therefore available to the hosted QA runtime, but
+  Current live readback confirms the activated custom `qa` deployment serves
+  both Canonica hosts with Answerlattice identity and QA crawler isolation. The
+  sensitive sending key is available to the hosted QA runtime, but
   `ENABLE_ANSWERLATTICE_EMAIL_OS_PROVIDER_SEND` remains `false`; no email was
   sent and controlled delivery certification remains open.
 - Google OAuth parity is now an approved core setup requirement. The shared
@@ -189,29 +185,54 @@ The following was verified through August 22, 2026:
   annotation and returns HTTP 401 `UNAUTHENTICATED` to an unsigned request,
   so public transport does not bypass Firebase callable authentication. The
   Secret Manager version 1 is destroyed after the eight AI Functions moved to
-  version 2. The previous AI Studio credential remains enabled only until an
-  approved Vercel Production redeployment drains the old environment snapshot.
+  version 2. The replacement key is active in the current Production deployment.
+  Current signed-in AI Studio metadata lists exactly one Answerlattice
+  Production authorization key and one QA key; no superseded Production
+  credential remains to retire.
   The optional production EmailOS webhook and its provider credentials remain
   intentionally absent.
-  The current deployment is an exact-artifact redeployment of certified
-  deployment `dpl_6wszXf6VQAqYEV6Q5knDPMeBcPo1` from application commit
-  `5fa6ae245dd151ebbea10d28a9c523689bdcf2d0`. `answerlattice.com` serves
-  Answerlattice over TLS with environment `production`, and
-  `www.answerlattice.com` redirects permanently to the apex. Hosted
+  Current live readback confirms that `answerlattice.com` serves Answerlattice
+  over TLS with environment `production`, `www.answerlattice.com` redirects
+  permanently to the apex, and `/api/version` matches the current `main` branch
+  tip at verification time. Hosted
   OIDC/data-path proof, authenticated smoke, recovery fixture validation, TTL
   reapplication, Storage/Auth evidence, and recovery cleanup remain separately
   gated.
-  The active exact-artifact redeployment reports environment `production` but
-  cannot provide trustworthy source provenance in `/api/version`; it reports
-  the legacy fallback `local`. Source now rejects future Vercel builds without
-  a full Git revision and bakes that revision into both Next's build ID and
-  `/api/version`. This source correction requires a separately approved Vercel
-  Production deployment before the live provenance gap can close.
-- Current QA hosted readback is deployment
-  `dpl_G7xGNNoxtYNfFV7zKece99FhpAAz` at
-  `menulist-core-eug4wxayt-neelvara-systems.vercel.app`, serving exact staging
-  commit `f6256fba66d60a4dbd3d88314300f2a79d28ff25`. Earlier deployment IDs in the
-  evidence log are retained as historical release points.
+- Current QA hosted readback confirms both Canonica hosts serve Answerlattice
+  from the current `staging` branch tip at verification time with environment
+  `preview`, valid TLS, and the required noindex policy. Earlier deployment IDs
+  and commit hashes in the evidence log remain historical release points only.
+  Fresh public-route smoke covered the core product, demo, install, developer,
+  pricing, trust, security, pre-onboarding, contact, and legal surfaces without
+  a rendered error state. Google sign-in and the launch-path preview passed; a
+  user without Answerlattice workspace scope was safely redirected to Pricing.
+  The first explicitly approved managed QA workspace attempt reached Razorpay
+  plan creation but failed before the provider subscription outcome or local
+  entitlement could be confirmed. Firestore retained only a quarantined `provisioning`
+  scope. Investigation found that tenant cleanup incorrectly required a store
+  identity on the tenant document; the local correction now uses document-kind
+  ownership, preserves legacy canonical-only recovery, writes compact `tId` and
+  `sId` aliases for new workspaces, and passes focused contract and emulator
+  tests. The earlier 11-character Vercel secret readback was the platform's
+  masked representation of a sensitive value, not evidence of a malformed
+  stored secret. The unchanged shared Razorpay Test pair was read from enabled
+  MenuList Secret Manager version 1, returned HTTP 200 on a bounded read-only
+  provider request, and was re-applied without display to the active QA and
+  Production Vercel variables. Do not retry onboarding until the onboarding
+  correction is released.
+- The two empty-state Firestore corrections found during local authenticated QA
+  are deployed to `neelvara-answerlattice-qa`. Firebase's managed compiler
+  accepted the dedicated rules file, and Rules API readback matches the local
+  source byte-for-byte. The shared rules mirror has the same focused contract
+  and both dedicated/shared positive and adversarial suites pass.
+- The hourly and manual master-scheduler paths now pass in both Answerlattice
+  projects. The project-local Functions runtime identities have Firestore user
+  and log-writer access, plus bucket-scoped Storage object administration. The
+  Production manual scheduler now matches QA's Domain Restricted
+  Sharing-compatible public transport/application-secret-auth contract. Fresh
+  automatic and manual runs returned HTTP 200; all three admitted tasks
+  succeeded, and both provider-health documents report `status: ok` with the
+  approved Functions SDK surface.
 
 Historical claims in the QA runbook remain evidence of earlier work, not proof
 of current state. Do not mark a live checklist item complete until the current
@@ -219,19 +240,23 @@ account can read it back from the exact project.
 
 ## Pre-QA Handoff
 
-No provider or infrastructure setup action remains before Answerlattice QA.
-Start QA from the open fixture-dependent items in the live checklist:
-`AL-QA-C06` and `AL-QA-E07`, plus the testing-only portions referenced by
-`AL-QA-D06`, `AL-QA-D07`, and `AL-QA-E06`.
+One release action is open before managed Answerlattice QA can resume:
 
-Production setup is also complete. `AL-PROD-C05` and `AL-PROD-E06` are
-certification work, not missing setup. Optional Redis, outbound EmailOS/Resend,
-SMTP, GitHub, WhatsApp, analytics, and provider-send paths remain deliberately
+1. Promote and activate the tested onboarding ownership/diagnostic correction,
+   then resume the exact quarantined attempt without creating a second provider
+   object.
+
+After those close, continue the fixture-dependent items in the live checklist:
+`AL-QA-C06` and `AL-QA-E07`, plus the testing-only portions referenced by
+`AL-QA-D06`, `AL-QA-D07`, and `AL-QA-E06`. `AL-PROD-C05` and `AL-PROD-E06`
+remain certification work. Optional Redis, outbound EmailOS/Resend, SMTP,
+GitHub, WhatsApp, analytics, and provider-send paths remain deliberately
 disabled. Do not create or enable them merely for parity.
 
-The sole source-ready but deployment-only closure is the production
-`/api/version` provenance correction described above. It does not block QA and
-must not be deployed without explicit Vercel Production approval.
+The production provenance correction is live and verified. Always refresh
+`origin/staging`, `origin/main`, the local worktree, and both hosted
+`/api/version` responses before recording a new current-state claim; never treat
+an earlier commit hash as the permanent release authority.
 
 ## Execution Order
 
