@@ -3058,7 +3058,8 @@ export const FEATURE_FLAGS = {
      * false: All queries go through full pipeline (existing behavior).
      *
      * Expansion Item #3 — Performance optimization layer.
-     * Zero new Firestore collections. Uses existing Upstash Redis (same as rate limiting).
+     * Zero new Firestore collections. Uses dedicated Answerlattice Upstash
+     * credentials only when the optional cache is provisioned.
      *
      * Requires: ENABLE_ANSWERLATTICE_CANONICAL_ANSWERS = true
      * @see __docs__/answerlattice/instant-response-infrastructure/

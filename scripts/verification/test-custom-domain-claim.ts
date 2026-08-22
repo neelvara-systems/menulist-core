@@ -38,7 +38,8 @@ async function run(): Promise<void> {
     assert(isReservedCustomDomainClaimCandidate('menulist.digital'), 'MenuList QA platform root must be reserved');
     assert(isReservedCustomDomainClaimCandidate('app.menulist.digital'), 'MenuList QA owner app namespace must be reserved');
     assert(isReservedCustomDomainClaimCandidate('qa-cafe.menulist.digital'), 'MenuList QA tenant namespace must be reserved');
-    assert(isReservedCustomDomainClaimCandidate('answerlattice.menulist.online'), 'preview product host must be reserved');
+    assert(isReservedCustomDomainClaimCandidate('canonica.app'), 'preview product host must be reserved');
+    assert(isReservedCustomDomainClaimCandidate('www.canonica.app'), 'preview product www host must be reserved');
     assert(isReservedCustomDomainClaimCandidate('support.answerlattice.com'), 'product descendants must be reserved');
     assert(isReservedCustomDomainClaimCandidate('surfaceos.app'), 'declared future product roots must be reserved');
     assert(!isReservedCustomDomainClaimCandidate('owner.example.com'), 'unrelated owner domains must remain available');

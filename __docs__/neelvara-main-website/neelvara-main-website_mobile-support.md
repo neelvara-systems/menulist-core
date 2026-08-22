@@ -88,7 +88,7 @@ Current redesign verification checked:
 - 320x720 mobile viewport
 - 375x812 mobile viewport
 - 1440x1000 desktop viewport
-- every public Neelvara page: `/`, `/products`, `/about`, `/contact`, `/legal`, `/privacy`, and `/terms`
+- every public Neelvara page: `/`, `/products`, `/about`, `/contact`, `/trust`, `/legal`, `/privacy`, and `/terms`
 - touch targets on mobile
 - footer link visibility
 - no content overlap
@@ -96,5 +96,6 @@ Current redesign verification checked:
 - no horizontal overflow (`scrollWidth === viewport width`)
 - home page next-section signal visible in desktop and mobile viewport audits
 - page Prism panels, product cards, legal text panels, and static 404 recovery layout checked for no horizontal overflow
+- Trust status rows collapse to one readable column on mobile; status labels remain visible without clipping or horizontal scrolling
 
 No MenuList mobile verifier is required unless this site is later moved into the shared app, which is not the current recommendation.

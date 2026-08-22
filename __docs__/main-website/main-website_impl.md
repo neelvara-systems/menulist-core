@@ -8,6 +8,10 @@
 
 ## 1. Architecture Overview
 
+The August 20 presentation refinement applies the reviewed Lucidream reference selectively rather than copying its theme. MenuList now uses a contained floating solid header, a quieter first-fold hierarchy, one composed product-proof stage, and a compact output rail. The public design-system prohibition on blurred website chrome remains intact, the hero retains the approved Inter and blue token system, and phone layouts center the first-fold message while keeping the same localized copy, routes, media, motion preference, and owner-review boundaries.
+
+The August 20 brand-copy refinement keeps the approved MenuList tagline while making the presentation claims more precise. The hero eyebrow now says customer links stay aligned to one approved list; the subtitle limits continuity to supported MenuList public outputs; and the footer names MenuList customer links, QR files, and print materials instead of claiming universal coverage. Features, the source-to-output workflow, How It Works, setup statistics, FAQ setup answers, and final CTA captions use the same reviewed, supported-output boundary instead of `every` surface, no-extra-work, automatic-distribution, or timed-launch claims. English, Hindi, Tamil, Telugu, Marathi, Bengali, Arabic, and Spanish carry the same boundary, and the public-copy verifier locks the localized headings, owner-review requirement, and retired multilingual claim patterns.
+
 The main website lives in the `(website)` route group under Next.js App Router. All pages use a shared layout with system-aware light/dark theme tokens, localization, and analytics.
 
 The v3.6.118 audit-hardening pass removes the authenticated Firebase sign-out chain from the anonymous Header bundle by dynamically importing it only after an authenticated logout action. Desktop Features and Resources panels derive visibility from the controlled React state and become `inert` plus `aria-hidden` while closed, preventing invisible links from entering keyboard navigation. The Features trigger also opens the controlled panel when activated, so access does not depend on pointer hover. `WebsiteProductPathProvider` derives `/ml` from `usePathname()` after hydration instead of forcing the shared website layout to call `headers()` only for alias routing. The layout still resolves locale/session-aware providers on the server, so no static-cache guarantee is claimed.
@@ -175,11 +179,13 @@ LocalisationProvider (locale from next-intl/server)
 `src/components/shared/publicAiSummaryLinks/PublicAiSummaryLinks.tsx` is the shared footer-level AI summary shortcut used by MenuList, AnswerLattice, and CampaignCue public marketing websites. MenuList mounts it in `Footer.tsx` with a localized label and a product-boundary prompt that points to the canonical website and `llms.txt`.
 
 **Default metadata (from layout):**
+- Public tagline: `The official customer-facing version of your business.`
 - Title: `MenuList - One Official Customer Link for Menus and Services`
-- Description: `Turn your current menu or service list into one official customer link for business page, QR, print files, customer actions, owner updates, feedback, and health checks.`
+- Description: `Publish your menu, hours, links, and business information from one owner-approved source.`
 - Metadata base: production `https://menulist.ai` from `src/constants/menulist/website.ts`
 - Canonical: `https://menulist.ai`
 - OG image: `/images/website/menulist-og-official-source.png`
+- OG card artwork renders the approved tagline and owner-approved-source supporting line; `/og-image.png` is the matching backward-compatible copy.
 - Backward-compatible OG copy: `/og-image.png`
 - Robots: index, follow (full crawling enabled)
 - Viewport: device-width, initialScale 1; browser and operating-system zoom remain available

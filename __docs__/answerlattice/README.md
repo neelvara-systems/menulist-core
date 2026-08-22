@@ -90,7 +90,10 @@ the destination pays only its existing cost when the owner explicitly opens it.
 | 8   | `help-center/help-center_mobile-support.md`      | Mobile team     | 4-gate admission test, mobile architecture                    |
 | 9   | `help-center/help-center_decoupling-analysis.md` | Strategy/Arch   | Future standalone SaaS readiness assessment                   |
 | 10  | `firebase-cost-optimization-audit.md`            | Developers/Ops  | Answerlattice-wide Firebase read/write/listener cost map and latest optimizations |
-| 11  | `deployment/answerlattice-qa-deployment-runbook.md`   | Developers/Ops  | QA deployment evidence, commands, secret handling, and production checklist |
+| 11  | `deployment/README.md`                               | Developers/Ops  | Canonical deployment hub for QA/production setup, live checklist, historical evidence, backup/recovery, and release boundaries |
+| 11A | `deployment/answerlattice-environment-setup-checklist.md` | Developers/Ops | Live itemized QA-first and production-second infrastructure setup ledger |
+| 11B | `deployment/answerlattice-qa-deployment-runbook.md`   | Developers/Ops  | Historical QA deployment evidence, commands, and detailed operational history |
+| 11C | `deployment/answerlattice-production-setup-runbook.md` | Developers/Ops | Production-only preparation, deploy, readback, hosted identity, provider, and rollback sequence |
 | 12  | `product-surface-contexts/`                      | Product/Ops/Dev | Route/page/workflow context model for related KB, changelog, ticket, and widget answers |
 | 13  | `system-inventory/`                              | Product/Dev/Ops  | Codebase-first Answerlattice feature map, route map, Firebase map, file inventory, and website truth |
 | 14  | `self-sellable-product-strategy.md`              | Product/Sales/Dev | Answerlattice self-serve positioning, founder-first ICP, bounded team fit, pricing direction, and execution task list |

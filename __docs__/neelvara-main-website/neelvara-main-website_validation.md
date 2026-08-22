@@ -2,11 +2,42 @@
 
 **Status:** Validated; pending owner/legal launch review
 **Implementation date:** June 20, 2026
-**Last cross-check:** August 10, 2026
+**Last cross-check:** August 20, 2026
 **Runtime:** Shared Next.js/Vercel app under `src/app/sites/neelvara/`
 **Local QA URL:** `http://localhost:3000/__neelvara`
 
 ---
+
+## August 22, 2026 Is Agentic Baseline And Agent Discovery Hardening
+
+- Created the first public Is Agentic baseline for `https://neelvara.com`: `73/100`, with 59/80 Essential, 13.3/20 Recommended, and +1 bonus point.
+- Verified that the live homepage already provides meaningful server-rendered text and a valid H1/H2/H3 hierarchy; no heading rewrite was made solely for the scanner's generic partial finding.
+- Added Neelvara-specific `llms.txt` guidance, homepage Markdown content negotiation, cache-safe `Vary` headers, and a non-reflective Markdown 404 recovery body.
+- Rejected the scanner's missing-address recommendation because current legal governance prohibits publishing a residential/legal address without owner and legal/CA approval.
+- Kept brand-name search visibility as an external indexing task and content-efficiency as a measured optimization constraint rather than replacing the shared Next.js architecture for score gain.
+- `npm run test:neelvara-agent-readiness`, scoped ESLint, full TypeScript, scoped `git diff --check`, and the shared `npm run verify:url-routing-boundary` regression passed.
+- Local HTTP smoke passed for ordinary homepage HTML, negotiated homepage Markdown, `/__neelvara/llms.txt`, and an unknown Markdown path with HTTP `404`.
+- No Vercel deployment or public rescan was performed, so the public score remains the recorded 73/100 baseline until the source changes are explicitly deployed.
+
+---
+
+## August 20, 2026 Trust & Verification Page
+
+- Added `/trust` as a footer-level static page with a maintained status ledger for company identity, operated products, company-site privacy/terms, security contact discovery, product-specific controls, and pending legal evidence.
+- Kept the trust surface within the Neelvara boundary: no certification, audit, uptime, security-control, product-data, API, form, analytics, Firebase, or product-funnel claim was introduced.
+- Updated `NEELVARA_PUBLIC_PAGES`, page metadata, sitemap output, shared footer navigation, responsive CSS, and the maintained Neelvara documentation/test matrix.
+- Focused source checks passed: `git diff --check` over the Neelvara runtime/constants/docs scope, scoped ESLint, and `npx tsc --noEmit --incremental false --pretty false`.
+- Local route smoke passed for `/__neelvara/trust`, `/__neelvara/sitemap.xml`, `/__neelvara/robots.txt`, and `/__neelvara/.well-known/security.txt`; trust HTML includes the status ledger, canonical URL, and pending-review language; sitemap includes the trust URL once.
+- Browser checks passed at `1440x1000`, `390x844`, and `320x720`: no horizontal overflow, six status rows render, footer Trust link is present, mobile navigation opens with Products/About/Contact, all reached reveal targets become visible after scrolling, and no browser console errors were captured.
+
+---
+
+## August 20, 2026 Brand Tagline Synchronization
+
+- Centralized the Neelvara umbrella tagline and supporting line in `src/constants/neelvara/website.ts` and used them in homepage metadata and hero copy.
+- Added the bounded MenuList and Answerlattice taglines to the Neelvara product lineup, product page, product cards, and generated Open Graph card.
+- Regenerated the Neelvara PNG derivative set after updating `scripts/website-assets/generate-neelvara-logo-assets.js`.
+- Kept historical transcript and archived strategy wording unchanged; only current public surfaces and maintained docs were synchronized.
 
 ## August 17, 2026 WhatsApp Open Graph Card Audit
 

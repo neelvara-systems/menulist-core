@@ -213,6 +213,163 @@ function verifyWebsiteAuditHardeningBoundary() {
   assertIncludes(hindiLocale, '"successTitle": "मैसेज मिल गया"', 'Hindi contact acknowledgement');
 }
 
+function verifyCrossProductTaglineBoundary() {
+  const neelvaraConstants = read('src/constants/neelvara/website.ts');
+  const neelvaraHome = read('src/app/sites/neelvara/page.tsx');
+  const neelvaraGenerator = read('scripts/website-assets/generate-neelvara-logo-assets.js');
+  const menulistConstants = read('src/constants/menulist/website.ts');
+  const menulistHero = read('src/components/website/home/HeroSection.tsx');
+  const menulistOgGenerator = read('scripts/website-assets/generate-stage6-assets.mjs');
+  const englishLocale = read('public/locales/menulist.ai/en-US.json');
+  const hindiLocale = read('public/locales/menulist.ai/hi-IN.json');
+  const websiteLocales = Object.fromEntries(
+    ['en-US', 'hi-IN', 'ta-IN', 'te-IN', 'mr-IN', 'bn-IN', 'ar-SA', 'es-ES'].map((locale) => [
+      locale,
+      JSON.parse(read(`public/locales/menulist.ai/${locale}.json`)).Website,
+    ]),
+  );
+  const answerlatticeConstants = read('src/constants/answerlattice/website.ts');
+  const answerlatticeHome = read('src/app/sites/answerlattice/page.tsx');
+  const answerlatticeFooter = read('src/app/sites/answerlattice/components/Footer.tsx');
+  const answerlatticeContract = read('src/lib/answerlattice/installContract/contract.ts');
+
+  assertIncludes(neelvaraConstants, 'The trusted information layer between businesses and customers.', 'Neelvara tagline source');
+  assertIncludes(neelvaraConstants, 'keep customer answers grounded in approved knowledge.', 'Neelvara supporting line source');
+  assertIncludes(neelvaraHome, 'NEELVARA_TAGLINE', 'Neelvara homepage tagline binding');
+  assertIncludes(neelvaraHome, 'NEELVARA_SUPPORTING_LINE', 'Neelvara homepage supporting-line binding');
+  assertIncludes(neelvaraHome, 'MenuList keeps public business information official.', 'Neelvara MenuList product job');
+  assertIncludes(neelvaraHome, 'Answerlattice keeps customer answers grounded in approved knowledge.', 'Neelvara Answerlattice product job');
+  assertIncludes(neelvaraGenerator, 'The official customer-facing version of your business.', 'Neelvara generated product tagline');
+  assertNotIncludes(neelvaraGenerator, 'The source of truth behind every customer answer.', 'Neelvara generated stale absolute tagline');
+
+  assertIncludes(menulistConstants, 'The official customer-facing version of your business.', 'MenuList tagline source');
+  assertIncludes(menulistConstants, 'from one owner-approved source.', 'MenuList supporting line source');
+  assertIncludes(menulistHero, "t('Hero.tagline')", 'MenuList homepage tagline binding');
+  assertIncludes(englishLocale, '"tagline": "The official customer-facing version of your business."', 'MenuList English tagline');
+  assertIncludes(hindiLocale, '"tagline": "आपके business का official customer-facing version."', 'MenuList Hindi tagline');
+  const expectedEyebrows = {
+    'en-US': 'One approved list. Customer links stay aligned.',
+    'hi-IN': 'One approved list. Customer links aligned रहें.',
+    'ta-IN': 'ஒரே approved list. Customer links ஒரே நிலையில் இருக்கும்.',
+    'te-IN': 'ఒక approved list. Customer links aligned‌గా ఉంటాయి.',
+    'mr-IN': 'एक approved list. Customer links aligned राहतात.',
+    'bn-IN': 'একটি approved list. Customer links aligned থাকে।',
+    'ar-SA': 'قائمة واحدة معتمدة. تبقى روابط العملاء متسقة.',
+    'es-ES': 'Una lista aprobada. Los enlaces para clientes siguen alineados.',
+  };
+  const expectedReviewTokens = {
+    'en-US': 'review',
+    'hi-IN': 'review',
+    'ta-IN': 'review',
+    'te-IN': 'review',
+    'mr-IN': 'review',
+    'bn-IN': 'review',
+    'ar-SA': 'للمراجعة',
+    'es-ES': 'revisión',
+  };
+  const expectedFlowTitles = {
+    'en-US': 'One approved list. Supported outputs stay connected.',
+    'hi-IN': 'One approved list. Supported outputs connected रहें.',
+    'ta-IN': 'ஒரே approved list. Supported outputs இணைந்தே இருக்கும்.',
+    'te-IN': 'ఒక approved list. Supported outputs connected‌గా ఉంటాయి.',
+    'mr-IN': 'एक approved list. Supported outputs connected राहतात.',
+    'bn-IN': 'একটি approved list. Supported outputs connected থাকে।',
+    'ar-SA': 'قائمة واحدة معتمدة. تبقى المخرجات المدعومة مرتبطة.',
+    'es-ES': 'Una lista aprobada. Los recursos compatibles siguen conectados.',
+  };
+  const expectedFeatureTitles = {
+    'en-US': ['One approved list.', 'Supported outputs stay connected.'],
+    'hi-IN': ['One approved list.', 'Supported outputs connected रहें.'],
+    'ta-IN': ['ஒரே approved list.', 'Supported outputs இணைந்தே இருக்கும்.'],
+    'te-IN': ['ఒక approved list.', 'Supported outputs connected‌గా ఉంటాయి.'],
+    'mr-IN': ['एक approved list.', 'Supported outputs connected राहतात.'],
+    'bn-IN': ['একটি approved list.', 'Supported outputs connected থাকে।'],
+    'ar-SA': ['قائمة واحدة معتمدة.', 'تبقى المخرجات المدعومة مرتبطة.'],
+    'es-ES': ['Una lista aprobada.', 'Los recursos compatibles siguen conectados.'],
+  };
+  const expectedWorkflowTitles = {
+    'en-US': 'One approved list connects supported customer outputs.',
+    'hi-IN': 'One approved list supported customer outputs को connected रखता है।',
+    'ta-IN': 'ஒரே approved list supported customer outputs-ஐ இணைக்கிறது.',
+    'te-IN': 'ఒక approved list supported customer outputs‌ను connected‌గా ఉంచుతుంది.',
+    'mr-IN': 'एक approved list supported customer outputs connected ठेवते.',
+    'bn-IN': 'একটি approved list supported customer outputs-কে connected রাখে।',
+    'ar-SA': 'تربط قائمة واحدة معتمدة مخرجات العملاء المدعومة.',
+    'es-ES': 'Una lista aprobada conecta los recursos compatibles para clientes.',
+  };
+  const staleMultilingualPresentationClaim = /(10\s*(minutes?|mins?)|10\s*நிமிட|10\s*నిమి|10\s*मिनिट|১০\s*মিনিট|10\s*دقائق|No ongoing work|no extra work|Every customer (link|surface|touchpoint)|हर customer (link|touchpoint)|كل واجهة للعميل|Cada superficie del cliente|all surfaces|all.*surface|அனைத்து மேற்பரப்பு|అన్ని సర్ఫేస్|सर्व सर्फेस|সব সারফেস|جميع الأسطح|en vivo en todas las superficies|publica en minutos)/iu;
+  const presentationBoundaryPaths = [
+    ['Stats', 'stat2Desc'],
+    ['Workflow', 'step2Title'],
+    ['Faq', 'a1'],
+    ['Features', 'group4Heading'],
+    ['HowItWorks', 'ctaCaption'],
+    ['HowItWorks', 'surfacesSubtitle'],
+  ];
+  for (const [locale, expectedEyebrow] of Object.entries(expectedEyebrows)) {
+    assert(
+      websiteLocales[locale]?.Hero?.eyebrow === expectedEyebrow,
+      `MenuList ${locale} homepage eyebrow must use the approved-list boundary`,
+    );
+    assert(
+      typeof websiteLocales[locale]?.Hero?.subtitle === 'string'
+        && websiteLocales[locale].Hero.subtitle.includes(expectedReviewTokens[locale]),
+      `MenuList ${locale} homepage subtitle must preserve owner review`,
+    );
+    assert(
+      websiteLocales[locale]?.HowItWorks?.flowTitle === expectedFlowTitles[locale],
+      `MenuList ${locale} How It Works flow must use the supported-output boundary`,
+    );
+    assert(
+      websiteLocales[locale]?.Features?.heroTitle1 === expectedFeatureTitles[locale][0]
+        && websiteLocales[locale]?.Features?.heroTitle2 === expectedFeatureTitles[locale][1],
+      `MenuList ${locale} Features hero must use the approved-list boundary`,
+    );
+    assert(
+      websiteLocales[locale]?.Workflow?.title === expectedWorkflowTitles[locale],
+      `MenuList ${locale} workflow heading must use the supported-output boundary`,
+    );
+    assert(
+      websiteLocales[locale].Workflow.title.includes(websiteLocales[locale].Workflow.highlight),
+      `MenuList ${locale} workflow highlight must remain inside its heading`,
+    );
+    for (const [namespace, key] of presentationBoundaryPaths) {
+      const value = websiteLocales[locale]?.[namespace]?.[key];
+      assert(
+        typeof value === 'string' && !staleMultilingualPresentationClaim.test(value),
+        `MenuList ${locale} ${namespace}.${key} must avoid stale timed, universal-surface, or no-work claims`,
+      );
+    }
+  }
+  assert(
+    websiteLocales['en-US']?.Footer?.sourceLine
+      === 'MenuList keeps its customer links, QR files, and print materials tied to your approved list.',
+    'MenuList English footer must use the bounded approved-list source line',
+  );
+  assert(
+    websiteLocales['hi-IN']?.Footer?.sourceLine
+      === 'MenuList अपने customer links, QR files और print materials को आपकी approved list से connected रखता है।',
+    'MenuList Hindi footer must use the bounded approved-list source line',
+  );
+  assertIncludes(menulistOgGenerator, 'The official customer-facing version of your business.', 'MenuList OG card tagline');
+  assertIncludes(menulistOgGenerator, 'from one owner-approved source.', 'MenuList OG card supporting line');
+
+  assertIncludes(answerlatticeConstants, 'The governed source behind customer answers.', 'AnswerLattice tagline source');
+  assertIncludes(answerlatticeConstants, 'structured, reviewable, and current across support, docs, search, and AI-assisted surfaces.', 'AnswerLattice supporting line source');
+  assertIncludes(answerlatticeHome, 'ANSWERLATTICE_TAGLINE', 'AnswerLattice homepage tagline binding');
+  assertIncludes(answerlatticeHome, 'Approved answers come first; missing coverage becomes visible review work.', 'AnswerLattice bounded homepage description');
+  assertIncludes(answerlatticeFooter, 'ANSWERLATTICE_SUPPORTING_LINE', 'AnswerLattice footer supporting-line binding');
+  assertIncludes(answerlatticeFooter, 'al-site-footer__category', 'AnswerLattice footer category hierarchy');
+  assertIncludes(answerlatticeFooter, 'al-site-footer__tagline', 'AnswerLattice footer tagline hierarchy');
+  assertIncludes(answerlatticeFooter, 'al-site-footer__description', 'AnswerLattice footer supporting hierarchy');
+  assertIncludes(answerlatticeContract, '${ANSWERLATTICE_TAGLINE}', 'AnswerLattice agent context tagline binding');
+  assertIncludes(read('scripts/website-assets/generate-answerlattice-logo-assets.js'), 'The governed source behind customer', 'AnswerLattice OG card tagline');
+  assertIncludes(read('public/answerlattice-og-image.svg'), 'The governed source behind customer', 'AnswerLattice OG SVG tagline');
+  assertIncludes(read('public/answerlattice-og-image.svg'), 'AI-assisted surfaces.', 'AnswerLattice OG SVG supporting line');
+  assertNotIncludes(answerlatticeHome, 'The source of truth behind every customer answer.', 'AnswerLattice homepage stale absolute tagline');
+  assertNotIncludes(answerlatticeHome, 'turns every miss into review work', 'AnswerLattice homepage stale absolute review wording');
+}
+
 function verifyWebsiteThemeStorageBoundary() {
   const provider = read('src/components/website/shadcn/theme-provider.tsx');
   const preference = read('src/lib/website/themePreference.ts');
@@ -772,7 +929,7 @@ function verifyPricingPublicCopyBoundary() {
   );
   [
     'Start with a clear photo or an owned public menu, service-list, image, or PDF link.',
-    'keeps every public place tied to what you approve',
+    'keeps supported MenuList public outputs connected to the version you approve',
   ].forEach((token) => assertIncludes(englishHero?.subtitle || '', token, 'Homepage supported intake copy'));
   assert(
     englishPricing?.setupStateBody ===
@@ -1662,6 +1819,7 @@ if (process.argv.includes('--operational-proof-only')) {
   verifyPackageScript();
   verifyWebsiteSocialMetadataBoundary();
   verifyWebsiteAuditHardeningBoundary();
+  verifyCrossProductTaglineBoundary();
   verifyWebsiteThemeStorageBoundary();
   verifyMountedHomepageBoundary();
   verifyLocaleAndDiscoveryCopy();

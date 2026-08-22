@@ -12,6 +12,8 @@ import {
     NEELVARA_RELATIONSHIP_LINE,
     NEELVARA_SITE_DESCRIPTION,
     NEELVARA_SITE_TITLE,
+    NEELVARA_SUPPORTING_LINE,
+    NEELVARA_TAGLINE,
     buildNeelvaraUrl,
 } from './siteConfig';
 import {
@@ -62,10 +64,8 @@ export default function NeelvaraHomePage() {
                     <div className="nv-hero-copy nv-reveal">
                         <span className="nv-eyebrow mono">Operating company for MenuList and Answerlattice</span>
                         <h1 className="nv-brand-title">Neelvara Systems</h1>
-                        <p className="nv-hero-statement">Information customers can rely on.</p>
-                        <p className="nv-hero-lead">
-                            We operate focused software for public business facts and approved support answers.
-                        </p>
+                        <p className="nv-hero-statement">{NEELVARA_TAGLINE}</p>
+                        <p className="nv-hero-lead">{NEELVARA_SUPPORTING_LINE}</p>
                         <div className="nv-actions">
                             <NeelvaraLink className="nv-button nv-button-solid nv-button-large" href="/products">
                                 View Products
@@ -135,7 +135,7 @@ export default function NeelvaraHomePage() {
                             <span className="mono">Current products</span>
                             <h2 className="serif">Two distinct information jobs.</h2>
                         </div>
-                        <p>Each product has its own purpose, website, policies, and support route.</p>
+                        <p>MenuList keeps public business information official. Answerlattice keeps customer answers grounded in approved knowledge. Each product has its own website, policies, and support route.</p>
                     </div>
                     <div className="nv-product-list">
                         {NEELVARA_PRODUCT_LINEUP.map((product) => (
@@ -152,6 +152,7 @@ export default function NeelvaraHomePage() {
                                     <span className="mono">{product.status}</span>
                                 </span>
                                 <h3>{product.name}</h3>
+                                <p className="nv-product-card-tagline">{product.tagline}</p>
                                 <p>{product.summary}</p>
                                 <span className="nv-product-card-link">
                                     Visit product website

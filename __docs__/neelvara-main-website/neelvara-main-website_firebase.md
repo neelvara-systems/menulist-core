@@ -10,6 +10,8 @@
 
 Neelvara main website v1 has zero Firebase runtime cost.
 
+The `/trust` page is static page data rendered through the existing Next route and does not add Firebase reads, writes, authentication, storage, functions, or scheduled work.
+
 The site is implemented as static public Next pages in the shared Vercel app. It does not introduce Firestore, Storage, Firebase Auth, Cloud Functions, Firebase Hosting, rules, indexes, product metadata, owner notifications, or billing plans.
 
 ---

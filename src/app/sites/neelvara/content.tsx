@@ -51,14 +51,27 @@ export type InfoCard = {
     variant?: SpotlightVariant;
 };
 
+type TrustStatusRow = {
+    label: string;
+    status: 'Published' | 'Current' | 'Product-specific' | 'Pending review';
+    detail: string;
+    href?: string;
+    external?: boolean;
+};
+
 type PageData = {
-    slug: 'products' | 'about' | 'contact' | 'legal' | 'privacy' | 'terms';
+    slug: 'products' | 'about' | 'contact' | 'trust' | 'legal' | 'privacy' | 'terms';
     title: string;
     description: string;
     headline?: string;
     eyebrow: string;
     lastUpdated?: string;
     cards: InfoCard[];
+    statusRows?: {
+        title: string;
+        body: string;
+        rows: TrustStatusRow[];
+    };
     sections: Array<{
         title: string;
         body: string;
@@ -141,7 +154,7 @@ export const PAGE_DATA: Record<PageData['slug'], PageData> = {
         eyebrow: 'Operated products',
         cards: NEELVARA_PRODUCT_LINEUP.map((product, index) => ({
             title: product.name,
-            description: product.summary,
+            description: `${product.tagline} ${product.summary}`,
             icon: PRODUCT_ICON_BY_NAME[product.name],
             href: product.url,
             meta: product.status,
@@ -269,6 +282,113 @@ export const PAGE_DATA: Record<PageData['slug'], PageData> = {
             body: `For company questions about Neelvara Systems, email ${NEELVARA_CONTACT_EMAIL}.`,
             ctaLabel: 'Email Neelvara',
             ctaHref: `mailto:${NEELVARA_CONTACT_EMAIL}`,
+            ctaExternal: true,
+        },
+    },
+    trust: {
+        slug: 'trust',
+        title: 'Trust & Verification',
+        description: 'A factual reference for verifying Neelvara Systems, its operated products, official contact routes, and the boundary of this company website.',
+        headline: 'A clear reference for the company behind the products.',
+        eyebrow: 'Company trust',
+        cards: [],
+        statusRows: {
+            title: 'Reference status',
+            body: 'Use the current published pages and official product destinations as the source for verification. Product commitments stay with the relevant product site.',
+            rows: [
+                {
+                    label: 'Company identity',
+                    status: 'Published',
+                    detail: 'Neelvara Systems is the operating trade name used for this company reference.',
+                    href: '/legal',
+                },
+                {
+                    label: 'Operated products',
+                    status: 'Current',
+                    detail: NEELVARA_RELATIONSHIP_LINE,
+                    href: '/products',
+                },
+                {
+                    label: 'Website privacy and terms',
+                    status: 'Published',
+                    detail: 'Privacy and Terms describe this company website only.',
+                    href: '/privacy',
+                },
+                {
+                    label: 'Security contact discovery',
+                    status: 'Published',
+                    detail: 'A static security contact file is available for responsible disclosure routing.',
+                    href: '/.well-known/security.txt',
+                },
+                {
+                    label: 'Product controls and certifications',
+                    status: 'Product-specific',
+                    detail: 'Verify controls, policies, and any certifications on the relevant product website.',
+                    href: '/products',
+                },
+                {
+                    label: 'Formal entity and trademark evidence',
+                    status: 'Pending review',
+                    detail: 'Not asserted on this page; use the legal inbox for reviewed vendor or entity verification.',
+                    href: `mailto:${NEELVARA_LEGAL_EMAIL}`,
+                    external: true,
+                },
+            ],
+        },
+        sections: [
+            {
+                title: 'Company reference',
+                body: 'Neelvara Systems is the operating trade name used for software infrastructure for customer-facing business information.',
+                items: [
+                    'MenuList and Answerlattice are operated by Neelvara Systems.',
+                    'Country of operation: India.',
+                    'This is a public company reference, not a product account or service dashboard.',
+                ],
+            },
+            {
+                title: 'Official product boundaries',
+                body: 'Product commitments belong on the relevant product website, policy, agreement, or approved product communication.',
+                items: [
+                    'MenuList and Answerlattice keep separate websites, policies, support paths, and product commitments.',
+                    'Product support, onboarding, billing, account, and service questions should start from the relevant product site.',
+                    'Only the currently published operated products are listed on this company website.',
+                ],
+            },
+            {
+                title: 'Website data boundary',
+                body: 'The Neelvara company website is a static public information surface with no account or inquiry workflow.',
+                items: [
+                    'There is no account system, contact form, newsletter signup, checkout, or product data entry on this website.',
+                    'Visitor-initiated email goes to the public company, legal, or privacy inbox selected by the sender.',
+                    'Hosting, CDN, and security providers may process the technical data needed to deliver and protect pages.',
+                ],
+            },
+            {
+                title: 'Contact and verification',
+                body: 'Use the route that matches the question and keep the first message high level.',
+                items: [
+                    `Business inquiries: ${NEELVARA_CONTACT_EMAIL}.`,
+                    `Legal, vendor, or entity verification: ${NEELVARA_LEGAL_EMAIL}.`,
+                    `Company website privacy questions: ${NEELVARA_PRIVACY_EMAIL}.`,
+                    'Do not send private records, secrets, customer datasets, or sensitive documents unless the relevant inbox requests them.',
+                ],
+            },
+            {
+                title: 'Verification notes',
+                body: 'This page helps a reviewer find the right source; it does not replace a contract, invoice, certification, or product policy.',
+                items: [
+                    'Formal entity, trademark, tax, and vendor evidence should be confirmed through the legal route when required.',
+                    'Product-specific privacy, security, availability, billing, and support commitments are not made on this company page.',
+                    'If a source is not published here, treat it as pending review rather than assuming coverage.',
+                ],
+            },
+        ],
+        closing: {
+            eyebrow: 'Verification route',
+            title: 'Need a company or product answer?',
+            body: 'Start with the relevant published page or email the Neelvara legal inbox for vendor, entity, or contract verification.',
+            ctaLabel: 'Contact Neelvara',
+            ctaHref: `mailto:${NEELVARA_LEGAL_EMAIL}`,
             ctaExternal: true,
         },
     },
@@ -623,6 +743,7 @@ export function SiteFooter() {
                 <div className="nv-footer-links" aria-label="Footer navigation">
                     <NeelvaraLink href="/products">Products</NeelvaraLink>
                     <NeelvaraLink href="/about">About</NeelvaraLink>
+                    <NeelvaraLink href="/trust">Trust</NeelvaraLink>
                     <NeelvaraLink href="/legal">Legal</NeelvaraLink>
                     <NeelvaraLink href="/privacy">Privacy</NeelvaraLink>
                     <NeelvaraLink href="/terms">Terms</NeelvaraLink>
@@ -630,6 +751,44 @@ export function SiteFooter() {
                 </div>
             </div>
         </footer>
+    );
+}
+
+function TrustStatusRows({ rows }: { rows: TrustStatusRow[] }) {
+    return (
+        <div className="nv-trust-status-list" aria-label="Trust reference status">
+            {rows.map((row) => {
+                const rowContent = (
+                    <>
+                        <span className="nv-trust-status-label">{row.label}</span>
+                        <span className={`nv-trust-status-badge nv-trust-status-${row.status.toLowerCase().replace(/\s+/g, '-')}`}>
+                            {row.status}
+                        </span>
+                        <p>{row.detail}</p>
+                    </>
+                );
+
+                if (!row.href) {
+                    return <div className="nv-trust-status-row" key={row.label}>{rowContent}</div>;
+                }
+
+                if (row.external) {
+                    return (
+                        <a className="nv-trust-status-row" href={row.href} key={row.label}>
+                            {rowContent}
+                            <LuArrowUpRight aria-hidden="true" />
+                        </a>
+                    );
+                }
+
+                return (
+                    <NeelvaraLink className="nv-trust-status-row" href={row.href} key={row.label}>
+                        {rowContent}
+                        <LuArrowUpRight aria-hidden="true" />
+                    </NeelvaraLink>
+                );
+            })}
+        </div>
     );
 }
 
@@ -769,6 +928,21 @@ export function SecondaryPage({ page }: { page: PageData }) {
                     </div>
                 </div>
             </section>
+            {page.statusRows ? (
+                <section className="nv-section nv-section-tight nv-reveal nv-trust-section">
+                    <div className="nv-wrap nv-trust-overview">
+                        <div className="nv-trust-overview-head">
+                            <span className="nv-eyebrow mono">
+                                <span className="nv-pip" aria-hidden="true" />
+                                Maintained reference
+                            </span>
+                            <h2 className="serif">{page.statusRows.title}</h2>
+                            <p>{page.statusRows.body}</p>
+                        </div>
+                        <TrustStatusRows rows={page.statusRows.rows} />
+                    </div>
+                </section>
+            ) : null}
             {page.sections.map((section, index) => (
                 <section
                     className="nv-section nv-section-tight nv-reveal nv-secondary-section"

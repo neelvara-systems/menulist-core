@@ -167,14 +167,14 @@ async function renderOg(sourceSvg) {
   );
 
   drawText('Neelvara Systems', 206, 92, { size: 28, weight: 700, lineHeight: 34 });
-  drawText('Building the trusted information layer between businesses and customers.', 70, 202, {
+  drawText('The trusted information layer between businesses and customers.', 70, 202, {
     size: 36,
     weight: 700,
     color: '#3F4D61',
     maxWidth: 1060,
     lineHeight: 42,
   });
-  drawText('Neelvara builds customer-facing systems that help businesses publish accurate information and deliver reliable answers.', 70, 286, {
+  drawText('Neelvara operates customer-facing systems that help businesses publish accurate information and keep customer answers grounded in approved knowledge.', 70, 286, {
     size: 22,
     weight: 400,
     color: '#3F4D61',
@@ -188,13 +188,13 @@ async function renderOg(sourceSvg) {
       x: 70,
       color: '#2384FF',
       name: 'MenuList',
-      tagline: 'The official version of your business.',
+      tagline: 'The official customer-facing version of your business.',
     },
     {
       x: 650,
       color: '#0F766E',
       name: 'Answerlattice',
-      tagline: 'The source of truth behind every customer answer.',
+      tagline: 'The governed source behind customer answers.',
     },
   ];
   productItems.forEach(({ x, color, name, tagline }) => {

@@ -26,6 +26,8 @@
 
 > June 22, 2026 broad SMB conversion update: the active website now uses `Create customer link ->` for the main `/create-menu` funnel and frames the source as a current menu, service list, catalogue, price list, rate card, or public offering list. Restaurants/cafes remain strong proof categories, but salons/spas and other list-driven SMBs are first-class positioning proof.
 
+> August 20, 2026 brand tagline update: MenuList's public tagline is `The official customer-facing version of your business.` Its supporting line is `Publish your menu, hours, links, and business information from one owner-approved source.` Keep the wording scoped to MenuList-controlled public surfaces; do not imply permanent availability or automatic updates to every external platform.
+
 ---
 
 ## Historical Strategy Context

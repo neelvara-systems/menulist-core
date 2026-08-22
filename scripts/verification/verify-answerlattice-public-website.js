@@ -367,8 +367,18 @@ const websiteStyles = read(`${WEBSITE_ROOT}/styles.css`);
 assertIncludes(homepage, 'Scattered product knowledge into structured support', 'homepage whole-product eyebrow');
 assertIncludes(
   homepage,
+  'Turn scattered product knowledge into reviewed support for your widget, help center, docs, search, and AI-assisted surfaces.',
+  'homepage buyer-facing transformation',
+);
+assertIncludes(
+  homepage,
+  'Approved answers come first; missing coverage becomes visible review work.',
+  'homepage approved-answer and missing-coverage boundary',
+);
+assertNotIncludes(
+  homepage,
   'AnswerLattice turns scattered docs, tickets, release notes, screenshots, recordings, owner notes, and repeated replies',
-  'homepage scattered-input transformation',
+  'homepage retired long-form source inventory',
 );
 for (const surface of [
   'In-app widget',

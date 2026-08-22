@@ -6,6 +6,12 @@ import {
 } from './publicContent';
 import { ANSWERLATTICE_INSTALL_DOCS } from '@lib/answerlattice/installContract/contract';
 import { getProductDeploymentTarget } from '@constant/deploymentTargets';
+import {
+    ANSWERLATTICE_SUPPORTING_LINE,
+    ANSWERLATTICE_TAGLINE,
+} from '@constant/answerlattice/website';
+
+export { ANSWERLATTICE_SUPPORTING_LINE, ANSWERLATTICE_TAGLINE } from '@constant/answerlattice/website';
 
 export const ANSWERLATTICE_SITE_URL = getProductDeploymentTarget('answerlattice').url.replace(/\/$/, '');
 export const ANSWERLATTICE_SITE_TITLE = 'AnswerLattice - Reviewed Support Layer for SaaS Products';

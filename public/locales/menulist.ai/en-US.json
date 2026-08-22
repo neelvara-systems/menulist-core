@@ -4631,8 +4631,8 @@
       "featureAiMenuManagerDesc": "Update your list by message, with approval cards."
     },
     "Footer": {
-      "tagline": "One approved customer link for your menu, services, and business details.",
-      "sourceLine": "MenuList keeps your approved list behind every link, QR, and printed material customers use.",
+      "tagline": "The official customer-facing version of your business.",
+      "sourceLine": "MenuList keeps its customer links, QR files, and print materials tied to your approved list.",
       "ctaEyebrow": "Ready when your list is",
       "ctaTitle": "Put one trusted customer link online.",
       "ctaBody": "Start from the menu, price list, catalogue, or service list you already have. MenuList prepares the customer-facing version and keeps the links and materials around it.",
@@ -4711,11 +4711,12 @@
       "cta": "Open all resources"
     },
     "Hero": {
-      "eyebrow": "One approved list. Every customer link.",
+      "tagline": "The official customer-facing version of your business.",
+      "eyebrow": "One approved list. Customer links stay aligned.",
       "titlePart1": "Turn your current menu or service list into",
       "titleHighlight": "your official customer link.",
       "titlePart2": "",
-      "subtitle": "Start with a clear photo or an owned public menu, service-list, image, or PDF link. MenuList prepares the customer-facing version for review and keeps every public place tied to what you approve.",
+      "subtitle": "Start with a clear photo or an owned public menu, service-list, image, or PDF link. MenuList prepares it for review, then keeps supported MenuList public outputs connected to the version you approve.",
       "cta": "Create customer link →",
       "ctaAria": "Create your official customer link",
       "secondaryCta": "See example customer page",
@@ -6793,8 +6794,8 @@
     },
     "Workflow": {
       "eyebrow": "From list to customer link",
-      "title": "One approved list keeps every customer link current.",
-      "highlight": "customer link current.",
+      "title": "One approved list connects supported customer outputs.",
+      "highlight": "supported customer outputs",
       "pipelinePhoto": "Photo",
       "pipelinePdf": "PDF",
       "pipelineLink": "Existing link",
@@ -7368,7 +7369,7 @@
     "Features": {
       "heroEyebrow": "Full lifecycle",
       "heroTitle1": "One approved list.",
-      "heroTitle2": "Every customer link.",
+      "heroTitle2": "Supported outputs stay connected.",
       "heroSubtitle": "MenuList starts from the menu you already use, prepares it for review, publishes the official customer link, places it across QR and print, then keeps owner updates, feedback, and health checks connected.",
       "heroCta": "Create customer link →",
       "cardCta": "View feature",
@@ -7499,7 +7500,7 @@
       "heroHighlight": "works.",
       "heroSubtitle": "Start from the menu you already have. MenuList prepares it for owner review, then helps publish the approved version across the customer links and pages you use.",
       "heroCta": "Create customer link →",
-      "flowTitle": "One approved list. Every customer link.",
+      "flowTitle": "One approved list. Supported outputs stay connected.",
       "flowSubtitle": "Start from one menu, review once, then publish QR, links, screens, PDF, and the official page from the same approved list.",
       "flowPhoto": "Photo",
       "flowPdf": "Public PDF or image link",

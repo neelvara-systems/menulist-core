@@ -4,8 +4,8 @@ const FIREBASE_CLI_VERSION = '15.24.0';
 const DEFAULT_PROJECTS = [
   'menulist-qa',
   'menulist-prod',
-  'answerlattice-qa',
-  'answerlattice',
+  'neelvara-answerlattice-qa',
+  'neelvara-answerlattice-prod',
   'campaigncue-qa',
   'campaigncue',
   'menulist-signaldesk-qa',

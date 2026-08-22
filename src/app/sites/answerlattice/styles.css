@@ -3808,6 +3808,29 @@ html[data-answerlattice-theme='light'] .answerlattice-site [class*='shadow-black
     line-height: 1.7;
 }
 
+.al-site-footer__brand .al-site-footer__category {
+    color: var(--al-primary-light);
+    font-size: 0.74rem;
+    font-weight: 750;
+    letter-spacing: 0.11em;
+    line-height: 1.4;
+    text-transform: uppercase;
+}
+
+.al-site-footer__brand .al-site-footer__tagline {
+    margin-top: 0.65rem;
+    color: var(--al-text);
+    font-size: 1.08rem;
+    font-weight: 750;
+    line-height: 1.5;
+}
+
+.al-site-footer__brand .al-site-footer__description {
+    margin-top: 0.45rem;
+    font-size: 0.92rem;
+    line-height: 1.65;
+}
+
 .al-site-footer__actions {
     display: flex;
     flex-wrap: wrap;
@@ -6026,5 +6049,176 @@ html[data-answerlattice-theme='light'] .answerlattice-site .al-support-map__core
     .al-diagram-pulse,
     .al-map-pulse {
         opacity: 0;
+    }
+}
+
+/* Lucidream-inspired composition, retained inside AnswerLattice's Verdigris system. */
+.al-site-header {
+    top: 0.75rem;
+    right: 1rem;
+    left: 1rem;
+    border-bottom: 0;
+    background: transparent;
+    backdrop-filter: none;
+}
+
+.al-site-header__inner {
+    height: 3.75rem;
+    border: 1px solid var(--al-border-strong);
+    border-radius: 1rem;
+    background: var(--al-header-bg);
+    box-shadow:
+        inset 0 1px 0 var(--al-glass-highlight),
+        0 1.5rem 4rem -2.8rem var(--al-shadow-strong);
+    backdrop-filter: blur(var(--al-glass-blur)) saturate(125%);
+    -webkit-backdrop-filter: blur(var(--al-glass-blur)) saturate(125%);
+}
+
+.al-home-hero {
+    isolation: isolate;
+}
+
+.al-home-hero::before {
+    position: absolute;
+    top: -16rem;
+    left: 50%;
+    z-index: -1;
+    width: min(72rem, 96vw);
+    aspect-ratio: 1.65;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgb(var(--al-primary-light-rgb) / 0.14), transparent 68%);
+    filter: blur(1.5rem);
+    transform: translateX(-50%);
+    pointer-events: none;
+    content: "";
+}
+
+.al-home-hero__inner {
+    position: relative;
+}
+
+.al-home-hero-title {
+    text-wrap: balance;
+}
+
+.al-home-hero__subtitle {
+    max-width: 48rem;
+    text-wrap: pretty;
+}
+
+.al-home-hero__capability-rail {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 0.25rem;
+    max-width: 64rem;
+    padding: 0.35rem;
+    border: 1px solid var(--al-border);
+    border-radius: 1rem;
+    background: var(--al-surface-deep);
+    box-shadow: inset 0 1px 0 var(--al-glass-lowlight);
+}
+
+.al-home-hero__capability-rail > span {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 0;
+    min-height: 2.5rem;
+    border: 0;
+    border-radius: 0.7rem;
+    background: transparent;
+    padding: 0.5rem 0.625rem;
+    line-height: 1.3;
+    text-align: center;
+}
+
+.al-home-hero__capability-rail > span:first-child {
+    color: var(--al-text);
+    background: rgb(var(--al-primary-light-rgb) / 0.12);
+    box-shadow: inset 0 0 0 1px rgb(var(--al-primary-light-rgb) / 0.16);
+}
+
+.al-home-hero__stage {
+    position: relative;
+    padding: 0.5rem;
+    border: 1px solid var(--al-border-strong);
+    border-radius: 2.35rem;
+    background: var(--al-surface-deep);
+    box-shadow:
+        inset 0 1px 0 var(--al-glass-highlight),
+        0 2.4rem 6rem -3.2rem var(--al-shadow-strong);
+}
+
+.al-home-hero__stage > * {
+    overflow: hidden;
+    border-radius: 1.9rem;
+}
+
+@media (max-width: 1100px) {
+    .al-home-hero__capability-rail {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 640px) {
+    .al-site-header {
+        top: 0.5rem;
+        right: 0.625rem;
+        left: 0.625rem;
+    }
+
+    .al-site-header__inner {
+        height: 3.5rem;
+        border-radius: 0.875rem;
+        padding-right: 0.875rem;
+        padding-left: 0.875rem;
+    }
+
+    .al-home-hero {
+        padding-top: 6.75rem;
+    }
+
+    .al-home-flow > section:first-child .al-home-hero__chips.al-home-hero__capability-rail {
+        display: flex;
+        max-width: 100%;
+        flex-wrap: nowrap !important;
+        justify-content: flex-start !important;
+        overflow-x: auto;
+        overflow-y: hidden;
+        padding: 0.35rem;
+        overscroll-behavior-inline: contain;
+        scroll-snap-type: x proximity;
+        scrollbar-width: none;
+    }
+
+    .al-home-hero__capability-rail::-webkit-scrollbar {
+        display: none;
+    }
+
+    .al-home-hero__capability-rail > span {
+        flex: 0 0 auto;
+        min-height: 2.75rem;
+        scroll-snap-align: start;
+        white-space: nowrap;
+    }
+
+    .al-home-hero__stage {
+        margin-top: 2rem;
+        padding: 0.3rem;
+        border-radius: 1.35rem;
+    }
+
+    .al-home-hero__stage > * {
+        border-radius: 1.05rem;
+    }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+    .al-site-header__inner,
+    .al-home-hero__capability-rail,
+    .al-home-hero__stage {
+        background: var(--al-surface-solid);
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
     }
 }

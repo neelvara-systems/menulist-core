@@ -3,6 +3,7 @@ import PublicAiSummaryLinks from '@/components/shared/publicAiSummaryLinks/Publi
 import AnswerlatticeLink from './AnswerlatticeLink';
 import AnswerlatticeLogoMark from './AnswerlatticeLogoMark';
 import AnswerlatticeThemeSwitcher from './AnswerlatticeThemeSwitcher';
+import { ANSWERLATTICE_SUPPORTING_LINE, ANSWERLATTICE_TAGLINE } from '../siteConfig';
 
 const FOOTER_LINKS = {
     Product: [
@@ -81,10 +82,9 @@ export default function AnswerlatticeFooter({ basePath = '' }: { basePath?: stri
                             <AnswerlatticeLogoMark idPrefix="answerlattice-footer" height={34} />
                             <span>AnswerLattice</span>
                         </div>
-                        <p>
-                            A reviewed support layer for founder-led SaaS.
-                            Turns scattered docs, tickets, releases, screenshots, recordings, notes, and repeated replies into widget help, hosted docs, fallback tickets, feedback, and reviewable answers.
-                        </p>
+                        <p className="al-site-footer__category">A reviewed support layer for founder-led SaaS.</p>
+                        <p className="al-site-footer__tagline">{ANSWERLATTICE_TAGLINE}</p>
+                        <p className="al-site-footer__description">{ANSWERLATTICE_SUPPORTING_LINE}</p>
                         <div className="al-site-footer__actions">
                             <AnswerlatticeLink basePath={basePath} href="/get-started" className="al-site-footer__cta">
                                 Create workspace

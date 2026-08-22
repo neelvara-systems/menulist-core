@@ -316,8 +316,8 @@ export default function AnswerlatticeHeader({ basePath = '' }: { basePath?: stri
 
     return (
         <>
-            <header className="fixed top-0 left-0 right-0 z-50 border-b border-white/[0.06] bg-[var(--al-header-bg)] backdrop-blur-xl">
-                <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
+            <header className="al-site-header fixed top-0 left-0 right-0 z-50 border-b border-white/[0.06] bg-[var(--al-header-bg)] backdrop-blur-xl">
+                <div className="al-site-header__inner mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
                     <L href="/" className="flex min-h-11 items-center gap-2">
                         <AnswerlatticeLogoMark idPrefix="answerlattice-header" height={32} />
                         <span className="text-lg font-semibold tracking-tight text-white">AnswerLattice</span>

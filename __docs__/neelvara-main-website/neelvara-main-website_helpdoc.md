@@ -35,7 +35,7 @@ Email addresses are env-backed public display values with current code fallbacks
 
 ### What is Neelvara Systems?
 
-Neelvara Systems operates software infrastructure for customer-facing business information.
+Neelvara Systems is the trusted information layer between businesses and customers. It operates customer-facing systems that help businesses publish accurate information and keep customer answers grounded in approved knowledge.
 
 ### What products are in the Neelvara lineup?
 
@@ -56,6 +56,10 @@ Use the contact addresses listed on the Contact page.
 ### Can I ask a company question?
 
 Yes. Email the configured Neelvara business contact with a short note. Keep the first message high level and do not include private records, secrets, or customer datasets. Product support and account questions should go through the relevant product website.
+
+### What is the Trust & Verification page?
+
+The Trust & Verification page is a factual source map for company identity, operated-product boundaries, the static company-website data scope, and official verification routes. Its status labels do not represent a certification, audit, uptime promise, or product security guarantee.
 
 ### Where do I find product information?
 
@@ -101,7 +105,7 @@ Do not answer product-data questions from the Neelvara company website policy un
 
 If a user asks for legal identity:
 
-> Neelvara Systems operates software infrastructure for customer-facing business information. MenuList and Answerlattice are operated by Neelvara Systems.
+> Neelvara operates customer-facing systems that help businesses publish accurate information and keep customer answers grounded in approved knowledge. MenuList and Answerlattice are operated by Neelvara Systems.
 
 If a user asks for GSTIN/PAN/address:
 

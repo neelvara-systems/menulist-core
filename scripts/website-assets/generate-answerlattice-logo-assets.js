@@ -93,12 +93,13 @@ async function renderOgBuffer(sourceBuffer) {
 
   context.fillStyle = '#ffffff';
   context.font = '700 56px Arial, Helvetica, sans-serif';
-  context.fillText('Page-aware support', 82, 330);
-  context.fillText('knowledge for SaaS', 82, 394);
+  context.fillText('The governed source behind customer', 82, 330);
+  context.fillText('answers.', 82, 394);
 
   context.fillStyle = '#a0a0c0';
-  context.font = '400 30px Arial, Helvetica, sans-serif';
-  context.fillText('Correct, approved answers connected to the product screen.', 82, 472);
+  context.font = '400 25px Arial, Helvetica, sans-serif';
+  context.fillText('Keep approved product knowledge structured, reviewable, and current', 82, 462);
+  context.fillText('across support, docs, search, and AI-assisted surfaces.', 82, 495);
 
   context.strokeStyle = 'rgba(255, 255, 255, 0.09)';
   context.lineWidth = 1;

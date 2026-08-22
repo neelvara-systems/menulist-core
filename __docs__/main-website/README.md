@@ -1,5 +1,7 @@
 # MenuList Main Website (menulist.ai)
 
+The current public brand framing is `The official customer-facing version of your business.` with the supporting line `Publish your menu, hours, links, and business information from one owner-approved source.` The implementation keeps the existing official-customer-link conversion story and owner-approved surface boundaries.
+
 **Version:** 3.6.119 (Operational Proof Placement)
 **Status:** ✅ IMPLEMENTED — Canonical
 **Last Updated:** August 14, 2026

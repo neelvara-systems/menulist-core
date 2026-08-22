@@ -3,10 +3,13 @@ import { getProductDeploymentTarget } from '@constant/deploymentTargets';
 export const NEELVARA_SITE_URL = getProductDeploymentTarget('neelvara', 'production').url;
 export const NEELVARA_TRADE_NAME = 'Neelvara Systems';
 export const NEELVARA_PUBLIC_BRAND = 'Neelvara';
+export const NEELVARA_TAGLINE = 'The trusted information layer between businesses and customers.';
+export const NEELVARA_SUPPORTING_LINE =
+    'Neelvara operates customer-facing systems that help businesses publish accurate information and keep customer answers grounded in approved knowledge.';
 export const NEELVARA_SITE_TITLE =
     'Neelvara Systems - Operating Company for MenuList and Answerlattice';
 export const NEELVARA_SITE_DESCRIPTION =
-    'Neelvara Systems (Neelvara) operates MenuList and Answerlattice for customer-facing business information.';
+    NEELVARA_SUPPORTING_LINE;
 export const NEELVARA_BUSINESS_DESCRIPTION =
     'Software development and SaaS platforms for customer-facing business information management, online business profiles, digital listings, catalogues and menus, reputation and discovery information systems, data processing, and automation related to customer-facing business information.';
 export const NEELVARA_LOGO_PATH = '/neelvara-logo.svg';
@@ -36,12 +39,14 @@ export const NEELVARA_PRODUCT_LINEUP = [
         name: 'MenuList',
         status: 'Operated product',
         url: NEELVARA_MENULIST_URL,
+        tagline: 'The official customer-facing version of your business.',
         summary: 'Keeps menus, hours, profiles, and customer-facing details in a public business information source.',
     },
     {
         name: 'Answerlattice',
         status: 'Operated product',
         url: NEELVARA_ANSWERLATTICE_URL,
+        tagline: 'The governed source behind customer answers.',
         summary: 'Keeps support knowledge, help content, and business responses tied to approved answers.',
     },
 ] as const;
@@ -78,6 +83,13 @@ export const NEELVARA_PUBLIC_PAGES: Array<{
         path: '/contact',
         title: 'Contact - Neelvara Systems',
         description: 'Business, legal, and privacy contact points for Neelvara Systems.',
+        priority: 0.7,
+        changeFrequency: 'yearly',
+    },
+    {
+        path: '/trust',
+        title: 'Trust & Verification - Neelvara Systems',
+        description: 'A factual reference for verifying Neelvara Systems, its operated products, and official contact routes.',
         priority: 0.7,
         changeFrequency: 'yearly',
     },
