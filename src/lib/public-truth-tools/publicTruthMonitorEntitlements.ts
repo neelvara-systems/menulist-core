@@ -83,7 +83,7 @@ export function evaluatePublicTruthMonitorEntitlement(
     if (!hasEligiblePlan(input)) {
         return {
             allowed: false,
-            message: "Public truth history is available on Pro and Premium MenuList plans.",
+            message: "Public truth history is available on Pro and Multi-location MenuList plans.",
             mode,
             reason: "not_paid",
         };

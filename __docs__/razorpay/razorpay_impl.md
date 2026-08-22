@@ -433,9 +433,11 @@ interface BillingHistoryItem {
 
 | Plan ID   | Plan Name    | Monthly Price (INR) | Yearly Price (INR) | Monthly Credits (INR) | Monthly Price (USD) | Yearly Price (USD) | Monthly Credits (USD) |
 | --------- | ------------ | ------------------- | ------------------ | --------------------- | ------------------- | ------------------ | --------------------- |
-| `starter` | Starter Plan | ₹499                | ₹4,990             | 75                    | $29                 | $290               | 100                   |
-| `pro`     | Pro Plan     | ₹1,499              | ₹14,990            | 200                   | $79                 | $790               | 400                   |
-| `premium` | Premium Plan | ₹3,999              | ₹39,990            | 600                   | $149                | $1,490             | 1,000                 |
+| `starter` | Official | ₹599 | ₹5,990 | 75 | $29 | $290 | 100 |
+| `pro` | Pro | ₹1,499 | ₹14,990 | 200 | $79 | $790 | 400 |
+| `premium` | Multi-location (per active location; minimum 2) | ₹1,499/location | ₹14,990/location | 600 | $79/location | $790/location | 1,000 |
+
+Public labels changed without changing the stable internal IDs. Annual prices equal ten monthly payments. The Multi-location checkout quantity starts at two; direct Official and Pro subscriptions use quantity one. This pricing decision predates launch, so no customer backfill, grandfathering, compatibility record, or old-price migration exists.
 
 ### B2B Plans
 

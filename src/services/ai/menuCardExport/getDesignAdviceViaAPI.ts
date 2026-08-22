@@ -11,7 +11,7 @@ const MENU_CARD_DESIGN_ADVISOR_RESPONSE_JSON_MAX_BYTES = 16 * 1024;
 export class MenuCardDesignAdvisorPlanError extends Error {
     public code = 'plan_required';
 
-    constructor(message = 'Layout suggestions are included in Pro and Premium.') {
+    constructor(message = 'Layout suggestions are included in Pro and Multi-location.') {
         super(message);
         this.name = 'MenuCardDesignAdvisorPlanError';
     }

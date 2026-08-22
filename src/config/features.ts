@@ -585,7 +585,7 @@ export const FEATURE_FLAGS = {
     /**
      * GrowthOS Add-on / Growth Kits
      *
-     * Pro/Premium MenuList module that prepares copy/share-ready local growth
+     * Pro/Multi-location MenuList module that prepares copy/share-ready local growth
      * kits from current MenuList truth. This is intentionally separate from the
      * paused Today Weekly Growth Pack and is visible only when the owner has
      * an active Pro or Premium subscription.

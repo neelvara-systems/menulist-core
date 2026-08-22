@@ -85,7 +85,7 @@ export function evaluateGrowthOSEntitlement(input: GrowthOSEntitlementInput = {}
             allowed: false,
             mode,
             reason: "not_paid",
-            message: "Growth Kits is available on Pro and Premium MenuList plans.",
+            message: "Growth Kits is available on Pro and Multi-location MenuList plans.",
         };
     }
 

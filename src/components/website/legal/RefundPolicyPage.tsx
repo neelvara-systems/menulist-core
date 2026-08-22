@@ -40,9 +40,9 @@ const whyNoRefund = [
     {
         icon: LuFileText,
         title: 'Fair use and informed decisions',
-        desc: 'Our pricing is designed to provide value upfront. We encourage testing with the Starter Plan before committing to larger plans.',
+        desc: 'Our pricing is designed to provide value upfront. Use the 7-day setup to review your prepared customer-facing version before choosing a paid plan.',
         points: [
-            'Start with the low-cost Starter Plan to evaluate',
+            'Use the 7-day setup to review before purchasing',
             'Review all features on the pricing page before subscribing',
             'Contact support with any questions before purchase',
         ],

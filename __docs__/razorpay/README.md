@@ -27,6 +27,7 @@
 
 | Document                                                                                | Audience            | Description                                                                                                              |
 | --------------------------------------------------------------------------------------- | ------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| [launch-pricing-contract-2026-08.md](./launch-pricing-contract-2026-08.md)              | Founder, Developers | Current pre-launch public names, prices, quantities, and explicit no-migration boundary                                  |
 | [active-subscription-flow.md](./active-subscription-flow.md)                            | Developers, Founder | Complete subscription architecture — state machine, DAL layers, reconciliation, testing matrix, frozen core governance   |
 | [razorpay_impl.md](./razorpay_impl.md)                                                  | Developers, Founder | Complete technical reference — maintained file map, every flow, DB schema, security, credit system, frontend, webhook handling |
 | [user-journey-tracking.md](./user-journey-tracking.md)                                  | QA, Developers      | Comprehensive tracking of all 20 user journeys, webhook coverage, API security                                           |

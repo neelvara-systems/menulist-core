@@ -7615,11 +7615,11 @@
       "step3MockupActive": "✓ Active",
       "step3MockupAdd": "+ Add location",
       "pricingTitle": "Simple per-outlet pricing.",
-      "pricingSubtitle": "Each outlet is billed individually. Add or remove outlets anytime. No enterprise pricing negotiations. No custom contracts. Same transparent pricing as any other MenuList account.",
+      "pricingSubtitle": "Multi-location is ₹1,499 or $79 per active location each month, with a two-location minimum. Annual billing is ₹14,990 or $790 per location and includes two months compared with monthly billing.",
       "pricingCta": "See pricing →",
       "ctaTitle": "Run every location from a single master.",
       "ctaCta": "Set up your first location →",
-      "ctaCaption": "No enterprise contract. No minimum locations. Start with one."
+      "ctaCaption": "No enterprise contract. Multi-location starts with two active locations."
     },
     "About": {
       "eyebrow": "Built for current customer menus",

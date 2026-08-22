@@ -111,7 +111,7 @@ function makeSettings(preset: MenuCardExportPreset, styleId: string): MenuCardEx
     return buildDefaultSettings(preset, styleId);
 }
 
-const MENU_CARD_ADVICE_PLAN_REQUIRED_MESSAGE = 'Layout suggestions are included in Pro and Premium.';
+const MENU_CARD_ADVICE_PLAN_REQUIRED_MESSAGE = 'Layout suggestions are included in Pro and Multi-location.';
 const MENU_CARD_ADVICE_CAPACITY_MESSAGE = 'Additional AI enhancements are needed for layout suggestions.';
 
 export function isMenuCardPresetAvailable(preset: MenuCardExportPreset): boolean {

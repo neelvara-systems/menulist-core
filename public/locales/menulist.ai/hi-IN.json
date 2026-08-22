@@ -7393,11 +7393,11 @@
       "step3MockupActive": "✓ एक्टिव",
       "step3MockupAdd": "+ लोकेशन जोड़ें",
       "pricingTitle": "सिंपल प्रति-आउटलेट प्राइसिंग।",
-      "pricingSubtitle": "हर आउटलेट का बिल अलग। कभी भी आउटलेट जोड़ें या हटाएं। कोई एंटरप्राइज़ प्राइसिंग बातचीत नहीं। कोई कस्टम कॉन्ट्रैक्ट नहीं।",
+      "pricingSubtitle": "Multi-location ₹1,499 या $79 प्रति active location प्रति माह है और कम से कम दो locations से शुरू होता है। Annual billing ₹14,990 या $790 प्रति location है और monthly billing के मुकाबले दो महीने शामिल करती है।",
       "pricingCta": "प्राइसिंग देखें →",
       "ctaTitle": "एक सिंगल मास्टर से हर लोकेशन चलाएं।",
       "ctaCta": "अपनी पहली लोकेशन सेट करें →",
-      "ctaCaption": "कोई एंटरप्राइज़ कॉन्ट्रैक्ट नहीं। कोई मिनिमम लोकेशन नहीं। एक से शुरू करें।"
+      "ctaCaption": "कोई enterprise contract नहीं। Multi-location कम से कम दो active locations से शुरू होता है।"
     },
     "About": {
       "eyebrow": "Public menu truth के लिए बना",

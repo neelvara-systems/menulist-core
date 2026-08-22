@@ -8,6 +8,18 @@
 
 > **Launch Boundary:** This strategy document is retained as historical pricing evidence, not current production-launch approval. Current pricing and billing release approval requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md) evidence, `npm run verify:billing-entitlement-boundary`, Razorpay sandbox evidence, website/pricing copy review, billing browser QA, target deploy evidence, and production-host smoke.
 
+## August 2026 Launch Pricing Contract
+
+MenuList has not launched. The launch contract is implemented as fresh truth with no backfill, grandfathering, old-price compatibility, or customer-data migration:
+
+| Public plan | Stable internal ID | Monthly | Annual | Quantity |
+| --- | --- | --- | --- | --- |
+| Official | `starter` | ₹599 / $29 | ₹5,990 / $290 | One location |
+| Pro | `pro` | ₹1,499 / $79 | ₹14,990 / $790 | One location |
+| Multi-location | `premium` | ₹1,499 / $79 per active location | ₹14,990 / $790 per active location | Minimum two locations |
+
+Annual pricing equals ten monthly payments. The free seven-day setup is an onboarding state, not the paid Official plan. Public labels use Official and Multi-location while persisted IDs remain `starter` and `premium` to protect entitlement and provider contracts. Credits, tax, invoicing, and enhancement-pack pricing are separate decisions and are not changed by this contract.
+
 ## May 2026 Update — Starter Activation Supersedes Pay-First Trial
 
 This document is retained as historical pricing strategy, but the old "No free. No basic. No starter." decision is no longer the active onboarding rule.

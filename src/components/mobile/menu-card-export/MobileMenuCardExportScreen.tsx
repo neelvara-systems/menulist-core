@@ -273,7 +273,7 @@ export default function MobileMenuCardExportScreen({ initialProjectId, onBack }:
                 {isAiAdvisorEnabled ? (
                     <Card title="Pro layout suggestion">
                         <Flex gap={10} vertical>
-                            <Text type="secondary">Available on Pro and Premium. Uses one enhancement only after a suggestion is ready.</Text>
+                            <Text type="secondary">Available on Pro and Multi-location. Uses one enhancement only after a suggestion is ready.</Text>
                             <Button
                                 block
                                 fill="outline"

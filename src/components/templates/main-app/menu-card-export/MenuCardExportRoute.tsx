@@ -209,7 +209,7 @@ function DesktopMenuCardExportRoute() {
                                 <div className={styles.advisorCopy}>
                                     <Text strong><Space size={6}><LuSparkles size={15} /> Pro layout suggestion</Space></Text>
                                     <Paragraph type="secondary" style={{ margin: '4px 0 0' }}>
-                                        Available on Pro and Premium. Uses one enhancement only after a suggestion is ready.
+                                        Available on Pro and Multi-location. Uses one enhancement only after a suggestion is ready.
                                     </Paragraph>
                                 </div>
                                 <Button

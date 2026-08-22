@@ -297,7 +297,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         const subscription = await getActiveSubscriptionForStore(tenantId, storeId);
         if (!hasAllowedAdvisorPlan(subscription)) {
             return NextResponse.json({
-                error: 'Layout suggestions are included in Pro and Premium.',
+                error: 'Layout suggestions are included in Pro and Multi-location.',
                 code: 'plan_required',
                 requiredPlans: FEATURE_FLAGS.MENU_CARD_EXPORT_AI_ADVISOR_PLAN_IDS,
             }, { status: 403 });
