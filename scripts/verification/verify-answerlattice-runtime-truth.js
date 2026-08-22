@@ -10598,8 +10598,11 @@ function verifyAnswerlatticeWorkspaceLifecycleBoundary() {
     const label = index === 0 ? 'dedicated Firestore rules' : 'shared Firestore rules';
     assertIncludes(rules, 'function isAnswerlatticeActiveWorkspace(tId, sId)', `Answerlattice lifecycle ${label}`);
     assertIncludes(rules, "store.data.get('active', false) == true", `Answerlattice lifecycle ${label} active-state denial`);
-    assertIncludes(rules, 'store.data.authDisabled != true', `Answerlattice lifecycle ${label} auth denial`);
   });
+  assertIncludes(dedicatedRules, "store.data.get('deleted', false) != true", 'Answerlattice lifecycle dedicated Firestore rules deletion denial');
+  assertIncludes(dedicatedRules, "store.data.get('authDisabled', false) != true", 'Answerlattice lifecycle dedicated Firestore rules auth denial');
+  assertIncludes(sharedRules, 'store.data.deleted != true', 'Answerlattice lifecycle shared Firestore rules deletion denial');
+  assertIncludes(sharedRules, 'store.data.authDisabled != true', 'Answerlattice lifecycle shared Firestore rules auth denial');
   [
     "pId: 'AL'",
     'tId: tenantId',
@@ -10628,8 +10631,11 @@ function verifyAnswerlatticeWorkspaceLifecycleBoundary() {
     const label = index === 0 ? 'dedicated Storage rules' : 'shared Storage rules';
     assertIncludes(rules, 'function isActiveAnswerlatticeWorkspace(tId, sId)', `Answerlattice lifecycle ${label}`);
     assertIncludes(rules, "store.data.get('active', false) == true", `Answerlattice lifecycle ${label} active-state denial`);
-    assertIncludes(rules, 'store.data.authDisabled != true', `Answerlattice lifecycle ${label} auth denial`);
   });
+  assertIncludes(dedicatedStorageRules, "store.data.get('deleted', false) != true", 'Answerlattice lifecycle dedicated Storage rules deletion denial');
+  assertIncludes(dedicatedStorageRules, "store.data.get('authDisabled', false) != true", 'Answerlattice lifecycle dedicated Storage rules auth denial');
+  assertIncludes(sharedStorageRules, 'store.data.deleted != true', 'Answerlattice lifecycle shared Storage rules deletion denial');
+  assertIncludes(sharedStorageRules, 'store.data.authDisabled != true', 'Answerlattice lifecycle shared Storage rules auth denial');
 
   assert(
     packageJson.scripts['test:answerlattice-workspace-lifecycle:emulator']?.includes(

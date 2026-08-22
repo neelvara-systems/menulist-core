@@ -101,6 +101,19 @@ async function run(): Promise<void> {
             await assertFails(getDoc(doc(ownerDb, 'tenants', '1')));
         }
 
+        if (!USES_SHARED_RULES) {
+            await testEnv.withSecurityRulesDisabled(async (context) => {
+                const {
+                    authDisabled: _authDisabled,
+                    deleted: _deleted,
+                    ...activeStoreWithoutOptionalFlags
+                } = storeData();
+                await setDoc(doc(context.firestore(), 'stores', '101'), activeStoreWithoutOptionalFlags);
+            });
+            await assertSucceeds(getDoc(answerRef));
+            await assertSucceeds(getDoc(ownerStoreRef));
+        }
+
         for (const closedFields of [
             { active: false },
             { active: true, deleted: true },

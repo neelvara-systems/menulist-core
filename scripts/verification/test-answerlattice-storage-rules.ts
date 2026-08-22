@@ -171,6 +171,15 @@ async function run(): Promise<void> {
             new TextEncoder().encode('closed workspace'),
             { contentType: 'text/plain' },
         ));
+        if (RULES_FILE === 'storage-answerlattice.rules') {
+            await testEnv.withSecurityRulesDisabled(async (context) => {
+                await setDoc(doc(context.firestore(), 'stores', '101'), {
+                    authDisabled: deleteField(),
+                    deleted: deleteField(),
+                }, { merge: true });
+            });
+            await assertSucceeds(getBytes(ref(owner, closedWorkspacePath)));
+        }
         await testEnv.withSecurityRulesDisabled(async (context) => {
             await setDoc(doc(context.firestore(), 'stores', '101'), {
                 active: false,
