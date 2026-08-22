@@ -797,6 +797,7 @@ function verifyDedicatedAnswerlatticeFirebase() {
   assertNotIncludes(functionsAdmin, 'error: error instanceof Error ? error.message : String(error)', 'Answerlattice Functions Admin raw exception text');
   assertIncludes(dashboardLayout, 'answerlattice_dashboard_firebase_auth_sync_failed', 'Answerlattice dashboard Firebase Auth sync diagnostics');
   assertIncludes(dashboardLayout, 'logFirebaseBootstrapFailure', 'Answerlattice dashboard Firebase Auth sync diagnostics');
+  assertNotIncludes(dashboardLayout, '}, [pathname, session, status]);', 'Answerlattice route navigation must not repeat Firebase Auth claim synchronization');
   assert(!dashboardLayout.includes("if (process.env.NODE_ENV !== 'production')"), 'Answerlattice dashboard Firebase Auth failures must remain observable in production');
   assertNoDirectConsole(dashboardLayout, 'Answerlattice dashboard layout');
   assertIncludes(protectedLayout, 'resolveCurrentSessionUserDocumentId(session)', 'Answerlattice protected layout rejects ambiguous actor aliases');

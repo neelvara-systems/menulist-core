@@ -188,7 +188,7 @@ function AnswerlatticeDashboardLayoutContent({ children }: { children: React.Rea
         return () => {
             cancelled = true;
         };
-    }, [pathname, session, status]);
+    }, [session, status]);
 
     const shouldRedirectOwnerCustomerRoute = canUseManagementSurfaces && Boolean(ownerCustomerRouteFallback);
     const shouldRedirectAway = shouldRedirectToPublicPricing || (
