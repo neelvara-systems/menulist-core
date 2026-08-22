@@ -108,6 +108,7 @@ const providerExpectation = {
     attemptId: 'attempt-1',
     candidate: providerCandidate,
     planId: 'starter',
+    quantity: 1,
     providerPlanId: 'plan_1',
     storeId: 22,
     tenantId: 11,
@@ -148,6 +149,7 @@ assert.equal(findOnboardingProviderSubscriptionForAttempt({
     attemptId: 'attempt-1',
     candidates: [providerCandidate],
     planId: 'starter',
+    quantity: 1,
     providerPlanId: 'plan_1',
     storeId: 22,
     tenantId: 11,
@@ -158,6 +160,7 @@ assert.equal(findOnboardingProviderSubscriptionForAttempt({
     attemptId: 'attempt-other',
     candidates: [providerCandidate],
     planId: 'starter',
+    quantity: 1,
     providerPlanId: 'plan_1',
     storeId: 22,
     tenantId: 11,
@@ -170,6 +173,7 @@ const persistedSubscription = {
     paymentProvider: 'razorpay',
     pId: 'ML',
     planId: 'starter',
+    quantity: 1,
     productId: 'ML',
     providerStatus: 'active',
     providerSubscriptionId: 'sub_Recovered123',
@@ -183,6 +187,7 @@ const persistedSubscription = {
 };
 assert.equal(isMatchingPersistedOnboardingSubscription({
     planId: 'starter',
+    quantity: 1,
     providerSubscriptionId: 'sub_Recovered123',
     storeId: 22,
     subscription: persistedSubscription,
@@ -209,6 +214,7 @@ for (const subscription of [
 ]) {
     assert.equal(isMatchingPersistedOnboardingSubscription({
         planId: 'starter',
+        quantity: 1,
         providerSubscriptionId: 'sub_Recovered123',
         storeId: 22,
         subscription,

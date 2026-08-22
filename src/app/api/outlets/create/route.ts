@@ -307,7 +307,7 @@ export const POST = withAuth(async (request, session) => {
                     { status: 402 },
                 );
             }
-            if (sub.planId !== 'premium') {
+            if (sub.billingMode !== 'manual' && sub.planId !== 'premium') {
                 return NextResponse.json(
                     { error: "Choose the Multi-location plan before adding another location" },
                     { status: 402 },

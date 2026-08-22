@@ -7,6 +7,7 @@ import PlatformFeaturesList, {
     StarterPlanFeaturesList
 } from '@data/PlatformFeaturesList';
 import { getB2CPlansList } from '@data/PlatformPlansList';
+import { getMenuListPlanMinimumQuantity } from '@lib/billing/menulistPricingPolicy';
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
 import { FirestoreSubscriptionDoc } from '@type/razorpay';
 import { Badge, Button, Card, Col, Flex, List, Modal, Row, Switch, theme, Tooltip, Typography } from 'antd';
@@ -30,7 +31,7 @@ const formatCurrency = (price: number, currency: Currency) => {
 const getPlanfeaturesLable = (plan: Plan) => {
     let label = "";
     if (plan.planId === "pro") {
-        label = "Everything in Starter, plus:";
+        label = "Everything in Official, plus:";
     } else if (plan.planId === "premium") {
         label = "Everything in Pro, plus:";
     }
@@ -109,6 +110,9 @@ const PlanCardComponent = ({
                     icon: <LuZap size={20} color={token.colorText} />,
                 };
     const price = plan[`price${currency}`].price;
+    const minimumQuantity = getMenuListPlanMinimumQuantity(plan);
+    const displayedPrice = typeof price === 'number' ? price * minimumQuantity : price;
+    const isMultiLocationPlan = plan.type === 'B2C' && plan.planId === 'premium';
     const allPlatformFeatures = PlatformFeaturesList.B2C;
 
     const featuresListIds = plan.planId === 'starter' ?
@@ -137,10 +141,15 @@ const PlanCardComponent = ({
                 <div style={{ margin: '16px 0' }}>
                     {plan.planId !== 'custom' && (
                         <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: '8px' }}>
-                            <Title level={2} style={{ margin: 0 }}>{price !== null ? formatCurrency(price, currency) : 'N/A'}</Title>
+                            <Title level={2} style={{ margin: 0 }}>{displayedPrice !== null ? formatCurrency(displayedPrice, currency) : 'N/A'}</Title>
                             <Text type="secondary">/ {plan.billingInterval === 'MONTH' ? 'mo' : 'yr'}</Text>
                         </div>
                     )}
+                    {isMultiLocationPlan && price !== null ? (
+                        <Text type="secondary">
+                            {formatCurrency(price, currency)} per location · {minimumQuantity}-location minimum
+                        </Text>
+                    ) : null}
                     <Paragraph type="secondary" style={{ marginTop: 8 }}>{plan.description}</Paragraph>
                 </div>
             </div>
@@ -250,7 +259,7 @@ function PricingPlansModal({
     modalTitle,
     planTierOrder,
     renderFeatureItems,
-    yearlyBadgeText = 'Save up to 20%',
+    yearlyBadgeText = '2 months included',
 }: PricingPlansModalProps) {
     const [plans, setPlans] = useState<Plan[]>([]);
     const [billingInterval, setBillingInterval] = useState<'MONTH' | 'YEAR'>('YEAR');
