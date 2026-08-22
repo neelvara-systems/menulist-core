@@ -1,7 +1,7 @@
 # Answerlattice Customer Language Contract
 
 > Status: Active presentation-layer contract
-> Last updated: 2026-08-07
+> Last updated: 2026-08-22
 > Audience: product, design, support, documentation, and engineering
 
 ## Purpose
@@ -50,6 +50,11 @@ Activation presents one compact support loop:
 
 The existing four evidence-backed Activation groups remain the executable launch path. After launch, Daily Brief remains the default owner habit and should surface only bounded work that needs a decision.
 
+An existing owner always receives one primary continuation from onboarding:
+**Continue in AnswerLattice** opens **Get Live**. Recovery states explain the
+next owner action and must not expose cache state, database read counts,
+machine-verification terminology, or competing dashboard/setup choices.
+
 ## Progressive Disclosure
 
 - Navigation, page headings, first-use descriptions, empty states, and primary actions use customer-facing language.
@@ -87,4 +92,4 @@ Run:
 npm run verify:answerlattice-customer-language
 ```
 
-The verifier protects the shared label registry, unchanged governance route keys, Activation support loop, main owner headings, architecture boundary, and zero-cost contract.
+The verifier protects the shared label registry, unchanged governance route keys, single existing-owner continuation, owner-readable recovery states, Daily Brief evidence labels, Activation support loop, main owner headings, architecture boundary, and zero-cost contract.

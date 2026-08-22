@@ -726,11 +726,11 @@ export const answerAnswerlatticeOwnerQuestion = async (
                     : `Canonical coverage is ${metrics.coverageRate}% and ${metrics.noEscalationRate}% of recent queries did not escalate. Explicit solved/not-solved outcomes are not available yet.`
                 : `Canonical coverage is ${metrics.coverageRate}% and confirmed resolution is ${metrics.confirmedResolutionRate}%. ${metrics.recontactEligible > 0 ? `${metrics.recontactedSameSession} same-session recontacts were observed across ${metrics.recontactEligible} trackable solved outcomes. ` : ''}${status === 'healthy' ? 'The current summary is stable.' : 'Review gaps before increasing support traffic.'}`;
         evidence.push(
-            { label: 'Canonical coverage', value: metrics.coverageRate === null ? 'Not available' : `${metrics.coverageRate}%`, href: ANSWERLATTICE_ROUTES.DASHBOARD, source: 'coverage summary' },
+            { label: 'Trusted answer coverage', value: metrics.coverageRate === null ? 'Not available' : `${metrics.coverageRate}%`, href: ANSWERLATTICE_ROUTES.DASHBOARD, source: 'coverage summary' },
             { label: 'Confirmed resolution', value: metrics.confirmedResolutionRate === null ? 'Not available' : `${metrics.confirmedResolutionRate}%`, href: ANSWERLATTICE_ROUTES.DASHBOARD, source: 'explicit widget outcomes' },
             { label: 'No escalation', value: metrics.noEscalationRate === null ? 'Not available' : `${metrics.noEscalationRate}%`, href: ANSWERLATTICE_ROUTES.DASHBOARD, source: 'answer evidence summary' },
         );
-        nextActions.push({ label: 'Open Readiness', href: ANSWERLATTICE_ROUTES.DASHBOARD });
+        nextActions.push({ label: 'Open Setup Status', href: ANSWERLATTICE_ROUTES.DASHBOARD });
     } else if (intent === 'intake') {
         directAnswer = metrics.reviewItems > 0
             ? `${metrics.reviewItems} intake items are waiting for owner review. Accept only material that should become governed support knowledge.`
@@ -747,10 +747,10 @@ export const answerAnswerlatticeOwnerQuestion = async (
     } else if (intent === 'install') {
         directAnswer = 'Check activation and widget setup first: origin allowed, route not blocked, safe page context arriving, hosted help available, and first approved answers ready.';
         evidence.push(
-            { label: 'Activation', value: 'Launch checks', href: ANSWERLATTICE_ROUTES.ACTIVATION, source: 'setup checklist' },
+            { label: 'Get Live', value: 'Setup checks', href: ANSWERLATTICE_ROUTES.ACTIVATION, source: 'setup checklist' },
             { label: 'Widget', value: 'Install and context', href: ANSWERLATTICE_ROUTES.WIDGET, source: 'runtime controls' },
         );
-        nextActions.push({ label: 'Open Activation', href: ANSWERLATTICE_ROUTES.ACTIVATION });
+        nextActions.push({ label: 'Open Get Live', href: ANSWERLATTICE_ROUTES.ACTIVATION });
     } else if (intent === 'reply') {
         directAnswer = metrics.escalations7d > 0
             ? `Start with escalated tickets. Use approved answers or related docs as the reply base, then customize before sending. ${metrics.escalations7d} escalations are visible in the current summary.`

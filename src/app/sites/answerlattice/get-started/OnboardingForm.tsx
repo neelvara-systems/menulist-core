@@ -148,10 +148,6 @@ function OnboardingFormInner({ basePath, initialCurrency, initialPlanId }: Requi
         primarySurfaces,
     }), [companyName, primarySurfaces, productName]);
     const existingAnswerlatticeScope = useMemo(() => resolveAnswerlatticeSessionScope(session), [session]);
-    const mainDashboardHref = useMemo(() => {
-        const hostname = typeof window === 'undefined' ? undefined : window.location.hostname;
-        return toAnswerlatticeDashboardRoute(ANSWERLATTICE_ROUTES.DASHBOARD, hostname);
-    }, []);
     const dashboardHref = useMemo(() => {
         const hostname = typeof window === 'undefined' ? undefined : window.location.hostname;
         return toAnswerlatticeDashboardRoute(ANSWERLATTICE_ROUTES.ACTIVATION, hostname);
@@ -412,7 +408,7 @@ function OnboardingFormInner({ basePath, initialCurrency, initialPlanId }: Requi
                     <div style={styles.successIcon}>✓</div>
                     <h2 style={styles.cardTitle}>Your AnswerLattice workspace is ready</h2>
                     <p style={styles.cardSubtext}>
-                        This Google account already has AnswerLattice access. Open your dashboard, continue setup, or switch accounts if you meant to create a different workspace.
+                        This Google account already has AnswerLattice access. Continue where you left off, or switch accounts if you meant to create a different workspace.
                     </p>
 
                     {session?.user?.email && (
@@ -433,20 +429,12 @@ function OnboardingFormInner({ basePath, initialCurrency, initialPlanId }: Requi
 
                     <div style={styles.existingActions}>
                         <a
-                            href={mainDashboardHref}
-                            style={styles.primaryBtn}
-                            data-answerlattice-event="onboarding_existing_dashboard_clicked"
-                            data-answerlattice-label="open_dashboard"
-                        >
-                            Open dashboard
-                        </a>
-                        <a
                             href={dashboardHref}
-                            style={styles.secondaryBtn}
-                            data-answerlattice-event="onboarding_existing_activation_clicked"
-                            data-answerlattice-label="open_activation"
+                            style={styles.primaryBtn}
+                            data-answerlattice-event="onboarding_existing_workspace_clicked"
+                            data-answerlattice-label="continue_in_answerlattice"
                         >
-                            Continue setup
+                            Continue in AnswerLattice
                         </a>
                         <a
                             href={billingHref}
@@ -758,12 +746,12 @@ function OnboardingFormInner({ basePath, initialCurrency, initialPlanId }: Requi
                     </div>
 
                     <a
-                        href={result.subscription ? billingHref : mainDashboardHref}
+                        href={result.subscription ? billingHref : dashboardHref}
                         style={styles.primaryBtn}
-                        data-answerlattice-event="onboarding_dashboard_clicked"
-                        data-answerlattice-label={result.subscription ? 'open_billing' : 'open_dashboard'}
+                        data-answerlattice-event="onboarding_continuation_clicked"
+                        data-answerlattice-label={result.subscription ? 'open_billing' : 'continue_in_answerlattice'}
                     >
-                        {result.subscription ? 'Continue in Billing' : 'Open dashboard'}
+                        {result.subscription ? 'Continue in Billing' : 'Continue in AnswerLattice'}
                     </a>
                 </div>
             )}

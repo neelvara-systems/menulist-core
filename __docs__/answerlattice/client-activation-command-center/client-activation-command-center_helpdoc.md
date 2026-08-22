@@ -13,7 +13,7 @@ Use the four setup groups from top to bottom. Answerlattice opens the first grou
 3. **Connect customer support:** secure the widget key and origins, install the widget, pass current page context, and prepare ticket notifications.
 4. **Verify and go live:** preview one approved public answer, ask one contextual widget question, and submit one unresolved question through fallback.
 
-Answerlattice marks machine-verifiable setup checks from retained evidence. There is no general **Mark as done** button. A completed group means its required configuration evidence is present; it does not prove customer resolution.
+Answerlattice marks setup checks from the workspace's saved status. There is no general **Mark as done** button. A completed group means its required configuration evidence is present; it does not prove customer resolution.
 
 For installation, open **Install Support**. The primary **Copy coding-agent install** action gives Codex, Claude Code, Cursor, Windsurf, or another coding agent the exact configuration and verification packet. Review allowed origins, blocked routes, page-context limits, and acceptance checks before treating the installation as verified.
 
@@ -23,4 +23,4 @@ The **First-value evidence** row in technical details records when Answerlattice
 
 When the first-client launch proof is clear, configuration and retained evidence are ready for controlled customer-path testing. The green checks do not prove that a customer was resolved. Complete the manual known-answer and fallback path before relying on customer traffic, then check Suggested Updates before wider rollout. Keep Jira, native helpdesk connectors, and broad distribution out of the launch until this proof is complete.
 
-The percentage inside technical details and on Setup Status is setup progress, not a launch decision. Use the factual launch-check count and the controlled-customer-testing message as the gate. A notification test is successful only after the configured support email passes validation and delivery succeeds; a compiled-context rebuild that finishes in a non-ready state remains a review item.
+The percentage inside technical details and on Setup Status is setup progress, not a launch decision. Use the setup-check count and the controlled-customer-testing message as the gate. A notification test is successful only after the configured support email passes validation and delivery succeeds; a compiled-context rebuild that finishes in a non-ready state remains a review item.

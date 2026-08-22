@@ -3707,7 +3707,7 @@ function verifyAnswerlatticeOnboardRouteGuards() {
   assertIncludes(onboardingResponse, 'value.billing.amount !== expectedAmount', 'Answerlattice onboarding exact current-plan billing acknowledgement');
   assertIncludes(onboardingResponse, 'ANSWERLATTICE_WIDGET_KEY_PATTERN.test(apiKey)', 'Answerlattice onboarding exact one-time widget key acknowledgement');
   assertIncludes(onboardingForm, 'data-answerlattice-label={`${planId}_${currency.toLowerCase()}`}', 'Answerlattice paid workspace creation analytics uses selected plan and currency');
-  assertIncludes(onboardingForm, "data-answerlattice-label={result.subscription ? 'open_billing' : 'open_dashboard'}", 'Answerlattice completion analytics distinguishes Billing handoff from dashboard handoff');
+  assertIncludes(onboardingForm, "data-answerlattice-label={result.subscription ? 'open_billing' : 'continue_in_answerlattice'}", 'Answerlattice completion analytics distinguishes Billing handoff from the single workspace continuation');
   assertIncludes(onboardingForm, "if (result.apiKey) trackPlausibleEvent('widget_key_generated');", 'Answerlattice onboarding widget-key analytics requires a returned key');
   assertIncludes(onboardingForm, "data.code === 'ANSWERLATTICE_PROVIDER_RECOVERY_PENDING'", 'Answerlattice onboarding client provider recovery guidance');
   assertIncludes(onboardingForm, "data.code === 'ANSWERLATTICE_PROVIDER_CHECKOUT_EXPIRED'", 'Answerlattice onboarding client terminal checkout recovery guidance');

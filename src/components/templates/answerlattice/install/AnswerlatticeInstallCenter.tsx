@@ -561,8 +561,15 @@ export default function AnswerlatticeInstallCenter() {
                 type="warning"
                 showIcon
                 message="Install setup is unavailable"
-                description="Refresh after this Answerlattice workspace and widget access are fully connected."
-                action={<Button style={INSTALL_ACTION_STYLE} onClick={() => loadInstallState(true)}>Retry</Button>}
+                description="We could not read the saved widget setup. Retry once. If it continues, open Get Live to confirm the workspace is ready."
+                action={(
+                    <Space wrap>
+                        <Button style={INSTALL_ACTION_STYLE} onClick={() => loadInstallState(true)}>Retry</Button>
+                        <Button type="primary" style={INSTALL_ACTION_STYLE} onClick={() => openDashboardRoute(ANSWERLATTICE_ROUTES.ACTIVATION)}>
+                            Open Get Live
+                        </Button>
+                    </Space>
+                )}
             />
         );
     }

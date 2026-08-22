@@ -147,7 +147,7 @@ assert.ok(mobileBilling.includes('Starts after payment'));
 assert.ok(!websiteSubscriptionManagement.includes('normalizeRazorpaySubscriptionCheckoutUrl'));
 assert.ok(websiteSubscriptionManagement.includes('Continue in Billing'));
 assert.ok(websiteSubscriptionManagement.includes('window.location.assign(`${OWNER_APP_URL}/billing`)'));
-assert.ok(answerlatticeOnboardingForm.includes("result.subscription ? 'Continue in Billing' : 'Open dashboard'"));
+assert.ok(answerlatticeOnboardingForm.includes("result.subscription ? 'Continue in Billing' : 'Continue in AnswerLattice'"));
 assert.ok(!answerlatticeOnboardingForm.includes('href={result.subscription.shortUrl}'));
 assert.ok(answerlatticeOnboardingRoute.includes("providerStatus: 'created'"));
 assert.ok(answerlatticeOnboardingRoute.includes("raw.providerStatus !== undefined && raw.providerStatus !== 'created'"));

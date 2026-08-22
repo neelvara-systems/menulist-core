@@ -1,7 +1,7 @@
 # Answerlattice Client Onboarding — Spec
 
-> **Version:** 1.8.0
-> **Last Updated:** 2026-08-14
+> **Version:** 1.8.1
+> **Last Updated:** 2026-08-22
 > **Audience:** CEO / PM
 
 ---
@@ -23,6 +23,12 @@ Allow external SaaS founders to create an Answerlattice account via self-service
 7. **Choose** → Select Starter/Growth/Studio and INR or USD checkout only after the preview
 8. **Provisioned** → A resumable attempt creates the tenant/store, pending paid subscription, and one-time widget key without treating a lost browser response as permission to duplicate provider state
 9. **Onboard** → Add sources → Review answers → Run the First 10 checks → Verify the widget → Go live
+
+An authenticated founder who already owns an Answerlattice workspace is not
+asked to choose between a dashboard and setup. The page provides one primary
+**Continue in AnswerLattice** action that returns to **Get Live**, where the
+current saved setup selects the next useful action. Billing remains a separate
+secondary destination.
 
 ---
 
@@ -98,6 +104,7 @@ No active Answerlattice onboarding path creates an unpaid plan. Public onboardin
 
 | Date | Version | Change |
 |------|---------|--------|
+| 2026-08-22 | 1.8.1 | Replaced competing existing-workspace dashboard/setup actions with one Get Live continuation path |
 | 2026-08-14 | 1.8.0 | Added a deterministic product-surface launch preview before paid plan selection without changing entitlement or provisioning |
 | 2026-08-13 | 1.7.0 | Added optional closed-list self-reported discovery to the existing tenant write, outside provisioning idempotency |
 | 2026-08-01 | 1.6.0 | Added current-auth/transactional bridge authority, exact hosted-checkout finalization, fingerprint-bound payment-pending recovery, and non-destructive bootstrap repair |

@@ -179,8 +179,15 @@ export default function AnswerlatticeDashboardPage() {
                 type="warning"
                 showIcon
                 message="Setup status is unavailable"
-                description="Refresh after this Answerlattice workspace is fully connected."
-                action={<Button onClick={() => loadSummary(true)} style={{ minHeight: 44 }}>Retry</Button>}
+                description="We could not read this workspace's saved setup. Retry once. If it continues, sign out and back in before changing any settings."
+                action={(
+                    <Space wrap>
+                        <Button onClick={() => loadSummary(true)} style={{ minHeight: 44 }}>Retry</Button>
+                        <Button type="primary" onClick={() => openRoute(ANSWERLATTICE_ROUTES.ACTIVATION)} style={{ minHeight: 44 }}>
+                            Open Get Live
+                        </Button>
+                    </Space>
+                )}
             />
         );
     }

@@ -275,7 +275,7 @@ export default function AnswerlatticeOwnerSupportAssistant() {
                         <Title level={isMobile ? 3 : 2} style={{ margin: 0 }}>Daily Support Brief</Title>
                     </Space>
                     <Paragraph type="secondary" style={{ margin: '6px 0 0', maxWidth: 760 }}>
-                        Start with today&apos;s plan, then ask what needs review, where users are stuck, or whether support is ready. Answers come from compact operational summaries and link back to the governed source.
+                        Start with today&apos;s plan. Ask what needs review, where customers are stuck, or whether support is ready. Every recommendation links to the screen where you can verify and act.
                     </Paragraph>
                 </div>
                 <Space wrap>
@@ -367,7 +367,7 @@ export default function AnswerlatticeOwnerSupportAssistant() {
                                                             formatter,
                                                             'from the latest activation snapshot',
                                                         )}.`
-                                                        : brief.launchVerification.blockers[0] || 'Open Activation to create the first factual launch verification.'}
+                                                        : brief.launchVerification.blockers[0] || 'Finish Get Live to complete the remaining setup checks.'}
                                                 </Text>
                                             </Flex>
                                             {!brief.launchVerification.ready ? (
@@ -375,7 +375,7 @@ export default function AnswerlatticeOwnerSupportAssistant() {
                                                     onClick={() => router.push(brief.launchVerification.nextActionRoute)}
                                                     style={{ minHeight: 44 }}
                                                 >
-                                                    {brief.launchVerification.nextActionLabel || 'Open Activation'}
+                                                    {brief.launchVerification.nextActionLabel || 'Open Get Live'}
                                                 </Button>
                                             ) : null}
                                         </Flex>
@@ -433,7 +433,6 @@ export default function AnswerlatticeOwnerSupportAssistant() {
                             <Flex vertical gap={8}>
                                 <Space wrap>
                                     <Tag color={statusMeta.color}>{statusMeta.label}</Tag>
-                                    <Text type="secondary">{brief.readModel.cacheHit ? 'Cached summary' : `${brief.readModel.firestoreReads} summary reads`}</Text>
                                 </Space>
                                 <Title level={4} style={{ margin: 0 }}>{brief.headline}</Title>
                                 <Text type="secondary">

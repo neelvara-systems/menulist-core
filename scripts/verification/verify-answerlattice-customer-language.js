@@ -17,6 +17,9 @@ const navigation = read('src/constants/answerlattice/navigations.ts');
 const sidebar = read('src/components/answerlattice/AnswerlatticeSidebar.tsx');
 const activation = read('src/components/templates/answerlattice/activation/AnswerlatticeActivationCommandCenter.tsx');
 const setupStatus = read('src/app/(answerlattice)/answerlattice/dashboard/page.tsx');
+const onboarding = read('src/app/sites/answerlattice/get-started/OnboardingForm.tsx');
+const dailyBrief = read('src/components/templates/answerlattice/ownerSupportAssistant/AnswerlatticeOwnerSupportAssistant.tsx');
+const ownerSupportAssistant = read('src/lib/answerlattice/ownerSupportAssistant.ts');
 const governance = read('src/components/templates/answerlattice/governance/index.tsx');
 const installCenter = read('src/components/templates/answerlattice/install/AnswerlatticeInstallCenter.tsx');
 const productPages = read('src/components/templates/answerlattice/productSurfaces/AnswerlatticeProductSurfaces.tsx');
@@ -103,6 +106,21 @@ for (const key of [
 
 includes(navLine('support'), 'route: ANSWERLATTICE_ROUTES.SUPPORT_ASSISTANT', 'Run Support parent route');
 includes(navLine('launch-install-center'), 'ANSWERLATTICE_CUSTOMER_LANGUAGE.install.installSupport', 'Install Support navigation label');
+
+includes(onboarding, 'Continue in AnswerLattice', 'existing-workspace continuation');
+excludes(onboarding, 'mainDashboardHref', 'single existing-workspace continuation');
+excludes(onboarding, '>Open dashboard<', 'single existing-workspace continuation');
+includes(dailyBrief, 'Every recommendation links to the screen where you can verify and act.', 'Daily Brief owner guidance');
+excludes(dailyBrief, 'Cached summary', 'Daily Brief owner surface');
+excludes(dailyBrief, 'brief.readModel.firestoreReads', 'Daily Brief owner surface');
+excludes(activation, 'machine-checkable', 'Get Live owner surface');
+excludes(activation, 'factual launch checks', 'Get Live owner surface');
+includes(activation, "We could not read this workspace's saved setup.", 'Get Live recovery guidance');
+includes(setupStatus, 'Open Get Live', 'Setup Status recovery guidance');
+includes(installCenter, 'open Get Live to confirm the workspace is ready', 'Install Support recovery guidance');
+includes(ownerSupportAssistant, "label: 'Trusted answer coverage'", 'Daily Brief evidence language');
+includes(ownerSupportAssistant, "label: 'Open Setup Status'", 'Daily Brief readiness action');
+includes(ownerSupportAssistant, "label: 'Open Get Live'", 'Daily Brief install action');
 
 for (const value of [
     'const [revealedToolGroups, setRevealedToolGroups]',

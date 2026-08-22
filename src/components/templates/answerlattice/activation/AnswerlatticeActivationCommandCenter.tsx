@@ -566,7 +566,7 @@ export default function AnswerlatticeActivationCommandCenter() {
             <Alert
                 type="warning"
                 message="Activation summary is unavailable"
-                description="Refresh after this Answerlattice workspace is fully connected."
+                description="We could not read this workspace's saved setup. Retry once. If it continues, sign out and back in before changing any settings."
                 showIcon
                 action={<Button onClick={() => loadSummary(true)} style={{ minHeight: 44 }}>Retry</Button>}
             />
@@ -604,7 +604,7 @@ export default function AnswerlatticeActivationCommandCenter() {
                         Set up support for {summary.workspace.productName || summary.workspace.companyName || 'this product'}
                     </Title>
                     <Text type="secondary">
-                        Follow one guided path. AnswerLattice verifies machine-checkable setup from current workspace evidence.
+                        Follow one guided path. AnswerLattice checks each setup step using this workspace&apos;s current saved status.
                     </Text>
                 </div>
                 <Space wrap>
@@ -703,13 +703,13 @@ export default function AnswerlatticeActivationCommandCenter() {
                         <div>
                             <Title id="answerlattice-launch-path-title" level={4} style={{ margin: 0 }}>Launch path</Title>
                             <Text type="secondary">
-                                {summary.launchProof.completeCount}/{summary.launchProof.totalCount} factual launch checks complete
+                                {summary.launchProof.completeCount}/{summary.launchProof.totalCount} setup checks complete
                             </Text>
                         </div>
                         <Text type="secondary">One current action at a time</Text>
                     </Flex>
                     <Progress
-                        aria-label={`${summary.launchProof.completeCount} of ${summary.launchProof.totalCount} factual launch checks complete`}
+                        aria-label={`${summary.launchProof.completeCount} of ${summary.launchProof.totalCount} setup checks complete`}
                         percent={summary.launchProof.score}
                         showInfo={false}
                         status={summary.launchProof.ready ? 'success' : 'active'}
