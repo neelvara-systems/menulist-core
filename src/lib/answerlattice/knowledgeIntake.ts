@@ -402,6 +402,7 @@ const countReviewItems = async (scope: IntakeScope, jobId: string) => {
     }
 
     let accepted = 0;
+    let draft = 0;
     let published = 0;
     let rejected = 0;
     snap.docs.forEach((docSnap) => {
@@ -412,6 +413,7 @@ const countReviewItems = async (scope: IntakeScope, jobId: string) => {
         );
         if (item.jobId !== normalizedJobId) throw new Error('Review item is not available for this intake job.');
         const status = item.status;
+        if (status === ANSWERLATTICE_INTAKE_REVIEW_STATUS.DRAFT) draft += 1;
         if (status === ANSWERLATTICE_INTAKE_REVIEW_STATUS.ACCEPTED) accepted += 1;
         if (status === ANSWERLATTICE_INTAKE_REVIEW_STATUS.PUBLISHED) published += 1;
         if (status === ANSWERLATTICE_INTAKE_REVIEW_STATUS.REJECTED) rejected += 1;
@@ -419,6 +421,7 @@ const countReviewItems = async (scope: IntakeScope, jobId: string) => {
 
     return {
         total: snap.size,
+        draft,
         accepted,
         published,
         rejected,
@@ -2123,7 +2126,7 @@ export async function publishKnowledgeIntakeJob(
         }
 
         const counters = await refreshJobCounters(scope, normalizedJobId);
-        const publishCompletedJob = counters.accepted === 0;
+        const publishCompletedJob = counters.accepted === 0 && counters.draft === 0;
         const finalJobStatus = publishCompletedJob
             ? ANSWERLATTICE_KNOWLEDGE_INTAKE_STATUS.PUBLISHED
             : ANSWERLATTICE_KNOWLEDGE_INTAKE_STATUS.REVIEWING;

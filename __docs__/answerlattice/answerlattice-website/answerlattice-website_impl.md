@@ -87,7 +87,7 @@
 
 - `get-started/OnboardingForm.tsx` now uses native form submission, bound labels, server-matching field limits, at least one selected product page, linked Terms/Privacy routes, strict response admission, and allowlisted Razorpay checkout URLs.
 - `components/Header.tsx` gives the mobile drawer a trigger relationship, initial focus, Tab containment, Escape handling, and focus restoration while removing duplicate touch/click activation.
-- `components/StructuredData.tsx` derives the Starter monthly INR offer from `src/data/answerlattice/plans.ts`.
+- `components/StructuredData.tsx` derives the Launch monthly INR offer from `src/data/answerlattice/plans.ts`.
 - `sitemap.xml/route.ts` omits synthetic build-time `lastmod` values.
 - `contact/ContactForm.tsx` uses explicit telephone and URL input semantics while preserving strict API, Turnstile, rate-limit, retention, and bounded-response behavior.
 - `src/content/answerlatticePublic/guardrails.ts` rejects the unsupported `the first 24/7 support layer` superlative.
@@ -318,7 +318,7 @@ The progressive operating manual is implemented as one normal resource article, 
 
 Public contact submissions use `src/app/api/answerlattice/public/contact/route.ts`. The route is Node-only, rate-limited as `ANSWERLATTICE_CONTACT_FORM` with fail-closed provider behavior, caps JSON bodies at 8KB, and then applies one strict normalization contract before any persistence work. Required text is stripped and revalidated after markup removal, optional text becomes `null` when empty, email is normalized to lowercase, and an optional product URL must use HTTP or HTTPS. Persisted source paths must be same-origin relative paths and both source paths and HTTP(S) referrers retain pathname only, preventing query or fragment data from entering the 365-day contact record. The route ignores honeypot submissions, verifies `captchaToken` when `TURNSTILE_SECRET_KEY` is configured, hashes requester IPs, and writes accepted submissions to `DB_COLLECTIONS.ANSWERLATTICE_CONTACT_ENQUIRIES` in AnswerLattice Firebase. The client form renders Cloudflare Turnstile from `NEXT_PUBLIC_TURNSTILE_SITE_KEY`; both env keys must be configured together. Public contact browser submissions use same-origin credentials, no-store cache, manual redirect handling, and an 8KB bounded JSON response parser before accepting `{ accepted: true }`. `/get-started` uses a 16KB bounded response parser, plan/currency billing validation, and resumable provisioning states before success. Public contact, `/get-started` onboarding, and the hosted widget use fixed failure copy in the browser and must not display API response text, provider text, or local exception messages.
 
-Pricing renders INR and USD amounts from `src/data/answerlattice/plans.ts` and sends the selected plan in the Get Started URL. `get-started/page.tsx` admits only the three current plan IDs and INR/USD currency values before passing defaults into `OnboardingForm.tsx`. The form submits the selected monthly plan and currency to the existing paid onboarding route and confirms the server-returned billing amount/currency.
+Pricing renders INR and USD amounts from `src/data/answerlattice/plans.ts` and sends only the selected plan in the Get Started URL. `get-started/page.tsx` admits only the three current plan IDs before passing the default into `OnboardingForm.tsx`. The form collects a billing country, derives INR or USD from that country, submits the selected monthly plan with the billing profile to the paid onboarding route, and confirms the server-returned billing amount/currency.
 
 `demo/AnswerlatticeSupportLoopDemo.tsx` and `demo/AnswerlatticePublicDemo.tsx` are deterministic client-only state machines with six stages each. Neither reads Firebase nor calls an AI provider. Their outer grids, stage navigation, and content panes use explicit `min-w-0` boundaries so the desktop two-column layouts collapse without min-content overflow on a 390px viewport. Stage and reset actions keep 44px minimum targets. `trust/page.tsx` is a server-rendered factual page sourced from current runtime/provider/retention contracts; it explicitly separates operational facts from certifications, DPA/subprocessor terms, residency commitments, and deletion claims. The page states that QA uses a separate project while the production target remains deployment/certification pending; it does not imply two currently certified live environments.
 
@@ -346,7 +346,7 @@ The public website now follows `../self-sellable-product-strategy.md`:
 - header links include `/demo` and `/install`, the desktop Product dropdown uses compact title-only rows for product areas and features, and the desktop Resources navigation now uses the same compact title-only overview-plus-guides pattern for high-priority resource articles plus the resources hub
 - header mobile navigation is client-gated to confirmed sub-1280px viewports so the hamburger trigger does not appear beside desktop navigation on wide screens
 - `/demo` is static and no sign-in required; it does not call Firebase or an AI provider
-- pricing exposes Starter, Growth, and Studio INR packaging
+- pricing exposes Launch, Growth, and Studio INR and USD packaging
 - `/security` uses a trust-page shape of facts, controls, and disclosure while keeping AnswerLattice-specific claims around widget context, tenant-scoped rules, owner-approved answers, rate-limited runtime endpoints, compact summaries, and separate product infrastructure
 - `/faq` answers founder objections and includes FAQ structured data
 - `/product`, `/get-started`, `/about`, and `/contact` no longer use enterprise/design-partner-first copy
@@ -364,7 +364,7 @@ The public website now follows `../self-sellable-product-strategy.md`:
 - Website copy now includes hosted help domains, FAQ management/article-backed FAQ generation, product-scoped AnswerLattice billing/support credits, source-version cache freshness, and separate Firebase/product boundaries.
 - Custom help domains are now buyer-facing website content because they make AnswerLattice feel native to the client's product instead of a third-party bolt-on.
 - Ticket debugging context is now presented as capped, sanitized support context in product, security, FAQ, and privacy copy; public copy avoids raw "console log" wording except where implementation docs need it.
-- `/pricing` now explains that public setup starts on beta while paid plan changes and support-credit top-ups happen from AnswerLattice Billing using product-scoped Razorpay requests.
+- `/pricing` explains that public setup starts on a paid monthly plan while later monthly/yearly plan changes and support-credit top-ups happen from AnswerLattice Billing using product-scoped Razorpay requests.
 - `/install`, `/security`, `/faq`, `/resources`, `/updates`, privacy, and terms now account for hosted help and current support-surface scope.
 - `/resources` now has a typed article layer for launch setup, pre-onboarding, safe context, widget verification, approved answers before fallback, Support Board, feedback review, pricing/support credits, hosted help, and runtime safety. Article routes are explicit wrappers backed by `ANSWERLATTICE_RESOURCE_ARTICLES`, not ad hoc page code.
 - May 31 shared-conversation pass changed the homepage hero to "Launch your SaaS with support already built.", made support setup the primary CTA, and clarified that AnswerLattice prepares docs, FAQs, answer drafts, hosted help, and page-aware widget support while tickets, changelogs, feedback, ratings, and feature requests remain owner-managed.
@@ -378,7 +378,7 @@ The public website now follows `../self-sellable-product-strategy.md`:
 - May 22 conversion pass changed the homepage hero to outcome-first buyer language while keeping "governed answer infrastructure" as secondary category language.
 - Homepage links to the product simulation from the buying path; the deeper generic-answer vs AnswerLattice-answer walkthrough stays on `/demo` so the homepage remains shorter.
 - Homepage keeps a compact pricing checkpoint and top buyer objections; detailed fit qualification, setup sequence, and security controls stay on Product, Install, Pricing, Security, and resource routes.
-- `/pricing` now defines support credits in plain language and gives plan-fit guidance for Starter, Growth, and Studio.
+- `/pricing` defines support credits in plain language and gives plan-fit guidance for Launch, Growth, and Studio.
 - `/install` now includes developer handoff examples and a runtime verification mock so technical founders can see the implementation path.
 - `/install` is now the AnswerLattice Agent Install Layer: the public site exposes copyable AI-agent instructions, framework pages, Markdown mirrors, public agent files, and the frozen v1 widget contract from one generator.
 - `/use-cases` now includes concrete sample questions, generic answers, and AnswerLattice answers for each scenario.

@@ -87,6 +87,11 @@ export const getAnswerlatticeCustomerIdentity = (record: {
         email?: unknown;
         phone?: unknown;
     } | null;
+    widgetEscalation?: {
+        submittedName?: unknown;
+        replyEmail?: unknown;
+    } | null;
+    messages?: unknown;
     requestOrigin?: unknown;
     requestPath?: unknown;
     widgetSessionId?: unknown;
@@ -97,6 +102,15 @@ export const getAnswerlatticeCustomerIdentity = (record: {
     const clientDetails = record.clientDetails && typeof record.clientDetails === 'object'
         ? record.clientDetails
         : {};
+    const widgetEscalation = record.widgetEscalation && typeof record.widgetEscalation === 'object'
+        ? record.widgetEscalation
+        : {};
+    const firstCustomerMessage = Array.isArray(record.messages)
+        ? record.messages.find(message => message && message.type !== 'system' && message.sender)
+        : undefined;
+    const firstCustomerSender = firstCustomerMessage?.sender && typeof firstCustomerMessage.sender === 'object'
+        ? firstCustomerMessage.sender
+        : {};
     const userId = cleanAnswerlatticeIdentityText(
         record.visitorId || record.uId || sourceContext.uId,
         120,
@@ -106,12 +120,20 @@ export const getAnswerlatticeCustomerIdentity = (record: {
         || record.customerName
         || record.userName
         || sourceContext.name
+        || widgetEscalation.submittedName
+        || firstCustomerSender.name
         || clientDetails.storeName
         || clientDetails.tenantName,
         160,
     );
     const email = cleanAnswerlatticeEmail(
-        record.visitorEmail || record.customerEmail || record.userEmail || sourceContext.email || clientDetails.email,
+        record.visitorEmail
+        || record.customerEmail
+        || record.userEmail
+        || sourceContext.email
+        || widgetEscalation.replyEmail
+        || firstCustomerSender.email
+        || clientDetails.email,
     );
     const phone = cleanAnswerlatticeIdentityText(
         record.customerPhone || record.userPhone || sourceContext.phone || clientDetails.phone,

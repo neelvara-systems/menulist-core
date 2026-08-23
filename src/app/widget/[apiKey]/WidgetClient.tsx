@@ -2046,7 +2046,7 @@ const styles: Record<string, CSSProperties> = {
     headerTitle: { fontSize: 15, fontWeight: 600 },
     headerSubtitle: { maxWidth: 210, fontSize: 10, lineHeight: 1.25, color: 'rgba(255,255,255,0.78)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
     headerActions: { display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 },
-    headerButton: { width: 40, height: 40, borderRadius: 8, border: 'none', background: 'rgba(255,255,255,0.18)', color: '#ffffff', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+    headerButton: { width: 44, height: 44, borderRadius: 8, border: 'none', background: 'rgba(255,255,255,0.18)', color: '#ffffff', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
     messagesArea: { flex: 1, overflowY: 'auto', padding: 16 },
     welcomeContainer: { width: '100%', minWidth: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '28px 12px', boxSizing: 'border-box' },
     welcomeIcon: { color: '#6366f1', marginBottom: 12 },

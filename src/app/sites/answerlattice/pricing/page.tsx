@@ -27,7 +27,7 @@ async function getBasePath(): Promise<string> {
 }
 
 const PLAN_BULLETS: Record<string, string[]> = {
-    answerlattice_starter: [
+    answerlattice_launch: [
         'One founder-led SaaS workspace',
         'Team access and role permissions',
         'Knowledge intake from selected links, docs, and supported files',
@@ -53,7 +53,7 @@ const PLAN_BULLETS: Record<string, string[]> = {
 };
 
 const PLAN_GUIDANCE: Record<string, string> = {
-    answerlattice_starter: 'For one SaaS app with early users and repeated setup, billing, or onboarding questions.',
+    answerlattice_launch: 'For one SaaS app with early users and repeated setup, billing, or onboarding questions.',
     answerlattice_growth: 'For active SaaS apps that need weekly review, support-gap tracking, and higher answer capacity.',
     answerlattice_studio: 'For builders, agencies, or studios launching multiple SaaS products.',
 };
@@ -74,11 +74,11 @@ const SHARED_INCLUDED = [
     'Owner review before publishing',
 ];
 
-const supportCreditPack = ANSWERLATTICE_CREDIT_PACKS_LIST[0];
+const supportCreditPacks = ANSWERLATTICE_CREDIT_PACKS_LIST;
 
 const CREDIT_EXAMPLES = [
     {
-        title: 'Starter setup month',
+        title: 'Launch setup month',
         description: 'Use credits for the source-backed first-ten starter-answer run, full-runtime answer tests, and selected screenshot or recording extraction. Draft review, normal widget loading, and help browsing stay outside credit usage.',
     },
     {
@@ -121,7 +121,7 @@ export default async function AnswerlatticePricingPage() {
                         <div className="grid gap-4 md:grid-cols-[1.2fr_0.8fr] md:items-center">
                             <div>
                                 <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-teal-200">Paid setup</p>
-                                <h2 className="text-2xl font-bold text-white">Start with Starter. Upgrade when support volume is real.</h2>
+                                <h2 className="text-2xl font-bold text-white">Start with Launch. Upgrade when support volume is real.</h2>
                                 <p className="mt-3 text-sm leading-relaxed text-[#a0a0c0]">
                                     Workspace setup creates your AnswerLattice account, chosen monthly subscription, selected product pages, and one-time widget key. Manage plans and top-ups from AnswerLattice Billing through Razorpay.
                                 </p>
@@ -130,7 +130,7 @@ export default async function AnswerlatticePricingPage() {
                                 basePath={basePath}
                                 href="/get-started"
                                 data-answerlattice-event="pricing_paid_setup_clicked"
-                                data-answerlattice-label="starter_setup_banner"
+                                data-answerlattice-label="launch_setup_banner"
                                 className="rounded-xl bg-teal-700 px-6 py-3 text-center text-sm font-semibold text-white shadow-lg shadow-teal-500/25 transition-all hover:bg-teal-800"
                             >
                                 Create workspace
@@ -163,7 +163,7 @@ export default async function AnswerlatticePricingPage() {
                                 </div>
                                 <div className="mb-1 text-4xl font-bold">{formatPrice(plan.priceINR.price)}</div>
                                 <p className="mb-1 text-sm text-[#b7b7d2]">or {formatUsdPrice(plan.priceUSD.price)} per month</p>
-                                <p className="mb-1 text-xs text-[#6b6b8a]">Choose INR or USD during workspace setup.</p>
+                                <p className="mb-1 text-xs text-[#6b6b8a]">Checkout currency follows the billing country you provide.</p>
                                 <p className="mb-6 text-sm text-[#808099]">{plan.priceINR.monthlyCredits} support credits / month</p>
                                 <div className="mb-5 rounded-xl border border-white/[0.06] bg-black/10 p-3 text-sm leading-relaxed text-[#d6d6ef]">
                                     {PLAN_GUIDANCE[plan.planId]}
@@ -222,27 +222,22 @@ export default async function AnswerlatticePricingPage() {
                                 </AnswerlatticeLink>
                             </div>
                         </SectionHeader>
-                        <div className="mx-auto max-w-3xl rounded-2xl border border-white/[0.06] bg-white/[0.03] p-6">
-                            <div className="text-lg font-semibold text-white">{supportCreditPack.name}</div>
-                            <p className="mt-2 text-sm leading-relaxed text-[#808099]">{supportCreditPack.description}</p>
-                            <div className="mt-5 flex flex-wrap items-end justify-between gap-3 border-t border-white/[0.06] pt-5">
-                                <div>
-                                    <div className="text-3xl font-bold text-white">
-                                        {supportCreditPack.priceINR.price === null
-                                            ? 'Price unavailable'
-                                            : formatPrice(supportCreditPack.priceINR.price)}
+                        <div className="mx-auto grid max-w-4xl gap-4 md:grid-cols-2">
+                            {supportCreditPacks.map((supportCreditPack) => (
+                                <div key={supportCreditPack.packId} className="rounded-2xl border border-white/[0.06] bg-white/[0.03] p-6">
+                                    <div className="text-lg font-semibold text-white">{supportCreditPack.name}</div>
+                                    <p className="mt-2 text-sm leading-relaxed text-[#808099]">{supportCreditPack.description}</p>
+                                    <div className="mt-5 border-t border-white/[0.06] pt-5">
+                                        <div className="text-3xl font-bold text-white">
+                                            {supportCreditPack.priceINR.price === null ? 'Price unavailable' : formatPrice(supportCreditPack.priceINR.price)}
+                                        </div>
+                                        <div className="mt-1 text-sm font-semibold text-[#b7b7d2]">
+                                            {supportCreditPack.priceUSD.price === null ? 'USD price unavailable' : `or ${formatUsdPrice(supportCreditPack.priceUSD.price)}`}
+                                        </div>
+                                        <div className="mt-1 text-sm text-[#6b6b8a]">{supportCreditPack.creditAmount} credits, one-time purchase in Billing</div>
                                     </div>
-                                    <div className="mt-1 text-sm font-semibold text-[#b7b7d2]">
-                                        {supportCreditPack.priceUSD.price === null
-                                            ? 'USD price unavailable'
-                                            : `or ${formatUsdPrice(supportCreditPack.priceUSD.price)}`}
-                                    </div>
-                                    <div className="text-sm text-[#6b6b8a]">{supportCreditPack.creditAmount} credits, one-time purchase</div>
                                 </div>
-                                <span className="rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1 text-xs text-[#a0a0c0]">
-                                    Bought inside AnswerLattice Billing
-                                </span>
-                            </div>
+                            ))}
                         </div>
                         <div className="mt-6 grid gap-3 md:grid-cols-3">
                             {CREDIT_EXAMPLES.map((example) => (
@@ -254,7 +249,7 @@ export default async function AnswerlatticePricingPage() {
                         </div>
                     </div>
                     <p className="mx-auto mt-8 max-w-2xl text-center text-sm leading-relaxed text-[#6b6b8a]">
-                        Public packaging stays monthly with INR and USD checkout. Usage limits protect infrastructure, but AnswerLattice is not priced as a punishment for successful support deflection.
+                        Plans are available monthly or yearly. Billing country determines INR or USD checkout. Usage limits protect infrastructure, but Answerlattice is not priced as a punishment for successful support deflection.
                     </p>
                 </section>
                 <section className="border-b border-white/[0.06] px-6 py-16 text-center">

@@ -38,7 +38,7 @@ AnswerLattice should not match that feature grid. Aidbase is strongest as a low-
 
 | Competitive decision | AnswerLattice response | Current source state |
 | --- | --- | --- |
-| Copy fast setup clarity | Carry the selected Starter, Growth or Studio plan into setup, show INR and USD, and make retries recover the same provisioning attempt. | Implemented; provider-backed browser certification remains a release gate. |
+| Copy fast setup clarity | Carry the selected Launch, Growth or Studio plan into setup, show INR and USD reference pricing, derive checkout currency from billing country, and make retries recover the same provisioning attempt. | Implemented; provider-backed browser certification remains a release gate. |
 | Copy visible proof | Show one deterministic governance event from conflicting sources to approval, release drift, refusal, correction and audit evidence. | Implemented at `/demo` without Firebase or AI calls. |
 | Copy buyer trust discipline | Publish the real provider map, implemented retention windows and current legal/certification gaps. | Implemented at `/trust`; no unsupported certification, DPA, residency or deletion claim. |
 | Reject helpdesk breadth | Do not build a unified inbox, agent routing, personas, chatbot-count competition or native ticketing as the product center. | Preserved by doctrine and non-goals. |
@@ -197,13 +197,13 @@ Avoid overclaiming:
 
 ## Pricing Direction
 
-The pricing should stay founder-friendly, INR-anchored, and available in USD for international checkout.
+The pricing should stay founder-friendly, show maintained INR and USD regional prices, and derive checkout currency from the validated billing country. International checkout remains configuration-gated.
 
 | Plan | Suggested price | Best fit | Product promise |
 | --- | ---: | --- | --- |
-| Starter | ₹999/month | solo founder, one product | widget, help center, basic canonical coverage |
-| Growth | ₹2,999/month | growing SaaS | product surfaces, changelog binding, signal queue, weekly digest |
-| Studio | ₹6,999/month | agencies/dev studios | multiple products, reusable setup, client workspace management |
+| Launch | ₹1,499/month or US$29/month | solo founder, one product | widget, help center, and governed support setup |
+| Growth | ₹4,999/month or US$99/month | growing SaaS | broader support capacity and monthly support credits |
+| Studio | ₹12,999/month or US$249/month | studios and product teams | higher governed-support capacity across active products |
 
 The pricing model should avoid per-resolution pricing as the main mental model. It makes founders nervous and can punish successful support deflection. Usage limits can exist internally, but the public purchase decision should feel predictable.
 
@@ -327,8 +327,8 @@ Do not force deeper controls on the primary ICP:
 
 ### J. Billing and Packaging
 
-- [x] Replace beta/free-first website framing with simple Starter, Growth, and Studio packaging when payments are ready.
-- [x] Keep INR pricing primary while showing an explicit USD checkout equivalent.
+- [x] Replace beta/free-first website framing with simple Launch, Growth, and Studio packaging.
+- [x] Show maintained INR and USD prices while deriving checkout currency from billing country.
 - [x] Keep usage limits understandable and predictable.
 - [x] Avoid per-resolution pricing as the default public model.
 - [x] Keep paid self-service setup explicit, resumable, and tied to the selected public plan.
@@ -348,7 +348,7 @@ Do not force deeper controls on the primary ICP:
 
 - Public website now leads with the small-SaaS support correctness promise.
 - `/sites/answerlattice/demo` provides a static, account-free page-aware demo with canonical, fallback, and support-gap states.
-- Pricing now exposes Starter, Growth, and Studio INR packaging while keeping beta onboarding available.
+- Pricing exposes Launch, Growth, and Studio regional packaging while public onboarding creates a pending paid monthly subscription.
 - Onboarding captures product URL, support email, billing model, and main product pages.
 - Onboarding creates initial Answerlattice product surfaces and a compact context summary without scanning KB, changelog, tickets, or signals.
 - `/answerlattice/settings` now lets owners edit product profile fields after onboarding.

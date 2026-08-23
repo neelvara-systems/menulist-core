@@ -4,7 +4,7 @@
 > **Status:** ✅ IMPLEMENTED
 > **Last Audited:** 2026-08-14
 > **Auth:** Google OAuth through shared NextAuth login plus Answerlattice product-account bridge
-> **Billing:** Paid INR and USD Starter/Growth/Studio packaging. Payment capture runs through the existing product-scoped Razorpay subscription model.
+> **Billing:** Paid INR and USD Launch/Growth/Studio packaging. Billing country determines checkout currency, and payment capture runs through the product-scoped Razorpay subscription model.
 
 ---
 
@@ -36,7 +36,7 @@ A self-service signup flow where external SaaS founders create an Answerlattice 
 2. Sign in with Google OAuth
 3. Enter company, product, product URL, support email, billing model, and main product pages
 4. See a deterministic, product-specific preview of the first support checks and launch sequence before choosing a paid plan
-5. Choose a paid plan and checkout currency; the plan is provisioned through Razorpay with a resumable attempt, then the Answerlattice subscription summary and one-time widget key are committed to the provisional workspace
+5. Choose a paid plan and provide billing details; the validated billing country determines checkout currency, the plan is provisioned through Razorpay with a resumable attempt, and then the Answerlattice subscription summary and one-time widget key are committed to the provisional workspace
 6. See the one-time widget key, payment link, and explicit dashboard/activation next steps
 
 ## Onboarding Flow
@@ -55,7 +55,7 @@ answerlattice.com/get-started
   │   → Perform no API, AI/provider, Firebase, billing, or workspace operation
   │   → State that the preview is not imported knowledge, generated answers, or approved guidance
   │
-  ├── Step 4: Choose a paid plan and INR/USD checkout currency, then POST /api/answerlattice/onboard
+  ├── Step 4: Choose a paid plan, provide the billing country/profile, derive INR/USD, then POST /api/answerlattice/onboard
   │   → Optionally include one closed-list first-discovery source
   │   → Create a fingerprinted provisional tenant/store/user scope
   │   → Create or recover the exact Razorpay subscription for that attempt
@@ -102,7 +102,7 @@ A provisioned but unpaid workspace cannot consume licensed Knowledge Intake or p
 | `src/app/sites/answerlattice/get-started/OnboardingForm.tsx` | Self-service signup form UI |
 | `src/lib/answerlattice/onboardingResponse.ts` | Exact browser acknowledgement projector for plan, billing, provider checkout, subscription and widget-key truth |
 | `src/app/sites/answerlattice/get-started/page.tsx` | Get-started page (criteria + form) |
-| `src/data/answerlattice/plans.ts` | Answerlattice plans config (starter, growth, studio) |
+| `src/data/answerlattice/plans.ts` | Answerlattice plans config (Launch, Growth, Studio) |
 | `src/app/api/answerlattice/workspace-profile/route.ts` | Edit product profile after onboarding |
 | `src/lib/answerlattice/onboardingProvisioning.ts` | Attempt fingerprint, recovery hold, and exact provider-candidate contract |
 | `src/lib/answerlattice/onboardingProvisioningServer.ts` | Transactional finalization, recovery marker, and exact-scope compensation |

@@ -54,6 +54,11 @@ boundaries. This README is the status hub that links them.
 [Deployment README](./README.md)
 Use this only as the index.
 
+[Git Operations Ledger](./git-operations-ledger.md)
+Read this before any commit that moves release history, merge, push, branch
+promotion, or worktree lifecycle operation. Append the before/after evidence in
+the same session; no agent may claim Git or Firebase parity without this review.
+
 [MenuList Staging QA Setup Guide](./menulist-staging-qa-setup.md)
 Follow this one file from top to bottom. It now starts with the permanent
 domain purchase, Workspace email/DNS, the single company identity, and the

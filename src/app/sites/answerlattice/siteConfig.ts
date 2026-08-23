@@ -281,7 +281,7 @@ export const ANSWERLATTICE_PUBLIC_PAGES: Array<{
     {
         path: '/get-started',
         title: 'Get Started | AnswerLattice',
-        description: 'Choose an AnswerLattice monthly plan and INR or USD checkout, create the workspace safely, add your app, pick support pages, and get a one-time widget key.',
+        description: 'Choose an AnswerLattice paid plan, provide your billing country, create the workspace safely, add your app, pick support pages, and get a one-time widget key.',
         priority: 0.85,
         changeFrequency: 'weekly',
     },

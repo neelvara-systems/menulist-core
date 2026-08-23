@@ -1,7 +1,7 @@
 # Answerlattice Billing - Owner Help
 
-> **Version:** 1.0.1  
-> **Last Updated:** 2026-07-19
+> **Version:** 2.0.0
+> **Last Updated:** 2026-08-24
 
 ## Who Can Manage Billing
 
@@ -16,6 +16,8 @@ Only the workspace Owner or a current custom role with Billing permission can op
 
 Creating a checkout does not activate paid access. The subscription must be confirmed by the payment flow.
 
+Your billing country determines the checkout currency. India uses INR. Eligible international billing uses USD only when international checkout is available. Currency is not a preference switch.
+
 ## Interrupted Checkout
 
 Return to **Billing**. Answerlattice can reuse the exact pending checkout when it is still valid. If the provider outcome is uncertain, do not create repeated payments; follow the recovery message or contact support with the workspace and approximate attempt time.
@@ -26,7 +28,18 @@ Support-credit packs add purchased credits to the current Answerlattice subscrip
 
 ## Transactions
 
-Open **Transactions** to view admitted subscription charges, support-credit purchases, and support-credit usage. An invoice link appears only when it passes the verified provider-host check. Missing links do not mean the charge is missing; contact support if provider evidence is needed.
+Open **Transactions** to view admitted subscription charges, support-credit purchases, and support-credit usage. Open **Billing** to view issued Answerlattice invoices and credit notes. A hosted provider link appears only when it passes the verified provider-host check. Missing links do not mean the charge is missing; contact support if provider evidence is needed.
+
+## Invoice Delivery
+
+- Answerlattice emails an issued invoice or credit note when a valid billing, owner, or workspace support email is available and delivery is configured.
+- WhatsApp delivery is additional, not a replacement for Billing. It requires a verified owner number and active notification consent.
+- Delivery can be delayed or unavailable without changing the settled payment. The document remains available in Billing.
+- Never pay again only because an email or WhatsApp message did not arrive.
+
+## Refunds And Credit Notes
+
+Refunds are provider-controlled and are not initiated from the Answerlattice browser. After a signed provider refund is settled, Answerlattice records the refund, reverses eligible purchased credits exactly once, and issues a linked credit note when legal document issuance is configured. Contact Billing support for a refund request or reconciliation question.
 
 ## Payment Problems
 

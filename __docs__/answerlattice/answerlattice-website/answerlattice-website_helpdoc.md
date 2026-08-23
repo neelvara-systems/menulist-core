@@ -11,7 +11,7 @@ AnswerLattice's short public description is: **The governed source behind custom
 
 1. Open **Demo** to inspect the seeded source-conflict, approval, release-drift, fallback, correction, and audit loop.
 2. Open **Install** to check whether your app can add one script, exact allowed origins, blocked routes, and safe page context.
-3. Open **Pricing** to compare Starter, Growth, and Studio monthly capacity in INR and USD.
+3. Open **Pricing** to compare Launch, Growth, and Studio monthly capacity in INR and USD.
 4. Open **Trust and Data Handling**, **Security**, **Privacy**, and **Terms** before sending support material or starting checkout.
 
 The demo is a deterministic sample. It does not use your product data, Firebase, or an AI provider and does not prove a customer outcome.
@@ -36,7 +36,7 @@ These views do not publish, release, or mutate support truth automatically. The 
 3. Enter a company name.
 4. Optionally add product name, HTTP(S) product URL, support email, and billing model.
 5. Choose at least one main product page where users need help.
-6. Choose INR or USD checkout.
+6. Provide your billing country. AnswerLattice derives INR or USD checkout from it.
 7. Submit the form.
 8. Save the one-time widget key if one is shown.
 9. Complete the hosted payment checkout or open Billing.

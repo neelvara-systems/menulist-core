@@ -1,8 +1,8 @@
 # Answerlattice Deployment Hub
 
 > **Category:** Answerlattice infrastructure and release operations
-> **Last updated:** August 22, 2026
-> **Status:** Core QA and production infrastructure plus the unchanged Razorpay Test binding are prepared; onboarding release activation remains open before managed QA
+> **Last updated:** August 23, 2026
+> **Status:** Core QA and production infrastructure is prepared; authenticated data-path, recovery-fixture, and launch certification remain open
 
 This folder is the canonical entry point for Answerlattice environment setup.
 Answerlattice shares the repository and Vercel project with MenuList, but it
@@ -49,10 +49,11 @@ The following was verified through August 23, 2026:
 - `canonica.app` is owned in the company GoDaddy account. Its apex and `www`
   hosts are attached only to Vercel custom environment `qa`. GoDaddy now serves
   Vercel's exact apex A and `www` CNAME records; public DNS and Vercel report
-  valid configuration, and mail/verification DNS was preserved. Both hosts
-  now serve exact staging commit
+  valid configuration, and mail/verification DNS was preserved. Initial domain
+  certification recorded exact staging commit
   `f6256fba66d60a4dbd3d88314300f2a79d28ff25` inside Answerlattice QA with
-  valid TLS and no production redirect. The approved product-routed Google
+  with valid TLS and no production redirect; the current build is recorded
+  below. The approved product-routed Google
   OAuth consent and session proof was completed on the earlier certified
   application revision described below.
 - The QA host contract requires `X-Robots-Tag: noindex, nofollow, noarchive`,
@@ -75,6 +76,17 @@ The following was verified through August 23, 2026:
   backup verifier, documentation-link scan, hosted route boundary, and hosted
   login boundary pass. Fixture-dependent application certification remains a
   separate testing gate.
+- August 23 current-build revalidation confirmed exact build
+  `d534e64822eb8aea8fc4b4ecd0f17a45090afed8` on both Canonica QA hosts and
+  the Answerlattice production apex. All 12 approved Functions in each
+  Answerlattice Firebase project remain `ACTIVE` on Node 22. The complete
+  Answerlattice runtime-truth aggregate passed again. An existing authenticated
+  QA session loaded the Firestore-backed Setup Status workspace without browser
+  errors; it reports 36% readiness, 5 of 14 setup checks, 0 of 7 launch checks,
+  five mapped surfaces, and no imported articles or trusted answers. Production
+  correctly redirects an unauthenticated dashboard request to sign-in. These
+  checks are current evidence, but do not substitute for the remaining hosted
+  Storage/task, recovery-fixture, or authenticated production proofs.
 - A setup-only parity audit on August 21, 2026 found two genuine QA gaps:
   product-isolated Answerlattice Resend/EmailOS onboarding inside the approved
   shared MenuList/Answerlattice provider team and a Vercel QA
@@ -254,11 +266,24 @@ authoritative payment-pending state. Payment-pending does not grant paid AI or
 Knowledge Intake entitlement.
 
 Continue the fixture-dependent items in the live checklist:
-`AL-QA-C06` and `AL-QA-E07`, plus the testing-only portions referenced by
+`AL-QA-C06`, plus the testing-only portions referenced by
 `AL-QA-D06`, `AL-QA-D07`, and `AL-QA-E06`. `AL-PROD-C05` and `AL-PROD-E06`
 remain certification work. Optional Redis, outbound EmailOS/Resend, SMTP,
 GitHub, WhatsApp, analytics, and provider-send paths remain deliberately
 disabled. Do not create or enable them merely for parity.
+
+The August 23 recovery closeout completed `AL-QA-E07` and the recovery half of
+`AL-PROD-E06`. Both isolated databases had all 100 composite indexes and zero
+document collections, matching backup snapshots created before any workspace
+data existed. All 18 source-controlled TTL policies were reapplied and reached
+`ACTIVE`. A synthetic object passed upload, readback, soft delete, restore, and
+second readback in each primary Firebase Storage bucket; no test object remains
+live. Firebase Auth exportability passed for one QA user and zero production
+users inside a mode-`0700` temporary directory, and the plaintext exports were
+deleted immediately. After exact-target readback, only the two dated recovery
+databases were deleted; each project now lists only `(default)`. The managed
+backups remain retained, while a future non-empty backup must provide tenant
+lineage evidence once real workspace data exists.
 
 The production provenance correction is live and verified. Always refresh
 `origin/staging`, `origin/main`, the local worktree, and both hosted

@@ -218,6 +218,18 @@ export function renderAnswerlatticeOwnerNotification(
                 `Refund processed for ${productName}. Amount: ${amount}.`,
                 productName,
             );
+        case 'answerlattice.billing_document_issued': {
+            const documentNumber = textValue(metadata.documentNumber, 'Billing document');
+            const documentTypeLabel = textValue(metadata.documentTypeLabel, 'billing document');
+            const documentUrl = urlValue(metadata.documentUrl);
+            return template(
+                templateKey,
+                `Answerlattice ${documentTypeLabel} ${documentNumber}`,
+                `<h2 style="${S.h2}">Your ${escapeHtml(documentTypeLabel)} is ready</h2><p style="${S.p}">The billing document for <strong>${escapeHtml(productName)}</strong> has been issued.</p><div style="${S.info}"><strong>Document:</strong> ${escapeHtml(documentNumber)}<br><strong>Amount:</strong> ${escapeHtml(amount)}</div>${documentUrl ? `<p style="margin-top:20px"><a href="${escapeHtml(documentUrl)}" style="${S.btn}">Open billing document</a></p><p style="${S.p}">Sign in to Answerlattice to open this private document.</p>` : `<p style="${S.p}">Open Billing in Answerlattice to access this private document.</p>`}`,
+                `Your Answerlattice ${documentTypeLabel} ${documentNumber} is ready.${documentUrl ? ` Open the private document after signing in: ${documentUrl}` : ' Open Billing in Answerlattice to access it.'}`,
+                productName,
+            );
+        }
         case 'answerlattice.support_email_missing':
             return template(
                 templateKey,

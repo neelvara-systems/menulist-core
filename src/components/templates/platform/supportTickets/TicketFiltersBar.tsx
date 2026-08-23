@@ -155,9 +155,9 @@ export default function TicketFiltersBar({
                     </div>
 
                     <div>
-                        <Text strong style={{ marginBottom: 8, display: 'block' }}>Client (Store)</Text>
+                        <Text strong style={{ marginBottom: 8, display: 'block' }}>Requester</Text>
                         <Select
-                            placeholder="Select client..."
+                            placeholder="Select requester..."
                             style={{ width: '100%' }}
                             onChange={(value) => onFilterChange('client', value)}
                             value={filters.client || undefined}

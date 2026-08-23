@@ -13,6 +13,48 @@ const readConfiguredValue = (canonicalName: string, ...legacyNames: string[]): s
  * managed environment templates.
  */
 export const answerlatticeServerEnv = {
+    get billingAuthorisedSignatoryName() {
+        return readConfiguredValue('ANSWERLATTICE_BILLING_AUTHORISED_SIGNATORY_NAME');
+    },
+    get billingDocumentDeliveryEnabled() {
+        return readConfiguredValue('ANSWERLATTICE_BILLING_DOCUMENT_DELIVERY_ENABLED');
+    },
+    get billingDocumentsEnabled() {
+        return readConfiguredValue('ANSWERLATTICE_BILLING_DOCUMENTS_ENABLED');
+    },
+    get billingEInvoiceStatus() {
+        return readConfiguredValue('ANSWERLATTICE_BILLING_E_INVOICE_STATUS');
+    },
+    get billingExportZeroRatingEnabled() {
+        return readConfiguredValue('ANSWERLATTICE_BILLING_EXPORT_ZERO_RATING_ENABLED');
+    },
+    get billingGstin() {
+        return readConfiguredValue('ANSWERLATTICE_BILLING_GSTIN');
+    },
+    get billingInternationalCheckoutEnabled() {
+        return readConfiguredValue('ANSWERLATTICE_BILLING_INTERNATIONAL_CHECKOUT_ENABLED');
+    },
+    get billingLegalIdentityVerified() {
+        return readConfiguredValue('ANSWERLATTICE_BILLING_LEGAL_IDENTITY_VERIFIED');
+    },
+    get billingLegalSupplierName() {
+        return readConfiguredValue('ANSWERLATTICE_BILLING_LEGAL_SUPPLIER_NAME');
+    },
+    get billingLutReference() {
+        return readConfiguredValue('ANSWERLATTICE_BILLING_LUT_REFERENCE');
+    },
+    get billingMerchantEntityId() {
+        return readConfiguredValue('ANSWERLATTICE_BILLING_MERCHANT_ENTITY_ID');
+    },
+    get billingRegisteredAddress() {
+        return readConfiguredValue('ANSWERLATTICE_BILLING_REGISTERED_ADDRESS');
+    },
+    get billingSacCode() {
+        return readConfiguredValue('ANSWERLATTICE_BILLING_SAC_CODE');
+    },
+    get billingSupplierStateCode() {
+        return readConfiguredValue('ANSWERLATTICE_BILLING_SUPPLIER_STATE_CODE');
+    },
     get firebaseApiKey() {
         return readConfiguredValue(
             'NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_API_KEY',

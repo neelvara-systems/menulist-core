@@ -191,6 +191,7 @@ export default function AnswerlatticeFaqManagement() {
     }, [loadData]);
 
     useEffect(() => {
+        if (loading) return;
         if (!selectedFaq) {
             form.resetFields();
             form.setFieldsValue(DEFAULT_FAQ_VALUES);
@@ -203,7 +204,7 @@ export default function AnswerlatticeFaqManagement() {
             contextKeys: selectedFaq.contextKeys || [],
             entityIds: selectedFaq.entityIds || [],
         });
-    }, [form, selectedFaq]);
+    }, [form, loading, selectedFaq]);
 
     const loadSelectedFaqFeedback = useCallback(async () => {
         const requestId = feedbackRequestRef.current + 1;
@@ -376,7 +377,7 @@ export default function AnswerlatticeFaqManagement() {
                                             variant="feedbackContext"
                                         />
                                     )}
-                                    imageStyle={{ height: 96 }}
+                                    styles={{ image: { height: 96 } }}
                                     style={{ padding: 24 }}
                                 />
                             ) : (

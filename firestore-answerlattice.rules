@@ -356,6 +356,14 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    match /billingDocuments/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /billingDocumentCounters/{counterId} {
+      allow read, write: if false;
+    }
+
     match /queryEmbeddings/{docId} {
       allow read, write: if false;
     }

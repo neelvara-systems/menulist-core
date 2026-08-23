@@ -10,7 +10,7 @@ Answerlattice offers authenticated self-service setup for founder-led SaaS teams
 
 - Google-authenticated self-service workspace creation is implemented.
 - A deterministic client-only preview prioritizes up to four maintained First Trusted Answer starter questions from the selected product surfaces before plan selection.
-- Starter, Growth, and Studio monthly plans can be selected in INR or USD.
+- Launch, Growth, and Studio monthly plans are available with INR or USD pricing; the validated billing country determines the checkout currency.
 - The flow is resumable across response loss and indeterminate provider outcomes.
 - An exact known cancelled, completed, or expired checkout is separated from unknown provider state and can be retried after scoped recovery. This is not a claim that every provider failure self-recovers.
 - The initial widget key is shown once; lost plaintext credentials require rotation.

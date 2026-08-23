@@ -8,7 +8,7 @@ import { startLoader, stopLoader } from '@reduxSlices/loader';
 import { SupportTicketType } from '@type/supportTicket';
 import { exportToCSV } from '@util/exportUtils';
 import { Badge, Button, Card, Flex, message, Segmented, Space, Spin, Typography } from 'antd';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
 import { LuBarChart2, LuDownload, LuLayoutGrid, LuTrash2 } from 'react-icons/lu';
 import AnalyticsView from './AnalyticsView';
 import { ticketAnalyticsColumns, ticketCSVColumns } from './exportConfig';
@@ -19,6 +19,20 @@ const { Title } = Typography;
 type SupportTicketsProps = {
     initialView?: 'analytics' | 'queue' | 'trash';
 };
+
+const segmentedLabelStyle: CSSProperties = {
+    alignItems: 'center',
+    display: 'inline-flex',
+    flexDirection: 'row',
+    flexWrap: 'nowrap',
+    gap: 8,
+    justifyContent: 'center',
+    lineHeight: 1.25,
+    padding: '4px 8px',
+    whiteSpace: 'nowrap',
+};
+
+const segmentedIconStyle: CSSProperties = { flex: '0 0 auto' };
 
 const SupportTickets = ({ initialView = 'analytics' }: SupportTicketsProps) => {
     const [activeView, setActiveView] = useState<string>(initialView);
@@ -142,31 +156,31 @@ const SupportTickets = ({ initialView = 'analytics' }: SupportTicketsProps) => {
     const options = [
         {
             label: (
-                <div style={{ padding: '4px 8px' }}>
-                    <LuBarChart2 style={{ marginRight: 8 }} />
+                <span style={segmentedLabelStyle}>
+                    <LuBarChart2 style={segmentedIconStyle} />
                     Dashboard
-                </div>
+                </span>
             ),
             value: 'analytics',
         },
         {
             label: (
-                <div style={{ padding: '4px 8px' }}>
-                    <LuLayoutGrid style={{ marginRight: 8 }} />
+                <span style={segmentedLabelStyle}>
+                    <LuLayoutGrid style={segmentedIconStyle} />
                     Ticket Queue
-                </div>
+                </span>
             ),
             value: 'queue',
         },
         {
             label: (
-                <div style={{ padding: '4px 8px', display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <LuTrash2 style={{ marginRight: 8 }} />
+                <span style={segmentedLabelStyle}>
+                    <LuTrash2 style={segmentedIconStyle} />
                     Deleted
                     {deletedTickets?.length > 0 && (
                         <Badge count={deletedTickets?.length} showZero={false} style={{ marginLeft: 4 }} />
                     )}
-                </div>
+                </span>
             ),
             value: 'trash',
         },
@@ -191,9 +205,9 @@ const SupportTickets = ({ initialView = 'analytics' }: SupportTicketsProps) => {
 
     return (
         <Card variant='borderless' style={{ width: '100%' }}>
-            <Flex justify="space-between" align="center" style={{ marginBottom: 24 }}>
+            <Flex justify="space-between" align="center" gap={12} wrap="wrap" style={{ marginBottom: 24 }}>
                 <Title level={4} style={{ margin: 0 }}>Support Tickets</Title>
-                <Space size={12}>
+                <Space size={12} wrap>
                     <Segmented
                         options={options}
                         value={activeView}

@@ -53,7 +53,7 @@ assert(answerlatticeWebhook.includes('timingSafeEqual'), 'Answerlattice webhook 
 assert(answerlatticeWebhook.includes('shouldAdvanceWhatsAppOsProviderStatus'), 'Answerlattice webhook states must be monotonic');
 assert(answerlatticeWebhook.includes("body.object !== 'whatsapp_business_account'"), 'Answerlattice webhook must admit only WhatsApp Business Account payloads');
 assert(!answerlatticeWebhook.includes('!FUNCTION_FLAGS.ENABLE_ANSWERLATTICE_WHATSAPP_OS_PROVIDER_SEND'), 'Answerlattice webhook reconciliation must survive an outbound-send pause');
-assert(read('functions-answerlattice/src/constants/features.ts').includes('ENABLE_ANSWERLATTICE_WHATSAPP_OS_PROVIDER_SEND: false'), 'Answerlattice provider send must default off');
+assert(read('functions-answerlattice/src/constants/features.ts').includes('ENABLE_ANSWERLATTICE_WHATSAPP_OS_PROVIDER_SEND: true'), 'Answerlattice provider path must be enabled and remain credential, consent, and template gated');
 const rootProvider = read('src/lib/whatsapp-os/provider.ts');
 assert(rootProvider.includes("request.productCode === 'AL' ? answerlatticeFirestoreAdmin : firestoreAdmin"), 'Answerlattice provider references must stay in the Answerlattice Firebase project');
 assert(rootProvider.includes("current.get('unresolved') === true"), 'Provider reference persistence must reconcile early webhook placeholders');

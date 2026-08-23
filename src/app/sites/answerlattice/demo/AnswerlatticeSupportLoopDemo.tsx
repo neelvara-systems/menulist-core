@@ -22,7 +22,7 @@ const SUPPORT_DEMO_STAGES = [
 
 const CONTEXT_ROWS = [
     ['Product page', 'Billing settings'],
-    ['Plan', 'Starter'],
+    ['Plan', 'Launch'],
     ['User role', 'Account owner'],
     ['Approved source', 'Billing policy'],
 ] as const;
@@ -104,7 +104,7 @@ export default function AnswerlatticeSupportLoopDemo() {
                                         The widget receives safe, allowlisted context from the client product. It does not inspect the raw page or unrestricted application state.
                                     </p>
                                     <div className="mt-6 rounded-xl border border-white/[0.08] bg-black/15 p-4 text-sm text-[#dddded]">
-                                        Billing settings · Starter plan · Account owner
+                                        Billing settings · Launch plan · Account owner
                                     </div>
                                 </>
                             )}
@@ -126,7 +126,7 @@ export default function AnswerlatticeSupportLoopDemo() {
                                         </div>
                                         <div className="rounded-xl border border-white/[0.07] p-3">
                                             <dt className="text-xs text-[#737391]">Applicability</dt>
-                                            <dd className="mt-1 text-sm font-medium text-white">Starter · Account owner</dd>
+                                            <dd className="mt-1 text-sm font-medium text-white">Launch · Account owner</dd>
                                         </div>
                                     </dl>
                                 </>
@@ -194,7 +194,7 @@ export default function AnswerlatticeSupportLoopDemo() {
                                     </div>
                                     <h2 className="mt-4 text-2xl font-semibold text-white">The next user receives reviewed guidance.</h2>
                                     <p className="mt-4 rounded-xl border border-teal-300/20 bg-teal-300/[0.05] p-4 text-sm leading-6 text-[#e2e2ef]">
-                                        Subscription pauses are not available on the Starter plan. Contact support before cancelling if you need help preserving your workspace.
+                                        Subscription pauses are not available on the Launch plan. Contact support before cancelling if you need help preserving your workspace.
                                     </p>
                                     <div className="mt-5 grid gap-3 sm:grid-cols-3">
                                         {['Founder approved', 'Answer Test passed', 'Widget and hosted help ready'].map((item) => (

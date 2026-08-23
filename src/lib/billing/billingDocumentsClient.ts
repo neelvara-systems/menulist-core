@@ -1,6 +1,6 @@
 import type { BillingHistoryItem } from '@type/razorpay';
 
-export type MenuListBillingDocumentSummary = {
+export type BillingDocumentSummary = {
     documentId: string;
     documentNumber: string;
     documentType: 'tax_invoice' | 'credit_note';
@@ -12,7 +12,7 @@ export type MenuListBillingDocumentSummary = {
     deliveryStatus: string;
 };
 
-export const fetchMenuListBillingDocumentSummaries = async (): Promise<MenuListBillingDocumentSummary[]> => {
+export const fetchBillingDocumentSummaries = async (): Promise<BillingDocumentSummary[]> => {
     const response = await fetch('/api/billing-documents', {
         method: 'GET',
         credentials: 'same-origin',
@@ -21,12 +21,12 @@ export const fetchMenuListBillingDocumentSummaries = async (): Promise<MenuListB
     });
     if (!response.ok) throw new Error('Billing documents could not be loaded.');
     const payload = await response.json() as { documents?: unknown };
-    return Array.isArray(payload.documents) ? payload.documents as MenuListBillingDocumentSummary[] : [];
+    return Array.isArray(payload.documents) ? payload.documents as BillingDocumentSummary[] : [];
 };
 
-export const mergeMenuListBillingDocumentsIntoHistory = (
+export const mergeBillingDocumentsIntoHistory = (
     history: BillingHistoryItem[],
-    documents: MenuListBillingDocumentSummary[],
+    documents: BillingDocumentSummary[],
 ): BillingHistoryItem[] => {
     const invoicesByPayment = new Map(
         documents
@@ -62,3 +62,11 @@ export const mergeMenuListBillingDocumentsIntoHistory = (
         }));
     return [...merged, ...credits].sort((a, b) => b.date - a.date);
 };
+
+export type MenuListBillingDocumentSummary = BillingDocumentSummary;
+export type AnswerlatticeBillingDocumentSummary = BillingDocumentSummary;
+
+export const fetchMenuListBillingDocumentSummaries = fetchBillingDocumentSummaries;
+export const fetchAnswerlatticeBillingDocumentSummaries = fetchBillingDocumentSummaries;
+export const mergeMenuListBillingDocumentsIntoHistory = mergeBillingDocumentsIntoHistory;
+export const mergeAnswerlatticeBillingDocumentsIntoHistory = mergeBillingDocumentsIntoHistory;

@@ -92,7 +92,7 @@ Company headcount is not a capability claim. A company of roughly 100 people may
 4. **Owner Decision System** — One focused section connecting Daily Brief, Knowledge Map, Product Friction Evidence, release impact, Answer Tests, and public article topic maps. It must distinguish owner review from public article navigation and state that these views do not publish answers, change releases, or create a second task system.
 5. **Install Surface Quickstarts** — Install confidence section for the widget contract, framework-specific setup paths, safe context rules, and verification before launch.
 6. **Founder Fit and Category Boundary** — One consolidated section with a best-fit founder panel plus the three boundary messages: not another chatbot, not a full helpdesk, and not static docs.
-7. **Pricing Preview** — Starter/Growth/Studio guidance and beta setup note.
+7. **Pricing Preview** — Launch/Growth/Studio guidance and paid setup note.
 8. **Objections / FAQ Preview** — Top setup, safety, pricing, and fit objections.
 9. **CTA** — Final conversion panel with `Create workspace` as primary and demo as secondary.
 
@@ -375,17 +375,17 @@ Rules:
 **Goal:** Transparent founder-friendly pricing.
 
 **Sections:**
-- Starter, Growth, and Studio monthly INR and USD packaging
+- Launch, Growth, and Studio monthly INR and USD packaging
 - Predictable limits, no public per-resolution pricing
 - Plain-language support-credit definition:
   - One credit: provider-backed fallback answer, full-runtime answer test, source-backed first-ten starter-answer run, or screenshot OCR
   - Two credits: short recording transcription
   - Zero credits: approved/cached widget answer, deterministic answer test, draft review, selected text import, translation, FAQ generation, KB embedding, publishing infrastructure, or static help browsing
 - Plan guidance:
-  - Starter: solo founder launching one SaaS product
+  - Launch: solo founder launching one SaaS product
   - Growth: active SaaS product with recurring support questions
   - Studio: studios/agencies running multiple small SaaS products
-- Each plan CTA carries the selected plan into Get Started; the form shows the exact selected monthly price and lets the buyer choose INR or USD before submission
+- Each plan CTA carries the selected plan into Get Started; the form shows the exact selected monthly price and derives INR or USD from the validated billing country before submission
 - Public setup creates a paid pending workspace and never presents an unpaid beta plan
 - Paid plan changes, transactions, invoices, and support-credit top-ups are handled through AnswerLattice Billing with product-scoped Razorpay requests
 
@@ -472,7 +472,7 @@ Rules:
 **Sections:**
 - Best-fit criteria for live, beta, and near-launch SaaS or digital products
 - Google sign-in and product details form
-- Product URL, support email, billing model, Starter/Growth/Studio monthly plan, INR/USD checkout currency, exact price, and main product pages
+- Product URL, support email, billing model, Launch/Growth/Studio monthly plan, billing country, derived checkout currency, exact price, and main product pages
 - Resumable provisioning status, safe payment-pending recovery, and one-time widget-key recovery copy
 - What-you-need-before-signup copy
 - 7-step first-session checklist
@@ -659,7 +659,7 @@ Reads launch-ready support hero + embedded demo -> "Create workspace" or "See 60
   ↓
 Demo page → understands approved answer vs fallback vs support gap
   ↓
-Pricing → chooses Starter/Growth/Studio direction
+Pricing → chooses Launch/Growth/Studio direction
   ↓
 Get Started → signs in → creates workspace → lands in Activation Command Center
 ```

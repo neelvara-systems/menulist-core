@@ -14,12 +14,22 @@ import { normalizeRazorpaySubscriptionCheckoutUrl } from '../../src/lib/razorpay
 import { normalizeAnswerlatticeOnboardResult } from '../../src/lib/answerlattice/onboardingResponse';
 
 const baseRequest = {
+    billingProfile: {
+        legalName: 'Example Labs Private Limited',
+        email: 'billing@example.com',
+        countryCode: 'IN',
+        addressLine1: '1 Example Road',
+        city: 'Bengaluru',
+        region: 'Karnataka',
+        indianStateCode: '29',
+        postalCode: '560001',
+    },
     billingModel: 'subscription' as const,
     businessDayEndTime: '23:00',
     companyName: 'Example Labs',
     currency: 'INR' as const,
     interval: 'MONTH' as const,
-    planId: 'answerlattice_starter',
+    planId: 'answerlattice_launch',
     primarySurfaces: ['settings', 'billing', 'billing'],
     productName: 'Example App',
     productUrl: 'https://app.example.com',
@@ -79,7 +89,7 @@ for (const invalidPositiveInteger of ['36', true, 0, -1, 1.5, Number.POSITIVE_IN
 
 const matchingNotes = {
     onboardingAttemptId: 'alo_attempt',
-    planId: 'answerlattice_starter',
+    planId: 'answerlattice_launch',
     productId: 'AL',
     storeId: 22,
     tenantId: 11,
@@ -93,7 +103,7 @@ const recovered = findAnswerlatticeProviderSubscriptionForAttempt({
         { created_at: 35, id: 'sub_active', notes: matchingNotes, plan_id: 'plan_123', status: 'active' },
         { created_at: 40, id: 'sub_wrong_product', notes: { ...matchingNotes, productId: 'ML' }, plan_id: 'plan_123', status: 'created' },
     ],
-    planId: 'answerlattice_starter',
+    planId: 'answerlattice_launch',
     providerPlanId: 'plan_123',
     storeId: 22,
     tenantId: 11,
@@ -103,7 +113,7 @@ assert.equal(
     answerlatticeProviderSubscriptionMatchesAttempt({
         attemptId: 'alo_attempt',
         candidate: { id: 'sub_active', notes: matchingNotes, plan_id: 'plan_123', status: 'active' },
-        planId: 'answerlattice_starter',
+        planId: 'answerlattice_launch',
         providerPlanId: 'plan_123',
         storeId: 22,
         tenantId: 11,
@@ -115,7 +125,7 @@ assert.equal(
     answerlatticeProviderSubscriptionMatchesAttempt({
         attemptId: 'alo_attempt',
         candidate: { id: 'sub_active', notes: { ...matchingNotes, tenantId: '11x' }, plan_id: 'plan_123', status: 'active' },
-        planId: 'answerlattice_starter',
+        planId: 'answerlattice_launch',
         providerPlanId: 'plan_123',
         storeId: 22,
         tenantId: 11,
@@ -127,7 +137,7 @@ assert.equal(
     findAnswerlatticeProviderSubscriptionForAttempt({
         attemptId: 'alo_missing',
         candidates: [{ id: 'sub_1', notes: matchingNotes, plan_id: 'plan_123', status: 'created' }],
-        planId: 'answerlattice_starter',
+        planId: 'answerlattice_launch',
         providerPlanId: 'plan_123',
         storeId: 22,
         tenantId: 11,
@@ -139,7 +149,7 @@ assert.equal(
     findAnswerlatticeProviderSubscriptionForAttempt({
         attemptId: 'alo_attempt',
         candidates: [{ id: 'sub_active', notes: matchingNotes, plan_id: 'plan_123', status: 'active' }],
-        planId: 'answerlattice_starter',
+        planId: 'answerlattice_launch',
         providerPlanId: 'plan_123',
         storeId: 22,
         tenantId: 11,
@@ -249,9 +259,9 @@ const validOnboardResponse = {
         status: 'created',
     },
     plan: {
-        id: 'answerlattice_starter',
+        id: 'answerlattice_launch',
         isBeta: false,
-        name: 'Starter',
+        name: 'Launch',
     },
     widgetKeyNeedsRotation: false,
     workspaceCreated: true,

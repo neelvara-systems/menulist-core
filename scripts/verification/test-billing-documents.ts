@@ -10,6 +10,13 @@ import {
     type MenuListBillingDocumentLineItem,
 } from '../../src/lib/billing/billingDocumentPolicy';
 import { renderMenuListBillingDocumentPdf } from '../../src/lib/billing/billingDocumentPdf';
+import {
+    buildAnswerlatticeBillingDocumentId,
+    formatAnswerlatticeBillingDocumentNumber,
+    getAnswerlatticeFinancialYear,
+    type AnswerlatticeBillingDocument,
+} from '../../src/lib/billing/answerlatticeBillingDocumentPolicy';
+import { renderAnswerlatticeBillingDocumentPdf } from '../../src/lib/billing/answerlatticeBillingDocumentPdf';
 
 assert.equal(
     getMenuListFinancialYear(Date.parse('2026-03-31T18:29:00.000Z')),
@@ -141,5 +148,25 @@ const sampleDocument: MenuListBillingDocument = {
 const pdf = renderMenuListBillingDocumentPdf(sampleDocument);
 assert.ok(pdf.byteLength > 1_000, 'billing PDF must contain a rendered document');
 assert.equal(Buffer.from(pdf.subarray(0, 4)).toString('ascii'), '%PDF');
+
+assert.equal(getAnswerlatticeFinancialYear(sampleDocument.issuedAtMillis), '26-27');
+assert.equal(formatAnswerlatticeBillingDocumentNumber('tax_invoice', '26-27', 1), 'AL26-27-000001');
+assert.equal(formatAnswerlatticeBillingDocumentNumber('credit_note', '26-27', 42), 'AC26-27-000042');
+assert.throws(() => formatAnswerlatticeBillingDocumentNumber('tax_invoice', '26-27', 1_000_000));
+const answerlatticeDocumentId = buildAnswerlatticeBillingDocumentId('tax_invoice', 'pay_answerlattice_example');
+assert.notEqual(answerlatticeDocumentId, id, 'Answerlattice document identity must remain product-specific');
+const answerlatticeDocument: AnswerlatticeBillingDocument = {
+    ...sampleDocument,
+    renderVersion: 'AL_BILLING_PDF_V1',
+    documentId: answerlatticeDocumentId,
+    documentNumber: 'AL26-27-000001',
+    sourceReferenceId: 'pay_answerlattice_example',
+    paymentId: 'pay_answerlattice_example',
+    pId: 'AL',
+    productId: 'AL',
+};
+const answerlatticePdf = renderAnswerlatticeBillingDocumentPdf(answerlatticeDocument);
+assert.ok(answerlatticePdf.byteLength > 1_000, 'Answerlattice billing PDF must contain a rendered document');
+assert.equal(Buffer.from(answerlatticePdf.subarray(0, 4)).toString('ascii'), '%PDF');
 
 console.log('Billing document policy checks passed.');

@@ -94,7 +94,10 @@
 }
 
 .ant-segmented-item-label {
-  display: flex;
-  justify-content: center;
   align-items: center;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  justify-content: center;
+  white-space: nowrap;
 }

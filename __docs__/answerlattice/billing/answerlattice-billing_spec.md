@@ -1,7 +1,7 @@
 # Answerlattice Billing - Specification
 
-> **Version:** 1.0.1  
-> **Last Updated:** 2026-07-19  
+> **Version:** 2.0.0
+> **Last Updated:** 2026-08-24
 > **Feature audit:** Feature 30 of 44  
 > **Status:** Source-hardened; deployed QA and mutable provider evidence remain separate
 
@@ -37,6 +37,12 @@ plan or pack selection
 10. Owner diagnostics use fixed codes and bounded presence/length metadata, never raw provider payloads or workspace identifiers.
 11. A failed active-subscription read must block plan mutation and show explicit retry; it must not be interpreted as proof that no subscription exists.
 12. Direct Answerlattice subscription reads and transaction-owned payment, lifecycle, and webhook mutations reject persisted records whose exact product, tenant, or store aliases are missing, nonnumeric, or conflicting.
+13. Billing country, not a browser currency selector, determines INR or USD pricing. International checkout fails closed until its source configuration is explicitly enabled.
+14. Checkout stores one immutable billing profile and calculated tax snapshot before provider creation; settlement reconciles that snapshot with the captured provider amount.
+15. Signed webhook settlement is the authority for entitlement, paid credits, invoices, refunds, and credit notes. Browser callbacks cannot issue financial truth.
+16. Billing documents are product-scoped, server-created, immutable, sequentially numbered, and readable only through protected APIs.
+17. A settled refund reverses refundable credits exactly once and issues one linked credit note when legal document issuance is configured.
+18. Invoice and credit-note delivery is email-first when a valid recipient exists. WhatsApp additionally requires a verified owner number, explicit notification consent, configured provider credentials, and an approved billing-document template.
 
 ## State Expectations
 
@@ -74,6 +80,6 @@ plan or pack selection
 - A second payment provider.
 - Browser access to provider entities or top-up documents.
 - A full accounting system.
-- Refund execution from Answerlattice.
+- Owner-initiated provider refund execution from the Answerlattice browser. Signed provider refund settlement and linked credit-note handling are supported server-side.
 - Automatic account-changing actions outside the registered payment routes.
 - Claims of production payment readiness from source tests alone.

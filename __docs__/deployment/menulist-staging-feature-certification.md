@@ -68,6 +68,20 @@ product smoke remains open and every displayed App Check API stays unenforced.
 | Maps public route | `https://qa-qr-health.menulist.digital/menu` returned HTTP 200 with the required QA noindex and wildcard-tenant headers | PASS |
 | Maps Embed request | The retained public fixture has no public location and therefore renders no map/directions embed. No provider request was fabricated and no fixture was mutated solely for certification. | DEFERRED: AUTHORIZED LOCATION FIXTURE AFTER SETUP |
 
+## August 23 Current-Build Revalidation
+
+| Item | Evidence | Status |
+| --- | --- | --- |
+| Exact hosted release | `https://menulist.digital/api/version` and `https://app.menulist.digital/api/version` both returned build `d534e64822eb8aea8fc4b4ecd0f17a45090afed8`, environment `preview`, and deployment `menulist-core-6rd4koaia-neelvara-systems.vercel.app` | PASS |
+| Authenticated owner shell | The retained signed-in Chrome session loaded the owner shell as `admin@neelvara.com`; direct `/projects` navigation rendered the truthful `No Active Subscription` guard and `View Plans` action with zero captured browser warnings or errors | PASS |
+| Local release contracts | `test:menulist-agent-readiness`, `test:menulist-workload-identity`, `verify:menulist-env-contract`, `verify:storage-lifecycle`, `test:google-oauth-product-routing`, `npx tsc --noEmit`, and `npm run lint` all passed from exact source commit `d534e64822eb8aea8fc4b4ecd0f17a45090afed8` | PASS |
+| Fixture boundary | The retained fixture still has no active entitlement. No subscription document, tenant/store data, provider object, payment, Storage object, or production data was created or modified to force a success-path result. | PASS: BOUNDARY PRESERVED |
+
+This revalidation refreshes current-build evidence only. It does not convert
+the separately listed entitled-fixture, public-location, Answerlattice-backed,
+elevated-role, true-handheld, installed-PWA, physical-display, App Check
+Storage-traffic, or production-hosted OIDC proof rows into passes.
+
 ## Status Vocabulary
 
 `NOT STARTED`, `IN PROGRESS`, `PASS`, `FIXED`, `BLOCKED`, `DEFERRED`

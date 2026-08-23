@@ -23,6 +23,11 @@ import { DB_COLLECTIONS } from '@constant/database';
 import { PRODUCT_IDS } from '@constant/product';
 import { getAnswerlatticePlanById } from '@data/answerlattice/plans';
 import {
+    BillingTaxConfigurationError,
+    BillingTaxProfileError,
+    normalizeBillingProfile,
+} from '@data/shared/billingTaxPolicy';
+import {
     SELF_REPORTED_DISCOVERY_CHANNELS,
     buildSelfReportedDiscoveryAttribution,
 } from '@data/shared/selfReportedDiscovery';
@@ -52,6 +57,10 @@ import {
     type AnswerlatticeProvisioningScope,
     } from '@lib/answerlattice/onboardingProvisioningServer';
 import { normalizeAnswerlatticeSubscriptionId } from '@lib/answerlattice/billingDocumentIdBoundary';
+import {
+    calculateConfiguredAnswerlatticeTax,
+    resolveAnswerlatticeBillingCurrency,
+} from '@lib/billing/answerlatticeTaxServer';
 import { ANSWERLATTICE_PRODUCT_ACCOUNT_KEY,
     normalizeAnswerlatticeScopeDocumentId } from '@lib/answerlattice/sessionScope';
 import { buildAnswerlatticeWidgetApiStateWithNewKey } from '@lib/answerlattice/widgetKeyManager';
@@ -88,6 +97,7 @@ import { writeLogEntry } from 'logs/utils';
 import { randomUUID } from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
+import { BillingProfileSchema } from '@lib/validation/apiSchemas';
 import { withAuth } from '../../../../middleware/auth';
 
 const LOG_FILE = 'answerlattice-onboarding.log';
@@ -118,9 +128,9 @@ const OnboardRequestSchema = z.object({
     primarySurfaces: z.array(z.string().trim().min(1).max(80)).max(8).optional().default([]),
     timeZone: z.string().trim().max(80).optional(),
     businessDayEndTime: z.string().trim().regex(/^([01]\d|2[0-3]):([0-5]\d)$/).optional(),
-    planId: z.string().trim().max(80).optional().default('answerlattice_starter'),
+    planId: z.string().trim().max(80).optional().default('answerlattice_launch'),
     interval: z.literal('MONTH').optional().default('MONTH'),
-    currency: z.enum(['INR', 'USD']).optional().default('INR'),
+    billingProfile: BillingProfileSchema,
     selfReportedDiscoveryChannel: z.enum(SELF_REPORTED_DISCOVERY_CHANNELS).optional(),
 }).strict();
 const ANSWERLATTICE_ONBOARD_MAX_BODY_BYTES = 32 * 1024;
@@ -789,11 +799,13 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             primarySurfaces,
             planId,
             interval,
-            currency,
+            billingProfile: rawBillingProfile,
             timeZone,
             businessDayEndTime,
             selfReportedDiscoveryChannel,
         } = validation.data;
+        const billingProfile = normalizeBillingProfile(rawBillingProfile);
+        const currency = resolveAnswerlatticeBillingCurrency(billingProfile.countryCode);
         const plan = getAnswerlatticePlanById(planId, interval);
         if (!plan) {
             return answerlatticeOnboardingJson({ code: 'ANSWERLATTICE_PLAN_NOT_FOUND', error: 'Plan not found.' }, { status: 404 });
@@ -812,12 +824,19 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         }
 
         const normalizedSurfaces = normalizeOnboardingSurfaces(primarySurfaces);
+        const taxSnapshot = calculateConfiguredAnswerlatticeTax({
+            baseUnitAmount: selectedPrice,
+            billingProfile,
+            currency,
+            quantity: 1,
+        });
         const schedulerTimeZone = normalizeAnswerlatticeTimeZone(timeZone);
         const schedulerBusinessDayEndTime = normalizeAnswerlatticeBusinessDayEndTime(businessDayEndTime);
         const selfReportedDiscovery = FEATURE_FLAGS.ENABLE_ANSWERLATTICE_SELF_REPORTED_DISCOVERY
             ? buildSelfReportedDiscoveryAttribution(selfReportedDiscoveryChannel)
             : null;
         const requestFingerprint = buildAnswerlatticeOnboardingRequestFingerprint({
+            billingProfile,
             billingModel,
             businessDayEndTime: schedulerBusinessDayEndTime,
             companyName,
@@ -1122,10 +1141,11 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         const { getOrCreateRazorpayPlan } = await import('@lib/razorpay/plan-handler');
         const { razorpayClient } = await import('@lib/razorpay/razorpay');
         const price = selectedPrice;
+        const providerPrice = taxSnapshot.grossUnitAmount;
         const monthlyCredits = currency === 'USD' ? plan.priceUSD.monthlyCredits : plan.priceINR.monthlyCredits;
         const razorpayPlanId = await getOrCreateRazorpayPlan({
             productId: PRODUCT_IDS.ANSWERLATTICE,
-            price,
+            price: providerPrice,
             currency,
             interval,
             userType: 'B2B',
@@ -1195,7 +1215,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                         onboardingAttemptId: provisioningScope.attemptId,
                         onboardingSource: 'ANSWERLATTICE_ONBOARDING',
                         planId: plan.planId,
-                        price,
+                        price: providerPrice,
                         productId: PRODUCT_IDS.ANSWERLATTICE,
                         storeId: result.storeId,
                         tenantId: result.tenantId,
@@ -1267,6 +1287,8 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             userType: 'B2B',
             currency,
             amount: price,
+            chargedUnitAmount: providerPrice,
+            taxSnapshot,
             status: 'pending',
             providerStatus: 'created',
             lastWebhook: null,
@@ -1390,6 +1412,22 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                     error: 'Account access has ended. Sign in again before retrying setup.',
                 },
                 { status: 403 },
+            );
+        }
+        if (error instanceof BillingTaxProfileError) {
+            return answerlatticeOnboardingJson(
+                { code: 'ANSWERLATTICE_BILLING_PROFILE_INVALID', error: error.message },
+                { status: 400 },
+            );
+        }
+        if (error instanceof BillingTaxConfigurationError) {
+            logRuntimeFailure('answerlattice_billing_configuration_incomplete', error);
+            return answerlatticeOnboardingJson(
+                {
+                    code: 'ANSWERLATTICE_BILLING_CONFIGURATION_INCOMPLETE',
+                    error: 'Checkout is not available until billing configuration is complete.',
+                },
+                { status: 503 },
             );
         }
         if (error instanceof AnswerlatticeOnboardingConflictError) {

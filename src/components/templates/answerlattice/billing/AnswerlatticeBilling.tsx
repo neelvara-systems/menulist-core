@@ -9,6 +9,7 @@ import { getBoundedPaymentStringContext, logPaymentFailure } from '@hook/payment
 import usePaymentHandler, { isPaymentCheckoutDismissedError } from '@hook/usePaymentHandler';
 import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
 import { formatBillingHistoryEvents } from '@lib/billing/billingHistoryFormatter';
+import { fetchAnswerlatticeBillingDocumentSummaries, mergeAnswerlatticeBillingDocumentsIntoHistory } from '@lib/billing/billingDocumentsClient';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
 import type { Plan } from '@data/common';
 import type { BillingHistoryItem, Currency, FirestoreSubscriptionDoc } from '@type/razorpay';
@@ -134,19 +135,22 @@ export default function AnswerlatticeBilling() {
         const requestSequence = ++billingHistoryRequestSequenceRef.current;
         const requestScopeKey = billingScopeKey;
         try {
-            const rawHistory = await getAnswerlatticeBillingHistoryForStore(scope.tenantId, scope.storeId);
+            const [rawHistory, documents] = await Promise.all([
+                getAnswerlatticeBillingHistoryForStore(scope.tenantId, scope.storeId),
+                fetchAnswerlatticeBillingDocumentSummaries(),
+            ]);
             if (
                 billingHistoryRequestSequenceRef.current !== requestSequence
                 || billingScopeKeyRef.current !== requestScopeKey
             ) return;
-            setLoadedBillingHistory(formatBillingHistoryEvents(rawHistory, {
+            setLoadedBillingHistory(mergeAnswerlatticeBillingDocumentsIntoHistory(formatBillingHistoryEvents(rawHistory, {
                 formatBillingCycle: (startSeconds, endSeconds) => {
                     if (!startSeconds || !endSeconds) return undefined;
                     const startDate = formatter.dateTime(new Date(startSeconds * 1000), { year: 'numeric', month: 'short', day: 'numeric' });
                     const endDate = formatter.dateTime(new Date(endSeconds * 1000), { year: 'numeric', month: 'short', day: 'numeric' });
                     return `${startDate}-${endDate}`;
                 },
-            }));
+            }), documents));
             setBillingHistoryScopeKey(requestScopeKey);
         } catch (error) {
             if (

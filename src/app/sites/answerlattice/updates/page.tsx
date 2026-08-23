@@ -286,7 +286,7 @@ const UPDATES = [
         title: 'Self-sellable public website',
         items: [
             'Public demo, security, FAQ, privacy, and terms pages added.',
-            'Starter, Growth, and Studio pricing copy aligned for small SaaS buyers.',
+            'Launch, Growth, and Studio pricing copy aligned for small SaaS buyers.',
             'AnswerLattice sitemap, robots, manifest, icons, and structured data added.',
         ],
     },

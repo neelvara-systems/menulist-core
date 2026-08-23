@@ -67,7 +67,11 @@ import { hashPublicRateLimitValue } from "src/middleware/publicApi";
 import { verifyTenantAccess, withAuth } from "../../../../middleware/auth";
 import { isValidMenuListPlanQuantity } from '@lib/billing/menulistPricingPolicy';
 import { isMultiOutletTenantStoreListEntryInScope } from '@lib/multiOutlet/projectIdBoundary';
-import { calculateConfiguredMenuListTax, getBillingProfileFromTaxSnapshot } from '@lib/billing/menulistTaxServer';
+import {
+    calculateConfiguredProductTax,
+    getBillingProfileFromTaxSnapshot,
+    productUsesConfiguredTax,
+} from '@lib/billing/productTaxServer';
 import { BillingTaxConfigurationError, BillingTaxProfileError } from '@data/shared/billingTaxPolicy';
 
 const LOG_FILE = "razorpay-subscription.log";
@@ -378,8 +382,9 @@ export const POST = withAuth(async (request, session) => {
         if (typeof unitAmount !== "number" || typeof monthlyCredits !== "number") {
             return NextResponse.json({ error: "Plan price not available." }, { status: 400 });
         }
-        const taxSnapshot = productId === PRODUCT_IDS.MENULIST
-            ? calculateConfiguredMenuListTax({
+        const taxSnapshot = productUsesConfiguredTax(productId)
+            ? calculateConfiguredProductTax({
+                productId,
                 baseUnitAmount: unitAmount,
                 billingProfile: billingProfile
                     || getBillingProfileFromTaxSnapshot(replacementSubscription?.taxSnapshot)

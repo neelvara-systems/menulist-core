@@ -1,7 +1,7 @@
 # Answerlattice Billing - Test Cases
 
-> **Version:** 1.0.1  
-> **Last Updated:** 2026-07-19  
+> **Version:** 2.0.0
+> **Last Updated:** 2026-08-24
 > **Feature audit:** Feature 30 of 44
 
 ## Maintained Automated Gates
@@ -16,6 +16,9 @@
 | Shared coordination browser-denial rules | `npm run test:billing-coordination:rules` |
 | Billing architecture source boundary | `npm run verify:billing-entitlement-boundary` |
 | Answerlattice source aggregate | `npm run verify:answerlattice-runtime-truth` |
+| Commercial system source aggregate | `npm run verify:answerlattice-commercial-readiness:source` |
+| Regional pricing and tax snapshots | `npm run test:answerlattice-taxation-policy` |
+| Invoice and credit-note numbering/PDF contracts | `npm run test:billing-documents` |
 
 ## Contract Cases
 
@@ -35,6 +38,11 @@
 14. Answerlattice onboarding refuses provisional user/store/tenant state whose `pId` and `productId` are incomplete or conflicting, does not reclaim an existing conflicting subscription, and does not cancel it during compensation.
 15. Activation, license, paid-intake, client, and server fallback queries constrain both product aliases and both tenant/store alias pairs before any bounded limit; an exact row remains discoverable beside a conflicting row.
 15. Emulator commands clear inherited Application Default Credentials so local proof cannot be redirected to a stale service-account file.
+16. India billing resolves INR and the configured intra-state or inter-state GST treatment; non-India billing cannot enter USD checkout until international and export-tax settings are enabled.
+17. A captured payment issues at most one Answerlattice invoice and a settled refund issues at most one linked Answerlattice credit note.
+18. Billing-document counters and documents remain denied to direct browser reads and writes; authorized summaries and PDFs use the protected API.
+19. Email delivery resolves billing email before owner/support fallback. WhatsApp delivery requires a verified number, consent, enabled provider sending, and an approved template.
+20. Refund replay cannot duplicate a credit reversal, refund debt, credit note, notification, or provider-facing document delivery.
 
 ## Rule Cases
 

@@ -57,7 +57,6 @@ function renderHeaderNavIcon(Icon: AnswerlatticeNavItem['icon']) {
             style={{
                 alignSelf: 'center',
                 flex: '0 0 auto',
-                marginRight: 2,
                 verticalAlign: 'middle',
             }}
         />
@@ -239,32 +238,35 @@ export default function AnswerlatticeHeader({ showMenuButton = false, onMenuClic
             ) : (
                 <Space align="center" size={8} style={{ minWidth: 0 }}>
                     <Tooltip title={activeBreadcrumb.parent.label}>
-                        <Text
-                            strong
+                        <Button
                             style={{
                                 alignItems: 'center',
                                 background: token.colorFillContent,
                                 borderRadius: 6,
                                 color: token.colorTextBase,
-                                cursor: 'pointer',
                                 display: 'inline-flex',
+                                flexDirection: 'row',
+                                flexWrap: 'nowrap',
                                 fontSize: 12,
                                 gap: 6,
-                                lineHeight: 1,
+                                height: 44,
+                                justifyContent: 'center',
+                                lineHeight: 1.25,
                                 maxWidth: 180,
                                 minWidth: 0,
                                 overflow: 'hidden',
-                                padding: '7px 10px',
+                                padding: '0 10px',
                                 textOverflow: 'ellipsis',
                                 whiteSpace: 'nowrap',
                             }}
                             onClick={() => router.push(toAnswerlatticeDashboardRoute(activeBreadcrumb.parent.route, currentHostname))}
+                            type="text"
                         >
                             {renderHeaderNavIcon(activeBreadcrumb.parent.icon)}
                             <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                 {activeBreadcrumb.parent.label}
                             </span>
-                        </Text>
+                        </Button>
                     </Tooltip>
                     {activeBreadcrumb.activeSubNav ? (
                         <>
@@ -297,25 +299,28 @@ export default function AnswerlatticeHeader({ showMenuButton = false, onMenuClic
                                 }}
                                 trigger={['click']}
                             >
-                                <Text
-                                    strong
+                                <Button
                                     style={{
                                         alignItems: 'center',
                                         background: token.colorFillContent,
                                         borderRadius: 6,
                                         color: token.colorTextBase,
-                                        cursor: 'pointer',
                                         display: 'inline-flex',
+                                        flexDirection: 'row',
+                                        flexWrap: 'nowrap',
                                         fontSize: 12,
                                         gap: 6,
-                                        lineHeight: 1,
+                                        height: 44,
+                                        justifyContent: 'center',
+                                        lineHeight: 1.25,
                                         maxWidth: 240,
                                         minWidth: 0,
                                         overflow: 'hidden',
-                                        padding: '7px 10px',
+                                        padding: '0 10px',
                                         textOverflow: 'ellipsis',
                                         whiteSpace: 'nowrap',
                                     }}
+                                    type="text"
                                 >
                                     {renderHeaderNavIcon(activeBreadcrumb.activeSubNav.icon)}
                                     <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -331,7 +336,7 @@ export default function AnswerlatticeHeader({ showMenuButton = false, onMenuClic
                                             }}
                                         />
                                     ) : null}
-                                </Text>
+                                </Button>
                             </Dropdown>
                         </>
                     ) : null}

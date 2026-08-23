@@ -31,7 +31,7 @@ export default function AnswerlatticeRoiCalculator() {
         const hoursSaved = (shiftedQuestions * minutesPerQuestion) / 60;
         const supportValue = hoursSaved * hourly;
         const net = supportValue - plan;
-        const suggestedPlan = monthlyQuestions <= 150 ? 'Starter' : monthlyQuestions <= 500 ? 'Growth' : 'Studio';
+        const suggestedPlan = monthlyQuestions <= 150 ? 'Launch' : monthlyQuestions <= 500 ? 'Growth' : 'Studio';
 
         return {
             shiftedQuestions,

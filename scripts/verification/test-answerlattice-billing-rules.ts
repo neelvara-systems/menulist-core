@@ -88,6 +88,15 @@ async function run(): Promise<void> {
             await setDoc(doc(adminDb, 'topups', 'order_Answerlattice123'), answerlatticeBillingRecord({
                 status: 'paid',
             }));
+            await setDoc(doc(adminDb, 'billingDocuments', 'inv_answerlattice_1'), answerlatticeBillingRecord({
+                documentType: 'tax_invoice',
+                documentNumber: 'AL26-27-000001',
+            }));
+            await setDoc(doc(adminDb, 'billingDocumentCounters', 'ctr_answerlattice_1'), {
+                documentType: 'tax_invoice',
+                financialYear: '26-27',
+                lastSequence: 1,
+            });
             await setDoc(doc(adminDb, 'answerlattice_aiCapacityReservations', 'idem_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'), {
                 pId: 'AL',
                 tId: 1,
@@ -199,6 +208,12 @@ async function run(): Promise<void> {
         await assertFails(getDoc(doc(ownerDb, 'payment_transactions', 'payment_conflicting_scope_1')));
         await assertFails(getDoc(doc(billingDb, 'topups', 'order_Answerlattice123')));
         await assertFails(getDoc(doc(ownerDb, 'topups', 'order_Answerlattice123')));
+        for (const clientDb of [billingDb, ownerDb, managerDb, otherDb]) {
+            await assertFails(getDoc(doc(clientDb, 'billingDocuments', 'inv_answerlattice_1')));
+            await assertFails(getDocs(collection(clientDb, 'billingDocuments')));
+            await assertFails(getDoc(doc(clientDb, 'billingDocumentCounters', 'ctr_answerlattice_1')));
+            await assertFails(setDoc(doc(clientDb, 'billingDocuments', 'forged_invoice'), answerlatticeBillingRecord()));
+        }
         await assertFails(setDoc(
             doc(ownerDb, 'subscriptions', 'sub_Answerlattice123'),
             { status: 'cancelled' },

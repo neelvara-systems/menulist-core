@@ -1,7 +1,7 @@
 # Answerlattice Billing — Mobile Support
 
-> **Version:** 1.2.1
-> **Last Updated:** 2026-07-19
+> **Version:** 1.3.0
+> **Last Updated:** 2026-08-24
 > **Audience:** Developers / QA
 
 Answerlattice billing is rendered inside `AnswerlatticeDashboardLayout`, which already uses a responsive sidebar drawer and compact content padding on mobile.
@@ -23,6 +23,9 @@ Answerlattice billing is rendered inside `AnswerlatticeDashboardLayout`, which a
 - Mobile checkout uses the same strict minimal subscription/order response and exact hosted-provider URL boundary as desktop.
 - Unsafe invoice URLs are omitted rather than rendered as mobile links.
 - If current billing state cannot be loaded, mobile shows the same blocking retry alert as desktop and disables plan mutation; it does not render an empty-subscription checkout state.
+- Billing country and legal billing details are collected during onboarding, not through a mobile-only currency picker.
+- Issued Answerlattice invoices and credit notes are shown through the same protected Billing API and downloadable PDF path as desktop.
+- Email and eligible consented WhatsApp delivery are convenience channels. Delivery failure never removes the Billing copy or creates another document.
 
 ## QA Notes
 

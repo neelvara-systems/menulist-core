@@ -172,7 +172,7 @@ const FAQS = [
     },
     {
         question: 'Is pricing per resolved question?',
-        answer: 'No. Public packaging is predictable monthly pricing in INR. Setup starts on a paid plan, plan changes and support-credit top-ups live in AnswerLattice Billing, and usage limits protect infrastructure without punishing support deflection.',
+        answer: 'No. Setup starts on a paid plan. Your billing country determines whether checkout uses INR or USD, and plan changes, invoices, credit notes, and support-credit top-ups stay in AnswerLattice Billing. Usage limits protect infrastructure without charging for normal help browsing or approved answers.',
     },
     {
         question: 'Does widget context decide workspace identity?',

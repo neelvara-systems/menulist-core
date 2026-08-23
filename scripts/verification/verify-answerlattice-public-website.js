@@ -89,9 +89,9 @@ assert(
     usd: plan.priceUSD.price,
     credits: plan.priceINR.monthlyCredits,
   }))) === JSON.stringify([
-    { id: 'answerlattice_starter', inr: 99900, usd: 1200, credits: 150 },
-    { id: 'answerlattice_growth', inr: 299900, usd: 3600, credits: 500 },
-    { id: 'answerlattice_studio', inr: 699900, usd: 8400, credits: 1200 },
+    { id: 'answerlattice_launch', inr: 149900, usd: 2900, credits: 250 },
+    { id: 'answerlattice_growth', inr: 499900, usd: 9900, credits: 1000 },
+    { id: 'answerlattice_studio', inr: 1299900, usd: 24900, credits: 4000 },
   ]),
   'public monthly plan, currency, and credit packaging must match the Answerlattice plan source',
 );
@@ -222,10 +222,11 @@ assertIncludes(onboarding, 'normalizeAnswerlatticeOnboardResult(data)', 'onboard
 assertIncludes(onboardingResponse, "getAnswerlatticePlanById(value.plan.id, 'MONTH')", 'onboarding response current plan admission');
 assertIncludes(onboardingResponse, 'value.plan.name !== plan.name', 'onboarding response current plan-name admission');
 assertIncludes(onboarding, "interval: 'MONTH'", 'onboarding request interval');
-assertIncludes(onboarding, 'currency,', 'onboarding request currency');
+assertIncludes(onboarding, 'billingProfile: normalizedBillingProfile', 'onboarding request normalized billing profile');
+assertNotIncludes(onboarding, 'currency,', 'onboarding user-selected currency bypass');
 assertIncludes(billingPlans, 'getAnswerlatticePlans()', 'Billing plan source');
-assertIncludes(structuredData, "getAnswerlatticePlanById('answerlattice_starter', 'MONTH')", 'structured-data plan source');
-assertIncludes(structuredData, 'starterPlan.priceINR.price / 100', 'structured-data price conversion');
+assertIncludes(structuredData, "getAnswerlatticePlanById('answerlattice_launch', 'MONTH')", 'structured-data plan source');
+assertIncludes(structuredData, 'launchPlan.priceINR.price / 100', 'structured-data price conversion');
 assertNotIncludes(structuredData, "price: '999'", 'hard-coded structured-data price');
 for (const [content, label] of [
   [pricing, 'public pricing'],

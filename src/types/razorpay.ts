@@ -1,7 +1,7 @@
 import { Timestamp } from "firebase/firestore";
 import type { ProductId } from "@constant/product";
 import type { RazorpayProviderSubscriptionStatus } from "@data/shared/razorpaySubscriptionLifecycle";
-import type { MenuListTaxSnapshot } from "@data/shared/billingTaxPolicy";
+import type { BillingTaxSnapshot } from "@data/shared/billingTaxPolicy";
 
 // Core Types for the Payment System
 export type PaymentProvider = "razorpay";
@@ -80,7 +80,7 @@ export interface FirestoreSubscriptionDoc {
   };
   amount: number;                   // Per-unit price in the smallest currency unit; multiply by quantity for cycle total.
   chargedUnitAmount?: number;       // Provider charge per unit, including tax where applicable.
-  taxSnapshot?: MenuListTaxSnapshot; // Current provider billing terms; quantity changes resize totals without changing frozen unit tax terms.
+  taxSnapshot?: BillingTaxSnapshot; // Current provider billing terms; quantity changes resize totals without changing frozen unit tax terms.
   currency: Currency;
 
   // --- CRITICAL: Billing Cycle Dates ---
@@ -189,7 +189,7 @@ export interface FirestoreTopupDoc {
   creditsAdded: number;
   amount: number; // in the smallest currency unit (paise/cents)
   baseAmount?: number;
-  taxSnapshot?: MenuListTaxSnapshot;
+  taxSnapshot?: BillingTaxSnapshot;
   currency: Currency;
   status: PaymentStatus;
   userId: string;

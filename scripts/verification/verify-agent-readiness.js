@@ -915,7 +915,8 @@ function verifyEnvironmentTargets() {
   assertIncludes(functionsProductionEnv, 'WHATSAPP_OS_ENABLED=false', 'Production WhatsAppOS disabled boundary');
   assertIncludes(functionsProductionEnv, 'OWNER_NOTIFICATION_WHATSAPP_ENABLED=false', 'Production owner WhatsApp disabled boundary');
   assertIncludes(functionsProductionEnv, 'PLATFORM_ALERT_WHATSAPP_ENABLED=false', 'Production platform WhatsApp alert disabled boundary');
-  assertIncludes(functionsSecrets, 'const whatsAppProviderSecrets = isWhatsAppProviderRuntimeEnabled()', 'Target-aware WhatsApp secret binding');
+  assertIncludes(functionsSecrets, "currentFirebaseProjectId !== 'menulist-prod'", 'Production WhatsApp secret exclusion');
+  assertIncludes(functionsSecrets, 'const whatsAppProviderSecrets = canBindWhatsAppProviderSecrets', 'Target-aware WhatsApp secret binding');
   assertIncludes(functionsSecrets, "isFunctionFeatureEnabled('ENABLE_PLATFORM_ALERT_WHATSAPP')", 'Target-aware platform WhatsApp secret binding');
   assertIncludes(functionsProductionEnvExample, 'production project menulist-prod', 'Production Functions env template exact project identity');
   assertIncludes(functionsProductionEnvExample, 'WHATSAPP_OS_ENABLED=false', 'Production Functions env template WhatsAppOS parking boundary');

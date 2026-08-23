@@ -14,7 +14,7 @@ npm run verify:answerlattice-public-website
 
 The gate verifies:
 
-1. Starter, Growth, and Studio monthly INR/USD prices and credits match the plan source.
+1. Launch, Growth, and Studio monthly INR/USD prices and credits match the plan source.
 2. Pricing, FAQ, Billing, and the pricing resource match operation-level support-credit costs and zero-credit paths.
 3. The public page registry has unique public paths and every registered page file exists.
 4. The sitemap uses the registry and does not manufacture `lastmod`.
@@ -39,7 +39,7 @@ The gate verifies:
 
 1. Pricing displays three monthly plans in increasing INR price order and equivalent USD amounts.
 2. A plan CTA reaches Get Started with the selected plan.
-3. Invalid plan/currency query values fall back to Starter/INR.
+3. Invalid plan query values fall back to Launch. Currency comes from the validated billing country rather than a query parameter.
 4. Enter submits the valid details form.
 5. Empty, one-character, over-length, invalid-email, credential-bearing URL, and no-surface submissions stop before the API request.
 6. Strictly admitted onboarding success shows only an allowlisted checkout URL and one-time widget-key state.

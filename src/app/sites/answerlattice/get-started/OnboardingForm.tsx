@@ -3,6 +3,9 @@
 import { FEATURE_FLAGS } from '@config/features';
 import { ANSWERLATTICE_ROUTES, toAnswerlatticeDashboardRoute } from '@constant/answerlattice/routes';
 import { getAnswerlatticePlans } from '@data/answerlattice/plans';
+import { normalizeBillingProfile, type BillingProfile } from '@data/shared/billingTaxPolicy';
+import { INDIAN_GST_STATES } from '@data/shared/indianGstStates';
+import countryData from '@atoms/phoneNumberInput/countryData';
 import type { SelfReportedDiscoveryChannel } from '@data/shared/selfReportedDiscovery';
 import {
     normalizeAnswerlatticeOnboardResult,
@@ -98,36 +101,36 @@ const colors = {
 
 interface OnboardingFormProps {
     basePath?: string;
-    initialCurrency?: BillingCurrency;
     initialPlanId?: string;
 }
 
 export default function OnboardingForm({
     basePath = '',
-    initialCurrency = 'INR',
-    initialPlanId = 'answerlattice_starter',
+    initialPlanId = 'answerlattice_launch',
 }: OnboardingFormProps) {
     return (
         <SessionProvider>
             <OnboardingFormInner
                 basePath={basePath}
-                initialCurrency={initialCurrency}
                 initialPlanId={initialPlanId}
             />
         </SessionProvider>
     );
 }
 
-function OnboardingFormInner({ basePath, initialCurrency, initialPlanId }: Required<OnboardingFormProps>) {
+function OnboardingFormInner({ basePath, initialPlanId }: Required<OnboardingFormProps>) {
     const { data: session, status, update } = useSession();
     const [step, setStep] = useState<OnboardingStep>(status === 'authenticated' ? 'details' : 'auth');
     const [companyName, setCompanyName] = useState('');
     const [productName, setProductName] = useState('');
     const [productUrl, setProductUrl] = useState('');
     const [supportEmail, setSupportEmail] = useState('');
-    const [currency, setCurrency] = useState<BillingCurrency>(initialCurrency);
+    const [billingProfile, setBillingProfile] = useState<BillingProfile>({
+        legalName: '', email: '', countryCode: 'IN', addressLine1: '', city: '', region: '', indianStateCode: '', postalCode: '',
+    });
+    const currency: BillingCurrency = billingProfile.countryCode === 'IN' ? 'INR' : 'USD';
     const [planId, setPlanId] = useState(
-        ONBOARDING_PLAN_IDS.has(initialPlanId) ? initialPlanId : 'answerlattice_starter',
+        ONBOARDING_PLAN_IDS.has(initialPlanId) ? initialPlanId : 'answerlattice_launch',
     );
     const [billingModel, setBillingModel] = useState<BillingModel>('subscription');
     const [selfReportedDiscoveryChannel, setSelfReportedDiscoveryChannel] = useState<SelfReportedDiscoveryChannel | ''>('');
@@ -162,6 +165,14 @@ function OnboardingFormInner({ basePath, initialCurrency, initialPlanId }: Requi
             setStep('details');
         }
     }, [status, step]);
+
+    useEffect(() => {
+        setBillingProfile((current) => ({
+            ...current,
+            email: current.email || session?.user?.email || '',
+            legalName: current.legalName || companyName || session?.user?.name || '',
+        }));
+    }, [companyName, session?.user?.email, session?.user?.name]);
 
     useEffect(() => {
         if (step !== 'done' || !result) return;
@@ -245,6 +256,18 @@ function OnboardingFormInner({ basePath, initialCurrency, initialPlanId }: Requi
         }
         const { trimmedCompanyName, trimmedProductName, trimmedProductUrl, trimmedSupportEmail } = validatedDetails;
 
+        let normalizedBillingProfile: BillingProfile;
+        try {
+            normalizedBillingProfile = normalizeBillingProfile({
+                ...billingProfile,
+                legalName: billingProfile.legalName || trimmedCompanyName,
+            });
+        } catch {
+            setError('Complete the billing name, email, address, country, state or region, and postal code before checkout.');
+            setStep('proof');
+            return;
+        }
+
         submissionInFlightRef.current = true;
         setStep('creating');
         setError(null);
@@ -257,7 +280,7 @@ function OnboardingFormInner({ basePath, initialCurrency, initialPlanId }: Requi
             hasSupportEmail: Boolean(trimmedSupportEmail),
             supportEmailLength: trimmedSupportEmail.length,
             billingModel,
-            currency,
+            billingCountryCode: normalizedBillingProfile.countryCode,
             hasSelfReportedDiscovery: Boolean(selfReportedDiscoveryChannel),
             planId,
             primarySurfaceCount: primarySurfaces.length,
@@ -280,7 +303,7 @@ function OnboardingFormInner({ basePath, initialCurrency, initialPlanId }: Requi
                     selfReportedDiscoveryChannel: selfReportedDiscoveryChannel || undefined,
                     planId,
                     interval: 'MONTH',
-                    currency,
+                    billingProfile: normalizedBillingProfile,
                 }),
             });
 
@@ -305,6 +328,16 @@ function OnboardingFormInner({ basePath, initialCurrency, initialPlanId }: Requi
                     }
                     if (data.code === 'ANSWERLATTICE_PROVIDER_CHECKOUT_EXPIRED') {
                         setError('The previous payment checkout is no longer usable. Submit the same details again to create a new checkout.');
+                        setStep('proof');
+                        return;
+                    }
+                    if (data.code === 'ANSWERLATTICE_BILLING_PROFILE_INVALID') {
+                        setError(data.error || 'Check the billing details and try again.');
+                        setStep('proof');
+                        return;
+                    }
+                    if (data.code === 'ANSWERLATTICE_BILLING_CONFIGURATION_INCOMPLETE') {
+                        setError('Checkout is temporarily unavailable while billing configuration is completed.');
                         setStep('proof');
                         return;
                     }
@@ -643,21 +676,55 @@ function OnboardingFormInner({ basePath, initialCurrency, initialPlanId }: Requi
                     </div>
 
                     <fieldset style={styles.fieldset}>
-                        <legend style={styles.label}>Checkout currency</legend>
-                        <div style={styles.currencyGrid}>
-                            {(['INR', 'USD'] as BillingCurrency[]).map((option) => (
-                                <label key={option} style={styles.currencyOption}>
-                                    <input
-                                        type="radio"
-                                        name="answerlattice-currency"
-                                        value={option}
-                                        checked={currency === option}
-                                        onChange={() => setCurrency(option)}
-                                        style={styles.checkboxInput}
-                                    />
-                                    {option}
-                                </label>
-                            ))}
+                        <legend style={styles.label}>Billing details</legend>
+                        <p style={styles.fieldHint}>Your billing country sets the available regional price and invoice currency.</p>
+                        <div style={styles.billingGrid}>
+                            <div style={styles.billingFieldWide}>
+                                <label htmlFor="answerlattice-billing-name" style={styles.label}>Legal or business name *</label>
+                                <input id="answerlattice-billing-name" style={styles.input} autoComplete="organization" value={billingProfile.legalName} onChange={(event) => setBillingProfile((current) => ({ ...current, legalName: event.target.value }))} required />
+                            </div>
+                            <div style={styles.fieldGroupCompact}>
+                                <label htmlFor="answerlattice-billing-email" style={styles.label}>Billing email *</label>
+                                <input id="answerlattice-billing-email" style={styles.input} type="email" autoComplete="email" value={billingProfile.email} onChange={(event) => setBillingProfile((current) => ({ ...current, email: event.target.value }))} required />
+                            </div>
+                            <div style={styles.fieldGroupCompact}>
+                                <label htmlFor="answerlattice-billing-country" style={styles.label}>Billing country *</label>
+                                <select id="answerlattice-billing-country" style={styles.select} value={billingProfile.countryCode} onChange={(event) => {
+                                    const countryCode = event.target.value === 'UK' ? 'GB' : event.target.value;
+                                    setBillingProfile((current) => ({
+                                        ...current,
+                                        countryCode,
+                                        indianStateCode: countryCode === 'IN' ? current.indianStateCode || '' : undefined,
+                                        region: countryCode === 'IN' ? '' : current.region,
+                                        taxIdType: current.taxId ? (countryCode === 'IN' ? 'GSTIN' : 'OTHER') : undefined,
+                                    }));
+                                }}>
+                                    {countryData.map((country) => <option key={country.code} value={country.code === 'UK' ? 'GB' : country.code}>{country.name}</option>)}
+                                </select>
+                            </div>
+                            <div style={styles.billingFieldWide}>
+                                <label htmlFor="answerlattice-billing-address" style={styles.label}>Billing address *</label>
+                                <input id="answerlattice-billing-address" style={styles.input} autoComplete="address-line1" value={billingProfile.addressLine1} onChange={(event) => setBillingProfile((current) => ({ ...current, addressLine1: event.target.value }))} required />
+                            </div>
+                            <div style={styles.fieldGroupCompact}>
+                                <label htmlFor="answerlattice-billing-city" style={styles.label}>City *</label>
+                                <input id="answerlattice-billing-city" style={styles.input} autoComplete="address-level2" value={billingProfile.city} onChange={(event) => setBillingProfile((current) => ({ ...current, city: event.target.value }))} required />
+                            </div>
+                            <div style={styles.fieldGroupCompact}>
+                                <label htmlFor="answerlattice-billing-region" style={styles.label}>{currency === 'INR' ? 'State *' : 'State or region *'}</label>
+                                {currency === 'INR' ? <select id="answerlattice-billing-region" style={styles.select} value={billingProfile.indianStateCode || ''} onChange={(event) => {
+                                    const indianStateCode = event.target.value;
+                                    setBillingProfile((current) => ({ ...current, indianStateCode, region: INDIAN_GST_STATES.find((state) => state.code === indianStateCode)?.name || '' }));
+                                }} required><option value="">Select state</option>{INDIAN_GST_STATES.map((state) => <option key={state.code} value={state.code}>{state.name}</option>)}</select> : <input id="answerlattice-billing-region" style={styles.input} autoComplete="address-level1" value={billingProfile.region} onChange={(event) => setBillingProfile((current) => ({ ...current, region: event.target.value }))} required />}
+                            </div>
+                            <div style={styles.fieldGroupCompact}>
+                                <label htmlFor="answerlattice-billing-postal" style={styles.label}>Postal code *</label>
+                                <input id="answerlattice-billing-postal" style={styles.input} autoComplete="postal-code" value={billingProfile.postalCode} onChange={(event) => setBillingProfile((current) => ({ ...current, postalCode: event.target.value }))} required />
+                            </div>
+                            <div style={styles.fieldGroupCompact}>
+                                <label htmlFor="answerlattice-billing-tax-id" style={styles.label}>{currency === 'INR' ? 'GSTIN (optional)' : 'Tax ID (optional)'}</label>
+                                <input id="answerlattice-billing-tax-id" style={styles.input} value={billingProfile.taxId || ''} onChange={(event) => setBillingProfile((current) => ({ ...current, taxId: event.target.value || undefined, taxIdType: event.target.value ? (currency === 'INR' ? 'GSTIN' : 'OTHER') : undefined }))} />
+                            </div>
                         </div>
                     </fieldset>
 
@@ -683,7 +750,7 @@ function OnboardingFormInner({ basePath, initialCurrency, initialPlanId }: Requi
                         type="submit"
                         style={styles.primaryBtn}
                         data-answerlattice-event="onboarding_create_clicked"
-                        data-answerlattice-label={`${planId}_${currency.toLowerCase()}`}
+                        data-answerlattice-label={`${planId}_${billingProfile.countryCode.toLowerCase()}`}
                     >
                         Choose {selectedPlan.name} and create workspace
                     </button>
@@ -810,6 +877,10 @@ const styles: Record<string, CSSProperties> = {
         cursor: 'pointer',
     },
     fieldGroup: { width: '100%', marginBottom: 16 },
+    fieldGroupCompact: { width: '100%' },
+    fieldHint: { width: '100%', margin: '0 0 12px', color: colors.textMuted, fontSize: 12, lineHeight: 1.5 },
+    billingGrid: { width: '100%', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 14 },
+    billingFieldWide: { width: '100%', gridColumn: '1 / -1' },
     fieldset: { width: '100%', margin: '0 0 16px 0', padding: 0, border: 0 },
     label: { display: 'block', fontSize: 13, fontWeight: 500, color: colors.textSecondary, marginBottom: 6 },
     input: {
@@ -829,12 +900,6 @@ const styles: Record<string, CSSProperties> = {
         display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', boxSizing: 'border-box',
     },
     checkboxInput: { width: 16, height: 16, accentColor: colors.primary },
-    currencyGrid: { display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8, width: '100%' },
-    currencyOption: {
-        minHeight: 44, borderRadius: 8, border: `1px solid ${colors.border}`,
-        background: colors.surfaceRaised, color: colors.textBody, fontSize: 13, fontWeight: 600,
-        display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', boxSizing: 'border-box',
-    },
     planBadge: {
         width: '100%', padding: '12px 16px', borderRadius: 8,
         border: '1px solid rgb(var(--al-primary-rgb) / 0.3)', background: 'rgb(var(--al-primary-rgb) / 0.08)',

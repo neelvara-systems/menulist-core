@@ -78,6 +78,7 @@ assert(widgetClient.includes('onClick={() => handleSearch(article.title)}'), 're
 assert(widgetClient.includes('onClick={() => handleSearch(faq.question)}'), 'related FAQs must become actionable follow-up questions');
 assert(widgetClient.includes('onClick={() => handleSearch(entry.title)}'), 'related changelogs must become actionable follow-up questions');
 assert(widgetClient.includes('Support request #{msg.escalationTicketDisplayId} was created.'), 'widget must show a bounded ticket acknowledgement');
+assert(widgetClient.includes("headerButton: { width: 44, height: 44"), 'widget header actions must preserve the 44px customer touch-target contract');
 assert(widgetClient.includes('const activeSearchControllerRef = useRef<AbortController | null>(null)'), 'widget search must keep a synchronous in-flight request boundary');
 assert(widgetClient.includes('if (!q || loading || activeSearchControllerRef.current) return'), 'widget search must reject duplicate admission before React state settles');
 assert(widgetClient.includes('activeSearchControllerRef.current = searchController'), 'widget search must claim the synchronous request boundary before fetch');

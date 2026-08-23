@@ -168,13 +168,13 @@ async function run(): Promise<void> {
 
     const subscriptionId = 'sub_contract';
     const subscriptionPayload = {
-        amount: 99900,
+        amount: 149900,
         currency: 'INR',
         email: 'owner@example.test',
         name: 'Contract Owner',
         paymentProvider: 'razorpay',
-        planId: 'answerlattice_starter',
-        planName: 'Starter',
+        planId: 'answerlattice_launch',
+        planName: 'Launch',
         planType: 'MONTH',
         productId: PRODUCT_IDS.ANSWERLATTICE,
         providerPlanId: 'plan_contract',
@@ -234,12 +234,12 @@ async function run(): Promise<void> {
         db,
         scope,
         storeSubscriptionSummary: {
-            amount: 99900,
+            amount: 149900,
             currency: 'INR',
             id: subscriptionId,
             pId: PRODUCT_IDS.ANSWERLATTICE,
-            planId: 'answerlattice_starter',
-            planName: 'Starter',
+            planId: 'answerlattice_launch',
+            planName: 'Launch',
             providerSubscriptionId: subscriptionId,
             providerStatus: 'created',
             sId: scope.storeId,

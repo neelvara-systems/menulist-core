@@ -3,8 +3,8 @@ import { PRODUCT_IDS, type ProductId } from '@constant/product';
 import { admin } from '@lib/firebase/firebaseAdmin';
 import type { FirestoreSubscriptionDoc } from '@type/razorpay';
 import {
-    resolveMenuListTaxSettlementSnapshot,
-    type MenuListTaxSnapshot,
+    resolveBillingTaxSettlementSnapshot,
+    type BillingTaxSnapshot,
 } from '@data/shared/billingTaxPolicy';
 import {
     getMenuListPurchasedCreditRecoveryId,
@@ -35,10 +35,10 @@ export type ProductTopupSettlementResult = {
     newBalance: number;
     settlement: VerifiedTopupSettlement;
     subscription: FirestoreSubscriptionDoc;
-    taxSnapshot?: MenuListTaxSnapshot;
+    taxSnapshot?: BillingTaxSnapshot;
 };
 
-export type MenuListTopupRefundResult = {
+export type ProductTopupRefundResult = {
     creditsReversed: number;
     creditShortfall: number;
     isTopupRefund: boolean;
@@ -84,7 +84,7 @@ export async function persistPendingProductTopupSnapshot(params: {
     storeId: number;
     tenantId: number;
     userId: string;
-    taxSnapshot?: MenuListTaxSnapshot;
+    taxSnapshot?: BillingTaxSnapshot;
 }): Promise<'created' | 'replayed'> {
     const orderId = normalizeBillingTopupDocumentId(params.order?.id);
     if (!orderId) {
@@ -229,16 +229,16 @@ export async function settleProductTopupFromProvider(params: {
     if (!initialSettlement) {
         throw new Error('Provider top-up does not match the pending settlement snapshot.');
     }
-    const taxSnapshot = productId === PRODUCT_IDS.MENULIST && initialTopup?.taxSnapshot
-        ? resolveMenuListTaxSettlementSnapshot({
+    const taxSnapshot = initialTopup?.taxSnapshot
+        ? resolveBillingTaxSettlementSnapshot({
             amount: initialSettlement.amount,
             currency: initialSettlement.currency,
             quantity: 1,
-            snapshot: initialTopup.taxSnapshot as MenuListTaxSnapshot,
+            snapshot: initialTopup.taxSnapshot as BillingTaxSnapshot,
         })
         : undefined;
-    if (productId === PRODUCT_IDS.MENULIST && !taxSnapshot) {
-        throw new Error('Paid MenuList top-up does not match its stored tax terms.');
+    if (!taxSnapshot) {
+        throw new Error('Paid top-up does not match its stored tax terms.');
     }
 
     const subscription = await getActiveProductSubscriptionForStore(productId, tenantId, storeId);
@@ -331,9 +331,7 @@ export async function settleProductTopupFromProvider(params: {
         }
 
         const serverNow = admin.firestore.FieldValue.serverTimestamp();
-        const currentRefundDebt = productId === PRODUCT_IDS.MENULIST
-            ? asExactNonNegativeSafeInteger(subscriptionData?.topUpCreditRefundDebt ?? 0)
-            : 0;
+        const currentRefundDebt = asExactNonNegativeSafeInteger(subscriptionData?.topUpCreditRefundDebt ?? 0);
         if (currentRefundDebt === null) {
             throw new Error('Top-up refund debt balance is invalid.');
         }
@@ -355,7 +353,7 @@ export async function settleProductTopupFromProvider(params: {
         }
         tx.set(subscriptionRef, {
             topUpCredits: newBalance,
-            ...(productId === PRODUCT_IDS.MENULIST ? { topUpCreditRefundDebt: newRefundDebt } : {}),
+            topUpCreditRefundDebt: newRefundDebt,
             modifiedOn: serverNow,
         }, { merge: true });
         tx.set(topupRef, {
@@ -422,15 +420,16 @@ export async function settleProductTopupFromProvider(params: {
 }
 
 /**
- * Reverses MenuList purchased credits only when a processed provider refund
+ * Reverses purchased credits only when a processed provider refund
  * belongs to a settled top-up. Subscription refunds return a no-op result.
  */
-export async function settleMenuListTopupRefund(params: {
+export async function settleProductTopupRefund(params: {
     amount: number;
     currency: string;
     paymentId: string;
+    productId: ProductId;
     refundId: string;
-}): Promise<MenuListTopupRefundResult> {
+}): Promise<ProductTopupRefundResult> {
     const paymentId = asProviderId(params.paymentId, 'pay_');
     const refundId = asProviderId(params.refundId, 'rfnd_');
     const refundAmount = asExactPositiveSafeInteger(params.amount);
@@ -439,7 +438,7 @@ export async function settleMenuListTopupRefund(params: {
         throw new Error('Processed top-up refund evidence is invalid.');
     }
 
-    const billingDb = getBillingFirestoreAdminForProduct(PRODUCT_IDS.MENULIST);
+    const billingDb = getBillingFirestoreAdminForProduct(params.productId);
     const candidates = await billingDb.collection(DB_COLLECTIONS.TOPUPS)
         .where('providerPaymentId', '==', paymentId)
         .limit(2)
@@ -474,8 +473,8 @@ export async function settleMenuListTopupRefund(params: {
         const providerOrderId = normalizeBillingTopupDocumentId(topup.providerOrderId);
         const topupCurrency = typeof topup.currency === 'string' ? topup.currency.trim().toUpperCase() : '';
         if (
-            topup.productId !== PRODUCT_IDS.MENULIST
-            || topup.pId !== PRODUCT_IDS.MENULIST
+            topup.productId !== params.productId
+            || topup.pId !== params.productId
             || topup.providerPaymentId !== paymentId
             || providerOrderId !== topupSnapshot.id
             || topup.paymentProvider !== 'razorpay'
@@ -491,15 +490,18 @@ export async function settleMenuListTopupRefund(params: {
             || !subscriptionId
             || topupCurrency !== currency
         ) {
-            throw new Error('Processed refund does not match settled MenuList top-up evidence.');
+            throw new Error('Processed refund does not match settled product top-up evidence.');
         }
 
+        const recoveryRef = params.productId === PRODUCT_IDS.MENULIST
+            ? billingDb.collection(DB_COLLECTIONS.MENULIST_PURCHASED_CREDIT_RECOVERIES).doc(
+                getMenuListPurchasedCreditRecoveryId(tenantId, storeId),
+            )
+            : null;
         const [refundSnapshot, subscriptionSnapshot, recoverySnapshot] = await Promise.all([
             tx.get(refundRef),
             tx.get(billingDb.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc(subscriptionId)),
-            tx.get(billingDb.collection(DB_COLLECTIONS.MENULIST_PURCHASED_CREDIT_RECOVERIES).doc(
-                getMenuListPurchasedCreditRecoveryId(tenantId, storeId),
-            )),
+            recoveryRef ? tx.get(recoveryRef) : Promise.resolve(null),
         ]);
         if (refundSnapshot.exists) {
             const existing = refundSnapshot.data() || {};
@@ -553,19 +555,19 @@ export async function settleMenuListTopupRefund(params: {
             throw new Error('Processed top-up refund found an invalid purchased-credit balance.');
         }
 
-        const recovery = recoverySnapshot.exists ? recoverySnapshot.data() || {} : {};
-        const recoveryScopeMatches = recoverySnapshot.exists
-            && recovery.productId === PRODUCT_IDS.MENULIST
-            && recovery.pId === PRODUCT_IDS.MENULIST
+        const recovery = recoverySnapshot?.exists ? recoverySnapshot.data() || {} : {};
+        const recoveryScopeMatches = recoverySnapshot?.exists
+            && recovery.productId === params.productId
+            && recovery.pId === params.productId
             && asExactIdentity(recovery.tenantId) === tenantId
             && asExactIdentity(recovery.storeId) === storeId;
-        if (recoverySnapshot.exists && !recoveryScopeMatches) {
+        if (recoverySnapshot?.exists && !recoveryScopeMatches) {
             throw new Error('Processed top-up refund recovery scope conflicts with purchase evidence.');
         }
-        const frozenCredits = recoverySnapshot.exists
+        const frozenCredits = recoverySnapshot?.exists
             ? asExactNonNegativeSafeInteger(recovery.purchasedCredits)
             : 0;
-        if (recoverySnapshot.exists && frozenCredits === null) {
+        if (recoverySnapshot?.exists && frozenCredits === null) {
             throw new Error('Processed top-up refund found an invalid frozen-credit balance.');
         }
 
@@ -576,9 +578,6 @@ export async function settleMenuListTopupRefund(params: {
         const creditShortfall = creditsToReverse - creditsReversed;
         const now = admin.firestore.FieldValue.serverTimestamp();
         const subscriptionRef = billingDb.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc(subscriptionId);
-        const recoveryRef = billingDb.collection(DB_COLLECTIONS.MENULIST_PURCHASED_CREDIT_RECOVERIES).doc(
-            getMenuListPurchasedCreditRecoveryId(tenantId, storeId),
-        );
         const nextRefundDebt = existingRefundDebt + creditShortfall;
         if (!Number.isSafeInteger(nextRefundDebt)) {
             throw new Error('Processed top-up refund debt exceeds the supported range.');
@@ -590,7 +589,7 @@ export async function settleMenuListTopupRefund(params: {
                 modifiedOn: now,
             }, { merge: true });
         }
-        if (recoverySnapshot.exists && frozenReversal > 0) {
+        if (recoveryRef && recoverySnapshot?.exists && frozenReversal > 0) {
             tx.set(recoveryRef, {
                 purchasedCredits: (frozenCredits ?? 0) - frozenReversal,
                 updatedAt: now,
@@ -630,3 +629,7 @@ export async function settleMenuListTopupRefund(params: {
         return { creditsReversed, creditShortfall, isTopupRefund: true, replayed: false };
     });
 }
+
+export const settleMenuListTopupRefund = (params: Omit<Parameters<typeof settleProductTopupRefund>[0], 'productId'>) => (
+    settleProductTopupRefund({ ...params, productId: PRODUCT_IDS.MENULIST })
+);

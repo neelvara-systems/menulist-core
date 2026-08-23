@@ -1,7 +1,8 @@
 import type { Currency } from '@data/common';
 import { INDIAN_GST_STATES } from '@data/shared/indianGstStates';
 
-export const MENULIST_BILLING_TAX_POLICY_VERSION = 'IN_GST_2026_08_V1' as const;
+export const BILLING_TAX_POLICY_VERSION = 'IN_GST_2026_08_V1' as const;
+export const MENULIST_BILLING_TAX_POLICY_VERSION = BILLING_TAX_POLICY_VERSION;
 export const INDIA_GST_RATE_BPS = 1_800;
 
 export type BillingProfile = {
@@ -18,7 +19,8 @@ export type BillingProfile = {
     taxIdType?: 'GSTIN' | 'OTHER';
 };
 
-export type MenuListTaxSupplierConfig = {
+export type BillingTaxSupplierConfig = {
+    productName: string;
     legalIdentityVerified: boolean;
     merchantEntityId: string;
     legalName: string;
@@ -31,8 +33,10 @@ export type MenuListTaxSupplierConfig = {
     lutReference?: string;
 };
 
-export type MenuListTaxSnapshot = {
-    policyVersion: typeof MENULIST_BILLING_TAX_POLICY_VERSION;
+export type MenuListTaxSupplierConfig = BillingTaxSupplierConfig;
+
+export type BillingTaxSnapshot = {
+    policyVersion: typeof BILLING_TAX_POLICY_VERSION;
     merchantEntityId: string;
     supplierLegalName: string;
     supplierRegisteredAddress: string;
@@ -56,6 +60,8 @@ export type MenuListTaxSnapshot = {
     grossAmount: number;
     lutReference?: string;
 };
+
+export type MenuListTaxSnapshot = BillingTaxSnapshot;
 
 export class BillingTaxConfigurationError extends Error {
     constructor(message: string) {
@@ -131,7 +137,7 @@ export const normalizeBillingProfile = (profile: BillingProfile): BillingProfile
     return normalized;
 };
 
-export const calculateMenuListTaxSnapshot = ({
+export const calculateBillingTaxSnapshot = ({
     baseUnitAmount,
     billingProfile,
     currency,
@@ -142,13 +148,13 @@ export const calculateMenuListTaxSnapshot = ({
     billingProfile: BillingProfile;
     currency: Currency;
     quantity: number;
-    supplier: MenuListTaxSupplierConfig;
-}): MenuListTaxSnapshot => {
+    supplier: BillingTaxSupplierConfig;
+}): BillingTaxSnapshot => {
     if (!Number.isSafeInteger(baseUnitAmount) || baseUnitAmount <= 0 || !Number.isSafeInteger(quantity) || quantity <= 0) {
         throw new BillingTaxProfileError('Billing amount is invalid.');
     }
     if (!supplier.legalIdentityVerified) {
-        throw new BillingTaxConfigurationError('MenuList billing legal identity is not verified.');
+        throw new BillingTaxConfigurationError(`${normalizeText(supplier.productName, 80) || 'Product'} billing legal identity is not verified.`);
     }
     const merchantEntityId = normalizeText(supplier.merchantEntityId, 120);
     const supplierLegalName = normalizeText(supplier.legalName, 200);
@@ -164,12 +170,12 @@ export const calculateMenuListTaxSnapshot = ({
         || !INDIAN_GST_STATE_CODES.has(supplierStateCode)
         || !sacCode
     ) {
-        throw new BillingTaxConfigurationError('MenuList billing supplier details are incomplete.');
+        throw new BillingTaxConfigurationError(`${normalizeText(supplier.productName, 80) || 'Product'} billing supplier details are incomplete.`);
     }
     const supplierGstin = supplier.gstin.trim().toUpperCase();
     const supplierGstinMatch = GSTIN_PATTERN.exec(supplierGstin);
     if (!supplierGstinMatch || supplierGstinMatch[1] !== supplierStateCode) {
-        throw new BillingTaxConfigurationError('MenuList supplier GST details are invalid.');
+        throw new BillingTaxConfigurationError(`${normalizeText(supplier.productName, 80) || 'Product'} supplier GST details are invalid.`);
     }
 
     const profile = normalizeBillingProfile(billingProfile);
@@ -186,7 +192,7 @@ export const calculateMenuListTaxSnapshot = ({
 
     if (!isDomestic) {
         return {
-            policyVersion: MENULIST_BILLING_TAX_POLICY_VERSION,
+            policyVersion: BILLING_TAX_POLICY_VERSION,
             merchantEntityId,
             supplierLegalName,
             supplierRegisteredAddress,
@@ -228,7 +234,7 @@ export const calculateMenuListTaxSnapshot = ({
     const sgstAmount = isIntraState ? taxAmount - cgstAmount : 0;
 
     return {
-        policyVersion: MENULIST_BILLING_TAX_POLICY_VERSION,
+        policyVersion: BILLING_TAX_POLICY_VERSION,
         merchantEntityId,
         supplierLegalName,
         supplierRegisteredAddress,
@@ -252,6 +258,13 @@ export const calculateMenuListTaxSnapshot = ({
         grossAmount,
     };
 };
+
+export const calculateMenuListTaxSnapshot = (params: Omit<Parameters<typeof calculateBillingTaxSnapshot>[0], 'supplier'> & {
+    supplier: Omit<BillingTaxSupplierConfig, 'productName'> & { productName?: string };
+}): MenuListTaxSnapshot => calculateBillingTaxSnapshot({
+    ...params,
+    supplier: { ...params.supplier, productName: params.supplier.productName || 'MenuList' },
+});
 
 export const resizeMenuListTaxSnapshot = (
     snapshot: MenuListTaxSnapshot,
@@ -306,3 +319,6 @@ export const resolveMenuListTaxSettlementSnapshot = ({
         ? current
         : null;
 };
+
+export const resizeBillingTaxSnapshot = resizeMenuListTaxSnapshot;
+export const resolveBillingTaxSettlementSnapshot = resolveMenuListTaxSettlementSnapshot;

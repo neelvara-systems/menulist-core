@@ -9,8 +9,8 @@ import {
 import { PRODUCT_IDS } from '@constant/product';
 import { resolveMenuListMonthlyCreditAllowance } from '@data/shared/contentCreditPolicy';
 import {
-    resizeMenuListTaxSnapshot,
-    resolveMenuListTaxSettlementSnapshot,
+    resizeBillingTaxSnapshot,
+    resolveBillingTaxSettlementSnapshot,
 } from '@data/shared/billingTaxPolicy';
 import {
     applyProductSubscriptionPayment,
@@ -26,6 +26,7 @@ import {
     logRazorpayNonBlockingFailure,
 } from "@lib/billing/razorpayDiagnostics";
 import { isAnswerlatticeBillingProduct, normalizeBillingProductId, resolveProviderBillingProductId } from "@lib/billing/productBillingPlans";
+import { productUsesConfiguredTax } from '@lib/billing/productTaxServer';
 import { finalizeProductSubscriptionReplacement } from '@lib/billing/subscriptionReplacementFinalization';
 import { resolveSubscriptionReplacementEvidence } from '@lib/billing/subscriptionReplacementEvidence';
 import {
@@ -382,22 +383,22 @@ export const POST = withAuth(async (request, session) => {
         const paymentAmount = requireRazorpayRevenueAmountPaise(payment.amount);
         const paymentOccurredAt = resolveRazorpayRevenueOccurredAtMillis(payment.created_at);
         const providerState = resolveRazorpaySubscriptionState(providerSubscription, internalSub.quantity);
-        const expectedTaxSnapshot = productId === PRODUCT_IDS.MENULIST && internalSub.taxSnapshot && providerState
-            ? resizeMenuListTaxSnapshot(internalSub.taxSnapshot, providerState.quantity)
+        const expectedTaxSnapshot = productUsesConfiguredTax(productId) && internalSub.taxSnapshot && providerState
+            ? resizeBillingTaxSnapshot(internalSub.taxSnapshot, providerState.quantity)
             : undefined;
-        const currentTaxSnapshot = productId === PRODUCT_IDS.MENULIST && internalSub.taxSnapshot && providerState
-            ? resolveMenuListTaxSettlementSnapshot({
+        const currentTaxSnapshot = productUsesConfiguredTax(productId) && internalSub.taxSnapshot && providerState
+            ? resolveBillingTaxSettlementSnapshot({
                 amount: paymentAmount,
                 currency: String(payment.currency || ''),
                 quantity: providerState.quantity,
                 snapshot: internalSub.taxSnapshot,
             })
             : undefined;
-        if (productId === PRODUCT_IDS.MENULIST && !currentTaxSnapshot) {
+        if (productUsesConfiguredTax(productId) && !currentTaxSnapshot) {
             logger.security('Subscription Tax Settlement Mismatch', {
                 ...getBoundedRazorpaySecurityContext(session, request),
                 endpoint: '/api/razorpay/verify-subscription',
-                error: 'Captured provider amount does not match stored MenuList tax terms',
+                error: 'Captured provider amount does not match stored product tax terms',
                 paymentAmount,
                 expectedAmount: expectedTaxSnapshot?.grossAmount,
                 paymentCurrency: String(payment.currency || '').toUpperCase(),

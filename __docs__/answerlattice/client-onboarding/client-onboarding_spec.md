@@ -20,7 +20,7 @@ Allow external SaaS founders to create an Answerlattice account via self-service
 4. **Authenticate** → Google OAuth (one click)
 5. **Configure** → Enter company/product details, optionally select one closed-list first-discovery source, and select initial product surfaces
 6. **Preview** → Before commercial commitment, see four deterministic starter questions prioritized from the selected surfaces plus the governed setup sequence
-7. **Choose** → Select Starter/Growth/Studio and INR or USD checkout only after the preview
+7. **Choose** → Select Launch/Growth/Studio and provide the billing country that determines INR or USD checkout only after the preview
 8. **Provisioned** → A resumable attempt creates the tenant/store, pending paid subscription, and one-time widget key without treating a lost browser response as permission to duplicate provider state
 9. **Onboard** → Add sources → Review answers → Run the First 10 checks → Verify the widget → Go live
 
@@ -36,11 +36,11 @@ secondary destination.
 
 | Plan | INR | USD | Limits | Target |
 |------|-----|-----|--------|--------|
-| Starter | ₹999/mo | US$12/mo | 50 entities, 50 answers, 50 articles, widget only | Small SaaS |
-| Growth | ₹2,999/mo | US$36/mo | 200 entities, 500 answers, 200 articles, widget | Growing SaaS |
-| Studio | ₹6,999/mo | US$84/mo | 800 entities, 2,000 answers, 800 articles, up to 5 workspaces | Agencies and dev studios |
+| Launch | ₹1,499/mo | US$29/mo | 250 monthly support credits, 50 entities, 50 answers, 50 articles, one workspace | Small SaaS |
+| Growth | ₹4,999/mo | US$99/mo | 1,000 monthly support credits, 200 entities, 500 answers, 200 articles, one workspace | Growing SaaS |
+| Studio | ₹12,999/mo | US$249/mo | 4,000 monthly support credits, 800 entities, 2,000 answers, 800 articles, up to 5 workspaces | Agencies and dev studios |
 
-No active Answerlattice onboarding path creates an unpaid plan. Public onboarding defaults to paid Starter/INR, accepts the plan selected from Pricing, and creates a pending Razorpay subscription in the selected currency.
+No active Answerlattice onboarding path creates an unpaid plan. Public onboarding defaults to paid Launch, accepts the plan selected from Pricing, derives currency from the validated billing country, freezes the billing/tax snapshot, and creates a pending Razorpay subscription in that currency.
 
 ---
 

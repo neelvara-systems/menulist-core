@@ -4,6 +4,7 @@ import { FEATURE_FLAGS } from '@config/features';
 import { DB_COLLECTIONS } from '@constant/database';
 import { getProductSurfacesForSession } from '@database/answerlattice/productSurfaces';
 import { getBoundedAnswerlatticeStringContext, logAnswerlatticeFailure } from '@lib/answerlattice/diagnostics';
+import { getAnswerlatticeCustomerIdentity } from '@lib/answerlattice/customerIdentity';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { getSupportTicketAttachmentDownloadUrl } from '@lib/answerlattice/supportTicketAttachmentBoundary';
 import { answerlatticeApp } from '@lib/firebase/answerlatticeFirebaseClient';
@@ -29,6 +30,7 @@ interface TicketActionsProps {
 const TicketActions: React.FC<TicketActionsProps> = ({ ticket, setTicket, from }) => {
     const { token } = theme.useToken();
     const [surfaceOptions, setSurfaceOptions] = useState<Array<{ label: string; value: string }>>([]);
+    const requester = getAnswerlatticeCustomerIdentity(ticket);
 
     const handleUpdate = (key: string, value: string | string[]) => {
         setTicket({ ...ticket, [key]: value });
@@ -137,20 +139,20 @@ const TicketActions: React.FC<TicketActionsProps> = ({ ticket, setTicket, from }
                     </Text>
                     <Flex vertical gap={16}>
                         <Flex justify="space-between" align="center">
-                            <Text type="secondary" style={{ fontSize: 12 }}>Tenant</Text>
-                            <Text style={{ fontSize: 13 }}>{ticket.clientDetails?.tenantName || "-"}</Text>
+                            <Text type="secondary" style={{ fontSize: 12 }}>Name</Text>
+                            <Text style={{ fontSize: 13 }}>{requester.displayName}</Text>
                         </Flex>
                         <Flex justify="space-between" align="center">
-                            <Text type="secondary" style={{ fontSize: 12 }}>Store</Text>
-                            <Text style={{ fontSize: 13 }}>{ticket.clientDetails?.storeName || "-"}</Text>
+                            <Text type="secondary" style={{ fontSize: 12 }}>Requester ID</Text>
+                            <Text style={{ fontSize: 13 }}>{requester.userId || "-"}</Text>
                         </Flex>
                         <Flex justify="space-between" align="center">
                             <Text type="secondary" style={{ fontSize: 12 }}>Email</Text>
-                            <Text style={{ fontSize: 13 }}>{ticket.clientDetails?.email || "-"}</Text>
+                            <Text style={{ fontSize: 13 }}>{requester.email || "-"}</Text>
                         </Flex>
                         <Flex justify="space-between" align="center">
                             <Text type="secondary" style={{ fontSize: 12 }}>Phone</Text>
-                            <Text style={{ fontSize: 13 }}>{ticket.clientDetails?.phone || "-"}</Text>
+                            <Text style={{ fontSize: 13 }}>{requester.phone || "-"}</Text>
                         </Flex>
                     </Flex>
                 </Flex>

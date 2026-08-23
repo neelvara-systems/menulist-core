@@ -1257,7 +1257,7 @@ function ConnectedLoopSection({ basePath }: { basePath: string }) {
         {
             label: 'Known question',
             title: 'A user asks why they cannot change their plan.',
-            detail: 'Safe page context says Billing settings, Starter plan, and Account owner.',
+            detail: 'Safe page context says Billing settings, Launch plan, and Account owner.',
         },
         {
             label: 'Approved answer',
@@ -1336,7 +1336,7 @@ function ConnectedLoopSection({ basePath }: { basePath: string }) {
                         <dl className="mt-5 divide-y divide-white/[0.07] text-sm">
                             {[
                                 ['Supporting source', 'Billing policy, section 4'],
-                                ['Applies to', 'Starter plan · Account owner'],
+                                ['Applies to', 'Launch plan · Account owner'],
                                 ['Product context', 'Billing settings'],
                                 ['Review state', 'Approved before publication'],
                                 ['Answer Test', 'Passed for this sample'],

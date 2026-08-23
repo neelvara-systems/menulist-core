@@ -78,7 +78,7 @@ The public setup form keeps primary controls at a minimum 44px touch target, inc
 ### 3. Answerlattice Plans (`src/data/answerlattice/plans.ts`)
 
 **3 plans defined:**
-- `answerlattice_starter` — ₹999/mo or US$12/mo; ₹9,990/yr or US$120/yr
+- `answerlattice_launch` — ₹999/mo or US$12/mo; ₹9,990/yr or US$120/yr
 - `answerlattice_growth` — ₹2,999/mo or US$36/mo; ₹29,990/yr or US$360/yr
 - `answerlattice_studio` — ₹6,999/mo or US$84/mo; ₹69,990/yr or US$840/yr
 
@@ -110,7 +110,7 @@ Request:
   "billingModel": "subscription",
   "primarySurfaces": ["billing", "onboarding", "settings"],
   "selfReportedDiscoveryChannel": "chatgpt",
-  "planId": "answerlattice_starter",
+  "planId": "answerlattice_launch",
   "interval": "MONTH",
   "currency": "INR"
 }
@@ -123,7 +123,7 @@ Response (success):
   "billing": { "amount": 99900, "currency": "INR", "interval": "MONTH" },
   "recovered": false,
   "subscription": { "id": "sub_abc123", "shortUrl": "https://rzp.io/i/...", "status": "created" },
-  "plan": { "id": "answerlattice_starter", "name": "Starter", "isBeta": false },
+  "plan": { "id": "answerlattice_launch", "name": "Starter", "isBeta": false },
   "initialSurfaceCount": 3,
   "widgetKeyNeedsRotation": false,
   "workspaceCreated": true
@@ -181,7 +181,7 @@ This allows querying Answerlattice-specific tenants without a separate collectio
 | 2026-07-11 | 1.6.0 | Documented plan/INR/USD selection, request fingerprints, provider recovery, atomic finalization, payment-pending recovery, one-time widget-key handling, and scoped compensation |
 | 2026-06-30 | 1.5.1 | Hardened the get-started client response boundary with same-origin credentials, no-store cache, manual redirect handling, a 16 KB bounded response parser, result-shape validation, and bounded diagnostics before success state |
 | 2026-05-21 | 1.5.0 | Documented product-aware Razorpay activation for paid Answerlattice onboarding |
-| 2026-05-21 | 1.3.0 | Added richer product profile inputs, initial product-surface bootstrap, compact context summary seed, and Starter/Growth/Studio pricing |
+| 2026-05-21 | 1.3.0 | Added richer product profile inputs, initial product-surface bootstrap, compact context summary seed, and Launch/Growth/Studio pricing |
 | 2026-05-21 | 1.2.0 | Documented separate-product onboarding sequence: Answerlattice-project user, default-auth `productAccounts.AL` bridge, tenant summary, and `answerlatticeWidgetApi` key |
 | 2026-05-16 | 1.1.0 | Added paid Answerlattice Razorpay subscription path and `currency` input |
 | 2026-03-07 | 1.0.0 | Initial implementation |

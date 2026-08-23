@@ -1,4 +1,5 @@
 import { createHash } from 'crypto';
+import type { BillingProfile } from '@data/shared/billingTaxPolicy';
 import { normalizeRazorpaySubscriptionCheckoutUrl } from '@lib/razorpay/checkoutUrl';
 
 export const ANSWERLATTICE_ONBOARDING_STATUS = {
@@ -15,6 +16,7 @@ export type AnswerlatticeOnboardingStatus = (
 );
 
 export type AnswerlatticeOnboardingRequestIdentity = {
+    billingProfile: BillingProfile;
     billingModel: 'subscription' | 'usage' | 'one_time' | 'not_sure';
     businessDayEndTime: string;
     companyName: string;
@@ -54,6 +56,7 @@ export function buildAnswerlatticeOnboardingRequestFingerprint(
     input: AnswerlatticeOnboardingRequestIdentity,
 ): string {
     const normalized: AnswerlatticeOnboardingRequestIdentity = {
+        billingProfile: input.billingProfile,
         billingModel: input.billingModel,
         businessDayEndTime: normalizeString(input.businessDayEndTime),
         companyName: normalizeString(input.companyName),

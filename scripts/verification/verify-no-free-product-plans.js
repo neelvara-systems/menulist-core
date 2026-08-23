@@ -52,16 +52,16 @@ for (const relPath of activePlanFiles) {
 
 const answerlatticePlans = read('src/data/answerlattice/plans.ts');
 assertNotMatches(answerlatticePlans, /answerlattice_beta/i, 'Answerlattice active plans');
-assertIncludes(answerlatticePlans, 'Starter, Growth, Studio only. Active packaging has no zero-price tier.', 'Answerlattice active plans');
+assertIncludes(answerlatticePlans, 'Launch, Growth, Studio only. Active packaging has no zero-price tier.', 'Answerlattice active plans');
 
 const answerlatticeOnboarding = read('src/app/api/answerlattice/onboard/route.ts');
-assertIncludes(answerlatticeOnboarding, "default('answerlattice_starter')", 'Answerlattice onboarding default paid plan');
+assertIncludes(answerlatticeOnboarding, "default('answerlattice_launch')", 'Answerlattice onboarding default paid plan');
 assertIncludes(answerlatticeOnboarding, "Paid plan is required.", 'Answerlattice onboarding paid-plan guard');
 assertNotMatches(answerlatticeOnboarding, /answerlattice_beta|getAnswerlatticeBetaPlan|['"]free['"]/i, 'Answerlattice onboarding route');
 
 const answerlatticeForm = read('src/app/sites/answerlattice/get-started/OnboardingForm.tsx');
-assertIncludes(answerlatticeForm, "initialPlanId = 'answerlattice_starter'", 'Answerlattice public onboarding default paid plan');
-assertIncludes(answerlatticeForm, "ONBOARDING_PLAN_IDS.has(initialPlanId) ? initialPlanId : 'answerlattice_starter'", 'Answerlattice public onboarding paid-plan fallback');
+assertIncludes(answerlatticeForm, "initialPlanId = 'answerlattice_launch'", 'Answerlattice public onboarding default paid plan');
+assertIncludes(answerlatticeForm, "ONBOARDING_PLAN_IDS.has(initialPlanId) ? initialPlanId : 'answerlattice_launch'", 'Answerlattice public onboarding paid-plan fallback');
 assertIncludes(answerlatticeForm, 'const ONBOARDING_PLANS = getAnswerlatticePlans()', 'Answerlattice public onboarding active plan registry');
 assertIncludes(answerlatticeForm, 'body: JSON.stringify({', 'Answerlattice public onboarding request body');
 assertIncludes(answerlatticeForm, 'planId,', 'Answerlattice public onboarding selected paid plan submission');

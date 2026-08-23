@@ -4,8 +4,8 @@
  * Separate from MenuList plans. Answerlattice has its own pricing model
  * based on canonical answer volume, knowledge coverage, signals, and workspaces.
  *
- * Public packaging is founder-friendly and INR-first:
- * Starter, Growth, Studio only. Active packaging has no zero-price tier.
+ * Public packaging is founder-friendly and region-aware:
+ * Launch, Growth, Studio only. Active packaging has no zero-price tier.
  *
  * Prices are in smallest currency unit (paise for INR, cents for USD).
  *
@@ -32,15 +32,15 @@ export interface AnswerlatticePlan {
 }
 
 const AnswerlatticePlansList: AnswerlatticePlan[] = [
-    // Starter Plan — Monthly
+    // Launch Plan — Monthly
     {
-        planId: 'answerlattice_starter',
-        name: 'Starter',
-        description: 'For solo founders launching support for one SaaS product.',
+        planId: 'answerlattice_launch',
+        name: 'Launch',
+        description: 'For one SaaS product building its first governed support layer.',
         isRecommended: false,
         billingInterval: 'MONTH',
-        priceINR: { price: 99900, monthlyCredits: 150 },
-        priceUSD: { price: 1200, monthlyCredits: 150 },
+        priceINR: { price: 149900, monthlyCredits: 250 },
+        priceUSD: { price: 2900, monthlyCredits: 250 },
         limits: {
             maxEntities: 50,
             maxCanonicalAnswers: 50,
@@ -51,15 +51,15 @@ const AnswerlatticePlansList: AnswerlatticePlan[] = [
             apiAccessIncluded: false,
         },
     },
-    // Starter Plan — Yearly
+    // Launch Plan — Yearly
     {
-        planId: 'answerlattice_starter',
-        name: 'Starter (Yearly)',
-        description: 'For solo founders launching support for one SaaS product.',
+        planId: 'answerlattice_launch',
+        name: 'Launch (Yearly)',
+        description: 'For one SaaS product building its first governed support layer.',
         isRecommended: false,
         billingInterval: 'YEAR',
-        priceINR: { price: 999000, monthlyCredits: 150 },
-        priceUSD: { price: 12000, monthlyCredits: 150 },
+        priceINR: { price: 1499000, monthlyCredits: 250 },
+        priceUSD: { price: 29000, monthlyCredits: 250 },
         limits: {
             maxEntities: 50,
             maxCanonicalAnswers: 50,
@@ -77,8 +77,8 @@ const AnswerlatticePlansList: AnswerlatticePlan[] = [
         description: 'For growing SaaS products that need surfaces, signals, and weekly support review.',
         isRecommended: true,
         billingInterval: 'MONTH',
-        priceINR: { price: 299900, monthlyCredits: 500 },
-        priceUSD: { price: 3600, monthlyCredits: 500 },
+        priceINR: { price: 499900, monthlyCredits: 1000 },
+        priceUSD: { price: 9900, monthlyCredits: 1000 },
         limits: {
             maxEntities: 200,
             maxCanonicalAnswers: 500,
@@ -96,8 +96,8 @@ const AnswerlatticePlansList: AnswerlatticePlan[] = [
         description: 'For growing SaaS products that need surfaces, signals, and weekly support review.',
         isRecommended: true,
         billingInterval: 'YEAR',
-        priceINR: { price: 2999000, monthlyCredits: 500 },
-        priceUSD: { price: 36000, monthlyCredits: 500 },
+        priceINR: { price: 4999000, monthlyCredits: 1000 },
+        priceUSD: { price: 99000, monthlyCredits: 1000 },
         limits: {
             maxEntities: 200,
             maxCanonicalAnswers: 500,
@@ -115,8 +115,8 @@ const AnswerlatticePlansList: AnswerlatticePlan[] = [
         description: 'For agencies and dev studios managing several small SaaS launches.',
         isRecommended: false,
         billingInterval: 'MONTH',
-        priceINR: { price: 699900, monthlyCredits: 1200 },
-        priceUSD: { price: 8400, monthlyCredits: 1200 },
+        priceINR: { price: 1299900, monthlyCredits: 4000 },
+        priceUSD: { price: 24900, monthlyCredits: 4000 },
         limits: {
             maxEntities: 800,
             maxCanonicalAnswers: 2000,
@@ -134,8 +134,8 @@ const AnswerlatticePlansList: AnswerlatticePlan[] = [
         description: 'For agencies and dev studios managing several small SaaS launches.',
         isRecommended: false,
         billingInterval: 'YEAR',
-        priceINR: { price: 6999000, monthlyCredits: 1200 },
-        priceUSD: { price: 84000, monthlyCredits: 1200 },
+        priceINR: { price: 12999000, monthlyCredits: 4000 },
+        priceUSD: { price: 249000, monthlyCredits: 4000 },
         limits: {
             maxEntities: 800,
             maxCanonicalAnswers: 2000,

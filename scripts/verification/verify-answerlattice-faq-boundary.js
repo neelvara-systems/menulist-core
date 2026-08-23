@@ -162,6 +162,10 @@ assert(retrieval.includes('if (!snap.exists) return [];'), 'missing linked artic
 assert(retrieval.includes("value.status !== 'published'"), 'FAQ citations must require a published linked article');
 assert(retrieval.includes('value.active !== true'), 'FAQ citations must require explicit active article truth');
 assert(faqDal.includes('source: existingSource || ANSWERLATTICE_FAQ_SOURCE.MANUAL'), 'FAQ provenance must be system-derived and immutable during authoring');
+assert(faqDal.includes('const isNew = !parsed.id;'), 'FAQ creation must be determined before attempting a protected document read');
+assert(faqDal.includes('const existingSnap = parsed.id ? await transaction.get(faqRef) : null;'), 'new FAQs must not read a nonexistent protected document before create');
+assert(faqDal.includes("throw new Error('FAQ was not found. Refresh and try again.')"), 'FAQ updates must fail closed when the target no longer exists');
+assert(faqDal.includes('transaction.set(faqRef, composedData);'), 'new FAQs must use create-shaped set semantics');
 assert(faqDal.includes("throw new Error('Publish the linked article before publishing this FAQ.')"), 'linked FAQ publication must require active published article truth');
 assert(faqDal.includes('existing.tId !== scope.tId'), 'FAQ mutation must require exact persisted tenant scope');
 assert(faqDal.includes('existing.sId !== scope.sId'), 'FAQ mutation must require exact persisted workspace scope');
@@ -172,6 +176,9 @@ assert(faqDal.includes('projectManagedFaqDocuments(snapshot.docs, scope)'), 'FAQ
 assert(!faqDal.includes("({ ...item.data(), id: item.id } as AnswerlatticeFaq)"), 'FAQ management reads must not cast raw persisted rows');
 assert(!faqDal.includes('export const updateFaqFeedback'), 'FAQ feedback must not retain a direct browser Firestore counter writer');
 assert(!faqManagement.includes('name="source"'), 'FAQ editor must expose source provenance as read-only');
+assert(faqManagement.includes('if (loading) return;'), 'FAQ form effects must wait until the form is mounted');
+assert(faqManagement.includes('styles={{ image: { height: 96 } }}'), 'FAQ empty state must use the current Ant Design styles API');
+assert(!faqManagement.includes('imageStyle={{ height: 96 }}'), 'FAQ empty state must not retain the deprecated Ant Design imageStyle API');
 assert(faqManagement.includes("getContentFeedbackForEntry('faq', selectedFaq.id)"), 'FAQ review must expose bounded audited reaction details');
 assert(faqGeneration.includes('getArticleFaqSourceFingerprint'), 'article FAQ generation must fingerprint the source used by the provider');
 assert(faqGeneration.includes('await db.runTransaction(async (transaction) =>'), 'article FAQ generation must commit through a transaction');

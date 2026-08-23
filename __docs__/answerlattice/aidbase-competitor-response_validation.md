@@ -20,7 +20,7 @@ The point-in-time competitor study used Aidbase's public [homepage](https://www.
 | Preserve the governed-answer category | `__docs__/answerlattice/doctrine/01-core-doctrine.md`, `02-non-goals-charter.md`, `self-sellable-product-strategy.md` | No unified inbox/helpdesk expansion was added. |
 | Make the difference visible without sign-in | `src/app/sites/answerlattice/demo/AnswerlatticePublicDemo.tsx` | Six deterministic stages show conflict, proposal, approval, release drift, safe fallback, correction, and audit evidence without Firebase or AI calls. |
 | Publish buyer-readable trust facts | `src/app/sites/answerlattice/trust/page.tsx` | Provider/retention/runtime facts are separated from pending certifications, DPA/residency commitments, deletion claims, and production deployment evidence. |
-| Carry public pricing into paid setup | `pricing/page.tsx`, `get-started/page.tsx`, `OnboardingForm.tsx`, `/api/answerlattice/onboard` | Starter/Growth/Studio and INR/USD survive the URL, browser, request, server validation, and returned billing acknowledgement. The API accepts monthly setup only. |
+| Carry public pricing into paid setup | `pricing/page.tsx`, `get-started/page.tsx`, `OnboardingForm.tsx`, `/api/answerlattice/onboard` | Launch/Growth/Studio survives the URL and request; the billing profile determines INR/USD through server validation and the returned billing acknowledgement. The API accepts monthly setup only. |
 | Make setup retries safe | `onboardingProvisioning.ts`, `onboardingProvisioningServer.ts`, `/api/answerlattice/onboard` | Fingerprinted attempts, bounded provider recovery, atomic finalization, payment-pending recovery, and exact Answerlattice ownership checks prevent cross-attempt/product cleanup. |
 | Prevent checkout-link injection | `src/lib/razorpay/checkoutUrl.ts`, onboarding API and browser form | Only credential-free HTTPS URLs on the exact `rzp.io` host and standard port are admitted; unsafe links become unavailable. |
 | Enforce canonical scope | `src/lib/answerlattice/canonicalRetrieval.ts` | Plan, role, and product state are eligibility filters, not score bonuses. Missing and mismatched scope fail closed. |
@@ -45,7 +45,7 @@ The point-in-time competitor study used Aidbase's public [homepage](https://www.
 ### Public desktop and mobile
 
 - `/demo`: all six stages were exercised in sequence; reset and stage controls worked; the 390×844 viewport had no document-level horizontal overflow after the `min-w-0` fix.
-- `/pricing`: current plan cards carry plan/currency selection into Get Started; secondary actions use 44px minimum targets.
+- `/pricing`: current plan cards carry plan selection into Get Started; billing country is collected in setup and determines checkout currency; secondary actions use 44px minimum targets.
 - `/get-started`: unauthenticated selection state, Google sign-in, preparation fields, and product return action were checked at mobile width.
 - `/trust`: current QA/production boundary, security review CTA, privacy/security links, narrow-screen layout, and primary touch targets were checked.
 - Header logo actions are 44px on desktop and drawer variants. Ordinary inline/footer text links remain text links rather than primary controls.

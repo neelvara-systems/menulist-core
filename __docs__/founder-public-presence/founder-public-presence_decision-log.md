@@ -275,3 +275,91 @@ creates catch-up volume, and external actions remain founder-controlled. No
 second original post was admitted on August 16 because the first post had just
 entered its observation window and no distinct time-sensitive lesson required
 same-day publication.
+
+## FPP-D014 — Run a bounded two-week acceleration sprint
+
+**Date:** August 23, 2026
+**Trigger:** The founder asked to move more aggressively after the initial
+account setup and first publishing cycle.
+
+**Decision:** Run a 14-day acceleration experiment with this maximum operating
+cadence:
+
+- Monday: one production-pattern original at 8:00 PM IST.
+- Tuesday: one short field-note original at 12:30 PM IST.
+- Wednesday: one audit or product-boundary original at 8:00 PM IST.
+- Thursday: one focused session with up to two substantive X replies.
+- Friday: one proof artifact at 8:00 PM IST.
+- Saturday: one Reddit comment only when a native technical question earns it,
+  followed by the weekly scorecard.
+- Sunday: no public action; select the next topics and reply themes.
+
+Each original, reply, and comment still requires its own exact execution packet,
+evidence, privacy, non-duplication, and native-format checks. The daily brief
+continues to name exactly one primary founder action, and no missed action
+creates catch-up volume.
+
+**Reason:** The founder has available time, and the account needs faster
+feedback on topic, format, and audience fit. A bounded sprint increases the
+number of learning opportunities without turning Proof & State into a noisy
+posting account or weakening the pseudonymous boundary.
+
+**Review:** At the end of 14 days, keep, narrow, or revert based on relevant
+replies, saves, thoughtful disagreement, audience quality, execution quality,
+and privacy integrity. Do not extend the higher cadence automatically.
+
+## FPP-D015 — Make the acceleration sprint X-only and weekend-active
+
+**Date:** August 23, 2026
+**Trigger:** The founder requested that Saturday and Sunday use the available
+bandwidth for more aggressive X presence, while temporarily excluding Reddit.
+
+**Decision:** During the 14-day sprint, use this X-only weekend cadence:
+
+- Saturday: one original at 11:00 AM IST and one focused reply session of up to
+  two substantive replies at 7:30 PM IST.
+- Sunday: one original at 11:00 AM IST and one focused reply session of up to
+  two substantive replies at 7:30 PM IST.
+
+Weekend originals must be distinct from weekday posts: a short field note,
+weekly synthesis, or proof observation—not a duplicate or rushed repost. The
+weekday sprint remains unchanged. Reddit is paused during this experiment.
+
+**Reason:** The founder has more weekend capacity and wants faster audience
+learning. Weekend availability is a valid experiment hypothesis, not proof that
+X rewards weekend posting; X describes recommendations as a multi-signal,
+personalized system rather than a universal time-based rule.
+
+**Measurement:** Compare weekend and weekday performance using relevant replies,
+saves, qualified follows, profile return, and audience quality. Impressions alone
+do not justify extending the cadence.
+
+## FPP-D016 — Enforce complete execution packets on every external content plan
+
+**Date:** August 23, 2026
+**Trigger:** The founder reiterated that every plan must contain the exact
+account URL or target post URL and the exact content to publish or reply with.
+
+**Decision:** No external content recommendation is considered ready unless its
+packet includes all of the following:
+
+- channel and action type;
+- exact account/profile URL;
+- for replies, exact target post URL and a read-only freshness check;
+- for originals, the Proof & State profile URL and exact final post text;
+- exact copy with intentional line breaks and punctuation;
+- topic rationale, audience problem, and evidence/source basis;
+- privacy/product boundary;
+- character count, native format, media, link, and disclosure checks;
+- exact Asia/Kolkata date and bounded publication window;
+- missed-window instruction;
+- one result line: `DONE <URL or result>`, `BLOCKED <reason>`, or
+  `SKIP <reason>`.
+
+If a target post cannot be verified, the packet must say `BLOCKED — target not
+verified` rather than provide an approximate link or invented reply. This rule
+applies to weekday, weekend, X, Reddit, and every future admitted channel.
+
+**Reason:** The founder should only need to review, approve, and perform the
+manual external action. Exact packets reduce ambiguity, prevent wrong-target
+replies, and make the learning record auditable.

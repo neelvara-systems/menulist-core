@@ -37,7 +37,11 @@ import { NextResponse } from 'next/server';
 import { hashPublicRateLimitValue } from "src/middleware/publicApi";
 import { verifyTenantAccess, withAuth } from "../../../../middleware/auth";
 import { PRODUCT_IDS } from '@constant/product';
-import { calculateConfiguredMenuListTax, getBillingProfileFromTaxSnapshot } from '@lib/billing/menulistTaxServer';
+import {
+    calculateConfiguredProductTax,
+    getBillingProfileFromTaxSnapshot,
+    productUsesConfiguredTax,
+} from '@lib/billing/productTaxServer';
 import { BillingTaxConfigurationError, BillingTaxProfileError } from '@data/shared/billingTaxPolicy';
 
 const LOG_FILE = "razorpay-topup.log";
@@ -245,8 +249,9 @@ export const POST = withAuth(async (request, session) => {
         if (typeof price !== 'number' || !Number.isSafeInteger(price) || price <= 0) {
             return NextResponse.json({ error: `Pricing for currency ${currency} not available for this pack.` }, { status: 400 });
         }
-        const taxSnapshot = productId === PRODUCT_IDS.MENULIST
-            ? calculateConfiguredMenuListTax({
+        const taxSnapshot = productUsesConfiguredTax(productId)
+            ? calculateConfiguredProductTax({
+                productId,
                 baseUnitAmount: price,
                 billingProfile: billingProfile
                     || getBillingProfileFromTaxSnapshot(activeSubscription.taxSnapshot)

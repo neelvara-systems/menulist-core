@@ -56,10 +56,9 @@ export default async function AnswerlatticeGetStartedPage(props: AnswerlatticeGe
     const searchParams = await props.searchParams;
     const basePath = await getBasePath();
     const requestedPlanId = readSingleSearchParam(searchParams?.plan);
-    const initialPlanId = ['answerlattice_starter', 'answerlattice_growth', 'answerlattice_studio'].includes(requestedPlanId)
+    const initialPlanId = ['answerlattice_launch', 'answerlattice_growth', 'answerlattice_studio'].includes(requestedPlanId)
         ? requestedPlanId
-        : 'answerlattice_starter';
-    const initialCurrency = readSingleSearchParam(searchParams?.currency).toUpperCase() === 'USD' ? 'USD' : 'INR';
+        : 'answerlattice_launch';
 
     return (
         <>
@@ -84,7 +83,6 @@ export default async function AnswerlatticeGetStartedPage(props: AnswerlatticeGe
                         >
                             <OnboardingForm
                                 basePath={basePath}
-                                initialCurrency={initialCurrency}
                                 initialPlanId={initialPlanId}
                             />
                         </div>

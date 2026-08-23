@@ -13,7 +13,7 @@ function buildAnswerlatticePageId(path: string): string {
 }
 
 export default function AnswerlatticeStructuredData() {
-    const starterPlan = getAnswerlatticePlanById('answerlattice_starter', 'MONTH');
+    const launchPlan = getAnswerlatticePlanById('answerlattice_launch', 'MONTH');
     const graph = {
         '@context': 'https://schema.org',
         '@graph': [
@@ -56,9 +56,9 @@ export default function AnswerlatticeStructuredData() {
                 operatingSystem: 'Web',
                 url: ANSWERLATTICE_SITE_URL,
                 description: ANSWERLATTICE_SITE_DESCRIPTION,
-                offers: starterPlan ? {
+                offers: launchPlan ? {
                     '@type': 'Offer',
-                    price: String(starterPlan.priceINR.price / 100),
+                    price: String(launchPlan.priceINR.price / 100),
                     priceCurrency: 'INR',
                     category: 'Subscription',
                     url: `${ANSWERLATTICE_SITE_URL}/pricing`,

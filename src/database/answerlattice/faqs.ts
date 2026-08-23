@@ -308,17 +308,21 @@ export const saveFaq = async (input: unknown) => {
             const scope = await requireScope();
             const parsed = parseAnswerlatticeFaqSaveInput(input, scope);
             const faqRef = parsed.id ? getDocRef(parsed.id) : doc(getCollectionRef());
+            const isNew = !parsed.id;
             const nextStatus = parsed.status;
             const now = Timestamp.now();
             const baseComposedData = await answerlatticeRequestBodyComposer({
                 ...parsed,
                 id: faqRef.id,
                 ...(nextStatus === ANSWERLATTICE_FAQ_STATUS.ARCHIVED ? { active: false } : {}),
-            }, { isNew: false });
+            }, { isNew });
             const nextArticleId = normalizeAnswerlatticeKbArticleId(parsed.articleId);
             const transactionResult = await runTransaction(answerlatticeFirebaseClient, async (transaction) => {
-                const existingSnap = await transaction.get(faqRef);
-                const existing = existingSnap.exists() ? existingSnap.data() as AnswerlatticeFaq : null;
+                const existingSnap = parsed.id ? await transaction.get(faqRef) : null;
+                if (parsed.id && !existingSnap?.exists()) {
+                    throw new Error('FAQ was not found. Refresh and try again.');
+                }
+                const existing = existingSnap?.exists() ? existingSnap.data() as AnswerlatticeFaq : null;
                 if (
                     existing
                     && (
@@ -374,7 +378,6 @@ export const saveFaq = async (input: unknown) => {
                     throw new Error('FAQ has invalid stored provenance and cannot be updated safely.');
                 }
 
-                const isNew = !existing;
                 const composedData = {
                     ...baseComposedData,
                     source: existingSource || ANSWERLATTICE_FAQ_SOURCE.MANUAL,
@@ -407,7 +410,11 @@ export const saveFaq = async (input: unknown) => {
                         sourceType: 'answerlattice_faq',
                     },
                 );
-                transaction.set(faqRef, composedData, { merge: true });
+                if (isNew) {
+                    transaction.set(faqRef, composedData);
+                } else {
+                    transaction.set(faqRef, composedData, { merge: true });
+                }
 
                 const shouldRemovePrevious = Boolean(
                     previousArticleId

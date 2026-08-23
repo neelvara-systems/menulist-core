@@ -10,6 +10,7 @@ import { menulistServerEnv } from '@lib/env/menulistServerEnv';
 const exactBoolean = (value: string | undefined): boolean => value === 'true';
 
 export const getMenuListTaxSupplierConfig = (): MenuListTaxSupplierConfig => ({
+    productName: 'MenuList',
     legalIdentityVerified: exactBoolean(menulistServerEnv.billingLegalIdentityVerified),
     merchantEntityId: menulistServerEnv.billingMerchantEntityId || '',
     legalName: menulistServerEnv.billingLegalSupplierName || '',

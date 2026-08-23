@@ -1,7 +1,7 @@
 # Answerlattice Backup and Recovery Runbook
 
-> **Status:** QA daily schedule active; isolated structural restore complete; fixture and separate-service recovery certification pending
-> **Last Updated:** 2026-08-21
+> **Status:** QA and production schedules active; available-snapshot recovery drills and cleanup complete; repeat tenant-lineage validation after a non-empty backup exists
+> **Last Updated:** 2026-08-23
 > **Scope:** Answerlattice Firestore managed backups and isolated restore rehearsal
 
 ## Recovery Objective
@@ -14,8 +14,9 @@
 
 These are operating targets, not verified production claims. The first QA cloud
 restore met the eight-hour structural target with an observed upper-bound RTO of
-32 minutes 7 seconds. Full recovery certification still requires the content,
-TTL, Storage, and Auth checks below.
+32 minutes 7 seconds. The August 23 closeout completed TTL, Storage, Auth-export,
+and cleanup evidence for the available empty snapshots. Tenant-lineage recovery
+must be repeated after a later backup contains workspace data.
 
 ## Boundaries
 
@@ -155,9 +156,8 @@ Completed on August 21, 2026:
   Firestore backup limitation.
 
 No runtime, Vercel environment, widget, API, scheduler, or public route was
-pointed at the recovery database. The isolated database remains delete-protected
-until fixture validation, TTL reapplication/readback, and an explicitly approved
-cleanup action are complete.
+pointed at the recovery database. It remained delete-protected until the
+August 23 closeout recorded below.
 
 ### Current Production Structural Restore Evidence
 
@@ -187,9 +187,29 @@ Completed on August 21, 2026:
 
 No runtime, Vercel environment, widget, API, scheduler, or public route was
 pointed at the production recovery database. The live production `(default)`
-database remained unchanged. The isolated database remains delete-protected
-until fixture validation, TTL reapplication/readback, Storage/Auth recovery
-evidence, and an explicitly approved cleanup action are complete.
+database remained unchanged. The isolated database remained delete-protected
+until the August 23 closeout recorded below.
+
+### August 23 Recovery Closeout
+
+- Both restored databases exposed all 100 expected composite indexes and zero
+  root document collections. The empty data state matches backups captured
+  before workspace data existed; tenant-lineage validation is deferred to the
+  first later backup containing real workspace documents.
+- All 18 TTL policies from `firestore-answerlattice.indexes.json` were applied
+  to each named recovery database and read back in state `ACTIVE`.
+- Each primary Firebase Storage bucket retained a seven-day soft-delete policy.
+  A labelled synthetic object passed upload, exact readback, soft delete,
+  restore, second readback, and live-object cleanup in both environments. The
+  soft-deleted generations expire on August 30, 2026.
+- Firebase Auth exportability passed in a mode-`0700` temporary directory: QA
+  exported one user and production exported zero. Counts only were recorded;
+  plaintext exports were deleted immediately.
+- With explicit owner approval, delete protection was disabled only on
+  `answerlattice-recovery-20260821` and
+  `answerlattice-prod-recovery-20260821`. Both databases were deleted, and
+  readback from both projects lists only `(default)`. Their managed backups
+  remain retained and can recreate isolated recovery databases.
 
 ## Restore Validation
 
@@ -234,9 +254,10 @@ For each rehearsal, record:
 - cleanup owner and completion evidence;
 - final pass/fail decision.
 
-Until every validation item is recorded, report: `The environment backup
-schedule and isolated structural restore are verified; fixture data, TTL,
-Storage, Auth, and cleanup evidence remain pending.`
+For the August 21 snapshots, report: `The schedules, isolated restores, exact
+TTL reapplication, Storage soft-delete recovery, Auth exportability, and cleanup
+are verified. The snapshots contained no workspace documents, so tenant-lineage
+recovery must be repeated after a non-empty backup exists.`
 
 ## Official References
 

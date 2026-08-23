@@ -1,11 +1,13 @@
 # Answerlattice Billing
 
-> **Version:** 2.0.1
-> **Last Updated:** 2026-07-19
+> **Version:** 3.0.0
+> **Last Updated:** 2026-08-24
 > **Audience:** Developers / Ops
 > **Feature audit:** Feature 30 of 44
 
 Answerlattice billing uses the same Razorpay subscription and top-up infrastructure as MenuList, but every payment request carries `productId: 'AL'` and persists Answerlattice subscription, top-up, and transaction data in Answerlattice Firebase.
+
+The current commercial contract is maintained in [Answerlattice Commercial System Implementation](./answerlattice-commercial-system_impl.md). It defines Launch, Growth, and Studio pricing; billing-country currency authority; frozen tax snapshots; Answerlattice invoice and credit-note issuance; refund-linked credit reversal; and email/consented-WhatsApp delivery.
 
 ## Surfaces
 
@@ -41,6 +43,10 @@ The billing and transactions surfaces require `canManageBilling`. Every authenti
 ## Key Files
 
 - `src/lib/billing/productBillingPlans.ts`
+- `src/lib/billing/productTaxServer.ts`
+- `src/lib/billing/answerlatticeTaxServer.ts`
+- `src/lib/billing/answerlatticeBillingDocumentServer.ts`
+- `src/lib/billing/answerlatticeBillingDocumentPdf.ts`
 - `src/lib/billing/productBillingServer.ts`
 - `src/hooks/usePaymentHandler.ts`
 - `src/components/templates/answerlattice/billing/AnswerlatticeBilling.tsx`
@@ -87,6 +93,9 @@ Subscription and invoice links pass the same exact hosted-payment boundary: HTTP
 - `npm run test:billing-checkout-concurrency:emulator`
 - `npm run test:billing-coordination:rules`
 - `npm run verify:answerlattice-runtime-truth`
+- `npm run verify:answerlattice-commercial-readiness:source`
+- `npm run test:answerlattice-taxation-policy`
+- `npm run test:billing-documents`
 - `npm run test:answerlattice-access-user-scope`
 - Local dev route compile: `/answerlattice/billing` served HTTP 200 in Next dev logs.
 - 2026-05-21 local Razorpay test-mode check: MenuList enhancement top-up completed end to end; Answerlattice support-credit order creation reached Razorpay checkout and wrote an Answerlattice-only pending `topups` document with `productId/pId: 'AL'` and tenant/store scope keys (`tenantId/tId` + internal `storeId/sId`).

@@ -587,9 +587,7 @@ export const POST = withAuth(async (request, session) => {
                 };
             }
 
-            const currentRefundDebt = productId === PRODUCT_IDS.MENULIST
-                ? subscriptionData?.topUpCreditRefundDebt ?? 0
-                : 0;
+            const currentRefundDebt = subscriptionData?.topUpCreditRefundDebt ?? 0;
             const debtAllocation = resolveTopupCreditDebtAllocation({
                 creditsPurchased: transactionSettlement.creditsToAdd,
                 refundDebt: currentRefundDebt,
@@ -622,7 +620,7 @@ export const POST = withAuth(async (request, session) => {
 
             tx.set(subscriptionRef, {
                 topUpCredits: newBalance,
-                ...(productId === PRODUCT_IDS.MENULIST ? { topUpCreditRefundDebt: remainingRefundDebt } : {}),
+                topUpCreditRefundDebt: remainingRefundDebt,
                 modifiedOn: serverNow,
             }, { merge: true });
             tx.set(topupRef, {

@@ -2,7 +2,7 @@
 
 > **Status:** Active owner/provider preparation ledger
 > **Scope:** MenuList production accounts, projects, credentials, and inactive provider configuration
-> **Last updated:** August 16, 2026
+> **Last updated:** August 23, 2026
 > **Current progress:** 50 of 62 checks complete; `PROD-B11` keyless architecture, provider preparation, production Cloud Tasks queue, and queue-scoped enqueuer IAM are complete, while the authenticated Firestore/Storage/Cloud Tasks hosted proof remains open; `PROD-B12` PITR and its restore drill are complete; `PROD-B13` App Check is registered in monitoring mode; production Gemini billing/credentials, the isolated production Sentry project, the exact-host Maps Embed credential, the isolated production Upstash database plus environment wiring, and the MFA-protected MenuList Resend boundary with verified outbound DNS and isolated production credentials/webhook are prepared; the existing company Razorpay Test Mode API pair is temporarily wired to the pre-live production candidate while KYC, Live Mode credentials, and the endpoint-specific production webhook remain release blockers; the current production Functions secret manifest is complete with a distinct internal budget-webhook secret; GA4, Telegram, external uptime monitoring, and production WhatsApp remain intentionally omitted; the MenuList-only Production environment inventory, exact domain rows, production Firebase Web/keyless server configuration, admitted-provider environment wiring, optional-provider fail-closed review, non-secret Functions runtime configuration, non-deploy source/configuration verification, and metadata-only environment-separation review are prepared; the full `menulist-qa` provider setup is complete; the remaining QA certification fixtures and device/provider testing are owner-accepted parallel work rather than a production-deployment blocker; the local release aggregate and scoped MenuList matrix are recorded under `PROD-F02`; the exact release commit is live on a Ready Vercel Production deployment, the six production domains are attached and cut over with TLS, Storage rules, all 166 declared Firestore composite indexes and field overrides, four WhatsApp-independent Functions targets, and exact-readback MenuList-only Firestore Security Rules are deployed; both Answerlattice targets are explicitly pending
 
 This is the step-by-step production provider setup guide for MenuList. It may
@@ -101,6 +101,17 @@ Blocked until staging feature certification and production release gates pass:
 ## Current Evidence
 
 - `admin@neelvara.com` is the authenticated company administrator.
+- `2026-08-23` - Current release revalidation found the same exact source commit
+  `d534e64822eb8aea8fc4b4ecd0f17a45090afed8` on both QA hosts
+  (`VERCEL_ENV=preview`) and both production hosts
+  (`VERCEL_ENV=production`). The Firebase CLI returned the complete production
+  Functions inventory with every listed target in `ACTIVE` state. MenuList
+  agent-readiness, workload-identity, managed-environment, Storage-lifecycle,
+  OAuth-routing, TypeScript, and root lint checks all passed. This is current
+  release and configuration evidence only: no production tenant, store,
+  subscription, Storage object, Cloud Task, provider callback, OAuth audience,
+  or App Check enforcement state was created or changed, so `PROD-B11`,
+  `PROD-F01`, and the remaining Phase F activation/device gates stay open.
 - Historical baseline before production-project creation: Firebase Console
   listed only `menulist-qa`. Current evidence below supersedes that baseline and
   confirms active Firebase project `menulist-prod`.

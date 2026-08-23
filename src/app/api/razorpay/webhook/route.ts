@@ -5,8 +5,8 @@ import { MENULIST_B2C_PLAN_IDS } from '@constant/menulistPlans';
 import { isValidMenuListPlanQuantity } from '@lib/billing/menulistPricingPolicy';
 import { resolveMenuListQuantityCreditUpdate } from '@data/shared/contentCreditPolicy';
 import {
-    resizeMenuListTaxSnapshot,
-    resolveMenuListTaxSettlementSnapshot,
+    resizeBillingTaxSnapshot,
+    resolveBillingTaxSettlementSnapshot,
 } from '@data/shared/billingTaxPolicy';
 import {
     getRazorpaySubscriptionWebhookPolicy,
@@ -33,6 +33,7 @@ import {
     logRazorpayNonBlockingFailure,
 } from "@lib/billing/razorpayDiagnostics";
 import { isAnswerlatticeBillingProduct } from "@lib/billing/productBillingPlans";
+import { productUsesConfiguredTax } from '@lib/billing/productTaxServer';
 import { getProductSubscriptionBillingScope } from '@lib/billing/productSubscriptionScopeBoundary';
 import {
     requireRazorpayRevenueAmountPaise,
@@ -53,13 +54,17 @@ import { finalizeProductSubscriptionReplacement } from '@lib/billing/subscriptio
 import { resolveSubscriptionReplacementEvidence } from '@lib/billing/subscriptionReplacementEvidence';
 import { hasVerifiedSubscriptionPaymentEvidence } from '@lib/billing/subscriptionPlanEntitlement';
 import {
-    settleMenuListTopupRefund,
+    settleProductTopupRefund,
     settleProductTopupFromProvider,
 } from "@lib/billing/topupSettlementServer";
 import {
     issueMenuListCreditNote,
     issueMenuListTaxInvoice,
 } from '@lib/billing/billingDocumentServer';
+import {
+    issueAnswerlatticeCreditNote,
+    issueAnswerlatticeTaxInvoice,
+} from '@lib/billing/answerlatticeBillingDocumentServer';
 import { logger } from "@lib/monitoring/logger";
 import {
     recordFounderRevenueMovement,
@@ -653,19 +658,25 @@ export async function POST(request: NextRequest) {
                 subscriptionId: eventSubscriptionId,
                 tenantId: eventSubscriptionScope?.tenantId ?? null,
             });
-            if (eventProductId === PRODUCT_IDS.MENULIST) {
-                await settleMenuListTopupRefund({
+            if (productUsesConfiguredTax(eventProductId)) {
+                await settleProductTopupRefund({
                     amount: refundAmountPaise,
                     currency: processedRefund.currency,
                     paymentId: processedRefund.paymentId,
+                    productId: eventProductId,
                     refundId: processedRefund.refundId,
                 });
-                await issueMenuListCreditNote({
+                const creditNoteInput = {
                     issuedAtMillis: processedRefund.createdAtMillis,
                     paymentId: processedRefund.paymentId,
                     refundAmount: refundAmountPaise,
                     refundId: processedRefund.refundId,
-                });
+                };
+                if (eventProductId === PRODUCT_IDS.ANSWERLATTICE) {
+                    await issueAnswerlatticeCreditNote(creditNoteInput);
+                } else {
+                    await issueMenuListCreditNote(creditNoteInput);
+                }
             }
             if (shouldSendProductBillingMessages && eventSubscription && eventSubscriptionScope) {
                 try {
@@ -757,22 +768,27 @@ export async function POST(request: NextRequest) {
                         tId: topupSubscriptionScope.tenantId,
                         tenantId: topupSubscriptionScope.tenantId,
                     }, webhookClaim.eventKey);
-                    if (eventProductId === PRODUCT_IDS.MENULIST) {
+                    if (productUsesConfiguredTax(eventProductId)) {
                         const issuedAtMillis = resolvePaymentOccurredAt();
                         if (!issuedAtMillis || !topupApplication.taxSnapshot) {
-                            throw new Error('Paid MenuList top-up is missing invoice tax evidence.');
+                            throw new Error('Paid top-up is missing invoice tax evidence.');
                         }
-                        await issueMenuListTaxInvoice({
+                        const invoiceInput = {
                             description: `${topupApplication.settlement.packName} content credit pack`,
                             issuedAtMillis,
                             orderId: orderEntity.id,
                             paymentId: paymentEntity.id,
-                            source: 'topup',
+                            source: 'topup' as const,
                             sourceReferenceId: orderEntity.id,
                             storeId: topupSubscriptionScope.storeId,
                             taxSnapshot: topupApplication.taxSnapshot,
                             tenantId: topupSubscriptionScope.tenantId,
-                        });
+                        };
+                        if (eventProductId === PRODUCT_IDS.ANSWERLATTICE) {
+                            await issueAnswerlatticeTaxInvoice(invoiceInput);
+                        } else {
+                            await issueMenuListTaxInvoice(invoiceInput);
+                        }
                     }
                     await recordFounderRevenueMovement({
                         amountPaise: topupApplication.settlement.amount,
@@ -1062,8 +1078,8 @@ export async function POST(request: NextRequest) {
                         totalPaymentsNeededCount: providerState.totalCount,
                         totalPaymentsMadeCount: providerState.paidCount,
                         quantity: providerState.quantity,
-                        ...(eventProductId === PRODUCT_IDS.MENULIST && internalSub.taxSnapshot ? {
-                            taxSnapshot: resizeMenuListTaxSnapshot(internalSub.taxSnapshot, providerState.quantity),
+                        ...(productUsesConfiguredTax(eventProductId) && internalSub.taxSnapshot ? {
+                            taxSnapshot: resizeBillingTaxSnapshot(internalSub.taxSnapshot, providerState.quantity),
                         } : {}),
                         lastWebhook: { event: event.event, timestamp: Timestamp.now() },
                     },
@@ -1118,8 +1134,8 @@ export async function POST(request: NextRequest) {
                         pastDueSinceAt: null,
                         totalPaymentsNeededCount: providerState.totalCount,
                         quantity: providerState.quantity,
-                        ...(eventProductId === PRODUCT_IDS.MENULIST && internalSub.taxSnapshot ? {
-                            taxSnapshot: resizeMenuListTaxSnapshot(internalSub.taxSnapshot, providerState.quantity),
+                        ...(productUsesConfiguredTax(eventProductId) && internalSub.taxSnapshot ? {
+                            taxSnapshot: resizeBillingTaxSnapshot(internalSub.taxSnapshot, providerState.quantity),
                         } : {}),
                         lastWebhook: { event: event.event, timestamp: Timestamp.now() },
                     },
@@ -1211,16 +1227,16 @@ export async function POST(request: NextRequest) {
                     if (currentBillingPeriod === null) {
                         throw new Error('Invalid provider billing cycle.');
                     }
-                    const currentTaxSnapshot = eventProductId === PRODUCT_IDS.MENULIST && internalSub.taxSnapshot
-                        ? resolveMenuListTaxSettlementSnapshot({
+                    const currentTaxSnapshot = productUsesConfiguredTax(eventProductId) && internalSub.taxSnapshot
+                        ? resolveBillingTaxSettlementSnapshot({
                             amount: requireRazorpayRevenueAmountPaise(paymentEntity.amount),
                             currency: String(paymentEntity.currency || ''),
                             quantity: providerState.quantity,
                             snapshot: internalSub.taxSnapshot,
                         })
                         : undefined;
-                    if (eventProductId === PRODUCT_IDS.MENULIST && !currentTaxSnapshot) {
-                        throw new Error('Captured provider amount does not match stored MenuList tax terms.');
+                    if (productUsesConfiguredTax(eventProductId) && !currentTaxSnapshot) {
+                        throw new Error('Captured provider amount does not match stored product tax terms.');
                     }
                     const paymentHistoryId = paymentEntity.id;
                     const updatePayload: Partial<FirestoreSubscriptionDoc> = {
@@ -1260,25 +1276,30 @@ export async function POST(request: NextRequest) {
                     if (!paymentApplication || (!paymentApplication.applied && !paymentApplication.duplicate)) {
                         break;
                     }
-                    if (eventProductId === PRODUCT_IDS.MENULIST && currentTaxSnapshot) {
+                    if (productUsesConfiguredTax(eventProductId) && currentTaxSnapshot) {
                         const subscriptionScope = getProductSubscriptionBillingScope(eventProductId, internalSub);
                         const issuedAtMillis = resolvePaymentOccurredAt();
                         if (!subscriptionScope || !issuedAtMillis) {
-                            throw new Error('Charged MenuList subscription is missing invoice scope.');
+                            throw new Error('Charged subscription is missing invoice scope.');
                         }
-                        await issueMenuListTaxInvoice({
-                            description: `${planDetails.name || internalSub.planName || 'MenuList'} ${billingInterval === 'YEAR' ? 'annual' : 'monthly'} subscription`,
+                        const invoiceInput = {
+                            description: `${planDetails.name || internalSub.planName || (eventProductId === PRODUCT_IDS.ANSWERLATTICE ? 'Answerlattice' : 'MenuList')} ${billingInterval === 'YEAR' ? 'annual' : 'monthly'} subscription`,
                             issuedAtMillis,
                             paymentId: paymentEntity.id,
                             providerInvoiceId: paymentEntity.invoice_id || undefined,
                             providerInvoiceUrl: eventPayloadToUpload.invoiceUrl || undefined,
-                            source: 'subscription',
+                            source: 'subscription' as const,
                             sourceReferenceId: paymentEntity.id,
                             storeId: subscriptionScope.storeId,
                             subscriptionId: subscriptionEntity.id,
                             taxSnapshot: currentTaxSnapshot,
                             tenantId: subscriptionScope.tenantId,
-                        });
+                        };
+                        if (eventProductId === PRODUCT_IDS.ANSWERLATTICE) {
+                            await issueAnswerlatticeTaxInvoice(invoiceInput);
+                        } else {
+                            await issueMenuListTaxInvoice(invoiceInput);
+                        }
                     }
                     const previousBillingHistory = Array.isArray(
                         paymentApplication.previousSubscription.billingHistory,
@@ -1749,8 +1770,8 @@ export async function POST(request: NextRequest) {
                             providerStatus,
                             ...(quantity == null ? {} : {
                                 quantity,
-                                ...(eventProductId === PRODUCT_IDS.MENULIST && updatedInternalSub.taxSnapshot
-                                    ? { taxSnapshot: resizeMenuListTaxSnapshot(updatedInternalSub.taxSnapshot, quantity) }
+                                ...(productUsesConfiguredTax(eventProductId) && updatedInternalSub.taxSnapshot
+                                    ? { taxSnapshot: resizeBillingTaxSnapshot(updatedInternalSub.taxSnapshot, quantity) }
                                     : {}),
                                 ...(eventProductId === PRODUCT_IDS.MENULIST
                                     && updatedInternalSub.planId === MENULIST_B2C_PLAN_IDS.MULTI_LOCATION

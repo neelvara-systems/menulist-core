@@ -1,7 +1,7 @@
 # Answerlattice Billing — Firebase Cost
 
-> **Version:** 2.0.4
-> **Last Updated:** 2026-07-29
+> **Version:** 3.0.0
+> **Last Updated:** 2026-08-24
 > **Audience:** Developers / Ops
 
 ## Collections
@@ -23,6 +23,8 @@ Billing read failures and entitlement sync failures use `src/lib/answerlattice/d
 | `topups` | SERVER READ/WRITE | support credit order create / authenticated API verify / signed `order.paid` recovery | One immutable snapshot by Razorpay order id; shared transaction settlement is idempotent and product-scoped; no Answerlattice tenant browser read |
 | `payment_transactions` | WRITE | Razorpay webhook audit | One compact transaction row per payment event |
 | `payment_transactions` | QUERY | transactions screen / billing history | Scoped by exact `pId: AL` + `productId: AL`, `tenantId`, `storeId`, paid event, ordered by `created_at desc`, and limited to 25 in Firestore |
+| `billingDocuments` | SERVER READ/WRITE | captured payment invoice / settled refund credit note / protected Billing summary and PDF APIs | One immutable product-scoped document per idempotency key; direct browser reads and writes are denied |
+| `billingDocumentCounters` | SERVER TRANSACTION | invoice or credit-note number allocation | One Answerlattice-specific counter per document type and financial year; direct browser access is denied |
 | `stores` | WRITE | Answerlattice entitlement sync / support credit top-up verify / support-credit debit | Updates compact `answerlatticeSubscription` summary, current monthly credits, top-up credits, and reset period |
 | `answerlattice_aiOperations/{tId}/{sId}` | WRITE | Answerlattice app/API, legacy client-triggered helper, and Cloud Function AI provider calls | One compact accounting row per provider-backed call; raw provider payloads are not stored in accounting-only mode |
 | `answerlattice_aiOperations/{tId}/{sId}` | QUERY | transactions screen support-credit usage table through `/api/answerlattice/ai-operations` | Server/API-owned query scoped to resolved Answerlattice tenant/store, rate-limited before permission/read work, capped at 50 per request, default page size 12; direct tenant Firestore reads are not allowed because raw rows include platform accounting fields |
@@ -40,6 +42,7 @@ The browser operation-row projector is likewise read-only and cost neutral. Afte
 ## Cost Controls
 
 - No realtime listeners were added.
+- Billing-document issuance adds one idempotency lookup, one counter transaction, and one immutable document write only after signed settlement. Delivery retries update notification state and do not allocate another legal number.
 - Checkout response projection, hosted-URL normalization, and bounded Billing diagnostics add no Firestore operation.
 - Product-scoped client and Admin queries add both `pId == 'AL'` and `productId == 'AL'` to subscription fallback, current-active entitlement, Knowledge Intake/accounting, activation-summary, and transaction-history reads. This changes query admission and index shape, not the maximum valid-path document count.
 - Answerlattice Razorpay mutations re-read the current workspace store and current user membership/role before provider or financial mutation work. This adds one store read and up to two canonical user-query reads per admitted or rejected mutation; the bounded two-row legacy `tId` query runs only when the canonical tenant query misses. It prevents a stale session role or the default non-billing Manager role from reaching Admin-SDK billing writes.
@@ -77,6 +80,8 @@ Separate Answerlattice Firestore rules allow billing-permission-scoped reads for
 - `answerlattice_intakeUsageLedger/{ledgerId}` through its existing governed path
 
 Answerlattice browser users do not read `topups`. Payment routes and signed webhooks own top-up verification and settlement.
+
+Answerlattice browser users also do not read `billingDocuments` or `billingDocumentCounters` directly. Protected product-aware APIs resolve current `canManageBilling` authority, return a bounded owner-safe summary, and stream the approved PDF. Dedicated composite indexes support workspace history, payment-idempotency lookup, and invoice-linked credit-note lookup.
 
 `answerlattice_aiOperations/{tId}/{sId}/{docId}` direct Firestore reads are platform-only. Owner billing history reads go through `/api/answerlattice/ai-operations`, which validates query shape, resolves tenant/store session scope, rate-limits before permission/read work, applies Answerlattice billing permission checks, uses capped pagination, filters owner-safe fields, and logs read failures with bounded scope/query metadata. The route also validates operation-history query cursors and date filters through `src/lib/ai/operationHistoryQuery.ts`: cursor values must be simple Firestore document IDs, date filters must be strict `YYYY-MM-DD` or browser ISO `...Z` values, and reversed or wider-than-366-day ranges are rejected before Firestore cursor/query work. The browser DAL sends the request with no-store cache, same-origin credentials, and manual redirect handling, caps the route response at 512 KB, and runtime-projects every row plus the exact pagination/cursor relationship before returning usage rows to billing screens; malformed, oversized, rejected, or wrong-shape responses stay on fixed local failure handling with bounded diagnostics.
 

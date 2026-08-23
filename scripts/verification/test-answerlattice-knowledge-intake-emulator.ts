@@ -69,6 +69,8 @@ async function seedPackBilling(): Promise<string> {
             tenantId: scope.tId,
             storeId: scope.sId,
             status: 'active',
+            billingMode: 'manual',
+            manualPaymentConfirmed: true,
             cycleStartDate,
             cycleEndDate: Timestamp.fromMillis(Date.now() + 86_400_000),
             monthlyCreditsAllowance: 5,
@@ -521,8 +523,8 @@ async function run(): Promise<void> {
         contentHash: 'f'.repeat(64),
         modifiedOn: Timestamp.now(),
     }, { merge: true });
-    let releaseProvider: (() => void) | null = null;
-    let providerEntered: (() => void) | null = null;
+    let releaseProvider: () => void = () => undefined;
+    let providerEntered: () => void = () => undefined;
     const providerEnteredPromise = new Promise<void>((resolve) => { providerEntered = resolve; });
     const providerReleasePromise = new Promise<void>((resolve) => { releaseProvider = resolve; });
     const runningGeneration = generateAnswerlatticeProductStarterPack(
@@ -532,7 +534,7 @@ async function run(): Promise<void> {
         actor,
         {
             generateContent: async () => {
-                providerEntered?.();
+                providerEntered();
                 await providerReleasePromise;
                 return { text: JSON.stringify(buildPackCandidates(packSourceId, packEntityId)) };
             },
@@ -549,7 +551,7 @@ async function run(): Promise<void> {
         ),
         /already running/,
     );
-    releaseProvider?.();
+    releaseProvider();
     const concurrentPack = await runningGeneration;
     assert.equal(concurrentPack.reviewItems.length, 10);
     assert.equal((await db.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc(subscriptionId).get()).data()?.monthlyCredits, 2);
@@ -558,9 +560,23 @@ async function run(): Promise<void> {
     await updateKnowledgeIntakeReviewItem(scope, packJobId, canonicalPackItem.id, {
         status: 'accepted',
     }, actor);
+    const packBeforePartialPublish = await getKnowledgeIntakeBundle(scope, packJobId);
+    const remainingDraftCount = packBeforePartialPublish.reviewItems.filter(item => item.status === 'draft').length;
+    assert.ok(remainingDraftCount > 0, 'the partial-publication regression requires remaining drafts');
     const canonicalPublishResult = await publishKnowledgeIntakeJob(scope, packJobId, [canonicalPackItem.id], actor);
     assert.equal(canonicalPublishResult.published.length, 1);
     assert.equal(canonicalPublishResult.published[0]?.target, 'canonical_proposal');
+    const partiallyPublishedPack = await getKnowledgeIntakeBundle(scope, packJobId);
+    assert.equal(
+        partiallyPublishedPack.job?.status,
+        'reviewing',
+        'publishing one accepted item must keep the intake reviewable while other drafts remain',
+    );
+    assert.equal(
+        partiallyPublishedPack.reviewItems.filter(item => item.status === 'draft').length,
+        remainingDraftCount,
+        'partial publication must preserve the remaining owner-review drafts',
+    );
     const canonicalProposal = await db.collection(DB_COLLECTIONS.ANSWERLATTICE_MUTATION_PROPOSALS)
         .doc(canonicalPublishResult.published[0].id)
         .get();

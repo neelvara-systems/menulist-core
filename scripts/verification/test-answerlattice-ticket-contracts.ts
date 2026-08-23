@@ -12,6 +12,7 @@ import {
     parseAnswerlatticeTicketMutation,
 } from '@lib/answerlattice/supportTicketLifecycle';
 import { resolveAnswerlatticeSupportTicketActor } from '@lib/answerlattice/supportTicketActor';
+import { getAnswerlatticeCustomerIdentity } from '@lib/answerlattice/customerIdentity';
 import {
     calculateSupportTicketSLAStatus,
     getFirstSupportTicketResponse,
@@ -28,6 +29,28 @@ assert.throws(() => resolveAnswerlatticeSupportTicketActor({
     user: { id: '', name: 'Owner', email: 'owner@example.com' },
 }), /answerlattice_ticket_actor_invalid/);
 const actor = { id: 'owner-1', name: 'Owner', email: 'owner@example.com' };
+assert.deepEqual(getAnswerlatticeCustomerIdentity({
+    uId: 'widget-visitor-1',
+    clientDetails: { storeName: '', tenantName: '', email: '', phone: '' },
+    widgetEscalation: {
+        submittedName: 'MenuList Guest',
+        replyEmail: 'GUEST@EXAMPLE.COM',
+    },
+}), {
+    displayName: 'MenuList Guest',
+    userId: 'widget-visitor-1',
+    email: 'guest@example.com',
+    phone: null,
+    origin: null,
+    path: null,
+    sessionId: null,
+});
+assert.equal(getAnswerlatticeCustomerIdentity({
+    messages: [{
+        type: 'user',
+        sender: { name: 'First requester', email: 'first@example.com' },
+    }],
+}).displayName, 'First requester');
 const persistedMessageWithoutAttachments = prepareAnswerlatticeTicketMessageForPersistence({
     id: 'message-with-optional-attachments',
     text: 'Reply',
@@ -266,6 +289,14 @@ assert.equal(parseAnswerlatticeSupportTicketDocument({
 }), null);
 
 const ticketDal = fs.readFileSync(path.join(ROOT, 'src/database/tickets/index.ts'), 'utf8');
+const ticketColumns = fs.readFileSync(path.join(ROOT, 'src/components/templates/platform/supportTickets/TicketTableColumns.tsx'), 'utf8');
+const ticketDashboard = fs.readFileSync(path.join(ROOT, 'src/components/templates/platform/supportTickets/index.tsx'), 'utf8');
+const ticketView = fs.readFileSync(path.join(ROOT, 'src/components/templates/platform/supportTickets/PlatformTicketsView.tsx'), 'utf8');
+const ticketFilters = fs.readFileSync(path.join(ROOT, 'src/components/templates/platform/supportTickets/TicketFiltersBar.tsx'), 'utf8');
+const ticketActions = fs.readFileSync(path.join(ROOT, 'src/components/templates/platform/supportTickets/TicketActions.tsx'), 'utf8');
+const ticketExports = fs.readFileSync(path.join(ROOT, 'src/components/templates/platform/supportTickets/exportConfig.ts'), 'utf8');
+const answerlatticeHeader = fs.readFileSync(path.join(ROOT, 'src/components/answerlattice/AnswerlatticeHeader.tsx'), 'utf8');
+const antdOverrides = fs.readFileSync(path.join(ROOT, 'public/styles/base/_antdOverride.scss'), 'utf8');
 assert.ok(ticketDal.includes('runTransaction(answerlatticeFirebaseClient'), 'ticket mutations must use transactions');
 assert.ok(ticketDal.includes("where('pId', '==', PRODUCT_IDS.ANSWERLATTICE)"), 'ticket queries must filter the Answerlattice product');
 assert.ok(ticketDal.includes('session: scope,'), 'ticket uploads must use the verified target ticket scope');
@@ -280,6 +311,19 @@ assert.ok(!ticketDal.includes('updateTicket = async (data: any)'), 'ticket updat
 assert.ok(!ticketDal.includes('attachments?: any[]'), 'ticket attachments must enter through the runtime-validated unknown boundary');
 assert.ok(!ticketDal.includes('_currentStatuses: any[]'), 'legacy ticket status snapshots must not weaken the mutation boundary');
 assert.ok(!ticketDal.includes('uploadedUrl: any'), 'ticket storage results must preserve the upload helper return contract');
+assert.ok(ticketColumns.includes('getAnswerlatticeCustomerIdentity(record)'), 'ticket requester UI must use the shared customer identity projection');
+assert.ok(ticketView.includes('const requester = getAnswerlatticeCustomerIdentity(ticket);'), 'ticket search and filters must use the shared requester projection');
+assert.ok(ticketView.includes('requester.displayName === filters.client'), 'ticket requester filters must match the projected display name');
+assert.ok(ticketFilters.includes('>Requester</Text>'), 'ticket filters must describe requester identity rather than legacy store fields');
+assert.ok(ticketActions.includes('const requester = getAnswerlatticeCustomerIdentity(ticket);'), 'ticket details must use the shared requester projection');
+assert.ok(ticketExports.includes("header: 'Requester Name'"), 'ticket CSV exports must include projected requester names');
+assert.ok(ticketExports.includes('getAnswerlatticeCustomerIdentity(ticket).email'), 'ticket CSV exports must include projected requester contact');
+assert.ok(ticketDashboard.includes("flexDirection: 'row'"), 'ticket segmented controls must keep icon and label on one row');
+assert.ok(ticketDashboard.includes("flexWrap: 'nowrap'"), 'ticket segmented controls must not split icon and label');
+assert.ok(answerlatticeHeader.includes("flexDirection: 'row'"), 'Answerlattice header navigation controls must use horizontal alignment');
+assert.ok(answerlatticeHeader.includes('height: 44'), 'Answerlattice header navigation controls must retain accessible target height');
+assert.ok(antdOverrides.includes('flex-direction: row;'), 'shared segmented labels must preserve horizontal flow');
+assert.ok(antdOverrides.includes('white-space: nowrap;'), 'shared segmented labels must preserve one-line labels');
 
 for (const indexFile of ['firestore-answerlattice.indexes.json', 'firestore.indexes.json']) {
     const indexes = JSON.parse(fs.readFileSync(path.join(ROOT, indexFile), 'utf8')).indexes as Array<any>;

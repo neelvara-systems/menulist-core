@@ -10,13 +10,21 @@ export const ANSWERLATTICE_CREDIT_PACKS_LIST: AIEnhancementPack[] = [
         name: 'Support Credit Pack',
         description: 'Extra Answerlattice credits for provider fallback answers, full-runtime answer tests, starter-answer generation, screenshot OCR, and short recording transcription. One-time purchase. No expiry.',
         creditAmount: 500,
-        priceINR: { price: 249900, monthlyCredits: null },
-        priceUSD: { price: 3000, monthlyCredits: null },
+        priceINR: { price: 199900, monthlyCredits: null },
+        priceUSD: { price: 3900, monthlyCredits: null },
+    },
+    {
+        packId: 'answerlattice_support_credits_2000',
+        name: 'Support Credit Pack 2000',
+        description: 'Extra Answerlattice credits for larger provider-backed intake, testing, OCR, transcription, and governed support workloads. One-time purchase. No expiry.',
+        creditAmount: 2000,
+        priceINR: { price: 599900, monthlyCredits: null },
+        priceUSD: { price: 11900, monthlyCredits: null },
     },
 ];
 
 export const ANSWERLATTICE_PLAN_TIER_ORDER: Record<string, number> = {
-    answerlattice_starter: 1,
+    answerlattice_launch: 1,
     answerlattice_growth: 2,
     answerlattice_studio: 3,
 };

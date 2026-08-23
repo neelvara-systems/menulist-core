@@ -4,7 +4,7 @@ import AnswerlatticeLink from './AnswerlatticeLink';
 import SectionHeader from './SectionHeader';
 
 const PLAN_FIT: Record<string, string> = {
-    answerlattice_starter: 'Best for one SaaS app preparing its first support layer.',
+    answerlattice_launch: 'Best for one SaaS app preparing its first support layer.',
     answerlattice_growth: 'Best for active SaaS apps that need weekly review and higher capacity.',
     answerlattice_studio: 'Best for studios or agencies launching multiple SaaS products.',
 };
@@ -22,7 +22,7 @@ export default function PricingPreviewSection({ basePath = '' }: { basePath?: st
                 <SectionHeader
                     eyebrow="Pricing preview"
                     title="Start small. Upgrade when support volume grows."
-                    description="Starter is for solo founders launching support. Growth is for live SaaS products with real support volume. Studio is for agencies and multi-product teams."
+                    description="Launch is for one SaaS product building its first governed support layer. Growth is for live products with real support volume. Studio is for agencies and multi-product teams."
                 />
                 <div className="al-pricing-preview__grid">
                     {plans.map((plan) => (
@@ -62,7 +62,7 @@ export default function PricingPreviewSection({ basePath = '' }: { basePath?: st
                         basePath={basePath}
                         href="/get-started"
                         data-answerlattice-event="homepage_pricing_clicked"
-                        data-answerlattice-label="start_starter_from_pricing_preview"
+                        data-answerlattice-label="start_launch_from_pricing_preview"
                         className="al-pricing-preview__button al-pricing-preview__button--primary"
                     >
                         Create workspace

@@ -115,7 +115,7 @@ The deterministic demo has no network/provider path. Get Started uses native for
 | `/install.md`, `/install/**/*.md` | Machine-Readable Install Docs | Markdown mirrors generated from the AnswerLattice install contract for coding agents, including `/install/contracts.md` for the v1 widget contract |
 | `/agents/answerlattice/*` | Agent Kit Files | Public AGENTS.md, CLAUDE.md, Cursor, Windsurf, skill, and ZIP download generated from the same v1 contract |
 | `/integrations` | Integrations | Slack and email workflow notifications for support governance, including test delivery, compact health, bounded delivery, and controlled adapter boundaries |
-| `/pricing` | Pricing | INR and USD Starter/Growth/Studio packaging, paid setup, and support-credit top-up explanation |
+| `/pricing` | Pricing | INR and USD Launch/Growth/Studio packaging, paid setup, and support-credit top-up explanation |
 | `/resources` | Resources | AnswerLattice learning hub for pre-onboarding, product evaluation, setup, feedback review, widget install, governance, and safety |
 | `/resources/founder-launch-kit` | Founder Launch Kit | Seven-step source, first-ten question, approval, test, install, outcome, and weekly-review workflow for founders and studios |
 | `/resources/answerlattice-operating-guide` | Operating Guide | Progressive manual for starting with one owner, adding team coordination when ownership spreads, and introducing deeper governance when answer risk grows |
@@ -142,7 +142,7 @@ The deterministic demo has no network/provider path. Get Started uses native for
 | `/faq` | FAQ | Grouped founder questions about setup, team access, widget context, feedback review, screenshots, hosted help, custom domains, safe ticket context, FAQ generation, pricing, tickets, runtime safety, and data handling |
 | `/about` | About | Company beliefs + AnswerLattice operating principles |
 | `/contact` | Contact | AnswerLattice-owned inquiry form plus direct contact paths for setup, demos, pricing, security, and partnerships |
-| `/get-started` | Get Started | Self-service onboarding for a selected monthly plan and INR/USD checkout, with resumable provider provisioning and a pre-onboarding prompt for source preparation |
+| `/get-started` | Get Started | Self-service onboarding for a selected monthly plan and billing-country-derived INR/USD checkout, with resumable provider provisioning and a pre-onboarding prompt for source preparation |
 | `/privacy-policy` | Privacy Policy | Public privacy summary for account, team access, workspace, support, and widget data |
 | `/terms-of-service` | Terms of Service | Public terms summary for account, content, widget, and service usage |
 | `/llms.txt` | Agent Context | Short agent-readable AnswerLattice product, route, and non-goal context |

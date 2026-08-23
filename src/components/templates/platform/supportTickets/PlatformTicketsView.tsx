@@ -2,6 +2,7 @@
 
 import { assertSupportTicketUpdateSucceeded, updateTicket } from '@database/tickets';
 import { useAppDispatch } from '@hook/useAppDispatch';
+import { getAnswerlatticeCustomerIdentity } from '@lib/answerlattice/customerIdentity';
 import AddSupportTicket from '@organisms/addSupportTicket';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
 import {
@@ -42,7 +43,7 @@ const PlatformTicketsView = forwardRef<PlatformTicketsViewRef, PlatformTicketsVi
         status: '',
         priority: '',
         category: '',
-        client: '',  // Filter by store name
+        client: '',  // Filter by requester display name
         dateRange: null as [any, any] | null,
         tags: [] as string[],
         slaStatus: '',  // 'breached', 'at_risk', 'on_time'
@@ -53,12 +54,13 @@ const PlatformTicketsView = forwardRef<PlatformTicketsViewRef, PlatformTicketsVi
         setFilters(prev => ({ ...prev, [key]: value }));
     };
 
-    // Get unique clients from tickets
+    // Use the same requester projection as the table, details, and exports.
     const uniqueClients = useMemo(() => {
         const clientSet = new Set<string>();
         tickets.forEach(ticket => {
-            if (ticket.clientDetails?.storeName) {
-                clientSet.add(ticket.clientDetails.storeName);
+            const requester = getAnswerlatticeCustomerIdentity(ticket);
+            if (requester.displayName !== 'Unknown customer') {
+                clientSet.add(requester.displayName);
             }
         });
         return Array.from(clientSet).sort((a, b) => a.localeCompare(b));
@@ -67,20 +69,21 @@ const PlatformTicketsView = forwardRef<PlatformTicketsViewRef, PlatformTicketsVi
     const filteredTickets = useMemo(() => {
         return tickets?.filter(ticket => {
             const searchMatch = searchTerm.toLowerCase();
+            const requester = getAnswerlatticeCustomerIdentity(ticket);
             const matchesSearch = (
                 ticket.displayId.toLowerCase().includes(searchMatch) ||
                 ticket.subject.toLowerCase().includes(searchMatch) ||
-                ticket.clientDetails?.storeName?.toLowerCase()?.includes(searchMatch) ||
-                ticket.clientDetails?.tenantName?.toLowerCase()?.includes(searchMatch) ||
-                ticket.clientDetails?.email?.toLowerCase()?.includes(searchMatch) ||
-                ticket.clientDetails?.phone?.toLowerCase()?.includes(searchMatch)
+                requester.displayName.toLowerCase().includes(searchMatch) ||
+                requester.email?.toLowerCase().includes(searchMatch) ||
+                requester.phone?.toLowerCase().includes(searchMatch) ||
+                requester.userId?.toLowerCase().includes(searchMatch)
             );
 
             const matchesFilters =
                 (filters.status ? ticket.status === filters.status : true) &&
                 (filters.priority ? ticket.priority === filters.priority : true) &&
                 (filters.category ? ticket.category === filters.category : true) &&
-                (filters.client ? ticket.clientDetails?.storeName === filters.client : true);
+                (filters.client ? requester.displayName === filters.client : true);
 
             // Date range filter
             const createdOnMillis = getSupportTicketTimestampMillis(ticket.createdOn);

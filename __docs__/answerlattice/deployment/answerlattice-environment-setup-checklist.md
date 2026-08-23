@@ -173,6 +173,18 @@ Stop before any mutation when one of these is true:
     hosted deployment identity are configured and source-verified. The final
     custom-token/data-path proof needs an authorized disposable credential
     fixture, so it remains deferred testing rather than missing provider setup.
+  - August 23 current-build partial proof: an existing authenticated Canonica
+    session loaded the scoped Setup Status workspace and its Firestore-backed
+    counts without browser warnings or errors. This confirms the current
+    authenticated hosted and Firestore-backed read side. Keep the item open
+    until a disposable fixture explicitly proves custom-token signing, the
+    Storage lifecycle, and the admitted task path.
+  - Owner authorization was received for the disposable fixture. The hosted
+    Knowledge Intake route is correctly available but creation remains
+    fail-closed because the QA workspace license is `payment-pending` and has no
+    paid Knowledge Intake entitlement. No test entitlement or provider outcome
+    was fabricated. Independent scheduler/task and Storage recovery paths pass;
+    keep this item open for the licensed hosted data-path proof.
 
 ### Secrets And Providers
 
@@ -431,15 +443,26 @@ Stop before any mutation when one of these is true:
     Fixture-dependent App Check, widget, dashboard, ticket, KB, scheduler, and
     authenticated identity-path certification remains deferred testing and is
     not inferred from the base-host proof.
-- [ ] `AL-QA-E07` Complete a non-destructive backup/restore drill using
+- [x] `AL-QA-E07` Complete a non-destructive backup/restore drill using
   `answerlattice-backup-recovery-runbook.md`.
   - A daily 14-week managed-backup schedule is active. The first backup reached
     `READY`, and its isolated restore into delete-protected database
     `answerlattice-recovery-20260821` completed on August 21, 2026. The structural
     rehearsal preserved all 100 composite indexes. As expected, the 18 source
-    TTL policies were not restored. Keep this item open for fixture content and
-    tenant-lineage validation, TTL reapplication/readback, separate Storage/Auth
-    recovery evidence, and explicitly approved cleanup.
+    TTL policies were not restored automatically.
+  - August 23 closeout: authenticated Firestore REST readback found zero root
+    document collections, matching a backup snapshot taken before workspace
+    data existed; tenant-lineage checks are not applicable to this snapshot and
+    must be repeated after a later non-empty backup. All 18 exact
+    source-controlled TTL policies were reapplied and reached `ACTIVE`. The QA
+    primary Storage bucket passed synthetic upload, exact readback, soft delete,
+    restore, second readback, and live-object cleanup under its seven-day soft
+    delete policy. Firebase Auth export passed for one user inside a locked
+    temporary directory; the plaintext was deleted immediately. After explicit
+    owner approval and exact target readback, delete protection was disabled
+    only on `answerlattice-recovery-20260821`, that database was deleted, and
+    project readback lists only `(default)`. The retained managed backup can
+    recreate an isolated recovery database.
 
 QA provider and infrastructure setup closes when the checked core items plus
 `AL-QA-D08` through `AL-QA-D11` have current evidence, the Vercel QA
@@ -448,10 +471,9 @@ correction is released. The remaining hosted
 data-path portion of `AL-QA-C06`, authenticated application-call portion of
 `AL-QA-D06`, Firebase custom-token portion of `AL-QA-D07`, and
 fixture-dependent paths named under `AL-QA-E06` are testing-only evidence, not
-missing setup. `AL-QA-E07` is a post-setup recovery certification whose
-structural cloud restore is complete; its remaining fixture, TTL, Storage, Auth,
-and cleanup checks are not missing provider setup. Historical May/June deploy
-records do not waive current setup readbacks.
+missing setup. `AL-QA-E07` is complete for the available empty backup snapshot;
+repeat its tenant-lineage portion after a future backup contains real workspace
+data. Historical May/June deploy records do not waive current setup readbacks.
 
 ## Answerlattice Production
 
@@ -548,6 +570,17 @@ activation require an explicit scoped approval.
     deployment are active. Hosted proof now depends only on the authorized
     production workspace/data fixture and remains a certification gate, not a
     missing identity or deployment setup step.
+  - August 23 current-build readback reached the healthy production sign-in
+    boundary with no browser warnings or errors. No authenticated production
+    session was available, so no data was read or mutated and this item remains
+    open.
+  - After owner approval, the production sign-in was started with
+    `admin@neelvara.com` and reached the password boundary. The Firebase Auth
+    recovery export contains zero production users, so there is no existing
+    Answerlattice production Firebase identity or workspace to certify. No
+    password was requested, reset, or entered, and no production workspace was
+    created. Complete this item only after a legitimate production identity and
+    workspace exist through the approved launch sequence.
 
 ### Secrets, Providers, And Spend
 
@@ -732,9 +765,18 @@ activation require an explicit scoped approval.
     not restored and remain an explicit reapplication/readback step. The live
     production `(default)` database was not modified or connected to the
     recovery database. The new production authorization key passed a bounded
-    direct Gemini HTTP 200 `OK` call. Hosted authenticated backend smoke,
-    fixture-level tenant/data validation, Storage/Auth recovery evidence, TTL
-    reapplication, and approved cleanup remain open certification work.
+    direct Gemini HTTP 200 `OK` call.
+  - August 23 recovery closeout found zero root document collections, matching
+    the pre-workspace snapshot. All 18 source-controlled TTL policies were
+    reapplied and reached `ACTIVE`. The production primary Storage bucket passed
+    synthetic upload, exact readback, soft delete, restore, second readback, and
+    live-object cleanup. Firebase Auth export passed with zero users and its
+    temporary plaintext was deleted immediately. After exact target
+    confirmation, only `answerlattice-prod-recovery-20260821` was deleted and
+    project readback lists only `(default)`. The recovery portion is complete
+    for this empty snapshot; keep `AL-PROD-E06` open solely for authenticated
+    hosted backend smoke and a later non-empty tenant-lineage drill when
+    production data exists.
 - [x] `AL-PROD-E07` Record intentionally disabled providers and feature flags;
   setup closure must not silently activate them.
   - Optional Redis, Resend, SMTP, GitHub, WhatsApp, analytics, and provider-send
@@ -812,3 +854,8 @@ service-account JSON, or customer data.
 | 2026-08-23 | QA/production hosted provenance refresh | Pass | Read-only `/api/version` checks returned HTTP 200 and verified full build `aeb0fc2e34e20f182dd8758db9fc7e97105aba4d` from both Canonica aliases in Vercel `preview` and from the Answerlattice production apex in Vercel `production`; production `www` returned the intended HTTP 308 apex redirect. This supersedes the August 22 `buildId: local` evidence gap. Current Google AI Studio inventory already contains only one authorization key per Answerlattice project, so no retired production credential remains to drain or revoke. |
 | 2026-08-23 | Compiled-context source/runtime reconciliation | Local and deployed Functions parity; app release pending | The exact public-bundle identity validation already deployed in both QA and production Functions was recovered from authenticated Cloud Functions source archives and restored byte-for-byte to `functions-answerlattice/src/answerlattice/contextBundleBuilder.ts`; QA and production deployed copies share local file SHA-256 `dfd165bce3feedfd8577d5da8dec01d652943bafcf7134d5f8f201277d766b8e`. The same fail-closed ordering is restored in the Next.js server mirror and protected by the context-bundle version boundary. The local browser fixture now creates and reads back complete scoped source-version and empty bundle-manifest control-plane documents, so owner rebuild testing no longer depends on accidental emulator state. TypeScript, context-boundary, compiled-context invalidation emulator, fixture emulator, runtime-truth, final-readiness, backup/recovery, configuration, EmailOS, and security gates pass. The Functions runtime needs no redeployment because it already contains the exact patch; the Next.js mirror and fixture changes require a later explicitly authorized Vercel release. |
 | 2026-08-23 | Compiled-context QA Vercel release | Pass | Staging commit `e0bf57fd0ac42ccc6a7c7e434de22b2296d534b9` was pushed by explicit owner authorization. Vercel custom environment `qa` produced deployment `menulist-core-2yp98wb26-neelvara-systems.vercel.app`; `https://canonica.app/api/version` returned HTTP 200, verified full build `e0bf57fd0ac42ccc6a7c7e434de22b2296d534b9`, and environment `preview`. This publishes the restored Next.js compiled-context ownership check and deterministic local-fixture source to QA. Production remains unchanged. |
+| 2026-08-23 | Current-build Answerlattice readiness revalidation | Local, cloud-readback, and bounded hosted checks pass; four operator gates remain open | `/api/version` returned exact build `d534e64822eb8aea8fc4b4ecd0f17a45090afed8` from `canonica.app`, `www.canonica.app`, and the production apex; production `www` retained its intended HTTP 308 redirect. All 12 approved Functions in each Answerlattice Firebase project read `ACTIVE` on Node 22 in `us-central1`. The complete `verify:answerlattice-runtime-truth` aggregate, final-readiness, Answerlattice TypeScript, Functions build, WIF, backup/recovery, hosted-help, and public-website gates passed. A signed-in Canonica session loaded Setup Status without browser errors and reported 36% readiness, 5/14 setup checks, 0/7 launch checks, five mapped surfaces, and zero articles or trusted answers. Production redirected the unauthenticated dashboard request to its healthy sign-in page. No content, provider, subscription, Storage object, task, production workspace, or recovery database was mutated. `AL-QA-C06`, `AL-QA-E07`, `AL-PROD-C05`, and `AL-PROD-E06` remain open for their exact fixture/authenticated proofs. |
+| 2026-08-23 | QA and production recovery closeout | Available-snapshot recovery pass; cleanup complete | Firebase CLI and authenticated Firestore REST confirmed both dated recovery databases were completed restores with all 100 composite indexes and zero root document collections, consistent with snapshots taken before workspace data existed. All 18 exact TTL policies from `firestore-answerlattice.indexes.json` were reapplied to each recovery database and reached `ACTIVE`. In each primary Firebase Storage bucket, one labelled synthetic object passed upload, exact readback, soft delete, restore, second readback, and live-object cleanup; only policy-retained soft-deleted generations remain until August 30. Firebase Auth exports succeeded inside a mode-`0700` temporary directory for one QA user and zero production users; plaintext files were deleted immediately and no user data was printed or retained. With explicit owner approval, delete protection was disabled only on `answerlattice-recovery-20260821` and `answerlattice-prod-recovery-20260821`; both were deleted successfully and both projects now list only `(default)`. Managed backups remain retained. `AL-QA-E07` closes for the available snapshot. The recovery half of `AL-PROD-E06` closes; authenticated production smoke and future non-empty tenant-lineage evidence remain open. |
+| 2026-08-23 | Approved hosted fixture and production-auth attempt | Blocked safely by truthful lifecycle state | The existing signed-in Canonica workspace loaded normally. A labelled synthetic Knowledge Intake was prepared, but the server-owned license boundary rejected creation because the workspace remains `payment-pending` without paid Knowledge Intake entitlement; no entitlement, provider result, job, article, or customer truth was fabricated. Production sign-in with `admin@neelvara.com` reached the password boundary, while Auth export readback confirmed zero production Firebase users. No password was requested, reset, stored, or entered and no production workspace was created. `AL-QA-C06`, `AL-PROD-C05`, and the authenticated-smoke portion of `AL-PROD-E06` remain open until legitimate licensed QA and production identities/workspaces exist. |
+| 2026-08-23 | Prepared MenuList knowledge subset flow | Emulator pass; hosted provider proof remains gated | Imported prepared sources `01-product-context.md`, `02-menu-intake-and-owner-review.md`, `09-risk-boundaries-and-review-rules.md`, and one exact FAQ row from `08-support-faq-seed.csv` into a disposable local intake. Four inputs produced 15 review drafts; exact re-import deduplicated; source-governance remained fail-closed because that feature is disabled; only one KB article and one FAQ were approved while every other draft was rejected. Empty-selection publication, cross-tenant reads, post-publication editing, and replay publication failed closed. The article and FAQ published with source lineage, the article appeared in KB navigation/search, public rich-text rendering succeeded while private lineage was stripped, and all disposable job/source/review/article/FAQ records were deleted. Intake, KB publishing, search-cache, KB mutation, FAQ/public projection, and widget answer/escalation suites passed. The maintained intake emulator fixture was updated to carry explicit emulator-only manual-payment evidence and TypeScript-safe concurrency controls. Local article embedding correctly logged missing provider configuration and was not treated as hosted provider proof. The copied `menulist-og-official-source.png` was synchronized from its exact mapped source; the full 26-source/76-FAQ/75-question package verifier passes. |
+| 2026-08-23 | Authenticated local knowledge lifecycle and partial-publication repair | Pass; disposable fixture removed | Signed in through the local Firebase Auth fixture as `admin@neelvara.com`, created a disposable MenuList intake, pasted exact prepared product context and an approved FAQ row, and generated owner-review drafts. Browser testing exposed a lifecycle defect: publishing one accepted article marked the entire job complete while FAQ and canonical drafts still needed decisions, causing later FAQ acceptance to fail with HTTP 400. Completion now requires both zero accepted items and zero draft items. A new emulator regression snapshots all remaining drafts before a partial publish and proves they remain editable afterward. The browser retest published the article while the job stayed `reviewing`, then accepted and published the FAQ, rejected the unsupported canonical proposal, and closed the job as `published`. Both imported articles appeared under `Support Starter / Imported Product Knowledge`; article search filtered correctly; the FAQ directory showed the published owner answer; and widget search returned that exact answer with `answerSource: faq` and high confidence. The local Chrome tab, Next.js process, and in-memory Auth/Firestore/Storage emulator fixture were shut down after the run. |

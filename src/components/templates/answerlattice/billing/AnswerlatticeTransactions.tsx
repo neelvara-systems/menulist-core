@@ -7,6 +7,7 @@ import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScop
 import { formatAiOperationActionLabel, formatAiOperationCredits, getAiOperationOwnerSummary, getAiOperationTone } from '@lib/ai/operationPresentation';
 import type { AiOperationHistoryRow } from '@lib/ai/operationHistoryClientContract';
 import { formatBillingHistoryEvents } from '@lib/billing/billingHistoryFormatter';
+import { fetchAnswerlatticeBillingDocumentSummaries, mergeAnswerlatticeBillingDocumentsIntoHistory } from '@lib/billing/billingDocumentsClient';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { createLatestRequestGuard } from '@lib/runtime/latestRequestGuard';
 import type { BillingHistoryItem } from '@type/razorpay';
@@ -116,8 +117,9 @@ export default function AnswerlatticeTransactions() {
         setDataScopeKey(null);
         setIsLoading(true);
         try {
-            const [billingResult, aiOperationsResult] = await Promise.allSettled([
+            const [billingResult, documentsResult, aiOperationsResult] = await Promise.allSettled([
                 getAnswerlatticeBillingHistoryForStore(tenantId, storeId),
+                fetchAnswerlatticeBillingDocumentSummaries(),
                 getPaginatedAnswerlatticeAiOperations({
                     pageNumber: 1,
                     pageSize: AI_OPERATIONS_PAGE_SIZE,
@@ -126,14 +128,20 @@ export default function AnswerlatticeTransactions() {
             if (!requestGuard.isCurrent(requestId)) return;
 
             if (billingResult.status === 'fulfilled') {
-                setBillingHistory(formatBillingHistoryEvents(billingResult.value, {
+                const history = formatBillingHistoryEvents(billingResult.value, {
                     formatBillingCycle: (startSeconds, endSeconds) => {
                         if (!startSeconds || !endSeconds) return undefined;
                         const startDate = formatter.dateTime(new Date(startSeconds * 1000), { year: 'numeric', month: 'short', day: 'numeric' });
                         const endDate = formatter.dateTime(new Date(endSeconds * 1000), { year: 'numeric', month: 'short', day: 'numeric' });
                         return `${startDate}-${endDate}`;
                     },
-                }));
+                });
+                setBillingHistory(documentsResult.status === 'fulfilled'
+                    ? mergeAnswerlatticeBillingDocumentsIntoHistory(history, documentsResult.value)
+                    : history);
+                if (documentsResult.status === 'rejected') {
+                    logRuntimeFailure('answerlattice_billing_documents_load_failed', documentsResult.reason, getTransactionsLoadContext({ tenantId, storeId }));
+                }
             } else {
                 setBillingHistory([]);
                 logRuntimeFailure(ANSWERLATTICE_BILLING_HISTORY_LOAD_FAILED, billingResult.reason, getTransactionsLoadContext({ tenantId, storeId }));

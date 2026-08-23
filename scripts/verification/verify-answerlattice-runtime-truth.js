@@ -3303,7 +3303,7 @@ function verifyAnswerlatticePaidPlanPackaging() {
   const activationSummary = read('src/lib/answerlattice/activationSummary.ts');
   const activationContracts = read('scripts/verification/test-answerlattice-activation-contracts.ts');
 
-  assertIncludes(plans, 'Starter, Growth, Studio only. Active packaging has no zero-price tier.', 'Answerlattice plans paid packaging note');
+  assertIncludes(plans, 'Launch, Growth, Studio only. Active packaging has no zero-price tier.', 'Answerlattice plans paid packaging note');
   assertNotIncludes(plans, 'answerlattice_beta', 'Answerlattice active plan list');
   assertNotIncludes(plans, 'price: 0', 'Answerlattice active plan prices');
   assertIncludes(billingPlans, '.filter((plan) => plan.priceINR.price > 0 || plan.priceUSD.price > 0)', 'Answerlattice billing plan paid filter');
@@ -3334,7 +3334,7 @@ function verifyAnswerlatticePaidPlanPackaging() {
   assertIncludes(onboard, 'type AnswerlatticePendingSubscriptionSummary = {', 'Answerlattice onboarding exact pending store subscription summary');
   assertIncludes(onboard, 'const subscriptionSummary: AnswerlatticePendingSubscriptionSummary = {', 'Answerlattice onboarding typed pending summary projection');
   assertIncludes(onboard, '}).catch((): null => null);', 'Answerlattice onboarding exact provider recovery miss');
-  assertIncludes(onboard, "planId: z.string().trim().max(80).optional().default('answerlattice_starter')", 'Answerlattice onboarding defaults to Starter');
+  assertIncludes(onboard, "planId: z.string().trim().max(80).optional().default('answerlattice_launch')", 'Answerlattice onboarding defaults to Launch');
   assertIncludes(onboard, "code: 'ANSWERLATTICE_PAID_PLAN_REQUIRED', error: 'Paid plan is required.'", 'Answerlattice onboarding rejects zero-price plans');
   assertIncludes(onboard, 'getOrCreateRazorpayPlan', 'Answerlattice onboarding creates Razorpay plan');
   assertIncludes(onboard, 'razorpayClient.subscriptions.create', 'Answerlattice onboarding creates Razorpay subscription');
@@ -3342,8 +3342,8 @@ function verifyAnswerlatticePaidPlanPackaging() {
   assertNotIncludes(onboard, 'answerlattice_beta', 'Answerlattice onboarding beta plan id');
   assertNotIncludes(onboard, "'free'", 'Answerlattice onboarding free billing model');
 
-  assertIncludes(onboardingForm, "initialPlanId = 'answerlattice_starter'", 'Answerlattice public onboarding form defaults to Starter');
-  assertIncludes(onboardingForm, "ONBOARDING_PLAN_IDS.has(initialPlanId) ? initialPlanId : 'answerlattice_starter'", 'Answerlattice public onboarding plan selection fails back to Starter');
+  assertIncludes(onboardingForm, "initialPlanId = 'answerlattice_launch'", 'Answerlattice public onboarding form defaults to Launch');
+  assertIncludes(onboardingForm, "ONBOARDING_PLAN_IDS.has(initialPlanId) ? initialPlanId : 'answerlattice_launch'", 'Answerlattice public onboarding plan selection fails back to Launch');
   assertIncludes(onboardingForm, 'Complete payment to activate the paid plan.', 'Answerlattice public onboarding paid activation copy');
   assertIncludes(onboardingForm, 'ANSWERLATTICE_ONBOARD_RESPONSE_JSON_MAX_BYTES = 16 * 1024', 'Answerlattice public onboarding client response cap');
   assertIncludes(onboardingForm, 'readJsonResponseWithLimit<unknown>', 'Answerlattice public onboarding client bounded response parser');

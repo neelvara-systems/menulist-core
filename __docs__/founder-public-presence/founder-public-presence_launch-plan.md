@@ -76,6 +76,17 @@ later baseline or infer an algorithm effect from one result.
 This is thirty to forty-five focused minutes on active days. Do not manufacture
 activity after the limit is reached.
 
+### Two-week acceleration override
+
+For the bounded 14-day experiment, FPP-D014 and FPP-D015 temporarily replace the
+baseline with four weekday X originals (Monday, Tuesday field note, Wednesday,
+and Friday), one Thursday reply session, and an X-only weekend cadence: one
+Saturday original at 11:00 AM plus up to two replies at 7:30 PM, and one Sunday
+original at 11:00 AM plus up to two replies at 7:30 PM. Reddit is paused during
+the experiment. Every action still requires a separate execution packet; missed
+work does not create catch-up volume. Revert or narrow the override after the
+14-day review rather than extending it automatically.
+
 ## First Twelve X Posts
 
 The sequence deliberately establishes the territory before it mentions any

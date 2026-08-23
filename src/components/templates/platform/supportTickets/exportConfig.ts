@@ -5,6 +5,7 @@ import {
     SUPPORT_TICKET_STATUS,
     SupportTicketType,
 } from '@type/supportTicket';
+import { getAnswerlatticeCustomerIdentity } from '@lib/answerlattice/customerIdentity';
 import { CSVColumn, formatTimestampForCSV } from '@util/exportUtils';
 
 /**
@@ -17,6 +18,10 @@ export const ticketCSVColumns: CSVColumn<SupportTicketType>[] = [
         accessor: (ticket) => ticket.displayId,
     },
     {
+        header: 'Requester Name',
+        accessor: (ticket) => getAnswerlatticeCustomerIdentity(ticket).displayName,
+    },
+    {
         header: 'Client Store',
         accessor: (ticket) => ticket.clientDetails?.storeName || 'N/A',
     },
@@ -26,11 +31,11 @@ export const ticketCSVColumns: CSVColumn<SupportTicketType>[] = [
     },
     {
         header: 'Client Email',
-        accessor: (ticket) => ticket.clientDetails?.email || 'N/A',
+        accessor: (ticket) => getAnswerlatticeCustomerIdentity(ticket).email || 'N/A',
     },
     {
         header: 'Client Phone',
-        accessor: (ticket) => ticket.clientDetails?.phone || 'N/A',
+        accessor: (ticket) => getAnswerlatticeCustomerIdentity(ticket).phone || 'N/A',
     },
     {
         header: 'Status',
@@ -108,11 +113,11 @@ export const ticketCSVColumnsMinimal: CSVColumn<SupportTicketType>[] = [
     },
     {
         header: 'Client',
-        accessor: (ticket) => `${ticket.clientDetails?.storeName || 'N/A'} (${ticket.clientDetails?.tenantName || 'N/A'})`,
+        accessor: (ticket) => getAnswerlatticeCustomerIdentity(ticket).displayName,
     },
     {
         header: 'Client Email',
-        accessor: (ticket) => ticket.clientDetails?.email || 'N/A',
+        accessor: (ticket) => getAnswerlatticeCustomerIdentity(ticket).email || 'N/A',
     },
     {
         header: 'Status',
