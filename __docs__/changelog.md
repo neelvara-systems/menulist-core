@@ -1,5 +1,31 @@
 # MenuList — Changelog
 
+## August 23, 2026 - Firebase Release Promotion And Exact Readback
+
+- Re-ran the complete 42-suite MenuList Firestore predeploy matrix and promoted
+  one generated MenuList rules artifact to QA and production. Active readback
+  matches the 132,684-byte local artifact at SHA-256
+  `2059459e3b0263bdeca75f89ad0b490e8cebf1dee19cdef9012e0c02fbab5b89`
+  in both projects.
+- Updated the exact 12-function MenuList inventory in QA and production,
+  including the signed EmailOS webhook. All functions read back `ACTIVE`; the
+  public webhook transport rejects GET with HTTP 405. Production's
+  organization policy is handled with Cloud Run's supported invoker-IAM-check
+  disablement instead of an impermissible `allUsers` IAM binding.
+- Re-ran all 17 dedicated Answerlattice Firestore/Storage rule suites and
+  promoted byte-identical rules to QA and production. Firestore readback matches
+  the 115,285-byte source at SHA-256
+  `b1ede761b72dc6393d66082ba7db052b8e3f3d4fd8900ecf74792985dbd77f2a`;
+  Storage readback matches the 6,948-byte source at SHA-256
+  `5fc8f980f289889da557ac69c91edd61f8e8646b066c9b0101b87141d67106cc`.
+- Answerlattice QA now has 12 active functions, including the signed EmailOS
+  webhook with the same organization-policy-compatible transport behavior and
+  an expected HTTP 405 GET response. Production still has its approved 11 core
+  functions active, but their current-source refresh stopped before upload
+  because the required production `ANSWERLATTICE_RESEND_WEBHOOK_SECRET` does
+  not exist. No placeholder secret was created, and neither the production
+  EmailOS webhook nor the optional WhatsApp webhook was deployed.
+
 ## August 23, 2026 - Billing Document NotificationOS Delivery
 
 - Routed issued MenuList tax invoices and credit notes through one deterministic NotificationOS event instead of the former direct email-only sender.

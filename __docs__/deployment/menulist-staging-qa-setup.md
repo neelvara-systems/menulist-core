@@ -176,6 +176,17 @@ in [menulist-staging-feature-certification.md](./menulist-staging-feature-certif
   `projects/menulist-qa/releases/cloud.firestore`. Exact source readback matches
   the repository SHA-256
   `667cc95349abb7f232bff900b7c9ce79002cdc1f1399c2fec04e8e491d8169d9`.
+- `2026-08-23` - The complete 42-script MenuList Firestore predeploy matrix
+  passed against current canonical source. The deterministic MenuList artifact
+  was regenerated and released as ruleset
+  `projects/menulist-qa/rulesets/6269d422-639a-4a83-a020-fc561ee01c43`.
+  Active Rules API readback is byte-identical to local
+  `firestore-menulist.rules`: 132,684 bytes and SHA-256
+  `2059459e3b0263bdeca75f89ad0b490e8cebf1dee19cdef9012e0c02fbab5b89`.
+  The exact 12-function QA inventory was then updated and every target reads
+  `ACTIVE`, including `menulistEmailOsWebhook`. The external webhook transport
+  is reachable and rejects GET with the expected HTTP 405 response; provider
+  sending flags remain unchanged.
 
 ## August 13 Razorpay Checkout Recovery Checkpoint
 
