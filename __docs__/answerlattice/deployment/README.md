@@ -34,7 +34,7 @@ provider IDs only; they are not cloud project IDs.
 
 ## Current Verified State
 
-The following was verified through August 22, 2026:
+The following was verified through August 23, 2026:
 
 - Source targets are `neelvara-answerlattice-qa` for local/QA and
   `neelvara-answerlattice-prod` for production in
@@ -167,7 +167,8 @@ The following was verified through August 22, 2026:
   `answerlattice-prod-recovery-20260821` without touching `(default)`; all 100
   composite indexes and 15 non-TTL field overrides match production. The 18
   TTL policies were absent as expected and remain an explicit recovery step.
-- Production core activation is complete without enabling optional providers.
+- Production core activation and the inbound EmailOS webhook are complete
+  without enabling outbound optional providers.
   The dedicated Google OAuth client and replacement legacy reCAPTCHA v3
   credential are bound only to Vercel Production. Authoritative Firebase App
   Check REST v1 readback reports `siteSecretSet=true`, a 24-hour token TTL, a
@@ -177,10 +178,11 @@ The following was verified through August 22, 2026:
   deployment `dpl_EFgScLqcUcgH5RW6pDDq68tbdPY3`. The owner-created production
   Gemini authorization key is active
   in sensitive Vercel Production and Secret Manager version 2; a bounded
-  provider call returned HTTP 200 with exactly `OK`. All 11 approved core
-  Functions are ACTIVE on Node 22 with exact secret readback: the eight
+  provider call returned HTTP 200 with exactly `OK`. All 12 approved Functions
+  are ACTIVE on Node 22 with exact secret readback: the eight
   Gemini-bound paths plus two retry-safe Firestore analytics/support triggers
-  and the PLATFORM-authorized analytics backfill callable. The callable uses
+  and the PLATFORM-authorized analytics backfill callable, plus the signed
+  inbound EmailOS webhook. The callable uses
   the QA-proven Domain Restricted Sharing-compatible Cloud Run transport
   annotation and returns HTTP 401 `UNAUTHENTICATED` to an unsigned request,
   so public transport does not bypass Firebase callable authentication. The
@@ -189,8 +191,12 @@ The following was verified through August 22, 2026:
   Current signed-in AI Studio metadata lists exactly one Answerlattice
   Production authorization key and one QA key; no superseded Production
   credential remains to retire.
-  The optional production EmailOS webhook and its provider credentials remain
-  intentionally absent.
+  The production EmailOS webhook revision
+  `answerlatticeemailoswebhook-00001-muj` binds only
+  `ANSWERLATTICE_RESEND_WEBHOOK_SECRET` version 1, uses the same supported
+  Domain Restricted Sharing transport setting, rejects GET with HTTP 405, and
+  rejects an unsigned POST with HTTP 400 `Invalid webhook`. Outbound Resend and
+  WhatsApp provider sending remain disabled and their credentials are absent.
   Current live readback confirms that `answerlattice.com` serves Answerlattice
   over TLS with environment `production`, `www.answerlattice.com` redirects
   permanently to the apex, and `/api/version` matches the current `main` branch

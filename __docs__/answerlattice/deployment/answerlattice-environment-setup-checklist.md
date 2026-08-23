@@ -579,16 +579,22 @@ activation require an explicit scoped approval.
 - [x] `AL-PROD-D04` Configure production Resend/SMTP/provider credentials only
   for approved send paths. Keep WhatsApp and other optional provider sends
   disabled until legal/ownership/certification gates close.
-  - Resend, SMTP, GitHub, WhatsApp, analytics, and other provider-send
-    credentials remain absent and their optional Functions remain undeployed.
+  - The production Resend webhook signing secret exists as enabled Secret
+    Manager version 1 and is bound only to the inbound EmailOS webhook.
+    Outbound Resend, SMTP, GitHub, WhatsApp, analytics, and other provider-send
+    credentials remain absent or disabled; no outbound provider send was
+    enabled by the inbound webhook deployment.
 - [x] `AL-PROD-D05` Verify every enabled Secret Manager version is bound only
   to the exact Functions that declare it.
-  - Secret Manager contains only the three production core secrets. Current
-    Function readback shows all 11 approved core Functions ACTIVE on Node 22
-    in `us-central1`. Each of the eight AI paths binds
+  - Secret Manager contains the three production core secrets plus the
+    production EmailOS webhook signing secret. Current Function readback shows
+    all 12 approved Functions ACTIVE on Node 22 in `us-central1`. Each of the
+    eight AI paths binds
     `ANSWERLATTICE_GEMINI_AI_KEY` version 2, the scheduler paths bind only their
     declared bundle/cron secrets, and the three non-AI analytics/support
-    Functions bind no secrets. No optional provider secret is present.
+    Functions bind no secrets. `answerlatticeEmailOsWebhook` binds only
+    `ANSWERLATTICE_RESEND_WEBHOOK_SECRET` version 1. No outbound provider secret
+    is present.
 - [x] `AL-PROD-D06` Create and bind the dedicated Answerlattice production Web
   OAuth client in `neelvara-answerlattice-prod`. Configure truthful branding
   `Answerlattice`, support email `support@neelvara.com`, developer contact
@@ -659,16 +665,17 @@ activation require an explicit scoped approval.
   Storage rules, approved indexes, and approved Functions targets to project
   `neelvara-answerlattice-prod` using `firebase-answerlattice.json`.
   - Firestore rules, Storage rules, and the approved indexes are deployed and
-    source-hash verified. All 11 approved core Functions are deployed and
+    source-hash verified. All 11 approved core Functions and the signed
+    EmailOS webhook are deployed and
     ACTIVE with no placeholder or QA secret: eight Gemini-bound Functions,
     Scheduler and embedding task infrastructure, two retry-safe Firestore
     analytics/support triggers, and the PLATFORM-authorized analytics backfill
-    callable. The optional EmailOS webhook is intentionally excluded under
-    `AL-PROD-D04`; its absence does not leave the approved core target partial.
+    callable. The webhook is inbound-only and does not enable outbound email.
 - [x] `AL-PROD-E04` Read back active rules, Storage rules, indexes, Functions,
   service identities, secret bindings, scheduler/tasks, and budgets.
-  - Rules/indexes, service identities, databases, budgets, and all three core
-    secret names are read back. All 11 approved core Functions report ACTIVE
+  - Rules/indexes, service identities, databases, budgets, the three core
+    secret names, and the EmailOS signing-secret name are read back. All 12
+    approved Functions report ACTIVE
     on Node 22 in `us-central1`; Scheduler, task queue, trigger regions, and
     exact secret version bindings are read back. Production
     `backfillChatAnalytics` uses the same Domain Restricted Sharing-compatible
@@ -680,7 +687,11 @@ activation require an explicit scoped approval.
     Production manual-trigger transport parity. Automatic and cron-secret manual
     runs returned HTTP 200, all three admitted tasks succeeded, and
     `platformSummary/answerlatticeAiProviderHealth` reports `status: ok` with no
-    error in both QA and Production.
+    error in both QA and Production. The EmailOS webhook revision
+    `answerlatticeemailoswebhook-00001-muj` binds only
+    `ANSWERLATTICE_RESEND_WEBHOOK_SECRET` version 1, retains
+    `run.googleapis.com/invoker-iam-disabled=true`, rejects GET with HTTP 405,
+    and rejects an unsigned POST with HTTP 400 `Invalid webhook`.
 - [x] `AL-PROD-E05` Verify Vercel Production assignments for
   `answerlattice.com` and `www.answerlattice.com`, TLS, canonical redirects,
   `/api/version`, and production environment identity.
@@ -792,4 +803,4 @@ service-account JSON, or customer data.
 | 2026-08-22 | Answerlattice clean-domain hydration boundary | Pass | Fresh authenticated hard loads on a clean Answerlattice domain exposed a React hydration mismatch because the shared client session provider inferred product identity from `window.location.hostname`, which is unavailable during server rendering after a rewrite. The Answerlattice server layout now supplies an explicit product context while every other product caller retains the existing behavior. The focused session-scope contract, TypeScript, scoped lint, diff integrity, and the full `verify:answerlattice-runtime-truth` matrix passed. The automatic custom-`qa` deployment reached the exact staging revision; a new authenticated Chrome tab hard-loaded Friction with the intended no-data state and no browser errors. Separate hard-load smokes for Activation, Widget UI, Ticket Inbox, and Setup Status also completed with Answerlattice identity and zero browser errors. No auth permission, credential, Firebase policy, provider setting, manual Vercel deployment, or real payment changed. |
 | 2026-08-22 | Hosted QA owner-journey simplification and safety pass | Pass | Audited the authenticated Answerlattice journey in owner order across first-use continuation, launch checks, first answers, support installation, daily guidance, team access, roles, ticket handling, widget setup, hosted help, security, billing, and desktop/mobile layouts. Owner-facing technical implementation language was removed, the current owner is visibly marked and no longer offered impossible self-deactivation/removal/sign-out actions, password recovery is named `Reset login`, singular permission copy is correct, and the Answerlattice Ticket Inbox now opens on the actionable queue with a first-use empty state while the shared support surface retains its existing default. Focused contracts, TypeScript, lint, final readiness, documentation links, diff integrity, and the clean full Answerlattice runtime matrix passed. Automatic custom-`qa` releases matched staging at each readback. Fresh authenticated Chrome confirmed the owner controls, queue default, daily guidance, setup language, single first-use continuation, and the final `No support tickets yet` state without false filter guidance; desktop and phone-width layouts remained coherent. No credential, provider, Firebase policy, payment, production build, or manual Vercel deployment changed. |
 | 2026-08-23 | `AL-QA-E02` through `AL-QA-E04` | Current rules, Storage, and Functions release pass | All 17 dedicated Answerlattice rules suites passed. Firestore ruleset `projects/neelvara-answerlattice-qa/rulesets/aa82c38f-1e0b-4f61-ac1d-eb46f03589fa` reads back at 115,285 bytes with SHA-256 `b1ede761b72dc6393d66082ba7db052b8e3f3d4fd8900ecf74792985dbd77f2a`; Storage ruleset `projects/neelvara-answerlattice-qa/rulesets/c24abda5-7c44-4bb5-889a-e400372ae4a6` reads back at 6,948 bytes with SHA-256 `5fc8f980f289889da557ac69c91edd61f8e8646b066c9b0101b87141d67106cc`. Both match local source exactly. All 12 approved QA functions read `ACTIVE`. `answerlatticeEmailOsWebhook` uses the organization-policy-compatible disabled invoker IAM check and rejects GET with HTTP 405. |
-| 2026-08-23 | `AL-PROD-E02` through `AL-PROD-E04` | Rules and Storage pass; current-source Function refresh blocked before upload | Firestore ruleset `projects/neelvara-answerlattice-prod/rulesets/3313998b-a8ee-4e80-9584-f9d5df4e372e` and Storage ruleset `projects/neelvara-answerlattice-prod/rulesets/593fa3bb-1ea1-44df-bd2a-4a1c26849775` match the same QA-proven local byte counts and SHA-256 values exactly. The existing 11 approved production core functions remain `ACTIVE`, but their current-source refresh stopped during manifest preparation because the unconditional production `ANSWERLATTICE_RESEND_WEBHOOK_SECRET` is absent. No archive was uploaded, no dummy secret was created, and the optional EmailOS and WhatsApp webhook exports remain undeployed. Production Function source parity therefore remains open until the owner/provider supplies the real signing secret and the bounded deployment is rerun. |
+| 2026-08-23 | `AL-PROD-D04`, `AL-PROD-D05`, `AL-PROD-E03`, `AL-PROD-E04` | Production EmailOS inbound webhook pass | The owner supplied the real production Resend signing secret as enabled Secret Manager version 1. The bounded `answerlatticeEmailOsWebhook` deployment created ACTIVE Node 22 revision `answerlatticeemailoswebhook-00001-muj`; live readback confirms it binds only `ANSWERLATTICE_RESEND_WEBHOOK_SECRET` version 1. Domain Restricted Sharing is handled with `run.googleapis.com/invoker-iam-disabled=true`; GET returns HTTP 405 and an unsigned POST reaches the handler but fails closed with HTTP 400 `Invalid webhook`. Production now has 12 ACTIVE approved Functions. Outbound provider sending remains disabled and the optional WhatsApp webhook remains undeployed. |

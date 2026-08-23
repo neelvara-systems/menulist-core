@@ -29,13 +29,16 @@
   `b1ede761b72dc6393d66082ba7db052b8e3f3d4fd8900ecf74792985dbd77f2a`;
   Storage readback matches the 6,948-byte source at SHA-256
   `5fc8f980f289889da557ac69c91edd61f8e8646b066c9b0101b87141d67106cc`.
-- Answerlattice QA now has 12 active functions, including the signed EmailOS
+- Answerlattice QA has 12 active functions, including the signed EmailOS
   webhook with the same organization-policy-compatible transport behavior and
-  an expected HTTP 405 GET response. Production still has its approved 11 core
-  functions active, but their current-source refresh stopped before upload
-  because the required production `ANSWERLATTICE_RESEND_WEBHOOK_SECRET` does
-  not exist. No placeholder secret was created, and neither the production
-  EmailOS webhook nor the optional WhatsApp webhook was deployed.
+  an expected HTTP 405 GET response. Production now also has 12 active
+  functions: the owner-supplied production Resend signing secret is enabled as
+  version 1 and bound only to ACTIVE webhook revision
+  `answerlatticeemailoswebhook-00001-muj`. The production transport uses the
+  organization-policy-compatible invoker-IAM-check disablement, rejects GET
+  with HTTP 405, and fails closed on an unsigned POST with HTTP 400
+  `Invalid webhook`. Outbound provider sending remains disabled, no placeholder
+  secret was created, and the optional WhatsApp webhook remains undeployed.
 
 ## August 23, 2026 - Billing Document NotificationOS Delivery
 
