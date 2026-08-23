@@ -251,6 +251,13 @@ Blocked until staging feature certification and production release gates pass:
   Independent active readback returned exactly 130,680 bytes and the same
   SHA-256, closing the former managed-compiler blocker without changing
   indexes, Storage rules, Functions, or Vercel resources.
+- `2026-08-23` - After the full 42-script MenuList rules matrix passed, the
+  current deterministic artifact was released as
+  `projects/menulist-prod/rulesets/92997f26-07f7-420a-a249-f7f93ba3c3fb`.
+  Independent active readback matches local `firestore-menulist.rules` exactly:
+  132,684 bytes and SHA-256
+  `2059459e3b0263bdeca75f89ad0b490e8cebf1dee19cdef9012e0c02fbab5b89`.
+  The deployment was rules-only and did not change indexes or Storage rules.
 - `2026-08-22` - Pricing-entitlement aggregation changes were promoted from the
   same validated Functions source to `menulist-qa` and then `menulist-prod`.
   `computeDecisionBlocksScores`, `triggerStoreNightlyScheduler`,
@@ -1410,6 +1417,17 @@ OAuth publishing, or final launch certification.
   source preflight, secret existence, IAM, billing, and rollback checks pass.
   - `2026-08-16` - The four admitted WhatsApp-independent targets are ACTIVE
     and their transport/auth boundaries are verified as recorded above.
+  - `2026-08-23` - The exact 12-function MenuList inventory was updated and
+    every target reads `ACTIVE`, including `menulistEmailOsWebhook`.
+    Domain Restricted Sharing rejected an `allUsers` invoker binding for the
+    webhook and the two existing public HTTP functions. Their Cloud Run
+    services therefore use the supported
+    `run.googleapis.com/invoker-iam-disabled=true` transport setting. Readback
+    reports `invokerIamDisabled: true` and reconciliation complete; GET smokes
+    returned the expected HTTP 405 for `menulistEmailOsWebhook`, HTTP 200 for
+    `messagingOnboarding`, and HTTP 400 for `verifyMenuPublish`. This changes
+    transport admission only; each handler retains its own signature, secret,
+    authentication, validation, and rate-limit boundary.
 - [x] `PROD-F05` Trigger Vercel Production only after explicit Vercel deploy
   approval in the active session.
   - `2026-08-16` - Ready deployment
