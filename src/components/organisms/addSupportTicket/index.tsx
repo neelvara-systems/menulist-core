@@ -6,6 +6,7 @@ import {
     ANSWERLATTICE_TICKET_ATTACHMENT_MAX_BYTES,
     ANSWERLATTICE_TICKET_ATTACHMENT_TYPES,
 } from '@lib/answerlattice/supportTicketAttachmentBoundary';
+import { resolveAnswerlatticeSupportTicketActor } from '@lib/answerlattice/supportTicketActor';
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
 import { SUPPORT_TICKET_CATEGORY, SUPPORT_TICKET_CATEGORY_LIST, SUPPORT_TICKET_PRIORITY, SUPPORT_TICKET_PRIORITY_LIST, SUPPORT_TICKET_STATUS, SupportTicketType } from '@type/supportTicket';
@@ -74,6 +75,7 @@ const AddSupportTicket: React.FC<AddTicketModalProps> = ({ visible = false, onCl
         setSubmitError(null);
         dispatch(startLoader("Submitting ticket..."));
         try {
+            const actor = resolveAnswerlatticeSupportTicketActor(session);
             const documents = [];
             for (const file of attachments) {
                 const base64 = await getBase64(file.originFileObj as RcFile);
@@ -84,20 +86,12 @@ const AddSupportTicket: React.FC<AddTicketModalProps> = ({ visible = false, onCl
                 ...values,
                 documents,
                 status: SUPPORT_TICKET_STATUS.OPEN,
-                createdBy: {
-                    id: session.user.id,
-                    name: session.user.name,
-                    email: session.user.email,
-                },
+                createdBy: actor,
                 statuses: [
                     {
                         status: SUPPORT_TICKET_STATUS.OPEN,
                         timestamp: Timestamp.now(),
-                        createdBy: {
-                            id: session.user.id,
-                            name: session.user.name,
-                            email: session.user.email
-                        },
+                        createdBy: actor,
                         remark: String(values.message || 'Ticket created by admin.').slice(0, 2000),
                     },
                 ],

@@ -8089,8 +8089,8 @@ function verifyWorkflowIntegrationAdapterSafety() {
   assertIncludes(functionSecrets, 'function defineOptionalProviderSecret', 'Answerlattice optional-provider declaration gate');
   assertIncludes(functionSecrets, 'function bindOptionalProviderSecrets', 'Answerlattice optional-provider secret binding helper');
   assertIncludes(functionSecrets, 'WORKFLOW_INTEGRATIONS: bindOptionalProviderSecrets([', 'Answerlattice workflow-integration conditional secret group');
-  assertIncludes(functionSecrets, "RESEND_WEBHOOK_SECRET: defineOptionalProviderSecret('ANSWERLATTICE_RESEND_WEBHOOK_SECRET')", 'Answerlattice conditionally declared product-scoped EmailOS webhook secret');
-  assertIncludes(functionSecrets, 'EMAIL_OS_WEBHOOK: bindOptionalProviderSecrets([', 'Answerlattice EmailOS webhook conditional secret group');
+  assertIncludes(functionSecrets, "RESEND_WEBHOOK_SECRET: defineSecret('ANSWERLATTICE_RESEND_WEBHOOK_SECRET')", 'Answerlattice required product-scoped EmailOS webhook secret');
+  assertIncludes(functionSecrets, 'EMAIL_OS_WEBHOOK: [', 'Answerlattice EmailOS webhook required secret group');
   assertIncludes(functionSecrets, 'WHATSAPP_OS_WEBHOOK: bindOptionalProviderSecrets([', 'Answerlattice WhatsAppOS conditional secret group');
   assertIncludes(networkTarget, 'isBlockedNetworkTarget', 'Answerlattice Functions network target private-address guard');
   assertIncludes(networkTarget, "error: 'blocked_resolved_address'", 'Answerlattice Functions network target DNS guard');

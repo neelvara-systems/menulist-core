@@ -84,3 +84,4 @@ functions/.env.menulist-prod
 .vercel
 
 certificates
+.env*

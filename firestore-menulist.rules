@@ -222,6 +222,11 @@ service cloud.firestore {
 
     match /platformSummary/{document} {
       allow get: if isAuthenticated()
+                 && isAnswerlatticePlatformSummaryClientReadableDoc(document)
+                 && hasAnswerlatticePlatformSummaryReadPermission(document)
+                 && isAnswerlatticeCurrentWorkspaceReadableSummaryDocument(document)
+                 && !exists(/databases/$(database)/documents/platformSummary/$(document));
+      allow get: if isAuthenticated()
                  && (isAnswerlatticeSourceVersionsDoc(document) || isAnswerlatticeBundleManifestDoc(document))
                  && hasAnswerlatticePlatformSummaryWritePermission(document)
                  && (
@@ -584,6 +589,20 @@ service cloud.firestore {
     }
 
     match /insights/{tId}/stores/{sId}/ai/{docId} {
+      // A not-yet-generated insight is a valid empty state. Permit only the
+      // exact authenticated workspace path; existing documents remain subject
+      // to the data-bound AL scope checks below.
+      allow get: if !exists(/databases/$(database)/documents/insights/$(tId)/stores/$(sId)/ai/$(docId))
+        && docId == 'weekly'
+        && isAuthenticated()
+        && (
+          isPlatformSupportOperator()
+          || (
+            belongsToTenant(tId)
+            && belongsToStoreById(sId)
+            && hasAnswerlatticeReadinessPermission()
+          )
+        );
       allow read: if isAuthenticated()
         && (
           isPlatformSupportOperator()
@@ -2488,6 +2507,23 @@ service cloud.firestore {
             + string(request.auth.token.get('tenantId', null))
             + '_'
             + string(request.auth.token.get('storeId', null))
+        );
+    }
+
+    function isAnswerlatticeCurrentWorkspaceReadableSummaryDocument(document) {
+      return request.auth != null
+        && request.auth.token.get('tenantId', null) != null
+        && request.auth.token.get('storeId', null) != null
+        && document.matches(
+          '^(branding|coverage|friction|frictionSnapshot|trustMetrics|supportBoardSummary|knowledgeIntakeSummary|entityGraph|entityGraphIndex|interactionRules|predictiveTriggers|contextContent|integrationHealth)_'
+            + string(request.auth.token.get('tenantId', null))
+            + '_'
+            + string(request.auth.token.get('storeId', null))
+            + '$'
+        )
+        && isAnswerlatticeActiveWorkspace(
+          request.auth.token.get('tenantId', null),
+          request.auth.token.get('storeId', null)
         );
     }
 

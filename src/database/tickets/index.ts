@@ -18,6 +18,7 @@ import {
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
 import getActiveSession from "@lib/auth/getActiveSession";
 import { emitAnswerlatticeSignal } from "@lib/answerlattice/signalEmitter";
+import { resolveAnswerlatticeSupportTicketActor } from '@lib/answerlattice/supportTicketActor';
 import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
 import {
     ANSWERLATTICE_TICKET_ATTACHMENT_LIMIT,
@@ -260,16 +261,6 @@ const requireSupportTicketMutationContext = async (
     return { scope: ticketScope, session };
 };
 
-const getRequiredTicketActor = (session: LoginUserType) => {
-    const id = String(session?.user?.id || session?.uId || '').trim();
-    const name = String(session?.user?.name || session?.user?.email || '').trim();
-    const email = String(session?.user?.email || '').trim().toLowerCase();
-    if (!id || id.length > 180 || !name || name.length > 200 || email.length > 254) {
-        throw new Error('answerlattice_ticket_actor_invalid');
-    }
-    return { id, name, email };
-};
-
 const requirePersistedTicket = (
     ticketId: string,
     value: unknown,
@@ -375,11 +366,17 @@ export const addTicket = async (data: SupportTicketType) => {
             if (Array.isArray(data.documents) && data.documents.length > ANSWERLATTICE_TICKET_ATTACHMENT_LIMIT) {
                 throw new Error('answerlattice_ticket_document_limit_reached');
             }
+            const session = await getActiveSession();
+            if (!session) throw new Error('support_ticket_create_session_missing');
+            const actor = resolveAnswerlatticeSupportTicketActor(session);
+            const initialStatus = Array.isArray(data.statuses) ? data.statuses[0] : undefined;
             const capturedLogs = getCapturedLogs();
             const clientDebugContext = getClientDebugContext();
 
             const submitData = await answerlatticeRequestBodyComposer({
                 ...data,
+                createdBy: actor,
+                statuses: initialStatus ? [{ ...initialStatus, createdBy: actor }] : data.statuses,
                 deleted: false,
                 logs: capturedLogs,
                 ...(clientDebugContext ? { clientDebugContext } : {}),
@@ -491,7 +488,7 @@ export const updateTicket = async (data: SupportTicketMutationInput) => {
             const ticketId = normalizeAnswerlatticeSupportTicketId(data?.id);
             if (!ticketId) throw new Error('answerlattice_ticket_id_invalid');
             const mutationContext = await requireSupportTicketMutationContext(data, 'support_ticket_update');
-            const actor = getRequiredTicketActor(mutationContext.session);
+            const actor = resolveAnswerlatticeSupportTicketActor(mutationContext.session);
             const mutation = parseAnswerlatticeTicketMutation(data);
             const changedAt = Timestamp.now();
             const statusMessageId = createTimestampedRuntimeId('ticket_status', 12);
@@ -643,7 +640,7 @@ export const addTicketMessage = async (
             const normalizedTicketId = normalizeAnswerlatticeSupportTicketId(ticketId);
             if (!normalizedTicketId) throw new Error('answerlattice_ticket_id_invalid');
             const mutationContext = await requireSupportTicketMutationContext(scope, 'support_ticket_message');
-            const actor = getRequiredTicketActor(mutationContext.session);
+            const actor = resolveAnswerlatticeSupportTicketActor(mutationContext.session);
             const messageId = normalizeAnswerlatticeSupportTicketId(message?.id);
             if (!messageId) throw new Error('answerlattice_ticket_message_id_invalid');
             const uploadedAttachmentUrls: string[] = [];

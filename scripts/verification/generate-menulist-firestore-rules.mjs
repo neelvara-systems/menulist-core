@@ -100,7 +100,7 @@ export function generateMenuListRules(source) {
     '  }',
     '}',
     '',
-  ].join('\n');
+  ].join('\n').replace(/[ \t]+$/gm, '');
 }
 
 function main() {

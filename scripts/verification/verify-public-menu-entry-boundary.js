@@ -496,7 +496,7 @@ if (websiteLocaleCodes.length !== 8 || new Set(websiteLocaleCodes).size !== webs
 const websiteSourcePack = readJson('public/locales/menulist.ai/en-US.json');
 const createMenuNamespaceCounts = {
   Header: 61,
-  Footer: 56,
+  Footer: 57,
   ThemeSwitcher: 7,
   LanguageSwitcher: 1,
   Accessibility: 1,

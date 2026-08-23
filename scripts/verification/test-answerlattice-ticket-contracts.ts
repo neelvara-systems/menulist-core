@@ -10,6 +10,7 @@ import {
     parseAnswerlatticeSupportTicketDocument,
     parseAnswerlatticeTicketMutation,
 } from '@lib/answerlattice/supportTicketLifecycle';
+import { resolveAnswerlatticeSupportTicketActor } from '@lib/answerlattice/supportTicketActor';
 import {
     calculateSupportTicketSLAStatus,
     getFirstSupportTicketResponse,
@@ -18,6 +19,13 @@ import {
 
 const ROOT = path.resolve(__dirname, '..', '..');
 const NOW = Timestamp.fromMillis(1_700_000_000_000);
+assert.deepEqual(resolveAnswerlatticeSupportTicketActor({
+    uId: 123,
+    user: { id: 'firebase-uid', name: 'Owner', email: 'OWNER@example.com' },
+}), { id: '123', name: 'Owner', email: 'owner@example.com' });
+assert.throws(() => resolveAnswerlatticeSupportTicketActor({
+    user: { id: '', name: 'Owner', email: 'owner@example.com' },
+}), /answerlattice_ticket_actor_invalid/);
 const actor = { id: 'owner-1', name: 'Owner', email: 'owner@example.com' };
 const baseTicket = {
     pId: 'AL',

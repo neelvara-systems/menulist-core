@@ -2,6 +2,7 @@ import DateTimeDisplay from '@atoms/DateTimeDisplay';
 import { addTicketMessage, assertSupportTicketMessageAddSucceeded } from '@database/tickets';
 import { useAppDispatch } from '@hook/useAppDispatch';
 import { sanitizeFeedbackComment } from '@lib/sanitization';
+import { resolveAnswerlatticeSupportTicketActor } from '@lib/answerlattice/supportTicketActor';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
 import {
     getSupportTicketTimestampMillis,
@@ -83,16 +84,13 @@ const ConversationTimeline: React.FC<ConversationTimelineProps> = ({ ticket, onR
 
         dispatch(startLoader('Sending message...'));
         try {
+            const actor = resolveAnswerlatticeSupportTicketActor(session);
             // Create new message object
             const newMessage: TicketMessage = {
-                id: `${Date.now()}-${session.user.id}`, // Generate unique ID
+                id: `${Date.now()}-${actor.id}`, // Generate unique ID
                 text: sanitizedMessage,
                 type: 'user', // Regular user message
-                sender: {
-                    id: session.user.id,
-                    name: session.user.name,
-                    email: session.user.email,
-                },
+                sender: actor,
                 timestamp: Timestamp.now(),
             };
 

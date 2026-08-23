@@ -17,7 +17,7 @@ const PROJECT_ID = process.env.GCLOUD_PROJECT || 'demo-answerlattice-ticket-rule
 const NOW = Timestamp.fromMillis(1_700_000_000_000);
 
 const actor = { id: 'owner-1', name: 'Owner', email: 'owner@example.com' };
-const statusEntry = (status: string) => ({ status, timestamp: NOW, createdBy: actor, remark: `Status ${status}` });
+const statusEntry = (status: string, createdBy = actor) => ({ status, timestamp: NOW, createdBy, remark: `Status ${status}` });
 const message = (id: string, type: 'user' | 'system' = 'user') => ({
     id,
     text: type === 'system' ? 'Status changed' : 'Reply',
@@ -69,6 +69,12 @@ async function run(): Promise<void> {
             tenantId: '1',
             storeId: '101',
             uId: 'owner-1',
+        }).firestore();
+        const numericOwnerDb = testEnv.authenticatedContext('firebase-owner-numeric', {
+            role: 'OWNER',
+            tenantId: '1',
+            storeId: '101',
+            uId: 123,
         }).firestore();
         const otherDb = testEnv.authenticatedContext('owner-2', {
             role: 'OWNER',
@@ -167,6 +173,14 @@ async function run(): Promise<void> {
         }));
 
         await assertSucceeds(setDoc(ticketRef, ticket()));
+        await assertSucceeds(setDoc(doc(numericOwnerDb, 'supportTickets', 'numeric-owner'), ticket({
+            uId: 123,
+            statuses: [statusEntry('Open', { id: '123', name: 'Owner', email: 'owner@example.com' })],
+        })));
+        await assertFails(setDoc(doc(numericOwnerDb, 'supportTickets', 'forged-numeric-owner'), ticket({
+            uId: 123,
+            statuses: [statusEntry('Open', { id: '124', name: 'Owner', email: 'owner@example.com' })],
+        })));
         await assertSucceeds(getDoc(ticketRef));
         await assertFails(getDoc(doc(noSupportDb, 'supportTickets', 'ticket-1')));
         await assertSucceeds(getDoc(doc(supportDb, 'supportTickets', 'ticket-1')));
