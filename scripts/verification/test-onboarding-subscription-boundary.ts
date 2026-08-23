@@ -94,7 +94,7 @@ const providerCandidate = {
     notes: {
         onboardingAttemptId: 'attempt-1',
         onboardingSource: 'WEBSITE_ONBOARDING',
-        planId: 'starter',
+        planId: 'menulist_official',
         storeId: 22,
         tenantId: 11,
         userId: 'owner-1',
@@ -107,7 +107,7 @@ const providerCandidate = {
 const providerExpectation = {
     attemptId: 'attempt-1',
     candidate: providerCandidate,
-    planId: 'starter',
+    planId: 'menulist_official',
     quantity: 1,
     providerPlanId: 'plan_1',
     storeId: 22,
@@ -148,7 +148,7 @@ assert.equal(isOwnedOnboardingProviderSubscriptionAttempt({
 assert.equal(findOnboardingProviderSubscriptionForAttempt({
     attemptId: 'attempt-1',
     candidates: [providerCandidate],
-    planId: 'starter',
+    planId: 'menulist_official',
     quantity: 1,
     providerPlanId: 'plan_1',
     storeId: 22,
@@ -159,7 +159,7 @@ assert.equal(findOnboardingProviderSubscriptionForAttempt({
 assert.equal(findOnboardingProviderSubscriptionForAttempt({
     attemptId: 'attempt-other',
     candidates: [providerCandidate],
-    planId: 'starter',
+    planId: 'menulist_official',
     quantity: 1,
     providerPlanId: 'plan_1',
     storeId: 22,
@@ -172,7 +172,7 @@ const persistedSubscription = {
     id: 'sub_Recovered123',
     paymentProvider: 'razorpay',
     pId: 'ML',
-    planId: 'starter',
+    planId: 'menulist_official',
     quantity: 1,
     productId: 'ML',
     providerStatus: 'active',
@@ -186,7 +186,7 @@ const persistedSubscription = {
     userId: 'owner-1',
 };
 assert.equal(isMatchingPersistedOnboardingSubscription({
-    planId: 'starter',
+    planId: 'menulist_official',
     quantity: 1,
     providerSubscriptionId: 'sub_Recovered123',
     storeId: 22,
@@ -213,7 +213,7 @@ for (const subscription of [
     Object.fromEntries(Object.entries(persistedSubscription).filter(([key]) => key !== 'uId')),
 ]) {
     assert.equal(isMatchingPersistedOnboardingSubscription({
-        planId: 'starter',
+        planId: 'menulist_official',
         quantity: 1,
         providerSubscriptionId: 'sub_Recovered123',
         storeId: 22,

@@ -1061,7 +1061,7 @@ Build in that order. With that restraint.
 ### Revenue vs. Cost
 
 ```
-Current pricing: ₹999/month
+Pro pricing: ₹1,499/month
 Social content cost: ₹1-140/month (depending on image generation)
 Margin: 86-99%+ preserved
 
@@ -1475,11 +1475,11 @@ Your system is safe because:
 
 | Option              | Price             | Recommendation                   |
 | ------------------- | ----------------- | -------------------------------- |
-| **Included in Pro** | ₹0 (part of ₹999) | ✅ **Start here**                |
+| **Included in Pro** | ₹0 (part of ₹1,499) | ✅ **Start here**               |
 | Add-on tier         | ₹299/month        | If demand proven (config change) |
 | Credits model       | Pay per post      | ❌ SMBs hate meters              |
 
-**Start by including it in MenuList Pro (₹999/month) to drive adoption and prove value.**
+**Include it in MenuList Pro (₹1,499/month) to support adoption without creating another owner-facing add-on decision.**
 
 ---
 

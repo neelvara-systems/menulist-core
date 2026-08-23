@@ -34,10 +34,10 @@ export interface OwnerReferralDocument {
     referredSubscriptionIdAtIssue?: string;
     referrerCreditsAdded?: number;
     referredCreditsAdded?: number;
-    referrerTopUpBefore?: number;
-    referrerTopUpAfter?: number;
-    referredTopUpBefore?: number;
-    referredTopUpAfter?: number;
+    referrerPromotionalBefore?: number;
+    referrerPromotionalAfter?: number;
+    referredPromotionalBefore?: number;
+    referredPromotionalAfter?: number;
     referrerRewardTransactionId?: string;
     referredRewardTransactionId?: string;
 }

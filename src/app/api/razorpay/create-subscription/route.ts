@@ -1,6 +1,8 @@
 export const dynamic = 'force-dynamic';
 import { DB_COLLECTIONS } from '@constant/database';
 import { PRODUCT_IDS } from '@constant/product';
+import { MENULIST_B2C_PLAN_IDS } from '@constant/menulistPlans';
+import { resolveMenuListMonthlyCreditAllowance } from '@data/shared/contentCreditPolicy';
 import { getStoreContextName } from '@lib/businessIdentity/names';
 import { canManageAnswerlatticeBillingMutation, canManageBillingMutation } from "@lib/billing/billingAccess";
 import {
@@ -65,6 +67,8 @@ import { hashPublicRateLimitValue } from "src/middleware/publicApi";
 import { verifyTenantAccess, withAuth } from "../../../../middleware/auth";
 import { isValidMenuListPlanQuantity } from '@lib/billing/menulistPricingPolicy';
 import { isMultiOutletTenantStoreListEntryInScope } from '@lib/multiOutlet/projectIdBoundary';
+import { calculateConfiguredMenuListTax, getBillingProfileFromTaxSnapshot } from '@lib/billing/menulistTaxServer';
+import { BillingTaxConfigurationError, BillingTaxProfileError } from '@data/shared/billingTaxPolicy';
 
 const LOG_FILE = "razorpay-subscription.log";
 const RAZORPAY_PAYMENT_ACTION_MAX_BODY_BYTES = 8 * 1024;
@@ -248,6 +252,7 @@ export const POST = withAuth(async (request, session) => {
             userType,
             quantity: requestedQuantity = 1,
             replacementForSubscriptionId,
+            billingProfile,
         } = validation.data;
         const resolvedUserType = userType ?? "B2C";
         const name = session?.user?.name || '';
@@ -295,16 +300,20 @@ export const POST = withAuth(async (request, session) => {
             if (
                 productId === PRODUCT_IDS.MENULIST
                 && resolvedUserType === 'B2C'
-                && replacementSubscription?.planId === 'premium'
-                && planId !== 'premium'
+                && replacementSubscription?.planId === MENULIST_B2C_PLAN_IDS.MULTI_LOCATION
+                && planId !== MENULIST_B2C_PLAN_IDS.MULTI_LOCATION
             ) {
                 const tenantSnapshot = await firestoreAdmin
                     .collection(DB_COLLECTIONS.TENANTS)
                     .doc(String(tenantId))
                     .get();
-                const storesList = tenantSnapshot.exists && Array.isArray(tenantSnapshot.data()?.storesList)
-                    ? tenantSnapshot.data()?.storesList
-                    : [];
+                const storesList = tenantSnapshot.data()?.storesList;
+                if (!tenantSnapshot.exists || !Array.isArray(storesList)) {
+                    return NextResponse.json(
+                        { error: 'Location status is unavailable. Try again before changing plans.' },
+                        { status: 409 },
+                    );
+                }
                 const activeStoreCount = storesList.filter((store: unknown) => (
                     isMultiOutletTenantStoreListEntryInScope(store, {})
                 )).length;
@@ -358,11 +367,30 @@ export const POST = withAuth(async (request, session) => {
 
         const selectedPrice = currency === 'USD' ? selectedPlan.priceUSD : selectedPlan.priceINR;
         const unitAmount = selectedPrice.price;
-        const monthlyCredits = selectedPrice.monthlyCredits;
+        const monthlyCredits = productId === PRODUCT_IDS.MENULIST
+            ? resolveMenuListMonthlyCreditAllowance({
+                fallbackAllowance: selectedPrice.monthlyCredits,
+                planId: selectedPlan.planId,
+                quantity,
+            })
+            : selectedPrice.monthlyCredits;
 
         if (typeof unitAmount !== "number" || typeof monthlyCredits !== "number") {
             return NextResponse.json({ error: "Plan price not available." }, { status: 400 });
         }
+        const taxSnapshot = productId === PRODUCT_IDS.MENULIST
+            ? calculateConfiguredMenuListTax({
+                baseUnitAmount: unitAmount,
+                billingProfile: billingProfile
+                    || getBillingProfileFromTaxSnapshot(replacementSubscription?.taxSnapshot)
+                    || getBillingProfileFromTaxSnapshot(currentSubscription?.taxSnapshot)
+                    || (() => { throw new BillingTaxProfileError('Complete billing details before checkout.'); })(),
+                currency,
+                quantity,
+            })
+            : null;
+        const providerUnitAmount = taxSnapshot?.grossUnitAmount ?? unitAmount;
+        const providerTotalAmount = taxSnapshot?.grossAmount ?? unitAmount * quantity;
 
         const billingDb = getBillingFirestoreAdminForProduct(productId);
         const unresolvedSubscriptions = await billingDb.collection(DB_COLLECTIONS.SUBSCRIPTIONS)
@@ -558,6 +586,8 @@ export const POST = withAuth(async (request, session) => {
                 storeId: String(storeId),
                 tenantId: String(tenantId),
                 unitAmount,
+                providerUnitAmount,
+                taxPolicyVersion: taxSnapshot?.policyVersion || null,
                 userType: resolvedUserType,
             },
         };
@@ -575,7 +605,7 @@ export const POST = withAuth(async (request, session) => {
         // Step A: Get Provider Plan
         const razorpayPlanId = await getOrCreateRazorpayPlan({
             productId,
-            price: unitAmount,
+            price: providerUnitAmount,
             currency,
             interval,
             userType: resolvedUserType,
@@ -646,7 +676,11 @@ export const POST = withAuth(async (request, session) => {
             interval,
             name,
             email,
-            price: unitAmount,
+            price: providerUnitAmount,
+            ...(taxSnapshot ? {
+                basePrice: unitAmount,
+                taxPolicyVersion: taxSnapshot.policyVersion,
+            } : {}),
             checkoutAttemptId,
             ...(replacementForSubscriptionId ? { replacementForSubscriptionId } : {}),
         };
@@ -755,6 +789,10 @@ export const POST = withAuth(async (request, session) => {
             userType: resolvedUserType,
             currency,
             amount: unitAmount,
+            ...(taxSnapshot ? {
+                chargedUnitAmount: providerUnitAmount,
+                taxSnapshot,
+            } : {}),
             status: "pending",
             providerStatus: "created",
             lastWebhook: null,
@@ -771,6 +809,8 @@ export const POST = withAuth(async (request, session) => {
             monthlyCreditsAllowance: monthlyCredits,
             monthlyCredits: monthlyCredits,
             topUpCredits: 0,
+            promotionalCredits: 0,
+            promotionalCreditsExpireAt: null,
             creditsLastResetMonth: new Date().getFullYear() * 100 + (new Date().getMonth() + 1),
             shortUrl: normalizeRazorpaySubscriptionCheckoutUrl(razorpaySubscription.short_url) || '',
             paymentMethod: {
@@ -784,7 +824,7 @@ export const POST = withAuth(async (request, session) => {
                 {
                     status: "pending",
                     timestamp: Timestamp.now(),
-                    amount: unitAmount * quantity,
+                    amount: providerTotalAmount,
                     currency: currency,
                     remark: `Subscription Initiated; quantity ${quantity}`,
                 },
@@ -863,6 +903,22 @@ export const POST = withAuth(async (request, session) => {
         if (clearReferralCookieOnResponse) clearOwnerReferralCookie(response);
         return response;
     } catch (error) {
+        if (error instanceof BillingTaxProfileError) {
+            const response = NextResponse.json({ error: error.message }, { status: 400 });
+            if (clearReferralCookieOnResponse) clearOwnerReferralCookie(response);
+            return response;
+        }
+        if (error instanceof BillingTaxConfigurationError) {
+            logger.error('MenuList billing tax configuration unavailable', error, {
+                ...getBoundedRazorpayStringContext('userId', userId),
+            });
+            const response = NextResponse.json(
+                { error: 'Checkout is temporarily unavailable while billing details are being configured.' },
+                { status: 503 },
+            );
+            if (clearReferralCookieOnResponse) clearOwnerReferralCookie(response);
+            return response;
+        }
         if (
             checkoutLeaseIdentity
             && checkoutAttemptId

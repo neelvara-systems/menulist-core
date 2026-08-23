@@ -88,7 +88,7 @@ const features = fs.readFileSync(path.join(root, 'src/config/features.ts'), 'utf
   'ENABLE_MENU_CARD_EXPORT_BATCH',
   'ENABLE_MENU_CARD_EXPORT_AI_ADVISOR',
   'MENU_CARD_EXPORT_AI_ADVISOR_PLAN_IDS',
-  'ENABLE_PREMIUM_MENULIST_BRANDING_REMOVAL',
+  'ENABLE_MULTI_LOCATION_MENULIST_BRANDING_REMOVAL',
   'ENABLE_PRINT_MENU_SURFACES',
   'ENABLE_PRINT_ASSETS_ROUTE',
 ].forEach((flag) => {
@@ -194,7 +194,7 @@ if (!changelog.includes('Menu Card Export Active Docs Top Boundary')) {
   if (!menuCardExportValidation.includes(token)) failures.push(`Menu Card Export validation doc missing launch-boundary token: ${token}`);
 });
 [
-  '**Status:** Production ready after deterministic auto-design and Pro/Premium layout suggestion hardening',
+  '**Status:** Production ready after deterministic auto-design and Pro/Multi-location layout suggestion hardening',
   'Ready for production release from code, cost, route, real-data runtime, and artifact validation.',
 ].forEach((token) => {
   if (menuCardExportValidation.includes(token)) failures.push(`Menu Card Export validation doc must not keep stale launch-certification token: ${token}`);
@@ -209,7 +209,7 @@ if (!changelog.includes('Menu Card Export Active Docs Top Boundary')) {
   if (!menuCardExportTestCases.includes(token)) failures.push(`Menu Card Export test-cases doc missing launch-boundary token: ${token}`);
 });
 [
-  '**Status:** Production-ready baseline; Pro/Premium layout suggestion added',
+  '**Status:** Production-ready baseline; Pro/Multi-location layout suggestion added',
   'Menu Card Export is release-ready for the client-first PDF/packet path after the automated gates and real-data runtime checks below.',
 ].forEach((token) => {
   if (menuCardExportTestCases.includes(token)) failures.push(`Menu Card Export test-cases doc must not keep stale launch-certification token: ${token}`);
@@ -227,8 +227,8 @@ const menuCardExportCoreDocTokens = [
   'production-host smoke',
 ];
 const menuCardExportCoreForbiddenTokens = [
-  '**Status:** Production-ready client-first route with Pro/Premium layout suggestion',
-  '**Status:** Production-ready client-first with Pro/Premium layout suggestion',
+  '**Status:** Production-ready client-first route with Pro/Multi-location layout suggestion',
+  '**Status:** Production-ready client-first with Pro/Multi-location layout suggestion',
   '**Status:** Production-ready route entry with dedicated mobile Print Menu screen',
 ];
 menuCardExportCoreDocs.forEach(({ label, content }) => {
@@ -522,11 +522,11 @@ qrQuietZoneFiles.forEach((file) => {
 
 const menuListBrandingPolicy = fs.readFileSync(path.join(root, 'src/lib/platform/menuListBranding.ts'), 'utf8');
 [
-  "MENULIST_BRANDING_REMOVAL_PLAN_TYPE = 'premium'",
+  'MENULIST_BRANDING_REMOVAL_PLAN_TYPE = MENULIST_B2C_PLAN_IDS.MULTI_LOCATION',
   'normalizeMenuListPlanType',
   'canRemoveMenuListBranding',
   'resolveMenuListAttributionPolicy',
-  'ENABLE_PREMIUM_MENULIST_BRANDING_REMOVAL',
+  'ENABLE_MULTI_LOCATION_MENULIST_BRANDING_REMOVAL',
   'showAttribution',
 ].forEach((token) => {
   if (!menuListBrandingPolicy.includes(token)) failures.push(`MenuList branding policy missing token: ${token}`);
@@ -1951,5 +1951,5 @@ console.log('- Mobile Print Menu stays inside the PWA shell without route bypass
 console.log('- Dedicated Print Assets route, catalog, and mobile shell screen exist');
 console.log('- Individual Menu Kit asset downloads use key-based single-asset generation');
 console.log('- Print Assets readiness, preview, print-shop handoff, and reprint guidance use shared client-side helpers');
-console.log('- Pro/Premium AI advisor is guarded by plan, capacity, and operation logging');
+console.log('- Pro/Multi-location AI advisor is guarded by plan, capacity, and operation logging');
 console.log('- No export-storage API route or artifact Firebase write path was added');

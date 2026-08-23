@@ -706,9 +706,9 @@ Simple plan display. Upgrade button. Invoice access. Minimal.
 │                             │
 │  Recent Invoices            │
 │  ┌─────────────────────────┐│
-│  │ Jan 2026  ₹999   Paid  ││
-│  │ Dec 2025  ₹999   Paid  ││
-│  │ Nov 2025  ₹999   Paid  ││
+│  │ Jan 2026  ₹1,499 Paid  ││
+│  │ Dec 2025  ₹1,499 Paid  ││
+│  │ Nov 2025  ₹1,499 Paid  ││
 │  └─────────────────────────┘│
 │                             │
 └─────────────────────────────┘

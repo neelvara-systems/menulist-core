@@ -38,6 +38,7 @@ import {
 } from '@lib/routing/subdomainClaim';
 import { slugify } from '@lib/utils/slugify';
 import { computeSchedulerHour } from '@lib/utils/schedulerHour';
+import type { OwnerNotificationSettings } from '@lib/notification-os/preferences';
 
 // ═══════════════════════════════════════════════════════════════
 // Types
@@ -81,6 +82,9 @@ export interface TenantStoreConfig {
 
     /** Additional fields merged into the store document (source-specific) */
     storeExtra?: Record<string, any>;
+
+    /** Verified onboarding contacts and default owner notification policy. */
+    notificationSettings?: OwnerNotificationSettings;
 
     /** Allow first tenant/store creation when the target product DB starts empty. */
     allowInitialCounters?: boolean;
@@ -138,20 +142,23 @@ export async function assertCurrentUserAvailableForOnboardingInTransaction(
     db: FirebaseFirestore.Firestore,
     userId: string,
     session: unknown,
-): Promise<void> {
+): Promise<Record<string, unknown>> {
     const normalizedUserId = requireOnboardingUserId(userId);
     const userRef = db.collection(DB_COLLECTIONS.USERS).doc(normalizedUserId);
     const userSnapshot = await transaction.get(userRef);
+    const userData = userSnapshot.data();
     if (
         !userSnapshot.exists
+        || !userData
         || !isCurrentUserAvailableForOnboarding({
             documentId: userSnapshot.id,
             session,
-            userData: userSnapshot.data(),
+            userData,
         })
     ) {
         throw new OnboardingUserUnavailableError();
     }
+    return userData;
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -249,6 +256,7 @@ export async function createTenantStoreInTransaction(
         includeTimeSlotPresets = false,
         tenantExtra = {},
         storeExtra = {},
+        notificationSettings,
         allowInitialCounters = false,
     } = config;
 
@@ -399,6 +407,7 @@ export async function createTenantStoreInTransaction(
         createdOn: now,
         modifiedOn: now,
         ...storeExtra,
+        ...(notificationSettings ? { notificationSettings } : {}),
     });
     if (subdomainReservation) {
         writeCurrentSubdomainClaim(transaction, subdomainReservation, now);

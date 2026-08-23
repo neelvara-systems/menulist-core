@@ -441,7 +441,7 @@ MenuList never depends on anything else. If both GrowthOS and KitStamp disappear
 
 ### The Uncomfortable Competitive Truth
 
-MenuList's real advantage is **positioning**, not technology. Anyone can build a digital menu. The advantage is owning the "truth" position, compounding trust daily, and being India-first (₹999/mo, not $99/mo). If you lose the positioning race, technology alone won't save you.
+MenuList's real advantage is **positioning**, not technology. Anyone can build a digital menu. The advantage is owning the "truth" position, compounding trust daily, and offering India-first pricing from ₹599/month rather than copying US-market pricing. If you lose the positioning race, technology alone won't save you.
 
 ---
 

@@ -149,7 +149,7 @@ const buildSampleRenderInput = (
     const previewBusinessCategory = resolvePreviewBusinessCategory(businessCategory);
 
     return {
-        activePlanType: 'pro',
+        activePlanType: 'menulist_pro',
         assetTypeId,
         brandColor: '#2c7a67',
         businessCategory: previewBusinessCategory,

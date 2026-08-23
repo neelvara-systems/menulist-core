@@ -7,6 +7,7 @@ import { useTranslations } from 'next-intl';
 import { LuBuilding2, LuCheck, LuStore, LuZap } from 'react-icons/lu';
 import { formatCurrencyOnPricingPage } from '.';
 import { getMenuListPlanMinimumQuantity } from '@lib/billing/menulistPricingPolicy';
+import { MENULIST_B2C_PLAN_IDS } from '@constant/menulistPlans';
 import './main.css';
 
 type PlanCardProps = {
@@ -19,29 +20,33 @@ const PlanCard: React.FC<PlanCardProps> = ({ plan, currency, onPurchase }) => {
     const t = useTranslations('Website');
 
     const unitPrice = plan[`price${currency}`].price;
-    const normalizedPlanId = ['starter', 'pro', 'premium'].includes(plan.planId) ? plan.planId : 'custom';
+    const planCopyKey = {
+        [MENULIST_B2C_PLAN_IDS.OFFICIAL]: 'official',
+        [MENULIST_B2C_PLAN_IDS.PRO]: 'pro',
+        [MENULIST_B2C_PLAN_IDS.MULTI_LOCATION]: 'multiLocation',
+    }[plan.planId] || 'custom';
     const planCopy = {
-        audience: t(`Pricing.${normalizedPlanId}Audience`),
+        audience: t(`Pricing.${planCopyKey}Audience`),
         surfaces: [
-            t(`Pricing.${normalizedPlanId}Surface0`),
-            t(`Pricing.${normalizedPlanId}Surface1`),
+            t(`Pricing.${planCopyKey}Surface0`),
+            t(`Pricing.${planCopyKey}Surface1`),
         ],
         controls: [
-            t(`Pricing.${normalizedPlanId}Control0`),
-            t(`Pricing.${normalizedPlanId}Control1`),
-            t(`Pricing.${normalizedPlanId}Control2`),
+            t(`Pricing.${planCopyKey}Control0`),
+            t(`Pricing.${planCopyKey}Control1`),
+            t(`Pricing.${planCopyKey}Control2`),
         ],
-        notIncluded: t(`Pricing.${normalizedPlanId}NotIncluded`),
-        buttonText: t(`Pricing.${normalizedPlanId}Cta`),
+        notIncluded: t(`Pricing.${planCopyKey}NotIncluded`),
+        buttonText: t(`Pricing.${planCopyKey}Cta`),
     };
     const planStyles = {
-        starter: {
+        [MENULIST_B2C_PLAN_IDS.OFFICIAL]: {
             icon: <LuStore className="w-full h-full text-blue-500" />,
         },
-        pro: {
+        [MENULIST_B2C_PLAN_IDS.PRO]: {
             icon: <LuBuilding2 className="w-full h-full text-blue-500" />,
         },
-        premium: {
+        [MENULIST_B2C_PLAN_IDS.MULTI_LOCATION]: {
             icon: <LuZap className="w-full h-full text-blue-500" />,
         },
         custom: {
@@ -49,12 +54,12 @@ const PlanCard: React.FC<PlanCardProps> = ({ plan, currency, onPurchase }) => {
         },
     };
 
-    const currentStyle = planStyles[normalizedPlanId as keyof typeof planStyles];
+    const currentStyle = planStyles[(plan.planId in planStyles ? plan.planId : 'custom') as keyof typeof planStyles];
 
     const intervalLabel = plan.billingInterval === 'MONTH' ? t('Pricing.planMonthlyShort') : t('Pricing.planYearlyShort');
     const planName = plan.name.replace(` (Yearly)`, '').replace(` (Monthly)`, '');
     const minimumQuantity = getMenuListPlanMinimumQuantity(plan);
-    const isMultiLocationPlan = plan.type === 'B2C' && plan.planId === 'premium';
+    const isMultiLocationPlan = plan.type === 'B2C' && plan.planId === MENULIST_B2C_PLAN_IDS.MULTI_LOCATION;
     const displayedPrice = unitPrice === null ? null : unitPrice * minimumQuantity;
 
     return (
@@ -67,7 +72,7 @@ const PlanCard: React.FC<PlanCardProps> = ({ plan, currency, onPurchase }) => {
                 <div style={planIconStyle}>{currentStyle.icon}</div>
                 <div style={{ minWidth: 0 }}>
                     <h3 style={planNameStyle}>{planName}</h3>
-                    {normalizedPlanId !== 'custom' ? (
+                    {planCopyKey !== 'custom' ? (
                         <div style={planPriceRowStyle}>
                             <span style={planPriceStyle}>{displayedPrice !== null ? formatCurrencyOnPricingPage(displayedPrice, currency) : t('Pricing.planPriceUnavailable')}</span>
                             <span style={planIntervalStyle}>/ {intervalLabel}</span>

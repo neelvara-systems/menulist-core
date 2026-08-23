@@ -1,0 +1,3212 @@
+rules_version = '2';
+
+// GENERATED FILE. DO NOT EDIT.
+// Source: firestore.rules
+// Purpose: MenuList cloud deployment without Answerlattice shared-emulator namespaces.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    match /projectsMetadata/{tId}/{sId}/{projectId} {
+      allow read: if isAuthenticated()
+        && belongsToTenant(tId)
+        && belongsToStoreById(sId);
+      // Retired pricing-integrity scaffold only. Active project truth is
+      // /projects and must pass its publication/cache/multi-location pipeline.
+      allow write: if false;
+    }
+
+    match /projects/{projectId} {
+      allow read: if isAuthenticated()
+        && (isPlatformAdmin() || legacyProjectBelongsToTenant(resource.data));
+      allow write: if false;
+    }
+
+    match /projects/{tId}/{sId}/{projectId} {
+      allow read: if isAuthenticated()
+        && (
+          isPlatformAdmin()
+          || (
+            belongsToTenant(tId)
+            && belongsToStoreById(sId)
+            && (
+              resource == null
+              || isProjectReadIdentityBounded(resource.data, tId, sId, projectId)
+            )
+          )
+        );
+
+      // Create: Normal tenant admin check (new projects have no masterProjectId yet)
+      allow create: if isTenantAdmin(tId, sId)
+                    && isValidProjectCreateIdentity(tId, sId, projectId);
+
+      // Update: If linked to master, restrict what can be modified
+      allow update: if isTenantAdmin(tId, sId)
+                    && isValidOutletUpdate(tId, sId);
+
+      // Project deletion is a protected server-side soft-delete transaction.
+      // Direct hard deletes would bypass linked-outlet, special-menu, summary,
+      // cache and restoration contracts.
+      allow delete: if false;
+    }
+
+    match /projectsData/{tId}/{sId}/{projectId} {
+      allow read: if isAuthenticated()
+        && belongsToTenant(tId)
+        && belongsToStoreById(sId);
+      // Read-only compatibility. Browser writes would create a parallel menu
+      // truth outside active project validation, cache and publication effects.
+      allow write: if false;
+    }
+
+    match /tenants/{tId}/stores/{sId}/changelogPages/{pageId} {
+      allow read: if isAuthenticated()
+        && belongsToTenant(tId)
+        && belongsToStoreById(sId);
+      allow write: if isTenantAdmin(tId, sId);
+    }
+
+    match /tenants/{tId}/stores/{sId}/{document=**} {
+      allow read: if isAuthenticated()
+        && belongsToTenant(tId)
+        && belongsToStoreById(sId);
+      allow write: if isTenantAdmin(tId, sId);
+    }
+
+    match /users/{userId} {
+      allow read: if isAuthenticated()
+        && (
+          isPlatformAdmin()
+          || request.auth.uid == userId
+          || request.auth.token.uId == userId
+        );
+      allow create, update: if isAuthenticated() && isPlatformAdmin();
+      allow delete: if false;
+    }
+
+    match /platformAssetTemplates/{businessCategory} {
+      allow read: if isAuthenticated();
+      allow create, update: if isPlatformAdmin()
+        && isValidCreativeEditorPlatformTemplateCatalog(request.resource.data, businessCategory);
+      allow delete: if isPlatformAdmin();
+    }
+
+    match /storeAssetTemplates/{tId}/{sId}/{docId} {
+      allow read: if canAccessCreativeEditorTemplateStore(tId, sId);
+      allow create, update: if canAccessCreativeEditorTemplateStore(tId, sId)
+        && isValidCreativeEditorTemplateIndex(request.resource.data, docId, tId, sId);
+      allow delete: if false;
+    }
+
+    match /aiMenuManagerSessions/{sessionId} {
+      allow get: if isAuthenticated()
+        && (
+          !exists(/databases/$(database)/documents/aiMenuManagerSessions/$(sessionId))
+          || canWriteAiMenuManagerSession(resource.data.tId, resource.data.sId)
+        );
+      allow list: if false;
+      allow create: if isAuthenticated()
+        && isValidAiMenuManagerSessionDoc(request.resource.data, sessionId)
+        && isDeterministicAiMenuManagerSessionId(request.resource.data, sessionId);
+      allow update: if isAuthenticated()
+        && canWriteAiMenuManagerSession(resource.data.tId, resource.data.sId)
+        && isValidAiMenuManagerSessionDoc(request.resource.data, sessionId)
+        && isAiMenuManagerSessionScopeUnchanged(resource.data, request.resource.data);
+      allow delete: if false;
+    }
+
+    match /aiMenuManagerProposals/{proposalId} {
+      allow read, write: if false;
+    }
+
+    match /aiMenuManagerRules/{ruleId} {
+      allow read, write: if false;
+    }
+
+    match /tenants/{tenantId} {
+      allow read: if isAuthenticated()
+        && (
+          isPlatformAdmin()
+          || (
+            belongsToTenantById(tenantId)
+            && (
+              !isAnswerlatticeProductDocument(resource.data)
+              || (
+                request.auth.token.get('storeId', null) != null
+                && isAnswerlatticeActiveWorkspace(
+                  tenantId,
+                  request.auth.token.get('storeId', null)
+                )
+              )
+            )
+          )
+        );
+      allow create: if isAuthenticated() && isPlatformAdmin();
+      allow update: if isAuthenticated()
+        && isValidStoreUrlAnchorUpdate()
+        && (
+          isPlatformAdmin()
+          || (
+            !isAnswerlatticeProductDocument(resource.data)
+            && !isAnswerlatticeProductDocument(request.resource.data)
+            && belongsToTenantById(tenantId)
+            && hasTenantWriteRole()
+            && string(request.resource.data.tenantId) == string(resource.data.tenantId)
+            && preservesTenantServerManagedFields()
+          )
+        );
+      allow delete: if false;
+    }
+
+    match /stores/{storeId} {
+      allow read: if isAuthenticated()
+        && (
+          isPlatformAdmin()
+          || (
+            belongsToTenantById(resource.data.tenantId)
+            && belongsToStoreById(storeId)
+            && (
+              !isAnswerlatticeProductDocument(resource.data)
+              || isAnswerlatticeActiveWorkspace(resource.data.tenantId, storeId)
+            )
+          )
+        );
+      allow create: if isAuthenticated()
+        && !hasPosSyncWebhookSecret(request.resource.data)
+        && !hasServerManagedStoreApiCredentials(request.resource.data)
+        && (
+          isPlatformAdmin()
+          || (
+            !isAnswerlatticeProductDocument(request.resource.data)
+            && belongsToTenantById(request.resource.data.tenantId)
+            && isTenantAdmin(request.resource.data.tenantId, storeId)
+            && string(request.resource.data.storeId) == string(storeId)
+          )
+        );
+      allow update: if isAuthenticated()
+        && preservesPosSyncWebhookSecret(resource.data, request.resource.data)
+        && preservesServerManagedStoreApiCredentials(resource.data, request.resource.data)
+        && (
+          isPlatformAdmin()
+          || (
+            !isAnswerlatticeProductDocument(resource.data)
+            && !isAnswerlatticeProductDocument(request.resource.data)
+            && belongsToTenantById(resource.data.tenantId)
+            && belongsToTenantById(request.resource.data.tenantId)
+            && belongsToStoreById(storeId)
+            && hasTenantWriteRole()
+            && string(request.resource.data.storeId) == string(resource.data.storeId)
+            && string(request.resource.data.tenantId) == string(resource.data.tenantId)
+          )
+        );
+      allow delete: if false;
+    }
+
+    match /stores/{storeId}/posDeliveryLogs/{deliveryId} {
+      allow read: if isAuthenticated()
+        && (
+          isPlatformAdmin()
+          || (
+            exists(/databases/$(database)/documents/stores/$(storeId))
+            && belongsToTenantById(
+              get(/databases/$(database)/documents/stores/$(storeId)).data.tenantId
+            )
+            && belongsToStoreById(storeId)
+          )
+        );
+      allow write: if false;
+    }
+
+    match /platformSummary/{document} {
+      allow get: if isAuthenticated()
+                 && (isAnswerlatticeSourceVersionsDoc(document) || isAnswerlatticeBundleManifestDoc(document))
+                 && hasAnswerlatticePlatformSummaryWritePermission(document)
+                 && (
+                   (
+                     !exists(/databases/$(database)/documents/platformSummary/$(document))
+                     && isAnswerlatticeCurrentWorkspaceControlDocument(document)
+                   )
+                   || isAnswerlatticeTenantMember(resource.data)
+                 );
+      // Public display clients may fetch one exact, minimal screen listener
+      // document. Public collection listing stays denied so store IDs cannot be
+      // enumerated through platformSummary queries.
+      allow get: if isPublicScreenStateDoc(document);
+      // Platform admins can read every platform summary document.
+      // Answerlattice tenant users can read/write only the known Answerlattice summary docs
+      // that carry matching tId/sId fields. All other writes remain server-only.
+      allow read: if isAuthenticated()
+                  && !isPrivateScreenControlDoc(document)
+                  && (
+                    (isPlatformAdmin() && !document.matches('^integrationConfig_.*$'))
+                    || (
+                      isPlatformSupport()
+                      && document.matches('^supportBoardSummary_.*$')
+                      && isAnswerlatticePlatformSummaryDocumentScopeValid(document, resource.data)
+                    )
+                    || isCurrentStoreSummaryDoc(document)
+                    || (
+                      isAnswerlatticePlatformSummaryClientReadableDoc(document)
+                      && isAnswerlatticeTenantMember(resource.data)
+                      && hasAnswerlatticePlatformSummaryReadPermission(document)
+                    )
+                  );
+      allow create: if isAuthenticated()
+                    && !document.matches('^knowledgeIntakeSummary_.*$')
+                    && !document.matches('^ontologyCounters_.*$')
+                    && !document.matches('^integrationConfig_.*$')
+                    && !isPrivateScreenControlDoc(document)
+                    && (
+                      isPlatformAdmin()
+                      || canWriteCurrentStoreSummaryDoc(document)
+                      || (
+                        isAnswerlatticePlatformSummaryDoc(document)
+                        && hasAnswerlatticePlatformSummaryWritePermission(document)
+                        && canCreateAnswerlatticePlatformSummaryDoc(document)
+                      )
+                    );
+      allow update: if isAuthenticated()
+                    && !document.matches('^knowledgeIntakeSummary_.*$')
+                    && !document.matches('^ontologyCounters_.*$')
+                    && !document.matches('^integrationConfig_.*$')
+                    && !isPrivateScreenControlDoc(document)
+                    && (
+                      isPlatformAdmin()
+                      || canWriteCurrentStoreSummaryDoc(document)
+                      || canWriteStoresSummaryDoc(document)
+                      || (
+                        isAnswerlatticePlatformSummaryDoc(document)
+                        && hasAnswerlatticePlatformSummaryWritePermission(document)
+                        && canUpdateAnswerlatticePlatformSummaryDoc(document)
+                      )
+                    );
+      allow delete: if false;
+    }
+
+    match /subscriptions/{subscriptionId} {
+      // Answerlattice billing requires its narrower persisted permission even
+      // when local/shared mode uses the MenuList Firebase project.
+      allow read: if canReadProductBillingResource();
+      // NO client writes - must use payment APIs
+      allow write: if false;
+    }
+
+    match /menulistPurchasedCreditRecoveries/{recoveryId} {
+      allow read, write: if false;
+    }
+
+    match /payment_transactions/{transactionId} {
+      allow read: if canReadProductPaymentTransaction();
+      allow write: if false;
+    }
+
+    match /billingDocuments/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /billingDocumentCounters/{counterId} {
+      allow read, write: if false;
+    }
+
+    match /razorpayWebhookEvents/{eventId} {
+      allow read, write: if false;
+    }
+
+    match /billingCheckoutLeases/{leaseId} {
+      allow read, write: if false;
+    }
+
+    match /billingProviderPlans/{registryId} {
+      allow read, write: if false;
+    }
+
+    match /ownerReferrals/{referralId} {
+      allow read, write: if false;
+    }
+
+    match /topups/{topupId} {
+      allow read: if isAuthenticated()
+        && (isPlatformAdmin()
+            || (hasExactMenuListBillingIdentity(resource.data)
+                && isMenuListBillingScopeMember(resource.data)));
+      allow write: if false;
+    }
+
+    match /guestFeedback/{feedbackId} {
+      // Public submissions must go through /api/public/feedback/submit so
+      // rate limiting, tenant/store validation, and store-owned field defaults
+      // are enforced before the Admin SDK write.
+      allow create: if false;
+
+      // AUTHENTICATED READ: Only tenant members can read their feedback.
+      // Store-scoped users read only their assigned stores.
+      allow read: if isAuthenticated()
+                  && (
+                    isPlatformAdmin()
+                    || (belongsToTenantById(resource.data.tId)
+                        && belongsToStoreById(resource.data.sId))
+                  );
+
+      // AUTHENTICATED UPDATE: Only tenant/store writers can resolve or reopen.
+      allow update: if isAuthenticated()
+                    && (
+                      isPlatformAdmin()
+                      || (
+                        hasTenantWriteRole()
+                        && belongsToTenantById(resource.data.tId)
+                        && belongsToStoreById(resource.data.sId)
+                      )
+                    )
+                    && request.resource.data.tId == resource.data.tId
+                    && request.resource.data.sId == resource.data.sId
+                    && request.resource.data.status in ['new', 'resolved']
+                    && request.resource.data.needsAttention == (resource.data.rating <= 3 && request.resource.data.status == 'new')
+                    && request.resource.data.modifiedOn == request.time
+                    && request.resource.data.modifiedBy is string
+                    && request.resource.data.modifiedBy.size() > 0
+                    && request.resource.data.modifiedBy.size() <= 128
+                    && (
+                      request.resource.data.modifiedBy == request.auth.uid
+                      || request.resource.data.modifiedBy == request.auth.token.uId
+                    )
+                    && (!request.resource.data.keys().hasAny(['ownerNote'])
+                        || (request.resource.data.ownerNote is string && request.resource.data.ownerNote.size() <= 300))
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+                      'status',
+                      'needsAttention',
+                      'modifiedOn',
+                      'modifiedBy',
+                      'ownerNote'
+                    ]);
+
+      // DELETE: Not allowed from client (cleanup via retention function)
+      allow delete: if false;
+    }
+
+    match /feedbackEvents/{eventId} {
+      allow read, write: if false;
+    }
+
+    match /messagingOnboardingSessions/{sessionId} {
+      allow read, write: if false;  // Only Cloud Functions / Admin SDK
+    }
+
+    match /messagingOnboardingInboundMessages/{messageId} {
+      allow read, write: if false;  // Only Cloud Functions / Admin SDK
+    }
+
+    match /messagingOnboardingRateLimits/{userHash} {
+      allow read, write: if false;  // Only Cloud Functions / Admin SDK
+    }
+
+    match /messagingOnboardingEvents/{eventId} {
+      allow read, write: if false;  // Only Cloud Functions / Admin SDK (fire-and-forget writes)
+    }
+
+    match /todos/{tId}/{sId}/{docId} {
+      allow read: if isAuthenticated()
+        && belongsToTenant(tId)
+        && belongsToStoreById(sId);
+      allow write: if false;
+    }
+
+    match /todosMetadata/{path1}/{tId}/{sId} {
+      allow read: if isAuthenticated()
+        && belongsToTenant(tId)
+        && belongsToStoreById(sId);
+      allow write: if false;
+    }
+
+    match /notes/{tId}/{sId}/{docId} {
+      allow read: if isAuthenticated()
+        && belongsToTenant(tId)
+        && belongsToStoreById(sId);
+      // Retired compatibility data. No active owner surface or DAL consumes
+      // this open-schema collection; new parallel note truth is forbidden.
+      allow write: if false;
+    }
+
+    match /notesMetadata/{path1}/{tId}/{sId} {
+      allow read: if isAuthenticated()
+        && belongsToTenant(tId)
+        && belongsToStoreById(sId);
+      allow write: if false;
+    }
+
+    match /campaigns/{tId}/{sId}/{docId} {
+      allow read: if isAuthenticated()
+        && belongsToTenant(tId)
+        && belongsToStoreById(sId);
+      allow write: if isTenantAdmin(tId, sId);
+    }
+
+    match /campaignExports/{tId}/{sId}/{docId} {
+      allow read: if isAuthenticated()
+        && belongsToTenant(tId)
+        && belongsToStoreById(sId);
+      allow write: if isTenantAdmin(tId, sId);
+    }
+
+    match /growthosKits/{tId}/{sId}/{docId} {
+      // Full generated artifacts are entitlement-gated by authenticated server
+      // routes. Browser access would bypass that paid-feature boundary.
+      allow read, write: if false;
+    }
+
+    match /growthosExports/{tId}/{sId}/{docId} {
+      // Execution history is server-owned and has no direct browser consumer.
+      allow read, write: if false;
+    }
+
+    match /analytics/{docId} {
+      allow read: if isAuthenticated()
+        && (isPlatformAdmin()
+            || isTenantStoreDoc(resource.data)
+            || docIdMatchesCurrentTenantStore(docId));
+      allow create, update, delete: if false;
+    }
+
+    match /analyticsDeliveryReceipts/{receiptId} {
+      allow read, write: if false;
+    }
+
+    match /chatAnalytics/{docId} {
+      allow read: if isAnswerlatticeScopedReadWithSupportControl()
+        && resource.data.pId == 'AL';
+      // Writes are server-side only (nightly aggregation)
+      allow write: if false;
+    }
+
+    match /chatSessions/{docId} {
+      allow read: if isAnswerlatticeScopedReadWithSupportControl();
+      allow create: if isAnswerlatticeScopedCreateWithSupportControl()
+        && isValidAnswerlatticeChatActor(request.resource.data)
+        && isValidAnswerlatticeChatSessionDocument(request.resource.data);
+      allow update: if isAnswerlatticeScopedUpdateWithSupportControl()
+        && isValidAnswerlatticeChatSessionUpdate(resource.data, request.resource.data);
+      allow delete: if isAnswerlatticeScopedDeleteWithSupportControl();
+    }
+
+    match /aiSearchHistory/{docId} {
+      allow read: if isAuthenticated()
+        && (isPlatformAdmin() || isTenantStoreDoc(resource.data));
+      allow create: if false;
+      allow update: if isTenantStoreUpdate()
+        && isValidAnswerlatticeAiSearchFeedbackUpdate(resource.data, request.resource.data);
+      allow delete: if false;
+    }
+
+    match /queryEmbeddings/{docId} {
+      allow read, write: if false;
+    }
+
+    match /feedback/{docId} {
+      allow read: if resource.data.pId == 'AL'
+        && (
+          isAnswerlatticeScopedReadWithSupportBoardControl()
+          || (
+            isTenantStoreDoc(resource.data)
+            && isAnswerlatticeFeedbackSelfActor(resource.data)
+          )
+        );
+      allow create: if false;
+      allow update: if isTenantStoreUpdate()
+        && resource.data.pId == 'AL'
+        && request.resource.data.pId == 'AL'
+        && hasAnswerlatticeSupportBoardPermission()
+        && isValidAnswerlatticeFeedbackSurfaceUpdate();
+      allow delete: if false;
+    }
+
+    match /supportTickets/{docId} {
+      allow read: if isAnswerlatticeScopedReadWithSupportControl();
+      allow create: if isAnswerlatticeScopedCreateWithSupportControl()
+        && isValidAnswerlatticeSupportTicketCreate(request.resource.data);
+      allow update: if isAnswerlatticeScopedUpdateWithSupportControl()
+        && isValidAnswerlatticeSupportTicketUpdate(resource.data, request.resource.data);
+      allow delete: if isAuthenticated() && isPlatformAdmin() && resource.data.pId == 'AL';
+    }
+
+    match /menuIntelligence/{docId} {
+      allow read: if isAuthenticated() && isPlatformAdmin();
+      allow write: if false;
+    }
+
+    match /ownerControlUsage/{docId} {
+      allow read: if isAuthenticated()
+        && (isPlatformAdmin()
+            || isTenantStoreDoc(resource.data)
+            || docIdMatchesCurrentTenantStore(docId));
+      allow create: if isValidOwnerControlUsageCreate(docId);
+      allow update: if isValidOwnerControlUsageUpdate(docId);
+      allow delete: if false;
+    }
+
+    match /imageBatchProcessingJobs/{docId} {
+      allow read: if isAuthenticated()
+        && (isPlatformAdmin() || isTenantStoreDoc(resource.data));
+      allow create, update: if false;
+      allow delete: if false;
+    }
+
+    match /imageBatchProcessingJobs/{tId}/{sId}/{docId} {
+      allow read: if isAuthenticated()
+        && belongsToTenant(tId)
+        && belongsToStoreById(sId);
+      allow create: if isAuthenticated()
+        && isTenantAdmin(tId, sId)
+        && isValidImageBatchJobCreate(tId, sId, docId);
+      allow update: if isAuthenticated()
+        && isTenantAdmin(tId, sId)
+        && isValidImageBatchOwnerUpdate();
+      allow delete: if false;
+    }
+
+    match /masterOperationalState/{docId} {
+      allow read: if isAuthenticated()
+        && (isPlatformAdmin() || docIdMatchesCurrentTenantPrefix(docId));
+      allow create: if isAuthenticated()
+        && isValidMasterOperationalStateCreate()
+        && (
+          isPlatformAdmin()
+          || (hasTenantWriteRole() && projectDocIdMatchesCurrentTenantStore(docId))
+        );
+      allow update: if isAuthenticated()
+        && isValidMasterOperationalStateUpdate()
+        && (
+          isPlatformAdmin()
+          || (hasTenantWriteRole() && projectDocIdMatchesCurrentTenantStore(docId))
+        );
+      allow delete: if false;
+    }
+
+    match /insights/{tId}/stores/{sId}/ai/{docId} {
+      allow read: if isAuthenticated()
+        && (
+          isPlatformSupportOperator()
+          || (
+            belongsToTenant(tId)
+            && belongsToStoreById(sId)
+            && hasAnswerlatticeReadinessPermission()
+          )
+        )
+        && resource.data.pId == 'AL'
+        && string(resource.data.tId) == string(tId)
+        && string(resource.data.sId) == string(sId);
+      allow write: if false;
+    }
+
+    match /pricingPlans/{docId} {
+      allow get: if isPlatformAdmin()
+        || (isPublicPricingPlan(resource.data) && resource.data.active == true);
+      allow list: if request.query.limit != null
+        && request.query.limit <= 101
+        && (
+          isPlatformAdmin()
+          || (
+            resource.data.active == true
+            && resource.data.publicSafe == true
+          )
+        );
+      allow create, update: if isPlatformAdmin()
+        && isPublicPricingPlan(request.resource.data)
+        && request.resource.data.publicSafe == true;
+      allow delete: if false;
+    }
+
+    match /blogs/{docId} {
+      allow read, write: if isAuthenticated() && isPlatformAdmin();
+    }
+
+    match /changelog/{docId} {
+      allow read: if true;
+      allow write: if isAuthenticated() && isPlatformAdmin();
+    }
+
+    match /changelog/{tId}/{sId}/{pageId} {
+      allow read: if isAuthenticated()
+        && (isPlatformAdmin() || (belongsToTenant(tId) && belongsToStoreById(sId)));
+      // Answerlattice changelog page writes are server-owned in both Firebase modes.
+      allow write: if false;
+    }
+
+    match /common/assets/{assetType}/{docId} {
+      allow read: if isAuthenticated();
+      allow create, update: if isPlatformAdmin()
+        && isValidCommonAssetDocument(request.resource.data, assetType);
+      allow delete: if isPlatformAdmin();
+    }
+
+    match /changelog_feedback/{docId} {
+      allow read: if isAuthenticated() && isPlatformAdmin();
+      allow write: if false;
+    }
+
+    match /article_feedback/{docId} {
+      allow read: if isAuthenticated() && isPlatformAdmin();
+      allow write: if false;
+    }
+
+    match /changelog_feedback/{tId}/{sId}/{docId} {
+      allow read: if docId.matches('^doc1_.*$')
+        && isAnswerlatticeContentFeedbackRead(tId, sId);
+      allow write: if false;
+    }
+
+    match /article_feedback/{tId}/{sId}/{docId} {
+      allow read: if docId.matches('^doc1_.*$')
+        && isAnswerlatticeContentFeedbackRead(tId, sId);
+      allow write: if false;
+    }
+
+    match /faq_feedback/{tId}/{sId}/{docId} {
+      allow read: if docId.matches('^doc1_.*$')
+        && isAnswerlatticeContentFeedbackRead(tId, sId);
+      allow write: if false;
+    }
+
+    match /landingPageEnquiries/{docId} {
+      allow create: if isAuthenticated() && isPlatformAdmin();
+      allow read, update: if isAuthenticated() && isPlatformAdmin();
+      allow delete: if false;
+    }
+
+    match /kb_categories/{docId} {
+      allow read: if isAuthenticated()
+        && (isPlatformAdmin() || kbCategoriesDocMatchesCurrentStore(docId));
+      allow create, update: if isAuthenticated()
+        && (isPlatformAdmin() || (hasAnswerlatticePermission('canManageKnowledge') && kbCategoriesDocMatchesCurrentStore(docId)));
+      allow delete: if isAuthenticated() && isPlatformAdmin();
+    }
+
+    match /kb_articles/{docId} {
+      allow read: if isAuthenticated()
+        && resource.data.pId == 'AL'
+        && (isPlatformAdmin() || isTenantStoreDoc(resource.data));
+      allow create: if isTenantStoreCreate(request.resource.data)
+        && request.resource.data.pId == 'AL'
+        && hasAnswerlatticePermission('canManageKnowledge');
+      allow update: if isTenantStoreUpdate()
+        && resource.data.pId == 'AL'
+        && request.resource.data.pId == 'AL'
+        && hasAnswerlatticePermission('canManageKnowledge');
+      allow delete: if isAuthenticated()
+        && resource.data.pId == 'AL'
+        && (isPlatformAdmin() || (isTenantStoreDoc(resource.data) && hasAnswerlatticePermission('canManageKnowledge')));
+    }
+
+    match /kb_sections/{docId} {
+      allow read: if isAuthenticated()
+        && resource.data.pId == 'AL'
+        && (isPlatformAdmin() || isTenantStoreDoc(resource.data));
+      allow create: if isTenantStoreCreate(request.resource.data)
+        && request.resource.data.pId == 'AL'
+        && hasAnswerlatticePermission('canManageKnowledge');
+      allow update: if isTenantStoreUpdate()
+        && resource.data.pId == 'AL'
+        && request.resource.data.pId == 'AL'
+        && hasAnswerlatticePermission('canManageKnowledge');
+      allow delete: if isAuthenticated()
+        && resource.data.pId == 'AL'
+        && (isPlatformAdmin() || (isTenantStoreDoc(resource.data) && hasAnswerlatticePermission('canManageKnowledge')));
+    }
+
+    match /kb_generation_jobs/{docId} {
+      // Legacy generation jobs are internal platform work. Answerlattice
+      // product owners use the server-owned Knowledge Intake pipeline.
+      allow read, create, update, delete: if isAuthenticated() && isPlatformAdmin();
+    }
+
+    match /kb_staging_sections/{docId} {
+      allow read, create, update, delete: if isAuthenticated() && isPlatformAdmin();
+    }
+
+    match /kb_staging_chunks/{docId} {
+      allow read, create, update, delete: if isAuthenticated() && isPlatformAdmin();
+    }
+
+    match /applicationLogs/{docId} {
+      // Active browser logging uses Realtime Database. Firestore copies are
+      // server-owned operational records and must not accept arbitrary client
+      // payloads or create-cost abuse.
+      allow read, write: if false;
+    }
+
+    match /errorLogs/{docId} {
+      allow read, write: if false;
+    }
+
+    match /aiHelpCenterFeedback/{docId} {
+      allow read, write: if false;
+    }
+
+    match /MENULIST_AI_OPERATIONS/{docId} {
+      allow read: if isAuthenticated() && isPlatformAdmin();
+      allow write: if false;
+    }
+
+    match /menulistAiOperations/{tId}/{sId}/{docId} {
+      allow read: if isAuthenticated() && isPlatformAdmin();
+      allow write: if false;
+    }
+
+    match /authSecurityEvents/{docId} {
+      allow read, write: if false;
+    }
+
+    match /subdomainRenameLog/{docId} {
+      allow read, write: if false;
+    }
+
+    match /schedulerRunLogs/{docId} {
+      allow read: if isAuthenticated() && isPlatformAdmin();
+      allow write: if false;
+    }
+
+    match /systemAlerts/{docId} {
+      allow read: if isAuthenticated() && isPlatformAdmin();
+      allow write: if false;
+    }
+
+    match /systemHealth/{docId} {
+      allow read, write: if false;
+    }
+
+    match /ops_config/{docId} {
+      allow read: if isAuthenticated() && isPlatformAdmin();
+      allow write: if false;
+    }
+
+    match /systemTelemetry/{docId} {
+      allow read, write: if false;
+    }
+
+    match /systemErrors/{docId} {
+      allow read, write: if false;
+    }
+
+    match /posSyncSecrets/{docId} {
+      allow read, write: if false;
+    }
+
+    match /negativeFeedbackAlerts/{docId} {
+      allow read, write: if false;
+    }
+
+    match /messageLogs/{docId} {
+      allow read, write: if false;
+    }
+
+    match /ownerBusinessAssistantThreads/{docId} {
+      allow read, write: if false;
+    }
+
+    match /ownerBusinessAssistantMessages/{docId} {
+      allow read, write: if false;
+    }
+
+    match /ownerBusinessAssistantAnswerEvents/{docId} {
+      allow read, write: if false;
+    }
+
+    match /ownerBusinessAssistantFeedback/{docId} {
+      allow read, write: if false;
+    }
+
+    match /resellerTransactions/{docId} {
+      allow read, write: if false;
+    }
+
+    match /resellerProfiles/{profileId} {
+      allow read, write: if false;
+    }
+
+    match /reviews/{tId}/{sId}/{docId} {
+      allow read, write: if false;
+    }
+
+    match /reviewsState/{docId} {
+      // Server-only. The authenticated API deliberately projects these
+      // documents to two booleans; direct browser reads would bypass that
+      // private-field boundary and expose classifier/trigger metadata.
+      allow read, write: if false;
+    }
+
+    match /compliancePages/{docId} {
+      allow read: if false;
+      allow write: if false;
+    }
+
+    match /menuChangeLog/{tId}/{sId}/{entryId} {
+      allow read: if canReadMenuChangeLog(tId, sId);
+      allow create: if canCreateMenuChangeLog(tId, sId)
+        && isValidMenuChangeLogCreate(tId, sId, entryId, request.resource.data);
+      // Immutable: no updates or deletes from client
+      allow update, delete: if false;
+    }
+
+    match /menuSnapshots/{tId}/{sId}/{snapshotId} {
+      allow read: if canReadMenuChangeLog(tId, sId);
+      allow create: if canCreateMenuChangeLog(tId, sId)
+        && isValidMenuSnapshotCreate(tId, sId, request.resource.data);
+      // Immutable: no updates or deletes from client
+      allow update, delete: if false;
+    }
+
+    match /menuImageProcessingJobs/{jobId} {
+      // Users can only read their own jobs
+      // Platform admins can read all jobs (for extraction monitoring dashboard)
+      allow read: if isAuthenticated()
+                  && (
+                    isPlatformAdmin()
+                    || (
+                      isMenuProcessingJobOwner()
+                      && isMenuProcessingJobScopeMember()
+                    )
+                  );
+
+      // Create: server-only. Authenticated owner surfaces queue extraction through
+      // /api/menu-extraction/jobs so project existence, upload URLs, rate limits,
+      // and menu-intake identity checks are enforced before the job exists.
+      allow create: if false;
+
+      // Update: Only allow cancellation from client
+      // pending → cancelled or processing → cancelling
+      allow update: if isAuthenticated()
+                    && isMenuProcessingJobOwner()
+                    && isMenuProcessingJobScopeMember()
+                    && (
+                      isClientJobCancellationRequest()
+                      || isClientPreviewReviewResolution()
+                    );
+
+      // Delete: Not allowed from client (cleanup via scheduled function)
+      allow delete: if false;
+    }
+
+    match /geminiSpendWindows/{product} {
+      allow read, write: if false;
+    }
+
+    function isStoreScopedSummaryDoc(document) {
+      return document.matches('^(projects|campaigns|growthos)_[^_]+$');
+    }
+
+    function isClientWritableStoreScopedSummaryDoc(document) {
+      return document.matches('^(projects|campaigns)_[^_]+$');
+    }
+
+    function isPrivateScreenControlDoc(document) {
+      return document.matches('^screenControl_[^_]+$');
+    }
+
+    function summaryDocStoreId(document) {
+      return document.split('_')[1];
+    }
+
+    function isCurrentStoreSummaryDoc(document) {
+      return request.auth != null
+        && isStoreScopedSummaryDoc(document)
+        && belongsToStoreById(summaryDocStoreId(document));
+    }
+
+    function canWriteCurrentStoreSummaryDoc(document) {
+      return request.auth != null
+        && isClientWritableStoreScopedSummaryDoc(document)
+        && isTenantAdmin(string(request.auth.token.tenantId), summaryDocStoreId(document))
+        && preservesServerManagedScreenState(document);
+    }
+
+    function preservesServerManagedScreenState(document) {
+      return !document.matches('^campaigns_[^_]+$')
+        || (
+          !exists(/databases/$(database)/documents/platformSummary/$(document))
+          && !request.resource.data.keys().hasAny(['screen'])
+        )
+        || (
+          exists(/databases/$(database)/documents/platformSummary/$(document))
+          && request.resource.data.get('screen', null) == resource.data.get('screen', null)
+        );
+    }
+
+    function canWriteStoresSummaryDoc(document) {
+      return document == 'storesSummary'
+        && isTenantAdmin(string(request.auth.token.tenantId), string(request.auth.token.storeId))
+        && resource.data.keys().hasAll(['stores'])
+        && request.resource.data.keys().hasAll(['stores'])
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['stores', 'lastUpdated'])
+        && request.resource.data.stores.diff(resource.data.stores).affectedKeys().hasOnly([string(request.auth.token.storeId)])
+        && isCurrentStoreSummaryEntryIdentityBounded();
+    }
+
+    function isCurrentStoreSummaryEntryIdentityBounded() {
+      let storeId = string(request.auth.token.storeId);
+      let tenantId = string(request.auth.token.tenantId);
+      let entry = request.resource.data.stores[storeId];
+      return entry is map
+        && entry.keys().hasAll(['tId'])
+        && string(entry.tId) == tenantId
+        && (
+          !entry.keys().hasAny(['storeId'])
+          || string(entry.storeId) == storeId
+        );
+    }
+
+    function isPublicScreenStateDoc(document) {
+      return isValidPublicScreenState(resource.data, document);
+    }
+
+    function isValidPublicScreenState(data, document) {
+      return document.matches('^screen_[^_]+$')
+        && data.keys().hasOnly([
+          'contentVersion',
+          'enabled',
+          'lastContentChangeAt',
+          'storeId',
+          'updatedAt'
+        ])
+        && data.storeId == summaryDocStoreId(document)
+        && data.enabled is bool
+        && data.contentVersion is int
+        && data.contentVersion >= 1
+        && data.lastContentChangeAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function belongsToTenant(tId) {
+      return request.auth != null
+        && string(request.auth.token.tenantId) == string(tId);
+    }
+
+    function isTenantAdmin(tId, sId) {
+      return request.auth != null
+        && string(request.auth.token.tenantId) == string(tId)
+        && hasTenantWriteRole()
+        && (
+          string(request.auth.token.get('storeId', null)) == string(sId)
+          || request.auth.token.get('storeIds', []).hasAny([string(sId)])
+        );
+    }
+
+    function hasTenantWriteRole() {
+      return request.auth.token.get('admin', false) == true
+        || request.auth.token.get('platformRole', null) == 'PLATFORM'
+        || request.auth.token.get('role', null) == 'PLATFORM'
+        || request.auth.token.get('role', null) == 'OWNER'
+        || request.auth.token.get('role', null) == 'owner'
+        || request.auth.token.get('role', null) == 'MANAGER'
+        || request.auth.token.get('role', null) == 'manager';
+    }
+
+    function hasPosSyncWebhookSecret(data) {
+      return data.keys().hasAny(['posSync'])
+        && data.posSync is map
+        && data.posSync.keys().hasAny(['webhookSecret']);
+    }
+
+    function preservesPosSyncWebhookSecret(before, after) {
+      let hadSecret = hasPosSyncWebhookSecret(before);
+      let hasSecret = hasPosSyncWebhookSecret(after);
+      return hadSecret
+        ? hasSecret && after.posSync.webhookSecret == before.posSync.webhookSecret
+        : !hasSecret;
+    }
+
+    function hasServerManagedStoreApiCredentials(data) {
+      return data.keys().hasAny([
+        'publicApi',
+        'answerlatticeWidgetApi',
+        'widgetAllowedOrigins',
+        'widgetConfig',
+        'widgetConfigSchemaVersion',
+        'widgetConfigUpdatedAt',
+        'widgetConfigVersion',
+        'widgetRuntimeStatus'
+      ]);
+    }
+
+    function preservesServerManagedStoreApiCredentials(before, after) {
+      return !after.diff(before).affectedKeys().hasAny([
+        'publicApi',
+        'answerlatticeWidgetApi',
+        'widgetAllowedOrigins',
+        'widgetConfig',
+        'widgetConfigSchemaVersion',
+        'widgetConfigUpdatedAt',
+        'widgetConfigVersion',
+        'widgetRuntimeStatus',
+        'notificationSettings'
+      ]);
+    }
+
+    function isValidImageBatchJobCreate(tId, sId, docId) {
+      let data = request.resource.data;
+      return data.keys().hasOnly([
+          'createdBy',
+          'createdOn',
+          'enqueueFailedItemIds',
+          'failedItemIds',
+          'generatedCount',
+          'generationConfig',
+          'itemExecutions',
+          'itemsList',
+          'modifiedBy',
+          'modifiedOn',
+          'pId',
+          'projectId',
+          'requestedItemIds',
+          'role',
+          'sId',
+          'status',
+          'statusHistory',
+          'tId',
+          'totalImages',
+          'uId'
+        ])
+        && string(data.tId) == string(tId)
+        && string(data.sId) == string(sId)
+        && docId.matches('^[A-Za-z0-9]{20}$')
+        && data.pId == 'ML'
+        && data.uId is string
+        && data.uId.size() > 0
+        && data.uId.size() <= 180
+        && (
+          data.uId == request.auth.uid
+          || data.uId == request.auth.token.get('uId', '')
+        )
+        && data.projectId is string
+        && data.projectId.size() >= 3
+        && data.projectId.size() <= 160
+        && data.projectId.matches('^' + string(tId) + '-[^-]+-' + string(sId) + '(-.*)?$')
+        && data.status == 'queued'
+        && data.totalImages is int
+        && data.totalImages >= 1
+        && data.totalImages <= 50
+        && data.generatedCount == 0
+        && isValidImageBatchGenerationConfig(data.generationConfig, tId, sId)
+        && data.requestedItemIds is list
+        && data.requestedItemIds.size() == data.totalImages
+        && data.requestedItemIds.toSet().size() == data.totalImages
+        && data.itemsList is list
+        && data.itemsList.size() == 0
+        && data.failedItemIds is list
+        && data.failedItemIds.size() == 0
+        && data.enqueueFailedItemIds is list
+        && data.enqueueFailedItemIds.size() == 0
+        && data.itemExecutions is map
+        && data.itemExecutions.size() == 0
+        && data.statusHistory is list
+        && data.statusHistory.size() == 1
+        && data.statusHistory[0] is map
+        && data.statusHistory[0].keys().hasOnly(['createdOn', 'reason', 'status'])
+        && data.statusHistory[0].status == 'queued'
+        && data.statusHistory[0].createdOn is string
+        && data.statusHistory[0].createdOn.size() <= 100
+        && (
+          !data.statusHistory[0].keys().hasAny(['reason'])
+          || (
+            data.statusHistory[0].reason is string
+            && data.statusHistory[0].reason.size() <= 240
+          )
+        )
+        && data.createdOn == request.time
+        && data.modifiedOn == request.time;
+    }
+
+    function isValidImageBatchReferenceImage(image, tId, sId) {
+      return image is map
+        && image.keys().hasOnly(['mediaId', 'name', 'size', 'type', 'uid', 'url'])
+        && image.url is string
+        && image.url.size() >= 1
+        && image.url.size() <= 5000
+        && (
+          image.url.matches('^https://firebasestorage.googleapis.com/v0/b/[^/]+/o/media%2FmenuItem%2F' + string(tId) + '%2F' + string(sId) + '%2F.+[?&]alt=media([&#].*)?$')
+          || image.url.matches('^https://firebasestorage.googleapis.com/v0/b/[^/]+/o/projects%2FitemImages%2F' + string(tId) + '%2F' + string(sId) + '%2F.+[?&]alt=media([&#].*)?$')
+        )
+        && (!image.keys().hasAny(['mediaId']) || (image.mediaId is string && image.mediaId.size() <= 160))
+        && (!image.keys().hasAny(['name']) || (image.name is string && image.name.size() <= 255))
+        && (!image.keys().hasAny(['size']) || (image.size is int && image.size >= 0 && image.size <= 15728640))
+        && image.type is string
+        && ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'].toSet().hasAny([image.type])
+        && (!image.keys().hasAny(['uid']) || (image.uid is string && image.uid.size() <= 160));
+    }
+
+    function isValidImageBatchGenerationConfig(config, tId, sId) {
+      return config is map
+        && config.keys().hasOnly([
+          'agreeToTerms',
+          'aspectRatio',
+          'backgroundColor',
+          'colors',
+          'compositions',
+          'environments',
+          'foregroundColor',
+          'isMultiMode',
+          'lighting',
+          'moods',
+          'negativePrompt',
+          'numberOfImages',
+          'prompt',
+          'referanceImage',
+          'selectedImageTypes',
+          'styles',
+          'stylesCategory',
+          'transparentBg'
+        ])
+        && (!config.keys().hasAny(['prompt']) || (config.prompt is string && config.prompt.size() <= 2000))
+        && (!config.keys().hasAny(['negativePrompt']) || (config.negativePrompt is string && config.negativePrompt.size() <= 2000))
+        && (!config.keys().hasAny(['stylesCategory']) || (config.stylesCategory is string && config.stylesCategory.size() <= 100))
+        && (!config.keys().hasAny(['backgroundColor']) || (config.backgroundColor is string && config.backgroundColor.size() <= 50))
+        && (!config.keys().hasAny(['foregroundColor']) || (config.foregroundColor is string && config.foregroundColor.size() <= 50))
+        && (!config.keys().hasAny(['aspectRatio']) || (
+          config.aspectRatio is string
+          && ['1:1', '16:9', '9:16', '4:3', '3:4'].toSet().hasAny([config.aspectRatio])
+        ))
+        && (!config.keys().hasAny(['styles']) || (config.styles is list && config.styles.size() <= 20))
+        && (!config.keys().hasAny(['environments']) || (config.environments is list && config.environments.size() <= 20))
+        && (!config.keys().hasAny(['lighting']) || (config.lighting is list && config.lighting.size() <= 20))
+        && (!config.keys().hasAny(['colors']) || (config.colors is list && config.colors.size() <= 20))
+        && (!config.keys().hasAny(['moods']) || (config.moods is list && config.moods.size() <= 20))
+        && (!config.keys().hasAny(['compositions']) || (config.compositions is list && config.compositions.size() <= 20))
+        && (!config.keys().hasAny(['selectedImageTypes']) || (config.selectedImageTypes is list && config.selectedImageTypes.size() <= 4))
+        && (!config.keys().hasAny(['numberOfImages']) || (config.numberOfImages is int && config.numberOfImages >= 1 && config.numberOfImages <= 4))
+        && (!config.keys().hasAny(['referanceImage']) || config.referanceImage == null || isValidImageBatchReferenceImage(config.referanceImage, tId, sId))
+        && (!config.keys().hasAny(['agreeToTerms']) || config.agreeToTerms is bool)
+        && (!config.keys().hasAny(['isMultiMode']) || config.isMultiMode is bool)
+        && (!config.keys().hasAny(['transparentBg']) || config.transparentBg is bool);
+    }
+
+    function isValidImageBatchOwnerUpdate() {
+      let before = resource.data;
+      let after = request.resource.data;
+      let affected = after.diff(before).affectedKeys();
+      let historySize = after.statusHistory.size();
+      let isCancellation = after.status == 'cancelled'
+        && ['queued', 'processing', 'failed'].toSet().hasAny([before.status])
+        && (
+          (before.status == 'queued' && !before.keys().hasAny(['hasStagedResults']))
+          || before.get('hasStagedResults', true) == false
+        );
+      let isCompletionAction = ['completed', 'failed'].toSet().hasAny([before.status])
+        && ['finished', 'discarded'].toSet().hasAny([after.status]);
+      return affected.hasOnly([
+          'expiresAt',
+          'itemsExpiresAt',
+          'modifiedBy',
+          'modifiedOn',
+          'selectedImagesPersisted',
+          'status',
+          'statusHistory'
+        ])
+        && (isCancellation || isCompletionAction)
+        && after.selectedImagesPersisted is bool
+        && (after.status != 'finished' || after.selectedImagesPersisted == true)
+        && (after.status != 'discarded' || after.selectedImagesPersisted == false)
+        && after.statusHistory is list
+        && (
+          historySize == before.statusHistory.size() + 1
+          || (before.statusHistory.size() == 20 && historySize == 20)
+        )
+        && historySize >= 1
+        && historySize <= 20
+        && after.statusHistory[historySize - 1] is map
+        && after.statusHistory[historySize - 1].keys().hasOnly(['createdOn', 'reason', 'status'])
+        && after.statusHistory[historySize - 1].status == after.status
+        && after.statusHistory[historySize - 1].createdOn is string
+        && after.statusHistory[historySize - 1].createdOn.size() <= 100
+        && (
+          !after.statusHistory[historySize - 1].keys().hasAny(['reason'])
+          || (
+            after.statusHistory[historySize - 1].reason is string
+            && after.statusHistory[historySize - 1].reason.size() <= 240
+          )
+        )
+        && after.expiresAt is timestamp
+        && after.itemsExpiresAt is timestamp
+        && after.itemsExpiresAt >= request.time + duration.value(6, 'd')
+        && after.itemsExpiresAt <= request.time + duration.value(8, 'd')
+        && after.expiresAt >= request.time + duration.value(29, 'd')
+        && after.expiresAt <= request.time + duration.value(31, 'd')
+        && after.expiresAt > after.itemsExpiresAt
+        && after.modifiedOn == request.time;
+    }
+
+    function legacyProjectBelongsToTenant(data) {
+      return request.auth != null
+        && (
+          string(data.tId) == string(request.auth.token.tenantId)
+          || string(data.tenantId) == string(request.auth.token.tenantId)
+        )
+        && (
+          (data.keys().hasAny(['sId']) && belongsToStoreById(data.sId))
+          || (data.keys().hasAny(['storeId']) && belongsToStoreById(data.storeId))
+          || (data.keys().hasAny(['storeID']) && belongsToStoreById(data.storeID))
+        );
+    }
+
+    function canReadMenuChangeLog(tId, sId) {
+      return isAuthenticated()
+        && (
+          isPlatformAdmin()
+          || (belongsToTenant(tId) && belongsToStoreById(sId))
+        );
+    }
+
+    function canCreateMenuChangeLog(tId, sId) {
+      return isAuthenticated()
+        && (
+          isPlatformAdmin()
+          || (
+            belongsToTenant(tId)
+            && belongsToStoreById(sId)
+            && hasTenantWriteRole()
+          )
+        );
+    }
+
+    function isValidMenuChangeLogScope(tId, sId, data) {
+      return data.keys().hasAll(['tId', 'sId'])
+        && data.tId is int
+        && data.sId is int
+        && data.tId > 0
+        && data.sId > 0
+        && string(data.tId) == string(tId)
+        && string(data.sId) == string(sId);
+    }
+
+    function isValidMenuChangeLogIdentifier(value) {
+      return value is string && value.size() > 0 && value.size() <= 180;
+    }
+
+    function isValidOptionalMenuChangeLogIdentifier(data, field) {
+      return !data.keys().hasAny([field])
+        || data[field] == null
+        || isValidMenuChangeLogIdentifier(data[field]);
+    }
+
+    function menuChangeLogChangeTypes() {
+      return [
+        'PRICE', 'AVAILABILITY', 'ITEM_ADDED', 'ITEM_REMOVED', 'ITEM_ACTIVE',
+        'CATEGORY_ADDED', 'CATEGORY_REMOVED', 'CATEGORY_REORDER', 'ITEM_REORDER',
+        'NAME_CHANGE', 'DESCRIPTION_CHANGE', 'IMAGE_CHANGE', 'STRUCTURE',
+        'MENU_REVISION_SUMMARY', 'PUBLISH', 'EXTRACTION_CORRECTION'
+      ];
+    }
+
+    function menuChangeLogLegacyEventTypes() {
+      return [
+        'PRICE_CHANGED', 'ATTRIBUTE_PRICE_CHANGED', 'TIME_SLOT_CHANGED',
+        'PDF_REGEN_QUEUED', 'PDF_REGEN_SUCCESS', 'PDF_REGEN_FAILED',
+        'PDF_GENERATED_ON_DEMAND', 'SCREEN_CACHE_BUSTED', 'HOURS_WEEKLY_UPDATED',
+        'GBP_CONNECTED', 'GBP_DISCONNECTED', 'GBP_SYNC_CHECKED',
+        'GBP_MENU_LINK_AUTO_FIXED', 'GBP_HOURS_MISMATCH_DETECTED',
+        'GBP_HOURS_APPLIED_MANUAL', 'GBP_AUTH_REVOKED',
+        'POS_SYNC_SECRET_REGENERATED', 'EXTRACTION_APPLIED'
+      ];
+    }
+
+    function isValidMenuChangeLogCorrectionCount(value) {
+      return value is int && value >= 0 && value <= 10000;
+    }
+
+    function isValidMenuChangeLogCorrectionFieldCounts(value) {
+      return value is map
+        && value.keys().hasAll(['name', 'price', 'description', 'categoryId', 'tags'])
+        && value.keys().hasOnly(['name', 'price', 'description', 'categoryId', 'tags'])
+        && isValidMenuChangeLogCorrectionCount(value.name)
+        && isValidMenuChangeLogCorrectionCount(value.price)
+        && isValidMenuChangeLogCorrectionCount(value.description)
+        && isValidMenuChangeLogCorrectionCount(value.categoryId)
+        && isValidMenuChangeLogCorrectionCount(value.tags);
+    }
+
+    function isValidMenuChangeLogCorrectionConfidenceCounts(value) {
+      return value is map
+        && value.keys().hasAll(['high', 'medium', 'low'])
+        && value.keys().hasOnly(['high', 'medium', 'low'])
+        && isValidMenuChangeLogCorrectionCount(value.high)
+        && isValidMenuChangeLogCorrectionCount(value.medium)
+        && isValidMenuChangeLogCorrectionCount(value.low);
+    }
+
+    function isValidMenuChangeLogLearningPayload(data) {
+      return (
+          data.changeType != 'EXTRACTION_CORRECTION'
+          || (
+            data.oldValue is map
+            && data.newValue is map
+            && data.oldValue.keys().hasAll(['field', 'extracted'])
+            && data.oldValue.keys().hasOnly(['field', 'extracted', 'confidence'])
+            && data.newValue.keys().hasAll(['field', 'corrected'])
+            && data.newValue.keys().hasOnly(['field', 'corrected'])
+            && data.oldValue.field in ['name', 'price', 'description', 'categoryId', 'tags']
+            && data.newValue.field == data.oldValue.field
+            && (
+              !data.oldValue.keys().hasAny(['confidence'])
+              || data.oldValue.confidence == null
+              || data.oldValue.confidence in ['high', 'medium', 'low']
+            )
+          )
+        )
+        && (
+          data.changeType != 'MENU_REVISION_SUMMARY'
+          || (
+            data.newValue is map
+            && (
+              !data.newValue.keys().hasAny([
+                'extractionCorrections',
+                'extractionCorrectionsByField',
+                'extractionCorrectionsByConfidence'
+              ])
+              || (
+                data.newValue.keys().hasAll([
+                  'extractionCorrections',
+                  'extractionCorrectionsByField',
+                  'extractionCorrectionsByConfidence'
+                ])
+                && isValidMenuChangeLogCorrectionCount(data.newValue.extractionCorrections)
+                && isValidMenuChangeLogCorrectionFieldCounts(data.newValue.extractionCorrectionsByField)
+                && isValidMenuChangeLogCorrectionConfidenceCounts(data.newValue.extractionCorrectionsByConfidence)
+                && (
+                  data.newValue.extractionCorrectionsByField.name
+                  + data.newValue.extractionCorrectionsByField.price
+                  + data.newValue.extractionCorrectionsByField.description
+                  + data.newValue.extractionCorrectionsByField.categoryId
+                  + data.newValue.extractionCorrectionsByField.tags
+                ) == data.newValue.extractionCorrections
+                && (
+                  data.newValue.extractionCorrectionsByConfidence.high
+                  + data.newValue.extractionCorrectionsByConfidence.medium
+                  + data.newValue.extractionCorrectionsByConfidence.low
+                ) <= data.newValue.extractionCorrections
+              )
+            )
+          )
+        );
+    }
+
+    function isValidMenuChangeLogDriftPayload(data) {
+      return data.changeType != 'MENU_REVISION_SUMMARY'
+        || (
+          data.newValue is map
+          && (
+            !data.newValue.keys().hasAny([
+              'itemDriftChanges',
+              'itemDriftChangesOverflowCount'
+            ])
+            || (
+              data.newValue.keys().hasAll([
+                'itemDriftChanges',
+                'itemDriftChangesOverflowCount'
+              ])
+              && data.newValue.itemDriftChanges is list
+              && data.newValue.itemDriftChanges.size() <= 1000
+              && isValidMenuChangeLogCorrectionCount(
+                data.newValue.itemDriftChangesOverflowCount
+              )
+            )
+          )
+        );
+    }
+
+    function isCurrentMenuChangeLogActor(actorUserId) {
+      return request.auth != null
+        && (
+          actorUserId == request.auth.uid
+          || actorUserId == request.auth.token.get('uId', '')
+        );
+    }
+
+    function isValidLegacyMenuChangeLogTypeEntity(data) {
+      return (data.type in ['PRICE_CHANGED'] && data.entityType == 'ITEM')
+        || (data.type in ['ATTRIBUTE_PRICE_CHANGED'] && data.entityType == 'ATTRIBUTE')
+        || (data.type == 'TIME_SLOT_CHANGED' && data.entityType == 'PRESET')
+        || (data.type in [
+            'PDF_REGEN_QUEUED', 'PDF_REGEN_SUCCESS', 'PDF_REGEN_FAILED',
+            'PDF_GENERATED_ON_DEMAND', 'SCREEN_CACHE_BUSTED'
+          ] && data.entityType == 'SYSTEM')
+        || (data.type == 'HOURS_WEEKLY_UPDATED' && data.entityType == 'STORE_HOURS')
+        || (data.type in [
+            'GBP_CONNECTED', 'GBP_DISCONNECTED', 'GBP_SYNC_CHECKED',
+            'GBP_MENU_LINK_AUTO_FIXED', 'GBP_HOURS_MISMATCH_DETECTED',
+            'GBP_HOURS_APPLIED_MANUAL', 'GBP_AUTH_REVOKED'
+          ] && data.entityType == 'GBP_INTEGRATION')
+        || (data.type == 'POS_SYNC_SECRET_REGENERATED' && data.entityType == 'POS_SYNC')
+        || (data.type == 'EXTRACTION_APPLIED' && data.entityType == 'EXTRACTION');
+    }
+
+    function isValidLegacyMenuChangeLogEntityScope(tId, sId, data) {
+      let storeScoped = data.entityType in ['STORE_HOURS', 'GBP_INTEGRATION', 'POS_SYNC'];
+      return (
+          storeScoped
+          && data.projectId == string(sId)
+          && data.entityId == string(sId)
+          && exists(/databases/$(database)/documents/stores/$(sId))
+          && string(get(/databases/$(database)/documents/stores/$(sId)).data.tenantId) == string(tId)
+        )
+        || (
+          !storeScoped
+          && exists(/databases/$(database)/documents/projects/$(tId)/$(sId)/$(data.projectId))
+        );
+    }
+
+    function isValidCanonicalMenuChangeLogCreate(tId, sId, data) {
+      return data.keys().hasAll([
+          'projectId', 'changeType', 'oldValue', 'newValue', 'changedBy',
+          'timestamp', 'tId', 'sId'
+        ])
+        && data.keys().hasOnly([
+          'projectId', 'itemId', 'categoryId', 'changeType', 'oldValue',
+          'newValue', 'changedBy', 'userId', 'metadata', 'timestamp', 'tId', 'sId'
+        ])
+        && isValidMenuChangeLogScope(tId, sId, data)
+        && isValidMenuChangeLogIdentifier(data.projectId)
+        && exists(/databases/$(database)/documents/projects/$(tId)/$(sId)/$(data.projectId))
+        && data.changeType in menuChangeLogChangeTypes()
+        && data.changedBy in ['OWNER', 'STAFF']
+        && data.timestamp is timestamp
+        && data.timestamp == request.time
+        && isValidOptionalMenuChangeLogIdentifier(data, 'itemId')
+        && isValidOptionalMenuChangeLogIdentifier(data, 'categoryId')
+        && isValidOptionalMenuChangeLogIdentifier(data, 'userId')
+        && (
+          !data.keys().hasAny(['userId'])
+          || data.userId == null
+          || isCurrentMenuChangeLogActor(data.userId)
+        )
+        && (!data.keys().hasAny(['metadata']) || data.metadata is map)
+        && isValidMenuChangeLogLearningPayload(data)
+        && isValidMenuChangeLogDriftPayload(data);
+    }
+
+    function isValidLegacyMenuChangeLogCreate(tId, sId, entryId, data) {
+      return data.keys().hasAll([
+          'id', 'type', 'projectId', 'actorUserId', 'entityType', 'entityId',
+          'before', 'after', 'version', 'createdOn', 'tId', 'sId'
+        ])
+        && data.keys().hasOnly([
+          'id', 'type', 'projectId', 'actorUserId', 'entityType', 'entityId',
+          'before', 'after', 'version', 'createdOn', 'tId', 'sId'
+        ])
+        && isValidMenuChangeLogScope(tId, sId, data)
+        && data.id == entryId
+        && isValidMenuChangeLogIdentifier(data.id)
+        && data.type in menuChangeLogLegacyEventTypes()
+        && isValidMenuChangeLogIdentifier(data.projectId)
+        && isValidMenuChangeLogIdentifier(data.actorUserId)
+        && isCurrentMenuChangeLogActor(data.actorUserId)
+        && data.entityType in [
+          'ITEM', 'ATTRIBUTE', 'CATEGORY', 'PRESET', 'SYSTEM', 'STORE_HOURS',
+          'GBP_INTEGRATION', 'POS_SYNC', 'EXTRACTION'
+        ]
+        && isValidMenuChangeLogIdentifier(data.entityId)
+        && isValidLegacyMenuChangeLogTypeEntity(data)
+        && isValidLegacyMenuChangeLogEntityScope(tId, sId, data)
+        && (data.before == null || data.before is map)
+        && (data.after == null || data.after is map)
+        && data.version is int
+        && data.version >= 0
+        && data.createdOn is timestamp
+        && data.createdOn == request.time;
+    }
+
+    function isValidMenuChangeLogCreate(tId, sId, entryId, data) {
+      return isValidCanonicalMenuChangeLogCreate(tId, sId, data)
+        || isValidLegacyMenuChangeLogCreate(tId, sId, entryId, data);
+    }
+
+    function isValidMenuSnapshotCreate(tId, sId, data) {
+      return data.keys().hasAll([
+          'projectId', 'tId', 'sId', 'itemCount', 'categoryCount', 'languages',
+          'menuData', 'createdAt', 'expiresAt', 'retentionDays', 'snapshotMode'
+        ])
+        && data.keys().hasOnly([
+          'projectId', 'tId', 'sId', 'itemCount', 'categoryCount', 'languages',
+          'menuData', 'createdAt', 'expiresAt', 'retentionDays', 'snapshotMode'
+        ])
+        && isValidMenuChangeLogScope(tId, sId, data)
+        && isValidMenuChangeLogIdentifier(data.projectId)
+        && exists(/databases/$(database)/documents/projects/$(tId)/$(sId)/$(data.projectId))
+        && data.itemCount is int
+        && data.itemCount >= 0
+        && data.itemCount <= 5000
+        && data.categoryCount is int
+        && data.categoryCount >= 0
+        && data.categoryCount <= 1000
+        && data.languages is list
+        && data.languages.size() <= 50
+        && data.menuData is map
+        && data.menuData.keys().hasAll(['items', 'categories'])
+        && data.menuData.keys().hasOnly(['items', 'categories'])
+        && data.menuData.items is list
+        && data.menuData.items.size() == data.itemCount
+        && data.menuData.categories is list
+        && data.menuData.categories.size() == data.categoryCount
+        && data.createdAt is timestamp
+        && data.createdAt == request.time
+        && data.expiresAt is timestamp
+        && data.expiresAt >= request.time + duration.value(90, 'd') - duration.value(5, 'm')
+        && data.expiresAt <= request.time + duration.value(90, 'd') + duration.value(5, 'm')
+        && data.retentionDays is int
+        && data.retentionDays == 90
+        && data.snapshotMode == 'full_menu_short_term';
+    }
+
+    function isValidAnswerlatticeChatActor(data) {
+      return isPlatformAdmin()
+        || (
+          data.uId is string
+          && data.uId.size() > 0
+          && data.uId.size() <= 180
+          && (data.uId == request.auth.uid || data.uId == request.auth.token.get('uId', ''))
+        );
+    }
+
+    function isAnswerlatticeRecordActorOrPlatformSupport(data) {
+      return isPlatformSupportOperator()
+        || (
+          data.uId is string
+          && data.uId.size() > 0
+          && data.uId.size() <= 180
+          && (data.uId == request.auth.uid || data.uId == request.auth.token.get('uId', ''))
+        );
+    }
+
+    function isValidAnswerlatticeChatSessionDocument(data) {
+      return data.keys().hasAll([
+          'pId', 'tId', 'sId', 'uId', 'title', 'mode', 'messages',
+          'createdOn', 'createdBy', 'modifiedOn', 'modifiedBy'
+        ])
+        && data.keys().hasOnly([
+          'pId', 'tId', 'sId', 'uId', 'title', 'mode', 'messages',
+          'userName', 'userEmail', 'userPhone', 'sourceContext', 'role',
+          'createdOn', 'createdBy', 'modifiedOn', 'modifiedBy',
+          'traceId', 'requestId', 'internalNotes', 'adminStatus', 'priority',
+          'adminTags', 'isUnread', 'lastAdminView'
+        ])
+        && data.pId == 'AL'
+        && data.title is string
+        && data.title.size() > 0
+        && data.title.size() <= 160
+        && data.mode in ['qna', 'assistant']
+        && data.messages is list
+        && data.messages.size() > 0
+        && data.messages.size() <= 50
+        && data.createdOn is timestamp
+        && data.modifiedOn is timestamp
+        && data.createdBy is string
+        && data.createdBy.size() > 0
+        && data.createdBy.size() <= 200
+        && data.modifiedBy is string
+        && data.modifiedBy.size() > 0
+        && data.modifiedBy.size() <= 200
+        && (!data.keys().hasAny(['userName']) || (data.userName is string && data.userName.size() <= 200))
+        && (!data.keys().hasAny(['userEmail']) || (data.userEmail is string && data.userEmail.size() <= 320))
+        && (!data.keys().hasAny(['userPhone']) || (data.userPhone is string && data.userPhone.size() <= 80))
+        && (!data.keys().hasAny(['sourceContext']) || data.sourceContext == null || data.sourceContext is map)
+        && (!data.keys().hasAny(['role']) || (data.role is string && data.role.size() <= 80))
+        && (!data.keys().hasAny(['traceId']) || (data.traceId is string && data.traceId.size() <= 200))
+        && (!data.keys().hasAny(['requestId']) || (data.requestId is string && data.requestId.size() <= 200))
+        && (!data.keys().hasAny(['internalNotes']) || (data.internalNotes is list && data.internalNotes.size() <= 1))
+        && (!data.keys().hasAny(['adminStatus']) || data.adminStatus in ['new', 'in_progress', 'resolved', 'follow_up', 'closed'])
+        && (!data.keys().hasAny(['priority']) || data.priority in ['high', 'normal', 'low'])
+        && (!data.keys().hasAny(['adminTags']) || (data.adminTags is list && data.adminTags.size() <= 20))
+        && (!data.keys().hasAny(['isUnread']) || data.isUnread is bool)
+        && (!data.keys().hasAny(['lastAdminView']) || data.lastAdminView is timestamp);
+    }
+
+    function isValidAnswerlatticeChatSessionUpdate(before, after) {
+      return isValidAnswerlatticeChatSessionDocument(after)
+        && after.uId == before.uId
+        && after.createdOn == before.createdOn
+        && after.createdBy == before.createdBy
+        && after.diff(before).affectedKeys().hasOnly([
+          'title', 'mode', 'messages', 'modifiedOn', 'modifiedBy',
+          'internalNotes', 'adminStatus', 'priority', 'adminTags',
+          'isUnread', 'lastAdminView'
+        ])
+        && (
+          !after.diff(before).affectedKeys().hasAny(['messages'])
+          || isAnswerlatticeRecordActorOrPlatformSupport(before)
+        );
+    }
+
+    function isValidAnswerlatticeAiSearchFeedbackUpdate(before, after) {
+      return before.pId == 'AL'
+        && after.pId == 'AL'
+        && isAnswerlatticeRecordActorOrPlatformSupport(before)
+        && after.diff(before).affectedKeys().hasOnly([
+          'isGood', 'reasonsToImprove', 'comments', 'submittedAt',
+          'modifiedBy', 'modifiedOn'
+        ])
+        && after.isGood is bool
+        && after.submittedAt is timestamp
+        && after.modifiedOn is timestamp
+        && after.modifiedBy is string
+        && after.modifiedBy.size() > 0
+        && after.modifiedBy.size() <= 200
+        && (!after.keys().hasAny(['comments']) || (after.comments is string && after.comments.size() <= 1000))
+        && (!after.keys().hasAny(['reasonsToImprove']) || (after.reasonsToImprove is list && after.reasonsToImprove.size() <= 10));
+    }
+
+    function isAnswerlatticeSupportTicketStatus(value) {
+      return value in ['Open', 'In Progress', 'Resolved', 'Closed', 'Re-Opened'];
+    }
+
+    function isAnswerlatticeSupportTicketPriority(value) {
+      return value in ['Low', 'Normal', 'High'];
+    }
+
+    function isAnswerlatticeSupportTicketCategory(value) {
+      return value in [
+        'Technical Issue', 'Billing Inquiry', 'General Question', 'Content Update',
+        'Feature Suggestion', 'Account & Login Help', 'Other'
+      ];
+    }
+
+    function isAnswerlatticeSupportTicketTransition(currentStatus, nextStatus) {
+      return nextStatus == currentStatus
+        || (currentStatus == 'Open' && nextStatus in ['In Progress', 'Resolved', 'Closed'])
+        || (currentStatus == 'In Progress' && nextStatus in ['Open', 'Resolved', 'Closed'])
+        || (currentStatus == 'Resolved' && nextStatus in ['Re-Opened', 'Closed'])
+        || (currentStatus == 'Closed' && nextStatus == 'Re-Opened')
+        || (currentStatus == 'Re-Opened' && nextStatus in ['In Progress', 'Resolved', 'Closed']);
+    }
+
+    function answerlatticeSupportTicketMessageCount(data) {
+      return data.keys().hasAny(['messages']) && data.messages is list ? data.messages.size() : 0;
+    }
+
+    function answerlatticeSupportTicketStatusCount(data) {
+      return data.keys().hasAny(['statuses']) && data.statuses is list ? data.statuses.size() : 0;
+    }
+
+    function answerlatticeSupportTicketMessages(data) {
+      return data.keys().hasAny(['messages']) && data.messages is list ? data.messages : [];
+    }
+
+    function answerlatticeSupportTicketStatuses(data) {
+      return data.keys().hasAny(['statuses']) && data.statuses is list ? data.statuses : [];
+    }
+
+    function isValidAnswerlatticeSupportTicketActor(actor) {
+      return actor is map
+        && actor.keys().hasAll(['id', 'name', 'email'])
+        && actor.keys().hasOnly(['id', 'name', 'email'])
+        && actor.id is string
+        && actor.id.size() > 0
+        && actor.id.size() <= 180
+        && (actor.id == request.auth.uid || actor.id == request.auth.token.get('uId', ''))
+        && actor.name is string
+        && actor.name.size() > 0
+        && actor.name.size() <= 200
+        && actor.email is string
+        && actor.email.size() <= 254;
+    }
+
+    function isValidAnswerlatticeSupportTicketAttachment(attachment) {
+      return attachment is map
+        && attachment.keys().hasAll(['url', 'name', 'type', 'size'])
+        && attachment.keys().hasOnly(['url', 'name', 'type', 'size'])
+        && attachment.url is string
+        && attachment.url.size() > 0
+        && attachment.url.size() <= 2000
+        && attachment.name is string
+        && attachment.name.size() > 0
+        && attachment.name.size() <= 300
+        && attachment.type is string
+        && attachment.type.size() > 0
+        && attachment.type.size() <= 120
+        && attachment.size is int
+        && attachment.size >= 0
+        && attachment.size <= 10485760;
+    }
+
+    function isValidAnswerlatticeSupportTicketAttachments(message) {
+      return !message.keys().hasAny(['attachments'])
+        || (
+          message.attachments is list
+          && message.attachments.size() <= 4
+          && (message.attachments.size() < 1 || isValidAnswerlatticeSupportTicketAttachment(message.attachments[0]))
+          && (message.attachments.size() < 2 || isValidAnswerlatticeSupportTicketAttachment(message.attachments[1]))
+          && (message.attachments.size() < 3 || isValidAnswerlatticeSupportTicketAttachment(message.attachments[2]))
+          && (message.attachments.size() < 4 || isValidAnswerlatticeSupportTicketAttachment(message.attachments[3]))
+        );
+    }
+
+    function isValidAnswerlatticeSupportTicketMessage(message, expectedType) {
+      return message is map
+        && message.keys().hasAll(['id', 'text', 'sender', 'timestamp'])
+        && message.keys().hasOnly(['id', 'text', 'type', 'sender', 'timestamp', 'attachments'])
+        && message.id is string
+        && message.id.size() > 0
+        && message.id.size() <= 180
+        && message.text is string
+        && message.text.size() <= 2000
+        && message.type == expectedType
+        && isValidAnswerlatticeSupportTicketActor(message.sender)
+        && message.timestamp is timestamp
+        && isValidAnswerlatticeSupportTicketAttachments(message);
+    }
+
+    function isValidAnswerlatticeSupportTicketStatusEntry(entry, expectedStatus) {
+      return entry is map
+        && entry.keys().hasAll(['status', 'timestamp', 'createdBy', 'remark'])
+        && entry.keys().hasOnly(['status', 'timestamp', 'createdBy', 'remark'])
+        && entry.status == expectedStatus
+        && isAnswerlatticeSupportTicketStatus(entry.status)
+        && entry.timestamp is timestamp
+        && isValidAnswerlatticeSupportTicketActor(entry.createdBy)
+        && entry.remark is string
+        && entry.remark.size() <= 2000;
+    }
+
+    function answerlatticeSupportTicketMessagesAppendOne(before, after, expectedType) {
+      let current = answerlatticeSupportTicketMessages(before);
+      let next = answerlatticeSupportTicketMessages(after);
+      return next.size() == current.size() + 1
+        && next == current.concat([next[next.size() - 1]])
+        && isValidAnswerlatticeSupportTicketMessage(next[next.size() - 1], expectedType);
+    }
+
+    function answerlatticeSupportTicketStatusesAppendOne(before, after) {
+      let current = answerlatticeSupportTicketStatuses(before);
+      let next = answerlatticeSupportTicketStatuses(after);
+      return next.size() == current.size() + 1
+        && next == current.concat([next[next.size() - 1]])
+        && isValidAnswerlatticeSupportTicketStatusEntry(next[next.size() - 1], after.status);
+    }
+
+    function isValidAnswerlatticeSupportTicketSatisfaction(before, after) {
+      return (
+          !before.keys().hasAny(['satisfaction'])
+          && !after.keys().hasAny(['satisfaction'])
+        )
+        || (
+          before.keys().hasAny(['satisfaction'])
+          && after.keys().hasAny(['satisfaction'])
+          && after.satisfaction == before.satisfaction
+        )
+        || (
+          !before.keys().hasAny(['satisfaction'])
+          && after.keys().hasAny(['satisfaction'])
+          && after.status in ['Resolved', 'Closed']
+          && after.satisfaction is map
+          && after.satisfaction.keys().hasAll(['rating', 'comment', 'submittedAt'])
+          && after.satisfaction.keys().hasOnly(['rating', 'comment', 'submittedAt'])
+          && after.satisfaction.rating is int
+          && after.satisfaction.rating >= 1
+          && after.satisfaction.rating <= 5
+          && after.satisfaction.comment is string
+          && after.satisfaction.comment.size() <= 1000
+          && after.satisfaction.submittedAt is timestamp
+        );
+    }
+
+    function isValidAnswerlatticeSupportTicketBounds(data) {
+      return answerlatticeSupportTicketMessageCount(data) <= 50
+        && answerlatticeSupportTicketStatusCount(data) <= 25
+        && (!data.keys().hasAny(['documents']) || (data.documents is list && data.documents.size() <= 4))
+        && (!data.keys().hasAny(['platformTags']) || (data.platformTags is list && data.platformTags.size() <= 20))
+        && (!data.keys().hasAny(['contextKeys']) || (data.contextKeys is list && data.contextKeys.size() <= 20));
+    }
+
+    function isValidAnswerlatticeSupportTicketCreate(data) {
+      return data.pId == 'AL'
+        && data.keys().hasAll(['tId', 'sId', 'subject', 'status', 'priority', 'category', 'statuses'])
+        && !data.keys().hasAny(['source', 'escalationContext', 'knowledgeCandidate', 'widgetEscalation'])
+        && data.subject is string
+        && data.subject.size() > 0
+        && data.subject.size() <= 300
+        && (!data.keys().hasAny(['message']) || (data.message is string && data.message.size() <= 4000))
+        && isAnswerlatticeSupportTicketStatus(data.status)
+        && isAnswerlatticeSupportTicketPriority(data.priority)
+        && isAnswerlatticeSupportTicketCategory(data.category)
+        && answerlatticeSupportTicketStatusCount(data) == 1
+        && answerlatticeSupportTicketMessageCount(data) == 0
+        && isValidAnswerlatticeSupportTicketStatusEntry(answerlatticeSupportTicketStatuses(data)[0], data.status)
+        && isValidAnswerlatticeSupportTicketBounds(data);
+    }
+
+    function isValidAnswerlatticeSupportTicketUpdate(before, after) {
+      let affected = after.diff(before).affectedKeys();
+      return affected.hasOnly([
+          'status', 'statuses', 'messages', 'priority', 'category', 'platformNotes',
+          'platformTags', 'contextKeys', 'deleted', 'satisfaction', 'modifiedBy', 'modifiedOn'
+        ])
+        && after.pId == 'AL'
+        && isAnswerlatticeSupportTicketStatus(after.status)
+        && isAnswerlatticeSupportTicketPriority(after.priority)
+        && isAnswerlatticeSupportTicketCategory(after.category)
+        && (!after.keys().hasAny(['platformNotes']) || (after.platformNotes is string && after.platformNotes.size() <= 4000))
+        && (!after.keys().hasAny(['deleted']) || after.deleted is bool)
+        && isAnswerlatticeSupportTicketTransition(before.status, after.status)
+        && isValidAnswerlatticeSupportTicketBounds(after)
+        && isValidAnswerlatticeSupportTicketSatisfaction(before, after)
+        && (
+          (
+            after.status == before.status
+            && !affected.hasAny(['statuses'])
+            && (
+              !affected.hasAny(['messages'])
+              || answerlatticeSupportTicketMessagesAppendOne(before, after, 'user')
+            )
+          )
+          || (
+            after.status != before.status
+            && answerlatticeSupportTicketStatusesAppendOne(before, after)
+            && answerlatticeSupportTicketMessagesAppendOne(before, after, 'system')
+          )
+        );
+    }
+
+    function isTenantStoreDoc(data) {
+      return isAuthenticated()
+        && data.keys().hasAll(['tId', 'sId'])
+        && belongsToTenantById(data.tId)
+        && belongsToStoreById(data.sId);
+    }
+
+    function isTenantStoreCreate(data) {
+      return isAuthenticated()
+        && (
+          isPlatformAdmin()
+          || (
+            data.keys().hasAll(['tId', 'sId'])
+            && belongsToTenantById(data.tId)
+            && belongsToStoreById(data.sId)
+          )
+        );
+    }
+
+    function isTenantStoreUpdate() {
+      return isAuthenticated()
+        && (
+          isPlatformAdmin()
+          || (
+            isTenantStoreDoc(resource.data)
+            && isTenantStoreCreate(request.resource.data)
+            && string(request.resource.data.tId) == string(resource.data.tId)
+            && string(request.resource.data.sId) == string(resource.data.sId)
+          )
+        );
+    }
+
+    function ownerControlCurrentMonthKey() {
+      return string(request.time.year())
+        + '-'
+        + (request.time.month() < 10 ? '0' : '')
+        + string(request.time.month());
+    }
+
+    function isOwnerControlMap(data) {
+      return data is map
+        && data.size() > 0
+        && data.size() <= 8
+        && data.keys().toSet().hasOnly([
+          'ownerBoost',
+          'pinnedPopular',
+          'pinnedQuickPick',
+          'pinnedBestValue',
+          'enablePopular',
+          'enableQuickPick',
+          'enableBestValue',
+          'screenOverride'
+        ]);
+    }
+
+    function ownerControlCounterAdvancedOnce(before, after, affected) {
+      return affected.size() == 1
+        && affected.hasOnly([
+          'ownerBoost',
+          'pinnedPopular',
+          'pinnedQuickPick',
+          'pinnedBestValue',
+          'enablePopular',
+          'enableQuickPick',
+          'enableBestValue',
+          'screenOverride'
+        ])
+        && (!affected.hasAny(['ownerBoost'])
+          || after.ownerBoost == before.get('ownerBoost', 0) + 1)
+        && (!affected.hasAny(['pinnedPopular'])
+          || after.pinnedPopular == before.get('pinnedPopular', 0) + 1)
+        && (!affected.hasAny(['pinnedQuickPick'])
+          || after.pinnedQuickPick == before.get('pinnedQuickPick', 0) + 1)
+        && (!affected.hasAny(['pinnedBestValue'])
+          || after.pinnedBestValue == before.get('pinnedBestValue', 0) + 1)
+        && (!affected.hasAny(['enablePopular'])
+          || after.enablePopular == before.get('enablePopular', 0) + 1)
+        && (!affected.hasAny(['enableQuickPick'])
+          || after.enableQuickPick == before.get('enableQuickPick', 0) + 1)
+        && (!affected.hasAny(['enableBestValue'])
+          || after.enableBestValue == before.get('enableBestValue', 0) + 1)
+        && (!affected.hasAny(['screenOverride'])
+          || after.screenOverride == before.get('screenOverride', 0) + 1);
+    }
+
+    function ownerControlTimestampAdvanced(after, affected) {
+      return (!affected.hasAny(['ownerBoost']) || after.ownerBoost == request.time)
+        && (!affected.hasAny(['pinnedPopular']) || after.pinnedPopular == request.time)
+        && (!affected.hasAny(['pinnedQuickPick']) || after.pinnedQuickPick == request.time)
+        && (!affected.hasAny(['pinnedBestValue']) || after.pinnedBestValue == request.time)
+        && (!affected.hasAny(['enablePopular']) || after.enablePopular == request.time)
+        && (!affected.hasAny(['enableQuickPick']) || after.enableQuickPick == request.time)
+        && (!affected.hasAny(['enableBestValue']) || after.enableBestValue == request.time)
+        && (!affected.hasAny(['screenOverride']) || after.screenOverride == request.time);
+    }
+
+    function isValidOwnerControlUsageCreate(docId) {
+      let data = request.resource.data;
+      let controlKeys = data.counts is map ? data.counts.keys().toSet() : [].toSet();
+      let monthKey = ownerControlCurrentMonthKey();
+      return isTenantStoreCreate(data)
+        && (isPlatformAdmin() || hasTenantWriteRole())
+        && data.keys().toSet() == [
+          'tId', 'sId', 'counts', 'lastUsed', 'monthlyUsage',
+          'firstTrackedAt', 'lastUpdatedAt'
+        ].toSet()
+        && data.tId is string
+        && data.sId is string
+        && docId == data.tId + '_' + data.sId
+        && isOwnerControlMap(data.counts)
+        && data.counts.size() == 1
+        && data.counts.values()[0] is int
+        && data.counts.values()[0] == 1
+        && data.lastUsed is map
+        && data.lastUsed.keys().toSet() == controlKeys
+        && data.lastUsed.values()[0] == request.time
+        && data.monthlyUsage is map
+        && data.monthlyUsage.keys().toSet() == [monthKey].toSet()
+        && data.monthlyUsage[monthKey] == data.counts
+        && data.firstTrackedAt == request.time
+        && data.lastUpdatedAt == request.time;
+    }
+
+    function isValidOwnerControlUsageUpdate(docId) {
+      let before = resource.data;
+      let after = request.resource.data;
+      let affected = after.counts is map && before.counts is map
+        ? after.counts.diff(before.counts).affectedKeys()
+        : [].toSet();
+      let monthKey = ownerControlCurrentMonthKey();
+      let beforeMonth = before.monthlyUsage is map
+        ? before.monthlyUsage.get(monthKey, {})
+        : {};
+      let topAffected = after.diff(before).affectedKeys();
+      return isTenantStoreUpdate()
+        && (isPlatformAdmin() || hasTenantWriteRole())
+        && before.keys().toSet() == [
+          'tId', 'sId', 'counts', 'lastUsed', 'monthlyUsage',
+          'firstTrackedAt', 'lastUpdatedAt'
+        ].toSet()
+        && after.keys().toSet() == [
+          'tId', 'sId', 'counts', 'lastUsed', 'monthlyUsage',
+          'firstTrackedAt', 'lastUpdatedAt'
+        ].toSet()
+        && after.tId is string
+        && after.sId is string
+        && docId == after.tId + '_' + after.sId
+        && topAffected.size() == 4
+        && topAffected.hasOnly([
+          'counts', 'lastUsed', 'monthlyUsage', 'lastUpdatedAt'
+        ])
+        && isOwnerControlMap(before.counts)
+        && isOwnerControlMap(after.counts)
+        && ownerControlCounterAdvancedOnce(before.counts, after.counts, affected)
+        && before.lastUsed is map
+        && after.lastUsed is map
+        && before.lastUsed.keys().toSet() == before.counts.keys().toSet()
+        && after.lastUsed.keys().toSet() == after.counts.keys().toSet()
+        && after.lastUsed.diff(before.lastUsed).affectedKeys() == affected
+        && ownerControlTimestampAdvanced(after.lastUsed, affected)
+        && before.monthlyUsage is map
+        && after.monthlyUsage is map
+        && after.monthlyUsage.diff(before.monthlyUsage).affectedKeys() == [monthKey].toSet()
+        && after.monthlyUsage[monthKey] is map
+        && isOwnerControlMap(after.monthlyUsage[monthKey])
+        && ownerControlCounterAdvancedOnce(
+          beforeMonth,
+          after.monthlyUsage[monthKey],
+          after.monthlyUsage[monthKey].diff(beforeMonth).affectedKeys()
+        )
+        && after.monthlyUsage[monthKey].diff(beforeMonth).affectedKeys() == affected
+        && before.firstTrackedAt is timestamp
+        && before.lastUpdatedAt is timestamp
+        && after.firstTrackedAt == before.firstTrackedAt
+        && after.lastUpdatedAt == request.time;
+    }
+
+    function isValidStoreUrlAnchorUpdate() {
+      let changingSubdomain = request.resource.data.diff(resource.data).affectedKeys().hasAny(['subdomain']);
+      let wasPublished = resource.data.keys().hasAny(['lastPublishedAt']) && resource.data.lastPublishedAt != null;
+      return !(wasPublished && changingSubdomain);
+    }
+
+    function preservesTenantServerManagedFields() {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+        'pId',
+        'active',
+        'deleted',
+        'deletedAt',
+        'authDisabled',
+        'blocked',
+        'tenantBlocked',
+        'blockDetails',
+        'outletCreationLock',
+        'outletCreationLockAt'
+      ]);
+    }
+
+    function docIdMatchesCurrentTenantStore(docId) {
+      return request.auth != null
+        && request.auth.token.tenantId != null
+        && request.auth.token.storeId != null
+        && docId.matches('^' + string(request.auth.token.tenantId) + '_' + string(request.auth.token.storeId) + '(_|$).*');
+    }
+
+    function docIdMatchesCurrentTenantPrefix(docId) {
+      return request.auth != null
+        && request.auth.token.tenantId != null
+        && docId.matches('^' + string(request.auth.token.tenantId) + '[-_].*');
+    }
+
+    function projectDocIdMatchesCurrentTenantStore(docId) {
+      return request.auth != null
+        && request.auth.token.tenantId != null
+        && request.auth.token.storeId != null
+        && docId.matches(
+          '^'
+          + string(request.auth.token.tenantId)
+          + '-[A-Za-z0-9_-]+-'
+          + string(request.auth.token.storeId)
+          + '$'
+        );
+    }
+
+    function isValidMasterOperationalStateCreate() {
+      return request.resource.data.keys().hasOnly(['operationalVersion', 'lastUpdatedAt'])
+        && request.resource.data.operationalVersion is int
+        && request.resource.data.operationalVersion == 1
+        && request.resource.data.lastUpdatedAt == request.time;
+    }
+
+    function isValidMasterOperationalStateUpdate() {
+      return request.resource.data.keys().hasOnly(['operationalVersion', 'lastUpdatedAt'])
+        && request.resource.data.operationalVersion is int
+        && request.resource.data.operationalVersion > 1
+        && request.resource.data.lastUpdatedAt == request.time
+        && resource.data.keys().hasOnly(['operationalVersion', 'lastUpdatedAt'])
+        && resource.data.operationalVersion is int
+        && request.resource.data.operationalVersion == resource.data.operationalVersion + 1;
+    }
+
+    function kbCategoriesDocMatchesCurrentStore(docId) {
+      return request.auth != null
+        && request.auth.token.tenantId != null
+        && request.auth.token.storeId != null
+        && docId == 'categories_' + string(request.auth.token.tenantId) + '_' + string(request.auth.token.storeId);
+    }
+
+    function belongsToTenantById(tenantIdInt) {
+      return request.auth != null
+        && string(request.auth.token.tenantId) == string(tenantIdInt);
+    }
+
+    function belongsToStoreById(storeIdInt) {
+      return request.auth != null
+        && (
+          string(request.auth.token.get('storeId', null)) == string(storeIdInt)
+          || request.auth.token.get('storeIds', []).hasAny([string(storeIdInt)])
+        );
+    }
+
+    function isPlatformAdmin() {
+      return request.auth != null
+        && request.auth.token.get('platformRole', null) == 'PLATFORM';
+    }
+
+    function isPlatformSupport() {
+      return request.auth != null
+        && request.auth.token.get('platformRole', null) == 'PLATFORM_SUPPORT';
+    }
+
+    function isPlatformSupportOperator() {
+      return request.auth != null
+        && request.auth.token.get('platformRole', null) in ['PLATFORM', 'PLATFORM_SUPPORT'];
+    }
+
+    function hasValidCommonAssetMetadata(data) {
+      return (!data.keys().hasAny(['pId']) || (data.pId is string && data.pId.size() > 0 && data.pId.size() <= 32))
+        && (!data.keys().hasAny(['sId']) || data.sId is int || data.sId is string)
+        && (!data.keys().hasAny(['tId']) || data.tId is int || data.tId is string)
+        && (!data.keys().hasAny(['role']) || (data.role is string && data.role.size() > 0 && data.role.size() <= 64))
+        && (!data.keys().hasAny(['uId']) || data.uId is int || data.uId is string)
+        && (!data.keys().hasAny(['createdBy']) || (data.createdBy is string && data.createdBy.size() <= 160))
+        && (!data.keys().hasAny(['modifiedBy']) || (data.modifiedBy is string && data.modifiedBy.size() <= 160))
+        && (!data.keys().hasAny(['createdOn']) || data.createdOn is timestamp)
+        && (!data.keys().hasAny(['modifiedOn']) || data.modifiedOn is timestamp);
+    }
+
+    function isValidCommonFontPreset(data) {
+      return data.keys().hasOnly([
+          'blackTextUrl', 'code', 'createdBy', 'createdOn', 'fileUrl',
+          'fontSize', 'height', 'index', 'modifiedBy', 'modifiedOn',
+          'name', 'pId', 'role', 'sId', 'size', 'tId', 'type', 'uId',
+          'whiteTextUrl', 'width'
+        ])
+        && data.keys().hasAll([
+          'blackTextUrl', 'code', 'fileUrl', 'index', 'name', 'size',
+          'type', 'whiteTextUrl'
+        ])
+        && data.name is string
+        && data.name.size() > 0
+        && data.name.size() <= 160
+        && data.code is string
+        && data.code.matches('^[A-Za-z0-9_-]{1,128}$')
+        && data.blackTextUrl is string
+        && data.blackTextUrl.size() <= 300000
+        && data.whiteTextUrl is string
+        && data.whiteTextUrl.size() <= 300000
+        && (data.size is int || (data.size is string && data.size.size() <= 64))
+        && data.type in [
+          '.otf', '.ttf', '.woff', '.woff2',
+          'application/font-sfnt', 'application/font-woff',
+          'application/x-font-opentype', 'application/x-font-ttf',
+          'font/otf', 'font/ttf', 'font/woff', 'font/woff2',
+          'otf', 'ttf', 'woff', 'woff2'
+        ]
+        && data.fileUrl is string
+        && data.fileUrl.size() > 0
+        && data.fileUrl.size() <= 4096
+        && data.index is int
+        && data.index >= 0
+        && data.index < 500
+        && (!data.keys().hasAny(['fontSize']) || (data.fontSize is number && data.fontSize >= 8 && data.fontSize <= 240))
+        && (!data.keys().hasAny(['width']) || (data.width is number && data.width >= 1 && data.width <= 2000))
+        && (!data.keys().hasAny(['height']) || (data.height is number && data.height >= 1 && data.height <= 2000))
+        && hasValidCommonAssetMetadata(data);
+    }
+
+    function isValidCommonAssetCategory(data) {
+      return data.keys().hasOnly([
+          'active', 'createdBy', 'createdOn', 'items', 'modifiedBy',
+          'modifiedOn', 'name', 'pId', 'preview', 'previewType', 'role',
+          'sId', 'subCategories', 'tId', 'tags', 'uId'
+        ])
+        && data.keys().hasAll([
+          'active', 'items', 'name', 'preview', 'previewType',
+          'subCategories', 'tags'
+        ])
+        && data.active is bool
+        && data.name is string
+        && data.name.size() <= 160
+        && data.preview is string
+        && data.preview.size() <= 4096
+        && data.previewType in [
+          'gif', 'image/gif', 'image/jpeg', 'image/png', 'image/svg+xml',
+          'image/webp', 'jpeg', 'png', 'svg', 'webp'
+        ]
+        && data.tags is string
+        && data.tags.size() <= 2000
+        && data.subCategories is list
+        && data.subCategories.size() <= 1000
+        && data.items is list
+        && data.items.size() <= 1000
+        && hasValidCommonAssetMetadata(data);
+    }
+
+    function isValidCommonAssetDocument(data, assetType) {
+      return assetType == 'fontPreset'
+        ? isValidCommonFontPreset(data)
+        : (
+          assetType in ['graphics', 'illustrations', 'images']
+          && isValidCommonAssetCategory(data)
+        );
+    }
+
+    function isPublicPricingPlan(data) {
+      return data.keys().hasOnly([
+          'active',
+          'createdOn',
+          'currency',
+          'description',
+          'features',
+          'modifiedOn',
+          'name',
+          'periodicity',
+          'planType',
+          'price',
+          'publicSafe',
+          'razorpayPlanId',
+          'recommended',
+          'version'
+        ])
+        && data.keys().hasAll([
+          'active',
+          'createdOn',
+          'currency',
+          'description',
+          'features',
+          'modifiedOn',
+          'name',
+          'periodicity',
+          'planType',
+          'price',
+          'version'
+        ])
+        && data.active is bool
+        && data.createdOn is timestamp
+        && data.currency in ['USD', 'INR']
+        && data.description is string
+        && data.description.size() > 0
+        && data.description.size() <= 1000
+        && data.features is list
+        && data.features.size() <= 50
+        && data.modifiedOn is timestamp
+        && data.name is string
+        && data.name.size() > 0
+        && data.name.size() <= 120
+        && data.periodicity in ['MONTH', 'YEAR']
+        && data.planType in ['B2C', 'B2B']
+        && data.price is int
+        && data.price >= 0
+        && data.version is int
+        && data.version >= 1
+        && (!data.keys().hasAny(['publicSafe']) || data.publicSafe == true)
+        && (!data.keys().hasAny(['razorpayPlanId']) || (data.razorpayPlanId is string && data.razorpayPlanId.size() > 0 && data.razorpayPlanId.size() <= 128))
+        && (!data.keys().hasAny(['recommended']) || data.recommended is bool);
+    }
+
+    function canAccessCreativeEditorTemplateStore(tId, sId) {
+      return isAuthenticated()
+        && belongsToTenantById(tId)
+        && belongsToStoreById(sId);
+    }
+
+    function canWriteAiMenuManagerSession(tId, sId) {
+      return isPlatformAdmin()
+        || (request.auth != null && request.auth.token.role == 'PLATFORM')
+        || isTenantAdmin(tId, sId);
+    }
+
+    function isValidAiMenuManagerSessionCounterValue(counters, key) {
+      return !counters.keys().hasAny([key])
+        || (counters[key] is int && counters[key] >= 0 && counters[key] <= 1000000000);
+    }
+
+    function isValidAiMenuManagerSessionCounters(counters) {
+      return counters is map
+        && counters.keys().hasOnly([
+          'commands',
+          'proposalsCreated',
+          'approvals',
+          'executions',
+          'compoundCommands',
+          'deterministicRoutes',
+          'plannerAttempts',
+          'plannerAccepted',
+          'plannerFallbacks',
+          'clarifications'
+        ])
+        && isValidAiMenuManagerSessionCounterValue(counters, 'commands')
+        && isValidAiMenuManagerSessionCounterValue(counters, 'proposalsCreated')
+        && isValidAiMenuManagerSessionCounterValue(counters, 'approvals')
+        && isValidAiMenuManagerSessionCounterValue(counters, 'executions')
+        && isValidAiMenuManagerSessionCounterValue(counters, 'compoundCommands')
+        && isValidAiMenuManagerSessionCounterValue(counters, 'deterministicRoutes')
+        && isValidAiMenuManagerSessionCounterValue(counters, 'plannerAttempts')
+        && isValidAiMenuManagerSessionCounterValue(counters, 'plannerAccepted')
+        && isValidAiMenuManagerSessionCounterValue(counters, 'plannerFallbacks')
+        && isValidAiMenuManagerSessionCounterValue(counters, 'clarifications');
+    }
+
+    function isValidAiMenuManagerPendingState(data) {
+      return (!data.keys().hasAny(['hasPendingOperations', 'pendingCount']))
+        || (
+          data.keys().hasAll(['hasPendingOperations', 'pendingCount'])
+          && data.hasPendingOperations is bool
+          && data.pendingCount is int
+          && data.pendingCount >= 0
+          && data.pendingCount <= 25
+          && ((data.pendingCount == 0 && data.hasPendingOperations == false)
+            || (data.pendingCount > 0 && data.hasPendingOperations == true))
+        );
+    }
+
+    function isValidAiMenuManagerSessionDoc(data, sessionId) {
+      return data.keys().hasOnly([
+          'sessionId',
+          'tId',
+          'sId',
+          'projectId',
+          'sessionDate',
+          'storageMode',
+          'status',
+          'compactMessages',
+          'pendingCardSummaries',
+          'pendingOperations',
+          'hasPendingOperations',
+          'pendingCount',
+          'recentReceiptSummaries',
+          'counters',
+          'artifactRefs',
+          'createdAt',
+          'updatedAt',
+          'expiresAt'
+        ])
+        && data.keys().hasAll([
+          'sessionId',
+          'tId',
+          'sId',
+          'projectId'
+        ])
+        && data.sessionId == sessionId
+        && canWriteAiMenuManagerSession(data.tId, data.sId)
+        && data.tId is string
+        && data.tId.matches('^[1-9][0-9]*$')
+        && data.sId is string
+        && data.sId.matches('^[1-9][0-9]*$')
+        && data.projectId is string
+        && data.projectId.size() > 0
+        && data.projectId.size() <= 160
+        && !data.projectId.matches('.*[/].*')
+        && data.keys().hasAll(['sessionDate'])
+        && data.sessionDate is string
+        && data.sessionDate.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+        && (!data.keys().hasAny(['storageMode']) || data.storageMode in ['daily_compact', 'detailed'])
+        && (!data.keys().hasAny(['status']) || data.status in ['active', 'closed'])
+        && (!data.keys().hasAny(['compactMessages']) || (data.compactMessages is list && data.compactMessages.size() <= 20))
+        && (!data.keys().hasAny(['pendingCardSummaries']) || (data.pendingCardSummaries is list && data.pendingCardSummaries.size() <= 25))
+        && (!data.keys().hasAny(['pendingOperations']) || (data.pendingOperations is list && data.pendingOperations.size() <= 25))
+        && (!data.keys().hasAny(['recentReceiptSummaries']) || (data.recentReceiptSummaries is list && data.recentReceiptSummaries.size() <= 20))
+        && (!data.keys().hasAny(['artifactRefs']) || (data.artifactRefs is list && data.artifactRefs.size() <= 20))
+        && (!data.keys().hasAny(['counters']) || isValidAiMenuManagerSessionCounters(data.counters))
+        && isValidAiMenuManagerPendingState(data)
+        && (!data.keys().hasAny(['expiresAt']) || data.expiresAt is timestamp);
+    }
+
+    function isDeterministicAiMenuManagerSessionId(data, sessionId) {
+      return sessionId == 'amm2_' + data.tId + '_' + data.sId + '_' + data.sessionDate + '_' + data.projectId;
+    }
+
+    function isAiMenuManagerSessionScopeUnchanged(before, after) {
+      return after.sessionId == before.sessionId
+        && after.tId == before.tId
+        && after.sId == before.sId
+        && after.projectId == before.projectId
+        && (!before.keys().hasAny(['sessionDate']) || after.sessionDate == before.sessionDate);
+    }
+
+    function isValidCreativeEditorPlatformTemplateCatalog(data, businessCategory) {
+      return data.keys().hasOnly(['businessCategory', 'data', 'schemaVersion', 'updatedAt', 'updatedAtMs'])
+        && data.businessCategory is string
+        && data.businessCategory == businessCategory
+        && data.schemaVersion is number
+        && data.data is list
+        && data.data.size() <= 200;
+    }
+
+    function isValidCreativeEditorTemplateIndex(data, docId, tId, sId) {
+      return docId == 'default'
+        && data.keys().hasOnly(['createdBy', 'createdOn', 'data', 'id', 'modifiedBy', 'modifiedOn', 'pId', 'role', 'sId', 'schemaVersion', 'tId', 'uId', 'updatedAt', 'updatedAtMs'])
+        && data.keys().hasAll(['data', 'id', 'schemaVersion', 'tId', 'sId'])
+        && data.data is list
+        && data.data.size() <= 100
+        && data.id is string
+        && data.id == 'default'
+        && string(data.tId) == string(tId)
+        && string(data.sId) == string(sId)
+        && data.schemaVersion is number;
+    }
+
+    function isAnswerlatticePlatformSummaryDoc(document) {
+      return document.matches('^(branding|coverage|friction|frictionSnapshot|trustMetrics|supportBoardSummary|knowledgeIntakeSummary|entityGraph|entityGraphIndex|interactionRules|predictiveTriggers|contextContent|sourceVersions|bundleManifest|integrationConfig|integrationHealth)_.*$');
+    }
+
+    function isAnswerlatticePlatformSummaryClientReadableDoc(document) {
+      return isAnswerlatticePlatformSummaryDoc(document)
+        && !document.matches('^(sourceVersions|bundleManifest|integrationConfig)_.*$');
+    }
+
+    function hasAnswerlatticePlatformSummaryReadPermission(document) {
+      return (
+          document.matches('^(coverage|friction|frictionSnapshot|trustMetrics)_.*$')
+          && hasAnswerlatticeReadinessPermission()
+        )
+        || (
+          document.matches('^supportBoardSummary_.*$')
+          && hasAnswerlatticeSupportBoardPermission()
+        )
+        || (
+          document.matches('^knowledgeIntakeSummary_.*$')
+          && hasAnswerlatticeKnowledgeControlPermission()
+        )
+        || (
+          document.matches('^(entityGraph|entityGraphIndex|interactionRules|predictiveTriggers|contextContent)_.*$')
+          && hasAnswerlatticeKnowledgeControlPermission()
+        )
+        || (
+          document.matches('^branding_.*$')
+          && (
+            hasAnswerlatticePermission('canManageWidget')
+            || hasAnswerlatticePermission('canManageWorkspace')
+            || hasAnswerlatticeKnowledgeControlPermission()
+          )
+        )
+        || (
+          document.matches('^integrationHealth_.*$')
+          && hasAnswerlatticePermission('canManageIntegrations')
+        );
+    }
+
+    function isAnswerlatticeSourceVersionsDoc(document) {
+      return document.matches('^sourceVersions_.*$');
+    }
+
+    function isAnswerlatticeBundleManifestDoc(document) {
+      return document.matches('^bundleManifest_.*$');
+    }
+
+    function isAnswerlatticeCurrentWorkspaceControlDocument(document) {
+      return request.auth != null
+        && request.auth.token.get('tenantId', null) != null
+        && request.auth.token.get('storeId', null) != null
+        && (
+          document == 'sourceVersions_'
+            + string(request.auth.token.get('tenantId', null))
+            + '_'
+            + string(request.auth.token.get('storeId', null))
+          || document == 'bundleManifest_'
+            + string(request.auth.token.get('tenantId', null))
+            + '_'
+            + string(request.auth.token.get('storeId', null))
+        );
+    }
+
+    function isAnswerlatticeBrandingDoc(document) {
+      return document.matches('^branding_.*$');
+    }
+
+    function answerlatticeBrandingDocumentKeys() {
+      return [
+        'pId',
+        'tId',
+        'sId',
+        'branding',
+        'sourceContext',
+        'traceId',
+        'requestId',
+        'role',
+        'uId',
+        'modifiedBy',
+        'modifiedOn',
+        'createdOn',
+        'createdBy'
+      ];
+    }
+
+    function isValidAnswerlatticeBrandingOptionalText(data, field, maxLength) {
+      return !data.keys().hasAny([field])
+        || (
+          data[field] is string
+          && data[field].size() > 0
+          && data[field].size() <= maxLength
+        );
+    }
+
+    function isValidAnswerlatticeBrandingOptionalColor(data, field) {
+      return !data.keys().hasAny([field])
+        || (
+          data[field] is string
+          && data[field].matches('^#[0-9A-Fa-f]{6}$')
+        );
+    }
+
+    function isValidAnswerlatticeBrandingOptionalHttpsUrl(data, field) {
+      return !data.keys().hasAny([field])
+        || (
+          data[field] is string
+          && data[field].size() > 8
+          && data[field].size() <= 500
+          && data[field].matches('^https://([A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?[.])*[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?([/?][A-Za-z0-9._~!$&()*+,;=:@%/?-]*)?$')
+        );
+    }
+
+    function isValidAnswerlatticeBrandingProfile(data) {
+      return data.keys().hasOnly(answerlatticeBrandingDocumentKeys())
+        && data.keys().hasAll(['pId', 'tId', 'sId', 'branding'])
+        && data.branding is map
+        && data.branding.keys().hasAll(['companyName', 'primaryColor', 'poweredByVisible'])
+        && data.branding.keys().hasOnly([
+          'companyName',
+          'logoUrl',
+          'faviconUrl',
+          'primaryColor',
+          'accentColor',
+          'backgroundColor',
+          'textColor',
+          'headerBackground',
+          'headerTextColor',
+          'poweredByVisible',
+          'supportEmail',
+          'privacyPolicyUrl',
+          'termsUrl'
+        ])
+        && data.branding.companyName is string
+        && data.branding.companyName.size() > 0
+        && data.branding.companyName.size() <= 100
+        && data.branding.primaryColor is string
+        && data.branding.primaryColor.matches('^#[0-9A-Fa-f]{6}$')
+        && data.branding.poweredByVisible is bool
+        && isValidAnswerlatticeBrandingOptionalHttpsUrl(data.branding, 'logoUrl')
+        && isValidAnswerlatticeBrandingOptionalHttpsUrl(data.branding, 'faviconUrl')
+        && isValidAnswerlatticeBrandingOptionalColor(data.branding, 'accentColor')
+        && isValidAnswerlatticeBrandingOptionalColor(data.branding, 'backgroundColor')
+        && isValidAnswerlatticeBrandingOptionalColor(data.branding, 'textColor')
+        && isValidAnswerlatticeBrandingOptionalColor(data.branding, 'headerBackground')
+        && isValidAnswerlatticeBrandingOptionalColor(data.branding, 'headerTextColor')
+        && isValidAnswerlatticeBrandingOptionalText(data.branding, 'supportEmail', 160)
+        && (
+          !data.branding.keys().hasAny(['supportEmail'])
+          || data.branding.supportEmail.matches('^[A-Za-z0-9!#$%&*+/=?^_`{|}~-]+([.][A-Za-z0-9!#$%&*+/=?^_`{|}~-]+)*@[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?([.][A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?)+$')
+        )
+        && isValidAnswerlatticeBrandingOptionalHttpsUrl(data.branding, 'privacyPolicyUrl')
+        && isValidAnswerlatticeBrandingOptionalHttpsUrl(data.branding, 'termsUrl');
+    }
+
+    function isAnswerlatticePlatformSummaryDocumentScopeValid(document, data) {
+      return data.keys().hasAll(['tId', 'sId'])
+        && (
+          document == 'branding_' + string(data.tId) + '_' + string(data.sId)
+          || document == 'coverage_' + string(data.tId) + '_' + string(data.sId)
+          || document == 'friction_' + string(data.tId) + '_' + string(data.sId)
+          || document == 'frictionSnapshot_' + string(data.tId) + '_' + string(data.sId)
+          || document == 'trustMetrics_' + string(data.tId) + '_' + string(data.sId)
+          || document == 'supportBoardSummary_' + string(data.tId) + '_' + string(data.sId)
+          || document == 'knowledgeIntakeSummary_' + string(data.tId) + '_' + string(data.sId)
+          || document == 'entityGraph_' + string(data.tId) + '_' + string(data.sId)
+          || document == 'entityGraphIndex_' + string(data.tId) + '_' + string(data.sId)
+          || document == 'interactionRules_' + string(data.tId) + '_' + string(data.sId)
+          || document == 'predictiveTriggers_' + string(data.tId) + '_' + string(data.sId)
+          || document == 'contextContent_' + string(data.tId) + '_' + string(data.sId)
+          || document == 'sourceVersions_' + string(data.tId) + '_' + string(data.sId)
+          || document == 'bundleManifest_' + string(data.tId) + '_' + string(data.sId)
+          || document == 'integrationConfig_' + string(data.tId) + '_' + string(data.sId)
+          || document == 'integrationHealth_' + string(data.tId) + '_' + string(data.sId)
+        );
+    }
+
+    function hasAnswerlatticePlatformSummaryWritePermission(document) {
+      return (
+          document.matches('^(predictiveTriggers|sourceVersions|bundleManifest)_.*$')
+          && (
+            hasAnswerlatticeKnowledgeControlPermission()
+            || hasAnswerlatticePermission('canRebuildContext')
+          )
+        )
+        || (
+          document.matches('^branding_.*$')
+          && (
+            hasAnswerlatticePermission('canManageWidget')
+            || hasAnswerlatticePermission('canManageWorkspace')
+            || hasAnswerlatticeKnowledgeControlPermission()
+          )
+        );
+    }
+
+    function answerlatticeSourceVersionClientKeys() {
+      return [
+        'schemaVersion', 'pId', 'tId', 'sId', 'workspaceProfile',
+        'widgetConfig', 'kb', 'docsNav', 'entities', 'entityRelations',
+        'canonical', 'surfaces', 'releases', 'branding', 'mcpPolicy',
+        'predictiveTriggers', 'updatedAt', 'lastReason', 'lastSourceId',
+        'lastSourceType'
+      ];
+    }
+
+    function answerlatticeBundleManifestClientKeys() {
+      return [
+        'schemaVersion', 'pId', 'tId', 'sId', 'publicBundleId',
+        'bundleVersion', 'activeVersion', 'lastReadyVersion',
+        'sourceVersions', 'bundles', 'stats', 'limits', 'generatedAt',
+        'lastBuildError', 'status', 'staleReason',
+        'updatedAt', 'lastReason', 'lastSourceId', 'lastSourceType'
+      ];
+    }
+
+    function answerlatticeSourceVersionMutableKeys() {
+      return [
+        'workspaceProfile', 'widgetConfig', 'kb', 'docsNav', 'entities',
+        'entityRelations', 'canonical', 'surfaces', 'releases', 'branding',
+        'mcpPolicy', 'predictiveTriggers', 'updatedAt', 'lastReason',
+        'lastSourceId', 'lastSourceType'
+      ];
+    }
+
+    function answerlatticeBundleManifestMutableKeys() {
+      return [
+        'status', 'staleReason', 'updatedAt', 'lastReason',
+        'lastSourceId', 'lastSourceType'
+      ];
+    }
+
+    function isAnswerlatticeSourceVersionSameOrNext(previousValue, nextValue) {
+      return previousValue is int
+        && previousValue >= 0
+        && nextValue is int
+        && (nextValue == previousValue || nextValue == previousValue + 1);
+    }
+
+    function isValidAnswerlatticeSourceVersion(value) {
+      return value is int && value >= 0 && value <= 9007199254740991;
+    }
+
+    function areAnswerlatticeSourceVersionsValid(data) {
+      return data is map
+        && data.keys().hasAll([
+          'workspaceProfile', 'widgetConfig', 'kb', 'docsNav', 'entities',
+          'entityRelations', 'canonical', 'surfaces', 'releases', 'branding',
+          'mcpPolicy', 'predictiveTriggers'
+        ])
+        && isValidAnswerlatticeSourceVersion(data.workspaceProfile)
+        && isValidAnswerlatticeSourceVersion(data.widgetConfig)
+        && isValidAnswerlatticeSourceVersion(data.kb)
+        && isValidAnswerlatticeSourceVersion(data.docsNav)
+        && isValidAnswerlatticeSourceVersion(data.entities)
+        && isValidAnswerlatticeSourceVersion(data.entityRelations)
+        && isValidAnswerlatticeSourceVersion(data.canonical)
+        && isValidAnswerlatticeSourceVersion(data.surfaces)
+        && isValidAnswerlatticeSourceVersion(data.releases)
+        && isValidAnswerlatticeSourceVersion(data.branding)
+        && isValidAnswerlatticeSourceVersion(data.mcpPolicy)
+        && isValidAnswerlatticeSourceVersion(data.predictiveTriggers);
+    }
+
+    function areAnswerlatticeSourceVersionUpdatesMonotonic() {
+      return isAnswerlatticeSourceVersionSameOrNext(resource.data.get('workspaceProfile', 0), request.resource.data.workspaceProfile)
+        && isAnswerlatticeSourceVersionSameOrNext(resource.data.get('widgetConfig', 0), request.resource.data.widgetConfig)
+        && isAnswerlatticeSourceVersionSameOrNext(resource.data.get('kb', 0), request.resource.data.kb)
+        && isAnswerlatticeSourceVersionSameOrNext(resource.data.get('docsNav', 0), request.resource.data.docsNav)
+        && isAnswerlatticeSourceVersionSameOrNext(resource.data.get('entities', 0), request.resource.data.entities)
+        && isAnswerlatticeSourceVersionSameOrNext(resource.data.get('entityRelations', 0), request.resource.data.entityRelations)
+        && isAnswerlatticeSourceVersionSameOrNext(resource.data.get('canonical', 0), request.resource.data.canonical)
+        && isAnswerlatticeSourceVersionSameOrNext(resource.data.get('surfaces', 0), request.resource.data.surfaces)
+        && isAnswerlatticeSourceVersionSameOrNext(resource.data.get('releases', 0), request.resource.data.releases)
+        && isAnswerlatticeSourceVersionSameOrNext(resource.data.get('branding', 0), request.resource.data.branding)
+        && isAnswerlatticeSourceVersionSameOrNext(resource.data.get('mcpPolicy', 0), request.resource.data.mcpPolicy)
+        && isAnswerlatticeSourceVersionSameOrNext(resource.data.get('predictiveTriggers', 0), request.resource.data.predictiveTriggers)
+        && request.resource.data.diff(resource.data).affectedKeys().hasAny([
+          'workspaceProfile', 'widgetConfig', 'kb', 'docsNav', 'entities',
+          'entityRelations', 'canonical', 'surfaces', 'releases', 'branding',
+          'mcpPolicy', 'predictiveTriggers'
+        ]);
+    }
+
+    function isAnswerlatticeTenantSummaryScopeStable() {
+      return isAnswerlatticeTenantMember(resource.data)
+        && request.resource.data.pId == resource.data.pId
+        && request.resource.data.tId == resource.data.tId
+        && request.resource.data.sId == resource.data.sId;
+    }
+
+    function canCreateAnswerlatticePlatformSummaryDoc(document) {
+      return isAnswerlatticeTenantMember(request.resource.data)
+        && isAnswerlatticePlatformSummaryDocumentScopeValid(document, request.resource.data)
+        && (
+          (
+            isAnswerlatticeSourceVersionsDoc(document)
+            && request.resource.data.keys().hasOnly(answerlatticeSourceVersionClientKeys())
+            && request.resource.data.keys().hasAll([
+              'schemaVersion', 'pId', 'tId', 'sId', 'workspaceProfile',
+              'widgetConfig', 'kb', 'docsNav', 'entities', 'entityRelations',
+              'canonical', 'surfaces', 'releases', 'branding', 'mcpPolicy',
+              'predictiveTriggers', 'updatedAt'
+            ])
+            && request.resource.data.schemaVersion == 1
+            && areAnswerlatticeSourceVersionsValid(request.resource.data)
+          )
+          || (
+            isAnswerlatticeBundleManifestDoc(document)
+            && request.resource.data.keys().hasOnly(answerlatticeBundleManifestClientKeys())
+            && request.resource.data.keys().hasAll([
+              'schemaVersion', 'pId', 'tId', 'sId', 'publicBundleId',
+              'bundleVersion', 'activeVersion', 'lastReadyVersion',
+              'sourceVersions', 'bundles', 'stats', 'limits', 'generatedAt',
+              'lastBuildError', 'status', 'staleReason', 'updatedAt'
+            ])
+            && request.resource.data.schemaVersion == 1
+            && request.resource.data.publicBundleId == ''
+            && request.resource.data.bundleVersion == 0
+            && request.resource.data.activeVersion == 0
+            && request.resource.data.lastReadyVersion == 0
+            && areAnswerlatticeSourceVersionsValid(request.resource.data.sourceVersions)
+            && request.resource.data.bundles is map
+            && request.resource.data.stats is map
+            && request.resource.data.limits is map
+            && request.resource.data.generatedAt == null
+            && request.resource.data.lastBuildError == null
+            && request.resource.data.status == 'stale'
+          )
+          || (
+            isAnswerlatticeBrandingDoc(document)
+            && isValidAnswerlatticeBrandingProfile(request.resource.data)
+          )
+          || (
+            !isAnswerlatticeSourceVersionsDoc(document)
+            && !isAnswerlatticeBundleManifestDoc(document)
+            && !isAnswerlatticeBrandingDoc(document)
+          )
+        );
+    }
+
+    function canUpdateAnswerlatticePlatformSummaryDoc(document) {
+      return isAnswerlatticeTenantSummaryScopeStable()
+        && isAnswerlatticePlatformSummaryDocumentScopeValid(document, request.resource.data)
+        && (
+          (
+            isAnswerlatticeSourceVersionsDoc(document)
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(answerlatticeSourceVersionMutableKeys())
+            && areAnswerlatticeSourceVersionUpdatesMonotonic()
+          )
+          || (
+            isAnswerlatticeBundleManifestDoc(document)
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(answerlatticeBundleManifestMutableKeys())
+            && request.resource.data.status == 'stale'
+          )
+          || (
+            isAnswerlatticeBrandingDoc(document)
+            && isValidAnswerlatticeBrandingProfile(request.resource.data)
+          )
+          || (
+            !isAnswerlatticeSourceVersionsDoc(document)
+            && !isAnswerlatticeBundleManifestDoc(document)
+            && !isAnswerlatticeBrandingDoc(document)
+          )
+        );
+    }
+
+    function isAnswerlatticeOwnerRole() {
+      return request.auth.token.get('role', null) == 'OWNER'
+        || request.auth.token.get('role', null) == 'owner';
+    }
+
+    function isAnswerlatticeManagerRole() {
+      return request.auth.token.get('role', null) == 'MANAGER'
+        || request.auth.token.get('role', null) == 'manager';
+    }
+
+    function isAnswerlatticeStaffRole() {
+      return request.auth.token.get('role', null) == 'STAFF'
+        || request.auth.token.get('role', null) == 'staff';
+    }
+
+    function defaultManagerHasAnswerlatticePermission(permission) {
+      return isAnswerlatticeManagerRole()
+        && (
+          permission == 'canViewReadiness'
+          || permission == 'canManageWorkspace'
+          || permission == 'canManageTeam'
+          || permission == 'canManageKnowledge'
+          || permission == 'canManageGovernance'
+          || permission == 'canManageWidget'
+          || permission == 'canManageSupport'
+        );
+    }
+
+    function defaultStaffHasAnswerlatticePermission(permission) {
+      return isAnswerlatticeStaffRole() && permission == 'canManageSupport';
+    }
+
+    function hasAnswerlatticePermission(permission) {
+      return isPlatformAdmin()
+        || request.auth.token.get(permission, false) == true
+        || isAnswerlatticeOwnerRole()
+        || defaultManagerHasAnswerlatticePermission(permission)
+        || defaultStaffHasAnswerlatticePermission(permission);
+    }
+
+    function hasAnswerlatticeReadinessPermission() {
+      return hasAnswerlatticePermission('canViewReadiness')
+        || hasAnswerlatticePermission('canManageKnowledge')
+        || hasAnswerlatticePermission('canManageGovernance')
+        || hasAnswerlatticePermission('canManageWidget')
+        || hasAnswerlatticePermission('canManageIntegrations');
+    }
+
+    function hasAnswerlatticeKnowledgeControlPermission() {
+      return hasAnswerlatticePermission('canManageKnowledge')
+        || hasAnswerlatticePermission('canManageGovernance');
+    }
+
+    function hasAnswerlatticeSupportControlPermission() {
+      return hasAnswerlatticePermission('canManageSupport')
+        || hasAnswerlatticePermission('canManageWidget');
+    }
+
+    function hasAnswerlatticeSupportBoardPermission() {
+      return hasAnswerlatticePermission('canManageSupport');
+    }
+
+    function isAnswerlatticeFeedbackSelfActor(data) {
+      return data.keys().hasAll(['uId'])
+        && (
+          string(data.uId) == string(request.auth.uid)
+          || string(data.uId) == string(request.auth.token.get('uId', ''))
+        );
+    }
+
+    function isValidAnswerlatticeFeedbackSurfaceValue(data, field) {
+      return !data.keys().hasAny([field])
+        || data[field] == null
+        || (data[field] is string && data[field].size() > 0 && data[field].size() <= 180);
+    }
+
+    function isValidAnswerlatticeFeedbackSurfaceUpdate() {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'contextKey', 'surfaceId', 'surfaceLabel', 'surfaceAssignedBy',
+          'surfaceAssignedAt', 'modifiedBy', 'modifiedOn'
+        ])
+        && isValidAnswerlatticeFeedbackSurfaceValue(request.resource.data, 'contextKey')
+        && isValidAnswerlatticeFeedbackSurfaceValue(request.resource.data, 'surfaceId')
+        && isValidAnswerlatticeFeedbackSurfaceValue(request.resource.data, 'surfaceLabel')
+        && isValidAnswerlatticeFeedbackSurfaceValue(request.resource.data, 'surfaceAssignedBy')
+        && request.resource.data.keys().hasAll(['surfaceAssignedAt', 'modifiedBy', 'modifiedOn'])
+        && (request.resource.data.surfaceAssignedAt == null || request.resource.data.surfaceAssignedAt is timestamp)
+        && request.resource.data.modifiedBy is string
+        && (
+          request.resource.data.modifiedBy == request.auth.uid
+          || request.resource.data.modifiedBy == request.auth.token.get('uId', '')
+        )
+        && request.resource.data.modifiedBy.size() <= 200
+        && request.resource.data.modifiedOn is timestamp
+        && request.resource.data.modifiedOn == request.time
+        && (
+          (
+            request.resource.data.contextKey == null
+            && request.resource.data.surfaceId == null
+            && request.resource.data.surfaceLabel == null
+            && request.resource.data.surfaceAssignedBy == null
+            && request.resource.data.surfaceAssignedAt == null
+          )
+          || (
+            request.resource.data.surfaceAssignedBy is string
+            && (
+              request.resource.data.surfaceAssignedBy == request.auth.uid
+              || request.resource.data.surfaceAssignedBy == request.auth.token.get('uId', '')
+            )
+            && request.resource.data.surfaceAssignedAt is timestamp
+            && request.resource.data.surfaceAssignedAt == request.time
+          )
+        );
+    }
+
+    function hasAnswerlatticeContentFeedbackPermission() {
+      return hasAnswerlatticePermission('canManageKnowledge')
+        || hasAnswerlatticeSupportBoardPermission();
+    }
+
+    function isAnswerlatticeContentFeedbackRead(tId, sId) {
+      return isAuthenticated()
+        && (
+          isPlatformAdmin()
+          || (
+            belongsToTenant(tId)
+            && belongsToStoreById(sId)
+            && hasAnswerlatticeContentFeedbackPermission()
+          )
+        );
+    }
+
+    function isAnswerlatticeTenantMember(data) {
+      return request.auth != null
+        && data.keys().hasAll(['pId', 'tId', 'sId'])
+        && data.pId == 'AL'
+        && request.auth.token.get('tenantId', null) != null
+        && request.auth.token.get('storeId', null) != null
+        && string(data.tId) == string(request.auth.token.get('tenantId', null))
+        && string(data.sId) == string(request.auth.token.get('storeId', null))
+        && isAnswerlatticeActiveWorkspace(data.tId, data.sId);
+    }
+
+    function isAnswerlatticeProductDocument(data) {
+      return data.get('pId', null) == 'AL'
+        || data.get('productId', null) == 'AL';
+    }
+
+    function isAnswerlatticeActiveWorkspace(tId, sId) {
+      let store = get(/databases/$(database)/documents/stores/$(sId));
+      return store.data.pId == 'AL'
+        && string(store.data.tId) == string(tId)
+        && string(store.data.sId) == string(sId)
+        && store.data.get('active', false) == true
+        && store.data.deleted != true
+        && store.data.authDisabled != true;
+    }
+
+    function isAnswerlatticeScopedReadWithSupportControl() {
+      return isAuthenticated()
+        && (
+          isPlatformSupportOperator()
+          || (isAnswerlatticeTenantMember(resource.data) && hasAnswerlatticeSupportControlPermission())
+        );
+    }
+
+    function isAnswerlatticeScopedReadWithSupportBoardControl() {
+      return isAuthenticated()
+        && (
+          isPlatformSupportOperator()
+          || (isAnswerlatticeTenantMember(resource.data) && hasAnswerlatticeSupportBoardPermission())
+        );
+    }
+
+    function isAnswerlatticeScopedCreateWithSupportControl() {
+      return isAuthenticated()
+        && (
+          isPlatformSupportOperator()
+          || (isAnswerlatticeTenantMember(request.resource.data) && hasAnswerlatticeSupportControlPermission())
+        );
+    }
+
+    function isAnswerlatticeScopedUpdateWithSupportControl() {
+      return isAuthenticated()
+        && (
+          isPlatformSupportOperator()
+          || (
+            isAnswerlatticeTenantMember(resource.data)
+            && request.resource.data.pId == resource.data.pId
+            && request.resource.data.tId == resource.data.tId
+            && request.resource.data.sId == resource.data.sId
+            && hasAnswerlatticeSupportControlPermission()
+          )
+        );
+    }
+
+    function isAnswerlatticeScopedDeleteWithSupportControl() {
+      return isAuthenticated()
+        && (
+          isPlatformSupportOperator()
+          || (isAnswerlatticeTenantMember(resource.data) && hasAnswerlatticeSupportControlPermission())
+        );
+    }
+
+    function isMenuProcessingJobOwner() {
+      return resource.data.uId == request.auth.uid
+        || resource.data.uId == request.auth.token.uId;
+    }
+
+    function isMenuProcessingJobScopeMember() {
+      return resource.data.keys().hasAll(['tId', 'sId'])
+        && belongsToTenantById(resource.data.tId)
+        && belongsToStoreById(resource.data.sId);
+    }
+
+    function isClientJobCancellationRequest() {
+      return (
+        request.resource.data.status == 'cancelling'
+        && resource.data.status == 'processing'
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'status',
+          'updatedAt'
+        ])
+        && request.resource.data.updatedAt is timestamp
+      )
+      || (
+        request.resource.data.status == 'cancelled'
+        && resource.data.status == 'pending'
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'status',
+          'completedAt',
+          'updatedAt'
+        ])
+        && request.resource.data.completedAt is timestamp
+        && request.resource.data.updatedAt is timestamp
+      );
+    }
+
+    function isClientPreviewReviewResolution() {
+      return resource.data.status == 'preview_ready'
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'status',
+          'completedAt',
+          'updatedAt',
+          'currentStep'
+        ])
+        && request.resource.data.completedAt is timestamp
+        && request.resource.data.updatedAt is timestamp
+        && request.resource.data.currentStep is string
+        && (
+          (
+            request.resource.data.status == 'completed'
+            && request.resource.data.currentStep == 'Changes applied'
+          )
+          || (
+            request.resource.data.status == 'cancelled'
+            && request.resource.data.currentStep == 'Changes discarded by user'
+          )
+        );
+    }
+
+    function hasExactAnswerlatticeBillingIdentity(data) {
+      return data.keys().hasAll(['pId', 'productId'])
+        && data.pId == 'AL'
+        && data.productId == 'AL';
+    }
+
+    function hasExactMenuListBillingIdentity(data) {
+      return data.keys().hasAll(['pId', 'productId'])
+        && data.pId == 'ML'
+        && data.productId == 'ML';
+    }
+
+    function isAnswerlatticeBillingScopeMember(data) {
+      return request.auth != null
+        && data.keys().hasAll(['tId', 'tenantId', 'sId', 'storeId'])
+        && data.tId == data.tenantId
+        && data.sId == data.storeId
+        && belongsToTenantById(data.tenantId)
+        && belongsToStoreById(data.storeId);
+    }
+
+    function isMenuListBillingScopeMember(data) {
+      return request.auth != null
+        && data.keys().hasAll(['tId', 'tenantId', 'sId', 'storeId'])
+        && data.tId == data.tenantId
+        && data.sId == data.storeId
+        && belongsToTenantById(data.tenantId)
+        && belongsToStoreById(data.storeId);
+    }
+
+    function canReadProductBillingResource() {
+      return isAuthenticated()
+        && (
+          isPlatformAdmin()
+          || (
+            hasExactAnswerlatticeBillingIdentity(resource.data)
+            && isAnswerlatticeBillingScopeMember(resource.data)
+            && hasAnswerlatticePermission('canManageBilling')
+          )
+          || (
+            hasExactMenuListBillingIdentity(resource.data)
+            && isMenuListBillingScopeMember(resource.data)
+          )
+        );
+    }
+
+    function canReadProductPaymentTransaction() {
+      return isAuthenticated()
+        && (
+          isPlatformAdmin()
+          || (
+            hasExactAnswerlatticeBillingIdentity(resource.data)
+            && isAnswerlatticeBillingScopeMember(resource.data)
+            && hasAnswerlatticePermission('canManageBilling')
+          )
+          || (
+            hasExactMenuListBillingIdentity(resource.data)
+            && isMenuListBillingScopeMember(resource.data)
+          )
+        );
+    }
+
+    function isValidNewMasterProjectReference(tId, sId, masterProjectId) {
+      let segments = masterProjectId is string ? masterProjectId.split('-') : [];
+      let masterStoreId = segments.size() >= 3 ? segments[segments.size() - 1] : '';
+      let masterPath = /databases/$(database)/documents/projects/$(tId)/$(masterStoreId)/$(masterProjectId);
+      return masterProjectId is string
+        && masterProjectId.size() > 0
+        && masterProjectId.size() <= 160
+        && masterStoreId.matches('^[1-9][0-9]*$')
+        && masterProjectId.matches('^' + string(tId) + '-.+-' + masterStoreId + '$')
+        && string(masterStoreId) != string(sId)
+        && (isPlatformAdmin() || belongsToStoreById(masterStoreId))
+        && exists(masterPath)
+        && get(masterPath).data.get('active', true) != false
+        && get(masterPath).data.get('deleted', false) != true
+        && get(masterPath).data.get('masterProjectId', null) == null
+        && get(masterPath).data.keys().hasAny(['files'])
+        && get(masterPath).data.files is list
+        && get(masterPath).data.files.size() == 1;
+    }
+
+    function isProjectReadIdentityBounded(data, tId, sId, projectId) {
+      return (!data.keys().hasAny(['projectId']) || string(data.projectId) == string(projectId))
+        && (!data.keys().hasAny(['tId']) || string(data.tId) == string(tId))
+        && (!data.keys().hasAny(['tenantId']) || string(data.tenantId) == string(tId))
+        && (!data.keys().hasAny(['tenantID']) || string(data.tenantID) == string(tId))
+        && (!data.keys().hasAny(['sId']) || string(data.sId) == string(sId))
+        && (!data.keys().hasAny(['storeId']) || string(data.storeId) == string(sId))
+        && (!data.keys().hasAny(['storeID']) || string(data.storeID) == string(sId));
+    }
+
+    function isValidProjectCreateIdentity(tId, sId, projectId) {
+      let data = request.resource.data;
+      let hasMasterReference = data.keys().hasAny(['masterProjectId'])
+        && data.masterProjectId != null;
+      return isProjectReadIdentityBounded(data, tId, sId, projectId)
+        && (
+          !hasMasterReference
+          || (
+            (!data.keys().hasAny(['isMaster']) || data.isMaster != true)
+            && (
+              !data.keys().hasAny(['files'])
+              || (data.files is list && data.files.size() <= 1)
+            )
+            && isValidNewMasterProjectReference(tId, sId, data.masterProjectId)
+          )
+        );
+    }
+
+    function isValidOutletUpdate(tId, sId) {
+      // If NOT linked to master (no masterProjectId), allow all writes
+      let hasMasterProjectId = resource.data.keys().hasAny(['masterProjectId']);
+      let isLinkedToMaster = hasMasterProjectId && resource.data.masterProjectId != null;
+      let willLinkToMaster = request.resource.data.keys().hasAny(['masterProjectId'])
+        && request.resource.data.masterProjectId != null;
+      let willSoftDelete = request.resource.data.get('deleted', false) == true
+        && resource.data.get('deleted', false) != true;
+      let identityUnchanged = !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+        'projectId', 'tId', 'tenantId', 'tenantID', 'sId', 'storeId', 'storeID'
+      ]);
+      // Linked-outlet mutations require transaction-current master/policy
+      // validation plus summary/cache effects in the protected outlet-save
+      // route. Firestore rules cannot validate every dynamic override-map
+      // value, so an already-linked document is server-write-only.
+      let masterIdUnchanged = !isLinkedToMaster
+        ? (
+          !willLinkToMaster
+          || (
+            (!request.resource.data.keys().hasAny(['isMaster']) || request.resource.data.isMaster != true)
+            && (
+              !request.resource.data.keys().hasAny(['files'])
+              || (
+                request.resource.data.files is list
+                && request.resource.data.files.size() <= 1
+              )
+            )
+            && isValidNewMasterProjectReference(
+              tId,
+              sId,
+              request.resource.data.masterProjectId
+            )
+          )
+        )
+        : (
+          request.resource.data.keys().hasAny(['masterProjectId'])
+          && request.resource.data.masterProjectId == resource.data.masterProjectId
+        );
+
+      return identityUnchanged
+        && masterIdUnchanged
+        && !willSoftDelete
+        && !isLinkedToMaster;
+    }
+  }
+}

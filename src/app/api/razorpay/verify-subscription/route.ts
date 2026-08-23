@@ -6,6 +6,12 @@ import {
     resolveRazorpayCheckoutVerificationOutcome,
     resolveRazorpayProviderSubscriptionStatus,
 } from '@data/shared/razorpaySubscriptionLifecycle';
+import { PRODUCT_IDS } from '@constant/product';
+import { resolveMenuListMonthlyCreditAllowance } from '@data/shared/contentCreditPolicy';
+import {
+    resizeMenuListTaxSnapshot,
+    resolveMenuListTaxSettlementSnapshot,
+} from '@data/shared/billingTaxPolicy';
 import {
     applyProductSubscriptionPayment,
     getProductSubscriptionById,
@@ -372,10 +378,42 @@ export const POST = withAuth(async (request, session) => {
         }
 
         const priceKey = `price${payment.currency.toUpperCase()}`;
-        const creditsForPlan = planDetails[priceKey]?.monthlyCredits || 0;
+        const planCredits = planDetails[priceKey]?.monthlyCredits || 0;
         const paymentAmount = requireRazorpayRevenueAmountPaise(payment.amount);
         const paymentOccurredAt = resolveRazorpayRevenueOccurredAtMillis(payment.created_at);
         const providerState = resolveRazorpaySubscriptionState(providerSubscription, internalSub.quantity);
+        const expectedTaxSnapshot = productId === PRODUCT_IDS.MENULIST && internalSub.taxSnapshot && providerState
+            ? resizeMenuListTaxSnapshot(internalSub.taxSnapshot, providerState.quantity)
+            : undefined;
+        const currentTaxSnapshot = productId === PRODUCT_IDS.MENULIST && internalSub.taxSnapshot && providerState
+            ? resolveMenuListTaxSettlementSnapshot({
+                amount: paymentAmount,
+                currency: String(payment.currency || ''),
+                quantity: providerState.quantity,
+                snapshot: internalSub.taxSnapshot,
+            })
+            : undefined;
+        if (productId === PRODUCT_IDS.MENULIST && !currentTaxSnapshot) {
+            logger.security('Subscription Tax Settlement Mismatch', {
+                ...getBoundedRazorpaySecurityContext(session, request),
+                endpoint: '/api/razorpay/verify-subscription',
+                error: 'Captured provider amount does not match stored MenuList tax terms',
+                paymentAmount,
+                expectedAmount: expectedTaxSnapshot?.grossAmount,
+                paymentCurrency: String(payment.currency || '').toUpperCase(),
+                expectedCurrency: expectedTaxSnapshot?.currency,
+                quantity: providerState?.quantity,
+                ...getBoundedRazorpayStringContext('subscriptionId', razorpay_subscription_id),
+            }, 'critical');
+            return NextResponse.json({ error: 'Payment amount could not be matched.' }, { status: 409 });
+        }
+        const creditsForPlan = productId === PRODUCT_IDS.MENULIST
+            ? resolveMenuListMonthlyCreditAllowance({
+                fallbackAllowance: planCredits,
+                planId: planDetails.planId,
+                quantity: providerState?.quantity ?? internalSub.quantity,
+            })
+            : planCredits;
         const billingInterval = providerSubscription.notes?.interval;
 
         const billingPeriod = getProviderCycleBillingPeriodKey(providerState?.currentStartSeconds);
@@ -422,6 +460,9 @@ export const POST = withAuth(async (request, session) => {
             totalPaymentsMadeCount: providerState.paidCount,
             pastDueSinceAt: null,
             quantity: providerState.quantity,
+            ...(currentTaxSnapshot ? {
+                taxSnapshot: currentTaxSnapshot,
+            } : {}),
             // Store payment method
             paymentMethod: {
                 type: payment.method,

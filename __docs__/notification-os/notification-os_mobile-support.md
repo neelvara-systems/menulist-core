@@ -1,7 +1,7 @@
 # NotificationOS — Mobile Support
 
 > **Status:** Implemented in `MobileShell`; provider-dependent options remain gated
-> **Last Updated:** August 15, 2026
+> **Last Updated:** August 23, 2026
 
 ## Admission Decision
 
@@ -13,7 +13,7 @@ Mobile support is required because MenuList phone onboarding and WhatsApp prefer
 | ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Phone onboarding        | OTP verification remains separate; optional WhatsApp notification opt-in appears only after verification and is committed after canonical owner/store creation |
 | Google/email onboarding | Confirm real email; offer WhatsApp setup without blocking product use                                                                                          |
-| More / Settings         | Show channel preference and separate WhatsApp consent; WhatsApp choices remain disabled until provider certification                                           |
+| More / Settings         | Show channel preference and separate WhatsApp consent; provider delivery remains fail-closed when configuration or certification is absent                     |
 | Recovery                | Explain missing/revoked channel without exposing provider details                                                                                              |
 
 ## UX Rules
@@ -53,3 +53,4 @@ New empty/recovery states must follow the contextual state illustration rules. H
 - Unavailable channel combinations are disabled before save, while consent withdrawal remains available even when the provider is disabled or the contact is no longer eligible.
 - Save stays disabled until the owner changes a value, avoiding an unnecessary Firestore write for an unchanged form.
 - `preferred_available` accepts a verified email without forcing WhatsApp setup and falls back to the first eligible channel.
+- New stores open with Email and WhatsApp selected as the default routing policy. The owner still controls a separate WhatsApp permission switch; an unverified number or missing consent keeps WhatsApp ineligible without blocking eligible email.

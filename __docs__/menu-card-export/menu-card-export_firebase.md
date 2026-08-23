@@ -14,7 +14,7 @@ The current implementation preserves the PDF Surface cost model for exports: Men
 
 PDF document properties, generated-date/source-reference filenames, and print-shop source summaries are also generated in the browser. They add no Firestore reads/writes and no Storage operations.
 
-Visible MenuList attribution in exported PDFs is browser-rendered from `src/lib/menu-kit/platformAttribution.ts`. It adds the MenuList logo mark, name, and `menulist.ai` domain to the footer for non-Premium stores without a network fetch, Firestore read/write, Storage upload, Cloud Function, rule, or index. `src/lib/platform/menuListBranding.ts` hides that visible attribution only when the already-loaded store context has `activePlanType === "premium"`; no subscription lookup is added.
+Visible MenuList attribution in exported PDFs is browser-rendered from `src/lib/menu-kit/platformAttribution.ts`. It adds the MenuList logo mark, name, and `menulist.ai` domain to the footer for non-Multi-location stores without a network fetch, Firestore read/write, Storage upload, Cloud Function, rule, or index. `src/lib/platform/menuListBranding.ts` hides that visible attribution only when the already-loaded store context has `activePlanType === "menulist_multi_location"`; no subscription lookup is added.
 
 Brand color and logo reuse comes from the already-loaded platform store context used by the owner app and OBP. When `Include logo` is on, the final renderer may download the existing logo image once to embed it into the PDF; this is cached in memory for repeat exports in the same route session and does not create an export artifact, Storage upload, Firestore document, rule, index, or Cloud Function.
 
@@ -24,19 +24,19 @@ Physical output styling is also renderer-only: warm page backgrounds, borders, t
 
 Business-type-aware output is cost-neutral. The print source reuses `store.businessType` and `store.businessCategory` from the already-loaded store context, resolves catalog/offering kind through the existing shared taxonomy, and chooses menu/service/catalog labels and visual tone in the browser. It does not add a store reread, export record, Storage upload, Cloud Function, rule, or index.
 
-Auto print design is also cost-neutral. It runs in the browser after the print source is built, using item count, category count, description coverage, variant presence, business profile, and selected preset to choose the initial style, density, and safe toggles. It does not call the Pro/Premium AI advisor, consume AI capacity, write Firestore, upload Storage, invoke Cloud Functions, or require rules/index changes.
+Auto print design is also cost-neutral. It runs in the browser after the print source is built, using item count, category count, description coverage, variant presence, business profile, and selected preset to choose the initial style, density, and safe toggles. It does not call the Pro/Multi-location AI advisor, consume AI capacity, write Firestore, upload Storage, invoke Cloud Functions, or require rules/index changes.
 
-The optional layout suggestion is separate from export generation. It uses `/api/menu-card-export/design-advisor`, is available only to Pro/Premium subscriptions, caps request bodies at 128KB, checks route permission, rate limit, plan, and AI capacity before provider work, logs one AI operation, and consumes one enhancement unit only after a valid JSON recommendation is returned.
+The optional layout suggestion is separate from export generation. It uses `/api/menu-card-export/design-advisor`, is available only to Pro/Multi-location subscriptions, caps request bodies at 128KB, checks route permission, rate limit, plan, and AI capacity before provider work, logs one AI operation, and consumes one enhancement unit only after a valid JSON recommendation is returned.
 
-July 1 AI advisor permission hardening adds the existing store permission read before Pro/Premium subscription lookup, capacity check, provider call, AI operation write, or credit consumption. Rejected users do not reach the subscription read or AI cost path. This adds no writes, deletes, rules, indexes, Cloud Functions, Firebase deploy requirement, or Vercel deploy action.
+July 1 AI advisor permission hardening adds the existing store permission read before Pro/Multi-location subscription lookup, capacity check, provider call, AI operation write, or credit consumption. Rejected users do not reach the subscription read or AI cost path. This adds no writes, deletes, rules, indexes, Cloud Functions, Firebase deploy requirement, or Vercel deploy action.
 
-AI advisor session-scope admission is cost-neutral. `/api/menu-card-export/design-advisor` now validates authenticated tenant/store scope as exact positive numeric Firestore document IDs before tenant access, bounded request parsing, route permission checks, Pro/Premium subscription lookup, AI capacity check, provider call, recommendation normalization, AI operation write, or credit consumption. Malformed, whitespace-mutated, leading-zero, zero, negative, unsafe, nonnumeric, reserved, empty, or path-shaped session scope fails before Firestore reads or provider work. This changes malformed session-scope admission only and adds no Firestore reads/writes/deletes for valid requests, Storage operations, provider calls beyond existing valid suggestions, cache invalidations, rules, indexes, Cloud Function logic, Firebase deploy requirement, or Vercel deploy action.
+AI advisor session-scope admission is cost-neutral. `/api/menu-card-export/design-advisor` now validates authenticated tenant/store scope as exact positive numeric Firestore document IDs before tenant access, bounded request parsing, route permission checks, Pro/Multi-location subscription lookup, AI capacity check, provider call, recommendation normalization, AI operation write, or credit consumption. Malformed, whitespace-mutated, leading-zero, zero, negative, unsafe, nonnumeric, reserved, empty, or path-shaped session scope fails before Firestore reads or provider work. This changes malformed session-scope admission only and adds no Firestore reads/writes/deletes for valid requests, Storage operations, provider calls beyond existing valid suggestions, cache invalidations, rules, indexes, Cloud Function logic, Firebase deploy requirement, or Vercel deploy action.
 
 July 5 AI advisor provider-response parse diagnostics are Firebase-cost neutral. Empty, malformed non-object, or malformed object-fragment provider JSON now logs capped `menu_card_design_advisor_provider_response_parse_failed` diagnostics with fixed `return_layout_suggestion_failed` policy and response-shape metadata only. The route still returns the existing owner-safe suggestion failure, consumes no credits, writes no AI operation row, and does not add Firestore reads/writes/deletes, Storage operations, extra provider calls, cache invalidations, rules, indexes, schema changes, Cloud Function logic changes, owner-facing settings, Firebase deploy requirement, or Vercel deploy action.
 
-June 30 AI advisor prompt-boundary hardening is Firebase-cost neutral. The route still uses the same auth, tenant access, 128KB body cap, Zod request schema, Pro/Premium plan gate, AI capacity check, Gemini call, recommendation normalization, AI operation write, and credit consumption order. The prompt builder now strips control/template characters, normalizes whitespace, caps prompt strings, caps warning/category scans, and serializes only sanitized `sourceSummary`, `preflightWarnings`, and `sourceHash` values. This adds no Firestore reads/writes/deletes, Storage operations, provider calls beyond existing valid suggestions, cache invalidations, rules, indexes, schema changes, Cloud Function logic changes, owner-facing settings, Firebase deploy requirement, or Vercel deploy action.
+June 30 AI advisor prompt-boundary hardening is Firebase-cost neutral. The route still uses the same auth, tenant access, 128KB body cap, Zod request schema, Pro/Multi-location plan gate, AI capacity check, Gemini call, recommendation normalization, AI operation write, and credit consumption order. The prompt builder now strips control/template characters, normalizes whitespace, caps prompt strings, caps warning/category scans, and serializes only sanitized `sourceSummary`, `preflightWarnings`, and `sourceHash` values. This adds no Firestore reads/writes/deletes, Storage operations, provider calls beyond existing valid suggestions, cache invalidations, rules, indexes, schema changes, Cloud Function logic changes, owner-facing settings, Firebase deploy requirement, or Vercel deploy action.
 
-June 29 browser response-parser hardening is Firebase-cost neutral. The design-advisor client now caps plan-gate and recommendation response JSON at 16KB and logs malformed or oversized route responses through bounded AI service diagnostics. It adds no Firestore reads/writes/deletes, Storage operations, provider calls, AI accounting writes, credit consumption, rules, indexes, Cloud Functions, Firebase deploy requirement, or Vercel deploy action. Existing Pro/Premium plan gating, capacity handling, recommendation application, and owner-facing failure copy remain unchanged.
+June 29 browser response-parser hardening is Firebase-cost neutral. The design-advisor client now caps plan-gate and recommendation response JSON at 16KB and logs malformed or oversized route responses through bounded AI service diagnostics. It adds no Firestore reads/writes/deletes, Storage operations, provider calls, AI accounting writes, credit consumption, rules, indexes, Cloud Functions, Firebase deploy requirement, or Vercel deploy action. Existing Pro/Multi-location plan gating, capacity handling, recommendation application, and owner-facing failure copy remain unchanged.
 
 Legacy `generateMenuPdf()` direct-download paths are cost-neutral compatibility bridges. They now call the same Menu Card Export print source and browser renderer with existing store/project context. This changes visual output only; it adds no export Firestore write, Storage upload, Cloud Function, rule, index, or server artifact.
 
@@ -46,7 +46,7 @@ Cost control rule:
 
 > Preview never writes. Final export downloads from the browser by default. Export history is local to the device.
 
-> Starter/no-subscription users are blocked from layout suggestion before any provider call.
+> Official/no-subscription users are blocked from layout suggestion before any provider call.
 
 Official Firebase pricing pages state that Firestore billing is based on document reads, writes, deletes, index entries, storage, and bandwidth; prices vary by location and currency. Cloud Storage for Firebase charges depend on bucket type, storage, bandwidth, and operations. Check the current Google Cloud SKU table before implementation.
 
@@ -162,11 +162,11 @@ Rules:
 | List export records | 0 Firebase | Reads local browser history only. |
 | Generate thumbnail URLs | 0 Firestore | Thumbnails are not generated in v1. |
 
-### Pro/Premium Layout Suggestion
+### Pro/Multi-location Layout Suggestion
 
 | Operation | Count | Notes |
 | --- | --- | --- |
-| Feature/plan check | 1 active subscription lookup | Blocks non-Pro/Premium users before provider call. |
+| Feature/plan check | 1 active subscription lookup | Blocks non-Pro/Multi-location users before provider call. |
 | Rate limit | 0 Firebase by default | Uses existing rate-limit helper/config. |
 | AI capacity check | 0 extra subscription lookup | Reuses the plan-gate subscription, then refreshes credits only when needed. |
 | Provider call | 1 Gemini JSON request | Owner-click only; sends bounded summary, not full raw project data. |
@@ -186,7 +186,7 @@ Rules:
 | History limit | Route lists max 20 shaped local export records per tenant/store/project. |
 | Retention | No Storage retention needed until server artifact storage exists. |
 | Thumbnails | Generate only if UI displays them; otherwise store preview model only. |
-| AI advisor | Owner-click only, Pro/Premium only, rate-limited, capacity-gated, and not part of critical export path. |
+| AI advisor | Owner-click only, Pro/Multi-location only, rate-limited, capacity-gated, and not part of critical export path. |
 | Print-shop packet | Client-side ZIP only; no Storage cost. |
 | Logo embedding | Final-render only; cache the converted logo data URL in memory by source URL. |
 | Batch export | Flag off until per-request caps, indexes, and access checks are proven. |
@@ -207,7 +207,7 @@ The route does perform normal project reads when the owner opens the route or ch
 
 If `Include logo` is on and the logo is stored in Firebase Storage but not already browser-cached, branded PDF output can add one normal logo-image download during final render. It does not add Firestore cost, export artifact Storage cost, or any persistent export object.
 
-AI advisor operations are not counted as exports. A successful Pro/Premium suggestion adds existing AI-accounting writes only: one operation log write and one subscription credit update. Non-Pro/Premium attempts do not call the provider and do not consume credits.
+AI advisor operations are not counted as exports. A successful Pro/Multi-location suggestion adds existing AI-accounting writes only: one operation log write and one subscription credit update. Non-Pro/Multi-location attempts do not call the provider and do not consume credits.
 
 ## Share And Export Failure Diagnostics
 

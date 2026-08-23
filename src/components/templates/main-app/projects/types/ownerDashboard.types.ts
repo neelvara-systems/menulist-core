@@ -237,7 +237,7 @@ export interface OwnerActionPlan {
 export interface AnalyticsAiEntitlement {
     enabled: boolean;
     activePlanType?: string | null;
-    requiredPlanType: 'pro';
+    requiredPlanType: 'menulist_pro';
     reason: 'eligible' | 'feature_flag_disabled' | 'missing_plan' | 'plan_not_eligible';
 }
 

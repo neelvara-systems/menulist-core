@@ -23,7 +23,7 @@ export type OwnerNotificationSettings = {
     whatsappConsentStatus?: 'granted' | 'revoked';
     whatsappConsentedAt?: string;
     whatsappConsentRevokedAt?: string;
-    whatsappConsentSource?: 'owner_settings';
+    whatsappConsentSource?: 'owner_settings' | 'website_onboarding' | 'messaging_onboarding';
     whatsappConsentPolicyVersion?: string;
     preferredChannel?: NotificationOsChannel;
     preferredChannels?: NotificationOsChannel[];
@@ -45,7 +45,9 @@ export function normalizeOwnerNotificationSettings(value: unknown): OwnerNotific
         ? settings.channelMode as NotificationOsOwnerMode
         : settings.preferredChannel === 'email'
             ? 'email_only'
-            : 'preferred_available';
+            : settings.preferredChannel === 'whatsapp'
+                ? 'whatsapp_only'
+                : 'email_and_whatsapp';
     const preferredChannels = Array.isArray(settings.preferredChannels)
         ? Array.from(new Set(settings.preferredChannels.filter(
             (channel): channel is NotificationOsChannel => channel === 'email' || channel === 'whatsapp',
@@ -72,7 +74,11 @@ export function normalizeOwnerNotificationSettings(value: unknown): OwnerNotific
         whatsappConsentStatus: whatsappConsent ? 'granted' : 'revoked',
         ...(typeof settings.whatsappConsentedAt === 'string' ? { whatsappConsentedAt: settings.whatsappConsentedAt } : {}),
         ...(typeof settings.whatsappConsentRevokedAt === 'string' ? { whatsappConsentRevokedAt: settings.whatsappConsentRevokedAt } : {}),
-        ...(settings.whatsappConsentSource === 'owner_settings' ? { whatsappConsentSource: 'owner_settings' as const } : {}),
+        ...(settings.whatsappConsentSource === 'owner_settings'
+            || settings.whatsappConsentSource === 'website_onboarding'
+            || settings.whatsappConsentSource === 'messaging_onboarding'
+            ? { whatsappConsentSource: settings.whatsappConsentSource }
+            : {}),
         ...(typeof settings.whatsappConsentPolicyVersion === 'string' ? { whatsappConsentPolicyVersion: settings.whatsappConsentPolicyVersion } : {}),
         ...(settings.preferredChannel === 'email' || settings.preferredChannel === 'whatsapp'
             ? { preferredChannel: settings.preferredChannel }

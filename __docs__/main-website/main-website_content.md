@@ -89,7 +89,7 @@ Supporting pages now share the same official-source discipline through shared he
 
 **Sticky CTA behavior (June 29, 2026):** `StickyCta` is desktop-only and should appear after the hero proof has passed, then hide before the final CTA area. The homepage wraps the hero with `website-sticky-cta-start` and the final CTA with `website-sticky-cta-stop` so the tray is controlled by section visibility, not a scroll-percentage listener.
 
-**Growth Kits placement policy (June 1, 2026; wording aligned June 22, 2026):** do not add GrowthOS, Growth Kits, or `Today's Sales Pack` to the homepage. The homepage must stay focused on the first owner action: start from the current menu or service-list source and publish one official customer-facing version. Growth Kits may be considered later as a small Pro/Premium pricing or Features-page proof point after owner usage validates demand.
+**Growth Kits placement policy (June 1, 2026; wording aligned August 22, 2026):** do not add GrowthOS, Growth Kits, or `Today's Sales Pack` to the homepage. The homepage must stay focused on the first owner action: start from the current menu or service-list source and publish one official customer-facing version. Growth Kits may be considered later as a small Pro or Multi-location pricing or Features-page proof point after owner usage validates demand.
 
 **Print files placement policy (June 5, 2026):** do not add a separate Menu Card Export or Print Assets homepage section. The homepage may show `Print files` as one compact output of the approved menu source, while the Features page can explain the practical owner outcome: paper menu PDFs, table cards, counter cards, and printer handoff files generated from the same current approved menu. `/resources/digital-menu-vs-pdf-menu` continues to carry the broader PDF-vs-digital explanation. The Pro/Multi-location layout suggestion must not be promoted on the homepage; if public pricing copy later needs it, describe it plainly as `layout suggestion on Pro and Multi-location`, not as an AI PDF feature.
 
@@ -192,7 +192,7 @@ Industry pages explain how the same official-source layer applies to common list
 
 **Primary CTA:** Create customer link →
 **Secondary CTA:** See example customer page (`/features/official-business-page`)
-**Micro-trust line:** Publish and try the starter link during the 7-day setup. Choose a paid plan before the deadline to keep the same URL live.
+**Micro-trust line:** Publish and try the customer link during the 7-day setup. Choose a paid plan before the deadline to keep the same URL live.
 
 **Proof strip:** Owner-approved · Use as website link · QR and print ready
 
@@ -1490,13 +1490,13 @@ Right-side sticky cards:
 - Each plan card: Plan name, price, billing period, best-fit line, public surfaces included, owner controls included, not-included boundary, and CTA button
 - Recommended plan highlighted
 - Plan-card user-facing copy must come from the `Website.Pricing` locale namespace, not hardcoded JSX strings.
-- Plan guidance must leave the choice with the owner: Starter is enough for one official customer link; Pro is for presentation, AI Menu Manager, languages, enhancement credits, and owner controls; Premium is for location governance.
+- Plan guidance must leave the choice with the owner: Official is enough for one official customer link; Pro is for presentation, AI Menu Manager, languages, enhancement credits, and owner controls; Multi-location is for location governance.
 
 ### CTA on Plan Cards
 
-- Starter: `Start with one customer link`
+- Official: `Start with one customer link`
 - Pro: `Start with Pro setup`
-- Premium: `Set up locations`
+- Multi-location: `Set up locations`
 
 ### Below Plans: Credit / Enhancement Packs
 
@@ -1758,7 +1758,7 @@ Chat-style sequence:
 - Copy link failure: `CreateMenuSuccess.copyFailed`
 - WhatsApp open failure: `CreateMenuSuccess.whatsAppFailed`
 - Show the Billing action only after the versioned last-claim handoff matches the current tenant/store session. Billing and workspace actions share one bounded session refresh before navigating to fixed internal routes.
-- Keep the seven-day starter period and the dedicated QR Code and Assets navigation unchanged.
+- Keep the seven-day setup period and the dedicated QR Code and Assets navigation unchanged.
 - Copy Link success must wait for Clipboard API success or acknowledged textarea fallback success. Rejected Clipboard API writes fall through to the textarea fallback before failure.
 - Both messages must stay localized fixed copy. Do not show browser exception text, API response text, raw public URLs, or generated WhatsApp message bodies.
 - The full `/create-menu` upload, preview, and success journey must remain
@@ -1971,6 +1971,7 @@ This footer-level shortcut links to Claude, ChatGPT, and Gemini with a MenuList-
 
 **Column 3: Resources**
 
+- Developers
 - About
 - Contact
 - Trust & Security

@@ -1,6 +1,33 @@
 {
   "indexes": [
     {
+      "collectionGroup": "billingDocuments",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "productId", "order": "ASCENDING" },
+        { "fieldPath": "tenantId", "order": "ASCENDING" },
+        { "fieldPath": "storeId", "order": "ASCENDING" },
+        { "fieldPath": "issuedAtMillis", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "billingDocuments",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "productId", "order": "ASCENDING" },
+        { "fieldPath": "documentType", "order": "ASCENDING" },
+        { "fieldPath": "paymentId", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "billingDocuments",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "relatedInvoiceId", "order": "ASCENDING" },
+        { "fieldPath": "documentType", "order": "ASCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "users",
       "queryScope": "COLLECTION",
       "fields": [

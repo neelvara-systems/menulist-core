@@ -156,7 +156,7 @@ Authenticated browser click-through remains an external certification gate befor
 | Legacy Use MenuList PDF | If the routed feature flag is off and Use MenuList calls `generateMenuPdf()`, the downloaded PDF still uses Menu Card Export brand color, logo, business profile, currency formatting, physical styling, metadata, and source hash. |
 | Legacy mobile Share PDF | If the routed feature flag is off and Mobile Share calls `generateMenuPdf()`, the downloaded PDF uses the selected mobile project cache and the same branded renderer output as desktop. |
 | Legacy project Share PDF | If the project Share modal direct-download path runs, it passes store context and uses the same branded renderer output. |
-| Premium attribution removal | When loaded store context has `activePlanType: "premium"`, generated PDFs, QR cards, Menu Kit files, physical cards, OBP/menu footers, compliance pages, and digital screen attribution hide visible MenuList logo/name/domain. Missing, Starter, Pro, and unknown plan data keeps attribution visible. |
+| Multi-location attribution removal | When loaded store context has `activePlanType: "menulist_multi_location"`, generated PDFs, QR cards, Menu Kit files, physical cards, OBP/menu footers, compliance pages, and digital screen attribution hide visible MenuList logo/name/domain. Missing, Official, Pro, and unknown plan data keeps attribution visible. |
 
 ---
 
@@ -211,7 +211,7 @@ Authenticated browser click-through remains an external certification gate befor
 | Batch flag off | Batch endpoint/action is unavailable. |
 | AI advisor flag off | No AI/provider call occurs. |
 | Starter layout suggestion attempt | 403 `plan_required`; provider is not called and credits are not consumed. |
-| Pro/Premium layout suggestion | Returns JSON recipe only, records AI operation, and consumes one unit after validation. |
+| Pro/Multi-location layout suggestion | Returns JSON recipe only, records AI operation, and consumes one unit after validation. |
 | Provider failure | No credit is consumed and no suggestion is applied. |
 | Invalid AI output | Recommendation is rejected before credit consumption. |
 | Apply suggestion | Only approved preset/style/density/toggles are applied; final PDF renderer remains deterministic. |
@@ -263,8 +263,8 @@ Script responsibilities at freeze:
 - Verify PDF currency fallback, whole-number price formatting, and dynamic price-width handling.
 - Verify physical output page styling, page borders, category treatments, dotted price leaders, business-type-aware visual profiles, and auto print design remain wired.
 - Verify the legacy `generateMenuPdf()` bridge delegates to Menu Card Export and receives store/project brand context from Use MenuList, mobile Share, and project Share.
-- Verify Premium attribution removal uses already-loaded `activePlanType` and does not add subscription reads or server generation.
+- Verify Multi-location attribution removal uses already-loaded `activePlanType` and does not add subscription reads or server generation.
 - Verify no export-storage API route or artifact Firebase write path was added.
 - Verify unused placeholder modules stay removed.
-- Verify the Pro/Premium AI advisor route uses auth, tenant access, rate limit, plan gate, capacity check, provider call, output normalization, operation logging, and credit consumption.
+- Verify the Pro/Multi-location AI advisor route uses auth, tenant access, rate limit, plan gate, capacity check, provider call, output normalization, operation logging, and credit consumption.
 - Verify Mobile Share, Mobile Menu, and More Print Menu entry points use `MobileShell` screen state and do not force a PWA reload.

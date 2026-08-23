@@ -49,6 +49,16 @@ export const PULL_API_KEY_RATE_LIMIT = 60;
 export const PULL_API_PREAUTH_RATE_LIMIT = PULL_API_KEY_RATE_LIMIT * 4;
 export const PULL_API_RATE_LIMIT_WINDOW_SECONDS = 60;
 const PUBLIC_API_KEY_PATTERN = /^(ml|cn|al)_[A-Za-z0-9_-]{20,128}$/;
+const PULL_API_ERROR_RESOLUTIONS: Readonly<Record<string, string>> = Object.freeze({
+    FEATURE_DISABLED: 'Keep the integration disabled and contact the MenuList account owner before retrying.',
+    MISSING_API_KEY: 'Send the store\'s current API key in X-API-Key from a trusted server.',
+    INVALID_API_KEY: 'Verify or rotate the key in Business Settings, then update the trusted server secret.',
+    NO_MENU: 'Publish a current default menu for this store before retrying.',
+    RATE_LIMIT_EXCEEDED: 'Wait for the Retry-After interval before retrying.',
+    SERVICE_UNAVAILABLE: 'Wait for the Retry-After interval and retry later; MenuList fails closed while admission is unavailable.',
+    INTERNAL_ERROR: 'Retry later. If the error continues, contact MenuList support with the request time and endpoint.',
+});
+const DEFAULT_PULL_API_ERROR_RESOLUTION = 'Review the HTTP status and request contract before retrying.';
 
 export function normalizePublicApiDocumentId(value: unknown): string | null {
     const raw = typeof value === 'string' || typeof value === 'number' ? String(value) : '';
@@ -188,7 +198,16 @@ export function pullApiError(
     status: number,
     headers: HeadersInit = {},
 ): NextResponse {
-    return apiError(code, message, status, buildPullApiErrorHeaders(headers));
+    return NextResponse.json(
+        {
+            error: {
+                code,
+                message,
+                resolution: PULL_API_ERROR_RESOLUTIONS[code] || DEFAULT_PULL_API_ERROR_RESOLUTION,
+            },
+        },
+        { status, headers: buildPullApiErrorHeaders(headers) },
+    );
 }
 
 export function pullApiRateLimitError(result: {

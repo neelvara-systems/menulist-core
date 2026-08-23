@@ -39,7 +39,7 @@ Implemented runtime:
 
 - authenticated summary API: `/api/public-truth-monitor/summary`
 - authenticated refresh API: `/api/public-truth-monitor/refresh`
-- paid plan entitlement: Pro/Premium by default
+- paid plan entitlement: Pro/Multi-location by default
 - capped latest/history document: `platformSummary/publicTruthMonitor_{storeId}`
 - desktop Business Health panel
 - mobile Business Health card inside `MobileShell`

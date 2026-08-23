@@ -50,7 +50,7 @@ June 2 no-designer recheck: the market repeatedly sells the same promise: templa
 | [Square Future of Restaurants 2025](https://squareup.com/us/en/the-bottom-line/series/foc/future-of-restaurants) | Square frames restaurant technology as a way to handle operational heavy lifting and changing guest expectations. | Use automation to remove print preparation work; do not add owner-facing design complexity. |
 | [iMenuPro menu maker](https://imenupro.com/) | Positions no-manual-alignment auto-formatting, design switching without losing text, print sizes, QR, logo/color branding, and no-design-skills output as the core value. | Add deterministic auto print design so owners start from a sensible layout without using AI or hiring a designer. |
 | [OMenu](https://www.omenu.io/) | Combines templates, brand customization, QR, responsive digital menus, and professional print-ready PDFs for non-technical users. | Keep the QR bridge and print-ready output together; make brand/business profile automatic. |
-| [Restaurant Menu Studio](https://www.restaurantmenustudio.com/) | Combines professional templates, print-ready PDFs, QR menus, AI suggestions, and brand-kit lock. | Treat Pro/Premium AI as a refinement layer over deterministic safe settings, not as the final renderer. |
+| [Restaurant Menu Studio](https://www.restaurantmenustudio.com/) | Combines professional templates, print-ready PDFs, QR menus, AI suggestions, and brand-kit lock. | Treat Pro/Multi-location AI as a refinement layer over deterministic safe settings, not as the final renderer. |
 | [IAMenu PDF generator](https://www.iamenu.ai/en/features/pdf-generator) | Sells the outcome as professional menus without a designer and emphasizes PDF/QR/logo/template controls. | Keep owner controls constrained and move design choice into automatic settings wherever possible. |
 | [MustHaveMenus easy menu design](https://www.musthavemenus.com/feature/easy-menu-design-for-restaurants.html) | Emphasizes many templates, print/download formats, editable QR, brand fonts/colors/logos, and printing. | Do not compete on template count. Compete on MenuList's current source of truth, auto-picked layout, QR freshness, and print packet. |
 | [Visme menu maker](https://www.visme.co/menu-maker/) | Highlights brand kit, templates, print-ready PDF with bleed marks, high-resolution downloads, and QR handoff. | Keep brand reuse and print-shop readiness first-class; avoid manual brand-kit setup inside this feature. |
@@ -84,7 +84,7 @@ June 2 no-designer recheck: the market repeatedly sells the same promise: templa
 | P0 | Auto-picked style/density/toggles | Add. This directly removes the designer decision while keeping output deterministic and free. |
 | P1 | Print-shop packet with instructions and QR checklist | Keep, flag-gated until print QA stays clean. |
 | P1 | Metadata/filename/source summary | Keep. Useful for support and printers; no Firebase cost. |
-| P1 | Pro/Premium layout suggestion | Keep only as bounded settings advice. It should not generate final artwork. |
+| P1 | Pro/Multi-location layout suggestion | Keep only as bounded settings advice. It should not generate final artwork. |
 | P2 | Staff reference / daily specials one-pager | Worth considering as controlled presets if they reuse the same print source. |
 | P2 | Multi-location batch | Useful for larger accounts, but keep behind caps, permission checks, and cost proof. |
 | Reject | Canva-style freeform editing | Feature slop. It duplicates stronger products and increases owner burden. |
@@ -105,7 +105,7 @@ Current track is right because it already focuses on:
 - deterministic auto design before paid AI or manual style choice
 - preflight and freshness instead of "download and hope"
 - browser-local artifacts to protect Firebase cost
-- Pro/Premium AI as bounded layout advice, not final output generation
+- Pro/Multi-location AI as bounded layout advice, not final output generation
 
 ### What Would Be Feature Slop
 
@@ -157,7 +157,7 @@ Rules:
 - Retail/product businesses default to catalog/price-list output.
 - WhatsApp keeps QR on and prefers phone-readable or compact output by item count.
 - This layer must run client-side from already-loaded source data and must not call an AI provider.
-- Pro/Premium AI advice may refine this baseline, but the final renderer remains deterministic.
+- Pro/Multi-location AI advice may refine this baseline, but the final renderer remains deterministic.
 
 All four should reuse the same source builder, preflight, renderer, and cost model. None should create a new editor or new menu database.
 
@@ -222,7 +222,7 @@ Ship as a complete architecture with flags, but expose only the stable surface f
 | Print-shop packet | Flag-gated | Needs bleed/crop/file-size validation. |
 | Page images | Flag-gated | Adds storage and QA surface. |
 | Multi-location batch | Flag-gated | Useful for operators, but needs careful data access and cost checks. |
-| AI advisor | Pro/Premium only | Useful value-add when JSON-only, owner-applied, and kept outside final rendering truth. |
+| AI advisor | Pro/Multi-location only | Useful value-add when JSON-only, owner-applied, and kept outside final rendering truth. |
 
 ---
 

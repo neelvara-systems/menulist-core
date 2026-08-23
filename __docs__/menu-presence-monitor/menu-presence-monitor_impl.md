@@ -12,7 +12,7 @@ Menu Presence Monitor is a **pure UI component** embedded in the Use MenuList pa
 
 - **Source-derived statuses** from existing data (valid publish acknowledgement, screen token, feedback setting)
 - **Manual confirmations** stored as a lightweight field on the store document
-- **Starter activation telemetry** piggybacked on the same store document for unpaid public starter workspaces
+- **Starter activation telemetry** piggybacked on the same store document for unpaid public setup workspaces
 - **Activation-proof summary** from `buildStarterActivationSummary()` so owners and SignalDesk can tell whether an action was MenuList-recorded or owner-confirmed
 
 Zero new collections. Zero new API routes. Client-side DAL only.

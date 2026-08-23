@@ -1,7 +1,7 @@
 # Owner Notifications
 
 **Status:** Local source complete for strict-order item 6; provider, target deploy, authenticated browser/device, and production-host evidence remain pending
-**Date:** 2026-08-15
+**Date:** 2026-08-23
 **Products:** MenuList primary, Answerlattice reusable architecture
 **Owner:** Platform / product engineering
 
@@ -21,6 +21,7 @@ Implemented on June 2, 2026:
 - MenuList lifecycle wrappers now enqueue/process owner notification events before falling back to legacy senders.
 - Answerlattice `ANSWERLATTICE_NOTIFICATION_TEST` now routes through the owner notification core while ticket/customer emails remain on the existing generic notification service.
 - MenuList billing, payment recovery/refund, credit threshold/exhaustion, publish success/failure, suspension/renewal, subscription activation/cancellation/pause/resume/upgrade/completion, and menu-stale owner triggers are wired. The long-term catalogue is explicitly reserved until each owning workflow has authoritative producer evidence.
+- Issued MenuList tax invoices and credit notes use the same NotificationOS event and delivery ledgers. Email can attach the scoped PDF; consented WhatsApp can send the same PDF through an approved document-header template; both retain the secure authenticated document link as fallback. Delivery follows the saved channel mode and remains operator-gated by `MENULIST_BILLING_DOCUMENT_DELIVERY_ENABLED`; the WhatsApp template remains fail-closed until Meta approval.
 - August 15 firing audit removed the last legacy email precondition from payment-failure/grace-period enqueueing, made every Next.js lifecycle producer await durable processing, and added active-producer plus all-registry dry-firing gates.
 - Internal platform dashboard added at `/ops/owner-notifications` with bounded tracking, detail inspection, retry, prefilled Email/WhatsApp Web recovery, manual system send support, and manual handoff recording.
 - July 13 platform-ops hardening requires current persisted platform authority after a fail-closed limiter, derives rows/counts from one product-scoped recent window, reports exact scope reads, filters delivery detail by product, and commits manual-handoff audit writes atomically.

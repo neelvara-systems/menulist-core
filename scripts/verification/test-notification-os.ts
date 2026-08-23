@@ -16,6 +16,7 @@ import {
   canSaveNotificationOsMode,
   resolveNotificationOsContactReadiness,
 } from "../../src/lib/notification-os/readiness";
+import { buildOnboardingOwnerNotificationSettings } from "../../src/lib/notification-os/onboardingDefaults";
 
 const base = {
   allowedChannels: ["email", "whatsapp"] as const,
@@ -154,6 +155,42 @@ assert.deepEqual(channelsForOwnerNotificationMode("email_and_whatsapp"), [
   "email",
   "whatsapp",
 ]);
+const defaultSettings = normalizeOwnerNotificationSettings({});
+assert.equal(defaultSettings.channelMode, "email_and_whatsapp");
+assert.deepEqual(defaultSettings.preferredChannels, ["email", "whatsapp"]);
+
+const emailOnboarding = buildOnboardingOwnerNotificationSettings({
+  email: "OWNER@EXAMPLE.COM",
+  emailVerified: true,
+});
+assert.equal(emailOnboarding.primaryEmail, "owner@example.com");
+assert.equal(emailOnboarding.billingEmail, "owner@example.com");
+assert.equal(emailOnboarding.emailVerified, true);
+assert.equal(emailOnboarding.channelMode, "email_and_whatsapp");
+assert.deepEqual(emailOnboarding.preferredChannels, ["email", "whatsapp"]);
+
+const contactPendingOnboarding = buildOnboardingOwnerNotificationSettings({});
+assert.equal(contactPendingOnboarding.channelMode, "email_and_whatsapp");
+assert.equal(contactPendingOnboarding.preferredChannel, "email");
+assert.deepEqual(contactPendingOnboarding.preferredChannels, ["email", "whatsapp"]);
+assert.equal(
+  buildOnboardingOwnerNotificationSettings({ email: "unverified@example.com" }).primaryEmail,
+  undefined,
+);
+
+const phoneOnboarding = buildOnboardingOwnerNotificationSettings({
+  dialCode: "+91",
+  email: "phone-user@msg.menulist.ai",
+  emailVerified: true,
+  phoneNumber: "9876543210",
+  phoneVerified: true,
+});
+assert.equal(phoneOnboarding.primaryEmail, undefined);
+assert.equal(phoneOnboarding.whatsappNumber, "919876543210");
+assert.equal(phoneOnboarding.whatsappVerified, true);
+assert.equal(phoneOnboarding.whatsappConsent, undefined);
+assert.equal(phoneOnboarding.channelMode, "email_and_whatsapp");
+assert.deepEqual(phoneOnboarding.preferredChannels, ["whatsapp", "email"]);
 
 const legacy = normalizeOwnerNotificationSettings({
   preferredChannel: "email",

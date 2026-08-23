@@ -83,7 +83,9 @@ assert.ok(charged.includes('const paymentHistoryId = paymentEntity.id'));
 assert.ok(!charged.includes('`${event.event}-${subscriptionEntity.id}'));
 assert.ok(charged.includes('previousBillingHistory[0] === paymentHistoryId'));
 assert.ok(updated.includes('const hasQuantity = updatedSubEntity.quantity !== undefined'));
-assert.ok(updated.includes("...(quantity == null ? {} : { quantity })"));
+assert.ok(updated.includes('...(quantity == null ? {} : {'));
+assert.ok(updated.includes('resizeMenuListTaxSnapshot(updatedInternalSub.taxSnapshot, quantity)'));
+assert.ok(updated.includes('resolveMenuListQuantityCreditUpdate({'));
 assert.ok(!updated.includes('updatedInternalSub && updatedSubEntity.quantity !== undefined'));
 
 assert.ok(verifySubscription.includes('razorpayClient.payments.fetch(razorpay_payment_id)'));

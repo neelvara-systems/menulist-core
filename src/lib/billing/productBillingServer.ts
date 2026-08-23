@@ -43,6 +43,7 @@ import { getMenuListSessionProviderScopeKey } from '@lib/multiOutlet/sessionProv
 import { getProductSubscriptionBillingScope } from './productSubscriptionScopeBoundary';
 import { getFounderSubscriptionMrrPaise } from '@lib/ops/founderRevenueReadModel';
 import { isValidBillingPeriodKey } from './billingPeriod';
+import { MENULIST_PURCHASED_CREDIT_REACTIVATION_DAYS } from '@data/shared/contentCreditPolicy';
 import { resolveSubscriptionUpgradeCreditTransfer } from './subscriptionUpgradeSettlement';
 import { validateTransition } from './subscriptionStateMachine';
 import { appendBoundedBillingStatusHistory } from './subscriptionStatusHistory';
@@ -75,6 +76,27 @@ const isTimestampLike = (value: any) => (
     && typeof value.toDate === 'function'
     && typeof value.seconds === 'number'
 );
+
+const getTimestampMillis = (value: unknown): number | null => {
+    if (value instanceof Date) return Number.isFinite(value.getTime()) ? value.getTime() : null;
+    if (!value || typeof value !== 'object') return null;
+    try {
+        const toDate = (value as { toDate?: unknown }).toDate;
+        if (typeof toDate === 'function') {
+            const date = toDate.call(value);
+            return date instanceof Date && Number.isFinite(date.getTime()) ? date.getTime() : null;
+        }
+        const seconds = Number((value as { seconds?: unknown }).seconds);
+        return Number.isFinite(seconds) ? seconds * 1000 : null;
+    } catch {
+        return null;
+    }
+};
+
+const toNonNegativeSafeInteger = (value: unknown): number => {
+    const numericValue = Number(value);
+    return Number.isSafeInteger(numericValue) && numericValue >= 0 ? numericValue : 0;
+};
 
 const sanitizeForAdminFirestore = (value: any): any => {
     if (value === undefined) return null;
@@ -615,6 +637,85 @@ export type ProductSubscriptionPaymentApplicationResult = {
     subscription: FirestoreSubscriptionDoc;
 };
 
+export const getMenuListPurchasedCreditRecoveryId = (tenantId: number, storeId: number): string => (
+    `${tenantId}_${storeId}`
+);
+
+export async function freezeMenuListPurchasedCreditsForCancellation(params: {
+    storeId: number;
+    subscriptionId: string;
+    tenantId: number;
+}): Promise<number> {
+    const subscriptionId = normalizeBillingSubscriptionDocumentId(params.subscriptionId);
+    const tenantScope = normalizeBillingSubscriptionScopeDocumentId(params.tenantId);
+    const storeScope = normalizeBillingSubscriptionScopeDocumentId(params.storeId);
+    if (!subscriptionId || !tenantScope || !storeScope) {
+        throw new Error('Invalid purchased credit recovery scope.');
+    }
+    const db = getBillingFirestoreAdminForProduct(PRODUCT_IDS.MENULIST);
+    const subscriptionRef = db.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc(subscriptionId);
+    const recoveryId = getMenuListPurchasedCreditRecoveryId(tenantScope.numericId, storeScope.numericId);
+    const recoveryRef = db.collection(DB_COLLECTIONS.MENULIST_PURCHASED_CREDIT_RECOVERIES).doc(recoveryId);
+
+    return db.runTransaction(async (transaction) => {
+        const [subscriptionSnapshot, recoverySnapshot] = await Promise.all([
+            transaction.get(subscriptionRef),
+            transaction.get(recoveryRef),
+        ]);
+        if (!subscriptionSnapshot.exists) throw new Error('Subscription not found for purchased credit recovery.');
+        const subscription = subscriptionSnapshot.data() as FirestoreSubscriptionDoc;
+        const scope = getProductSubscriptionBillingScope(PRODUCT_IDS.MENULIST, subscription);
+        if (
+            !scope
+            || scope.tenantId !== tenantScope.numericId
+            || scope.storeId !== storeScope.numericId
+        ) {
+            throw new Error('Purchased credit recovery scope mismatch.');
+        }
+
+        const purchasedCredits = toNonNegativeSafeInteger(subscription.topUpCredits);
+        const existingRecovery = recoverySnapshot.data() || {};
+        const existingRestoreUntilMillis = getTimestampMillis(existingRecovery.restoreUntil);
+        const existingCredits = existingRecovery.status === 'frozen'
+            && existingRestoreUntilMillis !== null
+            && existingRestoreUntilMillis > Date.now()
+            ? toNonNegativeSafeInteger(existingRecovery.purchasedCredits)
+            : 0;
+        if (purchasedCredits === 0) {
+            return existingCredits;
+        }
+        const frozenCredits = existingCredits + purchasedCredits;
+        if (!Number.isSafeInteger(frozenCredits)) {
+            throw new Error('Purchased credit recovery balance is invalid.');
+        }
+
+        const frozenAt = admin.firestore.Timestamp.now();
+        const restoreUntil = admin.firestore.Timestamp.fromMillis(
+            frozenAt.toMillis()
+            + MENULIST_PURCHASED_CREDIT_REACTIVATION_DAYS * 24 * 60 * 60 * 1000,
+        );
+        transaction.set(recoveryRef, {
+            pId: PRODUCT_IDS.MENULIST,
+            productId: PRODUCT_IDS.MENULIST,
+            tenantId: tenantScope.numericId,
+            storeId: storeScope.numericId,
+            sourceSubscriptionId: subscriptionId,
+            purchasedCredits: frozenCredits,
+            frozenAt,
+            restoreUntil,
+            status: 'frozen',
+            updatedAt: frozenAt,
+        }, { merge: true });
+        transaction.set(subscriptionRef, {
+            topUpCredits: 0,
+            purchasedCreditsFrozenAt: frozenAt,
+            purchasedCreditsRestoreUntil: restoreUntil,
+            purchasedCreditsRecoveryId: recoveryId,
+        }, { merge: true });
+        return frozenCredits;
+    });
+}
+
 /**
  * Apply one captured subscription payment exactly once. The provider payment ID
  * is both billing-history evidence and the transaction idempotency key. The
@@ -694,6 +795,27 @@ export async function applyProductSubscriptionPayment(
         const safeUpdate = isTerminalSettlementRecovery
             ? (params.update.paymentMethod ? { paymentMethod: params.update.paymentMethod } : {})
             : params.update;
+        let restoredPurchasedCredits = 0;
+        let recoveryRef: FirebaseFirestore.DocumentReference | null = null;
+        let recoveryData: FirebaseFirestore.DocumentData | null = null;
+        if (productId === PRODUCT_IDS.MENULIST && currentScope && !isTerminalSettlementRecovery) {
+            recoveryRef = db.collection(DB_COLLECTIONS.MENULIST_PURCHASED_CREDIT_RECOVERIES).doc(
+                getMenuListPurchasedCreditRecoveryId(currentScope.tenantId, currentScope.storeId),
+            );
+            const recoverySnapshot = await transaction.get(recoveryRef);
+            recoveryData = recoverySnapshot.exists ? recoverySnapshot.data() || null : null;
+            const restoreUntilMillis = getTimestampMillis(recoveryData?.restoreUntil);
+            if (
+                recoveryData?.status === 'frozen'
+                && recoveryData?.sourceSubscriptionId !== subscriptionId
+                && Number(recoveryData?.tenantId) === currentScope.tenantId
+                && Number(recoveryData?.storeId) === currentScope.storeId
+                && restoreUntilMillis !== null
+                && restoreUntilMillis > Date.now()
+            ) {
+                restoredPurchasedCredits = toNonNegativeSafeInteger(recoveryData.purchasedCredits);
+            }
+        }
         const shouldResetCredits = !isTerminalSettlementRecovery && (
             billingHistory.length === 0
             || current.creditsLastResetMonth !== params.billingPeriod
@@ -713,8 +835,24 @@ export async function applyProductSubscriptionPayment(
                 monthlyCredits: nextAllowance,
                 creditsLastResetMonth: params.billingPeriod,
             } : {}),
+            ...(restoredPurchasedCredits > 0 ? {
+                topUpCredits: toNonNegativeSafeInteger(current.topUpCredits) + restoredPurchasedCredits,
+            } : {}),
         };
+        if (!Number.isSafeInteger(update.topUpCredits ?? 0)) {
+            throw new Error('Restored purchased credit balance is invalid.');
+        }
         transaction.set(subscriptionRef, productDocPayload(productId, update), { merge: true });
+        if (recoveryRef && recoveryData && restoredPurchasedCredits > 0) {
+            transaction.set(recoveryRef, {
+                purchasedCredits: 0,
+                restoredCredits: restoredPurchasedCredits,
+                restoredAt: admin.firestore.Timestamp.now(),
+                restoredToSubscriptionId: subscriptionId,
+                status: 'restored',
+                updatedAt: admin.firestore.Timestamp.now(),
+            }, { merge: true });
+        }
 
         return {
             applied: true,
@@ -979,7 +1117,17 @@ export async function applyProductSubscriptionUpgradeCarryForward(
             });
         }
 
-        const calculatedCredits = calculateRemainingCredits(oldSubscription);
+        const isMenuListCreditPolicy = productId === PRODUCT_IDS.MENULIST;
+        const calculatedCredits = calculateRemainingCredits(
+            oldSubscription,
+            new Date(),
+            isMenuListCreditPolicy
+                ? {
+                    includeCurrentMonthlyCredits: false,
+                    includeFutureYearlyCredits: false,
+                }
+                : {},
+        );
         const creditTransfer = resolveSubscriptionUpgradeCreditTransfer({
             calculatedRemainingCredits: calculatedCredits.totalRemainingCredits,
             currentNewTopUpCredits: newSubscription.topUpCredits,
@@ -998,11 +1146,40 @@ export async function applyProductSubscriptionUpgradeCarryForward(
         } = creditTransfer;
 
         const appliedAt = admin.firestore.Timestamp.now();
+        const nowMillis = appliedAt.toMillis();
+        const oldPromotionalExpiryMillis = getTimestampMillis(oldSubscription.promotionalCreditsExpireAt);
+        const transferablePromotionalCredits = isMenuListCreditPolicy
+            && oldPromotionalExpiryMillis !== null
+            && oldPromotionalExpiryMillis > nowMillis
+            ? toNonNegativeSafeInteger(oldSubscription.promotionalCredits)
+            : 0;
+        const newPromotionalExpiryMillis = getTimestampMillis(newSubscription.promotionalCreditsExpireAt);
+        const currentNewPromotionalCredits = newPromotionalExpiryMillis !== null
+            && newPromotionalExpiryMillis > nowMillis
+            ? toNonNegativeSafeInteger(newSubscription.promotionalCredits)
+            : 0;
+        const nextPromotionalCredits = currentNewPromotionalCredits + transferablePromotionalCredits;
+        if (!Number.isSafeInteger(nextPromotionalCredits)) {
+            throw new Error('Subscription upgrade promotional credit balance is invalid.');
+        }
+        const nextPromotionalExpiryAt = nextPromotionalCredits > 0
+            ? (
+                oldPromotionalExpiryMillis !== null
+                && oldPromotionalExpiryMillis >= (newPromotionalExpiryMillis || 0)
+                    ? oldSubscription.promotionalCreditsExpireAt
+                    : newSubscription.promotionalCreditsExpireAt
+            )
+            : null;
         const oldUpdate: Partial<FirestoreSubscriptionDoc> & Record<string, unknown> = {
             status: 'expired',
             cycleEndDate: appliedAt as any,
             subscriptionEndDate: appliedAt as any,
             upgradeReplacementSubscriptionId: newSubscriptionId,
+            ...(isMenuListCreditPolicy ? {
+                topUpCredits: 0,
+                promotionalCredits: 0,
+                promotionalCreditsExpireAt: null,
+            } : {}),
             statuses: appendBoundedBillingStatusHistory(oldSubscription.statuses, {
                     status: 'expired',
                     timestamp: appliedAt as any,
@@ -1013,6 +1190,10 @@ export async function applyProductSubscriptionUpgradeCarryForward(
         };
         const newUpdate: Partial<FirestoreSubscriptionDoc> & Record<string, unknown> = {
             topUpCredits: nextTopUpCredits,
+            ...(isMenuListCreditPolicy ? {
+                promotionalCredits: nextPromotionalCredits,
+                promotionalCreditsExpireAt: nextPromotionalExpiryAt,
+            } : {}),
             carryForwardCredits,
             carryForwardFromSubscriptionId: oldSubscriptionId,
             carryForwardAppliedAt: appliedAt as any,

@@ -24,7 +24,7 @@ Let a non-technical owner move from one current menu source to an owner-reviewab
 | Preview | Status-only reads every 5 seconds, maximum 36; one full DTO read after completion; explicit retry on timeout. Render the language marked primary, use canonical localized-text fallback, apply menu-language direction independently of interface direction, and bidi-isolate prices. |
 | Existing account claim | Reuse tenant/store identity, require current publish permission, add a new canonical menu project. |
 | New account claim | Create the existing starter tenant/store plus first project and session claim context. |
-| Starter plan handoff | After a new-account claim, show the seven-day starter boundary and one direct **Keep this menu online** Billing action only when the versioned claim handoff matches the current tenant/store session. Refresh the session before fixed Billing or workspace navigation. |
+| Official plan handoff | After a new-account claim, show the seven-day starter boundary and one direct **Keep this menu online** Billing action only when the versioned claim handoff matches the current tenant/store session. Refresh the session before fixed Billing or workspace navigation. |
 | Publish truth | Validate source, prices, phone, business type, slug, project identity, summary, and Menu Correctness stamp before one transaction commits. |
 | Retry | Same owner can replay a successful claim from the persisted receipt without duplicate writes. |
 | Public effects | Refresh menu, OBP, client-store, Digital Screens, and assistant state after commit. |
@@ -47,7 +47,7 @@ Let a non-technical owner move from one current menu source to an owner-reviewab
 
 - Anonymous extraction or anonymous draft polling.
 - Automatic subscription checkout during extraction or claim.
-- Shortening the seven-day starter period or moving QR Code and Assets out of their dedicated modules.
+- Shortening the seven-day setup period or moving QR Code and Assets out of their dedicated modules.
 - Publishing without owner confirmation.
 - Uploading or publishing a raw PDF customer surface. PDF is an owner intake format; customers receive the structured MenuList menu.
 - A new queue, collection, operation ledger, or real-time listener.

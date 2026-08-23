@@ -13,7 +13,7 @@ This marketing collateral is source evidence only. It is not current launch cert
 
 Do not publish or sell with TBD price placeholders, unverified activation timing, or provider behavior that lacks current Razorpay evidence.
 
-Current approved Pack presentation is transparent: `250 credits`, with examples of up to 50 generated menu images or 250 description rewrites. Do not publish provider cost, margin, monthly included capacity, overdraft, or a rupee-per-credit conversion.
+Current approved Pack presentation is transparent: `250 credits` for ₹799 / $29 before applicable tax, with examples of up to 50 generated menu images or 250 description rewrites. Do not publish provider cost, margin, overdraft, or a rupee-per-credit conversion.
 
 ---
 
@@ -45,7 +45,7 @@ MenuList includes AI features as part of every subscription. For businesses with
 | Never Say                      | Why                                             |
 | ------------------------------ | ----------------------------------------------- |
 | "Unlimited AI"                 | Creates false expectation — will cause disputes |
-| "X monthly credits included"   | Monthly included capacity remains private       |
+| "Unlimited content work"       | Creates a false expectation                     |
 | "Track your AI usage"          | Invites monitoring — forbidden by doctrine      |
 | "AI-powered enhancement"       | "AI-powered" is forbidden language              |
 | "Smart menu optimization"      | "Smart" and "optimization" are forbidden        |
@@ -81,7 +81,7 @@ MenuList includes AI features as part of every subscription. For businesses with
 | ------------------- | --------------- | -------------------------------------------------------------------------------- |
 | AI Enhancement Pack | Approved launch price only | Image generation, description enhancements, translations, and more for your menu |
 
-**Purchase:** One-time. No subscription. Buy when needed. No expiry.
+**Purchase:** One-time for a current paid billing store. Buy when needed. Unused Pack credits are recoverable for 365 days after cancellation if that store reactivates.
 
 ---
 
@@ -109,7 +109,7 @@ MenuList includes AI features as part of every subscription. For businesses with
 
 ### "What if I buy a pack and don't use it all?"
 
-> "Enhancement Packs don't expire. Use them whenever you need — this month, next quarter, next year."
+> "Pack credits remain available while your paid plan is current. If you cancel, they are frozen and restored if the same billing store starts a paid plan again within 365 days."
 
 ### "Is it one pack per store?"
 
@@ -193,7 +193,7 @@ MenuList includes AI features as part of every subscription. For businesses with
 | Pricing model  | "Simple. One pack, one price."                                 |
 | Usage tracking | "Handled automatically."                                       |
 | Multi-outlet   | "Each store gets its own Enhancement Pack."                    |
-| Expiry         | "Enhancement Packs never expire."                              |
+| Cancellation   | "Unused Pack credits can be restored within 365 days."         |
 
 ### What We Never Say
 
@@ -242,8 +242,8 @@ We are NOT competing with AI tools (Midjourney, ChatGPT, Canva). We are competin
 
 | Market    | Pack Price | Why It Works                                         |
 | --------- | ---------- | ---------------------------------------------------- |
-| India     | ₹2,999     | Within SMB comfort zone, saves ₹15k+ vs alternatives |
-| US/Global | $39–49     | Trivial vs $200+ photoshoot or $300+ menu design     |
+| India     | ₹799       | Proportionate to the Official and Pro subscriptions  |
+| US/Global | $29        | One consistent 250-credit Pack                        |
 
 **Never:** Offer different features by region. Never suggest global users get "more" AI. The system is identical — only the price tag changes.
 

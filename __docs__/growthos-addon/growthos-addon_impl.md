@@ -1,8 +1,8 @@
 # GrowthOS Add-on - Technical Implementation Plan
 
-**Status:** Enabled behind Pro/Premium entitlement gate
+**Status:** Enabled behind Pro/Multi-location entitlement gate
 **Code state:** V1 deterministic add-on shell implemented June 1, 2026
-**Primary constraint:** Build inside MenuList, Pro/Premium-entitlement gated
+**Primary constraint:** Build inside MenuList, Pro/Multi-location-entitlement gated
 
 ---
 
@@ -30,7 +30,7 @@ Add these flags to `src/config/features.ts` only during implementation:
 ENABLE_GROWTHOS_ADDON: true,
 GROWTHOS_ADDON_ACCESS: "paid" as "disabled" | "pilot" | "paid",
 GROWTHOS_PILOT_STORE_IDS: [] as Array<string | number>,
-GROWTHOS_PAID_PLAN_IDS: ["pro", "premium"] as string[],
+GROWTHOS_PAID_PLAN_IDS: ["menulist_pro", "menulist_multi_location"] as string[],
 GROWTHOS_DIRECT_POSTING: "disabled" as "disabled",
 GROWTHOS_STAFF_BRIEF_MODE: "deterministic" as "disabled" | "deterministic",
 GROWTHOS_IMAGE_MODE: "disabled" as "disabled" | "existing_only",
@@ -48,7 +48,7 @@ Rules:
 - `ENABLE_GROWTHOS_ADDON` is the master kill switch.
 - `GROWTHOS_ADDON_ACCESS` defaults to `"paid"` so turning on the master flag still requires plan entitlement.
 - `GROWTHOS_PILOT_STORE_IDS` gates pilot stores when access is `"pilot"`; pilot stores must still have an eligible paid plan.
-- `GROWTHOS_PAID_PLAN_IDS` gates rollout plan IDs and must remain `["pro", "premium"]` unless pricing changes.
+- `GROWTHOS_PAID_PLAN_IDS` gates rollout plan IDs and must remain `["menulist_pro", "menulist_multi_location"]` unless pricing changes.
 - `GROWTHOS_DIRECT_POSTING` must remain `"disabled"` for the approved scope.
 - `GROWTHOS_STAFF_BRIEF_MODE` is V1 core and deterministic.
 - `GROWTHOS_IMAGE_MODE` starts disabled. It may move to `"existing_only"` only after pilot demand; never default to image generation.
@@ -65,7 +65,7 @@ Legacy project documents may supply one tenant/store alias or two equal aliases.
 
 ### Exact paid-subscription entitlement
 
-GrowthOS paid access requires an exact current MenuList subscription: both `pId` and `productId` are `ML`; both numeric tenant aliases agree; both numeric store aliases agree; and the subscription tenant equals the current session/store tenant. Status/cycle and Pro/Premium plan checks run only after that identity projection. An Answerlattice, foreign-tenant, incomplete, conflicting, or coercible persisted subscription cannot unlock Growth Kits. Master-plan inheritance remains valid within the same tenant.
+GrowthOS paid access requires an exact current MenuList subscription: both `pId` and `productId` are `ML`; both numeric tenant aliases agree; both numeric store aliases agree; and the subscription tenant equals the current session/store tenant. Status/cycle and Pro/Multi-location plan checks run only after that identity projection. An Answerlattice, foreign-tenant, incomplete, conflicting, or coercible persisted subscription cannot unlock Growth Kits. Master-plan inheritance remains valid within the same tenant.
 
 Implemented entitlement helpers:
 
@@ -77,12 +77,12 @@ src/lib/growthos/serverEntitlements.ts
 Responsibilities:
 
 - check global feature flag
-- check active Pro or Premium subscription through the same valid-subscription helper used by billing gates
-- check pilot allowlist when `GROWTHOS_ADDON_ACCESS === "pilot"`, then still require Pro or Premium
+- check active Pro or Multi-location subscription through the same valid-subscription helper used by billing gates
+- check pilot allowlist when `GROWTHOS_ADDON_ACCESS === "pilot"`, then still require Pro or Multi-location
 - return owner-safe denial reasons
 - expose a server-safe and client-safe variant if needed
 
-Do not add an owner-facing toggle. GrowthOS access is a Pro/Premium plan entitlement, not a setting or standalone add-on override.
+Do not add an owner-facing toggle. GrowthOS access is a Pro/Multi-location plan entitlement, not a setting or standalone add-on override.
 
 ## 4. Data Model
 
@@ -433,7 +433,7 @@ If a background refresh is later approved, it must be added to the existing Menu
 Security-sensitive implementation requirements:
 
 - tenant isolation is mandatory on every API route and write
-- Starter/base plan users cannot call paid generation APIs directly
+- Official/base plan users cannot call paid generation APIs directly
 - client Firestore reads and writes to GrowthOS kit/export documents are not allowed; authenticated APIs read and write through the server Admin SDK after tenant, entitlement, output, and stale checks
 - output must not include hidden prompts, provider text, or raw model responses
 - review text must not be logged raw
@@ -457,7 +457,7 @@ Security-sensitive implementation requirements:
 13. Add tests and docs parity verification. Tracked in `growthos-addon_validation.md`.
 14. Add repeatable dry-run verification in `npm run verify:growthos`. Done.
 
-Do not widen beyond active Pro/Premium stores until desktop, mobile, entitlement, cost, security, and support checks all pass.
+Do not widen beyond active Pro/Multi-location stores until desktop, mobile, entitlement, cost, security, and support checks all pass.
 
 ## 14. Pilot Extension Admission
 

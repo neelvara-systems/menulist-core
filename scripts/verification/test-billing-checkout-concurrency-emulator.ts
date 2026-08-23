@@ -23,7 +23,7 @@ const identity = {
     requestFacts: {
         currency: 'INR',
         interval: 'MONTH',
-        planId: 'starter',
+        planId: 'menulist_official',
         quantity: 1,
     },
 };

@@ -22,7 +22,7 @@ Placement decision, June 1, 2026: do **not** add a separate homepage feature sec
 
 Do not use the internal feature name `Menu Card Export` on the public website. The approved public framing is `Print-ready kit` / `Print files`.
 
-AI layout suggestion should not be promoted as a public website feature yet. If pricing copy later needs it, use plain plan wording such as `layout suggestion on Pro and Premium`; do not use `AI-powered PDF`.
+AI layout suggestion should not be promoted as a public website feature yet. If pricing copy later needs it, use plain plan wording such as `layout suggestion on Pro and Multi-location`; do not use `AI-powered PDF`.
 
 - **Headline:** Print Your Current Menu
 - **Subheadline:** Create printable files from the same menu, service list, or catalog your customers open online.

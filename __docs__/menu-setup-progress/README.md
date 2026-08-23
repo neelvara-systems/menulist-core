@@ -14,7 +14,7 @@ When `ENABLE_LOCATION_LAUNCH_READINESS` is on and the current project/store is a
 2. **Menu imported** only when active extracted items exist. Categories without active items remain incomplete.
 3. **Key details checked** when active items exist and current price/price-outlier quality signals are clear.
 4. **Menu published** only when `lastPublishedAt` is a valid supported timestamp. Malformed or throwing legacy timestamp adapters fail closed.
-5. **Link placed/ready** after publish. Starter stores require the existing two distinct validated activation actions; non-starter stores preserve the current published-link-ready behavior.
+5. **Link placed/ready** after publish. Setup-access stores require the existing two distinct validated activation actions; paid stores preserve the current published-link-ready behavior.
 
 Descriptions, images, translations, official-page links, and public photos remain optional hints while required setup is still open. **Translations ready** appears only when the selected project has a translation/project-content quality signal. Optional work does not keep the setup card alive after publish-and-placement completes.
 

@@ -35,6 +35,7 @@
 | [razorpay_firebase.md](./razorpay_firebase.md)                                          | Founder, DevOps     | Firebase cost tracking — every Firestore read/write/delete in the billing system                                         |
 | [razorpay_mobile-support.md](./razorpay_mobile-support.md)                              | Mobile, QA          | Mobile billing parity, scope controls, checkout verification, and recovery boundaries                                    |
 | [razorpay_verification.md](./razorpay_verification.md)                                  | QA, Developers      | Dated verification evidence, current source-gate commands, and external smoke still required                              |
+| [Commercial readiness](../commercial-readiness/README.md)                               | Founder, QA, DevOps | Cross-system pricing, credits, tax, documents, identity, provider, and environment certification                          |
 | [\_archive/razorpay_code-feedback-audit.md](./_archive/razorpay_code-feedback-audit.md) | Archive             | ChatGPT feedback audit — decisions on all 8 hardening suggestions                                                        |
 
 ---
@@ -77,6 +78,9 @@ The maintained billing files are inventoried in [§2 — File Inventory](./razor
 | AI Credit System (capacity, consumption, billing explainer) | `__docs__/ai-enhancement-packs/` |
 | AI Enhancement Packs (spec + impl)                          | `__docs__/ai-enhancement-packs/` |
 | Platform Plans & Pricing                                    | `src/data/PlatformPlansList.ts`  |
+| MenuList tax calculation and checkout evidence             | `__docs__/billing-taxation/`     |
+| MenuList invoices, credit notes, PDFs, and delivery         | `__docs__/billing-documents/`    |
+| Cross-system commercial certification                       | `__docs__/commercial-readiness/` |
 
 ---
 
@@ -88,12 +92,13 @@ The maintained billing files are inventoried in [§2 — File Inventory](./razor
 - **Provider boundary:** `billingMode: 'manual'` and `manual_...` prepaid subscriptions never call Razorpay subscription APIs. Reseller renewals and prepaid location capacity are separate server-owned, idempotent Firestore flows.
 - **Pending data shape:** every online creation path persists local `status: 'pending'` with provider `providerStatus: 'created'`, null billing-cycle dates, `billingHistory: []`, and no active entitlement. Authentication stays pending. Activation stores `providerStatus: 'active'`, bounded cycle metadata, and `capturedPaymentSyncPending: true` while local status remains pending. Captured settlement appends the exact `pay_*` identity, updates the paid count/cycle, clears the marker, and only then makes local status `active`. A legacy local `active` row without captured-payment evidence is projected as payment-pending and is included in the unresolved-checkout lookup, so a retry checks the existing provider subscription instead of creating a duplicate.
 - **Provider-call scalar boundary:** shared Razorpay subscription fetch/quantity helpers accept only exact `sub_...` IDs and positive safe-integer quantities within the existing 31-location limit. Persisted IDs are not scalar/object-coerced, malformed input fails before provider client import, and throwing provider error objects cannot break the recovery classifier.
-- **Credit types:** Monthly (resets each billing cycle) + Top-up (never expires)
+- **Credit types:** Recurring (resets each billing cycle), promotional (expires), and purchased (protected by the bounded cancellation-recovery policy)
 - **Reset mechanism:** Two-layer — captured `subscription.charged` settlement (monthly plans) + lazy reset in capacity check (yearly + safety net). Authentication and activation alone never reset credits.
 - **Grace period:** 7 days for failed payments, enforced in DAL (`expireIfGracePeriodEnded`). Server entitlement reads also require captured-payment evidence before returning active/cancelled/paused/past-due access.
 - **Grace display fallback:** Desktop Billing, Mobile Billing, and authenticated pricing subscription-management use the shared past-due grace-period display fallback. If a legacy or malformed `past_due` doc is missing `pastDueSinceAt`, owner UI shows fixed "Grace period details unavailable." recovery copy instead of a false zero-day countdown.
 - **Top-ups:** One-time Razorpay Orders (not Subscriptions). Either the authenticated checkout callback or the signed `order.paid` webhook can settle the immutable pending top-up snapshot; the Firestore transaction applies credits exactly once.
 - **Billing history:** Sourced from webhook event log (`paymentTransactions` collection, append-only lean v2 summaries)
+- **Legal billing documents:** MenuList-issued tax invoices and refund credit notes are separate immutable server-only records in `billingDocuments`. Razorpay payment receipts and provider invoice references remain supporting payment evidence, not the MenuList GST-document authority. Issuance stays disabled until the owner/accountant gates in `__docs__/owner-action-items.md` are complete.
 - **Billing-resource isolation:** Browser and Admin subscription/history queries, billing mutation transactions, scheduled reconciliation/expiry/messaging/AI recovery, and Firestore subscription/top-up/transaction rules require both exact product aliases. A guarded collection-selected dry-run migration completes the second MenuList alias only where legacy rows already prove `pId: ML`; alias-less, conflicting, or other-product rows remain quarantined.
 - **Payment action body caps:** Authenticated subscription, top-up, verification, upgrade, pause/resume, cancel, and onboarding billing JSON routes use bounded request parsing before Zod validation, provider calls, or Firestore writes.
 - **Answerlattice billing permission:** Shared Razorpay mutations re-read the current Answerlattice workspace membership and persisted role and require `canManageBilling`; general management access alone does not authorize payment changes.

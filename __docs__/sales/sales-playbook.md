@@ -117,7 +117,7 @@ This reframes AI fear into AI restraint.
 
 Say:
 
-> "It's ₹999 per month per location."
+> "Plans start at ₹599 per month. Pro is ₹1,499 per month per location."
 
 **Stop.**
 

@@ -4,7 +4,9 @@ import { openIsolatedBrowserUrl } from '@lib/browser/openIsolatedBrowserUrl';
 
 import { helpCenterTabRouting } from '@constant/navigations';
 import { PRODUCT_IDS, type ProductId } from '@constant/product';
+import { MENULIST_B2C_PLAN_IDS } from '@constant/menulistPlans';
 import { isFeatureEnabled } from '@config/features';
+import { resolveMenuListPromotionalCreditState } from '@data/shared/contentCreditPolicy';
 import { getBoundedPaymentStringContext, logPaymentFailure } from '@hook/paymentDiagnostics';
 import { useAppDispatch } from '@hook/useAppDispatch';
 import usePaymentHandler, { isPaymentCheckoutDismissedError } from '@hook/usePaymentHandler';
@@ -85,11 +87,14 @@ function ActiveSubscriptionCard({
         ...metadata,
     });
     const canPauseSubscriptions = isFeatureEnabled('ENABLE_SUBSCRIPTION_PAUSE');
-    const keepsMonthlyCapacityPrivate = productId === PRODUCT_IDS.MENULIST;
     const monthlyCredits = Number(activeSubscription.monthlyCredits || 0);
+    const promotionalCredits = resolveMenuListPromotionalCreditState({
+        credits: activeSubscription.promotionalCredits,
+        expiresAt: activeSubscription.promotionalCreditsExpireAt,
+    }).credits ?? 0;
     const topUpCredits = Number(activeSubscription.topUpCredits || 0);
     const monthlyCreditsAllowance = Number(activeSubscription.monthlyCreditsAllowance || 0);
-    const totalCredits = monthlyCredits + topUpCredits;
+    const totalCredits = monthlyCredits + promotionalCredits + topUpCredits;
     const monthlyCreditUsage = monthlyCreditsAllowance > 0 ? (monthlyCredits / monthlyCreditsAllowance) * 100 : 0;
     const monthlyCreditsUsed = Math.max(0, monthlyCreditsAllowance - monthlyCredits);
     const isManualBilling = activeSubscription.billingMode === 'manual';
@@ -254,7 +259,7 @@ function ActiveSubscriptionCard({
                     {isFinalCycle ? <Button type="primary" onClick={() => setIsPricingModalOpen({ action: "new", active: true })}>Change Plan</Button> :
                         <Button icon={<LuXCircle />} danger onClick={openCancellationModal}>Cancel Subscription</Button>}
                     {canPauseSubscriptions && <Button icon={<LuPause />} onClick={handlePauseSubscription}>Pause</Button>}
-                    {(canUpgradePlan ?? activeSubscription.planId !== 'premium') && <Button icon={<LuZap />} type="primary" onClick={() => setIsPricingModalOpen({ action: "upgrade", active: true })}>Upgrade Plan</Button>}
+                    {(canUpgradePlan ?? activeSubscription.planId !== MENULIST_B2C_PLAN_IDS.MULTI_LOCATION) && <Button icon={<LuZap />} type="primary" onClick={() => setIsPricingModalOpen({ action: "upgrade", active: true })}>Upgrade Plan</Button>}
                 </Space>
             );
         }
@@ -520,18 +525,7 @@ function ActiveSubscriptionCard({
                                 {creditDescription}
                             </Text>
 
-                            {keepsMonthlyCapacityPrivate ? (
-                                <>
-                                    <Statistic
-                                        title="Pack balance"
-                                        value={topUpCredits}
-                                        suffix={<Text type="secondary">credits</Text>}
-                                        valueStyle={{ fontSize: 30, fontWeight: 700 }}
-                                    />
-                                    <Text type="secondary">Your plan enhancements are included automatically.</Text>
-                                </>
-                            ) : (
-                                <>
+                            <>
                                     <Statistic
                                         title={creditBalanceLabel}
                                         value={totalCredits}
@@ -562,11 +556,16 @@ function ActiveSubscriptionCard({
                                             <Text type="secondary">Pack balance</Text>
                                             <Text>{topUpCredits}</Text>
                                         </Flex>
+                                        {promotionalCredits > 0 ? (
+                                            <Flex justify="space-between">
+                                                <Text type="secondary">Promotional balance</Text>
+                                                <Text>{promotionalCredits}</Text>
+                                            </Flex>
+                                        ) : null}
                                     </Space>
-                                </>
-                            )}
+                            </>
 
-                            {!keepsMonthlyCapacityPrivate && totalCredits <= Math.max(10, monthlyCreditsAllowance * 0.2) ? (
+                            {totalCredits <= Math.max(10, monthlyCreditsAllowance * 0.2) ? (
                                 <Text type="warning">
                                     Running low. Add a pack before generation pauses.
                                 </Text>

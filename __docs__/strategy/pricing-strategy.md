@@ -1,334 +1,135 @@
-# MenuListAi Pricing Strategy
+# MenuList Pricing Strategy
 
-**Status:** Historical pricing strategy; not current launch certification
-**Last Updated:** December 31, 2025
-**Source:** Strategic pricing discussion and analysis
+**Status:** Current launch strategy
+**Last updated:** August 22, 2026
+**Commercial source:** [MenuList launch pricing contract](../razorpay/launch-pricing-contract-2026-08.md)
 
----
+## Pricing objective
 
-> **Launch Boundary:** This strategy document is retained as historical pricing evidence, not current production-launch approval. Current pricing and billing release approval requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md) evidence, `npm run verify:billing-entitlement-boundary`, Razorpay sandbox evidence, website/pricing copy review, billing browser QA, target deploy evidence, and production-host smoke.
+MenuList is priced as the owner-controlled source for customer-facing menu and business information. Pricing must remain understandable to a non-technical SMB owner, cover ongoing infrastructure and assisted-content costs, and scale predictably when a business adds locations.
 
-## August 2026 Launch Pricing Contract
+MenuList is not priced per QR scan, menu item, customer visit, or ordinary owner update. Those models create uncertainty and punish normal use.
 
-MenuList has not launched. The launch contract is implemented as fresh truth with no backfill, grandfathering, old-price compatibility, or customer-data migration:
+## Launch plans
 
-| Public plan | Stable internal ID | Monthly | Annual | Quantity |
-| --- | --- | --- | --- | --- |
-| Official | `starter` | ₹599 / $29 | ₹5,990 / $290 | One location |
-| Pro | `pro` | ₹1,499 / $79 | ₹14,990 / $790 | One location |
-| Multi-location | `premium` | ₹1,499 / $79 per active location | ₹14,990 / $790 per active location | Minimum two locations |
+| Plan | Monthly | Annual | Location capacity | Best fit |
+| --- | ---: | ---: | ---: | --- |
+| Official | ₹599 / $29 | ₹5,990 / $290 | 1 | One business that needs one trusted customer link, QR, public page, and owner-approved updates |
+| Pro | ₹1,499 / $79 | ₹14,990 / $790 | 1 | One business that needs stronger presentation, AI Menu Manager, languages, images, and owner controls |
+| Multi-location | ₹1,499 / $79 per location | ₹14,990 / $790 per location | Minimum 2 | Businesses that need shared governance with location-level control |
 
-Annual pricing equals ten monthly payments. The free seven-day setup is an onboarding state, not the paid Official plan. Public labels use Official and Multi-location while persisted IDs remain `starter` and `premium` to protect entitlement and provider contracts. Credits, tax, invoicing, and enhancement-pack pricing are separate decisions and are not changed by this contract.
+Annual billing equals ten monthly payments. Public copy describes this as **two months included**.
 
-## May 2026 Update — Starter Activation Supersedes Pay-First Trial
+## Setup access
 
-This document is retained as historical pricing strategy, but the old "No free. No basic. No starter." decision is no longer the active onboarding rule.
+The seven-day setup is an onboarding state, not a subscription plan.
 
-Current decision: MenuList uses **free setup as a verified onboarding state**, not a permanent free plan. A verified owner can create a 7-day starter activation with the same permanent public URL and QR before payment. Payment preserves and expands operational control through Starter, Pro, and Premium plans.
+During setup, an owner can prepare, publish, and review the customer-facing link. A paid plan must be active before the setup deadline to keep the same URL live afterward. The website and product must not describe setup access as a free tier, free plan, trial plan, or paid Official access.
 
-Active source: `__docs__/onboarding/onboarding_public-draft-strategy-review.md`.
+## Plan roles
 
-Durable principle preserved from this document: do not become a free QR/menu utility. Costly AI operations, exports, advanced analytics, multi-location control, custom domains, and serious ongoing management remain paid/capability-gated.
+### Official
 
----
+Official is the simplest complete paid plan for one location. It must provide a credible customer-facing outcome rather than function as crippleware.
 
-## 🎯 Core Principle (Non-Negotiable)
+Core value:
 
-> **You are NOT selling a digital menu.**
->
-> You are selling:
->
-> - Faster customer decisions
-> - Less staff dependency
-> - Better item movement
+- One official customer link
+- QR-ready public menu and business page
+- Owner review before publishing
+- Basic customer activity
+- Included capacity for supported content preparation
 
-**If you price like a "QR menu builder", you kill the company.**
+### Pro
 
----
+Pro is the recommended single-location plan. It adds capabilities that reduce owner effort or improve presentation without changing the core public-source promise.
 
-## 📊 Value Stack Analysis
+Core value:
 
-### Baseline (Commodity) — Market Price: ₹0 – ₹300/month
+- AI Menu Manager
+- Expanded content and project capacity
+- Descriptions, images, and customer languages
+- Stronger presentation and owner controls
+- Action summaries and supported discovery settings
 
-- Digital menu
-- QR access
-- Categories, items, images
+### Multi-location
 
-**⚠️ This is NOT where you win.**
+Multi-location is priced per active location and starts at two locations. It is for businesses that need one governed source with outlet-level flexibility.
 
-### Differentiated (Where money is)
+Core value:
 
-- **Decision Blocks** (Popular / Quick / Value)
-- Nightly intelligence computation
-- Runtime availability safety
-- Owner override & pinning
-- Analytics dashboard that proves impact
+- Shared menu governance
+- Location-level prices, availability, and public pages
+- Location-scoped AI Menu Manager actions
+- Priority support and multi-location controls
+- Predictable cost as locations are added
 
-**✅ This is decision intelligence, not software tooling.**
+## Commercial rules
 
----
+- Show all three plans with transparent monthly and annual prices.
+- Default the public pricing page to annual billing while keeping the interval switch obvious and reversible.
+- Show the minimum two-location total and per-location unit price for Multi-location.
+- Keep Official and Pro checkout quantity fixed at one.
+- Keep Multi-location checkout quantity at two or more.
+- Do not advertise percentage savings when the exact promise is two months included.
+- Do not use artificial urgency, fake comparison prices, unverified revenue claims, or hidden mandatory fees.
+- Do not describe normal menu publishing, QR opens, or customer visits as metered usage.
 
-## 🇮🇳 India SMB Pricing Reality
+## Currency policy
 
-### What Indian SMBs:
+- INR is the default for India time zones.
+- USD is available for international buyers.
+- INR and USD prices are independent commercial prices, not live exchange-rate conversions.
+- Store and provider amounts use the smallest currency unit.
 
-- ❌ Hate complexity
-- ❌ Hate "contact sales"
-- ❌ Will not tolerate more than 2–3 plans
+## Billing data contract
 
-### When they pay willingly:
+The public plan names and persisted billing IDs are separate concerns:
 
-- ✅ It saves staff effort
-- ✅ It increases confidence
-- ✅ It feels "smart", not "techy"
+| Public plan | Persisted billing ID |
+| --- | --- |
+| Official | `menulist_official` |
+| Pro | `menulist_pro` |
+| Multi-location | `menulist_multi_location` |
 
-### Price perception must feel:
+Direct subscription documents store the per-location unit amount in `amount` and paid location capacity in `quantity`. The cycle total is `amount × quantity`.
 
-> "This pays for itself if even ONE customer chooses faster."
+Official and Pro are direct single-location subscriptions. Multi-location is the direct plan that supports quantity above one. Manual reseller/prepaid capacity remains a separate billing mode.
 
----
+## Product boundaries
 
-## 🚫 No Free Tier Decision
+The following are separate commercial decisions and must not be inferred from this strategy:
 
-### Why NO free plan:
+- Content Credit Pack pricing
+- Tax collection and tax-inclusive display (owned by `__docs__/billing-taxation/`)
+- Razorpay invoice presentation
+- Reseller pricing
+- Enterprise procurement
+- Refund policy
 
-| Free Tier Problem                         | Impact                            |
-| ----------------------------------------- | --------------------------------- |
-| Free = "timepass tool"                    | Zero serious usage                |
-| Free = "install, forget, never configure" | Product doesn't work unconfigured |
-| Free = zero respect, zero urgency         | No real feedback                  |
+Each requires its own approved contract before implementation or public claims change. Billing taxation now has that contract; invoice presentation remains separate.
 
-### Truth:
+## Conversion guidance
 
-- Your product only works when configured
-- Free users won't configure properly
-- If someone won't pay ₹999, they won't give usable feedback
+The pricing page should answer four owner questions quickly:
 
-**Decision: No free. No basic. No starter.**
+1. What will customers receive?
+2. What can I manage from my phone?
+3. What changes between Official, Pro, and Multi-location?
+4. What happens after the seven-day setup?
 
----
+The primary CTA should lead to creating the customer link. Plan cards should use owner outcomes and clear limitations, not internal feature names or technical billing language.
 
-## ❌ Pricing Models to AVOID
+## Validation requirements
 
-| Model                 | Why Not                                                   |
-| --------------------- | --------------------------------------------------------- |
-| Per scan pricing      | Unpredictable, scary for owners                           |
-| Per item pricing      | Punishes growth                                           |
-| Per feature add-ons   | Confusing                                                 |
-| Usage-based analytics | SMBs hate meters                                          |
-| Per-block pricing     | Owners don't understand blocks — they understand outcomes |
-| Lifetime deals        | Kills recurring revenue                                   |
-| Early discounts       | Anchors to low value                                      |
+Before launch approval, verify:
 
----
-
-## ✅ Final Pricing Structure
-
-### One Plan: MenuList Pro
-
-| Plan             | Price                   | Notes         |
-| ---------------- | ----------------------- | ------------- |
-| **MenuList Pro** | ₹999 / month / location | Full access   |
-| **Trial**        | 7 days                  | Card required |
-
-### Why ₹999 Works:
-
-- Psychological sub-₹1,000
-- Premium enough to demand respect
-- One table turnover pays for it
-- Aligns with owner ego ("I use a smart system")
-
----
-
-## 📋 Pricing Page Content
-
-### Headline
-
-```
-Customers choose faster.
-You see what works.
-```
-
-### Sub-line
-
-```
-Smart in-store recommendations for restaurants, salons & service businesses.
-```
-
-### CTA Button
-
-```
-Start 7-day trial
-```
-
-**NOT:** "Sign up" or "Create menu"
-
----
-
-## 🎁 What's Included (Plain Language)
-
-### MenuList Pro — ₹999/month/location
-
-**Bullet Points for Pricing Page:**
-
-```
-✓ Smart QR menu that helps customers choose
-✓ "Popular Right Now" — show what's selling
-✓ "Quick Pick" — highlight fast-serve items
-✓ "Best Value" — guide smart spenders
-✓ Dashboard showing what's working
-✓ Update menu anytime from your phone
-✓ Works on any device
-✓ 7-day free trial to start
-```
-
-### What NOT to say:
-
-- ❌ "AI-powered"
-- ❌ "Advanced analytics"
-- ❌ "Machine learning"
-- ❌ Feature soup
-
----
-
-## 🔄 Trial Model
-
-### Structure:
-
-- **Duration:** 7 days full access
-- **Requirement:** Card required upfront
-- **Purpose:** Filter non-serious users, force setup
-
-### Why Card Required:
-
-- Filters intent
-- Forces proper configuration
-- Converts better than free
-
-### If they don't convert:
-
-> They were never your customer.
-
----
-
-## 💬 Objection Handling
-
-### "Others give free QR menus"
-
-**Response:** Yes. And owners don't respect them.
-
-You are not competing with QR tools. You are replacing:
-
-- Staff explanations
-- Menu confusion
-- Bad item movement
-
-**Different category.**
-
-### "What if users don't convert?"
-
-**Response:** Good. That means your ICP is wrong — not your pricing.
-
-> Pricing is a filter, not a growth hack.
-
----
-
-## 🏢 Future Pricing Considerations
-
-### Only add later (if needed):
-
-- Annual prepaid discount
-- Agency/chain bundles (per location, volume discounts)
-
-### Never add:
-
-- Free tier
-- Per-feature upsells
-- Vertical-specific pricing
-
-### Pro Plus (Future, NOT day 1):
-
-- Multi-language optimization
-- Advanced insights (trends, suggestions)
-- Priority computation window
-- Price: ₹1,499 – ₹1,999/month
-
-**Do NOT overbuild for this yet.**
-
----
-
-## 🎯 Positioning Summary
-
-### What you're selling:
-
-| Not This              | This                      |
-| --------------------- | ------------------------- |
-| Digital menu software | Decision intelligence     |
-| QR code generator     | Faster customer decisions |
-| Feature list          | Business outcomes         |
-| Technology            | Staff time savings        |
-
-### Target customer:
-
-- Serious SMB owners
-- Willing to pay for results
-- Will actually configure the system
-
-### Not your customer:
-
-- Feature shoppers
-- Free tier hunters
-- "I'll try it later" people
-
----
-
-## 📈 Success Metrics for Pricing
-
-### Good signs:
-
-- Owners complete trial setup
-- Dashboard gets regular views
-- Trial → Paid conversion > 20%
-- Owners mention blocks in conversation
-
-### Bad signs:
-
-- "Can I get a discount?" on day 1
-- No configuration during trial
-- Questions about competitor features
-
----
-
-## 🔐 Pricing Rules (DO NOT BREAK)
-
-1. ✅ ONE plan only (for now)
-2. ✅ Card required for trial
-3. ✅ No free tier ever
-4. ✅ No early discounts
-5. ✅ No lifetime deals
-6. ✅ No competitor anchoring
-7. ✅ Sell outcomes, not features
-
----
-
-## 📝 Quick Reference
-
-```
-Plan:           MenuList Pro
-Price:          ₹999/month/location
-Trial:          7 days (card required)
-Free tier:      NO
-Discounts:      NO (early stage)
-Positioning:    Decision intelligence, not software
-CTA:            "Start 7-day trial"
-```
-
----
-
-## 🎯 One-Line Pitch
-
-> "Help customers choose faster. Without asking staff."
-
----
-
-**Remember:** Your moat is decision intelligence, not features. Price accordingly.
+- Canonical prices and quantities in `src/data/PlatformPlansList.ts`
+- Website plan names and pricing copy in every locale
+- Desktop and mobile billing totals
+- Purchase-intent and checkout quantity boundaries
+- Razorpay sandbox subscription creation and webhook settlement
+- Annual and monthly interval switching
+- Multi-location minimum quantity and total display
+- Authenticated subscription-management behavior
+- Public copy, localization, typecheck, lint, and billing verification suites

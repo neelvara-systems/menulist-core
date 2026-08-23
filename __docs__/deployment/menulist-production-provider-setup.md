@@ -3,7 +3,7 @@
 > **Status:** Active owner/provider preparation ledger
 > **Scope:** MenuList production accounts, projects, credentials, and inactive provider configuration
 > **Last updated:** August 16, 2026
-> **Current progress:** 49 of 62 checks complete; `PROD-B11` keyless architecture, provider preparation, production Cloud Tasks queue, and queue-scoped enqueuer IAM are complete, while the authenticated Firestore/Storage/Cloud Tasks hosted proof remains open; `PROD-B12` PITR and its restore drill are complete; `PROD-B13` App Check is registered in monitoring mode; production Gemini billing/credentials, the isolated production Sentry project, the exact-host Maps Embed credential, the isolated production Upstash database plus environment wiring, and the MFA-protected MenuList Resend boundary with verified outbound DNS and isolated production credentials/webhook are prepared; the existing company Razorpay Test Mode API pair is temporarily wired to the pre-live production candidate while KYC, Live Mode credentials, and the endpoint-specific production webhook remain release blockers; the current production Functions secret manifest is complete with a distinct internal budget-webhook secret; GA4, Telegram, external uptime monitoring, and production WhatsApp remain intentionally omitted; the MenuList-only Production environment inventory, exact domain rows, production Firebase Web/keyless server configuration, admitted-provider environment wiring, optional-provider fail-closed review, non-secret Functions runtime configuration, non-deploy source/configuration verification, and metadata-only environment-separation review are prepared; the full `menulist-qa` provider setup is complete; the remaining QA certification fixtures and device/provider testing are owner-accepted parallel work rather than a production-deployment blocker; the local release aggregate and scoped MenuList matrix are recorded under `PROD-F02`; the exact release commit is live on a Ready Vercel Production deployment, the six production domains are attached and cut over with TLS, Storage rules, all 166 declared Firestore composite indexes and field overrides, and four WhatsApp-independent Functions targets are deployed; Firestore Security Rules publication alone remains blocked by a repeated Google Rules API HTTP 503, and both Answerlattice targets are explicitly pending
+> **Current progress:** 50 of 62 checks complete; `PROD-B11` keyless architecture, provider preparation, production Cloud Tasks queue, and queue-scoped enqueuer IAM are complete, while the authenticated Firestore/Storage/Cloud Tasks hosted proof remains open; `PROD-B12` PITR and its restore drill are complete; `PROD-B13` App Check is registered in monitoring mode; production Gemini billing/credentials, the isolated production Sentry project, the exact-host Maps Embed credential, the isolated production Upstash database plus environment wiring, and the MFA-protected MenuList Resend boundary with verified outbound DNS and isolated production credentials/webhook are prepared; the existing company Razorpay Test Mode API pair is temporarily wired to the pre-live production candidate while KYC, Live Mode credentials, and the endpoint-specific production webhook remain release blockers; the current production Functions secret manifest is complete with a distinct internal budget-webhook secret; GA4, Telegram, external uptime monitoring, and production WhatsApp remain intentionally omitted; the MenuList-only Production environment inventory, exact domain rows, production Firebase Web/keyless server configuration, admitted-provider environment wiring, optional-provider fail-closed review, non-secret Functions runtime configuration, non-deploy source/configuration verification, and metadata-only environment-separation review are prepared; the full `menulist-qa` provider setup is complete; the remaining QA certification fixtures and device/provider testing are owner-accepted parallel work rather than a production-deployment blocker; the local release aggregate and scoped MenuList matrix are recorded under `PROD-F02`; the exact release commit is live on a Ready Vercel Production deployment, the six production domains are attached and cut over with TLS, Storage rules, all 166 declared Firestore composite indexes and field overrides, four WhatsApp-independent Functions targets, and exact-readback MenuList-only Firestore Security Rules are deployed; both Answerlattice targets are explicitly pending
 
 This is the step-by-step production provider setup guide for MenuList. It may
 run in parallel with the remaining staging feature-certification flows, but it
@@ -18,6 +18,31 @@ The current production contract remains:
 - Firebase project: exact project ID `menulist-prod`
 - Firebase/Google Cloud region: `us-central1`
 - Vercel environment: `Production`
+
+### Firebase Change Promotion Contract
+
+After a MenuList Firebase rules, indexes, or Functions change passes its local
+checks, promote the same validated source to `menulist-qa` and then
+`menulist-prod` in the same working session. Verify both targets before closing
+the task so production parity is not deferred to a later cleanup pass. Keep QA
+first so target-specific deployment failures are discovered before production.
+
+This does not authorize unrelated Vercel deployment, provider activation,
+production data creation, or DNS changes. An explicit production hold, failed
+QA validation, missing real production secret, or destructive migration risk
+stops the production half and must be recorded as a blocker; never create
+placeholder credentials to force parity.
+
+Callable Functions must expose public HTTP ingress and perform authorization
+inside the callable handler. The Neelvara organization policy rejects new
+`allUsers` IAM bindings, so MenuList Gen 2 callables use the existing Cloud Run
+`run.googleapis.com/invoker-iam-disabled=true` service annotation instead of
+weakening the organization policy. This does not make the operation public:
+the callable's session, role, tenant, validation, rate-limit, and audit guards
+remain authoritative. After every new callable deployment, verify both QA and
+production with an unauthenticated request: an application-level
+`UNAUTHENTICATED` response is expected; a platform HTML `403` means the ingress
+annotation is missing. Scheduled and event-triggered Functions remain private.
 
 Report each completed item as its exact ID, for example `PROD-A05 resolved`.
 Codex must update this ledger before guiding the next item.
@@ -204,6 +229,38 @@ Blocked until staging feature certification and production release gates pass:
   production remains on the diagnostic deny-all ruleset. The support follow-up
   should include both source files and request engineering review of the
   production managed compiler's internal complexity or compiled-AST failure.
+- `2026-08-22` - The Firebase Support recommendation to reduce compiler
+  branching and remove unrelated policy surface was applied at the deployment
+  boundary without weakening the canonical shared-emulator policy. The root
+  Firebase configuration now targets generated `firestore-menulist.rules`.
+  Its deterministic generator reads canonical `firestore.rules`, excludes the
+  explicit `answerlattice_*` shared-emulator namespaces, and retains only helper
+  functions reachable from the remaining MenuList match blocks. Dedicated
+  Answerlattice projects continue to use `firestore-answerlattice.rules`; the
+  combined canonical source remains available for local shared-mode
+  compatibility. Controlled `projects:test` minimization isolated the HTTP 503
+  to cumulative Answerlattice recovery validators: every individual namespace
+  compiled, while specific combined recovery groups reproduced the failure.
+  The generated MenuList artifact is 130,680 bytes across 3,200 lines with
+  SHA-256 `54f4f2eaf63ba0ddda737742f405072b9cb6f6261450e0591ef9bef9a97a98ec`,
+  contains no explicit `match /answerlattice_` namespace, and returned HTTP 200
+  with zero issues from authenticated `projects/menulist-prod:test`. The
+  separately confirmed rules-only Firebase CLI publication then compiled and
+  released the same artifact as ruleset
+  `projects/menulist-prod/rulesets/d932770a-eebf-4875-9bab-d9382badf875`.
+  Independent active readback returned exactly 130,680 bytes and the same
+  SHA-256, closing the former managed-compiler blocker without changing
+  indexes, Storage rules, Functions, or Vercel resources.
+- `2026-08-22` - Pricing-entitlement aggregation changes were promoted from the
+  same validated Functions source to `menulist-qa` and then `menulist-prod`.
+  `computeDecisionBlocksScores`, `triggerStoreNightlyScheduler`,
+  `triggerDecisionBlocksScoring`, and `triggerCustomerAnalyticsManually` are
+  ACTIVE in both targets. Production keeps WhatsApp parked and therefore omits
+  its unowned WhatsApp secrets from the generated Functions manifest; QA keeps
+  its existing real provider bindings. The three callable endpoints in both
+  targets reach their application auth guards and return `UNAUTHENTICATED` to
+  an unauthenticated probe. No Vercel deployment, provider activation, DNS
+  change, data backfill, or destructive migration was performed.
 - `2026-08-20` - A read-only QA/production setup-parity audit found no missing
   customer-controlled Rules prerequisite. Both Firebase projects are ACTIVE,
   belong to organisation `936910729624`, use the same enabled billing account,
@@ -1060,10 +1117,9 @@ traffic.
   - `2026-08-16` - This matches the verified QA provider contract and the
     current subscription lifecycle source. Razorpay documents
     `refund.processed` as the definitive final refund status event. The route
-    also accepts `payment.refunded` defensively for historical payload
-    compatibility, but Production must not subscribe to it in addition to
-    `refund.processed`, which would create duplicate refund-event risk. No Live
-    webhook was created or activated.
+    uses that exact refund entity as its only refund accounting authority;
+    cumulative `payment.refunded` state cannot create a second refund movement
+    or credit note. No Live webhook was created or activated.
 - [ ] `PROD-D09` Confirm Meta Business, app, and WhatsApp production ownership,
   recovery, and truthful verification status.
   - `2026-08-16` - Read-only Meta Business verification found no production
@@ -1335,7 +1391,7 @@ OAuth publishing, or final launch certification.
     status. Focused regressions for every repaired verifier contract passed.
     Exact commit, clean-tree typecheck/lint/docs, and hosted QA SHA evidence are
     refreshed after this ledger update and before production promotion.
-- [ ] `PROD-F03` Deploy production Firestore rules/indexes and Storage rules only
+- [x] `PROD-F03` Deploy production Firestore rules/indexes and Storage rules only
   with explicit production approval and scoped commands.
 - `2026-08-16` - Storage rules and all 166 declared Firestore composite indexes
   plus field overrides are deployed; production index readback found zero
@@ -1344,6 +1400,12 @@ OAuth publishing, or final launch certification.
   Evidence, and production still uses its initial locked ruleset. Keep this
   combined row open until the repository rules release and exact source
   readback pass.
+- `2026-08-22` - Explicit approval authorized a rules-only publication from
+  `firebase.json`. Firebase compiled and released generated
+  `firestore-menulist.rules`; active ruleset
+  `d932770a-eebf-4875-9bab-d9382badf875` read back at 130,680 bytes with exact
+  SHA-256 `54f4f2eaf63ba0ddda737742f405072b9cb6f6261450e0591ef9bef9a97a98ec`.
+  No index, Storage, Functions, Hosting, or Vercel target was included.
 - [x] `PROD-F04` Deploy the approved production Functions targets only after
   source preflight, secret existence, IAM, billing, and rollback checks pass.
   - `2026-08-16` - The four admitted WhatsApp-independent targets are ACTIVE

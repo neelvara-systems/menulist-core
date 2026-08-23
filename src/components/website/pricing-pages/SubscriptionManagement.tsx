@@ -36,6 +36,14 @@ const SubscriptionManagementRenderer: React.FC<SubscriptionManagementRendererPro
             activeSubscription.status === 'active'
             && !hasVerifiedSubscriptionPaymentEvidence(activeSubscription)
         );
+    const isManualBilling = activeSubscription.billingMode === 'manual';
+    const billedQuantity = activeSubscription.quantity || 1;
+    const displayedAmount = isManualBilling
+        ? activeSubscription.amount
+        : activeSubscription.amount * billedQuantity;
+    const billingPeriod = isManualBilling
+        ? `one-time prepaid${activeSubscription.commitmentPeriodMonths ? ` / ${activeSubscription.commitmentPeriodMonths} months` : ''}`
+        : activeSubscription.planType === 'YEAR' ? 'Year' : 'Month';
 
     const handleCompletePendingPayment = () => {
         // Pending provider state must be checked by the authenticated billing API before checkout opens.
@@ -150,9 +158,16 @@ const SubscriptionManagementRenderer: React.FC<SubscriptionManagementRendererPro
                     <CardContent className="space-y-6" style={{ padding: '24px' }}>
                         <div className="flex justify-between items-baseline">
                             <p className="text-lg font-semibold" style={{ color: 'var(--ws-text-primary)' }}>{activeSubscription.planName}</p>
-                            <p className="text-xl font-bold" style={{ color: 'var(--ws-brand-secondary)' }}>
-                                {formatCurrencyOnPricingPage(activeSubscription.amount, activeSubscription.currency)} / {activeSubscription.planType === 'YEAR' ? 'Year' : 'Month'}
-                            </p>
+                            <div className="text-right">
+                                <p className="text-xl font-bold" style={{ color: 'var(--ws-brand-secondary)' }}>
+                                    {formatCurrencyOnPricingPage(displayedAmount, activeSubscription.currency)} / {billingPeriod}
+                                </p>
+                                {!isManualBilling && billedQuantity > 1 ? (
+                                    <p className="text-xs" style={{ color: 'var(--ws-text-secondary)', marginTop: '4px' }}>
+                                        {billedQuantity} locations × {formatCurrencyOnPricingPage(activeSubscription.amount, activeSubscription.currency)} each
+                                    </p>
+                                ) : null}
+                            </div>
                         </div>
                         <Separator style={{ backgroundColor: 'var(--ws-border-default)', margin: '16px 0' }} />
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 text-sm">

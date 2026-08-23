@@ -137,19 +137,29 @@ Record of every AI Enhancement Pack purchase. Links Razorpay order/payment to th
     packName: string,               // Display name at purchase time
     providerOrderId: string,        // Razorpay order ID (provider-agnostic field name)
     providerPaymentId?: string,     // Razorpay payment ID after verification
+    subscriptionDocumentId?: string, // Exact credited subscription document
     amount: number,                 // Price paid (in paise for INR)
     currency: string,               // "INR" or "USD"
 
     // Capacity
     creditsAdded: number,           // Internal balance added to subscription.topUpCredits
+    creditsAppliedToBalance?: number, // Pack credits left after refund-debt offset
+    creditsOffsetAgainstRefundDebt?: number,
+    refundedAmount?: number,        // Cumulative processed provider refund
+    creditsRefunded?: number,       // Cumulative proportional entitlement removed
+    creditsReversed?: number,       // Credits actually removed from available/frozen balance
+    creditReversalShortfall?: number, // Already-consumed amount retained as refund debt
+    requiresReconciliation?: boolean,
 
     // Status
-    status: "pending" | "paid" | "refunded", // Payment status
+    status: "pending" | "paid" | "partially_refunded" | "refunded",
     paidAt?: Timestamp,                 // Set after verified capture
-    refundedAt?: Timestamp,             // If refunded
-    refundReason?: string,              // If refunded
 }
 ```
+
+Each processed refund also creates the server-only idempotency row
+`topups/{orderId}/refunds/{refundId}` with exact payment/refund identity,
+amount, currency, credits reversed, and any consumed-credit shortfall.
 
 ### Read/Write Patterns
 
@@ -158,7 +168,7 @@ Record of every AI Enhancement Pack purchase. Links Razorpay order/payment to th
 | **Write pending**  | `create-topup-order`                  | Per purchase attempt | 0             | 1                 |
 | **Write paid**     | `verify-topup`                        | Per paid purchase | 1 idempotency read | 1                 |
 | **Read**           | Admin views purchase history          | Very rare    | All docs for tenant | 0                 |
-| **Write (update)** | Refund processed                      | Very rare    | 1 (find doc)        | 1 (update status) |
+| **Write refund**   | `refund.processed` webhook             | Very rare    | Top-up + subscription + optional frozen recovery + replay row | Top-up + replay row + affected balance |
 
 ### Cost Estimate
 
@@ -173,7 +183,16 @@ Record of every AI Enhancement Pack purchase. Links Razorpay order/payment to th
 
 `verify-topup` requires authenticated tenant/store access plus `canManageSubscription`, validates the Razorpay checkout signature, normalizes the checkout order ID through `src/lib/billing/topupDocumentIdBoundary.ts`, reads `topups/{orderId}` before changing the subscription, and writes the credit update plus paid top-up audit record in one Firestore transaction. `create-topup-order` also normalizes the provider order ID before the pending top-up write. Both top-up routes validate the resolved billing tenant/store scope through `normalizeBillingTopupScopeDocumentId()` before top-up provider work, provider-note comparison, Firestore store refs, or top-up writes. If the top-up is already `paid`, the route returns success without adding credits again. If the order is not paid yet, the route fetches the Razorpay order and requires `order.notes.tenantId` and `order.notes.storeId` to match the normalized authenticated billing scope before updating `subscriptions.topUpCredits`.
 
-AI usage reset, reservation, settlement, and refund write through Firestore transactions. Paid AI routes run `checkAICapacity()` and then atomically reserve exact units before the provider call; if a billing-period reset is due, current allowance is applied inside that reservation transaction. Every transaction reprojects the current subscription through the exact dual-`ML`, agreeing tenant/store-alias boundary before any reset, debit or refund. For linked outlets, the operation shell remains under the outlet while the debit/refund uses the inherited HQ subscription recorded by `accountingBillingStoreId`. After valid output, `finalizeAiOperationAccounting()` promotes the reservation shell into the operation row without a second debit. Provider/pre-settlement failure restores the exact charged buckets once. Reservation deducts recurring `monthlyCredits` first and purchased `topUpCredits` second, leaving top-up balance untouched by billing-cycle resets. API balance responses carry the effective `billingStoreId`; browser state applies them only when they match the active subscription. Credit balances, allowances, charged buckets, operation units, reservation attempts, remaining-balance replay fields, and billing-period keys are accepted only as exact safe-integer scalars through the mirrored app/Functions credit contract. Numeric strings and fractional/unsafe values never authorize work or compensation; malformed recovery rows are isolated and counted without mutating the subscription.
+The signed webhook treats only `refund.processed` as per-refund authority.
+Top-up refund settlement validates the exact payment, order, product, tenant,
+store, currency, purchase amount, credited subscription, and refund replay row.
+Partial refunds remove the cumulative proportional credit share. Available
+credits are removed from the subscription first and then from cancellation-frozen
+purchased credits. Already-consumed credits become internal
+`subscriptions.topUpCreditRefundDebt`; a later Pack settlement clears that debt
+before increasing `topUpCredits`.
+
+AI usage reset, reservation, settlement, and refund write through Firestore transactions. Paid AI routes run `checkAICapacity()` and then atomically reserve exact credits before the provider call; if a billing-period reset is due, the current allowance is applied inside that reservation transaction. Every transaction reprojects the current subscription through the exact dual-`ML`, agreeing tenant/store-alias boundary before any reset, debit, or refund. For linked outlets, the operation shell remains under the outlet while the debit/refund uses the inherited HQ subscription recorded by `accountingBillingStoreId`. After valid output, `finalizeAiOperationAccounting()` promotes the reservation shell into the operation row without a second debit. Provider/pre-settlement failure restores the exact charged buckets once. Reservation deducts recurring `monthlyCredits`, then unexpired `promotionalCredits`, then purchased `topUpCredits`. API balance responses carry the effective `billingStoreId`; browser state applies them only when they match the active subscription. Credit balances, allowances, charged buckets, operation units, reservation attempts, remaining-balance replay fields, and billing-period keys are accepted only as exact safe-integer scalars through the mirrored app/Functions credit contract. Numeric strings and fractional/unsafe values never authorize work or compensation; malformed recovery rows are isolated without mutating the subscription.
 
 Historical operation replay is also fail-closed: `accountingUnits`, `accountingBillingStoreId`, and both remaining-balance buckets must retain their exact numeric runtime types and safe ranges before a response is returned. The browser repeats this validation at both the API-response adapter and the `ai-balance-update` event listener, then requires exact MenuList product and billing-store ownership before mutating the active subscription mirror. This client mirror is a read-saving display/state optimization and never becomes persistence authority.
 
@@ -202,7 +221,7 @@ July 1 batch image prompt-cache retention is bounded by the consolidated mainten
 
 ---
 
-## Capacity Storage: `subscriptions/{sub_id}` (Existing — No New Fields)
+## Capacity Storage: `subscriptions/{sub_id}`
 
 ### Architecture Decision: Per-Store, On Subscription (VALIDATED)
 
@@ -210,7 +229,7 @@ July 1 batch image prompt-cache retention is bounded by the consolidated mainten
 > Subscriptions, AI operations, projects, and top-ups are all scoped by `{tId}/{sId}`.
 > Capacity stays on the subscription document where credits already live.
 
-### Existing Fields Used for Capacity
+### Fields Used for Capacity
 
 ```typescript
 // FirestoreSubscriptionDoc (src/types/razorpay.ts)
@@ -218,13 +237,18 @@ July 1 batch image prompt-cache retention is bounded by the consolidated mainten
 {
     // ... existing subscription fields ...
 
-    monthlyCreditsAllowance: number,  // Fixed per plan (e.g., 200 for Pro)
+    monthlyCreditsAllowance: number,  // Current plan/quantity allowance
     monthlyCredits: number,           // Current balance — resets each billing cycle
-    topUpCredits: number,             // Purchased balance — never resets, added by pack purchase
+    promotionalCredits: number,       // Reward/goodwill balance
+    promotionalCreditsExpireAt: Timestamp | null,
+    topUpCredits: number,             // Purchased balance — added by Pack purchase
+    purchasedCreditsFrozenAt?: Timestamp,
+    purchasedCreditsRestoreUntil?: Timestamp,
+    purchasedCreditsRecoveryId?: string,
 }
 ```
 
-**No new fields needed.** Capacity = `monthlyCredits + topUpCredits`.
+Usable capacity is `monthlyCredits + valid promotionalCredits + topUpCredits`. Values remain on the effective billing-store subscription.
 
 ### Read/Write Patterns
 
@@ -237,6 +261,10 @@ July 1 batch image prompt-cache retention is bounded by the consolidated mainten
 | **Recover due shells**               | Daily consolidated maintenance, max 10 due rows per active store              | Daily             | 0-10  | 0-2 per recovered row |
 | **Write (increment `topUpCredits`)** | Pack purchase verify-topup                                                   | Per purchase      | 0     | 1      |
 | **Write (reset `monthlyCredits`)**   | Subscription renewal or lazy reset transaction                               | Monthly per store | 0-1   | 1      |
+
+## Purchased Credit Recovery: `menulistPurchasedCreditRecoveries/{tenantId}_{storeId}`
+
+This server-only ledger prevents unused paid Pack value from becoming orphaned at cancellation. Cancellation transactionally freezes the current purchased balance and zeroes `subscription.topUpCredits`. A different replacement subscription for the same billing store restores that balance once after verified captured payment if `restoreUntil` is still in the future. The recovery window is 365 days. Firestore rules deny all browser reads and writes.
 
 MenuList Billing Subscription Document ID Boundary: capacity-check lazy reset and consumption normalize subscription document IDs before `subscriptions/{subscriptionId}` refs. Valid Razorpay IDs keep the same 0-1 reset write and per-operation consume write; malformed or whitespace-mutated IDs return before reset refs or fail paid credit consumption before debit refs.
 
@@ -253,19 +281,26 @@ MenuList Billing Subscription Document ID Boundary: capacity-check lazy reset an
 ```typescript
 // After successful AI operation:
 // Re-read the subscription inside a transaction, then decrement
-// monthlyCredits first and topUpCredits second.
+// monthlyCredits first, then valid promotionalCredits, then topUpCredits.
 await firestoreAdmin.runTransaction(async (tx) => {
   const subscriptionSnap = await tx.get(subscriptionRef);
   const subscription = subscriptionSnap.data();
   const monthlyRemaining = Number(subscription.monthlyCredits || 0);
+  const promotionalRemaining = resolveMenuListPromotionalCreditState({
+    credits: subscription.promotionalCredits,
+    expiresAt: subscription.promotionalCreditsExpireAt,
+  }).credits ?? 0;
   const topUpRemaining = Number(subscription.topUpCredits || 0);
 
   const newMonthly = Math.max(0, monthlyRemaining - unitsToConsume);
-  const remainder = Math.max(0, unitsToConsume - monthlyRemaining);
-  const newTopUp = Math.max(0, topUpRemaining - remainder);
+  const afterMonthly = Math.max(0, unitsToConsume - monthlyRemaining);
+  const newPromotional = Math.max(0, promotionalRemaining - afterMonthly);
+  const afterPromotional = Math.max(0, afterMonthly - promotionalRemaining);
+  const newTopUp = Math.max(0, topUpRemaining - afterPromotional);
 
   tx.set(subscriptionRef, {
     monthlyCredits: newMonthly,
+    promotionalCredits: newPromotional,
     topUpCredits: newTopUp,
     modifiedOn: serverTimestamp,
   }, { merge: true });
@@ -276,7 +311,7 @@ await firestoreAdmin.runTransaction(async (tx) => {
 
 ### Balance Sync Optimization (Feb 2026)
 
-Reservation settlement returns `{ monthlyCredits, topUpCredits }` as `remainingBalance`. Paid AI API routes include this in their JSON response. Frontend services call `syncBalanceFromResponse()` which dispatches a `CustomEvent('ai-balance-update')`; `SessionProvider` listens and updates `activeSubscription` state without another Firestore read.
+Reservation settlement returns `{ billingStoreId, monthlyCredits, promotionalCredits, topUpCredits }` as `remainingBalance`. Paid AI API routes include this authenticated, billing-store-scoped object in their JSON response. Frontend services call `syncBalanceFromResponse()` which dispatches a `CustomEvent('ai-balance-update')`; `SessionProvider` accepts it only for the matching active subscription and updates local state without another Firestore read.
 
 **Result:** Eliminates 1 Firestore read per AI operation on the frontend side. The frontend no longer needs to re-fetch the subscription document after each AI call to update the displayed balance.
 
@@ -361,18 +396,26 @@ match /subscriptions/{subId} {
     allow update: if request.auth != null
         && request.auth.token.tId == resource.data.tenantId
         && !request.resource.data.diff(resource.data).affectedKeys()
-            .hasAny(['monthlyCredits', 'topUpCredits', 'monthlyCreditsAllowance']);
+            .hasAny([
+                'monthlyCredits',
+                'promotionalCredits',
+                'promotionalCreditsExpireAt',
+                'topUpCredits',
+                'monthlyCreditsAllowance',
+            ]);
 }
 ```
 
-**Key Principle:** Credit balance fields (`monthlyCredits`, `topUpCredits`) are NEVER writable from the client. All mutations go through server-side API routes (which use Firebase Admin SDK, bypassing security rules).
+**Key Principle:** Credit balance and expiry fields are never writable from the client. All mutations go through authenticated server-side settlement paths using Firebase Admin SDK.
 
 ### Data Sensitivity Classification
 
 | Field                           | Classification | Who Can See                                                             |
 | ------------------------------- | -------------- | ----------------------------------------------------------------------- |
-| `monthlyCredits`                | Internal       | Founder/admin only (currently shown in UI — to be removed per doctrine) |
-| `topUpCredits`                  | Internal       | Founder/admin only (currently shown in UI — to be removed per doctrine) |
+| `monthlyCredits`                | Owner billing  | Authorized owner billing surfaces and server accounting                 |
+| `promotionalCredits`           | Owner billing  | Authorized owner billing surfaces while unexpired and server accounting |
+| `promotionalCreditsExpireAt`   | Owner billing  | Authorized owner billing surfaces and server accounting                 |
+| `topUpCredits`                  | Owner billing  | Authorized owner billing surfaces and server accounting                 |
 | `unitsConsumed`                 | Internal       | Founder/admin only                                                      |
 | `totalCredits`                  | Internal       | Founder/admin only                                                      |
 | `totalCharge`                   | Internal       | Founder/admin only                                                      |
@@ -380,7 +423,7 @@ match /subscriptions/{subId} {
 | `action`, `projectId`, `fileId` | Operational    | Developer debugging                                                     |
 | `providerOrderId`, `amount`     | Financial      | Founder/admin only                                                      |
 
-**Rule:** No capacity, unit, credit, or token data appears in any client-facing API response. The only client-facing signal is `canRunActions: boolean`.
+**Rule:** Owner billing surfaces may receive exact, tenant/store-scoped credit balances. Provider tokens, internal cost telemetry, reservation internals, and cross-store accounting data remain server-only. Public and unauthenticated responses never expose owner balances.
 
 ---
 
@@ -406,7 +449,7 @@ match /subscriptions/{subId} {
 
 ### Capacity Enforcement (Day 1)
 
-1. No new fields needed — `monthlyCredits` and `topUpCredits` already exist on subscription documents
+1. Recurring, promotional, and purchased balances remain attached to the effective billing subscription
 2. Add the matching owner permission guard before each paid owner AI API route reaches capacity or provider work
 3. Add capacity admission (`checkAICapacity`) and an exact transactional reservation (`reserveAiCapacity`) before each paid provider call
 4. Settle the same reservation through `finalizeAiOperationAccounting()` after successful output; refund it on every failure path that will not retry the same durable work

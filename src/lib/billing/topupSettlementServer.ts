@@ -1,8 +1,13 @@
 import { DB_COLLECTIONS } from '@constant/database';
-import type { ProductId } from '@constant/product';
+import { PRODUCT_IDS, type ProductId } from '@constant/product';
 import { admin } from '@lib/firebase/firebaseAdmin';
 import type { FirestoreSubscriptionDoc } from '@type/razorpay';
 import {
+    resolveMenuListTaxSettlementSnapshot,
+    type MenuListTaxSnapshot,
+} from '@data/shared/billingTaxPolicy';
+import {
+    getMenuListPurchasedCreditRecoveryId,
     getActiveProductSubscriptionForStore,
     getBillingFirestoreAdminForProduct,
 } from './productBillingServer';
@@ -14,7 +19,10 @@ import {
     normalizeBillingTopupScopeDocumentId,
 } from './topupDocumentIdBoundary';
 import {
+    isSettledTopupStatus,
     resolveCurrentTopupSubscriptionSettlement,
+    resolveTopupCreditDebtAllocation,
+    resolveTopupRefundCreditTarget,
     resolveVerifiedTopupSettlement,
     type VerifiedTopupSettlement,
 } from './topupSettlement';
@@ -27,10 +35,44 @@ export type ProductTopupSettlementResult = {
     newBalance: number;
     settlement: VerifiedTopupSettlement;
     subscription: FirestoreSubscriptionDoc;
+    taxSnapshot?: MenuListTaxSnapshot;
 };
+
+export type MenuListTopupRefundResult = {
+    creditsReversed: number;
+    creditShortfall: number;
+    isTopupRefund: boolean;
+    replayed: boolean;
+};
+
+const asExactNonNegativeSafeInteger = (value: unknown): number | null => (
+    typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 ? value : null
+);
+
+const asExactPositiveSafeInteger = (value: unknown): number | null => {
+    const parsed = asExactNonNegativeSafeInteger(value);
+    return parsed !== null && parsed > 0 ? parsed : null;
+};
+
+const asExactIdentity = (value: unknown): number | null => {
+    const parsed = asExactPositiveSafeInteger(value);
+    return parsed !== null ? parsed : null;
+};
+
+const asProviderId = (value: unknown, prefix: string): string | null => (
+    typeof value === 'string'
+    && value === value.trim()
+    && value.length > prefix.length
+    && value.length <= 180
+    && value.startsWith(prefix)
+    && /^[A-Za-z0-9_]+$/.test(value)
+        ? value
+        : null
+);
 
 export async function persistPendingProductTopupSnapshot(params: {
     amount: number;
+    baseAmount?: number;
     billingDb: FirebaseFirestore.Firestore;
     billingStoreId: number;
     creditsAdded: number;
@@ -42,6 +84,7 @@ export async function persistPendingProductTopupSnapshot(params: {
     storeId: number;
     tenantId: number;
     userId: string;
+    taxSnapshot?: MenuListTaxSnapshot;
 }): Promise<'created' | 'replayed'> {
     const orderId = normalizeBillingTopupDocumentId(params.order?.id);
     if (!orderId) {
@@ -52,6 +95,7 @@ export async function persistPendingProductTopupSnapshot(params: {
         : 'ai_enhancement_pack';
     const candidate = {
         amount: params.amount,
+        ...(typeof params.baseAmount === 'number' ? { baseAmount: params.baseAmount } : {}),
         billingStoreId: params.billingStoreId,
         createdOn: admin.firestore.FieldValue.serverTimestamp(),
         creditsAdded: params.creditsAdded,
@@ -71,6 +115,7 @@ export async function persistPendingProductTopupSnapshot(params: {
         uId: params.userId,
         updatedOn: admin.firestore.FieldValue.serverTimestamp(),
         userId: params.userId,
+        ...(params.taxSnapshot ? { taxSnapshot: params.taxSnapshot } : {}),
     };
     const candidateSettlement = resolveVerifiedTopupSettlement({
         expectedOrderId: orderId,
@@ -184,6 +229,17 @@ export async function settleProductTopupFromProvider(params: {
     if (!initialSettlement) {
         throw new Error('Provider top-up does not match the pending settlement snapshot.');
     }
+    const taxSnapshot = productId === PRODUCT_IDS.MENULIST && initialTopup?.taxSnapshot
+        ? resolveMenuListTaxSettlementSnapshot({
+            amount: initialSettlement.amount,
+            currency: initialSettlement.currency,
+            quantity: 1,
+            snapshot: initialTopup.taxSnapshot as MenuListTaxSnapshot,
+        })
+        : undefined;
+    if (productId === PRODUCT_IDS.MENULIST && !taxSnapshot) {
+        throw new Error('Paid MenuList top-up does not match its stored tax terms.');
+    }
 
     const subscription = await getActiveProductSubscriptionForStore(productId, tenantId, storeId);
     const subscriptionId = normalizeBillingSubscriptionDocumentId(subscription?.id);
@@ -212,9 +268,10 @@ export async function settleProductTopupFromProvider(params: {
         const topupData = topupSnap.exists ? topupSnap.data() : null;
         const subscriptionData = subscriptionSnap.exists ? subscriptionSnap.data() : null;
 
-        if (topupData?.status === 'paid') {
+        const isSettledTopup = Boolean(topupData && isSettledTopupStatus(topupData.status));
+        if (isSettledTopup && topupData) {
             if (topupData.providerPaymentId !== paymentId) {
-                throw new Error('Paid top-up is already linked to another payment.');
+                throw new Error('Settled top-up is already linked to another payment.');
             }
 
             const existingSettlement = resolveVerifiedTopupSettlement({
@@ -228,7 +285,7 @@ export async function settleProductTopupFromProvider(params: {
                 topupSnapshot: topupData,
             });
             if (!existingSettlement) {
-                throw new Error('Paid top-up no longer matches its provider evidence.');
+                throw new Error('Settled top-up no longer matches its provider evidence.');
             }
 
             const currentSubscription = resolveCurrentTopupSubscriptionSettlement({
@@ -238,7 +295,7 @@ export async function settleProductTopupFromProvider(params: {
                 subscriptionSnapshot: subscriptionData,
             });
             if (!currentSubscription || existingSettlement.billingStoreId !== currentSubscription.storeId) {
-                throw new Error('Paid top-up subscription requires reconciliation.');
+                throw new Error('Settled top-up subscription requires reconciliation.');
             }
 
             return {
@@ -274,19 +331,44 @@ export async function settleProductTopupFromProvider(params: {
         }
 
         const serverNow = admin.firestore.FieldValue.serverTimestamp();
-        const newBalance = currentSubscription.topUpCredits + transactionSettlement.creditsToAdd;
+        const currentRefundDebt = productId === PRODUCT_IDS.MENULIST
+            ? asExactNonNegativeSafeInteger(subscriptionData?.topUpCreditRefundDebt ?? 0)
+            : 0;
+        if (currentRefundDebt === null) {
+            throw new Error('Top-up refund debt balance is invalid.');
+        }
+        const debtAllocation = resolveTopupCreditDebtAllocation({
+            creditsPurchased: transactionSettlement.creditsToAdd,
+            refundDebt: currentRefundDebt,
+        });
+        if (!debtAllocation) {
+            throw new Error('Top-up refund debt allocation is invalid.');
+        }
+        const {
+            creditsAppliedToBalance,
+            creditsOffsetAgainstRefundDebt,
+            remainingRefundDebt: newRefundDebt,
+        } = debtAllocation;
+        const newBalance = currentSubscription.topUpCredits + creditsAppliedToBalance;
         if (!Number.isSafeInteger(newBalance)) {
             throw new Error('Top-up credit balance exceeds the supported range.');
         }
         tx.set(subscriptionRef, {
             topUpCredits: newBalance,
+            ...(productId === PRODUCT_IDS.MENULIST ? { topUpCreditRefundDebt: newRefundDebt } : {}),
             modifiedOn: serverNow,
         }, { merge: true });
         tx.set(topupRef, {
             paymentProvider: 'razorpay',
             providerOrderId: orderId,
             providerPaymentId: paymentId,
+            subscriptionDocumentId: subscriptionId,
+            providerSubscriptionId: currentSubscription.providerSubscriptionId
+                || currentSubscription.id
+                || null,
             creditsAdded: transactionSettlement.creditsToAdd,
+            creditsAppliedToBalance,
+            creditsOffsetAgainstRefundDebt,
             amount: transactionSettlement.amount,
             currency: transactionSettlement.currency,
             status: 'paid',
@@ -331,9 +413,220 @@ export async function settleProductTopupFromProvider(params: {
 
     return {
         ...result,
+        ...(taxSnapshot ? { taxSnapshot } : {}),
         subscription: {
             ...subscription,
             topUpCredits: result.newBalance,
         },
     };
+}
+
+/**
+ * Reverses MenuList purchased credits only when a processed provider refund
+ * belongs to a settled top-up. Subscription refunds return a no-op result.
+ */
+export async function settleMenuListTopupRefund(params: {
+    amount: number;
+    currency: string;
+    paymentId: string;
+    refundId: string;
+}): Promise<MenuListTopupRefundResult> {
+    const paymentId = asProviderId(params.paymentId, 'pay_');
+    const refundId = asProviderId(params.refundId, 'rfnd_');
+    const refundAmount = asExactPositiveSafeInteger(params.amount);
+    const currency = typeof params.currency === 'string' ? params.currency.trim().toUpperCase() : '';
+    if (!paymentId || !refundId || refundAmount === null || !/^[A-Z]{3}$/.test(currency)) {
+        throw new Error('Processed top-up refund evidence is invalid.');
+    }
+
+    const billingDb = getBillingFirestoreAdminForProduct(PRODUCT_IDS.MENULIST);
+    const candidates = await billingDb.collection(DB_COLLECTIONS.TOPUPS)
+        .where('providerPaymentId', '==', paymentId)
+        .limit(2)
+        .get();
+    if (candidates.empty) {
+        return { creditsReversed: 0, creditShortfall: 0, isTopupRefund: false, replayed: false };
+    }
+    if (candidates.size !== 1) {
+        throw new Error('Processed refund matches multiple top-up records.');
+    }
+
+    const candidate = candidates.docs[0];
+    const topupRef = candidate.ref;
+    const refundRef = topupRef.collection('refunds').doc(refundId);
+    return billingDb.runTransaction(async (tx) => {
+        const topupSnapshot = await tx.get(topupRef);
+        if (!topupSnapshot.exists) {
+            throw new Error('Processed top-up refund record disappeared.');
+        }
+        const topup = topupSnapshot.data() || {};
+        const tenantId = asExactIdentity(topup.tenantId);
+        const compactTenantId = asExactIdentity(topup.tId);
+        const storeId = asExactIdentity(topup.storeId);
+        const compactStoreId = asExactIdentity(topup.sId);
+        const purchaseAmount = asExactPositiveSafeInteger(topup.amount);
+        const creditsAdded = asExactPositiveSafeInteger(topup.creditsAdded);
+        const parsedPreviousRefundAmount = asExactNonNegativeSafeInteger(topup.refundedAmount);
+        const parsedPreviousCreditsRefunded = asExactNonNegativeSafeInteger(topup.creditsRefunded);
+        const previousRefundAmount = topup.refundedAmount == null ? 0 : parsedPreviousRefundAmount;
+        const previousCreditsRefunded = topup.creditsRefunded == null ? 0 : parsedPreviousCreditsRefunded;
+        const subscriptionId = normalizeBillingSubscriptionDocumentId(topup.subscriptionDocumentId);
+        const providerOrderId = normalizeBillingTopupDocumentId(topup.providerOrderId);
+        const topupCurrency = typeof topup.currency === 'string' ? topup.currency.trim().toUpperCase() : '';
+        if (
+            topup.productId !== PRODUCT_IDS.MENULIST
+            || topup.pId !== PRODUCT_IDS.MENULIST
+            || topup.providerPaymentId !== paymentId
+            || providerOrderId !== topupSnapshot.id
+            || topup.paymentProvider !== 'razorpay'
+            || (topup.status !== 'paid' && topup.status !== 'partially_refunded' && topup.status !== 'refunded')
+            || tenantId === null
+            || compactTenantId !== tenantId
+            || storeId === null
+            || compactStoreId !== storeId
+            || purchaseAmount === null
+            || creditsAdded === null
+            || previousRefundAmount === null
+            || previousCreditsRefunded === null
+            || !subscriptionId
+            || topupCurrency !== currency
+        ) {
+            throw new Error('Processed refund does not match settled MenuList top-up evidence.');
+        }
+
+        const [refundSnapshot, subscriptionSnapshot, recoverySnapshot] = await Promise.all([
+            tx.get(refundRef),
+            tx.get(billingDb.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc(subscriptionId)),
+            tx.get(billingDb.collection(DB_COLLECTIONS.MENULIST_PURCHASED_CREDIT_RECOVERIES).doc(
+                getMenuListPurchasedCreditRecoveryId(tenantId, storeId),
+            )),
+        ]);
+        if (refundSnapshot.exists) {
+            const existing = refundSnapshot.data() || {};
+            if (
+                existing.paymentId !== paymentId
+                || existing.amount !== refundAmount
+                || existing.currency !== currency
+            ) {
+                throw new Error('Processed top-up refund replay conflicts with stored evidence.');
+            }
+            return {
+                creditsReversed: asExactNonNegativeSafeInteger(existing.creditsReversed) ?? 0,
+                creditShortfall: asExactNonNegativeSafeInteger(existing.creditShortfall) ?? 0,
+                isTopupRefund: true,
+                replayed: true,
+            };
+        }
+
+        const cumulativeRefundAmount = previousRefundAmount + refundAmount;
+        if (!Number.isSafeInteger(cumulativeRefundAmount)) {
+            throw new Error('Processed top-up refund amount exceeds the supported range.');
+        }
+        const targetCreditsRefunded = resolveTopupRefundCreditTarget({
+            creditsAdded,
+            cumulativeRefundAmount,
+            purchaseAmount,
+        });
+        if (targetCreditsRefunded === null || targetCreditsRefunded < previousCreditsRefunded) {
+            throw new Error('Processed top-up refund exceeds the settled purchase.');
+        }
+        const creditsToReverse = targetCreditsRefunded - previousCreditsRefunded;
+
+        if (!subscriptionSnapshot.exists) {
+            throw new Error('Processed top-up refund subscription no longer exists.');
+        }
+        const subscription = subscriptionSnapshot.data() || {};
+        const subscriptionScope = getProductSubscriptionBillingScope(PRODUCT_IDS.MENULIST, {
+            ...subscription,
+            id: subscriptionSnapshot.id,
+        } as FirestoreSubscriptionDoc);
+        if (
+            !subscriptionScope
+            || subscriptionScope.tenantId !== tenantId
+            || subscriptionScope.storeId !== storeId
+        ) {
+            throw new Error('Processed top-up refund subscription scope conflicts with purchase evidence.');
+        }
+        const activeCredits = asExactNonNegativeSafeInteger(subscription.topUpCredits);
+        const existingRefundDebt = asExactNonNegativeSafeInteger(subscription.topUpCreditRefundDebt ?? 0);
+        if (activeCredits === null || existingRefundDebt === null) {
+            throw new Error('Processed top-up refund found an invalid purchased-credit balance.');
+        }
+
+        const recovery = recoverySnapshot.exists ? recoverySnapshot.data() || {} : {};
+        const recoveryScopeMatches = recoverySnapshot.exists
+            && recovery.productId === PRODUCT_IDS.MENULIST
+            && recovery.pId === PRODUCT_IDS.MENULIST
+            && asExactIdentity(recovery.tenantId) === tenantId
+            && asExactIdentity(recovery.storeId) === storeId;
+        if (recoverySnapshot.exists && !recoveryScopeMatches) {
+            throw new Error('Processed top-up refund recovery scope conflicts with purchase evidence.');
+        }
+        const frozenCredits = recoverySnapshot.exists
+            ? asExactNonNegativeSafeInteger(recovery.purchasedCredits)
+            : 0;
+        if (recoverySnapshot.exists && frozenCredits === null) {
+            throw new Error('Processed top-up refund found an invalid frozen-credit balance.');
+        }
+
+        const activeReversal = Math.min(activeCredits ?? 0, creditsToReverse);
+        const remainingAfterActive = creditsToReverse - activeReversal;
+        const frozenReversal = Math.min(frozenCredits ?? 0, remainingAfterActive);
+        const creditsReversed = activeReversal + frozenReversal;
+        const creditShortfall = creditsToReverse - creditsReversed;
+        const now = admin.firestore.FieldValue.serverTimestamp();
+        const subscriptionRef = billingDb.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc(subscriptionId);
+        const recoveryRef = billingDb.collection(DB_COLLECTIONS.MENULIST_PURCHASED_CREDIT_RECOVERIES).doc(
+            getMenuListPurchasedCreditRecoveryId(tenantId, storeId),
+        );
+        const nextRefundDebt = existingRefundDebt + creditShortfall;
+        if (!Number.isSafeInteger(nextRefundDebt)) {
+            throw new Error('Processed top-up refund debt exceeds the supported range.');
+        }
+        if (activeReversal > 0 || creditShortfall > 0) {
+            tx.set(subscriptionRef, {
+                topUpCredits: activeCredits - activeReversal,
+                topUpCreditRefundDebt: nextRefundDebt,
+                modifiedOn: now,
+            }, { merge: true });
+        }
+        if (recoverySnapshot.exists && frozenReversal > 0) {
+            tx.set(recoveryRef, {
+                purchasedCredits: (frozenCredits ?? 0) - frozenReversal,
+                updatedAt: now,
+            }, { merge: true });
+        }
+        tx.create(refundRef, {
+            amount: refundAmount,
+            creditsReversed,
+            creditShortfall,
+            currency,
+            paymentId,
+            refundId,
+            processedAt: now,
+        });
+        const priorCreditsReversed = asExactNonNegativeSafeInteger(topup.creditsReversed);
+        const priorCreditShortfall = asExactNonNegativeSafeInteger(topup.creditReversalShortfall);
+        if (
+            (topup.creditsReversed != null && priorCreditsReversed === null)
+            || (topup.creditReversalShortfall != null && priorCreditShortfall === null)
+        ) {
+            throw new Error('Processed top-up refund found invalid reversal totals.');
+        }
+        const cumulativeCreditsReversed = (priorCreditsReversed ?? 0) + creditsReversed;
+        const cumulativeCreditShortfall = (priorCreditShortfall ?? 0) + creditShortfall;
+        if (!Number.isSafeInteger(cumulativeCreditsReversed) || !Number.isSafeInteger(cumulativeCreditShortfall)) {
+            throw new Error('Processed top-up refund reversal totals exceed the supported range.');
+        }
+        tx.set(topupRef, {
+            creditsRefunded: targetCreditsRefunded,
+            creditsReversed: cumulativeCreditsReversed,
+            creditReversalShortfall: cumulativeCreditShortfall,
+            refundedAmount: cumulativeRefundAmount,
+            requiresReconciliation: cumulativeCreditShortfall > 0,
+            status: cumulativeRefundAmount === purchaseAmount ? 'refunded' : 'partially_refunded',
+            updatedOn: now,
+        }, { merge: true });
+        return { creditsReversed, creditShortfall, isTopupRefund: true, replayed: false };
+    });
 }

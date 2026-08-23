@@ -7,7 +7,7 @@
 
 Use existing screens first, no new route, and SignalDesk remains observer-only.
 
-`src/lib/onboarding/starterActivation.ts` owns signal allowlists, evidence labels, timestamp normalization, two-action summary, starter access helpers, and same-store in-memory acknowledgement projection.
+`src/lib/onboarding/starterActivation.ts` owns signal allowlists, evidence labels, timestamp normalization, two-action summary, setup access helpers, and same-store in-memory acknowledgement projection.
 
 ## Write paths
 
@@ -24,7 +24,7 @@ Use existing screens first, no new route, and SignalDesk remains observer-only.
 
 The global starter banner and desktop/mobile Presence Monitor consume this summary. Menu Setup Progress uses the same `activated` result for the starter placement step.
 
-Starter workspace and public-surface access fail closed unless the starter row
+Setup workspace and public-surface access fail closed unless the starter row
 has a valid future `activationDeadline`. Missing or malformed deadlines are
 expired, not an open-ended legacy trial. Paid public access requires either the
 exact paid status or a bounded non-empty plan string; arbitrary truthy persisted

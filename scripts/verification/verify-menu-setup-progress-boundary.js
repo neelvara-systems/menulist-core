@@ -341,7 +341,7 @@ for (const invalidDeadline of [undefined, null, 'not-a-date', { seconds: 1, nano
 const malformedPlanStarter = {
   onboardingSource: 'PUBLIC_MENU_ENTRY',
   activationDeadline: 'not-a-date',
-  activePlanType: { internal: 'premium' },
+  activePlanType: { internal: 'menulist_multi_location' },
 };
 assert.equal(
   isStarterPublicSurfaceExpired(malformedPlanStarter, activationNow),
@@ -349,7 +349,7 @@ assert.equal(
   'a malformed truthy plan value must not bypass starter expiry',
 );
 assert.equal(
-  isStarterPublicSurfaceExpired({ ...malformedPlanStarter, activePlanType: ' premium ' }, activationNow),
+  isStarterPublicSurfaceExpired({ ...malformedPlanStarter, activePlanType: ' menulist_multi_location ' }, activationNow),
   false,
   'a bounded non-empty plan string must preserve paid public access',
 );

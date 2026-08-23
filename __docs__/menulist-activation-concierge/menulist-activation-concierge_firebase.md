@@ -10,7 +10,7 @@
 - `stores/{storeId}.menuPresence.{surface}`: current owner-confirmed external placement timestamp.
 - `platformSummary/storesSummary.stores.{storeId}.menuPresence`: existing compact presence projection.
 
-`activationDeadline` is required authority for unpaid starter access. Both
+`activationDeadline` is required authority for unpaid setup access. Both
 current creation producers write it as a Firestore Timestamp. A legacy or
 corrupt starter document without a valid deadline is treated as expired; the
 read boundary never upgrades missing data into indefinite access. Firestore

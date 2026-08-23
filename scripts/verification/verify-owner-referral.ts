@@ -238,6 +238,22 @@ const verifyOwnerReferral = (): void => {
     const tracker = read('__docs__/audits/menulist-feature-flow-audit-tracker.md');
     const changelog = read('__docs__/changelog.md');
 
+    includes(
+        settlement,
+        'resolveMenuListPromotionalCreditState',
+        'owner referral settlement',
+    );
+    includes(
+        settlement,
+        "throw new Error('owner_referral_wallet_credit_invalid')",
+        'owner referral settlement',
+    );
+    includes(
+        emulatorTest,
+        'verifyExpiredPromotionalBalanceDoesNotRevive',
+        'owner referral emulator test',
+    );
+
     assert(
         packageJson.scripts?.['verify:owner-referral']
             === 'ts-node --compiler-options \'{"module":"CommonJS"}\' -r tsconfig-paths/register scripts/verification/verify-owner-referral.ts',
@@ -394,15 +410,18 @@ const verifyOwnerReferral = (): void => {
         'getDirectVerifiedPaidOwnerReferralWallet(referrerScope)',
         'getDirectVerifiedPaidOwnerReferralWallet(referredScope)',
         'referrerWallet.id === referredWallet.id',
-        'referrerTopUpBefore + OWNER_REFERRAL_REFERRER_CREDITS',
-        'referredTopUpBefore + OWNER_REFERRAL_REFERRED_CREDITS',
+        'referrerPromotionalBefore + OWNER_REFERRAL_REFERRER_CREDITS',
+        'referredPromotionalBefore + OWNER_REFERRAL_REFERRED_CREDITS',
+        'MENULIST_PROMOTIONAL_CREDIT_VALIDITY_DAYS',
+        'promotionalCreditsExpireAt: resolveExpiry(referrerSubscription.promotionalCreditsExpireAt)',
+        'promotionalCreditsExpireAt: resolveExpiry(referredSubscription.promotionalCreditsExpireAt)',
         'transaction.create(referrerRewardRef',
         'transaction.create(referredRewardRef',
         'transaction.update(referralRef',
-        'referrerTopUpBefore',
-        'referrerTopUpAfter',
-        'referredTopUpBefore',
-        'referredTopUpAfter',
+        'referrerPromotionalBefore',
+        'referrerPromotionalAfter',
+        'referredPromotionalBefore',
+        'referredPromotionalAfter',
         'referrerRewardTransactionId',
         'referredRewardTransactionId',
         "throw new Error('owner_referral_wallet_credit_invalid')",

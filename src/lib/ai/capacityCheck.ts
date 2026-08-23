@@ -1,11 +1,15 @@
 import { FEATURE_FLAGS } from "@config/features";
-import { getUnitCost, isFreeTierAction, OVERDRAFT_BUFFER_PERCENT } from "@constant/AI/unitCosts";
+import { getUnitCost, isFreeTierAction } from "@constant/AI/unitCosts";
 import { DB_COLLECTIONS } from "@constant/database";
 import {
     getCreditBillingPeriodKey,
     getNonNegativeCreditInteger,
     getPositiveCreditInteger,
 } from "@data/shared/aiCreditScalarContract";
+import {
+    MENULIST_CONTENT_CREDIT_RATE_VERSION,
+    resolveMenuListPromotionalCreditState,
+} from "@data/shared/contentCreditPolicy";
 import { resolveMenuListCreditNotification } from "@data/shared/creditNotificationPolicy";
 import { getActiveSubscriptionForStore } from "@database/subscriptions/server";
 import { getMenuListSubscriptionEntitlementScope } from "@lib/billing/menuListSubscriptionEntitlementBoundary";
@@ -24,10 +28,11 @@ import { normalizeAiOperationDocumentId } from "./operationLog";
 /**
  * AI Capacity Check & Consumption Module
  *
- * Per-store capacity enforcement using existing subscription credits.
- * No new documents, no new collections — uses subscription.monthlyCredits + subscription.topUpCredits.
+ * Effective-billing-subscription capacity enforcement using recurring,
+ * promotional, and purchased credit buckets. Acting-store operation history
+ * remains separate from the subscription that funds the work.
  *
- * Architecture: Per-store (not per-tenant). See spec doc §Multi-Outlet Pack Logic.
+ * Architecture: directly billed store or inherited Multi-location HQ scope.
  *
  * @see __docs__/ai-enhancement-packs/ai-enhancement-packs_impl.md
  */
@@ -36,8 +41,19 @@ export interface CapacityCheckResult {
     allowed: boolean;
     unitsRequired: number;
     remaining: number;
-    reason?: "free" | "sufficient" | "overdraft" | "exhausted" | "maintenance" | "no_subscription";
+    reason?: "free" | "sufficient" | "exhausted" | "maintenance" | "no_subscription";
     subscription: FirestoreSubscriptionDoc | null;
+}
+
+function getAvailablePromotionalCredits(
+    subscription: Pick<FirestoreSubscriptionDoc, "promotionalCredits" | "promotionalCreditsExpireAt">,
+    nowMs = Date.now(),
+): { credits: number | null; expiresAtMillis: number | null } {
+    return resolveMenuListPromotionalCreditState({
+        credits: subscription.promotionalCredits,
+        expiresAt: subscription.promotionalCreditsExpireAt,
+        nowMs,
+    });
 }
 
 export function hasCurrentAiCapacitySubscriptionEntitlement(
@@ -120,7 +136,7 @@ async function refreshMonthlyCreditsIfNeeded(
  * 1. Kill switch (ENABLE_AI_ENHANCEMENTS) — if OFF, block paid actions
  * 2. Free tier check — free actions always pass
  * 3. Subscription lookup — per-store
- * 4. Capacity check with overdraft buffer (soft enforcement at launch)
+ * 4. Strict capacity check across recurring, valid promotional, and purchased credits
  *
  * IMPORTANT: This check happens BEFORE the Gemini API call.
  * If capacity is insufficient, the API call is never made.
@@ -188,28 +204,25 @@ export async function checkAICapacity(
     }
 
     const monthlyCredits = getNonNegativeCreditInteger(subscription.monthlyCredits ?? 0);
+    const promotional = getAvailablePromotionalCredits(subscription);
     const topUpCredits = getNonNegativeCreditInteger(subscription.topUpCredits ?? 0);
     if (
         monthlyCredits === null
+        || promotional.credits === null
         || topUpCredits === null
     ) {
         return { allowed: false, unitsRequired, remaining: 0, reason: 'exhausted', subscription };
     }
-    const remaining = monthlyCredits + topUpCredits;
+    const remaining = monthlyCredits + promotional.credits + topUpCredits;
     if (!Number.isSafeInteger(remaining)) {
         return { allowed: false, unitsRequired, remaining: 0, reason: 'exhausted', subscription };
     }
 
-    // Soft enforcement: allow overdraft up to OVERDRAFT_BUFFER_PERCENT
-    const overdraftAllowance = remaining * (OVERDRAFT_BUFFER_PERCENT / 100);
-    const effectiveCapacity = remaining + overdraftAllowance;
-    const isOverdraft = remaining < unitsRequired && effectiveCapacity >= unitsRequired;
-
     return {
-        allowed: effectiveCapacity >= unitsRequired,
+        allowed: remaining >= unitsRequired,
         unitsRequired,
         remaining,
-        reason: remaining >= unitsRequired ? "sufficient" : isOverdraft ? "overdraft" : "exhausted",
+        reason: remaining >= unitsRequired ? "sufficient" : "exhausted",
         subscription,
     };
 }
@@ -217,6 +230,7 @@ export async function checkAICapacity(
 export interface RemainingBalance {
     billingStoreId?: number;
     monthlyCredits: number;
+    promotionalCredits: number;
     topUpCredits: number;
 }
 
@@ -313,8 +327,9 @@ function readPersistedReservation(
         throw new Error("AI capacity reservation is not available.");
     }
     const monthlyCredits = getNonNegativeCreditInteger(data.remainingMonthlyCredits);
+    const promotionalCredits = getNonNegativeCreditInteger(data.remainingPromotionalCredits ?? 0);
     const topUpCredits = getNonNegativeCreditInteger(data.remainingTopUpCredits);
-    if (monthlyCredits === null || topUpCredits === null) {
+    if (monthlyCredits === null || promotionalCredits === null || topUpCredits === null) {
         throw new Error("AI capacity reservation balance is invalid.");
     }
     return {
@@ -323,6 +338,7 @@ function readPersistedReservation(
         remainingBalance: {
             billingStoreId: Number(expected.billingStoreId),
             monthlyCredits,
+            promotionalCredits,
             topUpCredits,
         },
         state: data.accountingStatus,
@@ -334,7 +350,7 @@ async function sendCreditBalanceLifecycleMessage(
     unitsToConsume: number,
     balance: RemainingBalance,
 ) {
-    const totalRemaining = balance.monthlyCredits + balance.topUpCredits;
+    const totalRemaining = balance.monthlyCredits + balance.promotionalCredits + balance.topUpCredits;
     const monthlyAllowance = getNonNegativeCreditInteger(subscription.monthlyCreditsAllowance ?? 0) ?? 0;
     const { eventType } = resolveMenuListCreditNotification({ monthlyAllowance, remainingCredits: totalRemaining });
     if (!eventType) return;
@@ -356,6 +372,7 @@ async function sendCreditBalanceLifecycleMessage(
                 eventType,
                 unitsToConsume,
                 monthlyCredits: balance.monthlyCredits,
+                promotionalCredits: balance.promotionalCredits,
                 topUpCredits: balance.topUpCredits,
                 ...getBoundedRuntimeStringContext('subscriptionId', subscription.id),
                 ...getBoundedRuntimeStringContext('tenantId', subscription.tenantId),
@@ -367,6 +384,7 @@ async function sendCreditBalanceLifecycleMessage(
             eventType,
             unitsToConsume,
             monthlyCredits: balance.monthlyCredits,
+            promotionalCredits: balance.promotionalCredits,
             topUpCredits: balance.topUpCredits,
             ...getBoundedRuntimeStringContext('subscriptionId', subscription.id),
             ...getBoundedRuntimeStringContext('tenantId', subscription.tenantId),
@@ -383,6 +401,7 @@ function calculateConsumedBalance(
     beforeBalance: RemainingBalance;
     billingPeriod: number | null;
     chargedBalance: RemainingBalance;
+    promotionalCreditsExpireAtMillis: number | null;
 } {
     if (!hasCurrentAiCapacitySubscriptionEntitlement(current)) {
         throw new Error('Billing subscription entitlement is not current.');
@@ -390,8 +409,14 @@ function calculateConsumedBalance(
     const billingPeriod = getBillingPeriodKey(current.cycleStartDate);
     const monthlyAllowance = getNonNegativeCreditInteger(current.monthlyCreditsAllowance ?? 0);
     const storedMonthlyCredits = getNonNegativeCreditInteger(current.monthlyCredits ?? 0);
+    const promotional = getAvailablePromotionalCredits(current);
     const topUpRemaining = getNonNegativeCreditInteger(current.topUpCredits ?? 0);
-    if (monthlyAllowance === null || storedMonthlyCredits === null || topUpRemaining === null) {
+    if (
+        monthlyAllowance === null
+        || storedMonthlyCredits === null
+        || promotional.credits === null
+        || topUpRemaining === null
+    ) {
         throw new Error('Not enough billing credits for this operation.');
     }
     const monthlyRemaining = billingPeriod !== null
@@ -399,12 +424,11 @@ function calculateConsumedBalance(
         && monthlyAllowance > 0
         ? monthlyAllowance
         : storedMonthlyCredits;
-    const totalRemaining = monthlyRemaining + topUpRemaining;
-    const effectiveCapacity = totalRemaining * (1 + (OVERDRAFT_BUFFER_PERCENT / 100));
+    const totalRemaining = monthlyRemaining + promotional.credits + topUpRemaining;
     if (
         !Number.isSafeInteger(totalRemaining)
         || totalRemaining < 0
-        || unitsToConsume > effectiveCapacity
+        || unitsToConsume > totalRemaining
     ) {
         throw new Error('Not enough billing credits for this operation.');
     }
@@ -413,31 +437,40 @@ function calculateConsumedBalance(
         return {
             balance: {
                 monthlyCredits: monthlyRemaining - unitsToConsume,
+                promotionalCredits: promotional.credits,
                 topUpCredits: topUpRemaining,
             },
             beforeBalance: {
                 monthlyCredits: monthlyRemaining,
+                promotionalCredits: promotional.credits,
                 topUpCredits: topUpRemaining,
             },
             billingPeriod,
-            chargedBalance: { monthlyCredits: unitsToConsume, topUpCredits: 0 },
+            chargedBalance: { monthlyCredits: unitsToConsume, promotionalCredits: 0, topUpCredits: 0 },
+            promotionalCreditsExpireAtMillis: promotional.expiresAtMillis,
         };
     }
-    const chargedTopUpCredits = Math.min(topUpRemaining, Math.max(0, unitsToConsume - monthlyRemaining));
+    const afterMonthly = unitsToConsume - monthlyRemaining;
+    const chargedPromotionalCredits = Math.min(promotional.credits, afterMonthly);
+    const chargedTopUpCredits = Math.min(topUpRemaining, afterMonthly - chargedPromotionalCredits);
     return {
         balance: {
             monthlyCredits: 0,
+            promotionalCredits: promotional.credits - chargedPromotionalCredits,
             topUpCredits: topUpRemaining - chargedTopUpCredits,
         },
         beforeBalance: {
             monthlyCredits: monthlyRemaining,
+            promotionalCredits: promotional.credits,
             topUpCredits: topUpRemaining,
         },
         billingPeriod,
         chargedBalance: {
             monthlyCredits: monthlyRemaining,
+            promotionalCredits: chargedPromotionalCredits,
             topUpCredits: chargedTopUpCredits,
         },
+        promotionalCreditsExpireAtMillis: promotional.expiresAtMillis,
     };
 }
 
@@ -520,7 +553,13 @@ export async function reserveAiCapacity({
         ) {
             throw new Error("AI capacity reservation persisted subscription scope mismatch.");
         }
-        const { balance, beforeBalance, billingPeriod, chargedBalance } = calculateConsumedBalance(current, unitsToReserve);
+        const {
+            balance,
+            beforeBalance,
+            billingPeriod,
+            chargedBalance,
+            promotionalCreditsExpireAtMillis,
+        } = calculateConsumedBalance(current, unitsToReserve);
         const now = admin.firestore.Timestamp.now();
         const recoveryAt = admin.firestore.Timestamp.fromMillis(now.toMillis() + AI_CAPACITY_RESERVATION_TTL_MS);
         const priorReservationAttempt = existing.accountingReservationAttempt === undefined
@@ -533,6 +572,7 @@ export async function reserveAiCapacity({
 
         transaction.set(subscriptionRef, {
             monthlyCredits: balance.monthlyCredits,
+            promotionalCredits: balance.promotionalCredits,
             topUpCredits: balance.topUpCredits,
             ...(billingPeriod !== null ? { creditsLastResetMonth: billingPeriod } : {}),
             modifiedOn: admin.firestore.FieldValue.serverTimestamp(),
@@ -540,12 +580,16 @@ export async function reserveAiCapacity({
         transaction.set(operationRef, {
             accountingBillingStoreId: Number(expected.billingStoreId),
             accountingChargedMonthlyCredits: chargedBalance.monthlyCredits,
+            accountingChargedPromotionalCredits: chargedBalance.promotionalCredits,
             accountingChargedTopUpCredits: chargedBalance.topUpCredits,
+            accountingCreditRateVersion: MENULIST_CONTENT_CREDIT_RATE_VERSION,
             accountingIdempotencyKey: operationId,
             accountingMonthlyCreditCeiling: Math.max(
                 beforeBalance.monthlyCredits,
                 getNonNegativeCreditInteger(current.monthlyCreditsAllowance ?? 0) ?? 0,
             ),
+            accountingPromotionalCreditCeiling: beforeBalance.promotionalCredits,
+            accountingPromotionalCreditsExpireAtMillis: promotionalCreditsExpireAtMillis,
             accountingRecoveryMode: recoveryMode,
             accountingReservationAttempt: reservationAttempt,
             accountingReservationBillingPeriod: billingPeriod,
@@ -558,6 +602,7 @@ export async function reserveAiCapacity({
             ...(source ? { source } : {}),
             ...(uId !== undefined ? { uId: String(uId) } : {}),
             remainingMonthlyCredits: balance.monthlyCredits,
+            remainingPromotionalCredits: balance.promotionalCredits,
             remainingTopUpCredits: balance.topUpCredits,
             reservedOn: now,
             ...(recoveryMode === "automatic_refund" ? { reservationRecoveryAt: recoveryAt } : {}),
@@ -647,9 +692,13 @@ export async function finalizeAiCapacityReservation({
             ...operationData,
             accountingBillingStoreId: Number(reservation.billingStoreId),
             accountingChargedMonthlyCredits: existing.accountingChargedMonthlyCredits,
+            accountingChargedPromotionalCredits: existing.accountingChargedPromotionalCredits,
             accountingChargedTopUpCredits: existing.accountingChargedTopUpCredits,
+            accountingCreditRateVersion: existing.accountingCreditRateVersion,
             accountingIdempotencyKey: reservation.id,
             accountingMonthlyCreditCeiling: existing.accountingMonthlyCreditCeiling,
+            accountingPromotionalCreditCeiling: existing.accountingPromotionalCreditCeiling,
+            accountingPromotionalCreditsExpireAtMillis: existing.accountingPromotionalCreditsExpireAtMillis,
             accountingRecoveryMode: existing.accountingRecoveryMode,
             accountingReservationAttempt: existing.accountingReservationAttempt,
             accountingReservationBillingPeriod: existing.accountingReservationBillingPeriod,
@@ -657,6 +706,7 @@ export async function finalizeAiCapacityReservation({
             accountingSubscriptionId: reservation.subscriptionId,
             accountingUnits: reservation.unitsReserved,
             remainingMonthlyCredits: persisted.remainingBalance.monthlyCredits,
+            remainingPromotionalCredits: persisted.remainingBalance.promotionalCredits,
             remainingTopUpCredits: persisted.remainingBalance.topUpCredits,
             reservedOn: existing.reservedOn,
             settledOn: admin.firestore.FieldValue.serverTimestamp(),
@@ -689,13 +739,21 @@ export async function refundAiCapacityReservation(
             const monthlyCredits = getNonNegativeCreditInteger(
                 existing.refundRemainingMonthlyCredits ?? existing.remainingMonthlyCredits,
             );
+            const promotionalCredits = getNonNegativeCreditInteger(
+                existing.refundRemainingPromotionalCredits ?? existing.remainingPromotionalCredits ?? 0,
+            );
             const topUpCredits = getNonNegativeCreditInteger(
                 existing.refundRemainingTopUpCredits ?? existing.remainingTopUpCredits,
             );
             return {
                 alreadyTerminal: true,
-                remainingBalance: monthlyCredits !== null && topUpCredits !== null
-                    ? { billingStoreId: Number(reservation.billingStoreId), monthlyCredits, topUpCredits }
+                remainingBalance: monthlyCredits !== null && promotionalCredits !== null && topUpCredits !== null
+                    ? {
+                        billingStoreId: Number(reservation.billingStoreId),
+                        monthlyCredits,
+                        promotionalCredits,
+                        topUpCredits,
+                    }
                     : null,
             };
         }
@@ -712,16 +770,22 @@ export async function refundAiCapacityReservation(
             throw new Error("AI capacity reservation persisted subscription scope mismatch.");
         }
         const currentMonthlyCredits = getNonNegativeCreditInteger(current.monthlyCredits ?? 0);
+        const currentPromotional = getAvailablePromotionalCredits(current);
         const currentTopUpCredits = getNonNegativeCreditInteger(current.topUpCredits ?? 0);
         const chargedMonthlyCredits = getNonNegativeCreditInteger(existing.accountingChargedMonthlyCredits ?? 0);
+        const chargedPromotionalCredits = getNonNegativeCreditInteger(
+            existing.accountingChargedPromotionalCredits ?? 0,
+        );
         const chargedTopUpCredits = getNonNegativeCreditInteger(existing.accountingChargedTopUpCredits ?? 0);
         const monthlyCreditCeiling = getNonNegativeCreditInteger(
             existing.accountingMonthlyCreditCeiling ?? current.monthlyCreditsAllowance ?? 0,
         );
         if (
             currentMonthlyCredits === null
+            || currentPromotional.credits === null
             || currentTopUpCredits === null
             || chargedMonthlyCredits === null
+            || chargedPromotionalCredits === null
             || chargedTopUpCredits === null
             || monthlyCreditCeiling === null
         ) {
@@ -742,23 +806,35 @@ export async function refundAiCapacityReservation(
             ? Math.min(chargedMonthlyCredits, Math.max(0, monthlyCreditCeiling - currentMonthlyCredits))
             : 0;
         const nextMonthlyCredits = currentMonthlyCredits + refundedMonthlyCredits;
+        const reservationPromotionalExpiry = Number(existing.accountingPromotionalCreditsExpireAtMillis);
+        const promotionalStillValid = Number.isFinite(reservationPromotionalExpiry)
+            && reservationPromotionalExpiry > Date.now();
+        const refundedPromotionalCredits = promotionalStillValid ? chargedPromotionalCredits : 0;
+        const nextPromotionalCredits = currentPromotional.credits + refundedPromotionalCredits;
         const nextTopUpCredits = currentTopUpCredits + chargedTopUpCredits;
-        if (!Number.isSafeInteger(nextMonthlyCredits) || !Number.isSafeInteger(nextTopUpCredits)) {
+        if (
+            !Number.isSafeInteger(nextMonthlyCredits)
+            || !Number.isSafeInteger(nextPromotionalCredits)
+            || !Number.isSafeInteger(nextTopUpCredits)
+        ) {
             throw new Error("AI capacity reservation refund credit balance overflowed.");
         }
         const nextBalance = {
             billingStoreId: Number(reservation.billingStoreId),
             monthlyCredits: nextMonthlyCredits,
+            promotionalCredits: nextPromotionalCredits,
             topUpCredits: nextTopUpCredits,
         };
         const now = admin.firestore.Timestamp.now();
         transaction.set(subscriptionRef, {
             monthlyCredits: nextBalance.monthlyCredits,
+            promotionalCredits: nextBalance.promotionalCredits,
             topUpCredits: nextBalance.topUpCredits,
             modifiedOn: admin.firestore.FieldValue.serverTimestamp(),
         }, { merge: true });
         transaction.set(operationRef, {
             accountingExpiredMonthlyCredits: chargedMonthlyCredits - refundedMonthlyCredits,
+            accountingExpiredPromotionalCredits: chargedPromotionalCredits - refundedPromotionalCredits,
             accountingStatus: "refunded",
             refundReason: String(reason || "provider_work_failed")
                 .replace(/[\u0000-\u001f\u007f]/g, " ")
@@ -766,8 +842,10 @@ export async function refundAiCapacityReservation(
                 .trim()
                 .slice(0, 240),
             refundRemainingMonthlyCredits: nextBalance.monthlyCredits,
+            refundRemainingPromotionalCredits: nextBalance.promotionalCredits,
             refundRemainingTopUpCredits: nextBalance.topUpCredits,
             refundedMonthlyCredits,
+            refundedPromotionalCredits,
             refundedOn: now,
             refundedTopUpCredits: chargedTopUpCredits,
             reservationRecoveryAt: admin.firestore.Timestamp.fromMillis(now.toMillis() + AI_CAPACITY_REFUND_RETENTION_MS),
@@ -866,7 +944,7 @@ export async function refundDurableAiCapacityReservationByIdSafely({
 
 /**
  * Consume AI capacity from a store's subscription.
- * Decrements monthlyCredits first, then topUpCredits.
+ * Decrements recurring credits first, then valid promotional credits, then purchased credits.
  *
  * Returns the new balance so the API route can include it in the response,
  * allowing the frontend to update state without an extra Firebase read.
@@ -910,6 +988,7 @@ export async function consumeAICapacity(
 
         tx.set(subscriptionRef, {
             monthlyCredits: balance.monthlyCredits,
+            promotionalCredits: balance.promotionalCredits,
             topUpCredits: balance.topUpCredits,
             ...(billingPeriod !== null ? { creditsLastResetMonth: billingPeriod } : {}),
             modifiedOn: admin.firestore.FieldValue.serverTimestamp(),
@@ -918,6 +997,7 @@ export async function consumeAICapacity(
         return {
             billingStoreId: Number(billingStoreId),
             monthlyCredits: balance.monthlyCredits,
+            promotionalCredits: balance.promotionalCredits,
             topUpCredits: balance.topUpCredits,
             subscription: current,
         };
@@ -930,6 +1010,7 @@ export async function consumeAICapacity(
     return {
         billingStoreId: updatedBalance.billingStoreId,
         monthlyCredits: updatedBalance.monthlyCredits,
+        promotionalCredits: updatedBalance.promotionalCredits,
         topUpCredits: updatedBalance.topUpCredits,
     };
 }
@@ -983,8 +1064,9 @@ export async function consumeAICapacityIdempotently({
             }
             if (existing.accountingStatus === 'consumed') {
                 const monthlyCredits = getNonNegativeCreditInteger(existing.remainingMonthlyCredits);
+                const promotionalCredits = getNonNegativeCreditInteger(existing.remainingPromotionalCredits ?? 0);
                 const topUpCredits = getNonNegativeCreditInteger(existing.remainingTopUpCredits);
-                if (monthlyCredits === null || topUpCredits === null) {
+                if (monthlyCredits === null || promotionalCredits === null || topUpCredits === null) {
                     throw new Error('AI accounting replay state is invalid.');
                 }
                 const replaySubscription = subscriptionSnap.exists
@@ -1000,7 +1082,12 @@ export async function consumeAICapacityIdempotently({
                 }
                 return {
                     alreadyConsumed: true,
-                    balance: { billingStoreId: Number(subscriptionStoreId), monthlyCredits, topUpCredits },
+                    balance: {
+                        billingStoreId: Number(subscriptionStoreId),
+                        monthlyCredits,
+                        promotionalCredits,
+                        topUpCredits,
+                    },
                     subscription: replaySubscription,
                 };
             }
@@ -1021,6 +1108,7 @@ export async function consumeAICapacityIdempotently({
         const { balance, billingPeriod } = calculateConsumedBalance(current, unitsToConsume);
         transaction.set(subscriptionRef, {
             monthlyCredits: balance.monthlyCredits,
+            promotionalCredits: balance.promotionalCredits,
             topUpCredits: balance.topUpCredits,
             ...(billingPeriod !== null ? { creditsLastResetMonth: billingPeriod } : {}),
             modifiedOn: admin.firestore.FieldValue.serverTimestamp(),
@@ -1028,10 +1116,12 @@ export async function consumeAICapacityIdempotently({
         transaction.set(operationRef, {
             ...operationData,
             accountingBillingStoreId: Number(subscriptionStoreId),
+            accountingCreditRateVersion: MENULIST_CONTENT_CREDIT_RATE_VERSION,
             accountingIdempotencyKey: idempotencyKey,
             accountingStatus: 'consumed',
             accountingUnits: unitsToConsume,
             remainingMonthlyCredits: balance.monthlyCredits,
+            remainingPromotionalCredits: balance.promotionalCredits,
             remainingTopUpCredits: balance.topUpCredits,
             modifiedOn: admin.firestore.FieldValue.serverTimestamp(),
         }, { merge: false });

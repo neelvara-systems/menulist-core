@@ -2,7 +2,10 @@ import { FieldValue } from 'firebase-admin/firestore';
 import { DB_COLLECTIONS, getAnalyticsDocId, getWeekDateRange } from '../constants/database';
 import { logger as appLogger } from '../lib/logger';
 import { generateOwnerActionPlan, OwnerActionCandidate } from '../services/gemini/ownerActionPlan';
-import { AnalyticsAiEntitlement } from './analyticsAiEntitlements';
+import {
+    ANALYTICS_AI_REQUIRED_PLAN_TYPE,
+    type AnalyticsAiEntitlement,
+} from './analyticsAiEntitlements';
 import {
     addDaysToAnalyticsDateKey,
     parseAnalyticsDateKey,
@@ -95,7 +98,7 @@ export interface OwnerDashboardAIPayloads {
 const DEFAULT_ANALYTICS_AI_ENTITLEMENT: AnalyticsAiEntitlement = {
     enabled: false,
     activePlanType: null,
-    requiredPlanType: 'pro',
+    requiredPlanType: ANALYTICS_AI_REQUIRED_PLAN_TYPE,
     reason: 'missing_plan',
 };
 

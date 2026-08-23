@@ -24,12 +24,12 @@ Strategic posture:
 
 - Do not sell Growth Kits as the main MenuList reason to buy.
 - Do not place it on the homepage during the current rollout.
-- Sell it quietly to Pro/Premium clients after they understand MenuList as their official menu source.
+- Sell it quietly to Pro/Multi-location clients after they understand MenuList as their official menu source.
 - Use real pilot usage before expanding public copy.
 
 30-day pilot signal:
 
-The feature earns broader placement only if Pro/Premium owners repeatedly copy, share, print, or mark packs used without support explaining the value. If usage is weak, keep it as a quiet add-on or pause expansion.
+The feature earns broader placement only if Pro/Multi-location owners repeatedly copy, share, print, or mark packs used without support explaining the value. If usage is weak, keep it as a quiet add-on or pause expansion.
 
 ## 2. Customer Promise
 
@@ -107,7 +107,7 @@ Recommended packages:
 | --- | --- | --- |
 | Pro included access | Active Pro client | Core Growth Kits access for current menu-based messages, prompts, and staff brief packs. |
 | Premium included access | Premium client | Higher kit allowance and stronger managed-service fit for clients already paying for MenuList depth. |
-| Managed Growth Kits | Multi-outlet or premium service client | Operator-assisted kit review and setup for Pro/Premium clients, still using MenuList truth as source. |
+| Managed Growth Kits | Multi-outlet or premium service client | Operator-assisted kit review and setup for Pro/Multi-location clients, still using MenuList truth as source. |
 
 Do not sell GrowthOS to non-MenuList clients in the current plan.
 
@@ -123,7 +123,7 @@ the useful distribution shape:
 - market the capability only inside a MenuList owner/proof story;
 - lead with one real current-menu action becoming accurate WhatsApp, Instagram,
   Google, staff, and print/counter handoffs;
-- derive any walkthrough or short clip from repeated Pro/Premium usage and
+- derive any walkthrough or short clip from repeated Pro/Multi-location usage and
   owner-approved proof;
 - measure eligible owners who copy, share, print, or mark a fresh pack used
   without explanation;
@@ -217,4 +217,4 @@ Do not market publicly until:
 - no direct posting claim appears
 - helpdoc is ready
 - support team knows what it does not do
-- 30-day Pro/Premium pilot usage proves owners use packs without explanation
+- 30-day Pro/Multi-location pilot usage proves owners use packs without explanation

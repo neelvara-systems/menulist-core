@@ -7,7 +7,9 @@
 
 > **Launch boundary:** Not current launch certification or deploy approval. This implementation document records source-gated AI Enhancement Pack and accounting behavior only. Current approval still requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md), `npm run verify:production-readiness-local`, `npm run verify:billing-entitlement-boundary`, `npm run verify:ai-accounting`, Razorpay sandbox subscription/top-up/reseller/webhook smoke, desktop/mobile Billing browser QA, target deploy evidence, and production-host smoke.
 
-> **July 11 credit transparency amendment:** The Content Credit Pack now shows `250 credits` and concrete generated-image/description-rewrite examples on website pricing, desktop Billing, and mobile Billing. Referral rewards show 100/50 credits with matching examples. `src/data/shared/contentCreditPolicy.ts` is the public-safe rate source; `src/constants/AI/unitCosts.ts` consumes those rates. Monthly included capacity, provider costs, margins, tax valuation, and overdraft remain private. Older outcome-only notes below are implementation history where they conflict with this amendment.
+> **August 22 Content Credit contract:** `content-credit-decision-record-2026-08.md` is authoritative. Billing shows recurring, valid promotional, purchased, and usable balances. The Pack contains 250 credits for ₹799 / $29 before tax. Referral rewards use a separate 365-day promotional balance. Rates are versioned, overdraft is zero, and future annual allowances never become purchased credits during replacement.
+
+`resolveMenuListPromotionalCreditState()` is the shared expiry authority for AI admission, referral settlement, and desktop/mobile Billing. A positive promotional scalar without a valid future expiry is unavailable. A later referral reward starts from zero when the stored promotional balance has expired, preventing stale value from being revived.
 
 ## July 15, 2026 Client Capacity Error Contract
 
@@ -63,13 +65,13 @@ authorize one store and inspect or lazily reset another store's subscription.
 
 AI enhancement accounting is now enabled end to end for owner-billable AI operations and auditable for free/internal AI operations.
 
-Billable owner actions call `checkAICapacity()` and transactionally reserve exact units before Gemini, deducting `monthlyCredits` first and `topUpCredits` second. Valid output settles the same hidden operation shell through `finalizeAiOperationAccounting()` without a second debit; terminal failure refunds the exact buckets once. API responses return `remainingBalance` with the effective `billingStoreId`, and desktop/mobile frontend services sync that balance only to the matching active subscription without an extra read.
+Billable owner actions call `checkAICapacity()` and transactionally reserve exact credits before provider work, deducting `monthlyCredits`, then unexpired `promotionalCredits`, then `topUpCredits`. Valid output settles the same hidden operation shell without a second debit; terminal failure refunds the exact buckets once. API responses return the three balances with the effective `billingStoreId`, and desktop/mobile frontend services sync only the matching active subscription without an extra read.
 
 Free, public, and internal AI calls also write operation events for cost visibility, but set `unitsConsumed = 0` and do not drain owner packs. Current non-billable audit paths include menu intake identity, public create-menu extraction, weekly analytics narrative, Help Center search, public Answerlattice widget search, Help Center article embedding, and Answerlattice translation.
 
 Help Center and widget search are conditional audit paths. The shared search core marks provider-backed work through `aiProviderUsed` and `aiProviderOperations`; wrappers write operation records only when the request actually reached Gemini for image query generation, embedding generation, or answer generation. Canonical hits, instant-cache hits, and ordinary cached answers are not AI operations and do not create `menulistAiOperations` writes.
 
-Owner visibility is exposed in desktop and mobile Billing through the exact purchased Pack balance plus a generic available/paused plan-enhancement state. MenuList does not show monthly included allowance, monthly remaining, used-this-cycle counts, provider cost, or margin. Desktop and mobile Transactions show Pack credits used, no-credit operations, and normalized operation dates so owners can trace activity without exposing internal token/cost details. Menu extraction writes its platform audit row and, for authenticated owner-scoped work, a compact no-credit row to the selected outlet history in one Firestore batch. Platform-role debug surfaces retain bounded token, model, cost, and project/file/transaction identifiers without full transaction payloads.
+Owner visibility is exposed in desktop and mobile Billing through recurring plan balance, valid promotional balance, purchased Pack balance, and the total usable balance. Desktop additionally shows recurring allowance and used-this-cycle context. Expired promotional value is excluded from both displayed and usable totals. Desktop and mobile Transactions show credits used, no-credit operations, and normalized operation dates so owners can trace activity without exposing provider cost, model, margin, or raw provider payloads. Menu extraction writes its platform audit row and, for authenticated owner-scoped work, a compact no-credit row to the selected outlet history in one Firestore batch. Platform-role debug surfaces retain bounded token, model, cost, and project/file/transaction identifiers without full transaction payloads.
 
 May 20 hardening: Transactions render `createdOn` through the shared date normalization utility so live Firestore `Timestamp`, serialized `{ seconds, nanoseconds }`, ISO string, and `Date` values display consistently on desktop, mobile, and the transaction details modal. Billing mutation failure paths now report through the monitored logger instead of browser `console.error`.
 
@@ -136,18 +138,21 @@ POST /api/razorpay/verify-topup                              [verify-topup/route
     ↓
 Webhook: /api/razorpay/webhook                               [webhook/route.ts]
     → Signature verification → writeProductPaymentTransactionAudit() → writeLogEntry()
-    → Handles: order.paid, payment.failed, subscription.halted, etc.
+    → order.paid can settle the same immutable top-up exactly once
+    → refund.processed reverses proportional purchased credits exactly once
+    → consumed refunded credits become debt cleared by later Pack purchases
+    → Handles payment failure and subscription lifecycle events
 ```
 
 #### Files to ADAPT (Not Rewrite)
 
 | File                                                             | Current Role                                   | What Changes for Enhancement Packs                                                                        |
 | ---------------------------------------------------------------- | ---------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
-| `src/data/PlatformPlansList.ts:109-134`                          | Defines `creditPacksList` with `creditAmount`  | Rename to `aiEnhancementPacksList`, add `internalUnits` field, add outcome descriptions                   |
-| `src/data/common.ts:63-70`                                       | Defines `CreditPack` interface                 | Rename to `AIEnhancementPack`, rename `creditAmount` → `internalUnits`, add `outcomeDescription`          |
-| `src/app/api/razorpay/create-topup-order/route.ts`               | Creates Razorpay order with credit pack data   | Reference `aiEnhancementPacksList`, pass `internalUnits` in notes instead of `creditAmount`               |
-| `src/app/api/razorpay/verify-topup/route.ts`                     | Verifies payment, adds credits to subscription | Keep writing to `subscription.topUpCredits` (per-store). Update labels, remove credit count from response |
-| `src/app/api/razorpay/webhook/route.ts`                          | Logs transactions, handles failures            | No structural changes — transaction logging stays as-is                                                   |
+| `src/data/PlatformPlansList.ts`                                  | Defines the one `aiEnhancementPacksList` authority | Keep pack amount and prices derived from `contentCreditPolicy.ts`                                      |
+| `src/data/common.ts`                                             | Defines the final `AIEnhancementPack` interface | Keep exact owner-visible `creditAmount`; no compatibility alias                                          |
+| `src/app/api/razorpay/create-topup-order/route.ts`               | Creates Razorpay order with exact server-owned pack data | Keep `creditAmount` in signed provider notes and reject client price/amount authority            |
+| `src/app/api/razorpay/verify-topup/route.ts`                     | Verifies payment and settles the Pack exactly once | Keep the transaction-owned `topUpCredits` update and return the exact settled balance for local UI sync |
+| `src/app/api/razorpay/webhook/route.ts`                          | Provider-authoritative settlement and refund lifecycle | Keep `refund.processed` as the only per-refund authority and delegate credit reversal to `topupSettlementServer.ts` |
 | `src/hooks/usePaymentHandler.ts:147-217`                         | Client-side Razorpay checkout orchestration    | Change `name: 'MenuList.ai Credit Pack'` → `'MenuList.ai AI Enhancement Pack'`                            |
 | `src/components/templates/main-app/billing/CreditsPackModal.tsx` | Shows credit packs modal                       | Rename labels, remove credit amounts from display                                                         |
 | `src/components/templates/main-app/billing/CreditPackCard.tsx`   | Renders individual pack card                   | Remove `creditAmount` display, show outcome description instead                                           |
@@ -197,47 +202,42 @@ BillingPage (billing/index.tsx)
     │
     ├── ActiveSubscriptionCard
     │       ├── Subscription details (plan, billing cycle, payment method)
-    │       ├── Credit Card Panel (right side):
-    │       │     ├── "Total Available AI Credits" → shows (monthlyCredits + topUpCredits)
-    │       │     ├── "Monthly Credits" → progress bar (used / allowance)
-    │       │     ├── "Top-up Credits" → shows topUpCredits count
-    │       │     └── "Buy More Credits" button → opens CreditsPackModal
+    │       ├── Content Credit panel:
+    │       │     ├── Usable total → recurring + valid promotional + purchased
+    │       │     ├── Recurring balance and cycle allowance
+    │       │     ├── Promotional balance and expiry when present
+    │       │     ├── Purchased balance
+    │       │     └── "Buy Content Credits" button → opens CreditsPackModal
     │       └── Action buttons (Upgrade, Cancel, etc.)
     │
     ├── CreditsPackModal
-    │       ├── Title: "Top Up Your AI Credits"
-    │       └── Maps creditPacksList → CreditPackCard (x3)
-    │               ├── Shows pack.creditAmount (100, 250, 500)
-    │               ├── Shows "One-Time AI Credits"
+    │       ├── Title: "Buy Content Credits"
+    │       └── Maps the single approved Pack → CreditPackCard
+    │               ├── Shows 250 credits
+    │               ├── Shows ₹799 / $29 before applicable tax
     │               └── onClick → handleCreditsPurchase(packId)
     │
     └── handleCreditsPurchase(packId)
-            ├── Find pack from creditPacksList
+            ├── Find pack from aiEnhancementPacksList
             ├── handleTopupPurchase(pack, currency)  [usePaymentHandler.ts]
             │       ├── POST /api/razorpay/create-topup-order
             │       ├── Open Razorpay checkout modal
             │       ├── On success: POST /api/razorpay/verify-topup
             │       └── Return success/failure
-            ├── message.success('Topup Credits purchased successfully.')
+            ├── message.success('Content Credits added successfully.')
             ├── Show confetti animation
             └── Update local state: subscription.topUpCredits += pack.creditAmount
 ```
 
 ### Credit Visibility on Subscription Card
 
-The `ActiveSubscriptionCard.tsx` is the **primary credit exposure surface**. It reads these fields from the subscription document:
+The `ActiveSubscriptionCard.tsx` is the primary owner balance surface. Desktop and mobile show the same usable total and bucket breakdown without exposing provider tokens, provider cost, or margin:
 
 ```typescript
-// ActiveSubscriptionCard.tsx:46
-const monthlyCreditUsage = activeSubscription.monthlyCreditsAllowance > 0
-    ? (activeSubscription.monthlyCredits / activeSubscription.monthlyCreditsAllowance) * 100
-    : 0;
-
-// ActiveSubscriptionCard.tsx:249
-value={(activeSubscription.monthlyCredits + activeSubscription.topUpCredits)}
-
-// ActiveSubscriptionCard.tsx:259
-format={() => `${activeSubscription.monthlyCredits} / ${activeSubscription.monthlyCreditsAllowance}`}
+const recurring = activeSubscription.monthlyCredits;
+const promotional = getValidPromotionalCredits(activeSubscription, now);
+const purchased = activeSubscription.topUpCredits;
+const usable = recurring + promotional + purchased;
 ```
 
 ### Real-Time Balance Sync (Firebase Cost Optimization)
@@ -251,7 +251,8 @@ AI Service (e.g. generateImageViaApi)
     → Backend: Gemini API call
     → Backend: reserveAiCapacity (transactional debit + hidden shell) before Gemini
     → Backend: finalizeAiOperationAccounting settles the same shell after valid output
-    → Returns { billingStoreId, monthlyCredits, topUpCredits }
+    → Returns { billingStoreId, monthlyCredits, promotionalCredits,
+                promotionalCreditsExpireAt, topUpCredits, usableCredits }
     → Backend: response includes remainingBalance
     ↓
 Frontend service: syncBalanceFromResponse(responseJson)
@@ -282,7 +283,7 @@ July 12 billing-integrity note: description and translation actions are not trus
 
 **Layer 1 — Webhook (monthly plans):** `subscription.charged` event in `api/razorpay/webhook/route.ts` resets credits when Razorpay charges the next cycle.
 
-**Layer 2 — Lazy reset (yearly plans + safety net):** `checkAICapacity()` in `src/lib/ai/capacityCheck.ts` checks `creditsLastResetMonth` against the current UTC billing period (YYYYMM key based on subscription anchor day, NOT calendar month). `reserveAiCapacity()` re-reads the subscription in its transaction, reprojects exact product plus agreeing tenant/store aliases, applies a due reset, validates period/balance and overdraft against transaction-current truth, debits exact units, and writes the hidden shell before provider work. Anchor day is capped to days-in-month for month-end edge cases. Malformed periods, balances or subscription identity fail closed rather than writing `NaN`, inventing a reset or selecting one conflicting alias.
+**Layer 2 — Lazy reset (yearly plans + safety net):** `checkAICapacity()` in `src/lib/ai/capacityCheck.ts` checks `creditsLastResetMonth` against the current UTC billing period (YYYYMM key based on subscription anchor day, NOT calendar month). `reserveAiCapacity()` re-reads the subscription in its transaction, reprojects exact product plus agreeing tenant/store aliases, applies a due reset, validates period and all three balances against transaction-current truth, requires exact usable capacity, debits exact units, and writes the hidden shell before provider work. Anchor day is capped to days-in-month for month-end edge cases. Malformed periods, balances, expiry, or subscription identity fail closed rather than writing `NaN`, inventing a reset, or selecting one conflicting alias.
 
 Subscription document refs use `src/lib/billing/subscriptionDocumentIdBoundary.ts` before lazy reset and consumption. Malformed subscription IDs cannot reach Firestore refs; paid consumption fails closed through the shared AI accounting finalizer.
 
@@ -301,43 +302,9 @@ description: `Top-Up Credits for ${orderNotes?.packName}`,
 creditsRe: orderNotes?.creditAmount
 ```
 
-### Credit Carryover During Upgrades
+### Credit Transfer During Plan Replacement
 
-`RemainingCreditNote.tsx` explicitly shows credit math to the user during plan upgrades:
-
-```typescript
-// Line 14: Shows full credit breakdown
-note = `Unused credits of the current month + remaining months * monthly credits allowance + topup credits:
-        ${unusedThisMonth} + ${monthsRemaining} * ${monthlyCreditsAllowance} + ${activeSubscription.topUpCredits}`;
-```
-
----
-
-### All Credit Visibility Violations (Doctrine Non-Compliance)
-
-Every point where "credits" are exposed to the user in the active billing flow:
-
-| #   | File                         | Line    | Violation                                       | Required Change                                          |
-| --- | ---------------------------- | ------- | ----------------------------------------------- | -------------------------------------------------------- |
-| 1   | `ActiveSubscriptionCard.tsx` | 246     | "Total Available AI Credits" title              | Remove or change to outcome-based                        |
-| 2   | `ActiveSubscriptionCard.tsx` | 249     | Shows `(monthlyCredits + topUpCredits)` number  | Remove numeric display                                   |
-| 3   | `ActiveSubscriptionCard.tsx` | 255     | "Monthly Credits" label                         | Remove                                                   |
-| 4   | `ActiveSubscriptionCard.tsx` | 256-259 | Progress bar `X / Y` credits                    | Remove progress bar entirely                             |
-| 5   | `ActiveSubscriptionCard.tsx` | 263     | "Top-up Credits" title                          | Remove                                                   |
-| 6   | `ActiveSubscriptionCard.tsx` | 266     | Shows `topUpCredits` number                     | Remove numeric display                                   |
-| 7   | `ActiveSubscriptionCard.tsx` | 272     | "Buy More Credits" button                       | Change to "Get AI Enhancements"                          |
-| 8   | `billing/index.tsx`          | 86      | `type: "Credit Pack Purchase"` in history       | Change to "AI Enhancement Pack"                          |
-| 9   | `billing/index.tsx`          | 88      | `"Top-Up Credits for ${packName}"`              | Change to pack name only                                 |
-| 10  | `billing/index.tsx`          | 94      | `creditsRe: orderNotes?.creditAmount`           | Remove from history display                              |
-| 11  | `billing/index.tsx`          | 140     | `'Topup Credits purchased successfully.'`       | Change to "AI enhancements are ready"                    |
-| 12  | `billing/index.tsx`          | 143     | Sets `topUpCredits` directly                    | Keep internally, don't expose                            |
-| 13  | `CreditsPackModal.tsx`       | 24      | "Top Up Your AI Credits"                        | "Get more AI enhancements for your menu"                 |
-| 14  | `CreditsPackModal.tsx`       | 25      | "Need more power... Top up with a credit pack." | "Unlock additional AI features"                          |
-| 15  | `CreditPackCard.tsx`         | 101     | Shows `pack.creditAmount` (100, 250, 500)       | Remove — show outcome description                        |
-| 16  | `CreditPackCard.tsx`         | 102     | "One-Time AI Credits"                           | "AI Enhancement Pack"                                    |
-| 17  | `usePaymentHandler.ts`       | 173     | `name: 'MenuList.ai Credit Pack'`               | `'MenuList.ai AI Enhancement Pack'`                      |
-| 18  | `RemainingCreditNote.tsx`    | 14-16   | Full credit math breakdown                      | Simplify to "Your remaining value transfers to new plan" |
-| 19  | `RemainingCreditNote.tsx`    | 24      | Shows `totalRemainingCredits` number            | Remove numeric display                                   |
+Plan replacement transfers only owner-purchased credits and still-valid promotional credits. The replacement plan receives a fresh recurring allowance for its current cycle. Unused recurring credits and projected future annual-cycle allowances are never converted into purchased value. The owner confirmation copy states this boundary before checkout.
 
 ---
 
@@ -376,24 +343,22 @@ The right-side credit card panel transforms from a credit counter to a simple AI
 
 **Behavior:**
 
-- If capacity available → Show "Active" status, no numbers
-- If capacity exhausted → Show calm CTA "Get more AI enhancements for your menu"
-- Never show credits, units, remaining, progress bars, or consumption metrics
-- The `AICapacityGate` component (from Week 4 impl plan) handles this logic
+- If usable balance is available, show the exact recurring, valid promotional, and purchased balances.
+- If usable balance is exhausted, show the calm CTA "Get more enhancements".
+- Keep provider cost, token counts, margin, and internal provider economics private.
+- Admission and reservation remain server-authoritative; the UI balance is explanatory, not an authorization boundary.
 
 #### CreditsPackModal + CreditPackCard — Target State
 
-**Current:** 3 packs showing credit amounts (100, 250, 500) with "One-Time AI Credits"
-
-**Target (single pack at launch):** 1 pack showing outcome description
+**Current contract:** one 250-credit Content Enhancement Pack with owner-readable outcome examples.
 
 ```
 ┌─────────────────────────┐
-│ AI Enhancement Pack              │
-│ AI enhancements for your menu — │
-│ images, descriptions,           │
-│ translations                    │
-│ ₹1,250                         │
+│ Content Enhancement Pack         │
+│ 250 credits                     │
+│ Up to 50 generated menu images  │
+│ or 250 description rewrites     │
+│ ₹799 before applicable tax      │
 │ [Purchase]                      │
 └─────────────────────────┘
 ```
@@ -403,8 +368,8 @@ The right-side credit card panel transforms from a credit counter to a simple AI
 Top-up entries change from:
 
 - `"Credit Pack Purchase"` → `"AI Enhancement Pack"`
-- `"Top-Up Credits for Starter Pack"` → `"AI Enhancement Pack"`
-- Remove `creditsRe` field from display entirely
+- Show the Pack purchase as a Content Enhancement Pack transaction.
+- Keep the exact credit amount visible; do not expose provider cost or margin.
 
 #### RemainingCreditNote — Target State
 
@@ -428,11 +393,11 @@ Changes from showing credit math to simple reassurance:
 | `src/database/aiOperations/index.tsx`                            | Client transaction-history reader                               | Read scoped operation history only; `addAiOperation()` is disabled                           |
 | Billable AI API routes                                           | Paid provider work                                               | Reserve before provider, then call `finalizeAiOperationAccounting()` after valid output       |
 | `src/lib/rateLimit/configs.ts:148-152`                           | `PAYMENT_TOPUP` rate limit (10/hr)                              | No changes needed                                                                             |
-| `src/data/PlatformPlansList.ts:109-134`                          | Credit packs list                                               | Rename to `aiEnhancementPacksList`, update interface                                          |
-| `src/data/common.ts:63-70`                                       | `CreditPack` interface                                          | Rename to `AIEnhancementPack` interface                                                       |
-| `src/data/PlatformFeaturesList.ts`                               | Feature availability per plan                                   | Change "Unlimited" → "Included" for AI features                                               |
+| `src/data/PlatformPlansList.ts`                                  | Canonical `aiEnhancementPacksList`                               | Keep the single Pack aligned with `contentCreditPolicy.ts`                                    |
+| `src/data/common.ts`                                             | `AIEnhancementPack` interface                                   | Keep exact owner-visible Pack fields; do not restore compatibility aliases                    |
+| `src/data/PlatformFeaturesList.ts`                               | Feature availability per plan                                   | Keep bounded "Included" language for metered AI features                                     |
 | `src/app/api/razorpay/create-topup-order/route.ts`               | Creates Razorpay order for pack purchase                        | Update pack reference, notes data                                                             |
-| `src/app/api/razorpay/verify-topup/route.ts`                     | Verifies payment, adds credits to subscription                  | Keep writing to `subscription.topUpCredits`. Update labels, remove credit count from response |
+| `src/app/api/razorpay/verify-topup/route.ts`                     | Verifies payment and settles the Pack exactly once              | Keep transaction-owned `topUpCredits` settlement and bounded balance response               |
 | `src/hooks/usePaymentHandler.ts`                                 | Client Razorpay checkout handler                                | Update product name label                                                                     |
 | `src/components/templates/main-app/billing/CreditsPackModal.tsx` | Pack selection modal                                            | Rename labels per doctrine                                                                    |
 | `src/components/templates/main-app/billing/CreditPackCard.tsx`   | Pack display card                                               | Show exact Pack amount and shared-policy outcome examples                                     |
@@ -441,7 +406,7 @@ Changes from showing credit math to simple reassurance:
 
 | File                                       | Purpose                                                       |
 | ------------------------------------------ | ------------------------------------------------------------- |
-| `src/constants/AI/unitCosts.ts`            | `AI_UNIT_COSTS` config + `OVERDRAFT_BUFFER_PERCENT` constant  |
+| `src/constants/AI/unitCosts.ts`            | Versioned `AI_UNIT_COSTS` and zero/paid action registry       |
 | `src/lib/ai/capacityCheck.ts`              | `checkAICapacity()` server-side middleware                    |
 | `src/app/api/ai-packs/status/route.ts`     | Check if store has capacity (returns `canRunAction: boolean`) |
 | `src/components/common/AICapacityGate.tsx` | Client wrapper: shows calm upsell CTA when blocked            |
@@ -506,32 +471,15 @@ if (!FEATURE_FLAGS.ENABLE_AI_ENHANCEMENTS && !isFreeTierAction(actionType)) {
 
 ---
 
-#### Task 0.2: Add Overdraft Buffer Config
+#### Task 0.2: Enforce Exact Capacity
 
-> **Source:** ChatGPT feedback point #1 (Feb 9, 2026 review)
-
-**File:** `src/constants/AI/unitCosts.ts` (same file as AI_UNIT_COSTS in Task 1.1)
-
-```typescript
-/**
- * Overdraft buffer for soft enforcement at launch.
- *
- * Allows users to exceed their exact capacity by this percentage
- * before blocking. Prevents bad first impressions and support friction.
- *
- * Set to 0 for strict enforcement (after real usage data collected).
- * NEVER expose this to customers.
- */
-export const OVERDRAFT_BUFFER_PERCENT = 20; // 20% overdraft allowed at launch
-```
-
-**Used in `checkAICapacity()`** — see Task 2.2.
+The discarded launch-buffer proposal is not part of the runtime contract. `checkAICapacity()` and `reserveAiCapacity()` require the full operation cost to be available across recurring, valid promotional, and purchased balances. Goodwill is granted explicitly as expiring promotional credits; balances never become negative.
 
 **Validation:**
 
-- [ ] Constant exported from `unitCosts.ts`
-- [ ] `checkAICapacity()` uses buffer in capacity calculation
-- [ ] Overdraft usage logged in AI operation events for margin tracking
+- [x] No overdraft constant or reason branch exists
+- [x] Reservation requires exact usable capacity
+- [x] Balances remain non-negative
 
 ---
 
@@ -653,7 +601,7 @@ The browser DAL remains for paginated transaction-history reads. `addAiOperation
 
 > **Architecture Decision: Per-Store, On Subscription (VALIDATED)**
 >
-> Capacity lives on the `subscription` document — the same `FirestoreSubscriptionDoc` that already has `monthlyCredits` and `topUpCredits`. No new documents, no new collections, no scope change.
+> Capacity lives on the effective billing subscription document. `monthlyCredits` is recurring, `promotionalCredits` is an expiring goodwill/referral bucket, and `topUpCredits` is purchased value. A server-only recovery ledger protects unused purchased value across cancellation and qualifying reactivation.
 >
 > **Why NOT per-tenant:**
 >
@@ -670,27 +618,28 @@ The browser DAL remains for paginated transaction-history reads. `addAiOperation
 
 **Implemented boundary:** capacity reads and mutations use the server-only subscription DAL and the transaction-owned accounting helpers in `src/lib/ai/capacityCheck.ts`. Browser subscription code is read-only. Every current subscription must carry both exact `ML` aliases before credits can be reserved, consumed, refunded, or recovered.
 
-**Capacity model (using existing fields):**
+**Capacity model:**
 
 ```
-Available capacity = subscription.monthlyCredits + subscription.topUpCredits
+Usable capacity = recurring + valid promotional + purchased
 ```
 
 **Consumption order:**
 
 1. Decrement `monthlyCredits` first (resets each billing cycle)
-2. When `monthlyCredits` reaches 0, decrement `topUpCredits` (persistent)
-3. When both = 0, capacity exhausted → upsell CTA
+2. Decrement valid, unexpired `promotionalCredits` second
+3. Decrement purchased `topUpCredits` last
+4. Reject the operation if the exact cost is not available
 
 **Helper function** (add to `src/lib/ai/capacityCheck.ts` — NEW file):
 
-The maintained implementation transactionally reserves capacity before provider work, then settles or refunds the same durable operation. The transaction re-reads the exact subscription, validates exact product and tenant/store ownership, and debits monthly credits before top-up credits. It does not rely on a stale caller-provided subscription balance or a browser merge write.
+The maintained implementation transactionally reserves capacity before provider work, then settles or refunds the same durable operation. The transaction re-reads the exact subscription, validates exact product and tenant/store ownership, expires stale promotional value, and debits recurring, promotional, then purchased credits. It does not rely on a stale caller-provided subscription balance or a browser merge write.
 
 **Validation:**
 
 - [x] Uses the server-only, transaction-owned capacity boundary
 - [x] Requires exact dual-`ML` subscription identity and tenant/store scope
-- [x] Decrements monthly credits first, then top-up credits
+- [x] Decrements recurring, valid promotional, then purchased credits
 - [x] Uses durable operation reservation/settlement for replay and recovery
 - [x] Per-store scoped (subscription is per-store)
 
@@ -704,11 +653,7 @@ Server-side capacity enforcement function used by all paid AI routes. Uses the s
 
 ```typescript
 import { getActiveSubscriptionForStore } from "@database/subscriptions";
-import {
-  isFreeTierAction,
-  getUnitCost,
-  OVERDRAFT_BUFFER_PERCENT,
-} from "@constant/AI/unitCosts";
+import { isFreeTierAction, getUnitCost } from "@constant/AI/unitCosts";
 import { FirestoreSubscriptionDoc } from "@type/razorpay";
 import { FEATURE_FLAGS } from "@config/features";
 
@@ -719,7 +664,6 @@ interface CapacityCheckResult {
   reason?:
     | "free"
     | "sufficient"
-    | "overdraft"
     | "exhausted"
     | "maintenance"
     | "no_subscription";
@@ -733,7 +677,7 @@ interface CapacityCheckResult {
  * 1. Kill switch (ENABLE_AI_ENHANCEMENTS) — if OFF, block paid actions
  * 2. Free tier check — free actions always pass
  * 3. Subscription lookup — per-store
- * 4. Capacity check with overdraft buffer (soft enforcement at launch)
+ * 4. Exact capacity check across recurring, valid promotional, and purchased buckets
  *
  * IMPORTANT: This check happens BEFORE the Gemini API call.
  * If capacity is insufficient, the API call is never made.
@@ -784,25 +728,13 @@ export async function checkAICapacity(
     };
   }
 
-  const remaining =
-    (subscription.monthlyCredits || 0) + (subscription.topUpCredits || 0);
-
-  // Soft enforcement: allow overdraft up to OVERDRAFT_BUFFER_PERCENT
-  const overdraftAllowance = remaining * (OVERDRAFT_BUFFER_PERCENT / 100);
-  const effectiveCapacity = remaining + overdraftAllowance;
-  const isOverdraft =
-    remaining < unitsRequired && effectiveCapacity >= unitsRequired;
+  const remaining = getUsableContentCredits(subscription, new Date());
 
   return {
-    allowed: effectiveCapacity >= unitsRequired,
+    allowed: remaining >= unitsRequired,
     unitsRequired,
     remaining,
-    reason:
-      remaining >= unitsRequired
-        ? "sufficient"
-        : isOverdraft
-          ? "overdraft"
-          : "exhausted",
+    reason: remaining >= unitsRequired ? "sufficient" : "exhausted",
     subscription,
   };
 }
@@ -880,64 +812,36 @@ Each paid AI route gets the same enforcement pattern:
 
 **File:** `src/data/common.ts` (MODIFY)
 
-Current:
+Final type:
 
 ```typescript
-export interface CreditPack {
+export interface AIEnhancementPack {
   packId: string;
   name: string;
   creditAmount: number;
   priceINR: Price;
   priceUSD: Price;
-  stripePriceId: string;
-}
-```
-
-Change to:
-
-```typescript
-export interface AIEnhancementPack {
-  packId: string;
-  name: string; // User-facing name (e.g., "AI Enhancement Pack")
-  outcomeDescription: string; // What the user gets (e.g., "AI enhancements for your menu")
-  internalUnits: number; // INTERNAL: Never display to user
-  priceINR: Price;
-  priceUSD: Price;
-  providerPriceId: string; // Provider-agnostic (was stripePriceId)
 }
 ```
 
 **File:** `src/data/PlatformPlansList.ts` (MODIFY)
 
-Current:
-
-```typescript
-const creditPacksList: CreditPack[] = [
-    { "packId": "starter", "name": "Starter Pack", "creditAmount": 100, ... },
-    { "packId": "value", "name": "Value Pack", "creditAmount": 250, ... },
-    { "packId": "pro", "name": "Pro Pack", "creditAmount": 500, ... },
-];
-```
-
-Change to:
+Final commercial list:
 
 ```typescript
 const aiEnhancementPacksList: AIEnhancementPack[] = [
   {
     packId: "enhancement",
-    name: "AI Enhancement Pack",
-    outcomeDescription:
-      "AI enhancements for your menu — images, descriptions, translations",
-    internalUnits: 100, // Calibrate against Gemini costs
-    priceINR: { price: 125000, monthlyCredits: null },
-    priceUSD: { price: 1500, monthlyCredits: null },
-    providerPriceId: "price_AI_ENHANCEMENT_PACK_ID",
+    name: "Content Enhancement Pack",
+    description: "More generated images, descriptions, and translations for your menu.",
+    creditAmount: 250,
+    priceINR: { price: 79900, monthlyCredits: null },
+    priceUSD: { price: 2900, monthlyCredits: null },
   },
-  // Future: tiered packs (capability-flagged, not "Phase 2")
 ];
 ```
 
-> **Launch model:** Single pack, one price. The `packTiers: "single"` feature flag controls this. Multiple tiers are data-ready but inactive.
+There is one final pack list and no dormant tier flag or compatibility export.
 
 #### Task 3.2: Adapt Razorpay Top-Up Order Route
 
@@ -945,8 +849,8 @@ const aiEnhancementPacksList: AIEnhancementPack[] = [
 
 Key changes (handled during Razorpay flow rework):
 
-1. Import `aiEnhancementPacksList` instead of `creditPacksList`
-2. Pass `internalUnits` in Razorpay order notes instead of `creditAmount`
+1. Resolve `aiEnhancementPacksList` on the server.
+2. Pass the exact `creditAmount` in Razorpay order notes.
 3. Error message: "Enhancement pack not found" instead of "Credit pack not found"
 
 ```typescript
@@ -968,7 +872,7 @@ const razorpayOrder = await razorpayClient.orders.create({
     storeId,
     userId,
     packId,
-    internalUnits: selectedPack.internalUnits, // was: creditAmount
+    creditAmount: selectedPack.creditAmount,
     packName: selectedPack.name,
     price: price,
     currency,
@@ -982,10 +886,10 @@ const razorpayOrder = await razorpayClient.orders.create({
 
 Key changes:
 
-1. Import `aiEnhancementPacksList` instead of `creditPacksList`
-2. Use `internalUnits` instead of `creditAmount` for the amount to add
+1. Resolve `aiEnhancementPacksList` on the server.
+2. Use the exact server-owned `creditAmount` for settlement.
 3. **Keep writing to `subscription.topUpCredits`** (per-store, existing behavior)
-4. Remove credit count from response (doctrine compliance)
+4. Return the exact settled purchased balance so the matching billing UI can sync without another read.
 
 ```typescript
 // Line 123: Change pack lookup
@@ -996,16 +900,13 @@ if (!selectedPack) {
     { status: 400 },
   );
 }
-const unitsToAdd = selectedPack.internalUnits;
+const unitsToAdd = selectedPack.creditAmount;
 
-// Line 133-145: KEEP existing per-store subscription write
-// Credits stay on subscription document (per-store, aligned with all other data)
-const currentTopUpCredits = internalSub.topUpCredits || 0;
-const newBalance = currentTopUpCredits + unitsToAdd;
-await updateSubscription(internalSub.id, { topUpCredits: newBalance });
-
-// NOTE: Do NOT return unit balance in response — doctrine violation
-return NextResponse.json({ success: true });
+const settlement = await resolveVerifiedTopupSettlement({
+  creditAmount: unitsToAdd,
+  // provider and subscription identity omitted here; see current route source
+});
+return NextResponse.json({ success: true, newCreditBalance: settlement.newBalance });
 ```
 
 #### Task 3.4: Adapt Client Payment Handler
@@ -1142,14 +1043,14 @@ AI_ADMIN_DASHBOARD: false,
 | Zod validation on pack purchase input                 | `validateAPIInput()` in create-topup-order   | ✅     |
 | Rate limit on pack purchase                           | `PAYMENT_TOPUP` (10/hr) — already configured | ✅     |
 | Capacity check server-side only                       | `checkAICapacity()` in billable AI routes    | ✅     |
-| No capacity data in client responses                  | See audit note below ⚠️                      | ⚠️     |
+| Scoped remaining balance in owner responses           | Exact billing-store response boundary        | ✅     |
 | Sanitized server writes                               | Admin operation logger sanitizes AI payloads | ✅     |
 | Firestore rules: deny client reads on capacity fields | Not possible in Firestore (field-level)      | N/A    |
 | Razorpay webhook signature verification               | Already done in `webhook/route.ts`           | ✅     |
 | Store isolation on capacity                           | Per-store subscription fields — verified     | ✅     |
-| No unit/credit exposure in UI                         | All credit displays removed (Session 14)     | ✅     |
+| Owner credit visibility                               | Recurring, valid promotional, purchased, total | ✅   |
 
-**Audit Note (Session 14b):** AI routes return `remainingBalance` (`{ monthlyCredits, topUpCredits }`) and `transaction.totalCredits` in responses. These are used by `balanceSync.ts` to update `activeSubscription` state without extra Firestore reads (performance optimization: saves 1 read per AI operation). Values are NOT displayed in UI (all credit displays removed in Session 14). Visible only via DevTools inspection. **Risk: Low.** Removing would add Firebase read cost per AI operation. Accepted as known low-risk item.
+**Owner balance contract:** Paid AI routes return `remainingBalance` (`{ billingStoreId, monthlyCredits, promotionalCredits, topUpCredits }`) through authenticated responses. `balanceSync.ts` validates exact safe-integer scalars and the effective billing-store scope before updating `activeSubscription`, avoiding one extra Firestore read per operation. Desktop and mobile Billing show recurring, valid promotional, purchased, and total usable credits; provider token/cost telemetry and reservation internals remain server-only.
 
 ---
 
@@ -1223,8 +1124,8 @@ AI_ADMIN_DASHBOARD: false,
 | Create `checkAICapacity()` middleware               | 2    | ✅     | Server-side enforcement — built                            |
 | Wire capacity check into billable routes            | 2    | ✅     | Paid routes enforce capacity before provider work          |
 | Add feature flags                                   | 2    | ✅     | `ENABLE_AI_ENHANCEMENTS` in `features.ts`                  |
-| Rename `CreditPack` → `AIEnhancementPack`           | 3    | ✅     | `common.ts` + all 13 consumers (Session 14, Feb 24 2026)   |
-| Rename `creditPacksList` → `aiEnhancementPacksList` | 3    | ✅     | `PlatformPlansList.ts` + consumers (deprecated alias kept) |
+| Final `AIEnhancementPack` type                      | 3    | ✅     | `common.ts` + all consumers; no compatibility alias        |
+| Final `aiEnhancementPacksList` authority            | 3    | ✅     | `PlatformPlansList.ts` + consumers; no compatibility alias |
 | Adapt `create-topup-order` route                    | 3    | ✅     | Already uses `aiEnhancementPacksList`                      |
 | Adapt `verify-topup` route                          | 3    | ✅     | Already uses `aiEnhancementPacksList`                      |
 | Adapt `usePaymentHandler.ts` labels                 | 3    | ✅     | "AI Enhancement Pack" in Razorpay checkout (Session 14)    |

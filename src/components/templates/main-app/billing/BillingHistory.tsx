@@ -28,15 +28,16 @@ const BillingHistory = ({ billingHistory, fetchBillingHistory, diagnosticContext
         }).format(amount / 100);
     };
     const handleOpenInvoice = (record: BillingHistoryItem) => {
-        if (!record.invoiceUrl) return;
+        const documentUrl = record.billingDocumentUrl || record.invoiceUrl;
+        if (!documentUrl) return;
         try {
-            openIsolatedBrowserUrl(record.invoiceUrl);
+            openIsolatedBrowserUrl(documentUrl);
         } catch (error) {
             logPaymentFailure('payment_desktop_billing_invoice_open_failed', error, {
                 ...diagnosticContext,
                 surface: 'desktop_billing_history',
                 flow: 'invoice_open',
-                ...getBoundedPaymentStringContext('invoiceUrl', record.invoiceUrl),
+                ...getBoundedPaymentStringContext('invoiceUrl', documentUrl),
                 ...getBoundedPaymentStringContext('invoiceId', record.invoiceId),
                 ...getBoundedPaymentStringContext('billingHistoryItemId', record.id),
                 ...getBoundedPaymentStringContext('billingHistoryItemType', record.type),
@@ -115,9 +116,9 @@ const BillingHistory = ({ billingHistory, fetchBillingHistory, diagnosticContext
             title: 'Invoice',
             key: 'invoice',
             render: (_: any, record: BillingHistoryItem) => {
-                if (!record.invoiceUrl) return <Text type="secondary">N/A</Text>;
+                if (!record.billingDocumentUrl && !record.invoiceUrl) return <Text type="secondary">N/A</Text>;
                 return (
-                    <Tooltip title="View Invoice on Razorpay">
+                    <Tooltip title={record.billingDocumentUrl ? `Download ${record.billingDocumentNumber || 'billing document'}` : 'View provider receipt'}>
                         <Button
                             type="text"
                             shape="circle"

@@ -25,7 +25,7 @@ The PDF is generated from the current project data and then downloads to your de
 - Prices in your configured currency
 - Your existing logo/color when available
 - A live-menu QR and contact block when enabled
-- Generated-file metadata and MenuList attribution for non-Premium plans
+- Generated-file metadata and MenuList attribution for plans without branding removal
 
 ---
 

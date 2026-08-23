@@ -3,6 +3,7 @@
 import assert from 'node:assert/strict';
 import { AI_ACTIONS_TYPES } from '../../src/constants/common';
 import { DB_COLLECTIONS } from '../../src/constants/database';
+import { MENULIST_CONTENT_CREDIT_RATE_VERSION } from '../../src/data/shared/contentCreditPolicy';
 import { recoverAiCapacityReservationsInCollectionRef } from '../../functions/src/schedulers/aiCapacityReservationRecovery';
 import { finalizeAiOperationAccounting } from '../../src/lib/ai/accounting';
 import {
@@ -35,10 +36,13 @@ const inheritedOutletOperationCollection = firestoreAdmin
 
 function subscription(): FirestoreSubscriptionDoc {
     return {
+        billingHistory: ['pay_AiCapacityFixture123'],
+        billingMode: 'auto',
         cycleEndDate: ClientTimestamp.fromMillis(Date.now() + 86_400_000),
         id: subscriptionId,
         monthlyCredits: 12,
         monthlyCreditsAllowance: 12,
+        paymentProvider: 'razorpay',
         pId: 'ML',
         productId: 'ML',
         sId,
@@ -50,14 +54,24 @@ function subscription(): FirestoreSubscriptionDoc {
     } as unknown as FirestoreSubscriptionDoc;
 }
 
-async function resetSubscription(monthlyCredits = 12, topUpCredits = 0): Promise<void> {
+async function resetSubscription(
+    monthlyCredits = 12,
+    topUpCredits = 0,
+    promotionalCredits = 0,
+    promotionalCreditsExpireAt: Timestamp | null = null,
+): Promise<void> {
     await subscriptionRef.set({
+        billingHistory: ['pay_AiCapacityFixture123'],
+        billingMode: 'auto',
         cycleEndDate: Timestamp.fromMillis(Date.now() + 86_400_000),
         cycleStartDate: null,
         monthlyCredits,
         monthlyCreditsAllowance: 12,
+        paymentProvider: 'razorpay',
         pId: 'ML',
         productId: 'ML',
+        promotionalCredits,
+        promotionalCreditsExpireAt,
         sId,
         storeId: sId,
         status: 'active',
@@ -144,6 +158,49 @@ async function run(): Promise<void> {
     assert.equal(pendingCapacity.reason, 'no_subscription');
 
     await resetSubscription();
+    await assert.rejects(
+        reserve('reservation-strict-no-overdraft', 13),
+        /Not enough billing credits/,
+        'credit admission must never allow an overdraft beyond the exact usable balance',
+    );
+    assert.equal((await subscriptionRef.get()).data()?.monthlyCredits, 12);
+    assert.equal((await operationCollection.doc('reservation-strict-no-overdraft').get()).exists, false);
+
+    await resetSubscription(
+        2,
+        5,
+        4,
+        Timestamp.fromMillis(Date.now() + 60_000),
+    );
+    const promotionalReservation = await reserve('reservation-promotional-priority', 8);
+    assert.deepEqual(promotionalReservation.remainingBalance, {
+        billingStoreId: sId,
+        monthlyCredits: 0,
+        promotionalCredits: 0,
+        topUpCredits: 3,
+    });
+    const promotionalReservationDoc = await operationCollection.doc(promotionalReservation.id).get();
+    assert.equal(
+        promotionalReservationDoc.data()?.accountingCreditRateVersion,
+        MENULIST_CONTENT_CREDIT_RATE_VERSION,
+        'every reservation must snapshot the server-owned credit-rate version',
+    );
+    await refundAiCapacityReservation(promotionalReservation, 'promotional_priority_cleanup');
+
+    await resetSubscription(
+        2,
+        0,
+        4,
+        Timestamp.fromMillis(Date.now() - 1),
+    );
+    await assert.rejects(
+        reserve('reservation-expired-promotional', 3),
+        /Not enough billing credits/,
+        'expired promotional credits must not authorize provider work',
+    );
+    assert.equal((await operationCollection.doc('reservation-expired-promotional').get()).exists, false);
+
+    await resetSubscription();
     await subscriptionRef.update({ status: 'pending' });
     await assert.rejects(
         reserve('reservation-status-race', 1),
@@ -221,7 +278,7 @@ async function run(): Promise<void> {
         logLabel: 'AI reservation emulator',
     });
     assert.equal(settled.transactionId, winningReservation.id);
-    assert.deepEqual(settled.remainingBalance, { billingStoreId: sId, monthlyCredits: 2, topUpCredits: 0 });
+    assert.deepEqual(settled.remainingBalance, { billingStoreId: sId, monthlyCredits: 2, promotionalCredits: 0, topUpCredits: 0 });
     const consumedDoc = await operationCollection.doc(winningReservation.id).get();
     assert.equal(consumedDoc.data()?.accountingStatus, 'consumed');
     assert.ok(consumedDoc.data()?.createdOn, 'settled operations must enter transaction history');
@@ -231,7 +288,7 @@ async function run(): Promise<void> {
         input: { action, sId, tId, unitsConsumed: 10 },
         logLabel: 'AI reservation emulator replay',
     });
-    assert.deepEqual(settledReplay.remainingBalance, { billingStoreId: sId, monthlyCredits: 2, topUpCredits: 0 });
+    assert.deepEqual(settledReplay.remainingBalance, { billingStoreId: sId, monthlyCredits: 2, promotionalCredits: 0, topUpCredits: 0 });
     assert.equal((await subscriptionRef.get()).data()?.monthlyCredits, 2);
     const legacyIdempotentReplay = await finalizeAiOperationAccounting({
         idempotencyKey: winningReservation.id,
@@ -240,7 +297,7 @@ async function run(): Promise<void> {
     });
     assert.deepEqual(
         legacyIdempotentReplay.remainingBalance,
-        { billingStoreId: sId, monthlyCredits: 2, topUpCredits: 0 },
+        { billingStoreId: sId, monthlyCredits: 2, promotionalCredits: 0, topUpCredits: 0 },
         'legacy replay responses retain the effective billing store scope',
     );
     const consumedRefund = await refundAiCapacityReservation(winningReservation, 'must_not_refund_consumed');
@@ -249,10 +306,10 @@ async function run(): Promise<void> {
 
     await resetSubscription(7, 5);
     const refundable = await reserve('reservation-refundable', 9);
-    assert.deepEqual(refundable.remainingBalance, { billingStoreId: sId, monthlyCredits: 0, topUpCredits: 3 });
+    assert.deepEqual(refundable.remainingBalance, { billingStoreId: sId, monthlyCredits: 0, promotionalCredits: 0, topUpCredits: 3 });
     const firstRefund = await refundAiCapacityReservation(refundable, 'provider_failed');
     assert.equal(firstRefund.alreadyTerminal, false);
-    assert.deepEqual(firstRefund.remainingBalance, { billingStoreId: sId, monthlyCredits: 7, topUpCredits: 5 });
+    assert.deepEqual(firstRefund.remainingBalance, { billingStoreId: sId, monthlyCredits: 7, promotionalCredits: 0, topUpCredits: 5 });
     const secondRefund = await refundAiCapacityReservation(refundable, 'duplicate_failure_handler');
     assert.equal(secondRefund.alreadyTerminal, true, 'refund retries must be idempotent');
     assert.equal((await subscriptionRef.get()).data()?.monthlyCredits, 7);
@@ -467,6 +524,7 @@ async function run(): Promise<void> {
     assert.deepEqual(inheritedSettlement.remainingBalance, {
         billingStoreId: sId,
         monthlyCredits: 5,
+        promotionalCredits: 0,
         topUpCredits: 0,
     });
     assert.equal((await inheritedOutletOperationCollection.doc(inheritedOutletReservation.id).get()).data()?.accountingStatus, 'consumed');

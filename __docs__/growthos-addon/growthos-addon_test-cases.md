@@ -11,12 +11,12 @@
 | Test | Expected result |
 | --- | --- |
 | `ENABLE_GROWTHOS_ADDON=false` | No Growth Kits navigation, Today entry point, API generation, or mobile card is available. |
-| `GROWTHOS_ADDON_ACCESS=disabled` | Feature remains hidden even if a Pro or Premium subscription exists. |
+| `GROWTHOS_ADDON_ACCESS=disabled` | Feature remains hidden even if a Pro or Multi-location subscription exists. |
 | `GROWTHOS_DIRECT_POSTING=disabled` | No post/send/schedule API or UI action appears. |
 | Legacy Social Content owner generation | Legacy `Generate Today Action` UI, generation helper, campaign engine, and generation API route are absent from active code. |
 | `GROWTHOS_STAFF_BRIEF_MODE=deterministic` | Staff Brief generation uses current source facts with no provider call. |
-| `GROWTHOS_PILOT_STORE_IDS=[]` | Pilot mode shows no store unless its store ID is explicitly listed and the store has Pro or Premium. |
-| `GROWTHOS_PAID_PLAN_IDS=["pro","premium"]` | Paid mode is limited to active Pro and Premium subscriptions. |
+| `GROWTHOS_PILOT_STORE_IDS=[]` | Pilot mode shows no store unless its store ID is explicitly listed and the store has Pro or Multi-location. |
+| `GROWTHOS_PAID_PLAN_IDS=["menulist_pro","menulist_multi_location"]` | Paid mode is limited to active Pro and Multi-location subscriptions. |
 | `GROWTHOS_IMAGE_MODE=disabled` | Missing item image does not trigger image generation or asset rendering. |
 | `GROWTHOS_REVIEW_REPLY_MODE=manual_paste_guarded` | Review reply requires pasted text and triage before draft. |
 | offer/quick-reply/photo/multi-outlet pilot flags disabled | No pilot-only UI or API path appears. |
@@ -25,14 +25,14 @@
 
 | Test | Expected result |
 | --- | --- |
-| Starter/base plan store opens desktop route directly | Access denied with owner-safe message. |
-| Starter/base plan store calls generate API directly | API returns forbidden/payment/entitlement response before provider call. |
-| Starter store has explicit GrowthOS add-on flags | Access remains denied because Growth Kits is Pro/Premium only. |
+| Official/base plan store opens desktop route directly | Access denied with owner-safe message. |
+| Official/base plan store calls generate API directly | API returns forbidden/payment/entitlement response before provider call. |
+| Official store has explicit GrowthOS add-on flags | Access remains denied because Growth Kits is Pro/Multi-location only. |
 | Pro eligible store opens module | Growth Kits summary appears. |
-| Premium eligible store opens module | Growth Kits summary appears. |
-| Inactive Pro or Premium subscription | Access denied before summary/project reads. |
-| Pilot allowlist excludes store | Store cannot access even with a Pro or Premium subscription. |
-| Pilot allowlist includes store without Pro/Premium | Store cannot access because pilot mode still requires Pro or Premium. |
+| Multi-location eligible store opens module | Growth Kits summary appears. |
+| Inactive Pro or Multi-location subscription | Access denied before summary/project reads. |
+| Pilot allowlist excludes store | Store cannot access even with a Pro or Multi-location subscription. |
+| Pilot allowlist includes store without Pro/Multi-location | Store cannot access because pilot mode still requires Pro or Multi-location. |
 | Entitlement removed mid-session | Next generation/export attempt is blocked. |
 
 ## 3. Source Truth Tests
@@ -85,7 +85,7 @@
 | Generate deterministic action queue | Bounded reads and changed-only summary write target. |
 | Generate Staff Brief | No provider call and no extra write until kit/export action. |
 | Generate text kit | Deterministic V1 has no provider call; kit and summary writes only. |
-| Open mobile Today for eligible Pro/Premium store | Uses the existing shared GrowthOS summary read only; no refresh, generation, export, or write happens from the trigger gate. |
+| Open mobile Today for eligible Pro/Multi-location store | Uses the existing shared GrowthOS summary read only; no refresh, generation, export, or write happens from the trigger gate. |
 | Weak generic GrowthOS action exists | Mobile Today stays quiet and does not render `Today's Sales Pack`. |
 | Strong menu action exists | Mobile Today renders `Today's Sales Pack` without generating a kit until the owner taps prepare/update. |
 | Fresh prepared pack exists | Mobile Today renders `Today's Sales Pack` with usable copy/share controls. |
@@ -138,7 +138,7 @@
 | Refresh/generation failure | Latest loaded kit remains visible with retry state. |
 | Staff Brief mobile card | Copy/share/mark-used works with 44px targets. |
 | Counter line mobile card | Counter line is copyable when the pack is fresh. |
-| Starter/base plan store | Cannot access through mobile route or deep link. |
+| Official/base plan store | Cannot access through mobile route or deep link. |
 
 ## 9. Review Reply Tests
 

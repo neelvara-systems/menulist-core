@@ -42,7 +42,7 @@ function getProviderMessageId(value: unknown): string | undefined {
     return normalized;
 }
 
-function buildProviderBody(request: WhatsAppOsSendRequest): Record<string, unknown> {
+function buildProviderBody(request: WhatsAppOsSendRequest, providerMediaId?: string): Record<string, unknown> {
     if (request.template) {
         return {
             messaging_product: 'whatsapp',
@@ -51,12 +51,21 @@ function buildProviderBody(request: WhatsAppOsSendRequest): Record<string, unkno
             template: {
                 name: request.template.name,
                 language: { code: request.template.language },
-                ...(request.template.parameters?.length
+                ...(providerMediaId || request.template.parameters?.length
                     ? {
-                        components: [{
-                            type: 'body',
-                            parameters: request.template.parameters.map((text) => ({ type: 'text', text })),
-                        }],
+                        components: [
+                            ...(providerMediaId && request.template.document ? [{
+                                type: 'header',
+                                parameters: [{
+                                    type: 'document',
+                                    document: { id: providerMediaId, filename: request.template.document.filename },
+                                }],
+                            }] : []),
+                            ...(request.template.parameters?.length ? [{
+                                type: 'body',
+                                parameters: request.template.parameters.map((text) => ({ type: 'text', text })),
+                            }] : []),
+                        ],
                     }
                     : {}),
             },
@@ -68,6 +77,63 @@ function buildProviderBody(request: WhatsAppOsSendRequest): Record<string, unkno
         type: 'text',
         text: { body: request.session?.text || '' },
     };
+}
+
+function getProviderMediaId(value: unknown): string | undefined {
+    if (!value || typeof value !== 'object') return undefined;
+    const candidate = (value as { id?: unknown }).id;
+    if (typeof candidate !== 'string') return undefined;
+    const normalized = candidate.trim();
+    return normalized && normalized.length <= WHATSAPP_OS_LIMITS.MAX_PROVIDER_MESSAGE_ID_LENGTH
+        && !/[\u0000-\u001f\u007f]/.test(normalized)
+        ? normalized
+        : undefined;
+}
+
+async function uploadProviderDocument(params: {
+    phoneNumberId: string;
+    accessToken: string;
+    document: NonNullable<NonNullable<WhatsAppOsSendRequest['template']>['document']>;
+}): Promise<string | null> {
+    const form = new FormData();
+    form.set('messaging_product', 'whatsapp');
+    form.set('type', params.document.contentType);
+    form.set(
+        'file',
+        new Blob([Buffer.from(params.document.contentBase64, 'base64')], { type: params.document.contentType }),
+        params.document.filename,
+    );
+    const response = await fetch(
+        `https://graph.facebook.com/${WHATSAPP_OS_GRAPH_API_VERSION}/${encodeURIComponent(params.phoneNumberId)}/media`,
+        {
+            method: 'POST',
+            redirect: 'manual',
+            headers: { Authorization: `Bearer ${params.accessToken}` },
+            body: form,
+            signal: AbortSignal.timeout(PROVIDER_TIMEOUT_MS),
+        },
+    );
+    if (!response.ok) return null;
+    return getProviderMediaId(await readJsonResponseWithLimit(response, WHATSAPP_OS_LIMITS.MAX_PROVIDER_BODY_BYTES)) || null;
+}
+
+async function deleteRejectedProviderDocument(params: {
+    mediaId: string;
+    accessToken: string;
+}): Promise<void> {
+    try {
+        await fetch(
+            `https://graph.facebook.com/${WHATSAPP_OS_GRAPH_API_VERSION}/${encodeURIComponent(params.mediaId)}`,
+            {
+                method: 'DELETE',
+                redirect: 'manual',
+                headers: { Authorization: `Bearer ${params.accessToken}` },
+                signal: AbortSignal.timeout(PROVIDER_TIMEOUT_MS),
+            },
+        );
+    } catch {
+        // Cleanup is best-effort and must not change the confirmed send outcome.
+    }
 }
 
 async function persistProviderReference(
@@ -179,6 +245,17 @@ export async function sendServerWhatsAppOs(input: WhatsAppOsSendRequest): Promis
     ) return rejected('WHATSAPP_OS_PRODUCT_SEND_DISABLED');
 
     try {
+        const providerMediaId = request.template?.document
+            ? await uploadProviderDocument({ phoneNumberId, accessToken, document: request.template.document })
+            : undefined;
+        if (request.template?.document && !providerMediaId) {
+            return {
+                accepted: false,
+                ambiguous: false,
+                status: 'failed',
+                errorCode: 'WHATSAPP_OS_DOCUMENT_UPLOAD_FAILED',
+            };
+        }
         const response = await fetch(
             `https://graph.facebook.com/${WHATSAPP_OS_GRAPH_API_VERSION}/${encodeURIComponent(phoneNumberId)}/messages`,
             {
@@ -188,11 +265,14 @@ export async function sendServerWhatsAppOs(input: WhatsAppOsSendRequest): Promis
                     Authorization: `Bearer ${accessToken}`,
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify(buildProviderBody(request)),
+                body: JSON.stringify(buildProviderBody(request, providerMediaId || undefined)),
                 signal: AbortSignal.timeout(PROVIDER_TIMEOUT_MS),
             },
         );
         if (!response.ok) {
+            if (providerMediaId) {
+                await deleteRejectedProviderDocument({ mediaId: providerMediaId, accessToken });
+            }
             return {
                 accepted: false,
                 ambiguous: false,

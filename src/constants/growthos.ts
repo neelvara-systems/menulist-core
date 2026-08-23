@@ -1,4 +1,5 @@
 import type { GrowthOSActionType, GrowthOSDestination, GrowthOSExportMethod } from "@type/growthos";
+import { MENULIST_B2C_PLAN_IDS } from "./menulistPlans";
 
 export const GROWTHOS_OWNER_LABEL = "Growth Kits";
 
@@ -66,4 +67,7 @@ export const GROWTHOS_FORBIDDEN_PUBLIC_PHRASES = [
     "conversion",
 ];
 
-export const GROWTHOS_SUPPORTED_PAID_PLANS = ["pro", "premium"];
+export const GROWTHOS_SUPPORTED_PAID_PLANS = [
+    MENULIST_B2C_PLAN_IDS.PRO,
+    MENULIST_B2C_PLAN_IDS.MULTI_LOCATION,
+];

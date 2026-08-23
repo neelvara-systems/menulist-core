@@ -24,7 +24,7 @@ const MODE_OPTIONS: Array<{ label: string; value: NotificationOsOwnerMode }> = F
     : [{ label: 'Email only', value: 'email_only' }];
 
 const resolveAvailableMode = (mode: NotificationOsOwnerMode | undefined): NotificationOsOwnerMode => (
-    FEATURE_FLAGS.ENABLE_MENULIST_WHATSAPP_OS_OWNER_NOTIFICATIONS ? mode || 'preferred_available' : 'email_only'
+    FEATURE_FLAGS.ENABLE_MENULIST_WHATSAPP_OS_OWNER_NOTIFICATIONS ? mode || 'email_and_whatsapp' : 'email_only'
 );
 
 export default function MobileNotificationSettingsScreen({ onBack }: Props) {

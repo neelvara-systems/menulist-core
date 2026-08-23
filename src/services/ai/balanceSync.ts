@@ -19,6 +19,7 @@ import {
 export interface AIBalanceUpdate {
     billingStoreId: number;
     monthlyCredits: number;
+    promotionalCredits: number;
     topUpCredits: number;
 }
 
@@ -27,16 +28,18 @@ export function normalizeAiBalanceUpdate(value: unknown): AIBalanceUpdate | null
     const balance = value as Record<string, unknown>;
     const billingStoreId = getPositiveCreditInteger(balance.billingStoreId);
     const monthlyCredits = getNonNegativeCreditInteger(balance.monthlyCredits);
+    const promotionalCredits = getNonNegativeCreditInteger(balance.promotionalCredits ?? 0);
     const topUpCredits = getNonNegativeCreditInteger(balance.topUpCredits);
     if (
         billingStoreId === null
         || monthlyCredits === null
+        || promotionalCredits === null
         || topUpCredits === null
-        || !Number.isSafeInteger(monthlyCredits + topUpCredits)
+        || !Number.isSafeInteger(monthlyCredits + promotionalCredits + topUpCredits)
     ) {
         return null;
     }
-    return { billingStoreId, monthlyCredits, topUpCredits };
+    return { billingStoreId, monthlyCredits, promotionalCredits, topUpCredits };
 }
 
 /**

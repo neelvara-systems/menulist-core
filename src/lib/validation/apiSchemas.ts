@@ -14,6 +14,7 @@ import { SELF_REPORTED_DISCOVERY_CHANNELS } from '@data/shared/selfReportedDisco
 import { isValidFirestoreDocumentId } from '@lib/firebase/firestoreDocumentId';
 import { isValidMediaStoragePathSegment } from '@lib/media/mediaStorage';
 import { normalizeMultiOutletProjectId } from '@lib/multiOutlet/projectIdBoundary';
+import { MAX_SUBSCRIPTION_QUANTITY } from '@lib/billing/paymentCheckoutBoundary';
 import { z } from 'zod';
 
 // ═══════════════════════════════════════════════════════════
@@ -429,14 +430,36 @@ export type ImageEditingRequest = z.infer<typeof ImageEditingRequestSchema>;
 // PAYMENT API SCHEMAS
 // ═══════════════════════════════════════════════════════════
 
+export const BillingProfileSchema = z.object({
+    legalName: z.string().trim().min(1).max(160),
+    email: z.string().trim().email().max(254),
+    countryCode: z.string().trim().regex(/^[A-Za-z]{2}$/).transform((value) => value.toUpperCase()),
+    addressLine1: z.string().trim().min(1).max(240),
+    addressLine2: z.string().trim().max(240).optional(),
+    city: z.string().trim().min(1).max(120),
+    region: z.string().trim().min(1).max(120),
+    indianStateCode: z.string().trim().regex(/^[0-9]{2}$/).optional(),
+    postalCode: z.string().trim().min(1).max(24),
+    taxId: z.string().trim().max(32).optional(),
+    taxIdType: z.enum(['GSTIN', 'OTHER']).optional(),
+}).strict().superRefine((profile, context) => {
+    if (profile.countryCode === 'IN' && !profile.indianStateCode) {
+        context.addIssue({ code: z.ZodIssueCode.custom, message: 'Indian billing state is required', path: ['indianStateCode'] });
+    }
+    if (profile.countryCode === 'IN' && profile.taxId && profile.taxIdType !== 'GSTIN') {
+        context.addIssue({ code: z.ZodIssueCode.custom, message: 'Indian tax ID must be a GSTIN', path: ['taxIdType'] });
+    }
+});
+
 export const CreateSubscriptionRequestSchema = z.object({
     productId: billingProductIdSchema,
     planId: z.string().regex(/^[a-zA-Z0-9_-]+$/),
     interval: z.enum(['MONTH', 'YEAR']),
     currency: z.enum(['INR', 'USD']),
     userType: z.enum(['B2C', 'B2B']).optional(),
-    quantity: z.number().int().min(1).max(31).optional(),
+    quantity: z.number().int().min(1).max(MAX_SUBSCRIPTION_QUANTITY).optional(),
     replacementForSubscriptionId: z.string().regex(/^sub_[a-zA-Z0-9]+$/).max(180).optional(),
+    billingProfile: BillingProfileSchema.optional(),
 });
 
 export type CreateSubscriptionRequest = z.infer<typeof CreateSubscriptionRequestSchema>;
@@ -449,10 +472,11 @@ export const OnboardingSubscriptionSchema = z.object({
     interval: z.enum(['MONTH', 'YEAR']),
     currency: z.enum(['INR', 'USD']),
     userType: z.enum(['B2C', 'B2B']),
-    quantity: z.number().int().min(1).max(31),
+    quantity: z.number().int().min(1).max(MAX_SUBSCRIPTION_QUANTITY),
     timeZone: z.string().trim().min(1).max(100).optional(),
     businessDayEndTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/).optional(),
     selfReportedDiscoveryChannel: z.enum(SELF_REPORTED_DISCOVERY_CHANNELS).optional(),
+    billingProfile: BillingProfileSchema,
 }).strict();
 
 export type OnboardingSubscriptionRequest = z.infer<typeof OnboardingSubscriptionSchema>;
@@ -470,7 +494,8 @@ export type VerifyPaymentRequest = z.infer<typeof VerifyPaymentRequestSchema>;
 export const CreateTopupOrderRequestSchema = z.object({
     productId: billingProductIdSchema,
     packId: z.string().regex(/^[a-zA-Z0-9_-]+$/),
-    currency: z.enum(['INR', 'USD'])
+    currency: z.enum(['INR', 'USD']),
+    billingProfile: BillingProfileSchema.optional(),
 });
 
 export type CreateTopupOrderRequest = z.infer<typeof CreateTopupOrderRequestSchema>;

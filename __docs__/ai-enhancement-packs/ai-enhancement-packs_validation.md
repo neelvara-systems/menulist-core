@@ -53,13 +53,14 @@ The tables below preserve the original implementation evidence. The July 14 corr
 | Free operations unaffected      | ✅     | `src/lib/ai/capacityCheck.ts:54-61` — free check runs before kill switch            |
 | Client receives calm message    | ✅     | Billable AI routes return `"AI enhancements are temporarily unavailable."` on maintenance |
 
-### Task 0.2: Overdraft Buffer (OVERDRAFT_BUFFER_PERCENT)
+### Task 0.2: Exact Capacity Enforcement
 
 | Check                                 | Status | Evidence                                                                          |
 | ------------------------------------- | ------ | --------------------------------------------------------------------------------- |
-| Constant exported from `unitCosts.ts` | ✅     | `src/constants/AI/unitCosts.ts:40` — `export const OVERDRAFT_BUFFER_PERCENT = 20` |
-| Used in `checkAICapacity()`           | ✅     | `src/lib/ai/capacityCheck.ts:84-87` — calculates overdraft allowance              |
-| Overdraft reason tracked              | ✅     | `src/lib/ai/capacityCheck.ts:90` — `reason: "overdraft"` in result                |
+| No overdraft constant or reason branch | ✅     | `src/constants/AI/unitCosts.ts`, `src/lib/ai/capacityCheck.ts` |
+| Expired promotional balance excluded from admission, referral renewal, and desktop/mobile totals | ✅ | `src/data/shared/contentCreditPolicy.ts`, `src/lib/ai/capacityCheck.ts`, `src/lib/ownerReferral/ownerReferralSettlementServer.ts`, billing UI regression coverage |
+| Exact admission before provider work   | ✅     | Reservation requires the full operation cost                  |
+| Balances remain non-negative           | ✅     | Goodwill uses explicit expiring promotional credits           |
 
 ### Task 1.1: AI Unit Costs
 
@@ -116,10 +117,10 @@ The tables below preserve the original implementation evidence. The July 14 corr
 | Check                                      | Status | Evidence                                |
 | ------------------------------------------ | ------ | --------------------------------------- |
 | `AIEnhancementPack` interface              | ✅     | `src/data/common.ts:63-71`              |
-| `CreditPack` as deprecated alias           | ✅     | `src/data/common.ts:73-74`              |
+| One final `AIEnhancementPack` type with no pre-launch compatibility alias | ✅ | `src/data/common.ts` |
 | Single launch pack defined                 | ✅     | `src/data/PlatformPlansList.ts:113-123` |
 | `aiEnhancementPacksList` exported          | ✅     | `src/data/PlatformPlansList.ts:154`     |
-| `creditPacksList` kept as deprecated alias | ✅     | `src/data/PlatformPlansList.ts:126`     |
+| One final `aiEnhancementPacksList` export with no pre-launch compatibility alias | ✅ | `src/data/PlatformPlansList.ts` |
 
 ---
 
@@ -169,7 +170,7 @@ The tables below preserve the original implementation evidence. The July 14 corr
 | Tenant isolation preserved          | ✅     | `checkAICapacity` uses session.tId/session.sId |
 | Rate limiting preserved             | ✅     | Pre-existing — runs before capacity check      |
 | Zod validation preserved            | ✅     | Pre-existing — runs before capacity check      |
-| No provider economics or monthly capacity exposed to client | ✅ | Public Pack rates are allowed; provider costs, margins, monthly capacity, and overdraft remain private |
+| No provider economics exposed to client | ✅ | Owners see credit balances; provider costs and margins remain private |
 | Kill switch accessible to founder   | ✅     | Simple boolean in `features.ts`                |
 
 ---
@@ -181,7 +182,7 @@ The tables below preserve the original implementation evidence. The July 14 corr
 | Per-store capacity model                  | ✅     | `checkAICapacity(tenantId, storeId, ...)`       |
 | Uses existing subscription.monthlyCredits | ✅     | No new Firestore documents or collections       |
 | Uses existing subscription.topUpCredits   | ✅     | No new Firestore documents or collections       |
-| Transparent Pack/operation language       | ✅     | Exact Pack credits and per-operation costs are allowed; monthly included capacity and provider economics stay private |
+| Transparent Pack/operation language       | ✅     | Exact balances, Pack credits, and per-operation costs are allowed; provider economics stay private |
 | 3-year architecture freeze compliant      | ✅     | No new infrastructure, uses existing patterns   |
 
 ---
@@ -190,7 +191,7 @@ The tables below preserve the original implementation evidence. The July 14 corr
 
 | File                               | Purpose                                           |
 | ---------------------------------- | ------------------------------------------------- |
-| `src/constants/AI/unitCosts.ts`    | AI unit costs, overdraft buffer, helper functions |
+| `src/constants/AI/unitCosts.ts`    | Versioned operation costs and strict admission helpers |
 | `src/lib/ai/capacityCheck.ts`      | checkAICapacity + consumeAICapacity               |
 | `src/services/ai/capacityError.ts` | Frontend AICapacityError + checkCapacityResponse  |
 
@@ -199,8 +200,8 @@ The tables below preserve the original implementation evidence. The July 14 corr
 | File                                                                 | Changes                                                        |
 | -------------------------------------------------------------------- | -------------------------------------------------------------- |
 | `src/config/features.ts`                                             | +ENABLE_AI_ENHANCEMENTS kill switch                            |
-| `src/data/common.ts`                                                 | +AIEnhancementPack interface, CreditPack deprecated alias      |
-| `src/data/PlatformPlansList.ts`                                      | +aiEnhancementPacksList (single pack), creditPacksList aliased |
+| `src/data/common.ts`                                                 | Final `AIEnhancementPack` interface                            |
+| `src/data/PlatformPlansList.ts`                                      | Final one-Pack `aiEnhancementPacksList` authority              |
 | `src/app/api/descriptions/route.ts`                                  | +capacity check, +addAiOperation uncommented, +unitsConsumed   |
 | `src/app/api/image-generation/route.ts`                              | +capacity check, +addAiOperation uncommented, +unitsConsumed   |
 | `src/app/api/image-editing/route.ts`                                 | +capacity check, +addAiOperation uncommented, +unitsConsumed   |
@@ -224,7 +225,7 @@ The tables below preserve the original implementation evidence. The July 14 corr
 | #   | Feedback Point                   | Verdict                      | Reason                                                                             |
 | --- | -------------------------------- | ---------------------------- | ---------------------------------------------------------------------------------- |
 | 1   | Margins too high (97%)           | ✅ VALID (no code change)    | Architecture already supports unit cost adjustment via `AI_UNIT_COSTS`             |
-| 2   | Anti-abuse velocity guard        | ✅ VALID (already mitigated) | 6-layer protection: rate limits + capacity + overdraft + kill switch + topup limit |
+| 2   | Anti-abuse velocity guard        | ✅ VALID (already mitigated) | Rate limits + exact capacity + kill switch + top-up limit |
 | 3   | Dormant account topUpCredits     | ❌ REJECT                    | Expired subs return null from query; new subs start with topUpCredits=0            |
 | 4   | Rename internal variables        | ❌ REJECT                    | Firestore migration needed; violates Rule 20 + 3-year freeze                       |
 | 5   | AI Cost % of Revenue metric      | 🔄 IMPROVE (backlog)         | Data infra exists; added to admin dashboard backlog in impl doc                    |

@@ -35,7 +35,7 @@ const UpgradeConfirmationModal = ({ isOpen, onClose, onConfirm, newPlan, activeS
             open={isOpen}
             onCancel={onClose}
             footer={null}
-            title={<Title level={4}>Confirm Your Upgrade</Title>}
+            title={<Title level={4}>Confirm {isUpgrade ? 'Your Upgrade' : 'Purchase'}</Title>}
             centered
             closable={false}
         >
@@ -45,7 +45,7 @@ const UpgradeConfirmationModal = ({ isOpen, onClose, onConfirm, newPlan, activeS
                 &nbsp; plan at <Text strong style={{ fontSize: token.fontSizeHeading4, color: token.colorText }}>{formatCurrency(price, currency)}/{billingIntervalText}</Text>.
             </Paragraph>
             <Paragraph style={{ fontSize: token.fontSizeLG }}>
-                You’ll be billed immediately, and your new credits will apply right away.
+                The displayed plan price is before applicable tax. Razorpay shows the final tax-inclusive total before payment, and credits apply after payment is verified.
             </Paragraph>
 
             <Divider style={{ margin: '16px 0' }} />

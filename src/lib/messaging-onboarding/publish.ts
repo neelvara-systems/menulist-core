@@ -22,6 +22,7 @@ import { getMenuDesignPresetPatch, getRecommendedMenuDesignPresets } from "@lib/
 import { getBusinessAttributesWithMenuDefaults } from "@lib/obp/inferBusinessAttributesFromMenu";
 import { buildSummaryProjectPayload } from "@lib/firestore/summaryProjectsWriter";
 import { createTenantStoreInTransaction, preCheckSubdomain } from "@lib/onboarding/createTenantStore";
+import { buildOnboardingOwnerNotificationSettings } from "@lib/notification-os/onboardingDefaults";
 import { invalidateOwnerBusinessAssistantPacketCache } from "@lib/ownerBusinessAssistant/server/contextPacketCache";
 import { STARTER_ACTIVATION_MS, STARTER_ACTIVATION_STATUS } from "@lib/onboarding/starterActivation";
 import { inferPhoneCountryFromInternationalNumber, normalizePhoneNumberForStorage } from "@lib/phone/phoneNumber";
@@ -295,6 +296,13 @@ export async function executeMessagingOnboardingPublish(
       subdomain: { preChecked: preCheckedSubdomain },
       includeTimeSlotPresets: true,
       timeZone: currency.timezone,
+      notificationSettings: buildOnboardingOwnerNotificationSettings({
+        countryCode: normalizedPhone.countryCode,
+        dialCode: normalizedPhone.dialCode,
+        phone: normalizedPhone.phone,
+        phoneNumber: normalizedPhone.phoneNumber,
+        phoneVerified: true,
+      }),
       storeExtra: {
         activationDeadline: Timestamp.fromMillis(Date.now() + STARTER_ACTIVATION_MS),
         starterActivationStatus: STARTER_ACTIVATION_STATUS.STARTER_ACTIVE,
@@ -302,6 +310,8 @@ export async function executeMessagingOnboardingPublish(
         countryCode: normalizedPhone.countryCode,
         dialCode: normalizedPhone.dialCode,
         phoneNumber: normalizedPhone.phoneNumber,
+        phoneVerified: true,
+        phoneVerifiedAt: publishedAt,
         phone: normalizedPhone.phone,
         addressLine: address || "",
         activeLanguages: extractedLanguageCodes,
@@ -330,6 +340,8 @@ export async function executeMessagingOnboardingPublish(
         dialCode: normalizedPhone.dialCode,
         phone: normalizedPhone.phone,
         phoneNumber: normalizedPhone.phoneNumber,
+        phoneVerified: true,
+        phoneVerifiedAt: publishedAt,
         ...(phoneUsername ? { phoneUsername, phoneLoginEnabled: true } : {}),
         onboardingSource: "MESSAGING_ONBOARDING",
         modifiedOn: core.now,
@@ -344,6 +356,8 @@ export async function executeMessagingOnboardingPublish(
         dialCode: normalizedPhone.dialCode,
         phone: normalizedPhone.phone,
         phoneNumber: normalizedPhone.phoneNumber,
+        phoneVerified: true,
+        phoneVerifiedAt: publishedAt,
         email: generatedEmail,
         name: businessName,
         isVerified: true,

@@ -33,7 +33,7 @@ Build this as a dedicated owner route, not another button inside Share Modal.
 | Owner controls | Job preset, style, paper, density, logo, descriptions, QR, contact, safe category-level layout overrides |
 | Core presets | Home print PDF, WhatsApp PDF, print-shop packet, table menu |
 | Auto design | Client-side automatic style, density, and safe toggle selection from business type and content shape |
-| Layout suggestion | Pro/Premium-only AI recommendation that returns a bounded JSON recipe; owner must apply it |
+| Layout suggestion | Pro/Multi-location-only AI recommendation that returns a bounded JSON recipe; owner must apply it |
 | Rejected | Drag/drop editor, arbitrary text boxes, custom CSS, font uploads, per-item styling |
 
 ---
@@ -58,7 +58,7 @@ Build this as a dedicated owner route, not another button inside Share Modal.
 
 ## Runtime Baseline
 
-The predecessor PDF Surface path now acts as a compatibility bridge. When the routed workflow is enabled, owners enter Print Menu. When a legacy/flag-off button still calls `generateMenuPdf()`, it delegates to the same Menu Card Export print source and renderer, so the output still has logo, brand color, business profile, currency formatting, physical-menu styling, metadata, and source hash. MenuList logo/name/domain attribution is visible for non-Premium stores and hidden only when the already-loaded store plan is `premium`.
+The predecessor PDF Surface path now acts as a compatibility bridge. When the routed workflow is enabled, owners enter Print Menu. When a legacy/flag-off button still calls `generateMenuPdf()`, it delegates to the same Menu Card Export print source and renderer, so the output still has logo, brand color, business profile, currency formatting, physical-menu styling, metadata, and source hash. MenuList logo/name/domain attribution is visible for non-Multi-location stores and hidden only when the already-loaded store plan is `menulist_multi_location`.
 
 | Current behavior | Evidence |
 | --- | --- |
@@ -110,19 +110,19 @@ Implemented and validated in code:
 - Client-side print source, preflight, preview, PDF render, packet ZIP, local history: `src/lib/menu-card-export/`
 - Legacy print-copy bridge: `src/lib/export/menuPdfGenerator.ts` delegates old `generateMenuPdf()` calls to the Menu Card Export renderer.
 - Entry points: Use MenuList, project Share modal, Mobile Share, Mobile Menu command sheet, and More > Modules.
-- Feature flags control route, local history, print-shop packet visibility, batch exposure, and Pro/Premium layout suggestion.
+- Feature flags control route, local history, print-shop packet visibility, batch exposure, and Pro/Multi-location layout suggestion.
 - Multi-project selection uses the shared project selector pattern and guards against stale project data while switching.
 - Real project data shape support covers top-level extracted data and file-based `project.files[].extractedData.data` menus.
 - PDF output reuses the existing store logo and OBP `publicPresence.accentColor`; brand color, logo, business type/category, catalog kind, offering kind, and currency are included in the local source hash so old plain, wrong-profile, or wrong-currency exports are not reused after store changes.
 - PDF output uses density-based font sizes and store currency settings. INR/rupee output is rendered as PDF-safe `Rs 120` text with whole-number prices kept clean and price ranges preserved.
 - PDF output now uses controlled physical styling: warm paper tone, page border, title plaque/editorial/header card, section treatments, and price leaders where the selected template and business type benefit from them.
-- PDF output footer includes subtle `Menu powered by MenuList | menulist.ai` attribution with the MenuList logo mark on non-Premium stores. Premium stores hide this visible attribution through the shared MenuList branding policy.
+- PDF output footer includes subtle `Menu powered by MenuList | menulist.ai` attribution with the MenuList logo mark on non-Multi-location stores. Multi-location stores hide this visible attribution through the shared MenuList branding policy.
 - Use MenuList, mobile Share, and project Share legacy quick-download paths use the same renderer bridge, so flag-off/legacy PDF output no longer falls back to an unbranded plain PDF.
 - PDF output resolves business type/category through the shared MenuList business taxonomy: food gets menu-style output, retail/product businesses get catalog-style output, and service/professional/health businesses get cleaner service-list output without owners choosing another setting.
 - Auto print design chooses the starting style, density, description, QR, and contact defaults from business type and content shape before any AI/provider call. Owners can still override style/density/options.
 - PDF output sets document properties, uses generated-date/source-reference filenames, and keeps internal source hashes out of the visible customer footer.
 - Print-shop packets include a source summary with preset, style/template version, page count, generated date, menu updated date, source reference, renderer version, and live menu destination.
-- Pro/Premium layout suggestion: `src/app/api/menu-card-export/design-advisor/route.ts`, `src/lib/menu-card-export/ai/designAdvisor.ts`, `src/services/ai/menuCardExport/getDesignAdviceViaAPI.ts`.
+- Pro/Multi-location layout suggestion: `src/app/api/menu-card-export/design-advisor/route.ts`, `src/lib/menu-card-export/ai/designAdvisor.ts`, `src/services/ai/menuCardExport/getDesignAdviceViaAPI.ts`.
 - AI accounting uses `AI_ACTIONS_TYPES.MENU_CARD_EXPORT_DESIGN_ADVISOR` and consumes one enhancement unit only after a valid recommendation is returned.
 - Verification command: `npm run verify:menu-card-export`
 - Real-data runtime QA generated PDFs and print-shop packet ZIPs from an active multi-project account without adding Firebase writes or Storage uploads.
@@ -137,7 +137,7 @@ Firebase cost decision:
 - Export history is local to the browser/device, scoped by tenant, store, and project, and best-effort if browser storage is unavailable.
 - Native file delivery distinguishes shared, unsupported, and owner-cancelled results. Unsupported file sharing downloads instead; cancellation stays quiet and does not create a false success/history record.
 - Server persistence/export-storage API routes are intentionally not added in the default implementation to protect Firebase cost.
-- The AI layout suggestion is a separate owner-click route, available only to Pro/Premium subscriptions and blocked before provider call for other plans.
+- The AI layout suggestion is a separate owner-click route, available only to Pro/Multi-location subscriptions and blocked before provider call for other plans.
 - AI layout suggestion provider-response parsing is fail-closed and bounded. Empty, malformed non-object, or malformed object-fragment provider JSON logs capped `menu_card_design_advisor_provider_response_parse_failed` diagnostics with fixed `return_layout_suggestion_failed` policy and response-shape metadata only, then returns the existing owner-safe suggestion failure without consuming credits. Raw provider response text, menu/source content, warnings, project/store/tenant/user IDs, source hashes, response preview text, and exception text are not logged.
 
 ---
@@ -159,5 +159,5 @@ June 2, 2026 mobile parity guardrails:
 - More keeps Print Menu in the Modules list beside Dashboard for discovery; the analytics dashboard itself stays metric-focused.
 - Local export history obeys `ENABLE_MENU_CARD_EXPORT_HISTORY`.
 - Print-shop packet visibility and creation obey `ENABLE_MENU_CARD_EXPORT_PRINT_SHOP`.
-- Pro/Premium layout suggestion remains deterministic-advice only; final PDF/packet rendering is not AI-rendered.
+- Pro/Multi-location layout suggestion remains deterministic-advice only; final PDF/packet rendering is not AI-rendered.
 - Legacy `Menu PDF`/print-copy buttons must not reintroduce a standalone renderer. They stay as a thin bridge into Menu Card Export and must pass store/project context for brand and currency parity.

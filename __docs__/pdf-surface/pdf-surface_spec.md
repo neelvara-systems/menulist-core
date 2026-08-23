@@ -24,7 +24,7 @@ PDF Surface preserves older and flag-off “Menu PDF” actions while Menu Card 
 - No freeform editor, font upload, custom CSS, or separate PDF setting.
 - Active items/categories and stored ordering remain authoritative.
 - Store logo, accent color, business profile, currency, live menu URL, metadata, and source hash pass through when supplied by the caller.
-- Non-Premium output keeps MenuList attribution through the shared branding policy.
+- Output without branding-removal entitlement keeps MenuList attribution through the shared branding policy.
 - No export Firestore document, Storage artifact, API route, Cloud Function, rule, or index.
 
 ## Canonical Successor

@@ -62,6 +62,9 @@ export const EMAIL_OS_PRODUCT_POLICIES: Record<EmailOsProductCode, EmailOsProduc
 };
 
 export const EMAIL_OS_LIMITS = {
+    MAX_ATTACHMENT_BYTES: 8 * 1024 * 1024,
+    MAX_ATTACHMENT_COUNT: 1,
+    MAX_ATTACHMENT_FILENAME_LENGTH: 160,
     MAX_ADDRESS_LENGTH: 320,
     MAX_BODY_BYTES: 512 * 1024,
     MAX_EVENT_TYPE_LENGTH: 100,
@@ -108,6 +111,12 @@ export interface EmailOsTag {
     value: string;
 }
 
+export interface EmailOsAttachment {
+    filename: string;
+    contentBase64: string;
+    contentType: 'application/pdf';
+}
+
 export interface EmailOsEnvelope {
     productCode: EmailOsProductCode;
     classification: EmailOsClassification;
@@ -120,6 +129,7 @@ export interface EmailOsEnvelope {
     html: string;
     text: string;
     tags?: readonly EmailOsTag[];
+    attachments?: readonly EmailOsAttachment[];
 }
 
 export interface EmailOsProviderResult {
@@ -259,12 +269,36 @@ export function assertEmailOsEnvelope(value: EmailOsEnvelope): EmailOsEnvelope {
             throw new EmailOsContractError('EMAIL_OS_TAGS_INVALID');
         }
     }
+    const attachments = Array.from(value.attachments || []);
+    if (attachments.length > EMAIL_OS_LIMITS.MAX_ATTACHMENT_COUNT) {
+        throw new EmailOsContractError('EMAIL_OS_ATTACHMENTS_INVALID');
+    }
+    for (const attachment of attachments) {
+        if (
+            !attachment
+            || attachment.contentType !== 'application/pdf'
+            || typeof attachment.filename !== 'string'
+            || attachment.filename.length < 5
+            || attachment.filename.length > EMAIL_OS_LIMITS.MAX_ATTACHMENT_FILENAME_LENGTH
+            || !/^[A-Za-z0-9][A-Za-z0-9._-]*\.pdf$/.test(attachment.filename)
+            || typeof attachment.contentBase64 !== 'string'
+            || attachment.contentBase64.length === 0
+            || attachment.contentBase64.length % 4 !== 0
+            || attachment.contentBase64.length > Math.ceil(EMAIL_OS_LIMITS.MAX_ATTACHMENT_BYTES / 3) * 4
+            || !attachment.contentBase64.startsWith('JVBERi0')
+            || !/^[A-Za-z0-9+/]+={0,2}$/.test(attachment.contentBase64)
+            || Math.floor((attachment.contentBase64.length * 3) / 4)
+                - (attachment.contentBase64.endsWith('==') ? 2 : attachment.contentBase64.endsWith('=') ? 1 : 0)
+                > EMAIL_OS_LIMITS.MAX_ATTACHMENT_BYTES
+        ) throw new EmailOsContractError('EMAIL_OS_ATTACHMENTS_INVALID');
+    }
     return {
         ...value,
         eventType,
         localDeliveryReference,
         subject,
         tags,
+        attachments,
     };
 }
 

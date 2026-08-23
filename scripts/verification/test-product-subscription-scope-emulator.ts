@@ -9,6 +9,7 @@ import {
     applyProductSubscriptionUpgradeCarryForward,
     applyProductSubscriptionWebhookEvent,
     createProductInitialSubscription,
+    freezeMenuListPurchasedCreditsForCancellation,
     getProductSubscriptionById,
     syncAnswerlatticeSubscriptionEntitlementFromSubscription,
     updateProductSubscription,
@@ -19,7 +20,10 @@ import {
 } from '../../src/database/subscriptions/server';
 import { firestoreAdmin } from '../../src/lib/firebase/firebaseAdmin';
 import { Timestamp } from 'firebase-admin/firestore';
-import { persistPendingProductTopupSnapshot } from '../../src/lib/billing/topupSettlementServer';
+import {
+    persistPendingProductTopupSnapshot,
+    settleMenuListTopupRefund,
+} from '../../src/lib/billing/topupSettlementServer';
 import { syncStorePlanEntitlementFromSubscription } from '../../src/lib/billing/subscriptionEntitlementSync';
 
 const baseSubscription = (overrides: Record<string, unknown> = {}) => ({
@@ -57,6 +61,10 @@ async function run(): Promise<void> {
     await Promise.all(snapshot.docs.map((item) => item.ref.delete()));
     const topupSnapshot = await firestoreAdmin.collection(DB_COLLECTIONS.TOPUPS).get();
     await Promise.all(topupSnapshot.docs.map((item) => item.ref.delete()));
+    const purchasedRecoverySnapshot = await firestoreAdmin
+        .collection(DB_COLLECTIONS.MENULIST_PURCHASED_CREDIT_RECOVERIES)
+        .get();
+    await Promise.all(purchasedRecoverySnapshot.docs.map((item) => item.ref.delete()));
 
     const exactTopupOrder = {
         amount: 29_900,
@@ -125,6 +133,57 @@ async function run(): Promise<void> {
     );
     assert.equal((await conflictingTopupRef.get()).data()?.productId, 'AL');
     assert.equal((await conflictingTopupRef.get()).data()?.status, 'paid');
+
+    await writeSubscription('sub_RefundedTopup123', baseSubscription({
+        providerSubscriptionId: 'sub_RefundedTopup123',
+        topUpCredits: 7,
+    }));
+    const refundedTopupRef = firestoreAdmin.collection(DB_COLLECTIONS.TOPUPS).doc('order_RefundedTopup123');
+    await refundedTopupRef.set({
+        amount: 10_000,
+        billingStoreId: 202,
+        creditsAdded: 10,
+        currency: 'INR',
+        pId: 'ML',
+        paymentProvider: 'razorpay',
+        productId: 'ML',
+        providerOrderId: 'order_RefundedTopup123',
+        providerPaymentId: 'pay_RefundedTopup123',
+        sId: 202,
+        status: 'paid',
+        storeId: 202,
+        subscriptionDocumentId: 'sub_RefundedTopup123',
+        tId: 101,
+        tenantId: 101,
+    });
+    const refundedTopup = await settleMenuListTopupRefund({
+        amount: 10_000,
+        currency: 'INR',
+        paymentId: 'pay_RefundedTopup123',
+        refundId: 'rfnd_RefundedTopup123',
+    });
+    assert.deepEqual(refundedTopup, {
+        creditsReversed: 7,
+        creditShortfall: 3,
+        isTopupRefund: true,
+        replayed: false,
+    });
+    assert.equal((await readSubscription('sub_RefundedTopup123')).topUpCredits, 0);
+    assert.equal((await readSubscription('sub_RefundedTopup123')).topUpCreditRefundDebt, 3);
+    assert.equal((await refundedTopupRef.get()).data()?.status, 'refunded');
+    assert.equal((await refundedTopupRef.get()).data()?.creditReversalShortfall, 3);
+    assert.deepEqual(await settleMenuListTopupRefund({
+        amount: 10_000,
+        currency: 'INR',
+        paymentId: 'pay_RefundedTopup123',
+        refundId: 'rfnd_RefundedTopup123',
+    }), {
+        creditsReversed: 7,
+        creditShortfall: 3,
+        isTopupRefund: true,
+        replayed: true,
+    });
+    assert.equal((await readSubscription('sub_RefundedTopup123')).topUpCreditRefundDebt, 3);
 
     await writeSubscription('sub_ConflictingScope123', baseSubscription({ tId: 999 }));
     assert.throws(
@@ -481,6 +540,89 @@ async function run(): Promise<void> {
     assert.equal(unpaidTerminalUpgradeResult?.applied, false);
     assert.equal((await readSubscription('sub_UnpaidTerminalUpgradeOld123')).status, 'active');
 
+    await writeSubscription('sub_CancelledPurchasedCredits123', baseSubscription({
+        providerSubscriptionId: 'sub_CancelledPurchasedCredits123',
+        topUpCredits: 40,
+    }));
+    assert.equal(await freezeMenuListPurchasedCreditsForCancellation({
+        storeId: 202,
+        subscriptionId: 'sub_CancelledPurchasedCredits123',
+        tenantId: 101,
+    }), 40);
+    assert.equal((await readSubscription('sub_CancelledPurchasedCredits123')).topUpCredits, 0);
+    const frozenRecovery = (
+        await firestoreAdmin
+            .collection(DB_COLLECTIONS.MENULIST_PURCHASED_CREDIT_RECOVERIES)
+            .doc('101_202')
+            .get()
+    ).data();
+    assert.equal(frozenRecovery?.status, 'frozen');
+    assert.equal(frozenRecovery?.purchasedCredits, 40);
+    const firstRestoreUntil = frozenRecovery?.restoreUntil?.toMillis();
+    assert.equal(await freezeMenuListPurchasedCreditsForCancellation({
+        storeId: 202,
+        subscriptionId: 'sub_CancelledPurchasedCredits123',
+        tenantId: 101,
+    }), 40);
+    const replayedFrozenRecovery = (
+        await firestoreAdmin
+            .collection(DB_COLLECTIONS.MENULIST_PURCHASED_CREDIT_RECOVERIES)
+            .doc('101_202')
+            .get()
+    ).data();
+    assert.equal(
+        replayedFrozenRecovery?.restoreUntil?.toMillis(),
+        firstRestoreUntil,
+        'cancellation retry must not extend the purchased-credit recovery window',
+    );
+
+    await writeSubscription('sub_ReactivatedPurchasedCredits123', baseSubscription({
+        billingHistory: [],
+        providerSubscriptionId: 'sub_ReactivatedPurchasedCredits123',
+        status: 'pending',
+        topUpCredits: 0,
+    }));
+    const purchasedRestoration = await applyProductSubscriptionPayment(PRODUCT_IDS.MENULIST, {
+        billingPeriod: 202608,
+        paymentHistoryId: 'pay_PurchasedCreditRestore123',
+        statusEntry: {
+            amount: 49_900,
+            currency: 'INR',
+            remark: 'reactivation restores purchased credits',
+            status: 'charged',
+            timestamp: Timestamp.now() as never,
+        },
+        subscriptionId: 'sub_ReactivatedPurchasedCredits123',
+        update: { monthlyCreditsAllowance: 75 },
+    });
+    assert.equal(purchasedRestoration?.applied, true);
+    assert.equal((await readSubscription('sub_ReactivatedPurchasedCredits123')).topUpCredits, 40);
+    const restoredRecovery = (
+        await firestoreAdmin
+            .collection(DB_COLLECTIONS.MENULIST_PURCHASED_CREDIT_RECOVERIES)
+            .doc('101_202')
+            .get()
+    ).data();
+    assert.equal(restoredRecovery?.status, 'restored');
+    assert.equal(restoredRecovery?.purchasedCredits, 0);
+    assert.equal(restoredRecovery?.restoredCredits, 40);
+
+    const purchasedRestorationReplay = await applyProductSubscriptionPayment(PRODUCT_IDS.MENULIST, {
+        billingPeriod: 202608,
+        paymentHistoryId: 'pay_PurchasedCreditRestore123',
+        statusEntry: {
+            amount: 49_900,
+            currency: 'INR',
+            remark: 'duplicate restore must not add credits',
+            status: 'charged',
+            timestamp: Timestamp.now() as never,
+        },
+        subscriptionId: 'sub_ReactivatedPurchasedCredits123',
+        update: { monthlyCreditsAllowance: 75 },
+    });
+    assert.equal(purchasedRestorationReplay?.duplicate, true);
+    assert.equal((await readSubscription('sub_ReactivatedPurchasedCredits123')).topUpCredits, 40);
+
     await writeSubscription('sub_StringResetPeriod123', baseSubscription({
         billingHistory: ['pay_PreviousCycle123'],
         creditsLastResetMonth: '202608',
@@ -593,7 +735,7 @@ async function run(): Promise<void> {
     });
     await writeSubscription('sub_EntitlementValidCandidate123', baseSubscription({
         cycleEndDate: futureCycleEnd,
-        planId: 'pro',
+        planId: 'menulist_pro',
         providerSubscriptionId: 'sub_EntitlementValidCandidate123',
         sId: 303,
         storeId: 303,
@@ -613,7 +755,7 @@ async function run(): Promise<void> {
     }, 'emulator:malformed-transaction-current-status');
     assert.equal(
         (await malformedStatusStoreRef.get()).data()?.activePlanType,
-        'pro',
+        'menulist_pro',
         'an exact current candidate must still repair the store plan mirror',
     );
     const malformedStatusAudit = (

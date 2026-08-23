@@ -2,6 +2,16 @@ import { hasCurrentSubscriptionPlanEntitlement } from './subscriptionPlanEntitle
 
 type RecordLike = Record<string, unknown>;
 
+const SETTLED_TOPUP_STATUSES = new Set([
+    'paid',
+    'partially_refunded',
+    'refunded',
+]);
+
+export function isSettledTopupStatus(value: unknown): boolean {
+    return typeof value === 'string' && SETTLED_TOPUP_STATUSES.has(value);
+}
+
 export type VerifiedTopupSettlement = {
     amount: number;
     billingStoreId: number;
@@ -170,8 +180,8 @@ export function resolveVerifiedTopupSettlement(params: {
     const storeId = resolveExactIdentityAliases(topup, ['storeId', 'sId'], params.expectedStoreId);
     const billingStoreId = asExactPositiveSafeInteger(topup.billingStoreId);
     const packId = asTrimmedString(topup.packId);
-    const creditsToAdd = asPositiveSafeInteger(topup.creditsAdded);
-    const amount = asPositiveSafeInteger(topup.amount);
+    const creditsToAdd = asExactPositiveSafeInteger(topup.creditsAdded);
+    const amount = asExactPositiveSafeInteger(topup.amount);
     const currency = asTrimmedString(topup.currency).toUpperCase();
     const status = asTrimmedString(topup.status);
     const packName = asBoundedNonEmptyString(topup.packName, 160);
@@ -187,7 +197,7 @@ export function resolveVerifiedTopupSettlement(params: {
         || creditsToAdd === null
         || amount === null
         || !/^[A-Z]{3}$/.test(currency)
-        || (status !== 'pending' && status !== 'paid')
+        || (status !== 'pending' && !isSettledTopupStatus(status))
         || packName === null
     ) {
         return null;
@@ -211,7 +221,7 @@ export function resolveVerifiedTopupSettlement(params: {
     }
 
     const storedPaymentId = asTrimmedString(topup.providerPaymentId);
-    if (status === 'paid' && storedPaymentId !== params.expectedPaymentId) return null;
+    if (status !== 'pending' && storedPaymentId !== params.expectedPaymentId) return null;
 
     if (params.payment !== undefined) {
         const payment = asRecord(params.payment);
@@ -233,5 +243,48 @@ export function resolveVerifiedTopupSettlement(params: {
         currency,
         packId,
         packName,
+    };
+}
+
+export function resolveTopupRefundCreditTarget(params: {
+    creditsAdded: number;
+    cumulativeRefundAmount: number;
+    purchaseAmount: number;
+}): number | null {
+    const creditsAdded = asPositiveSafeInteger(params.creditsAdded);
+    const cumulativeRefundAmount = asPositiveSafeInteger(params.cumulativeRefundAmount);
+    const purchaseAmount = asPositiveSafeInteger(params.purchaseAmount);
+    if (
+        creditsAdded === null
+        || cumulativeRefundAmount === null
+        || purchaseAmount === null
+        || cumulativeRefundAmount > purchaseAmount
+    ) {
+        return null;
+    }
+
+    if (cumulativeRefundAmount === purchaseAmount) return creditsAdded;
+    const target = Number(
+        (BigInt(creditsAdded) * BigInt(cumulativeRefundAmount)) / BigInt(purchaseAmount),
+    );
+    return Number.isSafeInteger(target) && target >= 0 ? target : null;
+}
+
+export function resolveTopupCreditDebtAllocation(params: {
+    creditsPurchased: number;
+    refundDebt: number;
+}): {
+    creditsAppliedToBalance: number;
+    creditsOffsetAgainstRefundDebt: number;
+    remainingRefundDebt: number;
+} | null {
+    const creditsPurchased = asPositiveSafeInteger(params.creditsPurchased);
+    const refundDebt = asExactNonNegativeSafeInteger(params.refundDebt);
+    if (creditsPurchased === null || refundDebt === null) return null;
+    const creditsOffsetAgainstRefundDebt = Math.min(refundDebt, creditsPurchased);
+    return {
+        creditsAppliedToBalance: creditsPurchased - creditsOffsetAgainstRefundDebt,
+        creditsOffsetAgainstRefundDebt,
+        remainingRefundDebt: refundDebt - creditsOffsetAgainstRefundDebt,
     };
 }

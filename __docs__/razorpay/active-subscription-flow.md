@@ -412,10 +412,10 @@ remainingDays = max(0, ceil((graceEndsDate - now) / (1 day)))
 display fallback = "Grace period details unavailable." when a malformed legacy past_due record has no pastDueSinceAt
 ```
 
-**Credit Carry-Forward** (`src/utils/razorpay.ts` — `calculateRemainingCredits()`):
+**Credit Transfer on Replacement:**
 
-- Monthly plan: `monthlyCredits + topUpCredits`
-- Yearly plan: `unusedThisMonth + (monthsRemaining - 1) × monthlyCreditsAllowance + topUpCredits`
+- Transfer purchased credits and still-valid promotional credits in their original buckets.
+- Do not transfer recurring credits or projected future annual-cycle allowances.
 
 ---
 
@@ -423,23 +423,27 @@ display fallback = "Grace period details unavailable." when a malformed legacy p
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│  monthlyCreditsAllowance: 500  (set once, never changes)    │
-│  monthlyCredits: 320           (decrements on AI use)       │
-│  topUpCredits: 150             (decrements after monthly=0) │
+│  monthlyCreditsAllowance: 250  (effective cycle allowance)  │
+│  monthlyCredits: 120           (recurring balance)          │
+│  promotionalCredits: 25        (valid until explicit expiry)│
+│  topUpCredits: 150             (purchased balance)          │
 │                                                              │
-│  Total Available = monthlyCredits + topUpCredits = 470       │
+│  Usable = recurring + valid promotional + purchased = 295   │
 └─────────────────────────────────────────────────────────────┘
 
 On each billing cycle renewal (subscription.charged webhook):
-  monthlyCredits → reset to monthlyCreditsAllowance (500)
+  monthlyCredits → reset to monthlyCreditsAllowance
   creditsLastResetMonth → updated to current YYYYMM
-  topUpCredits → unchanged (never reset)
+  promotionalCredits → unchanged until explicit expiry
+  topUpCredits → unchanged by cycle reset
 
 On AI operation:
-  1. Backend: consumeAICapacity() deducts from monthlyCredits first
-  2. If monthlyCredits = 0, deducts from topUpCredits
-  3. Returns remainingBalance in API response
-  4. Frontend: syncBalanceFromResponse() updates context in-place
+  1. Backend: reserveAiCapacity() deducts from monthlyCredits first
+  2. Then deducts valid promotionalCredits
+  3. Then deducts topUpCredits
+  4. Rejects before provider work unless the exact cost is available
+  5. Returns remainingBalance in API response
+  6. Frontend: syncBalanceFromResponse() updates context in-place
 
 On replacement/upgrade:
   server reads both rows in one transaction

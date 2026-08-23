@@ -319,6 +319,8 @@ account-creation flows need a focused evidence audit before counsel signs off.
 | MenuList | Google Firebase/Cloud | Yes | No | No | No | No |
 | MenuList | Google model processing | Yes, configured feature paths | No | No | No | No |
 | MenuList | Razorpay | Yes | No | No | No | No |
+| MenuList | Configured email delivery (Resend in current source) | Yes, for selected account and billing-document delivery | No | No | No | No |
+| MenuList | Meta WhatsApp Business Platform | Consent-gated source path for selected account and billing-document delivery; provider activation pending | No | No | No | No |
 | MenuList | Plausible/GA/Clarity | Consent-gated configuration paths | No | No | No | No |
 | Answerlattice | Vercel | Yes | No | No | No | No |
 | Answerlattice | Google Firebase/Cloud | QA source defined; production certification pending | No | No | No | No |

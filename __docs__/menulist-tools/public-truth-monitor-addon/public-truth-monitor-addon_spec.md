@@ -67,7 +67,7 @@ V2 may reuse V1 owner modules:
 
 ## Implemented Runtime
 
-1. Paid entitlement and plan placement: Pro/Premium by default.
+1. Paid entitlement and plan placement: Pro/Multi-location by default.
 2. Report-history retention cap: maximum 6 reports per store.
 3. Summary storage: `platformSummary/publicTruthMonitor_{storeId}`.
 4. Owner refresh: authenticated and tenant-verified.

@@ -67,7 +67,7 @@ MenuList is the **upstream menu authority** (Doc 15 Rule 1). POS Webhook Sync pu
 - **API key hashing** — SHA-256 hash stored, raw key never persisted (Stripe/GitHub model)
 - **ETag + conditional requests** — 304 Not Modified for unchanged data
 - **Stable ETag identity** — request-time `generatedAt` and menu `timestamp` remain in 200 responses but do not make unchanged business/menu truth miss conditional requests.
-- **Structured error responses** — `{error: {code, message}}` format
+- **Structured error responses** — `{error: {code, message, resolution}}` format with fixed, code-owned recovery guidance
 - **`Retry-After` header** — on 429 rate limit responses
 - **`schemaVersion` field** — in all response payloads (`"1.0"`)
 - **Abuse logging** — IP + user-agent per request for leak detection
@@ -87,6 +87,7 @@ MenuList is the **upstream menu authority** (Doc 15 Rule 1). POS Webhook Sync pu
 - **MenuList product and identity coherence** — legacy records with missing product/ID aliases remain supported, but any explicit `pId`/`productId` must be `ML`; explicit tenant/store aliases must be exact numeric document IDs and agree with each other and the authoritative document path.
 - **Credential purpose/scope isolation** — new keys persist `productId: ML`, `purpose: menulist_public_api`, and `public:read`; legacy metadata-free keys remain supported, but explicit non-MenuList purpose/product or a scopes list without `public:read` fails closed.
 - **Runtime-safe business projection** — business attributes are allowlisted to known boolean public fields, and temporary status output validates type/expiry/message while omitting private creator metadata.
+- **Agent-safe recovery guidance** — every pull API error now includes a fixed `resolution` hint. Hints never echo credentials, request payloads, provider errors, or tenant/store identifiers.
 
 ---
 

@@ -21,6 +21,7 @@ import { FUNCTION_FLAGS } from '../../constants/features';
 import { renderEmailOsLegacyContent } from '../../emailOs/render';
 import { sendMenuListEmailOs } from '../../emailOs/provider';
 import { createHash } from 'node:crypto';
+import type { EmailOsAttachment, EmailOsClassification } from '../../sharedData/emailOs';
 
 const DEFAULT_FROM = 'MenuList <system@menulist.ai>';
 const SMTP_NOT_CONFIGURED_ERROR = 'SMTP_NOT_CONFIGURED';
@@ -113,6 +114,8 @@ export async function sendEmailViaSMTP(params: {
   from?: string;
   eventType?: string;
   referenceId?: string;
+  classification?: EmailOsClassification;
+  attachments?: readonly EmailOsAttachment[];
 }): Promise<ProviderSendResult> {
   if (FUNCTION_FLAGS.ENABLE_EMAIL_OS && FUNCTION_FLAGS.ENABLE_MENULIST_EMAIL_OS_PROVIDER_SEND) {
     if (!params.eventType || !params.referenceId) {
@@ -124,7 +127,7 @@ export async function sendEmailViaSMTP(params: {
       .digest('hex');
     const result = await sendMenuListEmailOs({
       productCode: 'ML',
-      classification: 'operational',
+      classification: params.classification || 'operational',
       eventType: params.eventType.toLowerCase().replace(/[^a-z0-9._-]+/g, '_'),
       localDeliveryReference,
       from: params.from || process.env.MENULIST_EMAIL_OS_FROM || DEFAULT_FROM,
@@ -133,6 +136,7 @@ export async function sendEmailViaSMTP(params: {
       subject: params.subject,
       html: content.html,
       text: content.text,
+      attachments: params.attachments,
     });
     return {
       success: result.accepted,
@@ -152,6 +156,11 @@ export async function sendEmailViaSMTP(params: {
       to: params.to,
       subject: params.subject,
       html: params.html,
+      attachments: params.attachments?.map((attachment) => ({
+        filename: attachment.filename,
+        content: Buffer.from(attachment.contentBase64, 'base64'),
+        contentType: attachment.contentType,
+      })),
     });
 
     return {

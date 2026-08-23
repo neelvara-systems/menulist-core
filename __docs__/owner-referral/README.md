@@ -17,7 +17,7 @@ Owner Referral lets a paid MenuList business privately invite a business owner t
 - **100 credits** to the referring business;
 - **50 credits** to the referred business.
 
-Credits are added once to existing `topUpCredits` Pack balances. At current rates, 100 credits can cover up to 20 generated menu images or 100 description rewrites; 50 credits can cover up to 10 generated menu images or 50 description rewrites.
+Credits are added once to the separate `promotionalCredits` balance with a 365-day validity window. At current rates, 100 credits can cover up to 20 generated menu images or 100 description rewrites; 50 credits can cover up to 10 generated menu images or 50 description rewrites.
 
 ## Payment-Only Rule
 
@@ -65,7 +65,7 @@ These controls remain:
 | Referred reward | 50 one-time credits |
 | Reward trigger | Both distinct MenuList subscription wallets are verified paid |
 | Reward timing | Immediate when both payments are verified |
-| Reward destination | Existing `topUpCredits`; never monthly credits |
+| Reward destination | Expiring `promotionalCredits`; never recurring or purchased credits |
 | Reward cap | None |
 | Usage/retention conditions | None |
 | Attribution deadline after binding | None |

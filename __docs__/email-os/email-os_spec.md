@@ -10,6 +10,8 @@ EmailOS replaces fragmented Gmail/custom-SMTP delivery with one production email
 
 For cross-channel owner/account events, [NotificationOS](../notification-os/README.md) is the orchestration authority. It resolves business context once, plans email/WhatsApp eligibility, and passes EmailOS a complete bounded request. EmailOS must not repeat product-scope reads or decide WhatsApp fallback.
 
+For MenuList billing-document delivery, the complete request may contain one trusted, in-memory PDF attachment. EmailOS validates the safe filename, PDF MIME type, count, and 8MB sender limit before provider work. It does not accept an arbitrary remote attachment URL and does not load the billing document itself.
+
 The selected stack is React Email for deterministic HTML and plain text, and Resend for delivery. The implementation is completed before provider onboarding, remains disabled by product-specific flags, and fails closed when credentials or sender authority are absent.
 
 ## Goals

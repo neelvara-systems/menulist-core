@@ -18,8 +18,8 @@
 | Food business with long name | Name fits/truncates inside face; no overflow. |
 | Mustard/gold brand color | CTA/accent uses brand color; QR remains black. |
 | Missing logo | Store name still renders cleanly. |
-| Premium plan | Visible MenuList attribution is hidden. |
-| Non-Premium plan | MenuList attribution is visible and centered. |
+| Multi-location plan | Visible MenuList attribution is hidden. |
+| Non-Multi-location plan | MenuList attribution is visible and centered. |
 | Single table/counter card | Renders upright as one A6 portrait page with no rotated face. |
 | Printed sample | QR scans from normal table distance. |
 

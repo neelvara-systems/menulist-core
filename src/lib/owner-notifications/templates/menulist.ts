@@ -98,6 +98,7 @@ export function renderMenuListOwnerNotification(templateKey: string, metadata: R
     const renewalDate = escapeHtml(textValue(metadata.renewalDate, 'See dashboard'));
     const publicUrl = urlValue(metadata.publicUrl);
     const dashboardUrl = urlValue(metadata.dashboardUrl) || DASHBOARD_URL;
+    const documentUrl = urlValue(metadata.documentUrl);
     const publishFailureReason = publishFailureReasonText(metadata.failureReason);
     const menuStaleReason = menuStaleReasonText(metadata.reason);
 
@@ -200,6 +201,16 @@ export function renderMenuListOwnerNotification(templateKey: string, metadata: R
                 `<h2 style="${S.h2}">Refund processed</h2><p style="${S.p}">A refund for <strong>${storeName}</strong> has been processed.</p><div style="${S.info}"><strong>Amount:</strong> ${amount}<br><strong>Reference:</strong> ${escapeHtml(textValue(metadata.refundReference, 'See billing history'))}</div><p style="${S.p}">Your bank may take additional time to show the credit.</p>`,
                 `Refund processed for ${storeNameText}. Amount: ${textValue(metadata.amountLabel, String(metadata.amount || '0'))}.`,
             );
+        case 'menulist.billing_document_issued': {
+            const documentNumber = textValue(metadata.documentNumber, 'Billing document');
+            const documentTypeLabel = textValue(metadata.documentTypeLabel, 'billing document');
+            return template(
+                templateKey,
+                `MenuList ${documentTypeLabel} ${documentNumber}`,
+                `<h2 style="${S.h2}">Your ${escapeHtml(documentTypeLabel)} is ready</h2><p style="${S.p}">The billing document for <strong>${storeName}</strong> has been issued.</p><div style="${S.info}"><strong>Document:</strong> ${escapeHtml(documentNumber)}<br><strong>Amount:</strong> ${amount}</div>${documentUrl ? `<p style="margin-top:20px"><a href="${escapeHtml(documentUrl)}" style="${S.btn}">Open billing document</a></p><p style="${S.p}">Sign in to MenuList to open this private document.</p>` : `<p style="${S.p}">Open Billing in MenuList to access this private document.</p>`}`,
+                `Your MenuList ${documentTypeLabel} ${documentNumber} is ready.${documentUrl ? ` Open the private document after signing in: ${documentUrl}` : ' Open Billing in MenuList to access it.'}`,
+            );
+        }
         case 'menulist.menu_stale':
             return template(
                 templateKey,

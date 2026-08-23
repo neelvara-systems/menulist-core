@@ -201,10 +201,10 @@ function main() {
     assert(!byType(actions, 'metadata_demand').id.includes('seasonal-juice'), 'Expected metadata demand to skip the item already selected for image gap');
     assert(byType(actions, 'price_signal').id.includes('premium-thali'), 'Expected price signal to target reviewed price item');
 
-    const proEntitlement = resolveAnalyticsAiEntitlement({ activePlanType: 'pro' });
+    const proEntitlement = resolveAnalyticsAiEntitlement({ activePlanType: 'menulist_pro' });
     const freeEntitlement = resolveAnalyticsAiEntitlement({ activePlanType: 'free' });
     const missingEntitlement = resolveAnalyticsAiEntitlement({});
-    const malformedEntitlement = resolveAnalyticsAiEntitlement({ activePlanType: { toString: () => 'pro' } });
+    const malformedEntitlement = resolveAnalyticsAiEntitlement({ activePlanType: { toString: () => 'menulist_pro' } });
     assert(proEntitlement.enabled === true, 'Expected Pro entitlement to enable menu intelligence');
     assert(freeEntitlement.enabled === false && freeEntitlement.reason === 'plan_not_eligible', 'Expected Free entitlement to be locked');
     assert(missingEntitlement.enabled === false && missingEntitlement.reason === 'missing_plan', 'Expected missing plan entitlement to fail closed');

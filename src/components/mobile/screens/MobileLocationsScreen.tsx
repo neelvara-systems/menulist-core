@@ -1,6 +1,7 @@
 'use client'
 
 import { FEATURE_FLAGS } from '@config/features';
+import { MENULIST_B2C_PLAN_IDS } from '@constant/menulistPlans';
 import { OUTLET_POLICY_CATEGORIES } from '@config/outletPolicy';
 import { updateOutletPolicy } from '@database/multiOutlet';
 import { AUTH_ACCOUNT_REQUEST_POLICY, readAuthAccountResponse } from '@lib/auth/accountClientResponses';
@@ -192,7 +193,7 @@ function MobileLocationsScreenContent({ onBack, onOpenBilling }: MobileLocations
     const currency = activeSubscription?.currency || 'INR';
     const amount = activeSubscription?.amount || 0;
     const isManualBilling = activeSubscription?.billingMode === 'manual';
-    const isDirectMultiLocationPlan = !isManualBilling && activeSubscription?.planId === 'premium';
+    const isDirectMultiLocationPlan = !isManualBilling && activeSubscription?.planId === MENULIST_B2C_PLAN_IDS.MULTI_LOCATION;
     const prepaidCapacity = Number(activeSubscription?.quantity || 1);
     const hasManualCapacity = !isManualBilling || prepaidCapacity > activeStoresList.length;
     const hasPaidSubscriptionAccess = hasValidSubscriptionAccess(activeSubscription);
@@ -826,7 +827,7 @@ function MobileLocationsScreenContent({ onBack, onOpenBilling }: MobileLocations
                             />
                         </Flex>
 
-                        {FEATURE_FLAGS.ENABLE_OUTLET_PRORATION_DISPLAY && activeSubscription && !isManualBilling ? (
+                        {FEATURE_FLAGS.ENABLE_OUTLET_PRORATION_DISPLAY && activeSubscription && isDirectMultiLocationPlan ? (
                             (() => {
                                 const proration = calculateProration(activeSubscription);
                                 return (

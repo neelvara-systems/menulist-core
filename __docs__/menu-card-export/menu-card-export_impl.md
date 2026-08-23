@@ -17,7 +17,7 @@ Create a routed owner workflow for menu-card PDF and print packet exports while 
 
 The implementation must not be a modal-only extension. The route owns job presets, style selection, preflight, preview, final export, print-shop packet creation, and export history. Share modal, Use MenuList, Mobile Share, Mobile Menu, and More become entry points into the route.
 
-July 1 route guard: `/api/menu-card-export/design-advisor` now requires `canManageMenuSharing`, `canPublishMenu`, or `canManageMenu` after bounded body parsing and schema validation, and before Pro/Premium subscription lookup, AI capacity checks, Gemini calls, recommendation normalization, or AI accounting.
+July 1 route guard: `/api/menu-card-export/design-advisor` now requires `canManageMenuSharing`, `canPublishMenu`, or `canManageMenu` after bounded body parsing and schema validation, and before Pro/Multi-location subscription lookup, AI capacity checks, Gemini calls, recommendation normalization, or AI accounting.
 
 July 6 AI advisor session scope boundary: `/api/menu-card-export/design-advisor` now normalizes authenticated session tenant/store scope as exact positive numeric Firestore document IDs before tenant access, bounded request parsing, route permission checks, subscription lookup, AI capacity check, Gemini call, recommendation normalization, or AI accounting. Malformed, whitespace-mutated, leading-zero, zero, negative, unsafe, nonnumeric, reserved, empty, or path-shaped session scope fails with the existing owner-safe forbidden response.
 
@@ -126,12 +126,12 @@ ENABLE_MENU_CARD_EXPORT_HISTORY: true,
 ENABLE_MENU_CARD_EXPORT_PRINT_SHOP: true,
 ENABLE_MENU_CARD_EXPORT_BATCH: false,
 ENABLE_MENU_CARD_EXPORT_AI_ADVISOR: true,
-MENU_CARD_EXPORT_AI_ADVISOR_PLAN_IDS: ["pro", "premium"],
+MENU_CARD_EXPORT_AI_ADVISOR_PLAN_IDS: ["menulist_pro", "menulist_multi_location"],
 ```
 
 The predecessor PDF adapter is an always-on compatibility path and no longer
 advertises a no-op feature flag.
-Batch export remains off because it creates additional multi-project scope. AI advisor is enabled only as a Pro/Premium value-add and is metered through the existing AI enhancement capacity system.
+Batch export remains off because it creates additional multi-project scope. AI advisor is enabled only as a Pro/Multi-location value-add and is metered through the existing AI enhancement capacity system.
 
 Rollout rule:
 
@@ -140,7 +140,7 @@ Rollout rule:
 - `ENABLE_MENU_CARD_EXPORT_HISTORY=true`: local browser export history appears. It does not write Firestore.
 - `ENABLE_MENU_CARD_EXPORT_PRINT_SHOP=true`: client-side print-shop packet appears.
 - `ENABLE_MENU_CARD_EXPORT_BATCH=true`: multi-location batch action appears for eligible owners.
-- `ENABLE_MENU_CARD_EXPORT_AI_ADVISOR=true`: Pro/Premium advisor can suggest a layout recipe after owner click; final rendering remains deterministic.
+- `ENABLE_MENU_CARD_EXPORT_AI_ADVISOR=true`: Pro/Multi-location advisor can suggest a layout recipe after owner click; final rendering remains deterministic.
 
 ---
 
@@ -268,7 +268,7 @@ Brand source rules:
 - Logo comes from the existing store logo fields, primarily `store.logo`.
 - Older `primaryColor`, `brandColor`, `themeColor`, and project design brand color are fallback-only.
 - The renderer embeds the logo in the PDF header when the image can be loaded safely and uses the brand color for the header, category dividers, and prices. Logo source projection and final rendering both require a credential-free absolute HTTP(S) URL of at most 4,096 characters. Remote loading is bounded to five seconds; timeout/CORS failure, invalid dimensions, dimensions above 2,048 pixels, or more than 4,194,304 raster pixels omit the logo and keep rendering. Successful raster data uses a 16-entry oldest-first route-session cache; failed loads are not cached permanently.
-- The renderer prints subtle `Menu powered by MenuList | menulist.ai` attribution with the MenuList logo mark in the footer for non-Premium stores. `src/lib/platform/menuListBranding.ts` hides visible MenuList attribution only when the already-loaded `activePlanType` is `premium`; missing, Starter, Pro, and unknown plans keep attribution visible. This is platform attribution only; the business logo/name/color remain the primary visual identity.
+- The renderer prints subtle `Menu powered by MenuList | menulist.ai` attribution with the MenuList logo mark in the footer for non-Multi-location stores. `src/lib/platform/menuListBranding.ts` hides visible MenuList attribution only when the already-loaded `activePlanType` is `menulist_multi_location`; missing, Official, Pro, and unknown plans keep attribution visible. This is platform attribution only; the business logo/name/color remain the primary visual identity.
 - The source hash includes logo URL, brand color, business type, business category, catalog kind, offering kind, currency symbol, and currency code so local export history does not reuse stale unbranded, wrong-profile, or wrong-currency files after the owner changes store settings.
 
 Business-type source rules:
@@ -306,8 +306,8 @@ Auto print design rules:
 - Inputs are business profile, item count, category count, description coverage, variant presence, and selected preset.
 - The shared controller applies the auto design once per project/job/content shape, then stops if the owner manually changes style, density, or toggles.
 - Changing the job preset resets the auto-design key so the route can pick the right layout for Home Print, WhatsApp, Table Menu, or Print-shop Packet.
-- Auto print design is not the Pro/Premium AI advisor. It is deterministic browser logic and never consumes AI capacity.
-- The Pro/Premium advisor payload includes `autoDesignLabel`, `autoDesignReason`, `businessCategory`, `businessProfile`, and `offeringKind` so paid advice can refine the deterministic baseline instead of starting from scratch.
+- Auto print design is not the Pro/Multi-location AI advisor. It is deterministic browser logic and never consumes AI capacity.
+- The Pro/Multi-location advisor payload includes `autoDesignLabel`, `autoDesignReason`, `businessCategory`, `businessProfile`, and `offeringKind` so paid advice can refine the deterministic baseline instead of starting from scratch.
 
 ---
 
@@ -433,7 +433,7 @@ Required callers:
 
 Do not log raw exported menu content, owner-entered endpoint URLs, public share URLs, project names, store names, currency strings, generated file bodies, browser/provider error objects, or full project/store payloads. Owner-facing export messages stay generic and actionable; successful export paths stay quiet.
 
-### Pro/Premium Layout Suggestion
+### Pro/Multi-location Layout Suggestion
 
 The layout suggestion route is deliberately separate from PDF rendering:
 
@@ -443,7 +443,7 @@ owner clicks Suggest layout
   -> withAuth + tenant/store access check
   -> reject request bodies above 128KB
   -> validate bounded request payload
-  -> active subscription plan gate: pro/premium only
+  -> active subscription plan gate: Pro/Multi-location only (`menulist_pro`/`menulist_multi_location` IDs)
   -> AI capacity check
   -> Gemini JSON-only recommendation
   -> normalize against approved preset/style/density/toggle schema
@@ -459,7 +459,7 @@ Contract:
 - It does not send full raw project/store documents.
 - The prompt builder normalizes prompt-boundary strings before provider serialization: control/template characters are stripped, whitespace is collapsed, scalar text is capped, `categoryNames` and warning arrays scan at most 20 entries, and the source hash is sanitized before interpolation.
 - Response is `MenuCardDesignAdvisorRecommendation`: approved preset, style, density, `includeDescriptions`, `includeQr`, `includeContactBlock`, `ownerNote`, `reason`, and bounded warnings.
-- Starter/no-subscription users receive `403 plan_required` before the provider call.
+- Official/no-subscription users receive `403 plan_required` before the provider call.
 - The browser client parses plan-gate and recommendation responses through a 16KB bounded JSON reader. Malformed or oversized route responses log `ai_menu_card_design_advisor_response_parse_failed` with bounded project/source/status/phase metadata only and fall back to the existing owner-safe suggestion failure path.
 - The provider-response parser keeps the existing extractable-object fallback when possible. Empty, malformed non-object, or malformed object-fragment provider JSON logs capped `menu_card_design_advisor_provider_response_parse_failed` diagnostics with fixed `return_layout_suggestion_failed` policy, response length, trimmed length, candidate length, parse stage, fenced-response flag, and object-fragment flag only. Raw provider response text, menu/source content, warnings, project/store/tenant/user IDs, source hashes, response preview text, and exception text are not logged.
 - Provider/validation failure returns no usable suggestion and consumes no credits.
@@ -469,7 +469,7 @@ Contract:
 
 ## Security Requirements
 
-Use existing authenticated owner page context and DAL access for export. The Pro/Premium layout suggestion API is the only custom route added for this feature and must keep the standard AI route protections.
+Use existing authenticated owner page context and DAL access for export. The Pro/Multi-location layout suggestion API is the only custom route added for this feature and must keep the standard AI route protections.
 
 - No raw sensitive payloads in logs.
 - `POST /api/menu-card-export/design-advisor` uses `withAuth()`.
@@ -648,7 +648,7 @@ Mobile layout:
 
 - Dedicated `MobileMenuCardExportScreen` with mobile-native cards, sheets, large controls, and sticky export actions.
 - `/use-menulist/menu-card-export` maps into the mobile shell as `more/printMenu` on handheld devices, matching the existing More/settings screen model instead of using a route-level mobile bypass.
-- Desktop and mobile renderers both use `useMenuCardExportController` for project loading, source building, auto print design, preflight, export generation, local history, and Pro/Premium layout suggestion.
+- Desktop and mobile renderers both use `useMenuCardExportController` for project loading, source building, auto print design, preflight, export generation, local history, and Pro/Multi-location layout suggestion.
 - Mobile Menu command sheet flushes pending local menu edits before route navigation.
 - More > Modules exposes Print Menu beside Dashboard for discoverability; the analytics dashboard screen remains metric-only.
 - Horizontal preset/style cards.
@@ -686,7 +686,7 @@ Flag behavior:
 15. Replace Share modal and Use MenuList PDF buttons with route links.
 16. Add Mobile Share, Mobile Menu command sheet, and More > Modules entries.
 17. Keep legacy `generateMenuPdf()` as a compatibility bridge into Menu Card Export for any flag-off or old print-copy path; do not keep a standalone plain PDF renderer.
-18. Thread `activePlanType` from loaded store context into PDF, QR, Menu Kit, physical-surface, public-menu, OBP, compliance, and screen attribution paths so Premium branding removal stays centralized and cost-neutral.
+18. Thread `activePlanType` from loaded store context into PDF, QR, Menu Kit, physical-surface, public-menu, OBP, compliance, and screen attribution paths so Multi-location branding removal stays centralized and cost-neutral.
 19. Add Compact and Premium templates.
 20. Add test fixtures and verification script.
 21. Remove or hide legacy one-click PDF path after parity is confirmed.
@@ -705,7 +705,7 @@ npm run verify:menu-card-export
 
 `npm run verify:menu-export` verifies structured export normalization plus bounded share/export diagnostics for clipboard share, Web Share API, external endpoint share, structured JSON/XLSX export, and PDF generation. It also guards the ShareModal external endpoint admission so the browser does not post menu data to raw owner-entered, non-HTTPS, credentialed, localhost, private/local, or redirected URLs.
 
-`npm run verify:menu-card-export` verifies route/library files, feature flags, auto print design, client-side preflight, client-side PDF/packet generation, local history flag wiring, print-shop flag wiring, mobile Share/Menu/More entry points, the Pro/Premium AI advisor guard path, bounded AI advisor response parsing, bounded share-modal export diagnostics, and the absence of export-storage API routes.
+`npm run verify:menu-card-export` verifies route/library files, feature flags, auto print design, client-side preflight, client-side PDF/packet generation, local history flag wiring, print-shop flag wiring, mobile Share/Menu/More entry points, the Pro/Multi-location AI advisor guard path, bounded AI advisor response parsing, bounded share-modal export diagnostics, and the absence of export-storage API routes.
 
 The preset registry must contain every `MenuCardExportPreset`, including
 flag-gated and internal presets. `buildDefaultSettings()` must preserve the

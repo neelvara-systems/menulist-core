@@ -360,7 +360,7 @@ Staff Prompt is part of the core value proposition — helping customers decide 
 
 When discussing pricing, never mention Staff Prompt as a line item. Say:
 
-> "MenuList is ₹999/month. That includes the menu, the screens, and the Today line when there is a safe staff prompt to show."
+> "MenuList plans start at ₹599/month. The Today line is supporting owner workflow context, not a separate paid product."
 
 ---
 

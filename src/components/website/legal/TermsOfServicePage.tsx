@@ -1,6 +1,11 @@
 'use client';
 
 import { LuCheck, LuFileText, LuGavel, LuGift, LuShield, LuUsers, LuX } from 'react-icons/lu';
+import {
+    MENULIST_OPERATOR_DISCLOSURE,
+    MENULIST_PAYMENT_PROCESSOR_DISCLOSURE,
+    MENULIST_TRADE_NAME_QUALIFIER,
+} from '@constant/menulist/commercialIdentity';
 import AnimateOnScroll, { AnimateStaggerChild } from '../shared/AnimateOnScroll';
 import SectionHeading from '../shared/SectionHeading';
 import SectionWrapper from '../shared/SectionWrapper';
@@ -8,6 +13,8 @@ import WebsiteButton from '../shared/WebsiteButton';
 import WebsiteHeadline from '../shared/WebsiteHeadline';
 
 const whatIsMenuList = [
+    { label: 'Product', value: MENULIST_OPERATOR_DISCLOSURE },
+    { label: 'Operating identity', value: MENULIST_TRADE_NAME_QUALIFIER },
     { label: 'Upload your content', value: 'Menus, price lists, images, and business documents' },
     { label: 'Structured content', value: 'Automatically extracted and organised menu data' },
     { label: 'Supported outputs', value: 'MenuList QR links, web pages, screens, and fresh downloadable assets from one approved source' },
@@ -103,7 +110,8 @@ const ownershipCards = [
 
 const billingFacts = [
     { label: 'Billing cycle', value: 'Monthly or annually — auto-renews unless cancelled' },
-    { label: 'Payment handling', value: 'Razorpay handles checkout and payment-method entry; MenuList stores billing references and status needed to operate subscriptions' },
+    { label: 'Payment handling', value: MENULIST_PAYMENT_PROCESSOR_DISCLOSURE },
+    { label: 'Supplier identity', value: 'The verified legal supplier name, registered address, tax details, and document number appear on the applicable MenuList billing document.' },
     { label: 'Cancellation', value: 'Cancel any time from account settings' },
     { label: 'Refund policy', value: 'See our Refund Policy page for details' },
 ];
@@ -133,7 +141,7 @@ const terminationReasons = [
 ];
 
 export default function TermsOfServicePage() {
-    const lastUpdated = 'July 17, 2026';
+    const lastUpdated = 'August 22, 2026';
 
     return (
         <main className="ws-page">

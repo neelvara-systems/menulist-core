@@ -15,6 +15,8 @@ Do not put an Answerlattice Public API key in browser JavaScript, a mobile appli
 
 The machine-readable contract is available at `https://answerlattice.com/openapi.json`. It describes request shapes, success responses, and errors but does not prove the feature is enabled for a workspace. Every JSON error includes a fixed `resolution` hint; follow it without exposing the request secret or private payload.
 
+The current API uses the `/v1` path. Within v1, existing fields, required inputs, authentication behavior, and status-code meanings stay compatible; compatible optional response fields may be added after OpenAPI publication, so integrations should ignore unknown response fields. A breaking change uses a new major path. If an operation is ever scheduled for retirement, `/developers`, OpenAPI, and the `Deprecation`, `Sunset`, and successor-version `Link` response headers will provide the replacement, migration steps, and exact date. No v1 operation is currently deprecated or scheduled for removal.
+
 ## Create a Key
 
 1. Open **Public API** in the Answerlattice workspace.

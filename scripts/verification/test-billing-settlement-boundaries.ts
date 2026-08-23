@@ -5,7 +5,13 @@ import {
     isValidBillingPeriodKey,
 } from '../../src/lib/billing/billingPeriod';
 import { resolveProviderBillingProductId } from '../../src/lib/billing/productBillingPlans';
-import { resolveCurrentTopupSubscriptionSettlement, resolveVerifiedTopupSettlement } from '../../src/lib/billing/topupSettlement';
+import {
+    isSettledTopupStatus,
+    resolveCurrentTopupSubscriptionSettlement,
+    resolveTopupCreditDebtAllocation,
+    resolveTopupRefundCreditTarget,
+    resolveVerifiedTopupSettlement,
+} from '../../src/lib/billing/topupSettlement';
 import {
     isAnswerlatticeIntakeLedgerInScope,
     resolveAnswerlatticeIntakeRefundAllocation,
@@ -52,6 +58,7 @@ import {
     resolveRazorpayAuditAmountPaise,
     resolveRazorpayFailedPaymentAmountPaise,
     resolveRazorpayPaymentTransactionType,
+    resolveRazorpayProcessedRefund,
     resolveRazorpayRevenueOccurredAtMillis,
     resolveRazorpaySubscriptionState,
     resolveRazorpaySubscriptionQuantity,
@@ -119,6 +126,62 @@ assert.equal(resolveRazorpayPaymentTransactionType({
     order_id: 'order_subscription',
     subscription_id: 'sub_exact',
 }), 'subscription');
+const processedRefundEvent = {
+    event: 'refund.processed',
+    payload: {
+        refund: {
+            entity: {
+                amount: 59_900,
+                created_at: 1_767_225_600,
+                currency: 'INR',
+                id: 'rfnd_Exact123',
+                payment_id: 'pay_Exact123',
+                status: 'processed',
+            },
+        },
+        payment: {
+            entity: {
+                currency: 'INR',
+                id: 'pay_Exact123',
+            },
+        },
+    },
+};
+assert.deepEqual(resolveRazorpayProcessedRefund(processedRefundEvent), {
+    amountPaise: 59_900,
+    createdAtMillis: 1_767_225_600_000,
+    currency: 'INR',
+    paymentId: 'pay_Exact123',
+    refundId: 'rfnd_Exact123',
+});
+assert.equal(resolveRazorpayProcessedRefund({
+    ...processedRefundEvent,
+    event: 'payment.refunded',
+}), null, 'the cumulative payment refund event must not become per-refund accounting authority');
+assert.equal(resolveRazorpayProcessedRefund({
+    ...processedRefundEvent,
+    payload: {
+        ...processedRefundEvent.payload,
+        refund: {
+            entity: {
+                ...processedRefundEvent.payload.refund.entity,
+                payment_id: 'pay_Other123',
+            },
+        },
+    },
+}), null, 'refund and payment identities must agree');
+assert.equal(resolveRazorpayProcessedRefund({
+    ...processedRefundEvent,
+    payload: {
+        ...processedRefundEvent.payload,
+        refund: {
+            entity: {
+                ...processedRefundEvent.payload.refund.entity,
+                status: 'pending',
+            },
+        },
+    },
+}), null, 'only a final processed refund can move accounting state');
 assert.equal(resolveRazorpayRevenueOccurredAtMillis(1_767_225_600), 1_767_225_600_000);
 assert.equal(resolveRazorpayRevenueOccurredAtMillis(null), undefined);
 assert.throws(() => resolveRazorpayRevenueOccurredAtMillis('1767225600'), /event time is invalid/);
@@ -276,7 +339,7 @@ assert.deepEqual(resolveSubscriptionReplacementEvidence({
 }), { outcome: 'invalid' });
 const checkoutRecoveryExpectation = {
     attemptId: 'attempt_exact',
-    planId: 'starter',
+    planId: 'menulist_official',
     providerPlanId: 'plan_exact',
     productId: 'ML',
     quantity: 2,
@@ -287,7 +350,7 @@ const checkoutRecoveryCandidate = {
     id: 'sub_recovered',
     notes: {
         checkoutAttemptId: 'attempt_exact',
-        planId: 'starter',
+        planId: 'menulist_official',
         productId: 'ML',
         quantity: '2',
         storeId: '202',
@@ -436,31 +499,31 @@ assert.equal(getActivePlanTypeForSubscription({
     ...razorpayPaymentEvidence,
     cycleEndDate: futureCycleEnd,
     status: 'active',
-    planId: ' Pro ',
-}, entitlementNowMs), 'pro');
+    planId: ' MenuList_Pro ',
+}, entitlementNowMs), 'menulist_pro');
 assert.equal(
-    getActivePlanTypeForSubscription({ status: 'active', planId: 'pro' }, entitlementNowMs),
+    getActivePlanTypeForSubscription({ status: 'active', planId: 'menulist_pro' }, entitlementNowMs),
     null,
     'active rows without exact paid-cycle evidence must fail closed',
 );
 assert.equal(getActivePlanTypeForSubscription({
     ...razorpayPaymentEvidence,
     cycleEndDate: { seconds: Math.floor((entitlementNowMs - 1_000) / 1_000) },
-    planId: 'pro',
+    planId: 'menulist_pro',
     status: 'active',
 }, entitlementNowMs), null, 'an elapsed active row must not retain plan entitlement');
 assert.equal(getActivePlanTypeForSubscription({
     ...razorpayPaymentEvidence,
     cycleEndDate: futureCycleEnd,
-    planId: 'premium',
+    planId: 'menulist_multi_location',
     status: 'cancelled',
-}, entitlementNowMs), 'premium');
+}, entitlementNowMs), 'menulist_multi_location');
 assert.equal(getActivePlanTypeForSubscription({
     ...razorpayPaymentEvidence,
     cycleEndDate: futureCycleEnd,
-    planId: 'starter',
+    planId: 'menulist_official',
     status: 'paused',
-}, entitlementNowMs), 'starter');
+}, entitlementNowMs), 'menulist_official');
 assert.equal(hasCurrentSubscriptionPlanEntitlement({
     ...razorpayPaymentEvidence,
     cycleEndDate: endedCycle,
@@ -471,25 +534,25 @@ assert.equal(hasCurrentSubscriptionPlanEntitlement({
     cycleEndDate: endedCycle,
     status: 'paused',
 }, entitlementNowMs), false);
-assert.equal(getActivePlanTypeForSubscription({ ...razorpayPaymentEvidence, cycleEndDate: futureCycleEnd, planId: 'pro', status: 'past_due' }, entitlementNowMs), null);
-assert.equal(getActivePlanTypeForSubscription({ ...razorpayPaymentEvidence, cycleEndDate: futureCycleEnd, planId: 'pro', status: 'expired' }, entitlementNowMs), null);
-assert.equal(getActivePlanTypeForSubscription({ ...razorpayPaymentEvidence, cycleEndDate: 'invalid', planId: 'pro', status: 'cancelled' }, entitlementNowMs), null);
+assert.equal(getActivePlanTypeForSubscription({ ...razorpayPaymentEvidence, cycleEndDate: futureCycleEnd, planId: 'menulist_pro', status: 'past_due' }, entitlementNowMs), null);
+assert.equal(getActivePlanTypeForSubscription({ ...razorpayPaymentEvidence, cycleEndDate: futureCycleEnd, planId: 'menulist_pro', status: 'expired' }, entitlementNowMs), null);
+assert.equal(getActivePlanTypeForSubscription({ ...razorpayPaymentEvidence, cycleEndDate: 'invalid', planId: 'menulist_pro', status: 'cancelled' }, entitlementNowMs), null);
 assert.equal(getActivePlanTypeForSubscription({
     ...razorpayPaymentEvidence,
     cycleEndDate: { seconds: String(Math.floor((entitlementNowMs + 60_000) / 1_000)) },
-    planId: 'pro',
+    planId: 'menulist_pro',
     status: 'active',
 }, entitlementNowMs), null, 'numeric-string timestamp components must not retain plan entitlement');
 assert.equal(getActivePlanTypeForSubscription({
     ...razorpayPaymentEvidence,
-    planId: { toString: () => 'pro' } as unknown as string,
+    planId: { toString: () => 'menulist_pro' } as unknown as string,
     status: 'active',
 }, entitlementNowMs), null, 'object plan IDs must not be coerced into plan entitlement');
 assert.equal(getActivePlanTypeForSubscription({
     billingHistory: [],
     cycleEndDate: futureCycleEnd,
     paymentProvider: 'razorpay',
-    planId: 'pro',
+    planId: 'menulist_pro',
     status: 'active',
 }, entitlementNowMs), null, 'provider active without a captured payment id must not grant entitlement');
 assert.equal(getActivePlanTypeForSubscription({
@@ -498,9 +561,9 @@ assert.equal(getActivePlanTypeForSubscription({
     cycleEndDate: futureCycleEnd,
     manualPaymentConfirmed: true,
     paymentProvider: 'razorpay',
-    planId: 'pro',
+    planId: 'menulist_pro',
     status: 'active',
-}, entitlementNowMs), 'pro', 'confirmed manual billing must retain prepaid entitlement');
+}, entitlementNowMs), 'menulist_pro', 'confirmed manual billing must retain prepaid entitlement');
 let entitlementTimestampMethodCalled = false;
 assert.equal(getActivePlanTypeForSubscription({
     ...razorpayPaymentEvidence,
@@ -510,7 +573,7 @@ assert.equal(getActivePlanTypeForSubscription({
             return entitlementNowMs + 60_000;
         },
     },
-    planId: 'pro',
+    planId: 'menulist_pro',
     status: 'active',
 }, entitlementNowMs), null);
 assert.equal(entitlementTimestampMethodCalled, false, 'persisted timestamp methods must not execute during entitlement projection');
@@ -647,12 +710,24 @@ assert.deepEqual(calculateProration({
 });
 assert.deepEqual(calculateProration({
     amount: 3000,
+    quantity: 1,
     cycleStartDate: { toDate: () => utcDate(2026, 6, 10) },
     cycleEndDate: { toDate: () => utcDate(2026, 7, 9) },
 } as unknown as FirestoreSubscriptionDoc, utcDate(2026, 6, 1)), {
     proratedAmount: 3000,
     fullCycleAmount: 3000,
     daysRemaining: 30,
+    totalDays: 30,
+});
+assert.deepEqual(calculateProration({
+    amount: 149900,
+    quantity: 2,
+    cycleStartDate: { toDate: () => utcDate(2026, 6, 10) },
+    cycleEndDate: { toDate: () => utcDate(2026, 7, 9) },
+} as unknown as FirestoreSubscriptionDoc, utcDate(2026, 6, 24)), {
+    proratedAmount: 79947,
+    fullCycleAmount: 149900,
+    daysRemaining: 16,
     totalDays: 30,
 });
 
@@ -747,6 +822,12 @@ const settlementInput = {
     topupSnapshot,
 };
 
+assert.equal(isSettledTopupStatus('pending'), false);
+assert.equal(isSettledTopupStatus('paid'), true);
+assert.equal(isSettledTopupStatus('partially_refunded'), true);
+assert.equal(isSettledTopupStatus('refunded'), true);
+assert.equal(isSettledTopupStatus(' refunded '), false);
+
 assert.deepEqual(resolveVerifiedTopupSettlement(settlementInput), {
     amount: 299900,
     billingStoreId: 303,
@@ -755,6 +836,23 @@ assert.deepEqual(resolveVerifiedTopupSettlement(settlementInput), {
     packId: 'enhancement',
     packName: 'Content Credit Pack',
 });
+for (const status of ['paid', 'partially_refunded', 'refunded']) {
+    assert.deepEqual(resolveVerifiedTopupSettlement({
+        ...settlementInput,
+        topupSnapshot: { ...topupSnapshot, status, providerPaymentId: payment.id },
+    }), {
+        amount: 299900,
+        billingStoreId: 303,
+        creditsToAdd: 250,
+        currency: 'INR',
+        packId: 'enhancement',
+        packName: 'Content Credit Pack',
+    }, `${status} top-ups must remain admissible only as immutable settlement replays`);
+}
+assert.equal(resolveVerifiedTopupSettlement({
+    ...settlementInput,
+    topupSnapshot: { ...topupSnapshot, status: 'refunded', providerPaymentId: 'pay_other' },
+}), null, 'refunded top-up replay must retain the original payment identity');
 assert.equal(resolveVerifiedTopupSettlement({
     ...settlementInput,
     topupSnapshot: { ...topupSnapshot, billingStoreId: 304 },
@@ -767,6 +865,14 @@ assert.equal(resolveVerifiedTopupSettlement({
     ...settlementInput,
     topupSnapshot: { ...topupSnapshot, pId: 'AL' },
 }), null, 'conflicting immutable top-up product aliases must fail closed');
+assert.equal(resolveVerifiedTopupSettlement({
+    ...settlementInput,
+    topupSnapshot: { ...topupSnapshot, amount: String(topupSnapshot.amount) },
+}), null, 'coercible immutable top-up amount must fail closed');
+assert.equal(resolveVerifiedTopupSettlement({
+    ...settlementInput,
+    topupSnapshot: { ...topupSnapshot, creditsAdded: String(topupSnapshot.creditsAdded) },
+}), null, 'coercible immutable top-up credits must fail closed');
 assert.equal(resolveVerifiedTopupSettlement({
     ...settlementInput,
     topupSnapshot: { ...topupSnapshot, tId: 999 },
@@ -1063,5 +1169,51 @@ assert.equal(resolveAnswerlatticeIntakeRefundAllocation({
     refundTopUpCredits: 5,
     reservedBillingPeriod: 202607,
 }), null, 'Fractional intake refund evidence must fail closed.');
+
+assert.equal(resolveTopupRefundCreditTarget({
+    creditsAdded: 250,
+    cumulativeRefundAmount: 79900,
+    purchaseAmount: 79900,
+}), 250, 'A full top-up refund must reverse the full purchased pack.');
+assert.equal(resolveTopupRefundCreditTarget({
+    creditsAdded: 250,
+    cumulativeRefundAmount: 39950,
+    purchaseAmount: 79900,
+}), 125, 'A partial top-up refund must reverse the cumulative proportional credit share.');
+assert.equal(resolveTopupRefundCreditTarget({
+    creditsAdded: 250,
+    cumulativeRefundAmount: 1,
+    purchaseAmount: 79900,
+}), 0, 'Sub-credit rounding must remain cumulative and deterministic.');
+assert.equal(resolveTopupRefundCreditTarget({
+    creditsAdded: 250,
+    cumulativeRefundAmount: 79901,
+    purchaseAmount: 79900,
+}), null, 'Refund value above the settled purchase must fail closed.');
+assert.equal(resolveTopupRefundCreditTarget({
+    creditsAdded: 250.5,
+    cumulativeRefundAmount: 79900,
+    purchaseAmount: 79900,
+}), null, 'Fractional purchased-credit evidence must fail closed.');
+assert.deepEqual(resolveTopupCreditDebtAllocation({
+    creditsPurchased: 250,
+    refundDebt: 40,
+}), {
+    creditsAppliedToBalance: 210,
+    creditsOffsetAgainstRefundDebt: 40,
+    remainingRefundDebt: 0,
+});
+assert.deepEqual(resolveTopupCreditDebtAllocation({
+    creditsPurchased: 25,
+    refundDebt: 40,
+}), {
+    creditsAppliedToBalance: 0,
+    creditsOffsetAgainstRefundDebt: 25,
+    remainingRefundDebt: 15,
+});
+assert.equal(resolveTopupCreditDebtAllocation({
+    creditsPurchased: 25,
+    refundDebt: '40' as never,
+}), null, 'Coercible refund debt must fail closed.');
 
 console.log('Billing settlement boundary tests passed.');

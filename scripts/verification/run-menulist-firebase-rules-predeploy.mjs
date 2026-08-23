@@ -11,7 +11,6 @@ const EXCLUDED_CONFIGS = [
   'firebase-signaldesk.json',
   'firebase-ai-menu-manager-test.json',
 ];
-
 function fail(message) {
   throw new Error(`[MenuList Firebase rules predeploy] ${message}`);
 }
@@ -23,7 +22,7 @@ function readJson(relativePath) {
 function verifyRootConfig() {
   const config = readJson(ROOT_CONFIG);
   const expectedPaths = {
-    'firestore.rules': config.firestore?.rules,
+    'firestore-menulist.rules': config.firestore?.rules,
     'firestore.indexes.json': config.firestore?.indexes,
     'storage.rules': config.storage?.rules,
   };
@@ -72,6 +71,20 @@ function discoverRuleScripts() {
 }
 
 function main() {
+  const generatedRulesCheck = spawnSync(process.execPath, [
+    path.join(ROOT, 'scripts/verification/generate-menulist-firestore-rules.mjs'),
+    '--check',
+  ], {
+    cwd: ROOT,
+    encoding: 'utf8',
+  });
+
+  process.stdout.write(generatedRulesCheck.stdout || '');
+  process.stderr.write(generatedRulesCheck.stderr || '');
+  if (generatedRulesCheck.error || generatedRulesCheck.status !== 0) {
+    fail('Generated MenuList Firestore rules are missing or stale.');
+  }
+
   verifyRootConfig();
   const scripts = discoverRuleScripts();
 

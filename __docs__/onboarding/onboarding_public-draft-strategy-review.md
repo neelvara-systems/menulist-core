@@ -2,7 +2,7 @@
 
 **Date:** May 20, 2026  
 **Status:** Strategy review and tracking document  
-**Scope:** Website onboarding, WhatsApp/messaging onboarding, pricing entry, starter access, public URL lifecycle, dashboard gating, abuse/cost controls  
+**Scope:** Website onboarding, WhatsApp/messaging onboarding, pricing entry, setup access, public URL lifecycle, dashboard gating, abuse/cost controls
 **Source input:** User-provided ChatGPT conversation about MenuList onboarding and public draft strategy
 
 ---
@@ -21,7 +21,7 @@ The biggest correction is:
 
 Final recommended model:
 
-> **Verified public starter activation. Paid operational control. Same URL forever.**
+> **Verified public setup activation. Paid operational control. Same URL forever.**
 
 This is not a normal free trial, not a freemium plan, and not a private SaaS preview. It is a controlled onboarding state where a business becomes publicly live enough to feel real, while expensive operations and full dashboard capabilities stay gated.
 
@@ -75,7 +75,7 @@ MenuList already has pieces of the proposed model:
    - It creates a 24-hour token draft, then claim converts it into tenant/store/project.
 
 3. **Pricing already has Starter, Pro, Premium in code.**
-   - Runtime plan data has Starter/Pro/Premium.
+   - Runtime plan data has Official/Pro/Multi-location.
    - Old pricing strategy docs still say "No free. No basic. No starter." That is stale and now conflicts with runtime and current strategy.
 
 4. **Dashboard access is currently subscription-gated in important screens.**
@@ -112,14 +112,14 @@ This must be unified before implementation. Otherwise owners will experience dif
 | Founder setup free for first 100/500 | **Accept with guardrails** | Works as CAC if owner publishes and shares. Must cap revisions, AI operations, and manual labor. |
 | Payment after belief | **Accept** | SMB owners need to see their own menu. Payment should preserve continuity, not unlock abstract features. |
 | Private preview only is safer but weaker | **Accept** | Correct. Private preview suppresses public distribution. But fully public anonymous drafts are not acceptable either. |
-| Public draft before payment | **Accept after verification** | Upload/preview can happen before identity. The real public starter URL appears before payment but only after Google or WhatsApp identity and rate limits. |
+| Public draft before payment | **Accept after verification** | Upload/preview can happen before identity. The real public setup URL appears before payment but only after Google or WhatsApp identity and rate limits. |
 | 7-day public draft | **Revise** | Seven days is better than 24 hours for business adoption, but it should be a starter activation window, not a SaaS "trial" framing. Need lifecycle and cleanup rules. |
 | Do not hard-404 after expiry | **Accept** | Expired unpaid pages should become a lightweight holding/recovery state, not a broken link. |
 | No full dashboard before payment | **Accept with update** | Do not expose full dashboard. But one real workspace with starter mode is better than a separate app right now. |
 | Separate public proof from operational control | **Accept** | This is the core architectural rule. |
 | Separate setup workspace | **Revise** | Clean theoretically, but likely too much complexity now. Use the existing workspace/dashboard shell with starter-mode capability gating. |
 | One dashboard with limited access | **Accept** | Correct for current stage. But hide non-relevant surfaces instead of showing many disabled lock states. Enforce gating server-side. |
-| Free plan for 7 days, then Pro/Premium | **Revise** | "Free setup" should not be a subscription plan. It should be an onboarding state. Paid plans are Starter/Pro/Premium. |
+| Free plan for 7 days, then Pro/Multi-location | **Revise** | "Free setup" should not be a subscription plan. It should be an onboarding state. Paid plans are Official/Pro/Multi-location. |
 | Draft URL must become permanent URL | **Accept** | Non-negotiable. QR, WhatsApp, Instagram, and Google links must not change after payment. |
 | Generate real final subdomain during draft | **Accept with namespace controls** | Correct, but current slug generation is business-name only and collision fallback is storeId suffix. Need locality-aware slug reservation before scaling this model. |
 | Do not add separate phone onboarding because Google and WhatsApp exist | **Accept** | Correct. We need phone/contact fields, not a third auth system. WhatsApp identity and Google login are enough for now. |
@@ -207,7 +207,7 @@ Recommended near-term flow:
 13. After payment:
     - Same workspace
     - Same public URL
-    - Full plan capabilities appear according to Starter/Pro/Premium.
+    - Full plan capabilities appear according to Official/Pro/Multi-location.
 
 ### B. WhatsApp / Messaging Journey
 
@@ -298,7 +298,7 @@ Use the real dashboard/workspace foundation, but create a starter mode.
 
 ### UI Rule
 
-Do not show a sidebar full of disabled locked features. Starter workspace should feel focused and calm, not like a cheap SaaS trial.
+Do not show a sidebar full of disabled locked features. Setup workspace should feel focused and calm, not like a cheap SaaS trial.
 
 ### Security Rule
 
@@ -322,11 +322,11 @@ Reasons:
 
 ### Current Gap
 
-The current web `/create-menu` flow uses a token preview first, then generates the subdomain at claim time. That is safe, but it is not the proposed permanent public starter model.
+The current web `/create-menu` flow uses a token preview first, then generates the subdomain at claim time. That is safe, but it is not the proposed permanent public setup model.
 
 ### Slug Rules Needed
 
-Current shared creation uses `slugify(businessName)` and falls back to `businessName-storeId` on collision. For public starter activation, this is not enough.
+Current shared creation uses `slugify(businessName)` and falls back to `businessName-storeId` on collision. For public setup activation, this is not enough.
 
 Recommended slug strategy:
 
@@ -413,7 +413,7 @@ Current website copy around generated images/descriptions/translations risks sou
 
 ## 13. Abuse, Cost, And Security Controls
 
-Required before scaling public starter activation:
+Required before scaling public setup activation:
 
 1. Verified identity before public activation; upload/extraction must stay behind SAFE_MODE, IP limits, file validation, and TTL cleanup.
 2. One active starter workspace per identity unless explicitly allowed.
@@ -439,7 +439,7 @@ Current critical implementation gap to fix before expanding:
 ### P0 - Before Any Public Rollout
 
 1. Define one shared onboarding lifecycle contract across website, pricing, and messaging onboarding. **Status: implemented as shared starter activation contract.**
-2. Decide whether public starter activation is 24 hours or 7 days. **Status: 7 days selected for claimed starter activation; 24 hours remains only for unclaimed upload drafts/sessions.**
+2. Decide whether public setup activation is 24 hours or 7 days. **Status: 7 days selected for claimed starter activation; 24 hours remains only for unclaimed upload drafts/sessions.**
 3. Add/confirm backend capability gates for starter vs paid workspace. **Status: starter workspace gating added in owner layout, sidebars, desktop redirects, mobile shell, and billing copy.**
 4. Fix public cache invalidation in public-menu-entry claim path before scaling it. **Status: implemented.**
 5. Create slug reservation rules that include locality/city. **Status: claim flow now pre-checks slug using business name + city/area.**
@@ -453,7 +453,7 @@ Current critical implementation gap to fix before expanding:
 
 ### P1 - Product Flow Buildout
 
-1. Starter workspace surface inside current dashboard shell. **Status: implemented through starter access gating.**
+1. Setup workspace surface inside current dashboard shell. **Status: implemented through setup access gating.**
 2. Progressive navigation that hides paid complexity until relevant. **Status: implemented in desktop/mobile navigation gates.**
 3. Distribution activation checklist. **Status: implemented through Use MenuList / Presence Monitor activation actions.**
 4. Minimal starter signals: opens, scans, shares. **Status: partially implemented; link copy, QR download, menu kit download, native share, WhatsApp share-start, and owner-confirmed external placements are recorded. Public opens/scans remain on the existing public analytics layer, not yet joined into the store-level starter signal count.**
@@ -482,7 +482,7 @@ Current critical implementation gap to fix before expanding:
 | ONB-04 | Use one dashboard with starter mode, not separate onboarding app | Recommended | Separate app creates maintenance entropy. |
 | ONB-05 | Hide paid complexity instead of showing many locked tabs | Recommended | Locked-feature clutter damages SMB clarity. |
 | ONB-06 | Treat free setup as onboarding state, not a plan | Recommended | Free plan framing cheapens infrastructure value. |
-| ONB-07 | Starter plan must be complete for one normal SMB | Required | Crippleware destroys trust. |
+| ONB-07 | Official plan must be complete for one normal SMB | Required | Crippleware destroys trust. |
 | ONB-08 | Separate public truth from AI enhancements | Required | Unlimited AI expectations create cost risk. |
 | ONB-09 | Use locality-aware slug reservation | Required before scale | Generic slug squatting and duplicate business names. |
 | ONB-10 | Track 2+ distribution actions in 7 days | Recommended | Upload/sign-up metrics optimize the wrong behavior. |
@@ -530,7 +530,7 @@ Passes if:
 
 - Entire flow works from phone.
 - Upload/review/public activation does not require desktop.
-- Starter workspace uses large touch targets and simple actions.
+- Setup workspace uses large touch targets and simple actions.
 - WhatsApp handoff opens a mobile-friendly claim/setup path.
 
 ### Pricing Check

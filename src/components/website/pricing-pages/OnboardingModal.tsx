@@ -1,7 +1,10 @@
 'use client';
 
 import { FEATURE_FLAGS } from '@config/features';
-import type { PlanType } from '@data/common';
+import type { Currency, PlanType } from '@data/common';
+import { normalizeBillingProfile, type BillingProfile } from '@data/shared/billingTaxPolicy';
+import { INDIAN_GST_STATES } from '@data/shared/indianGstStates';
+import countryData from '@atoms/phoneNumberInput/countryData';
 import type { SelfReportedDiscoveryChannel } from '@data/shared/selfReportedDiscovery';
 import { DialogDescription, DialogTitle } from '@radix-ui/react-dialog';
 import { Button } from '@shadcncomponents/button';
@@ -21,17 +24,30 @@ import { buildCurrentWebsiteSignInPath } from '@/lib/website/signInLinks';
 interface OnboardingModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onSubmit: (details: { businessName: string; businessIndustry: string; timeZone?: string; businessDayEndTime?: string; selfReportedDiscoveryChannel?: SelfReportedDiscoveryChannel }) => void;
+    onSubmit: (details: { billingProfile: BillingProfile; businessName: string; businessIndustry: string; timeZone?: string; businessDayEndTime?: string; selfReportedDiscoveryChannel?: SelfReportedDiscoveryChannel }) => void;
     businessType: PlanType;
+    currency: Currency;
+    collectBusinessDetails?: boolean;
 }
 
-const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onClose, onSubmit, businessType }) => {
+const OnboardingModal: React.FC<OnboardingModalProps> = ({
+    isOpen,
+    onClose,
+    onSubmit,
+    businessType,
+    currency,
+    collectBusinessDetails = true,
+}) => {
     const t = useTranslations('Website');
     const { toast } = useToast();
     const [businessName, setBusinessName] = useState('');
     const [businessIndustry, setBusinessIndustry] = useState('');
     const [timeZone, setTimeZone] = useState('');
     const [selfReportedDiscoveryChannel, setSelfReportedDiscoveryChannel] = useState<SelfReportedDiscoveryChannel | ''>('');
+    const [billingProfile, setBillingProfile] = useState<BillingProfile>({
+        legalName: '', email: '', countryCode: currency === 'INR' ? 'IN' : 'US', addressLine1: '',
+        city: '', region: '', indianStateCode: currency === 'INR' ? '' : undefined, postalCode: '',
+    });
     const { data: session } = useSession();
 
     useEffect(() => {
@@ -42,21 +58,46 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onClose, onSu
         }
     }, []);
 
+    useEffect(() => {
+        setBillingProfile((current) => ({
+            ...current,
+            countryCode: currency === 'INR' ? 'IN' : (current.countryCode === 'IN' ? 'US' : current.countryCode),
+            email: current.email || session?.user?.email || '',
+            indianStateCode: currency === 'INR' ? current.indianStateCode || '' : undefined,
+        }));
+    }, [currency, session?.user?.email]);
+
     const handleSubmit = () => {
         const normalizedName = businessName.trim();
         const normalizedIndustry = businessIndustry.trim();
-        if (!normalizedName) {
+        if (collectBusinessDetails && !normalizedName) {
             toast({ variant: 'destructive', title: t('Pricing.setupErrorTitle'), description: t('Pricing.businessNameRequired') });
             return;
         }
-        if (!normalizedIndustry) {
+        if (collectBusinessDetails && !normalizedIndustry) {
             toast({ variant: 'destructive', title: t('Pricing.setupErrorTitle'), description: t('Pricing.businessIndustryRequired') });
             return;
         }
 
+        let normalizedBillingProfile: BillingProfile;
+        try {
+            normalizedBillingProfile = normalizeBillingProfile({
+                ...billingProfile,
+                legalName: billingProfile.legalName || normalizedName || session?.user?.name || '',
+            });
+        } catch {
+            toast({
+                variant: 'destructive',
+                title: t('Pricing.setupErrorTitle'),
+                description: t('Pricing.billingDetailsRequired'),
+            });
+            return;
+        }
+
         onSubmit({
-            businessName: normalizedName,
-            businessIndustry: normalizedIndustry,
+            billingProfile: normalizedBillingProfile,
+            businessName: normalizedName || normalizedBillingProfile.legalName,
+            businessIndustry: normalizedIndustry || 'Existing business',
             timeZone,
             businessDayEndTime: resolveBusinessDayEndTime(normalizedIndustry),
             selfReportedDiscoveryChannel: selfReportedDiscoveryChannel || undefined,
@@ -70,7 +111,7 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onClose, onSu
                 if (!open) onClose();
             }}
         >
-            <DialogContent className="max-w-lg">
+            <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
                 <DialogHeader className="text-left">
                     <div
                         aria-hidden="true"
@@ -78,12 +119,16 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onClose, onSu
                     >
                         <LuBuilding2 size={22} />
                     </div>
-                    <DialogTitle className="text-2xl font-bold">{t('Pricing.setupModalTitle')}</DialogTitle>
-                    <DialogDescription>{t('Pricing.setupModalBody')}</DialogDescription>
+                    <DialogTitle className="text-2xl font-bold">
+                        {collectBusinessDetails ? t('Pricing.setupModalTitle') : t('Pricing.billingDetailsTitle')}
+                    </DialogTitle>
+                    <DialogDescription>
+                        {collectBusinessDetails ? t('Pricing.setupModalBody') : t('Pricing.billingDetailsBody')}
+                    </DialogDescription>
                 </DialogHeader>
 
                 <div className="grid gap-5 py-4">
-                    <div className="grid w-full items-center gap-2">
+                    {collectBusinessDetails ? <div className="grid w-full items-center gap-2">
                         <Label htmlFor="businessName">{t('Pricing.businessNameLabel')}</Label>
                         <Input
                             id="businessName"
@@ -92,9 +137,9 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onClose, onSu
                             onChange={(event) => setBusinessName(event.target.value)}
                             placeholder={t('Pricing.businessNamePlaceholder')}
                         />
-                    </div>
+                    </div> : null}
 
-                    <div className="grid w-full items-center gap-2">
+                    {collectBusinessDetails ? <div className="grid w-full items-center gap-2">
                         <Label htmlFor="businessIndustry">{t('Pricing.businessIndustryLabel')}</Label>
                         <Select onValueChange={setBusinessIndustry} value={businessIndustry}>
                             <SelectTrigger id="businessIndustry" className="industry-dropdown w-full justify-between">
@@ -115,9 +160,9 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onClose, onSu
                                 )}
                             </SelectContent>
                         </Select>
-                    </div>
+                    </div> : null}
 
-                    {FEATURE_FLAGS.ENABLE_MENULIST_SELF_REPORTED_DISCOVERY && (
+                    {collectBusinessDetails && FEATURE_FLAGS.ENABLE_MENULIST_SELF_REPORTED_DISCOVERY && (
                         <div className="grid w-full items-center gap-2">
                             <Label htmlFor="selfReportedDiscoveryChannel">{t('Pricing.discoverySourceLabel')}</Label>
                             <Select
@@ -142,6 +187,67 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onClose, onSu
                         </div>
                     )}
 
+                    {collectBusinessDetails ? <div className="border-t pt-5">
+                        <h3 className="text-base font-semibold">{t('Pricing.billingDetailsTitle')}</h3>
+                        <p className="mt-1 text-sm text-muted-foreground">{t('Pricing.billingDetailsBody')}</p>
+                    </div> : null}
+
+                    <div className="grid gap-5 sm:grid-cols-2">
+                        <div className="grid gap-2 sm:col-span-2">
+                            <Label htmlFor="billingLegalName">{t('Pricing.billingLegalNameLabel')}</Label>
+                            <Input id="billingLegalName" autoComplete="organization" value={billingProfile.legalName} onChange={(event) => setBillingProfile((current) => ({ ...current, legalName: event.target.value }))} placeholder={businessName || t('Pricing.billingLegalNamePlaceholder')} />
+                        </div>
+                        <div className="grid gap-2">
+                            <Label htmlFor="billingEmail">{t('Pricing.billingEmailLabel')}</Label>
+                            <Input id="billingEmail" autoComplete="email" inputMode="email" value={billingProfile.email} onChange={(event) => setBillingProfile((current) => ({ ...current, email: event.target.value }))} />
+                        </div>
+                        <div className="grid gap-2">
+                            <Label htmlFor="billingCountry">{t('Pricing.billingCountryLabel')}</Label>
+                            <Select value={billingProfile.countryCode} onValueChange={(countryCode) => setBillingProfile((current) => ({ ...current, countryCode: countryCode === 'UK' ? 'GB' : countryCode }))}>
+                                <SelectTrigger id="billingCountry"><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                    {countryData.filter((country) => currency === 'INR' ? country.code === 'IN' : country.code !== 'IN').map((country) => (
+                                        <SelectItem key={country.code} value={country.code === 'UK' ? 'GB' : country.code}>{country.name}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="grid gap-2 sm:col-span-2">
+                            <Label htmlFor="billingAddressLine1">{t('Pricing.billingAddressLabel')}</Label>
+                            <Input id="billingAddressLine1" autoComplete="address-line1" value={billingProfile.addressLine1} onChange={(event) => setBillingProfile((current) => ({ ...current, addressLine1: event.target.value }))} />
+                        </div>
+                        <div className="grid gap-2 sm:col-span-2">
+                            <Label htmlFor="billingAddressLine2">{t('Pricing.billingAddress2Label')}</Label>
+                            <Input id="billingAddressLine2" autoComplete="address-line2" value={billingProfile.addressLine2 || ''} onChange={(event) => setBillingProfile((current) => ({ ...current, addressLine2: event.target.value || undefined }))} />
+                        </div>
+                        <div className="grid gap-2">
+                            <Label htmlFor="billingCity">{t('Pricing.billingCityLabel')}</Label>
+                            <Input id="billingCity" autoComplete="address-level2" value={billingProfile.city} onChange={(event) => setBillingProfile((current) => ({ ...current, city: event.target.value }))} />
+                        </div>
+                        {currency === 'INR' ? (
+                            <div className="grid gap-2">
+                                <Label htmlFor="billingState">{t('Pricing.billingStateLabel')}</Label>
+                                <Select value={billingProfile.indianStateCode || ''} onValueChange={(indianStateCode) => setBillingProfile((current) => ({ ...current, indianStateCode, region: INDIAN_GST_STATES.find((state) => state.code === indianStateCode)?.name || '' }))}>
+                                    <SelectTrigger id="billingState"><SelectValue placeholder={t('Pricing.billingStatePlaceholder')} /></SelectTrigger>
+                                    <SelectContent>{INDIAN_GST_STATES.map((state) => <SelectItem key={state.code} value={state.code}>{state.name}</SelectItem>)}</SelectContent>
+                                </Select>
+                            </div>
+                        ) : (
+                            <div className="grid gap-2">
+                                <Label htmlFor="billingRegion">{t('Pricing.billingRegionLabel')}</Label>
+                                <Input id="billingRegion" autoComplete="address-level1" value={billingProfile.region} onChange={(event) => setBillingProfile((current) => ({ ...current, region: event.target.value }))} />
+                            </div>
+                        )}
+                        <div className="grid gap-2">
+                            <Label htmlFor="billingPostalCode">{t('Pricing.billingPostalCodeLabel')}</Label>
+                            <Input id="billingPostalCode" autoComplete="postal-code" value={billingProfile.postalCode} onChange={(event) => setBillingProfile((current) => ({ ...current, postalCode: event.target.value }))} />
+                        </div>
+                        <div className="grid gap-2">
+                            <Label htmlFor="billingTaxId">{currency === 'INR' ? t('Pricing.billingGstinLabel') : t('Pricing.billingTaxIdLabel')}</Label>
+                            <Input id="billingTaxId" value={billingProfile.taxId || ''} onChange={(event) => setBillingProfile((current) => ({ ...current, taxId: event.target.value || undefined, taxIdType: event.target.value ? (currency === 'INR' ? 'GSTIN' : 'OTHER') : undefined }))} />
+                        </div>
+                    </div>
+
                     <p className="text-sm text-muted-foreground">{t('Pricing.setupModalNote')}</p>
 
                     <Button onClick={handleSubmit} className="w-full text-base" size="lg">
@@ -149,7 +255,7 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onClose, onSu
                         <LuArrowRight className="ml-2 h-5 w-5" />
                     </Button>
 
-                    <p className="text-center text-sm text-muted-foreground">
+                    {!session?.user ? <p className="text-center text-sm text-muted-foreground">
                         {t('Pricing.haveAccount')}{' '}
                         <button
                             className="cursor-pointer border-0 bg-transparent p-0 text-primary underline-offset-4 hover:underline"
@@ -158,7 +264,7 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onClose, onSu
                         >
                             {t('Pricing.signIn')}
                         </button>
-                    </p>
+                    </p> : null}
                 </div>
             </DialogContent>
         </Dialog>

@@ -55,7 +55,7 @@ MenuList starts with the style, spacing, and display options that fit the curren
 
 ## Suggest A Layout
 
-Pro and Premium accounts can select **Suggest layout** for an extra layout check. MenuList reviews the current PDF setup and recommends any safer preset, style, density, or display setting.
+Pro and Multi-location accounts can select **Suggest layout** for an extra layout check. MenuList reviews the current PDF setup and recommends any safer preset, style, density, or display setting.
 
 Review the suggestion, then select **Apply suggestion** if it looks right. The final PDF is still created from your saved MenuList menu.
 

@@ -212,6 +212,19 @@ const TEMPLATES: Record<string, TemplateFn> = {
       ),
     };
   },
+
+  BILLING_DOCUMENT_ISSUED: (m) => {
+    const documentUrl = urlValue(m.documentUrl);
+    const documentNumber = normalizeText(m.documentNumber, 'Billing document');
+    const documentTypeLabel = normalizeText(m.documentTypeLabel, 'billing document');
+    const formattedAmount = normalizeText(m.amountLabel, `${normalizeText(m.currency, 'INR')} ${normalizeText(m.amount, '0')}`);
+    return {
+      subject: `MenuList ${documentTypeLabel} ${documentNumber}`,
+      html: wrap(
+        `<h2 style="${S.h2}">Your ${escapeHtml(documentTypeLabel)} is ready</h2><p style="${S.p}">The billing document for <strong>${htmlValue(m.storeName, 'your business')}</strong> has been issued.</p><div style="${S.info}"><strong>Document:</strong> ${escapeHtml(documentNumber)}<br><strong>Amount:</strong> ${escapeHtml(formattedAmount)}</div>${documentUrl ? `<p style="margin-top:20px"><a href="${escapeHtml(documentUrl)}" style="${S.btn}">Open billing document</a></p><p style="${S.p}">Sign in to MenuList to open this private document.</p>` : `<p style="${S.p}">Open Billing in MenuList to access this private document.</p>`}`,
+      ),
+    };
+  },
 };
 
 // ================================================================

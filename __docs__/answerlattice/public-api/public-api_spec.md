@@ -51,6 +51,14 @@ This is not designed for a browser developer embedding a secret key, a generic c
 4. Reject changed payloads under a reused key.
 5. Treat signals as evidence for review, never approved truth.
 
+### Version Compatibility and Deprecation
+
+1. Keep the current major version in the URL path (`/v1`).
+2. Preserve existing v1 fields, required inputs, authentication semantics, and status-code meanings; breaking changes require a new major path and migration guide.
+3. Publish compatible optional response fields in OpenAPI before use and require consumers to ignore unknown response fields.
+4. Mark a retiring operation `deprecated` in OpenAPI, publish its replacement, migration steps, and exact sunset date, and emit `Deprecation`, `Sunset`, and successor-version `Link` headers before removal.
+5. Keep the current deprecation state explicit. No v1 operation is deprecated or scheduled for removal.
+
 ## Security and Privacy Requirements
 
 - Exact AL product, public API purpose, explicit scopes, and active workspace.

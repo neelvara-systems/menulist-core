@@ -7,6 +7,7 @@
  */
 
 import { FEATURE_FLAGS } from '@config/features';
+import { MENULIST_B2C_PLAN_IDS } from '@constant/menulistPlans';
 import { getBoundedMultiOutletStringContext, logMultiOutletFailure } from '@lib/multiOutlet/diagnostics';
 import {
     createMultiOutletStatusError,
@@ -22,6 +23,7 @@ import { DEFAULT_OUTLET_POLICY } from '@type/multiOutlet.types';
 import type { StoreDataType } from '@type/platform/store';
 import type { TenantDataType } from '@type/platform/tenant';
 import { FirestoreSubscriptionDoc } from '@type/razorpay';
+import { formatCurrency } from '@util/formatters';
 import { calculateProration, hasValidSubscriptionAccess } from '@util/razorpay';
 import { Alert, Button, Input, Modal, Space, Typography } from 'antd';
 import { useRouter } from 'next/navigation';
@@ -107,9 +109,10 @@ export default function AddOutletModal({ open, onClose, subscription }: AddOutle
     }, [onClose]);
 
     const proration = subscription ? calculateProration(subscription) : null;
+    const billingCycleLabel = subscription?.planType === 'YEAR' ? 'year' : 'month';
     const currency = subscription?.currency || 'INR';
     const isManualBilling = subscription?.billingMode === 'manual';
-    const isDirectMultiLocationPlan = !isManualBilling && subscription?.planId === 'premium';
+    const isDirectMultiLocationPlan = !isManualBilling && subscription?.planId === MENULIST_B2C_PLAN_IDS.MULTI_LOCATION;
     const activeStoreCount = (tenantDetails?.storesList || []).filter((store: any) => store?.active !== false).length || 1;
     const prepaidCapacity = Number(subscription?.quantity || 1);
     const hasManualCapacity = !isManualBilling || prepaidCapacity > activeStoreCount;
@@ -262,15 +265,15 @@ export default function AddOutletModal({ open, onClose, subscription }: AddOutle
                     autoFocus
                 />
 
-                {FEATURE_FLAGS.ENABLE_OUTLET_PRORATION_DISPLAY && proration && !isManualBilling && (
+                {FEATURE_FLAGS.ENABLE_OUTLET_PRORATION_DISPLAY && proration && isDirectMultiLocationPlan && (
                     <Alert
                         type="info"
                         showIcon
                         message="Billing Impact"
                         description={
                             <Space direction="vertical" size={2}>
-                                <Text>Prorated charge today: <Text strong>{currency} {proration.proratedAmount}</Text></Text>
-                                <Text>From next cycle: <Text strong>{currency} {proration.fullCycleAmount}/month per store</Text></Text>
+                                <Text>Estimated charge today: <Text strong>{formatCurrency(proration.proratedAmount, currency)}</Text></Text>
+                                <Text>From next cycle: <Text strong>{formatCurrency(proration.fullCycleAmount, currency)} / {billingCycleLabel} for this location</Text></Text>
                                 <Text type="secondary">{proration.daysRemaining} days remaining in current cycle</Text>
                             </Space>
                         }

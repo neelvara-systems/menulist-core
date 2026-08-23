@@ -14,7 +14,7 @@ const store = {
     currencySymbol: '₹',
     businessType: 'restaurant',
     businessCategory: 'restaurant',
-    activePlanType: ' Premium ',
+    activePlanType: ' MenuList_Multi_Location ',
     workingHours: { mon: '09:00-18:00' },
     specialHours: {
         '2026-12-25': { hours: '', label: 'Christmas Day' },
@@ -58,7 +58,7 @@ const publicStore = projectPublicClientStore(store) as Record<string, any>;
 assert.equal(publicStore.storeId, 42);
 assert.equal(publicStore.tenantId, 7);
 assert.equal(publicStore.phoneNumber, '9999999999');
-assert.equal(publicStore.activePlanType, 'premium');
+assert.equal(publicStore.activePlanType, 'menulist_multi_location');
 assert.deepEqual(publicStore.specialHours, {
     '2026-12-25': { hours: '', label: 'Christmas Day' },
 });

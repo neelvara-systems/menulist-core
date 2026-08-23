@@ -1,9 +1,13 @@
 'use client'
 
 import { AIEnhancementPack, Currency, Plan } from '@data/common';
+import { MENULIST_B2C_PLAN_IDS } from '@constant/menulistPlans';
 import { isFeatureEnabled } from '@config/features';
 import { aiEnhancementPacksList, getB2BPlansList, getB2CPlansList } from '@data/PlatformPlansList';
-import { getContentCreditOutcomeExamples } from '@data/shared/contentCreditPolicy';
+import {
+    getContentCreditOutcomeExamples,
+    resolveMenuListPromotionalCreditState,
+} from '@data/shared/contentCreditPolicy';
 import { getActiveSubscriptionForStore } from '@database/subscriptions';
 import { getBillingHistoryForStore } from '@database/subscriptions/paymentTransactions';
 import { getBoundedPaymentStringContext, logPaymentFailure } from '@hook/paymentDiagnostics';
@@ -11,6 +15,10 @@ import usePaymentHandler, { isPaymentCheckoutDismissedError } from '@hook/usePay
 import { AUTH_ACCOUNT_REQUEST_POLICY, readAuthAccountResponse } from '@lib/auth/accountClientResponses';
 import { refreshFirebaseAuthClaims } from '@lib/auth/firebaseAuthSync';
 import { formatBillingHistoryEvents } from '@lib/billing/billingHistoryFormatter';
+import {
+    fetchMenuListBillingDocumentSummaries,
+    mergeMenuListBillingDocumentsIntoHistory,
+} from '@lib/billing/billingDocumentsClient';
 import { hasVerifiedSubscriptionPaymentEvidence } from '@lib/billing/subscriptionPlanEntitlement';
 import { openIsolatedBrowserUrl } from '@lib/browser/openIsolatedBrowserUrl';
 import {
@@ -74,7 +82,6 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
     const noopDispatcher: Parameters<typeof usePaymentHandler>[0] = () => undefined;
     const {
         onUpgradePlan,
-        onClickPaymentCard,
         onContinuePendingSubscriptionCheckout,
         handleTopupPurchase,
         onCancelSubscription,
@@ -113,7 +120,8 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
     const isSwitchedBillingContext = Boolean(loginStoreId && billingStoreId && loginStoreId !== billingStoreId);
     const isSignedInBillingContext = Boolean(loginStoreId && billingStoreId && loginStoreId === billingStoreId);
     const canManageSelectedSubscription = isSignedInBillingContext && !isInheritedBilling;
-    const canBuyEnhancementPacks = isSignedInBillingContext;
+    const hasEnhancementPackBillingTerms = Boolean(activeSubscription?.taxSnapshot);
+    const canBuyEnhancementPacks = isSignedInBillingContext && hasEnhancementPackBillingTerms;
 
     const currency: Currency = activeSubscription?.currency || (storeDetails?.currencyCode as Currency) || 'INR';
 
@@ -127,11 +135,15 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
         );
     const activeStoreCount = tenantStoresList.filter((store: any) => store?.active !== false).length || 1;
     const paidLocationCount = Math.max(1, Number(sub?.quantity || 1));
-    const isMultiLocationPlan = sub?.planId === 'premium';
+    const isMultiLocationPlan = sub?.planId === MENULIST_B2C_PLAN_IDS.MULTI_LOCATION;
     const nextPaidLocationCount = Math.max(paidLocationCount + 1, activeStoreCount + 1);
     const monthlyCredits = sub?.monthlyCredits || 0;
+    const promotionalCredits = resolveMenuListPromotionalCreditState({
+        credits: sub?.promotionalCredits,
+        expiresAt: sub?.promotionalCreditsExpireAt,
+    }).credits ?? 0;
     const topUpCredits = sub?.topUpCredits || 0;
-    const totalCredits = monthlyCredits + topUpCredits;
+    const totalCredits = monthlyCredits + promotionalCredits + topUpCredits;
     const canPauseSubscriptions = isFeatureEnabled('ENABLE_SUBSCRIPTION_PAUSE');
     const buildMobileBillingPaymentLogContext = (flow: string, metadata: Record<string, unknown> = {}) => ({
         surface: 'mobile_billing',
@@ -233,12 +245,15 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
             Toast.show({ content: 'This client is on a prepaid offline plan. Renew or change it through the reseller flow.', duration: 3000 });
             return;
         }
+        if (!sub) {
+            setShowPlans(false);
+            router.push('/pricing');
+            return;
+        }
         setShowPlans(false);
         setIsLoading(true);
         try {
-            const paymentResponse = sub
-                ? await onUpgradePlan(sub, plan, currency)
-                : await onClickPaymentCard(plan, currency, () => undefined);
+            const paymentResponse = await onUpgradePlan(sub, plan, currency);
             if (billingScopeKeyRef.current !== mutationScopeKey) return;
             if (paymentResponse?.activationStatus === 'processing') {
                 Toast.show({ content: 'Payment received. Subscription activation is being confirmed.', duration: 3000 });
@@ -455,13 +470,16 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
         const requestScopeKey = billingScopeKey;
         try {
             const historyStoreId = Number(sub?.storeId || billingStoreId || session?.user?.storeId);
-            const raw = await getBillingHistoryForStore(session?.user?.tenantId, historyStoreId);
+            const [raw, billingDocuments] = await Promise.all([
+                getBillingHistoryForStore(session?.user?.tenantId, historyStoreId),
+                fetchMenuListBillingDocumentSummaries().catch(() => []),
+            ]);
             if (
                 billingHistoryRequestSequenceRef.current !== requestSequence
                 || billingScopeKeyRef.current !== requestScopeKey
             ) return;
             const formatted = formatBillingHistoryEvents(raw);
-            setBillingHistory(formatted);
+            setBillingHistory(mergeMenuListBillingDocumentsIntoHistory(formatted, billingDocuments));
             setShowHistory(true);
         } catch (err) {
             if (
@@ -600,6 +618,17 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
                     </Card>
                 ) : null}
 
+                {sub && isSignedInBillingContext && !hasEnhancementPackBillingTerms ? (
+                    <Card>
+                        <Flex gap={6} vertical>
+                            <Text strong>Billing details are required for enhancement packs.</Text>
+                            <Text type="secondary">
+                                Your current subscription does not include the tax details needed for a separate pack payment. Contact billing support before buying a pack.
+                            </Text>
+                        </Flex>
+                    </Card>
+                ) : null}
+
                 {(isLoading || activeSubscriptionLoading) ? (
                     <Card>
                         <Flex align="center" gap={8} justify="center">
@@ -651,9 +680,16 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
                                             : <Tag color={totalCredits > 0 ? 'success' : 'warning'}>{totalCredits > 0 ? 'Available' : 'Paused'}</Tag>}
                                     />
                                     <List.Item
-                                        title={<Text>Pack balance</Text>}
-                                        extra={<Text>{topUpCredits}</Text>}
+                                        title={<Text>Plan balance</Text>}
+                                        extra={<Text>{monthlyCredits}</Text>}
                                     />
+                                    {promotionalCredits > 0 ? (
+                                        <List.Item
+                                            title={<Text>Promotional balance</Text>}
+                                            extra={<Text>{promotionalCredits}</Text>}
+                                        />
+                                    ) : null}
+                                    <List.Item title={<Text>Pack balance</Text>} extra={<Text>{topUpCredits}</Text>} />
                                 </List>
                             </Card>
 
@@ -738,7 +774,7 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
                             <Flex gap={8} wrap>
                                 {sub.status === 'active' ? (
                                     <>
-                                        {canManageSelectedSubscription && !isManualBilling && sub.planId !== 'premium' ? (
+                                        {canManageSelectedSubscription && !isManualBilling && sub.planId !== MENULIST_B2C_PLAN_IDS.MULTI_LOCATION ? (
                                             <Button color="primary" onClick={() => setShowPlans(true)} size="small">
                                                 <Flex align="center" gap={6}>
                                                     <LuZap size={14} />
@@ -811,7 +847,7 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
                             <LuCreditCard color={token.colorTextTertiary} size={36} />
                             <Text type="secondary">{t('noActiveSubscription2')}</Text>
                             {canManageSelectedSubscription ? (
-                                <Button color="primary" onClick={() => setShowPlans(true)} size="large">
+                                <Button color="primary" onClick={() => router.push('/pricing')} size="large">
                                     <Flex align="center" gap={6}>
                                         <LuZap size={14} />
                                         <Text>{t('chooseAPlan')}</Text>
@@ -837,9 +873,15 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
                             <Text type="secondary">{t('aiIncludesDesc')}</Text>
                             <Card size="small" style={{ backgroundColor: token.colorFillQuaternary }}>
                                 <Flex align="center" justify="space-between">
-                                    <Text type="secondary">Plan enhancements</Text>
-                                    <Text strong>{totalCredits > 0 ? 'Available' : 'Paused'}</Text>
+                                    <Text type="secondary">Plan balance</Text>
+                                    <Text strong>{monthlyCredits} credits</Text>
                                 </Flex>
+                                {promotionalCredits > 0 ? (
+                                    <Flex align="center" justify="space-between" style={{ marginTop: 8 }}>
+                                        <Text type="secondary">Promotional balance</Text>
+                                        <Text strong>{promotionalCredits} credits</Text>
+                                    </Flex>
+                                ) : null}
                                 <Flex align="center" justify="space-between" style={{ marginTop: 8 }}>
                                     <Text type="secondary">Pack balance</Text>
                                     <Text strong>{topUpCredits} credits</Text>
@@ -1054,9 +1096,9 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
                                                         ? `+${item.credits || 0} credits`
                                                         : formatCurrency(item.amount, item.currency)}
                                                 </Text>
-                                                {item.invoiceUrl ? (
+                                                {item.billingDocumentUrl || item.invoiceUrl ? (
                                                     <Button
-                                                        onClick={() => handleOpenExternalBillingLink(item.invoiceUrl, 'invoice', {
+                                                        onClick={() => handleOpenExternalBillingLink(item.billingDocumentUrl || item.invoiceUrl, 'invoice', {
                                                             ...getBoundedPaymentStringContext('billingHistoryItemId', item.id),
                                                             ...getBoundedPaymentStringContext('billingHistoryItemType', item.type),
                                                             ...getBoundedPaymentStringContext('invoiceStatus', item.status),

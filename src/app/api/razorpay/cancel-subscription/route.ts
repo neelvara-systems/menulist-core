@@ -7,11 +7,13 @@ import {
 } from "@lib/billing/cancellationReasons";
 import {
     applyProductSubscriptionStatusTransition,
+    freezeMenuListPurchasedCreditsForCancellation,
     getDirectActiveProductSubscriptionForStore,
     getProductSubscriptionById,
     resolveBillingScopeFromSession,
     safeSyncProductSubscriptionEntitlementFromSubscription,
 } from "@lib/billing/productBillingServer";
+import { PRODUCT_IDS } from '@constant/product';
 import {
     getBoundedRazorpaySecurityContext,
     getBoundedRazorpayStringContext,
@@ -238,6 +240,13 @@ export const POST = withAuth(async (request, session) => {
                 return NextResponse.json({ error: "Subscription state changed while cancelling. Please refresh and try again." }, { status: 409 });
             }
             const transitionedSubscription = statusApplication.subscription;
+            if (productId === PRODUCT_IDS.MENULIST) {
+                await freezeMenuListPurchasedCreditsForCancellation({
+                    subscriptionId: internalSubscriptionId,
+                    tenantId: Number(tenantId),
+                    storeId: Number(storeId),
+                });
+            }
             await safeSyncProductSubscriptionEntitlementFromSubscription(
                 productId,
                 transitionedSubscription,

@@ -555,12 +555,12 @@ assertCheck(
         && !growthOSServerContext.includes("params.session.sId"),
     "GrowthOS shared server context does not select raw session scope aliases",
 );
-assertCheck(entitlement.allowed === false && entitlement.reason === "not_paid", "enabled GrowthOS denies stores without Pro or Premium");
+assertCheck(entitlement.allowed === false && entitlement.reason === "not_paid", "enabled GrowthOS denies stores without Pro or Multi-location");
 withGrowthOSFlags({
     ENABLE_GROWTHOS_ADDON: false,
 }, () => {
     const disabled = evaluateGrowthOSEntitlement({
-        activeSubscription: makeSubscription("pro"),
+        activeSubscription: makeSubscription("menulist_pro"),
         storeDetails: storeData as any,
         storeId: storeData.storeId,
     });
@@ -569,40 +569,40 @@ withGrowthOSFlags({
 withGrowthOSFlags({
     ENABLE_GROWTHOS_ADDON: true,
     GROWTHOS_ADDON_ACCESS: "paid",
-    GROWTHOS_PAID_PLAN_IDS: ["pro", "premium"],
+    GROWTHOS_PAID_PLAN_IDS: ["menulist_pro", "menulist_multi_location"],
 }, () => {
     const starter = evaluateGrowthOSEntitlement({
-        activeSubscription: makeSubscription("starter"),
+        activeSubscription: makeSubscription("menulist_official"),
         storeDetails: { ...(storeData as any), growthosEntitlement: true },
         storeId: storeData.storeId,
     });
     const pro = evaluateGrowthOSEntitlement({
-        activeSubscription: makeSubscription("pro"),
+        activeSubscription: makeSubscription("menulist_pro"),
         storeDetails: storeData as any,
         storeId: storeData.storeId,
     });
     const premium = evaluateGrowthOSEntitlement({
-        activeSubscription: makeSubscription("premium"),
+        activeSubscription: makeSubscription("menulist_multi_location"),
         storeDetails: storeData as any,
         storeId: storeData.storeId,
     });
     const expiredPro = evaluateGrowthOSEntitlement({
-        activeSubscription: makeSubscription("pro", "expired"),
+        activeSubscription: makeSubscription("menulist_pro", "expired"),
         storeDetails: storeData as any,
         storeId: storeData.storeId,
     });
-    assertCheck(starter.allowed === false && starter.reason === "not_paid", "GrowthOS denies starter even with explicit add-on flags");
+    assertCheck(starter.allowed === false && starter.reason === "not_paid", "GrowthOS denies Official even with explicit add-on flags");
     assertCheck(pro.allowed === true, "GrowthOS paid gate allows active Pro plan");
-    assertCheck(premium.allowed === true, "GrowthOS paid gate allows active Premium plan");
+    assertCheck(premium.allowed === true, "GrowthOS paid gate allows active Multi-location plan");
     assertCheck(expiredPro.allowed === false && expiredPro.reason === "not_paid", "GrowthOS paid gate denies inactive Pro subscription");
     const foreignTenantPro = evaluateGrowthOSEntitlement({
-        activeSubscription: makeSubscription("pro", "active", 999),
+        activeSubscription: makeSubscription("menulist_pro", "active", 999),
         storeDetails: storeData as any,
         storeId: storeData.storeId,
         tenantId: storeData.tenantId,
     });
     const answerlatticePro = evaluateGrowthOSEntitlement({
-        activeSubscription: { ...makeSubscription("pro"), pId: "AL", productId: "AL" },
+        activeSubscription: { ...makeSubscription("menulist_pro"), pId: "AL", productId: "AL" },
         storeDetails: storeData as any,
         storeId: storeData.storeId,
         tenantId: storeData.tenantId,
@@ -613,25 +613,25 @@ withGrowthOSFlags({
 withGrowthOSFlags({
     ENABLE_GROWTHOS_ADDON: true,
     GROWTHOS_ADDON_ACCESS: "pilot",
-    GROWTHOS_PAID_PLAN_IDS: ["pro", "premium"],
+    GROWTHOS_PAID_PLAN_IDS: ["menulist_pro", "menulist_multi_location"],
     GROWTHOS_PILOT_STORE_IDS: [storeData.storeId],
 }, () => {
     const pilotWithoutPaidPlan = evaluateGrowthOSEntitlement({
-        activeSubscription: makeSubscription("starter"),
+        activeSubscription: makeSubscription("menulist_official"),
         storeDetails: storeData as any,
         storeId: storeData.storeId,
     });
     const pilotWithPaidPlan = evaluateGrowthOSEntitlement({
-        activeSubscription: makeSubscription("pro"),
+        activeSubscription: makeSubscription("menulist_pro"),
         storeDetails: storeData as any,
         storeId: storeData.storeId,
     });
     const paidPlanOutsidePilot = evaluateGrowthOSEntitlement({
-        activeSubscription: makeSubscription("pro"),
+        activeSubscription: makeSubscription("menulist_pro"),
         storeDetails: storeData as any,
         storeId: "not-in-pilot",
     });
-    assertCheck(pilotWithoutPaidPlan.allowed === false && pilotWithoutPaidPlan.reason === "not_paid", "GrowthOS pilot gate still requires Pro or Premium");
+    assertCheck(pilotWithoutPaidPlan.allowed === false && pilotWithoutPaidPlan.reason === "not_paid", "GrowthOS pilot gate still requires Pro or Multi-location");
     assertCheck(pilotWithPaidPlan.allowed === true, "GrowthOS pilot gate allows listed Pro store");
     assertCheck(paidPlanOutsidePilot.allowed === false && paidPlanOutsidePilot.reason === "not_pilot_store", "GrowthOS pilot gate blocks paid stores outside allowlist");
 });

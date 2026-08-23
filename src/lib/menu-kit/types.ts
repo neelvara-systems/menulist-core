@@ -18,7 +18,7 @@ export interface MenuKitInput {
     lastPublishedAt?: Date;    // For "Updated on" footer
     businessType?: string;     // Store businessType for category-aware labels
     businessCategory?: string; // Broad category when businessType is generic
-    activePlanType?: string | null; // Premium hides MenuList attribution; missing/non-premium keeps it visible
+    activePlanType?: string | null; // Multi-location hides MenuList attribution; other or missing plan IDs keep it visible
     locale?: string;           // BCP 47 locale (e.g., 'en-US', 'hi-IN') for surface copy translation
     templateFamilyId?: string; // Printable Asset Templates style family
 }

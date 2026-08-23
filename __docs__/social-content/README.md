@@ -94,7 +94,7 @@ Decision:
 - Keep complete/skip/download/copy paths for already-prepared items.
 - Do not ask owners to generate weak one-off actions from Today.
 - Delete, rather than flag, the retired generator path so no hidden endpoint, helper, or old campaign engine remains.
-- GrowthOS / `Today's Sales Pack` owns new generated action creation for Pro/Premium stores.
+- GrowthOS / `Today's Sales Pack` owns new generated action creation for Pro/Multi-location stores.
 
 ## May 31, 2026 Addendum
 

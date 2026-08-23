@@ -158,8 +158,8 @@
 
 | ID | Scenario | Expected result |
 | --- | --- | --- |
-| OR-REWARD-001 | Referrer top-up starts 25 | Ends 125. |
-| OR-REWARD-002 | Referred top-up starts 10 | Ends 60. |
+| OR-REWARD-001 | Referrer promotional balance starts 25 | Ends 125 with a valid expiry. |
+| OR-REWARD-002 | Referred promotional balance starts 10 | Ends 60 with a valid expiry. |
 | OR-REWARD-003 | Either wallet document missing | Neither balance changes. |
 | OR-REWARD-004 | One write fails | Entire transaction rolls back. |
 | OR-REWARD-005 | Concurrent settlement attempts | One issue ID and one reward pair. |
@@ -167,7 +167,7 @@
 | OR-REWARD-007 | `topups` purchase records | No reward purchase record created; two `reward_credit` billing-ledger rows are created instead. |
 | OR-REWARD-008 | AI operations | No operation recorded at issue. |
 | OR-REWARD-009 | Before/after audit | Matches committed balances and fixed amounts. |
-| OR-REWARD-010 | Post-issue cancellation/refund/chargeback | No top-up decrement, negative balance, or purchased-credit clawback. |
+| OR-REWARD-010 | Post-issue cancellation/refund/chargeback | No negative balance or purchased-credit mutation. Promotional expiry remains authoritative. |
 | OR-REWARD-011 | Current plan is an approved replacement wallet | Reward writes to current wallet and records subscription ID. |
 | OR-REWARD-012 | Prior issued record after another paid event | No write. |
 | OR-REWARD-013 | Successful reward settlement | Referrer and referred ledger rows commit atomically with both balances and referral state. |
@@ -239,7 +239,7 @@
 `verify:owner-referral` must fail when:
 
 - reward values differ from 100/50;
-- reward destination is not `topUpCredits`;
+- reward destination is not `promotionalCredits`;
 - monthly credit fields appear in reward writes;
 - any reward-cap, retention, distribution, live-source, qualification, deadline, expiry, or scheduler constant/path appears;
 - `firstPaymentDueAt`, `qualificationDueAt`, `nextEvaluationAt`, or `ownerReferralDistributionTrackingUntil` appears;

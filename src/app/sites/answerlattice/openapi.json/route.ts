@@ -31,14 +31,26 @@ const specification = {
     openapi: '3.1.0',
     info: {
         title: 'AnswerLattice Public API v1',
-        version: '1.1.0',
-        description: 'Rollout-gated, server-side distribution of governed answers, public entity identifiers, and review signals. The API is disabled by default and is not a self-serve public entitlement.',
+        version: '1.3.0',
+        description: 'Rollout-gated, server-side distribution of governed answers, public entity identifiers, and review signals. The API is disabled by default and is not a self-serve public entitlement. Existing v1 fields, required inputs, authentication semantics, and status-code meanings stay compatible inside v1; breaking changes require a new major path.',
+        'x-versioning-policy': {
+            currentMajor: 'v1',
+            compatibleChanges: 'Optional response fields may be added after publication in this OpenAPI document; consumers should ignore unknown response fields.',
+            breakingChanges: 'Removing, renaming, retyping, or restricting an existing contract requires a new major URL such as /v2 and a migration guide.',
+            deprecation: 'Before retirement, the operation is marked deprecated, developer docs publish the replacement, migration steps, and exact sunset date, and responses emit Deprecation, Sunset, and successor-version Link headers.',
+            currentDeprecations: [],
+        },
     },
     servers: [{ url: 'https://answerlattice.com' }],
+    externalDocs: {
+        description: 'AnswerLattice Public API versioning and deprecation policy',
+        url: 'https://answerlattice.com/developers#public-api-versioning',
+    },
     paths: {
         '/api/answerlattice/public/v1/answers': {
             post: {
                 operationId: 'retrieveGovernedAnswer',
+                deprecated: false,
                 summary: 'Retrieve an applicable governed answer',
                 description: 'Returns an approved canonical answer or an explicit abstention, clarification, and bounded fallback reason. It does not generate a replacement answer.',
                 security: [{ answerlatticeApiKey: [] }],
@@ -67,6 +79,7 @@ const specification = {
         '/api/answerlattice/public/v1/entities': {
             get: {
                 operationId: 'listGovernedEntities',
+                deprecated: false,
                 summary: 'List active or beta public ontology entities',
                 description: 'Returns a bounded, deterministically ordered entity projection. A true truncated field means the caller must narrow the query.',
                 security: [{ answerlatticeApiKey: [] }],
@@ -93,6 +106,7 @@ const specification = {
         '/api/answerlattice/public/v1/signals': {
             post: {
                 operationId: 'submitGovernanceSignal',
+                deprecated: false,
                 summary: 'Submit bounded support-friction evidence',
                 description: 'Records allowlisted evidence for human-governed review. It never changes or publishes a canonical answer directly.',
                 security: [{ answerlatticeApiKey: [] }],

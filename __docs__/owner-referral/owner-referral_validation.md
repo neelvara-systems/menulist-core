@@ -84,6 +84,7 @@ The archived ChatGPT feedback audit remains preserved but no longer governs rewa
 | Check | Result |
 | --- | --- |
 | Shared rate source | `src/data/shared/contentCreditPolicy.ts` defines public-safe operation rates; `src/constants/AI/unitCosts.ts` consumes the same values. |
+| Expiry-safe reward accumulation | `resolveMenuListPromotionalCreditState()` excludes an expired stored balance before a new reward is added; emulator coverage proves only the new reward remains. |
 | Referral examples | 100 credits resolves to 20 generated images or 100 description rewrites; 50 resolves to 10 or 50. Runtime assertions cover both. |
 | Pack parity | Website pricing, desktop Billing, and mobile Billing show 250 credits and examples of 50 generated images or 250 description rewrites. |
 | Owner status | Protected API, parser, desktop, mobile, locales, tests, and docs expose only `Their payment pending` and `Credits added`. |
@@ -162,7 +163,7 @@ The archived ChatGPT feedback audit remains preserved but no longer governs rewa
 - Firestore referral work is limited to attribution, payment settlement, pending repair, and bounded owner status.
 - The immediate issue transaction uses five reads and five writes. A normal first caller is about 11 reads total after bounded wallet/store pre-reads and the pending-referrer query.
 - No summary, project, signal, retention, cap, scheduler, or cleanup operations remain.
-- Conservative provider exposure remains up to USD 1.62 per paid referral under the current maximum image-heavy and overdraft model.
+- Conservative provider exposure remains bounded by the explicit 150-credit promotional grant and strict non-negative reservation model.
 - Because no reward cap exists, aggregate provider capacity scales linearly and requires explicit finance approval.
 
 ---

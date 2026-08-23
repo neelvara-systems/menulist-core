@@ -313,10 +313,10 @@ export interface ResellerPricingTier {
   id: string;
   planId: string; // Used in Razorpay notes + getPlanDetailsFromConstants()
   name: string;
-  displayName: string; // What client sees: always "MenuList Starter"
+  displayName: string; // What client sees: always "MenuList Official"
   monthlyPriceINR: number; // In paise
   yearlyPriceINR: number; // In paise (annual discount)
-  monthlyCredits: number; // Same as Starter plan — same product, different price
+  monthlyCredits: number; // Same as Official plan — same product, different price
   description: string;
   active: boolean;
 }
@@ -326,10 +326,10 @@ export const RESELLER_PRICING_TIERS: ResellerPricingTier[] = [
     id: "FOUNDER_400",
     planId: "reseller_founder_400", // Unique planId for Razorpay + webhook lookup
     name: "Founder Tier A",
-    displayName: "MenuList Starter", // Client sees this (not "Founder Tier A")
+    displayName: "MenuList Official", // Client sees this (not "Founder Tier A")
     monthlyPriceINR: 40000, // ₹400 in paise
     yearlyPriceINR: 480000, // ₹4,800 in paise (₹400 × 12)
-    monthlyCredits: 75, // Same as Starter
+    monthlyCredits: 75, // Same included capacity as Official
     description: "Early supporters & close network",
     active: true,
   },
@@ -337,7 +337,7 @@ export const RESELLER_PRICING_TIERS: ResellerPricingTier[] = [
     id: "FOUNDER_500",
     planId: "reseller_founder_500",
     name: "Founder Tier B",
-    displayName: "MenuList Starter",
+    displayName: "MenuList Official",
     monthlyPriceINR: 50000, // ₹500 in paise
     yearlyPriceINR: 600000, // ₹6,000 in paise (₹500 × 12)
     monthlyCredits: 75,
@@ -348,11 +348,11 @@ export const RESELLER_PRICING_TIERS: ResellerPricingTier[] = [
     id: "STANDARD",
     planId: "reseller_standard",
     name: "Standard",
-    displayName: "MenuList Starter",
-    monthlyPriceINR: 49900, // ₹499 in paise (matches public Starter)
+    displayName: "MenuList Official",
+    monthlyPriceINR: 49900, // ₹499 in paise; reseller pricing is independent of direct pricing
     yearlyPriceINR: 499000, // ₹4,990 in paise
     monthlyCredits: 75,
-    description: "Regular reseller pricing (same as public)",
+    description: "Regular reseller pricing",
     active: true,
   },
 ];

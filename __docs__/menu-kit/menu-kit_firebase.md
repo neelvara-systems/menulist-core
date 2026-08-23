@@ -13,7 +13,7 @@
 
 All generation happens client-side using browser Canvas API + jsPDF + qrcode. No Firestore reads, no Firestore writes, no Cloud Functions, and no generated Firebase Storage uploads are introduced. If a store logo URL points to Firebase Storage and is not already cached by the browser, the browser may fetch that existing image once for rendering; the feature still does not create or store any generated assets.
 
-MenuList attribution is also client-side. `src/lib/menu-kit/platformAttribution.ts` draws the MenuList logo mark, name, and `menulist.ai` domain into generated files without a network fetch, export artifact, Firestore read/write, Storage upload, Cloud Function, rule, or index. Premium attribution removal uses `src/lib/platform/menuListBranding.ts` and the already-loaded `stores/{storeId}.activePlanType`; it does not query subscriptions.
+MenuList attribution is also client-side. `src/lib/menu-kit/platformAttribution.ts` draws the MenuList logo mark, name, and `menulist.ai` domain into generated files without a network fetch, export artifact, Firestore read/write, Storage upload, Cloud Function, rule, or index. Multi-location attribution removal uses `src/lib/platform/menuListBranding.ts` and the already-loaded `stores/{storeId}.activePlanType`; it does not query subscriptions.
 
 The bundled table tent and single table/counter card now come from `src/lib/print-menu-surfaces/templates/tableTentTemplate.ts` and `src/lib/print-menu-surfaces/templates/singleTableCardTemplate.ts`. That ownership split is code organization only; both still use client-side Canvas/jsPDF/qrcode generation and add no Firebase reads, writes, Storage uploads, rules, indexes, Cloud Functions, or artifact APIs.
 
@@ -81,8 +81,8 @@ The premium logo/color treatment remains cost-safe:
 - `resolveStoreBrandColor()` reads existing store context only.
 - `resolveMenuKitBrandTokens()` runs locally in the browser.
 - Near-black QR modules, gradient accents, fitted typography, and white scan panels are derived locally from the same in-memory brand tokens.
-- `platformAttribution.ts` draws the MenuList logo/name/domain footer locally for non-Premium stores.
-- `menuListBranding.ts` hides visible attribution only for `activePlanType === "premium"` using already-loaded store context.
+- `platformAttribution.ts` draws the MenuList logo/name/domain footer locally for non-Multi-location stores.
+- `menuListBranding.ts` hides visible attribution only for `activePlanType === "menulist_multi_location"` using already-loaded store context.
 - QR/card/PDF-like image generation remains Canvas/jsPDF in memory.
 - Logo rendering uses the existing logo URL when available and does not upload rendered assets.
 - Four-module QR quiet-zone enforcement is local renderer behavior and does not add reads, writes, uploads, functions, or generated-asset storage.

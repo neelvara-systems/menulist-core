@@ -775,7 +775,8 @@ export type StoreDataType = {
 
     /**
      * Notification routing settings for lifecycle messaging.
-     * Default: primaryEmail = contactPersonEmail, channel = email.
+     * Default: every eligible owner channel. Email requires a verified real
+     * address; WhatsApp also requires a verified number and explicit consent.
      * Owners can override in Business Settings > Notifications when that surface is enabled.
      */
     notificationSettings?: {
@@ -795,7 +796,7 @@ export type StoreDataType = {
         whatsappConsentStatus?: 'granted' | 'revoked';
         whatsappConsentedAt?: string;
         whatsappConsentRevokedAt?: string;
-        whatsappConsentSource?: 'owner_settings';
+        whatsappConsentSource?: 'owner_settings' | 'website_onboarding' | 'messaging_onboarding';
         whatsappConsentPolicyVersion?: string;
         /** When owner consented to receive messages (ISO 8601) */
         consentedAt?: string;

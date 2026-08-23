@@ -32,7 +32,7 @@ Menu Card Export keeps the printable menu connected to the same menu truth used 
 
 The routed workflow adds the missing operational pieces: print preset, preview, preflight warnings, QR check, print-shop packet, and stale-file history.
 
-The no-designer workflow is intentional. MenuList first picks a business-aware print layout, density, and safe display options from the current menu, catalog, or service list. Pro/Premium layout suggestion is an extra review layer, not the baseline way to make the PDF look acceptable.
+The no-designer workflow is intentional. MenuList first picks a business-aware print layout, density, and safe display options from the current menu, catalog, or service list. Pro/Multi-location layout suggestion is an extra review layer, not the baseline way to make the PDF look acceptable.
 
 ---
 
@@ -57,7 +57,7 @@ The no-designer workflow is intentional. MenuList first picks a business-aware p
 - QR points customers to the latest menu.
 - The route shows whether an older export still matches the menu.
 - MenuList picks a safe starting layout so owners do not need to design.
-- Pro and Premium can request an extra layout check before export.
+- Pro and Multi-location can request an extra layout check before export.
 
 ---
 

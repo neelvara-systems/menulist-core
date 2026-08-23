@@ -80,7 +80,7 @@ for (const [storeId, storeInfo] of Object.entries(stores)) {
       businessCategory: "food",
       active: true,
       name: "My Restaurant",     // Optional: for display
-      activePlanType: "pro",     // Optional: denormalized billing plan for scheduler entitlements
+      activePlanType: "menulist_pro", // Optional: denormalized product-namespaced billing plan for scheduler entitlements
       menuPresence: {            // Optional: bounded distribution-presence hints only
         googleBusiness: "2026-07-03T10:30:00.000Z"
       }

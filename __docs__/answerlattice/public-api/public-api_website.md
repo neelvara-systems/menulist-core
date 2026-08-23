@@ -8,6 +8,7 @@
 - account-specific implementation material after enablement;
 - controlled developer documentation shared with an approved customer;
 - the public `/openapi.json` contract, provided it states that the API is disabled by default, account-gated, server-only, and not a self-serve entitlement;
+- a secondary `/developers#public-api-versioning` policy that states the stable v1 compatibility boundary, new-major rule for breaking changes, observable deprecation signals, and current no-deprecations state;
 - secondary architecture copy explaining that approved answers can support external server-side surfaces.
 
 ## Disallowed Placement

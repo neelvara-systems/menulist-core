@@ -1,4 +1,5 @@
 import type { SelfReportedDiscoveryChannel } from '@data/shared/selfReportedDiscovery';
+import type { BillingProfile } from '@data/shared/billingTaxPolicy';
 
 // Common tag colors used across the application
 export const antdTagColors = [
@@ -51,6 +52,7 @@ export interface PurchaseIntent {
     timeZone?: string;
     businessDayEndTime?: string;
     selfReportedDiscoveryChannel?: SelfReportedDiscoveryChannel;
+    billingProfile: BillingProfile;
 }
 
 export interface Plan {
@@ -74,9 +76,6 @@ export interface AIEnhancementPack {
     priceINR: Price;
     priceUSD: Price;
 }
-
-/** @deprecated Use AIEnhancementPack instead — kept for backward compatibility during rename */
-export type CreditPack = AIEnhancementPack;
 
 export interface Feature {
     valueLabel: string;

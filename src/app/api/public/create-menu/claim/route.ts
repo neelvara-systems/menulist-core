@@ -42,6 +42,7 @@ import {
     updateUserWithTenantStore,
 } from '@lib/onboarding/createTenantStore';
 import { STARTER_ACTIVATION_MS, STARTER_ACTIVATION_STATUS } from '@lib/onboarding/starterActivation';
+import { buildOnboardingOwnerNotificationSettings } from '@lib/notification-os/onboardingDefaults';
 import { normalizePhoneNumberForStorage } from '@lib/phone/phoneNumber';
 import { requireAnyStorePermissionForStoreData } from '@lib/permissions/server';
 import { normalizeExtractedMenuPriceTruth } from '@lib/pricing/projectPriceTruth';
@@ -633,7 +634,7 @@ export const POST = withPublicMenuClaimPrivateResponse(async (request: NextReque
                     });
                 }
             } else {
-                await assertCurrentUserAvailableForOnboardingInTransaction(
+                const onboardingUser = await assertCurrentUserAvailableForOnboardingInTransaction(
                     transaction,
                     db,
                     userId,
@@ -662,6 +663,11 @@ export const POST = withPublicMenuClaimPrivateResponse(async (request: NextReque
                     onboardingSource: 'PUBLIC_MENU_ENTRY',
                     subdomain: { preChecked: preCheckedSubdomain },
                     includeTimeSlotPresets: true,
+                    notificationSettings: buildOnboardingOwnerNotificationSettings({
+                        ...onboardingUser,
+                        email: onboardingUser.email || session.user.email,
+                        emailVerified: onboardingUser.isVerified === true,
+                    }),
                     tenantExtra: {
                         ...(growthAcquisition ? { growthAcquisition } : {}),
                         countryCode: normalizedPhone.phone ? normalizedPhone.countryCode : undefined,

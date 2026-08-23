@@ -1,7 +1,7 @@
 # GrowthOS Add-on - Implementation Validation
 
 **Date:** June 1, 2026
-**Status:** Retest, hardening, and Pro/Premium enablement validation complete
+**Status:** Retest, hardening, and Pro/Multi-location enablement validation complete
 **Feature flag state:** `ENABLE_GROWTHOS_ADDON=true`, `GROWTHOS_ADDON_ACCESS="paid"`
 
 ---
@@ -12,8 +12,8 @@ Implemented GrowthOS V1 as a MenuList add-on labelled `Growth Kits`.
 
 Included:
 
-- enabled master flag with Pro/Premium-only access
-- Pro/Premium plan gate with pilot allowlist still requiring Pro/Premium
+- enabled master flag with Pro/Multi-location-only access
+- Pro/Multi-location plan gate with pilot allowlist still requiring Pro/Multi-location
 - deterministic source facts, ranking, readiness, kit generation, and Staff Brief
 - guarded deterministic review reply from owner-pasted text
 - desktop `/growth-kits` route
@@ -42,7 +42,7 @@ Excluded by code and flag:
 npm run verify:growthos
 ```
 
-Result: passed. The dry run executed 36 GrowthOS checks covering enabled master-flag behavior, kill-switch denial, Pro/Premium entitlement denial/allowance, pilot allowlist plus plan gating, source facts, action ranking, deterministic kit outputs, unavailable-item exclusion, staff brief inclusion, staff-only preflight isolation, forbidden public claims, review reply escalation, stale hash changes, expiry handling, Today Sales Pack trigger gating, retired legacy Today generation prompts, and deferred-scope leakage.
+Result: passed. The dry run executed 36 GrowthOS checks covering enabled master-flag behavior, kill-switch denial, Pro/Multi-location entitlement denial/allowance, pilot allowlist plus plan gating, source facts, action ranking, deterministic kit outputs, unavailable-item exclusion, staff brief inclusion, staff-only preflight isolation, forbidden public claims, review reply escalation, stale hash changes, expiry handling, Today Sales Pack trigger gating, retired legacy Today generation prompts, and deferred-scope leakage.
 
 Trigger checks passed:
 
@@ -124,7 +124,7 @@ Kill-switch proof:
 
 Temporary pilot proof:
 
-- The flag was temporarily set to pilot mode for local store `15` during the Chrome run. Current access posture is enabled with paid-plan gating: Pro and Premium only.
+- The flag was temporarily set to pilot mode for local store `15` during the Chrome run. Current access posture is enabled with paid-plan gating: Pro and Multi-location only.
 - Desktop Growth Kits loaded for `Habibis Restaurant - Danysa (HQ)` and resolved the current menu as `Bar Menu`.
 - Refresh returned 200 and showed the action `Share 100% fresh fruit juices today`, with secondary actions for `Chocolate milk shake` and `Fruit and nut smoothie`.
 - Kit generation returned 200 and rendered WhatsApp, Instagram, Google update, counter prompt, QR table prompt, Staff brief, and Staff Brief Pack outputs using real item/menu facts and the public menu link.
@@ -305,9 +305,9 @@ Cost impact: security-log metadata hardening only. No Firebase reads/writes/dele
 
 ## Remaining Rollout Checks
 
-Do not widen beyond the Pro/Premium paid gate until:
+Do not widen beyond the Pro/Multi-location paid gate until:
 
-- a Pro/Premium rollout decision is selected
+- a Pro/Multi-location rollout decision is selected
 - mobile Today is browser/device-tested at iPhone width
 - stale kit behavior is tested with changed menu facts
 - support copy is reviewed for paid rollout
@@ -317,7 +317,7 @@ Do not widen beyond the Pro/Premium paid gate until:
 `npm run verify:growthos` passed 150 source assertions after adding executable
 coverage for UUID-backed kit IDs and the atomic kit-plus-summary Firestore batch.
 Scoped ESLint and diff integrity also passed. The owner response contract,
-Pro/Premium admission, deterministic Sales Pack content, export accounting, and
+Pro/Multi-location admission, deterministic Sales Pack content, export accounting, and
 Firebase operation count remain unchanged.
 
 No Firebase rules, indexes, Storage rules, or Cloud Function source changed, so

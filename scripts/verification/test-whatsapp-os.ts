@@ -27,6 +27,9 @@ assert.throws(() => assertWhatsAppOsSendRequest({
 const pendingLifecycleTemplate = getWhatsAppOsTemplateDefinition('menulist.payment_failed');
 assert.ok(pendingLifecycleTemplate);
 assert.equal(pendingLifecycleTemplate.approvalState, 'pending_approval');
+const pendingBillingDocumentTemplate = getWhatsAppOsTemplateDefinition('menulist.billing_document_issued');
+assert.ok(pendingBillingDocumentTemplate);
+assert.equal(pendingBillingDocumentTemplate.headerType, 'document');
 assert.throws(() => assertWhatsAppOsSendRequest({
     productCode: 'ML',
     messageClass: 'transactional',

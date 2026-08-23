@@ -77,7 +77,7 @@ If an explicit paid style suggestion is enabled, it must follow the existing AI 
 - Plan is checked before provider call.
 - Rate limit and safe mode run before provider call.
 - One operation is accounted only after a valid provider response.
-- Starter is blocked before provider call.
+- Official is blocked before provider call.
 
 This optional path is not required for the governed template catalog.
 

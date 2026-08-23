@@ -54,11 +54,80 @@ export type RazorpayAuthenticatedSubscriptionStateProjection = {
     totalCount: number;
 };
 
+export type RazorpayProcessedRefundProjection = {
+    amountPaise: number;
+    createdAtMillis: number;
+    currency: string;
+    paymentId: string;
+    refundId: string;
+};
+
 const asRecord = (value: unknown): Record<string, unknown> | null => (
     value && typeof value === 'object' && !Array.isArray(value)
         ? value as Record<string, unknown>
         : null
 );
+
+const asBoundedProviderId = (value: unknown, prefix: string): string | null => (
+    typeof value === 'string'
+    && value.length > prefix.length
+    && value.length <= 180
+    && value === value.trim()
+    && value.startsWith(prefix)
+    && /^[a-zA-Z0-9_]+$/.test(value)
+        ? value
+        : null
+);
+
+export const resolveRazorpayProcessedRefund = (
+    eventPayload: unknown,
+): RazorpayProcessedRefundProjection | null => {
+    const event = asRecord(eventPayload);
+    if (event?.event !== 'refund.processed') return null;
+
+    const payload = asRecord(event.payload);
+    const refund = asRecord(asRecord(payload?.refund)?.entity);
+    const payment = asRecord(asRecord(payload?.payment)?.entity);
+    if (!refund || !payment || refund.status !== 'processed') return null;
+
+    const refundId = asBoundedProviderId(refund.id, 'rfnd_');
+    const refundPaymentId = asBoundedProviderId(refund.payment_id, 'pay_');
+    const paymentId = asBoundedProviderId(payment.id, 'pay_');
+    const amountPaise = typeof refund.amount === 'number'
+        && Number.isSafeInteger(refund.amount)
+        && refund.amount > 0
+        ? refund.amount
+        : null;
+    const refundCurrency = typeof refund.currency === 'string'
+        ? refund.currency.trim().toUpperCase()
+        : '';
+    const paymentCurrency = typeof payment.currency === 'string'
+        ? payment.currency.trim().toUpperCase()
+        : '';
+    const currency = refundCurrency || paymentCurrency;
+    const createdAtMillis = resolveRazorpayRevenueOccurredAtMillis(refund.created_at);
+
+    if (
+        !refundId
+        || !refundPaymentId
+        || !paymentId
+        || refundPaymentId !== paymentId
+        || amountPaise === null
+        || !/^[A-Z]{3}$/.test(currency)
+        || (refundCurrency && paymentCurrency && refundCurrency !== paymentCurrency)
+        || createdAtMillis == null
+    ) {
+        return null;
+    }
+
+    return {
+        amountPaise,
+        createdAtMillis,
+        currency,
+        paymentId,
+        refundId,
+    };
+};
 
 export const resolveRazorpayWebhookProductDeclaration = (
     eventPayload: unknown,

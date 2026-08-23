@@ -3,6 +3,14 @@
 **Status:** Implemented source-gate coverage; provider and manual recovery smokes require a configured non-production environment
 **Date:** 2026-08-15
 
+## Billing-document channel cases (August 23, 2026)
+
+- Issuing the same deterministic tax invoice or credit note twice converges on one `BILLING_DOCUMENT_ISSUED` event.
+- `email_only`, `whatsapp_only`, and `email_and_whatsapp` select only the expected available channels.
+- WhatsApp delivery fails closed without explicit consent, a verified destination, an enabled provider, and an approved Meta template; eligible email delivery remains independent.
+- Email and WhatsApp content links only to the authenticated owner PDF route and never exposes a public billing-document URL.
+- Notification enqueue or aggregate-status update failure does not roll back or invalidate the already-issued billing document.
+
 ## Test Matrix
 
 | Area | Case | Expected result |

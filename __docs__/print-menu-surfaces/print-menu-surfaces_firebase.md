@@ -15,7 +15,7 @@ Print Menu Surfaces adds **no Firebase reads, writes, deletes, Storage uploads, 
 | Generate single table/counter card PDF | 0 | Browser Canvas + jsPDF only. |
 | Generate QR | 0 | `qrcode` runs locally in browser. |
 | Apply logo | 0 database cost | Browser may fetch existing logo URL if not cached. |
-| Apply Premium attribution rule | 0 | Uses already-loaded `activePlanType`. |
+| Apply Multi-location attribution rule | 0 | Uses already-loaded `activePlanType`. |
 | Download file | 0 | Browser Blob download. |
 | Menu Kit bundle includes print-surface PDFs | 0 | JSZip runs locally. |
 
