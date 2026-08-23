@@ -19,6 +19,7 @@ import {
     prepareAnswerlatticeProposalImpact,
     type AnswerlatticeGovernanceAccess,
 } from '../../src/lib/answerlattice/governanceServer';
+import { attemptCanonicalRetrieval } from '../../src/lib/answerlattice/canonicalRetrieval';
 import { requireAnswerlatticeFirestoreAdmin } from '../../src/lib/firebase/answerlatticeFirebaseAdmin';
 import { Timestamp } from 'firebase-admin/firestore';
 
@@ -208,6 +209,119 @@ async function run(): Promise<void> {
     assert.equal(answer?.validation?.confidenceScore, 1, 'proposal evidence scores must not become canonical answer confidence');
     assert.equal(answer?.validation?.validationSource, 'manual', 'human approval must remain the canonical validation authority');
     assert.equal((await createProposalRef.get()).data()?.status, 'implemented');
+
+    const billingSearchIndex = [{
+        id: 'entity_index_billing',
+        pId: 'AL' as const,
+        tId: 1,
+        sId: 101,
+        entityId: 'entity_billing',
+        canonicalName: 'Billing',
+        synonyms: ['invoice payment'],
+        normalizedTokens: ['billing', 'invoice', 'payment', 'recovery'],
+        prefixTokens: ['bil', 'inv', 'pay'],
+        weight: 1,
+    }];
+    const unrelatedShortTokenResult = await attemptCanonicalRetrieval(
+        'I cannot sign in. What should I check?',
+        {
+            tId: 1,
+            sId: 101,
+            currentVersion: 1_000_000,
+            preloadedSearchIndex: billingSearchIndex,
+        },
+    );
+    assert.equal(
+        unrelatedShortTokenResult.found,
+        false,
+        'short query tokens must not substring-match unrelated entity names',
+    );
+    assert.equal(unrelatedShortTokenResult.fallbackReason, 'no_entity_match');
+
+    const billingRetrievalResult = await attemptCanonicalRetrieval(
+        'How do I retry an invoice payment?',
+        {
+            tId: 1,
+            sId: 101,
+            currentVersion: 1_000_000,
+            context: {
+                contextVersion: 1,
+                plan: 'growth',
+                userRole: 'owner',
+                state: 'past_due',
+            },
+            preloadedSearchIndex: billingSearchIndex,
+        },
+    );
+    assert.equal(billingRetrievalResult.found, true, 'exact entity tokens must retain canonical retrieval');
+    assert.equal(billingRetrievalResult.answer?.id, createApproval.answerId);
+
+    const publishingAnswerId = 'canonical_publishing_retrieval';
+    const errorAnswerId = 'canonical_error_retrieval';
+    await Promise.all([
+        db.collection(DB_COLLECTIONS.ANSWERLATTICE_CANONICAL_ANSWERS).doc(publishingAnswerId).set({
+            ...answer,
+            title: 'Publish and share a menu',
+            scope: { entityIds: ['entity_menu_publishing'], planIds: [], roleIds: [], stateIds: [] },
+            content: {
+                structuredSummary: 'Publish the menu and share its QR code.',
+                detailedExplanation: 'Publish the reviewed menu, then open Share and download its QR code.',
+            },
+        }),
+        db.collection(DB_COLLECTIONS.ANSWERLATTICE_CANONICAL_ANSWERS).doc(errorAnswerId).set({
+            ...answer,
+            title: 'Recover a publishing error',
+            scope: { entityIds: ['entity_error_recovery'], planIds: [], roleIds: [], stateIds: [] },
+            content: {
+                structuredSummary: 'Retry a failed publishing action.',
+                detailedExplanation: 'Retry once and contact support if the publishing error continues.',
+            },
+        }),
+    ]);
+    const collisionSearchIndex = [
+        {
+            id: 'entity_index_menu_publishing',
+            pId: 'AL' as const,
+            tId: 1,
+            sId: 101,
+            entityId: 'entity_menu_publishing',
+            canonicalName: 'Menu publishing',
+            synonyms: [],
+            normalizedTokens: ['menu', 'publishing', 'sharing', 'customer'],
+            prefixTokens: ['men', 'pub', 'sha'],
+            weight: 1,
+        },
+        {
+            id: 'entity_index_error_recovery',
+            pId: 'AL' as const,
+            tId: 1,
+            sId: 101,
+            entityId: 'entity_error_recovery',
+            canonicalName: 'Error recovery',
+            synonyms: [],
+            normalizedTokens: ['error', 'recovery', 'publishing'],
+            prefixTokens: ['err', 'rec', 'pub'],
+            weight: 1,
+        },
+    ];
+    const publishingRetrievalResult = await attemptCanonicalRetrieval(
+        'How do I publish my menu and share it with customers?',
+        {
+            tId: 1,
+            sId: 101,
+            currentVersion: 1_000_000,
+            preloadedSearchIndex: collisionSearchIndex,
+        },
+    );
+    assert.equal(
+        publishingRetrievalResult.answer?.id,
+        publishingAnswerId,
+        'the strongest entity match must outrank weaker top-three answers with equal validation metadata',
+    );
+    await Promise.all([
+        db.collection(DB_COLLECTIONS.ANSWERLATTICE_CANONICAL_ANSWERS).doc(publishingAnswerId).delete(),
+        db.collection(DB_COLLECTIONS.ANSWERLATTICE_CANONICAL_ANSWERS).doc(errorAnswerId).delete(),
+    ]);
 
     assert.equal(
         (await db.collection(DB_COLLECTIONS.ANSWERLATTICE_CACHE_VERSIONS).doc(cacheVersionId).get()).data()?.version,

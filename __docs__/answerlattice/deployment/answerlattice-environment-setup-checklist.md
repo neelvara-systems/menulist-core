@@ -352,12 +352,19 @@ Stop before any mutation when one of these is true:
     `MENULIST_RAZORPAY_KEY_SECRET` in Vercel custom `qa` and Production. No key
     was created or rotated, and the inactive generic fallback rows were not
     changed.
-  - The onboarding correction is active and the quarantined attempt was resumed
-    without creating a second provider object. The managed QA workspace now
-    retains one Razorpay Test subscription in the authoritative
-    payment-pending state. Never write either credential value to source, logs,
-    shell history, or this ledger, and never fabricate paid entitlement to
-    bypass the provider Test checkout boundary.
+  - The shared Test key pair remains unchanged. On August 23, the QA webhook
+    signing secret was rotated independently and transferred without display to
+    the Vercel custom `qa` environment and both admitted Razorpay Test webhook
+    endpoints. This corrected the prior signature mismatch without changing
+    either payment credential.
+  - The failed fresh Test subscription was cancelled at the provider and only
+    its exact Firestore record was reconciled to terminal `expired` / provider
+    `cancelled` state. A new Test subscription must be created only after the
+    tracked QA deployment activates the source and secret changes; provider
+    `active`, signed webhook HTTP 200, Firestore `active`, and owner UI readback
+    are all required before certification. Never write either credential value
+    to source, logs, shell history, or this ledger, and never fabricate paid
+    entitlement to bypass the provider Test checkout boundary.
 
 ### Scoped Deploy And Setup Closure
 
@@ -374,6 +381,12 @@ Stop before any mutation when one of these is true:
     documentation link scan also passed with zero broken links. The link scan
     reported only pre-existing video-document naming warnings outside this
     setup scope.
+  - Current release-candidate evidence on August 23, 2026: the billing
+    entitlement boundary, complete Answerlattice runtime/emulator aggregate,
+    root TypeScript, repository lint, and diff integrity all passed after the
+    owner/auth, retrieval, activation, governance, and billing corrections.
+    The scoped QA Rules publication stopped before upload because the Firebase
+    CLI refresh credential expired; remote rules remained unchanged.
 - [x] `AL-QA-E02` Audit remote indexes before deploying. Resolve the historical
   `kb_articles` conflict without `--force` or remote index deletion.
 - [x] `AL-QA-E03` Deploy the dedicated rules, Storage rules, approved indexes,

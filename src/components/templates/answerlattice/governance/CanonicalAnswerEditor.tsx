@@ -1053,6 +1053,12 @@ export default function CanonicalAnswerEditor() {
                 okText="Send for review"
                 confirmLoading={creatingProposal}
                 width={isMobile ? 'calc(100vw - 24px)' : 600}
+                styles={{
+                    body: {
+                        maxHeight: isMobile ? 'calc(100dvh - 168px)' : 'calc(100vh - 220px)',
+                        overflowY: 'auto',
+                    },
+                }}
             >
                 <Form form={createForm} layout="vertical">
                     <Alert

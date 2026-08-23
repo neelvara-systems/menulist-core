@@ -446,11 +446,13 @@ export function buildAnswerlatticeActivationSummary(params: {
         buildStep({
             key: 'license',
             title: 'License active',
-            description: subscriptionStatus === 'pending'
-                ? 'Payment is pending. Keep setup moving, but resolve billing before launch.'
-                : 'Paid subscription is recorded for this workspace.',
+            description: subscriptionStatus === 'active'
+                ? 'Paid subscription is recorded for this workspace.'
+                : subscriptionStatus === 'pending'
+                    ? 'Payment is pending. Keep setup moving, but resolve billing before launch.'
+                    : 'Choose and activate a paid plan before launch.',
             status: licenseStatus,
-            route: ANSWERLATTICE_ROUTES.SETTINGS,
+            route: ANSWERLATTICE_ROUTES.BILLING,
             actionLabel: 'Check License',
             costNote: 'Read from store subscription summary; legacy fallback is capped to 5 docs.',
         }),

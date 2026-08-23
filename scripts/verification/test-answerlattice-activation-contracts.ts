@@ -167,6 +167,10 @@ const regressedSummary = buildAnswerlatticeActivationSummary({
     storeData: {},
     existingSummary: summary as unknown as Record<string, unknown>,
 });
+const missingLicenseStep = regressedSummary.steps.find((step) => step.key === 'license');
+assert.equal(missingLicenseStep?.status, 'pending');
+assert.equal(missingLicenseStep?.description, 'Choose and activate a paid plan before launch.');
+assert.equal(missingLicenseStep?.route, '/answerlattice/billing');
 assert.equal(
     regressedSummary.firstValueEvidence.knowledgeReadyObservedAt,
     summary.firstValueEvidence.knowledgeReadyObservedAt,

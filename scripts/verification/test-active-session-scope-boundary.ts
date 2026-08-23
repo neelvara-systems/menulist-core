@@ -111,7 +111,68 @@ const verifyClientSessionRefreshBoundary = async () => {
     }
 };
 
+const verifyConcurrentClientSessionBoundary = async () => {
+    const originalWindow = globalThis.window;
+    const originalFetch = globalThis.fetch;
+    let releaseFetch: (() => void) | null = null;
+    let sessionFetchCount = 0;
+    Object.defineProperty(globalThis, 'window', {
+        configurable: true,
+        value: {
+            location: {
+                hostname: 'app.menulist.ai',
+                pathname: '/answerlattice/product-surfaces',
+            },
+            localStorage: {
+                getItem: () => null,
+                removeItem: () => undefined,
+                setItem: () => undefined,
+            },
+        },
+    });
+    globalThis.fetch = async () => {
+        sessionFetchCount += 1;
+        await new Promise<void>((resolve) => {
+            releaseFetch = resolve;
+        });
+        return new Response(JSON.stringify(session), {
+            headers: { 'content-type': 'application/json' },
+            status: 200,
+        });
+    };
+
+    try {
+        clearClientSessionCache();
+        const parallelReads = [
+            getActiveSession(),
+            getActiveSession(),
+            getActiveSession(),
+        ];
+        await new Promise(resolve => setTimeout(resolve, 0));
+        assert.equal(sessionFetchCount, 1, 'parallel DAL reads must share one session request');
+        assert.ok(releaseFetch, 'the shared session request must be pending before settlement');
+        releaseFetch();
+        const settledSessions = await Promise.all(parallelReads);
+        assert.equal(settledSessions.length, 3);
+        for (const settledSession of settledSessions) {
+            assert.equal(settledSession?.uId, session.uId);
+            assert.equal(settledSession?.tId, 101);
+            assert.equal(settledSession?.sId, 202);
+        }
+        clearClientSessionCache();
+    } finally {
+        Object.defineProperty(globalThis, 'window', {
+            configurable: true,
+            value: originalWindow,
+        });
+        globalThis.fetch = originalFetch;
+    }
+};
+
 const clientSessionRefreshBoundary = verifyClientSessionRefreshBoundary();
+const concurrentClientSessionBoundary = clientSessionRefreshBoundary.then(
+    verifyConcurrentClientSessionBoundary,
+);
 
 const activeSessionSource = fs.readFileSync(
     path.resolve(process.cwd(), 'src/lib/auth/getActiveSession.ts'),
@@ -135,8 +196,13 @@ assert.match(
 );
 assert.match(
     activeSessionSource,
+    /if \(joinedGeneration !== clientSessionGeneration\)/,
+    'a caller joining an in-flight request must reject logout-invalidated settlement by generation',
+);
+assert.doesNotMatch(
+    activeSessionSource,
     /joinedGeneration !== clientSessionGeneration\s+\|\| clientSessionRequest !== joinedRequest/,
-    'a caller joining an in-flight request must reject logout-invalidated settlement',
+    'a completed shared request must not make concurrent callers look logged out after its slot is cleared',
 );
 assert.match(
     activeSessionSource,
@@ -223,6 +289,6 @@ assert.match(
     'authenticated browser cleanup must invalidate raw session memory before other tenant state',
 );
 
-clientSessionRefreshBoundary.then(() => {
+concurrentClientSessionBoundary.then(() => {
     console.log('Active session product-scope boundary tests passed.');
 });

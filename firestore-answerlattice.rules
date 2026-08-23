@@ -160,6 +160,18 @@ service cloud.firestore {
     }
 
     match /answerlattice_productSurfaces/{docId} {
+      // Surface saves use a transaction so duplicate detection and cache
+      // invalidation stay atomic. Permit only the missing-document bootstrap
+      // read for the authenticated workspace; existing reads remain data-bound.
+      allow get: if !exists(/databases/$(database)/documents/answerlattice_productSurfaces/$(docId))
+        && isAuthenticated()
+        && (
+          isPlatformAdmin()
+          || (
+            isAnswerlatticeCurrentWorkspaceProductSurfaceDocument(docId)
+            && hasAnswerlatticePermission('canManageKnowledge')
+          )
+        );
       allow read: if isAnswerlatticeScopedReadWithPermission('canManageKnowledge');
       allow create: if isAnswerlatticeScopedCreateWithPermission('canManageKnowledge')
         && isValidAnswerlatticeProductSurfaceClientCreate(request.resource.data, docId);
@@ -1631,6 +1643,19 @@ service cloud.firestore {
         && isAnswerlatticeActiveWorkspace(
           request.auth.token.get('tenantId', null),
           request.auth.token.get('storeId', null)
+        );
+    }
+
+    function isAnswerlatticeCurrentWorkspaceProductSurfaceDocument(document) {
+      return request.auth != null
+        && request.auth.token.get('tenantId', null) != null
+        && request.auth.token.get('storeId', null) != null
+        && document.matches(
+          '^'
+            + string(request.auth.token.get('tenantId', null))
+            + '_'
+            + string(request.auth.token.get('storeId', null))
+            + '_[a-z0-9][a-z0-9_-]{0,79}$'
         );
     }
 

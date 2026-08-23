@@ -328,6 +328,58 @@ function tokenizeQuery(queryText: string): string[] {
     return answerlatticeTokenize(queryText);
 }
 
+const RETRIEVAL_STOP_WORDS = new Set([
+    'a', 'an', 'and', 'are', 'as', 'at', 'be', 'can', 'did', 'do', 'does',
+    'for', 'from', 'how', 'i', 'in', 'is', 'it', 'me', 'my', 'of', 'on',
+    'or', 'should', 'that', 'the', 'this', 'to', 'was', 'were', 'what',
+    'when', 'where', 'which', 'why', 'will', 'with', 'would', 'you', 'your',
+]);
+
+const expandRetrievalToken = (token: string): string[] => {
+    const variants = new Set<string>();
+    const addVariant = (value: string) => {
+        const normalized = value.trim();
+        if (normalized.length >= 2 && !RETRIEVAL_STOP_WORDS.has(normalized)) {
+            variants.add(normalized);
+        }
+    };
+
+    const addInflectionVariants = (value: string) => {
+        addVariant(value);
+        if (value.endsWith('ies') && value.length > 4) {
+            addVariant(`${value.slice(0, -3)}y`);
+        }
+        if (value.endsWith('ing') && value.length > 5) {
+            const base = value.slice(0, -3);
+            addVariant(base);
+            addVariant(`${base}e`);
+            if (/([a-z])\1$/.test(base)) addVariant(base.slice(0, -1));
+        }
+        if (value.endsWith('ed') && value.length > 4) {
+            const base = value.slice(0, -2);
+            addVariant(base);
+            addVariant(`${base}e`);
+            if (/([a-z])\1$/.test(base)) addVariant(base.slice(0, -1));
+        }
+        if (value.endsWith('s') && !value.endsWith('ss') && value.length > 3) {
+            addVariant(value.slice(0, -1));
+        }
+    };
+
+    token.split('-').filter(Boolean).forEach(addInflectionVariants);
+    return Array.from(variants);
+};
+
+const getRetrievalTerms = (tokens: string[]): Set<string> => new Set(
+    tokens.flatMap(expandRetrievalToken),
+);
+
+const getIndexEntryRetrievalTerms = (entry: AnswerlatticeEntitySearchIndex): Set<string> => getRetrievalTerms([
+    ...answerlatticeTokenize(entry.canonicalName),
+    ...entry.synonyms.flatMap(synonym => answerlatticeTokenize(synonym)),
+    ...entry.normalizedTokens.flatMap(token => answerlatticeTokenize(token)),
+]);
+
 /**
  * Match query tokens against entity search index.
  * Returns matched entities sorted by weight (highest first).
@@ -339,38 +391,46 @@ function matchEntitiesFromIndex(
     queryTokens: string[],
     searchIndex: AnswerlatticeEntitySearchIndex[],
     contextBoosts?: Map<string, number>
-): { entityId: string; score: number }[] {
+): { entityId: string; score: number; queryScore: number }[] {
     const entityScores = new Map<string, number>();
+    const queryTerms = getRetrievalTerms(queryTokens);
+    const entryTerms = searchIndex.map(entry => getIndexEntryRetrievalTerms(entry));
+    const documentFrequency = new Map<string, number>();
+    entryTerms.forEach((terms) => {
+        terms.forEach(term => documentFrequency.set(term, (documentFrequency.get(term) || 0) + 1));
+    });
 
-    for (const entry of searchIndex) {
+    searchIndex.forEach((entry) => {
         let matchScore = 0;
+        const canonicalNameTokens = getRetrievalTerms(answerlatticeTokenize(entry.canonicalName));
+        const synonymTokens = getRetrievalTerms(entry.synonyms.flatMap(synonym => answerlatticeTokenize(synonym)));
+        const normalizedTokens = getRetrievalTerms(entry.normalizedTokens.flatMap(token => answerlatticeTokenize(token)));
 
-        for (const token of queryTokens) {
+        Array.from(queryTerms).forEach((token) => {
+            const frequency = documentFrequency.get(token) || searchIndex.length;
+            const rarityWeight = 1 + Math.log((searchIndex.length + 1) / (frequency + 1));
             // Check canonical name
-            if (entry.canonicalName.toLowerCase().includes(token)) {
-                matchScore += entry.weight * 2;
+            if (canonicalNameTokens.has(token)) {
+                matchScore += entry.weight * 2 * rarityWeight;
             }
             // Check synonyms
-            for (const synonym of entry.synonyms) {
-                if (synonym.toLowerCase().includes(token)) {
-                    matchScore += entry.weight;
-                }
+            if (synonymTokens.has(token)) {
+                matchScore += entry.weight * rarityWeight;
             }
             // Check normalized tokens
-            for (const indexToken of entry.normalizedTokens) {
-                if (indexToken === token) {
-                    matchScore += entry.weight * 1.5;
-                }
+            if (normalizedTokens.has(token)) {
+                matchScore += entry.weight * 1.5 * rarityWeight;
             }
-        }
+        });
 
         if (matchScore > 0) {
             const entityId = normalizeAnswerlatticeResolvedEntityId(entry.entityId);
-            if (!entityId) continue;
+            if (!entityId) return;
             const current = entityScores.get(entityId) || 0;
             entityScores.set(entityId, current + matchScore);
         }
-    }
+    });
+    const queryScores = new Map(entityScores);
 
     // Context-aware boost application with Guardrail 2 (query dominance)
     if (contextBoosts && contextBoosts.size > 0) {
@@ -386,9 +446,14 @@ function matchEntitiesFromIndex(
         });
     }
 
+    const strongestQueryScore = Math.max(0, ...Array.from(queryScores.values()));
     return Array.from(entityScores.entries())
-        .map(([entityId, score]) => ({ entityId, score }))
-        .sort((a, b) => b.score - a.score);
+        .map(([entityId, score]) => ({ entityId, score, queryScore: queryScores.get(entityId) || 0 }))
+        .sort((a, b) => (
+            strongestQueryScore >= STRONG_QUERY_THRESHOLD
+                ? b.queryScore - a.queryScore || b.score - a.score || a.entityId.localeCompare(b.entityId)
+                : b.score - a.score || a.entityId.localeCompare(b.entityId)
+        ));
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -467,22 +532,10 @@ function applyContextBoosts(
     // Guardrail 1: Use exact normalizedTokens match for context boosts
     const boostFromString = (value: string | undefined, weight: number) => {
         if (!value) return;
-        const tokens = answerlatticeTokenize(value);
+        const tokens = getRetrievalTerms(answerlatticeTokenize(value));
         for (const entry of searchIndex) {
-            let matched = false;
-            for (const token of tokens) {
-                // Exact match against normalizedTokens (not substring)
-                if (entry.normalizedTokens.includes(token)) {
-                    matched = true;
-                    break;
-                }
-                // Also check exact match on lowercased canonical name tokens
-                const nameTokens = answerlatticeTokenize(entry.canonicalName);
-                if (nameTokens.includes(token)) {
-                    matched = true;
-                    break;
-                }
-            }
+            const entryTerms = getIndexEntryRetrievalTerms(entry);
+            const matched = Array.from(tokens).some(token => entryTerms.has(token));
             if (matched) {
                 const entityId = normalizeAnswerlatticeResolvedEntityId(entry.entityId);
                 if (!entityId) continue;
@@ -839,9 +892,13 @@ export async function attemptCanonicalRetrieval(
             };
         }
 
-        // Direct entity matches outrank graph-neighbour answers. A drifted direct
-        // answer cannot be bypassed by a weaker clean answer from graph expansion.
-        const directlyMatchedEntityIds = new Set(matchedEntities.slice(0, 3).map(item => item.entityId));
+        // Only answers for the strongest deterministic entity match enter the
+        // specificity ranking. Version and scope still filter first, while a
+        // weaker top-three or graph-neighbour match cannot win on metadata ties.
+        const strongestEntityScore = matchedEntities[0].score;
+        const directlyMatchedEntityIds = new Set(matchedEntities
+            .filter(item => Math.abs(item.score - strongestEntityScore) < Number.EPSILON)
+            .map(item => item.entityId));
         const directlyMatchedAnswers = scopeMatchedAnswers.filter(answer => (
             answer.scope.entityIds.some(entityId => directlyMatchedEntityIds.has(entityId))
         ));

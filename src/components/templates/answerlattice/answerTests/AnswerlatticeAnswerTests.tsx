@@ -57,6 +57,7 @@ import type {
 } from '@type/answerlattice';
 import {
     Alert,
+    App,
     Button,
     Card,
     Checkbox,
@@ -306,6 +307,7 @@ type AnswerlatticeAnswerTestsProps = {
 };
 
 export default function AnswerlatticeAnswerTests({ entryMode = 'suite' }: AnswerlatticeAnswerTestsProps) {
+    const { modal } = App.useApp();
     const session = useClientAuthSession();
     const screens = Grid.useBreakpoint();
     const { token } = theme.useToken();
@@ -554,7 +556,7 @@ export default function AnswerlatticeAnswerTests({ entryMode = 'suite' }: Answer
             return;
         }
 
-        Modal.confirm({
+        modal.confirm({
             title: `Add ${starterCases.length} editable starter question${starterCases.length === 1 ? '' : 's'}?`,
             content: 'These are prompts for onboarding, billing, access, integrations, errors, and releases. Review every question before treating the suite as launch proof.',
             okText: 'Add starter questions',
@@ -565,7 +567,7 @@ export default function AnswerlatticeAnswerTests({ entryMode = 'suite' }: Answer
                 }
             },
         });
-    }, [saveCases, summary.cases]);
+    }, [modal, saveCases, summary.cases]);
 
     const performProductStarterPackGeneration = useCallback(async () => {
         if (!selectedIntakeJobId) {
@@ -632,13 +634,13 @@ export default function AnswerlatticeAnswerTests({ entryMode = 'suite' }: Answer
             void performProductStarterPackGeneration();
             return;
         }
-        Modal.confirm({
+        modal.confirm({
             title: 'Refresh the product-specific set?',
             content: 'Unchanged product inputs reuse the saved pack and preserve your test edits. If the included sources or launch context changed, one support credit prepares new review drafts and replaces only the ten product-launch tests. Custom tests stay unchanged.',
             okText: 'Refresh set',
             onOk: performProductStarterPackGeneration,
         });
-    }, [performProductStarterPackGeneration, summary.cases]);
+    }, [modal, performProductStarterPackGeneration, summary.cases]);
 
     const executeRun = useCallback(async (
         mode: AnswerlatticeAnswerTestMode,
@@ -728,13 +730,13 @@ export default function AnswerlatticeAnswerTests({ entryMode = 'suite' }: Answer
             message.warning(`Select no more than ${ANSWERLATTICE_ANSWER_TEST_MAX_FULL_RUNTIME_CASES} tests for a full-runtime run.`);
             return;
         }
-        Modal.confirm({
+        modal.confirm({
             title: 'Run the full support pipeline?',
             content: `Canonical and FAQ matches use no provider credits. This run can use at most ${selectedCount} support credit${selectedCount === 1 ? '' : 's'} if every selected case reaches an AI provider.`,
             okText: 'Run tests',
             onOk: () => executeRun('full_runtime'),
         });
-    }, [executeRun, selectedIds.length, summary.cases]);
+    }, [executeRun, modal, selectedIds.length, summary.cases]);
 
     const openReleaseCheck = useCallback(async (preferredReleaseId?: string) => {
         const normalizedPreferredReleaseId = normalizeAnswerlatticeOwnerReleaseContext(preferredReleaseId);
@@ -1618,6 +1620,12 @@ export default function AnswerlatticeAnswerTests({ entryMode = 'suite' }: Answer
                 cancelButtonProps={{ style: ACTION_BUTTON_STYLE }}
                 width={720}
                 destroyOnClose
+                styles={{
+                    body: {
+                        maxHeight: isMobile ? 'calc(100dvh - 168px)' : 'calc(100vh - 220px)',
+                        overflowY: 'auto',
+                    },
+                }}
             >
                 <Form form={form} layout="vertical" initialValues={buildFormValues()}>
                     <Form.Item name="title" label="Test name" rules={[{ required: true, message: 'Enter a short test name.' }]}>

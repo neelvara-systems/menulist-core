@@ -1925,10 +1925,15 @@ function verifyBillingEntitlementBoundary() {
     "current.status !== 'pending'",
     'currentProviderId !== pendingProviderId',
     'currentScope?.tenantId !== Number(tenantId)',
-    'currentScope.storeId !== Number(storeId)',
+    'currentScope?.storeId !== Number(storeId)',
     "return 'changed' as const;",
     "if (cleanupResult === 'changed')",
   ].forEach((token) => assertIncludes(createSubscription, token, 'pending checkout transaction-current terminal cleanup boundary'));
+  assertNotIncludes(
+    createSubscription,
+    'currentScope.storeId !== Number(storeId)',
+    'pending checkout cleanup must fail closed when the current billing scope is absent',
+  );
   assertNotIncludes(
     createSubscription,
     "await pendingDoc.ref.set({\n                status: 'expired'",

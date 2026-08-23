@@ -214,10 +214,7 @@ const getActiveSession = async () => {
             ...getBoundedAuthStringContext('hostname', window.location.hostname),
         }, { developmentOnly: true });
         const joinedSession = await joinedRequest;
-        if (
-            joinedGeneration !== clientSessionGeneration
-            || clientSessionRequest !== joinedRequest
-        ) {
+        if (joinedGeneration !== clientSessionGeneration) {
             return null;
         }
         return getCurrentClientSessionScope(joinedSession);

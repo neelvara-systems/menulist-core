@@ -93,11 +93,10 @@ function ActiveSubscriptionCard({
     const monthlyCreditUsage = monthlyCreditsAllowance > 0 ? (monthlyCredits / monthlyCreditsAllowance) * 100 : 0;
     const monthlyCreditsUsed = Math.max(0, monthlyCreditsAllowance - monthlyCredits);
     const isManualBilling = activeSubscription.billingMode === 'manual';
-    const isPaymentPending = activeSubscription.status === 'pending'
-        || (
-            activeSubscription.status === 'active'
-            && !hasVerifiedSubscriptionPaymentEvidence(activeSubscription)
-        );
+    const isPaymentPending = activeSubscription.status === 'pending';
+    const isPaymentVerificationMissing = activeSubscription.status === 'active'
+        && !hasVerifiedSubscriptionPaymentEvidence(activeSubscription);
+    const isAccessUnverified = isPaymentPending || isPaymentVerificationMissing;
     const renewsOnSeconds = activeSubscription.renewsOn?.seconds;
     const subscriptionEndSeconds = activeSubscription.subscriptionEndDate?.seconds;
     const isFinalCycle = typeof renewsOnSeconds === 'number'
@@ -239,6 +238,13 @@ function ActiveSubscriptionCard({
                 </Button>
             );
         }
+        if (isPaymentVerificationMissing) {
+            return (
+                <Button type="primary" onClick={() => router.push(supportRoute)}>
+                    Contact Billing Support
+                </Button>
+            );
+        }
         if (isManualBilling) {
             return null;
         }
@@ -291,6 +297,9 @@ function ActiveSubscriptionCard({
 
     const renderTag = () => {
         const styles = { fontSize: '14px', padding: '6px 12px', borderRadius: '12px' }
+        if (isPaymentVerificationMissing) {
+            return <Tag style={styles} icon={<LuCreditCard />} color="warning">Verification Required</Tag>;
+        }
         if (activeSubscription.status === 'active') {
             return <Tag style={styles} icon={<LuHeartPulse />} color="success">Active</Tag>;
         }
@@ -319,6 +328,14 @@ function ActiveSubscriptionCard({
                 valueStyle={{ fontSize: 14 }}
                 title="Payment Status"
                 value="Awaiting payment"
+            />
+        }
+
+        if (isPaymentVerificationMissing) {
+            return <Statistic
+                valueStyle={{ fontSize: 14 }}
+                title="Payment Status"
+                value="Verification required"
             />
         }
 
@@ -407,7 +424,7 @@ function ActiveSubscriptionCard({
                                     <Statistic
                                         valueStyle={{ fontSize: 14 }}
                                         title={isManualBilling ? "Prepaid Period" : "Current Billing Cycle"}
-                                        value={isPaymentPending ? "Starts after payment" : `${formatBillingDate(activeSubscription.cycleStartDate)} - ${formatBillingDate(activeSubscription.cycleEndDate)}`}
+                                        value={isAccessUnverified ? "Starts after verification" : `${formatBillingDate(activeSubscription.cycleStartDate)} - ${formatBillingDate(activeSubscription.cycleEndDate)}`}
                                     />
                                 </Col>
                                 <Col xs={24} sm={8}>
@@ -417,7 +434,7 @@ function ActiveSubscriptionCard({
                                     <Statistic
                                         valueStyle={{ fontSize: 14 }}
                                         title={isManualBilling ? "Access End Date" : "Subscription End Date"}
-                                        value={formatBillingDate(activeSubscription.subscriptionEndDate, isPaymentPending ? "Starts after payment" : "N/A")}
+                                        value={formatBillingDate(activeSubscription.subscriptionEndDate, isAccessUnverified ? "Starts after verification" : "N/A")}
                                     />
                                 </Col>
                             </Row>
@@ -447,13 +464,20 @@ function ActiveSubscriptionCard({
                                 </Text>
                             </Row>}
 
+                            {isPaymentVerificationMissing && <Row>
+                                <Text type="warning">
+                                    Payment verification is incomplete. Contact billing support before using paid features.
+                                </Text>
+                            </Row>}
+
                             <Row justify="space-between" align="middle">
                                 <Col>
                                     <Space align="center" style={{ display: 'flex' }}>
                                         Payment Method:
                                         {isManualBilling && <Tag color="processing">Offline one-time prepaid</Tag>}
                                         {isPaymentPending && <Tag color="processing">Razorpay checkout pending</Tag>}
-                                        {!isManualBilling && !isPaymentPending && activeSubscription.paymentMethod?.type == 'card' && <>
+                                        {isPaymentVerificationMissing && <Tag color="warning">Verification required</Tag>}
+                                        {!isManualBilling && !isAccessUnverified && activeSubscription.paymentMethod?.type == 'card' && <>
                                             <PaymentMethodIcon brand={activeSubscription.paymentMethod?.brand} />
                                             <Tag color="processing">
                                                 {activeSubscription.paymentMethod?.brand ?
@@ -461,7 +485,7 @@ function ActiveSubscriptionCard({
                                                     ''}
                                             </Tag>
                                         </>}
-                                        {!isManualBilling && !isPaymentPending && activeSubscription.paymentMethod?.type == 'upi' && <>
+                                        {!isManualBilling && !isAccessUnverified && activeSubscription.paymentMethod?.type == 'upi' && <>
                                             <Tooltip title={activeSubscription.paymentMethod?.upiTransactionId}>
                                                 <Flex gap={8}>
                                                     <Text strong>UPI</Text>
@@ -469,7 +493,7 @@ function ActiveSubscriptionCard({
                                                 </Flex>
                                             </Tooltip>
                                         </>}
-                                        {!isManualBilling && !isPaymentPending && !activeSubscription.paymentMethod?.type && <Tag>N/A</Tag>}
+                                        {!isManualBilling && !isAccessUnverified && !activeSubscription.paymentMethod?.type && <Tag>N/A</Tag>}
                                     </Space>
                                 </Col>
                                 <Col>
@@ -482,7 +506,7 @@ function ActiveSubscriptionCard({
                     </Card>
                 </Col>
 
-                {!isPaymentPending ? <Col xs={24} lg={8}>
+                {!isAccessUnverified ? <Col xs={24} lg={8}>
                     <Card style={creditCardStyle}>
                         <Space direction="vertical" style={{ width: '100%' }} size="middle">
                             <Flex justify="space-between" align="center" gap={16} style={{ width: '100%' }} >

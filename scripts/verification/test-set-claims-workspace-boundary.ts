@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { firebaseClaimsMatchTargetStore } from '../../src/lib/auth/firebaseClaimsAcknowledgement';
+import { answerlatticeClaimsMatchSessionScope } from '../../src/lib/auth/answerlatticeAuthAcknowledgement';
 import {
     resolveSetClaimsRole,
     resolveSetClaimsWorkspaceFromStore,
@@ -92,6 +93,29 @@ assert.equal(firebaseClaimsMatchTargetStore({ ...canonicalClaims, admin: 'false'
 assert.equal(firebaseClaimsMatchTargetStore(canonicalClaims, '0200'), false);
 
 console.log('Set-claims browser refresh acknowledgement tests passed.');
+
+const answerlatticeClaims = {
+    ...canonicalClaims,
+    pId: 'AL',
+};
+assert.equal(answerlatticeClaimsMatchSessionScope(answerlatticeClaims, {
+    tenantId: '100',
+    storeId: '200',
+}), true);
+assert.equal(answerlatticeClaimsMatchSessionScope({ ...answerlatticeClaims, pId: 'ML' }, {
+    tenantId: '100',
+    storeId: '200',
+}), false);
+assert.equal(answerlatticeClaimsMatchSessionScope({ ...answerlatticeClaims, tenantId: '101' }, {
+    tenantId: '100',
+    storeId: '200',
+}), false);
+assert.equal(answerlatticeClaimsMatchSessionScope({ ...answerlatticeClaims, storeIds: ['201'] }, {
+    tenantId: '100',
+    storeId: '200',
+}), false);
+
+console.log('Set-claims Answerlattice client acknowledgement tests passed.');
 
 const strictClaimState = readActiveAnswerlatticeStaffClaimState({
     active: true,

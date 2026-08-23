@@ -522,6 +522,12 @@ export default function MutationProposalReview() {
                 open={Boolean(draftProposal)}
                 onCancel={closeDraftModal}
                 destroyOnClose
+                styles={{
+                    body: {
+                        maxHeight: isMobile ? 'calc(100dvh - 168px)' : 'calc(100vh - 220px)',
+                        overflowY: 'auto',
+                    },
+                }}
                 footer={[
                     <Button key="cancel" onClick={closeDraftModal} style={ACTION_BUTTON_STYLE}>
                         Cancel

@@ -8,9 +8,11 @@ import {
 import { syncAnswerlatticeAuthWithCustomToken } from "@lib/firebase/syncAnswerlatticeAuth";
 import { createFirebaseBootstrapError, logFirebaseBootstrapFailure } from "@lib/firebase/firebaseDiagnostics";
 import { firebaseClaimsMatchTargetStore } from "@lib/auth/firebaseClaimsAcknowledgement";
+import { answerlatticeClaimsMatchSessionScope } from "@lib/auth/answerlatticeAuthAcknowledgement";
 import { resolveFirebaseAuthSessionScopeState } from "@lib/auth/firebaseAuthSessionScope";
 import { applyActiveStoreContextToSession } from "@lib/multiOutlet/activeStoreContext";
 import { readJsonResponseWithLimit } from "@lib/security/boundedResponseBody";
+import { shouldUseSharedAnswerlatticeFirebase } from "@lib/firebase/answerlatticeConfig";
 import { signInWithCustomToken, type IdTokenResult } from "firebase/auth";
 import { AUTH_BROWSER_REQUEST_POLICY } from "./browserRequestPolicy";
 
@@ -233,8 +235,6 @@ async function runFirebaseAuthSync(session: any): Promise<FirebaseAuthSyncResult
         );
     }
 
-    await syncAnswerlatticeAuthWithCustomToken(getOptionalCustomToken(data.answerlatticeCustomToken));
-
     const refreshedToken = await runFirebaseAuthNetworkOperation<IdTokenResult | undefined>(
         'current-user token result refresh',
         () => firebaseAuth.currentUser?.getIdTokenResult(true) || Promise.resolve(undefined),
@@ -244,6 +244,47 @@ async function runFirebaseAuthSync(session: any): Promise<FirebaseAuthSyncResult
             'Firebase Auth sync failed',
             'firebase_auth_claims_mismatch',
         );
+    }
+
+    if (isAnswerlatticeScope) {
+        if (shouldUseSharedAnswerlatticeFirebase) {
+            if (!answerlatticeClaimsMatchSessionScope(refreshedToken?.claims, sessionScope)) {
+                throw createFirebaseBootstrapError(
+                    'Firebase Auth sync failed',
+                    'answerlattice_shared_auth_sync_claims_mismatch',
+                );
+            }
+            return { ready: true, claims: refreshedToken?.claims };
+        }
+
+        const answerlatticeCustomToken = getOptionalCustomToken(data.answerlatticeCustomToken);
+        if (!answerlatticeCustomToken) {
+            throw createFirebaseBootstrapError(
+                'Firebase Auth sync failed',
+                'answerlattice_auth_sync_missing_token',
+            );
+        }
+        const answerlatticeAuthSynced = await syncAnswerlatticeAuthWithCustomToken(answerlatticeCustomToken);
+        if (!answerlatticeAuthSynced) {
+            throw createFirebaseBootstrapError(
+                'Firebase Auth sync failed',
+                'answerlattice_auth_sync_unavailable',
+            );
+        }
+
+        const { answerlatticeAuth } = await import('@lib/firebase/answerlatticeFirebaseClient');
+        const answerlatticeToken = await runFirebaseAuthNetworkOperation<IdTokenResult | undefined>(
+            'Answerlattice current-user token result refresh',
+            () => answerlatticeAuth?.currentUser?.getIdTokenResult(true) || Promise.resolve(undefined),
+        );
+        if (!answerlatticeClaimsMatchSessionScope(answerlatticeToken?.claims, sessionScope)) {
+            throw createFirebaseBootstrapError(
+                'Firebase Auth sync failed',
+                'answerlattice_auth_sync_claims_mismatch',
+            );
+        }
+
+        return { ready: true, claims: answerlatticeToken?.claims };
     }
 
     return { ready: true, claims: refreshedToken?.claims };
@@ -292,8 +333,6 @@ export async function refreshFirebaseAuthClaims(targetStoreId?: number | null): 
         );
     }
 
-    await syncAnswerlatticeAuthWithCustomToken(getOptionalCustomToken(data.answerlatticeCustomToken));
-
     const refreshedToken = await runFirebaseAuthNetworkOperation<IdTokenResult | undefined>(
         'current-user token result refresh',
         () => firebaseAuth.currentUser?.getIdTokenResult(true) || Promise.resolve(undefined),
@@ -304,6 +343,48 @@ export async function refreshFirebaseAuthClaims(targetStoreId?: number | null): 
             'Firebase Auth claims refresh failed',
             'firebase_auth_claims_refresh_mismatch',
         );
+    }
+
+    if (shouldUseAnswerlatticeScope()) {
+        if (shouldUseSharedAnswerlatticeFirebase) {
+            if (refreshedToken?.claims?.pId !== PRODUCT_IDS.ANSWERLATTICE) {
+                throw createFirebaseBootstrapError(
+                    'Firebase Auth claims refresh failed',
+                    'answerlattice_shared_auth_claims_refresh_mismatch',
+                );
+            }
+            return { ready: true, claims: refreshedToken?.claims };
+        }
+
+        const answerlatticeCustomToken = getOptionalCustomToken(data.answerlatticeCustomToken);
+        if (!answerlatticeCustomToken) {
+            throw createFirebaseBootstrapError(
+                'Firebase Auth claims refresh failed',
+                'answerlattice_auth_claims_refresh_missing_token',
+            );
+        }
+        const answerlatticeAuthSynced = await syncAnswerlatticeAuthWithCustomToken(answerlatticeCustomToken);
+        if (!answerlatticeAuthSynced) {
+            throw createFirebaseBootstrapError(
+                'Firebase Auth claims refresh failed',
+                'answerlattice_auth_claims_refresh_unavailable',
+            );
+        }
+        const { answerlatticeAuth } = await import('@lib/firebase/answerlatticeFirebaseClient');
+        const answerlatticeToken = await runFirebaseAuthNetworkOperation<IdTokenResult | undefined>(
+            'Answerlattice current-user token result refresh',
+            () => answerlatticeAuth?.currentUser?.getIdTokenResult(true) || Promise.resolve(undefined),
+        );
+        if (
+            answerlatticeToken?.claims?.pId !== PRODUCT_IDS.ANSWERLATTICE
+            || (targetStoreId && !firebaseClaimsMatchTargetStore(answerlatticeToken?.claims, targetStoreId))
+        ) {
+            throw createFirebaseBootstrapError(
+                'Firebase Auth claims refresh failed',
+                'answerlattice_auth_claims_refresh_mismatch',
+            );
+        }
+        return { ready: true, claims: answerlatticeToken?.claims };
     }
 
     return { ready: true, claims: refreshedToken?.claims };

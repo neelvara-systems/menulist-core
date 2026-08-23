@@ -1499,7 +1499,30 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
 
     if (!queryVector) {
         await ensureAiProviderAllowed();
-        const embeddingResult = await callGeminiEmbeddingWithMetadata(queryForEmbedding, { purpose: 'query' });
+        let embeddingResult: Awaited<ReturnType<typeof callGeminiEmbeddingWithMetadata>>;
+        try {
+            embeddingResult = await callGeminiEmbeddingWithMetadata(queryForEmbedding, { purpose: 'query' });
+        } catch (error) {
+            perfMetrics.embeddingGeneration = Date.now() - embeddingStart;
+            perfMetrics.total = Date.now() - perfStart;
+            await writeSearchPerfLogEntry({
+                logFileName: PERF_LOG,
+                userId: uId,
+                logType: 'EMBEDDING_PROVIDER_FALLBACK',
+                data: {
+                    ...getSearchTextLogContext(searchQuery, queryForEmbedding),
+                    ...getSearchCoreFailureLogData('embedding_provider_fallback', error),
+                    embeddingGenerationMs: perfMetrics.embeddingGeneration,
+                    totalMs: perfMetrics.total,
+                    mountContext,
+                },
+            });
+            return saveWithCanonicalMissContext({
+                ...EMPTY_RESULT,
+                escalation: await buildEmptyEscalation(),
+                imageProcessed,
+            });
+        }
         queryVector = embeddingResult.vector;
         aiProviderOperations.add('embedding_generation');
         addAiProviderTokenUsage(embeddingResult.usageMetadata);
@@ -1704,13 +1727,36 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
     const answerStart = Date.now();
 
     await ensureAiProviderAllowed();
-    const geminiAnswerResult = await callGeminiChatWithMetadata(
-        searchQuery,
-        payloadToGemini,
-        undefined,
-        conversationHistory,
-        generatedQueryFromImage
-    );
+    let geminiAnswerResult: Awaited<ReturnType<typeof callGeminiChatWithMetadata>>;
+    try {
+        geminiAnswerResult = await callGeminiChatWithMetadata(
+            searchQuery,
+            payloadToGemini,
+            undefined,
+            conversationHistory,
+            generatedQueryFromImage,
+        );
+    } catch (error) {
+        perfMetrics.answerGeneration = Date.now() - answerStart;
+        perfMetrics.total = Date.now() - perfStart;
+        await writeSearchPerfLogEntry({
+            logFileName: PERF_LOG,
+            userId: uId,
+            logType: 'ANSWER_PROVIDER_FALLBACK',
+            data: {
+                ...getSearchTextLogContext(searchQuery, queryForEmbedding),
+                ...getSearchCoreFailureLogData('answer_provider_fallback', error),
+                answerGenerationMs: perfMetrics.answerGeneration,
+                totalMs: perfMetrics.total,
+                mountContext,
+            },
+        });
+        return saveWithCanonicalMissContext({
+            ...EMPTY_RESULT,
+            escalation: await buildEmptyEscalation(),
+            imageProcessed,
+        });
+    }
     const geminiAnswer = geminiAnswerResult.text;
     aiProviderOperations.add('answer_generation');
     addAiProviderTokenUsage(geminiAnswerResult.usageMetadata);

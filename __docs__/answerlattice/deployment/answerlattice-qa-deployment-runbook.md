@@ -38,6 +38,44 @@ setup checklist for all new work.
 
 Answerlattice is running as a separate product inside the shared Next.js/Vercel codebase.
 
+## 2026-08-23 Managed QA Owner And Billing Certification
+
+The current `staging` release candidate was exercised as the single approved
+owner account against company-owned project `neelvara-answerlattice-qa` and the
+Canonica QA hosts. The pass preserved the separate Answerlattice Firebase
+boundary and did not create or rotate any Razorpay payment credential.
+
+- Fixed separate-Firebase Auth acknowledgement so readiness is accepted only
+  after the Answerlattice client has the exact `AL` product, tenant, and
+  workspace claims. Shared-mode behavior remains independently guarded.
+- Fixed active-session race handling, owner first-use answer generation,
+  proposal/editor modal scrolling, canonical retrieval specificity, activation
+  summary truth, and malformed paid-subscription presentation.
+- Fixed subscription creation to tolerate an absent optional active scope
+  without dereferencing it before the route's existing scope validation.
+- Rotated only the QA Razorpay webhook signing secret and applied the same
+  write-only value to both admitted QA webhook endpoints:
+  `https://canonica.app/api/razorpay/webhook` and
+  `https://app.menulist.digital/api/razorpay/webhook`. The shared approved Test
+  key pair was not changed.
+- Cancelled the failed fresh Test subscription in Razorpay and reconciled only
+  its exact Firestore document to terminal `expired` / provider `cancelled`
+  state. No paid entitlement was fabricated.
+- `npm run verify:billing-entitlement-boundary`, the complete
+  `npm run verify:answerlattice-runtime-truth` aggregate, `npx tsc --noEmit`,
+  `npm run lint`, and `git diff --check` all passed. Expected emulator
+  `PERMISSION_DENIED` results were negative authorization assertions and their
+  suites passed.
+- The scoped QA Firestore Rules publication stopped before upload because the
+  Firebase CLI refresh credential expired. Google reauthentication is open in
+  the existing signed-in Chrome profile; the active remote ruleset was not
+  changed by the failed attempt.
+
+After the tracked `staging` deployment becomes current, complete one fresh
+Razorpay Test Mode Starter-monthly checkout, verify an `active` provider and
+Firestore lifecycle plus HTTP 200 webhook delivery, and then run the owner and
+customer launch-data journeys. Never infer entitlement from checkout UI alone.
+
 | Area | QA value |
 | --- | --- |
 | Answerlattice Firebase mode | `separate` |

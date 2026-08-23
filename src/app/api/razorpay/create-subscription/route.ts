@@ -505,7 +505,7 @@ export const POST = withAuth(async (request, session) => {
                     current.status !== 'pending'
                     || currentProviderId !== pendingProviderId
                     || currentScope?.tenantId !== Number(tenantId)
-                    || currentScope.storeId !== Number(storeId)
+                    || currentScope?.storeId !== Number(storeId)
                     || current.planId !== planId
                     || current.planType !== interval
                     || current.currency !== currency

@@ -300,6 +300,7 @@ async function run(): Promise<void> {
         })));
 
         const surfaceId = '1_101_billing';
+        const transactionalSurfaceId = '1_101_menu_publish_share';
         const productSurface = scoped({
             key: 'billing',
             label: 'Billing',
@@ -319,6 +320,29 @@ async function run(): Promise<void> {
             modifiedOn: NOW,
             modifiedBy: 'Owner',
         });
+        await assertSucceeds(getDoc(
+            doc(ownerDb, 'answerlattice_productSurfaces', transactionalSurfaceId),
+        ));
+        await assertFails(getDoc(
+            doc(otherDb, 'answerlattice_productSurfaces', transactionalSurfaceId),
+        ));
+        await assertFails(getDoc(
+            doc(ownerDb, 'answerlattice_productSurfaces', '2_202_menu_publish_share'),
+        ));
+        await assertSucceeds(runTransaction(ownerDb, async transaction => {
+            const surfaceRef = doc(
+                ownerDb,
+                'answerlattice_productSurfaces',
+                transactionalSurfaceId,
+            );
+            const snapshot = await transaction.get(surfaceRef);
+            if (snapshot.exists()) throw new Error('Expected a missing product surface');
+            transaction.set(surfaceRef, {
+                ...productSurface,
+                key: 'menu_publish_share',
+                label: 'Menu publishing and sharing',
+            });
+        }));
         await assertSucceeds(setDoc(
             doc(ownerDb, 'answerlattice_productSurfaces', surfaceId),
             productSurface,

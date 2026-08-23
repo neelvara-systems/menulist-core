@@ -10146,6 +10146,10 @@ function verifyAnswerlatticeAiFailureEscalationBoundary() {
   assertIncludes(searchCore, 'ragDocuments: resolvedReferences', 'AI failure escalation evaluates only final-answer cited evidence');
   assertNotIncludes(searchCore, 'ragDocuments: documentsMatched', 'AI failure escalation candidate-only evidence authority');
   assertIncludes(searchCore, 'isKnowledgeBaseRefusal(craftedAnswer)', 'AI failure escalation treats refusal as an empty outcome');
+  assertIncludes(searchCore, "logType: 'EMBEDDING_PROVIDER_FALLBACK'", 'AI failure escalation degrades embedding provider failures to a governed empty result');
+  assertIncludes(searchCore, "logType: 'ANSWER_PROVIDER_FALLBACK'", 'AI failure escalation degrades answer provider failures to a governed empty result');
+  assertIncludes(searchCore, 'await ensureAiProviderAllowed();\n        let embeddingResult:', 'AI failure escalation preserves support-credit admission before embedding provider work');
+  assertIncludes(searchCore, 'await ensureAiProviderAllowed();\n    let geminiAnswerResult:', 'AI failure escalation preserves support-credit admission before answer provider work');
   assertNotIncludes(helpChatHandlers, 'handleEscalate', 'Help Chat browser escalation handler');
   assertNotIncludes(helpChatHandlers, "import('@database/tickets/index')", 'Help Chat browser ticket creation authority');
   assertNotIncludes(helpChatHandlers, 'ESCALATION_INTENT_PATTERNS', 'Help Chat browser explicit-intent authority');
