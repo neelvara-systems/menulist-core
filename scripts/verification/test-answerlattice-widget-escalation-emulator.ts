@@ -80,6 +80,7 @@ async function run(): Promise<void> {
     assert.ok(ticket, 'created ticket must satisfy the maintained ticket parser');
     assert.equal(ticket?.displayId, first.displayId);
     assert.equal(ticket?.source, 'ai_escalation');
+    assert.deepEqual(ticket?.platformTags, ['Issue']);
     assert.equal(ticket?.widgetEscalation?.searchHistoryId, 'history-1');
     assert.equal(ticket?.widgetEscalation?.replyEmail, 'user@example.com');
     assert.deepEqual(ticket?.escalationContext?.triggerTypes, ['explicit_user_request']);
@@ -89,9 +90,9 @@ async function run(): Promise<void> {
         undefined,
         'legacy search-history context must not be copied into a durable support ticket',
     );
-    assert.equal(
+    assert.deepEqual(
         ticket?.contextKeys,
-        undefined,
+        [],
         'transient request context must not become a durable ticket classification',
     );
     assert.equal(ticket?.messages?.length, 1);

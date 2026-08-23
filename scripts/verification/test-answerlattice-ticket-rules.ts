@@ -25,6 +25,15 @@ const message = (id: string, type: 'user' | 'system' = 'user') => ({
     sender: actor,
     timestamp: NOW,
 });
+const visitorActor = { id: 'widget-visitor-1', name: 'Widget visitor', email: 'visitor@example.com' };
+const visitorMessage = (id: string) => ({
+    id,
+    text: 'I need support.',
+    type: 'user' as const,
+    sender: visitorActor,
+    timestamp: NOW,
+    attachments: [],
+});
 const ticketDocument = (index: number) => ({
     name: `file-${index}.txt`,
     size: 1,
@@ -234,6 +243,61 @@ async function run(): Promise<void> {
         })));
         await assertSucceeds(updateDoc(ticketRef, {
             messages: [message('reply-1')],
+            modifiedBy: 'Owner',
+            modifiedOn: NOW,
+        }));
+        await testEnv.withSecurityRulesDisabled(async (context) => {
+            await setDoc(doc(context.firestore(), 'supportTickets', 'widget-escalation-ticket'), ticket({
+                uId: visitorActor.id,
+                status: 'Resolved',
+                createdBy: visitorActor.name,
+                modifiedBy: visitorActor.name,
+                statuses: [
+                    statusEntry('Open', visitorActor),
+                    statusEntry('Resolved'),
+                ],
+                messages: [
+                    visitorMessage('widget-message-1'),
+                    message('status-resolved', 'system'),
+                ],
+                source: 'ai_escalation',
+                knowledgeCandidate: true,
+                id: 'widget-escalation-ticket',
+                displayId: 'WE-WIDGET',
+                clientDetails: {
+                    storeName: '',
+                    tenantName: '',
+                    email: visitorActor.email,
+                    phone: '',
+                },
+                escalationContext: {
+                    triggerTypes: ['explicit_user_request'],
+                    query: 'I need support.',
+                    retrievalDebug: {
+                        canonicalResult: {
+                            found: false,
+                            confidence: 'low',
+                            fallbackReason: 'no_entity_match',
+                            matchedEntityIds: [],
+                        },
+                    },
+                    escalatedAt: NOW.toDate().toISOString(),
+                },
+                widgetEscalation: {
+                    searchHistoryId: 'history-1',
+                    replyEmail: visitorActor.email,
+                    detailsProvided: false,
+                },
+                traceId: 'widget-escalation-ticket',
+                requestId: 'widget-escalation-ticket',
+            }));
+        });
+        await assertSucceeds(updateDoc(doc(ownerDb, 'supportTickets', 'widget-escalation-ticket'), {
+            messages: [
+                visitorMessage('widget-message-1'),
+                message('status-resolved', 'system'),
+                message('owner-reply-1'),
+            ],
             modifiedBy: 'Owner',
             modifiedOn: NOW,
         }));

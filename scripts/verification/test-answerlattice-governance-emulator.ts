@@ -238,6 +238,28 @@ async function run(): Promise<void> {
     );
     assert.equal(unrelatedShortTokenResult.fallbackReason, 'no_entity_match');
 
+    const unrelatedContextResult = await attemptCanonicalRetrieval(
+        'Can this product teleport my restaurant to another planet?',
+        {
+            tId: 1,
+            sId: 101,
+            currentVersion: 1_000_000,
+            context: {
+                contextVersion: 1,
+                page: '/billing',
+                feature: 'billing',
+                workflow: 'payment_recovery',
+            },
+            preloadedSearchIndex: billingSearchIndex,
+        },
+    );
+    assert.equal(
+        unrelatedContextResult.found,
+        false,
+        'page context must not manufacture a canonical entity match without query evidence',
+    );
+    assert.equal(unrelatedContextResult.fallbackReason, 'no_entity_match');
+
     const billingRetrievalResult = await attemptCanonicalRetrieval(
         'How do I retry an invoice payment?',
         {

@@ -3,6 +3,8 @@
 import { createDefaultAnswerlatticeRoles } from '@constant/answerlattice/permissions';
 import { DB_COLLECTIONS } from '@constant/database';
 import { PRODUCT_IDS } from '@constant/product';
+import { buildAnswerlatticeWidgetApiStateWithNewKey } from '@lib/answerlattice/widgetKeyManager';
+import { createHash } from 'crypto';
 import { initializeApp } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import { FieldValue, getFirestore, Timestamp } from 'firebase-admin/firestore';
@@ -12,6 +14,7 @@ const answerlatticeProjectId = 'neelvara-answerlattice-qa';
 const browserAuthProjectId = 'demo-answerlattice-browser';
 const email = String(process.env.ANSWERLATTICE_LOCAL_FIXTURE_EMAIL || '').trim().toLowerCase();
 const password = String(process.env.ANSWERLATTICE_LOCAL_FIXTURE_PASSWORD || '');
+const localWidgetKey = String(process.env.ANSWERLATTICE_LOCAL_WIDGET_KEY || '').trim();
 
 if (!process.env.FIREBASE_AUTH_EMULATOR_HOST || !process.env.FIRESTORE_EMULATOR_HOST) {
     throw new Error('Firebase Auth and Firestore emulator hosts are required.');
@@ -19,12 +22,13 @@ if (!process.env.FIREBASE_AUTH_EMULATOR_HOST || !process.env.FIRESTORE_EMULATOR_
 if (!email || !password) {
     throw new Error('Fixture email and password are required.');
 }
+if (localWidgetKey && !/^al_[A-Za-z0-9_-]{20,128}$/.test(localWidgetKey)) {
+    throw new Error('Local widget key must use the Answerlattice widget-key format.');
+}
 
 const menuListApp = initializeApp({ projectId: menuListProjectId }, 'menulist-local-fixture');
 const answerlatticeApp = initializeApp({ projectId: answerlatticeProjectId }, 'answerlattice-local-fixture');
 const browserAuthApp = initializeApp({ projectId: browserAuthProjectId }, 'answerlattice-browser-auth-fixture');
-const menuListAuth = getAuth(menuListApp);
-const answerlatticeAuth = getAuth(answerlatticeApp);
 const browserAuth = getAuth(browserAuthApp);
 const menuListDb = getFirestore(menuListApp);
 const answerlatticeDb = getFirestore(answerlatticeApp);
@@ -54,6 +58,14 @@ const productAccount = {
     tId: answerlatticeTenantId,
     tenantId: answerlatticeTenantId,
 };
+const localWidgetApi = localWidgetKey
+    ? buildAnswerlatticeWidgetApiStateWithNewKey({
+        apiKey: localWidgetKey,
+        keyHash: createHash('sha256').update(localWidgetKey).digest('hex'),
+        name: 'Local browser QA key',
+        nowIso: now.toDate().toISOString(),
+    }).state
+    : undefined;
 
 async function upsertAuthUser(
     auth: ReturnType<typeof getAuth>,
@@ -95,7 +107,7 @@ async function seedFirestore(): Promise<void> {
         productId: PRODUCT_IDS.MENULIST,
         tId: menuListTenantId,
         tenantId: menuListTenantId,
-    });
+    }, { merge: true });
     menuListBatch.set(menuListDb.collection(DB_COLLECTIONS.STORES).doc(String(menuListStoreId)), {
         active: true,
         businessCategory: 'Restaurant',
@@ -123,7 +135,7 @@ async function seedFirestore(): Promise<void> {
         tId: menuListTenantId,
         tenantName: 'MenuList QA Client',
         tenantId: menuListTenantId,
-    });
+    }, { merge: true });
     menuListBatch.set(menuListDb.collection(DB_COLLECTIONS.USERS).doc(userId), {
         active: true,
         authDisabled: false,
@@ -146,7 +158,7 @@ async function seedFirestore(): Promise<void> {
         stores: [{ name: 'MenuList Raw Test Client', role: 'owner', storeId: menuListStoreId }],
         tId: menuListTenantId,
         tenantId: menuListTenantId,
-    });
+    }, { merge: true });
 
     const answerlatticeBatch = answerlatticeDb.batch();
     answerlatticeBatch.set(answerlatticeDb.collection(DB_COLLECTIONS.TENANTS).doc(String(answerlatticeTenantId)), {
@@ -158,9 +170,10 @@ async function seedFirestore(): Promise<void> {
         productId: PRODUCT_IDS.ANSWERLATTICE,
         tId: answerlatticeTenantId,
         tenantId: answerlatticeTenantId,
-    });
+    }, { merge: true });
     answerlatticeBatch.set(answerlatticeDb.collection(DB_COLLECTIONS.STORES).doc(String(answerlatticeStoreId)), {
         active: true,
+        ...(localWidgetApi ? { answerlatticeWidgetApi: localWidgetApi } : {}),
         answerlatticeRoles: createDefaultAnswerlatticeRoles({
             createdBy: userId,
             sId: answerlatticeStoreId,
@@ -182,13 +195,19 @@ async function seedFirestore(): Promise<void> {
         id: answerlatticeStoreId,
         name: 'MenuList Support Workspace',
         pId: PRODUCT_IDS.ANSWERLATTICE,
+        productUrl: 'https://app.menulist.digital',
         productId: PRODUCT_IDS.ANSWERLATTICE,
         sId: answerlatticeStoreId,
         storeId: answerlatticeStoreId,
+        supportEmail: 'support@neelvara.com',
         tId: answerlatticeTenantId,
         tenantId: answerlatticeTenantId,
         timeZone: 'Asia/Kolkata',
-    });
+        widgetAllowedOrigins: [
+            'http://localhost:3014',
+            'https://app.menulist.digital',
+        ],
+    }, { merge: true });
     answerlatticeBatch.set(answerlatticeDb.collection(DB_COLLECTIONS.USERS).doc(userId), {
         active: true,
         authDisabled: false,
@@ -211,7 +230,7 @@ async function seedFirestore(): Promise<void> {
         stores: [answerlatticeMembership],
         tId: answerlatticeTenantId,
         tenantId: answerlatticeTenantId,
-    });
+    }, { merge: true });
     answerlatticeBatch.set(answerlatticeDb.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc(subscriptionId), {
         active: true,
         billingMode: 'manual',
@@ -230,39 +249,87 @@ async function seedFirestore(): Promise<void> {
         tenantId: answerlatticeTenantId,
         updatedOn: FieldValue.serverTimestamp(),
         userId,
-    });
+    }, { merge: true });
+    answerlatticeBatch.set(
+        answerlatticeDb.collection(DB_COLLECTIONS.ANSWERLATTICE_ENTITY_SEARCH_INDEX).doc('entity_index_billing'),
+        {
+            canonicalName: 'Billing payment recovery',
+            entityId: 'entity_billing',
+            normalizedTokens: ['billing', 'invoice', 'payment', 'method', 'failed', 'renewal', 'retry'],
+            pId: PRODUCT_IDS.ANSWERLATTICE,
+            prefixTokens: ['bil', 'inv', 'pay', 'met', 'fai', 'ren', 'ret'],
+            sId: answerlatticeStoreId,
+            synonyms: ['payment method', 'failed renewal', 'billing recovery'],
+            tId: answerlatticeTenantId,
+            weight: 1,
+        },
+        { merge: true },
+    );
+    answerlatticeBatch.set(
+        answerlatticeDb.collection(DB_COLLECTIONS.ANSWERLATTICE_CANONICAL_ANSWERS).doc('canonical_billing_payment_recovery'),
+        {
+            answerType: 'explanation',
+            content: {
+                detailedExplanation: 'Workspace owners can update the payment method in Billing and retry the failed renewal. Workspace data and approved support content remain intact while payment is recovered.',
+                structuredSummary: 'Workspace owners can update the billing payment method and retry the failed renewal; existing workspace data remains intact.',
+            },
+            createdBy: userId,
+            createdOn: now,
+            governance: {
+                driftFlag: false,
+                reviewRequired: false,
+            },
+            id: 'canonical_billing_payment_recovery',
+            modifiedBy: userId,
+            modifiedOn: now,
+            pId: PRODUCT_IDS.ANSWERLATTICE,
+            productBinding: {
+                applicableVersions: { from: 1, to: null },
+                introducedInVersion: 1,
+                lastValidatedInVersion: 1,
+            },
+            sId: answerlatticeStoreId,
+            scope: {
+                entityIds: ['entity_billing'],
+                planIds: [],
+                roleIds: [],
+                stateIds: [],
+            },
+            signalMetrics: {
+                linkedChatCount: 0,
+                linkedTicketCount: 0,
+                negativeFeedbackCount: 0,
+            },
+            slug: 'billing-payment-recovery',
+            status: 'active',
+            tId: answerlatticeTenantId,
+            title: 'How to update the billing payment method',
+            validation: {
+                confidenceScore: 1,
+                lastValidatedOn: now,
+                validatedBy: userId,
+                validationSource: 'manual',
+            },
+        },
+        { merge: true },
+    );
 
     await Promise.all([menuListBatch.commit(), answerlatticeBatch.commit()]);
 }
 
 async function run(): Promise<void> {
-    await Promise.all([
-        // Browser Auth emulator requests resolve against the emulator launch project.
-        upsertAuthUser(browserAuth, {
-            pId: PRODUCT_IDS.MENULIST,
-            role: 'owner',
-            sId: menuListStoreId,
-            storeId: menuListStoreId,
-            tId: menuListTenantId,
-            tenantId: menuListTenantId,
-        }),
-        upsertAuthUser(menuListAuth, {
-            pId: PRODUCT_IDS.MENULIST,
-            role: 'owner',
-            sId: menuListStoreId,
-            storeId: menuListStoreId,
-            tId: menuListTenantId,
-            tenantId: menuListTenantId,
-        }),
-        upsertAuthUser(answerlatticeAuth, {
-            pId: PRODUCT_IDS.ANSWERLATTICE,
-            role: 'owner',
-            sId: answerlatticeStoreId,
-            storeId: answerlatticeStoreId,
-            tId: answerlatticeTenantId,
-            tenantId: answerlatticeTenantId,
-        }),
-    ]);
+    // All Firebase app instances connected to one Auth emulator share its user
+    // namespace. Seed the browser identity once with the product scope under
+    // test; concurrent per-app writes would race and leave arbitrary claims.
+    await upsertAuthUser(browserAuth, {
+        pId: PRODUCT_IDS.ANSWERLATTICE,
+        role: 'owner',
+        sId: answerlatticeStoreId,
+        storeId: answerlatticeStoreId,
+        tId: answerlatticeTenantId,
+        tenantId: answerlatticeTenantId,
+        uId: userId,
+    });
     await seedFirestore();
     process.stdout.write(`Local Answerlattice browser fixture ready for ${email}.\n`);
 }
