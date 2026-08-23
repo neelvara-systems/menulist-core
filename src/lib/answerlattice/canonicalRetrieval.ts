@@ -438,6 +438,10 @@ function matchEntitiesFromIndex(
             const entityId = normalizeAnswerlatticeResolvedEntityId(rawEntityId);
             if (!entityId) return;
             const queryScore = entityScores.get(entityId) || 0;
+            // Context narrows a query; it must never manufacture an entity match.
+            // Without query evidence, canonical retrieval must abstain instead of
+            // answering an unrelated question from the current page context.
+            if (queryScore <= 0) return;
             // Guardrail 2: If query strongly matches this entity, dampen context boost
             const dampenedBoost = queryScore >= STRONG_QUERY_THRESHOLD
                 ? rawBoost * 0.5

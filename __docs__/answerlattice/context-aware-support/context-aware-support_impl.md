@@ -665,6 +665,7 @@ These are derived from existing performance logs — no new collection needed.
    - Query + context boosts → context entities ranked higher
    - Vague query + strong context → context-boosted entity wins
    - Specific query + weak context → query-matched entity wins
+   - Context without any query/entity overlap → no canonical match; retrieval abstains or falls back
 
 ### Integration Tests
 

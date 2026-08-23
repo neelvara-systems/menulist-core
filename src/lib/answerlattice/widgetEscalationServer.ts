@@ -181,7 +181,7 @@ export const executeAnswerlatticeWidgetEscalation = async (
             message,
             documents: [],
             platformNotes: '',
-            platformTags: ['Widget escalation'],
+            platformTags: ['Issue'],
             deleted: false,
             statuses: [{
                 status: SUPPORT_TICKET_STATUS.OPEN,
