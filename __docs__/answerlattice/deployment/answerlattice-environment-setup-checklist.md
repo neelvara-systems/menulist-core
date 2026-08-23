@@ -62,13 +62,11 @@ flow is for the shared Next.js runtime and must not replace Functions ADC.
 - [x] `AL-BASE-10` The former IDs `answerlattice-qa` and `answerlattice` are
   unowned/unreadable from the company account and permanently retired from
   source, credentials, IAM, provider setup, and deploy commands.
-- [x] `AL-BASE-11` Current hosted build provenance is exact on both
-  environments. On August 23, 2026, `canonica.app/api/version` and
-  `www.canonica.app/api/version` returned verified build
-  `aeb0fc2e34e20f182dd8758db9fc7e97105aba4d` with Vercel environment
-  `preview`; `answerlattice.com/api/version` returned the same verified build
-  with environment `production`, while `www.answerlattice.com/api/version`
-  returned the intended HTTP 308 redirect to the apex path.
+- [x] `AL-BASE-11` Current hosted build provenance is verified on both
+  environments. QA aliases report Vercel environment `preview`; the production
+  apex reports environment `production`, and production `www` returns the
+  intended HTTP 308 redirect to the apex path. Exact immutable build identities
+  belong in the dated evidence rows below rather than this moving-state item.
 
 ## Stop Conditions
 
@@ -813,3 +811,4 @@ service-account JSON, or customer data.
 | 2026-08-23 | `AL-PROD-D04`, `AL-PROD-D05`, `AL-PROD-E03`, `AL-PROD-E04` | Production EmailOS inbound webhook pass | The owner supplied the real production Resend signing secret as enabled Secret Manager version 1. The bounded `answerlatticeEmailOsWebhook` deployment created ACTIVE Node 22 revision `answerlatticeemailoswebhook-00001-muj`; live readback confirms it binds only `ANSWERLATTICE_RESEND_WEBHOOK_SECRET` version 1. Domain Restricted Sharing is handled with `run.googleapis.com/invoker-iam-disabled=true`; GET returns HTTP 405 and an unsigned POST reaches the handler but fails closed with HTTP 400 `Invalid webhook`. Production now has 12 ACTIVE approved Functions. Outbound provider sending remains disabled and the optional WhatsApp webhook remains undeployed. |
 | 2026-08-23 | QA/production hosted provenance refresh | Pass | Read-only `/api/version` checks returned HTTP 200 and verified full build `aeb0fc2e34e20f182dd8758db9fc7e97105aba4d` from both Canonica aliases in Vercel `preview` and from the Answerlattice production apex in Vercel `production`; production `www` returned the intended HTTP 308 apex redirect. This supersedes the August 22 `buildId: local` evidence gap. Current Google AI Studio inventory already contains only one authorization key per Answerlattice project, so no retired production credential remains to drain or revoke. |
 | 2026-08-23 | Compiled-context source/runtime reconciliation | Local and deployed Functions parity; app release pending | The exact public-bundle identity validation already deployed in both QA and production Functions was recovered from authenticated Cloud Functions source archives and restored byte-for-byte to `functions-answerlattice/src/answerlattice/contextBundleBuilder.ts`; QA and production deployed copies share local file SHA-256 `dfd165bce3feedfd8577d5da8dec01d652943bafcf7134d5f8f201277d766b8e`. The same fail-closed ordering is restored in the Next.js server mirror and protected by the context-bundle version boundary. The local browser fixture now creates and reads back complete scoped source-version and empty bundle-manifest control-plane documents, so owner rebuild testing no longer depends on accidental emulator state. TypeScript, context-boundary, compiled-context invalidation emulator, fixture emulator, runtime-truth, final-readiness, backup/recovery, configuration, EmailOS, and security gates pass. The Functions runtime needs no redeployment because it already contains the exact patch; the Next.js mirror and fixture changes require a later explicitly authorized Vercel release. |
+| 2026-08-23 | Compiled-context QA Vercel release | Pass | Staging commit `e0bf57fd0ac42ccc6a7c7e434de22b2296d534b9` was pushed by explicit owner authorization. Vercel custom environment `qa` produced deployment `menulist-core-2yp98wb26-neelvara-systems.vercel.app`; `https://canonica.app/api/version` returned HTTP 200, verified full build `e0bf57fd0ac42ccc6a7c7e434de22b2296d534b9`, and environment `preview`. This publishes the restored Next.js compiled-context ownership check and deterministic local-fixture source to QA. Production remains unchanged. |
