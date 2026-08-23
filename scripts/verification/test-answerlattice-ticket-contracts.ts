@@ -7,6 +7,7 @@ import {
     ANSWERLATTICE_TICKET_MESSAGE_LIMIT,
     ANSWERLATTICE_TICKET_STATUS_HISTORY_LIMIT,
     isAnswerlatticeTicketStatusTransitionAllowed,
+    prepareAnswerlatticeTicketMessageForPersistence,
     parseAnswerlatticeSupportTicketDocument,
     parseAnswerlatticeTicketMutation,
 } from '@lib/answerlattice/supportTicketLifecycle';
@@ -27,6 +28,19 @@ assert.throws(() => resolveAnswerlatticeSupportTicketActor({
     user: { id: '', name: 'Owner', email: 'owner@example.com' },
 }), /answerlattice_ticket_actor_invalid/);
 const actor = { id: 'owner-1', name: 'Owner', email: 'owner@example.com' };
+const persistedMessageWithoutAttachments = prepareAnswerlatticeTicketMessageForPersistence({
+    id: 'message-with-optional-attachments',
+    text: 'Reply',
+    type: 'user',
+    sender: actor,
+    timestamp: NOW,
+    attachments: undefined,
+});
+assert.equal(
+    Object.prototype.hasOwnProperty.call(persistedMessageWithoutAttachments, 'attachments'),
+    false,
+    'optional attachment fields must not reach the Firestore web SDK as undefined',
+);
 const baseTicket = {
     pId: 'AL',
     tId: 1,

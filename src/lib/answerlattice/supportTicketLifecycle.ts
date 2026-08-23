@@ -1,5 +1,6 @@
 import { PRODUCT_IDS } from '@constant/product';
 import { parseAnswerlatticeEscalationContext } from '@lib/answerlattice/escalationTypes';
+import { sanitizeForFirestore } from '@lib/firestore/sanitizeForFirestore';
 import { isValidFirestoreDocumentId } from '@lib/firebase/firestoreDocumentId';
 import { normalizeAnswerlatticeScopeDocumentId } from '@lib/answerlattice/sessionScope';
 import {
@@ -243,6 +244,12 @@ export const parseAnswerlatticeTicketMessage = (value: unknown): TicketMessage =
     if (!isTicketMessage(value)) throw new Error('answerlattice_ticket_message_invalid');
     return value;
 };
+
+export const prepareAnswerlatticeTicketMessageForPersistence = (value: unknown): TicketMessage => (
+    sanitizeForFirestore(parseAnswerlatticeTicketMessage(value), {
+        undefinedObjectValue: 'omit',
+    })
+);
 
 export const parseAnswerlatticeSupportTicketDocument = (params: {
     id: string;

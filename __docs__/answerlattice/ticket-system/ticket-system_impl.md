@@ -1,6 +1,6 @@
 # Answerlattice Ticket, Conversation, and Handoff Implementation
 
-> **Last verified:** July 19, 2026
+> **Last verified:** August 23, 2026
 
 ## Runtime map
 
@@ -42,12 +42,15 @@
 
 `addTicketMessage()`:
 
+- synchronizes the dedicated Answerlattice Firebase identity to the active
+  session scope before the browser mutation;
 - ignores caller-supplied current history as authority;
 - uploads attachments against the verified target ticket scope;
 - reads the ticket transactionally;
 - accepts an exact same-message replay as a no-op;
 - rejects a reused message ID with different content through persisted parsing/rules;
-- appends one validated message;
+- appends one validated, Firestore-sanitized message so optional undefined
+  fields are omitted;
 - requests email only when the sender differs from the requester and the message is not a system event.
 
 ### Delete and restore

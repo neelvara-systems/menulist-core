@@ -1,5 +1,16 @@
 # MenuList — Changelog
 
+## August 23, 2026 - Answerlattice Owner Reply Persistence
+
+- Synchronized the dedicated Answerlattice Firebase identity before owner-side
+  ticket mutations so OAuth-backed owners write with the expected product,
+  tenant, store, and user claims.
+- Sanitized parsed ticket messages before Firestore persistence so optional
+  attachment fields are omitted instead of reaching the web SDK as
+  `undefined`.
+- Added development-only, non-sensitive failure context plus lifecycle and
+  dedicated/shared Firestore-rule coverage for widget-escalation replies.
+
 ## August 23, 2026 - Firebase Release Promotion And Exact Readback
 
 - Re-ran the complete 42-suite MenuList Firestore predeploy matrix and promoted

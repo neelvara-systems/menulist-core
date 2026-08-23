@@ -79,6 +79,12 @@ async function run(): Promise<void> {
             storeId: '101',
             uId: 'owner-1',
         }).firestore();
+        const oauthOwnerDb = testEnv.authenticatedContext('firebase-oauth-owner-1', {
+            role: 'OWNER',
+            tenantId: '1',
+            storeId: '101',
+            uId: 'owner-1',
+        }).firestore();
         const numericOwnerDb = testEnv.authenticatedContext('firebase-owner-numeric', {
             role: 'OWNER',
             tenantId: '1',
@@ -297,6 +303,53 @@ async function run(): Promise<void> {
                 visitorMessage('widget-message-1'),
                 message('status-resolved', 'system'),
                 message('owner-reply-1'),
+            ],
+            modifiedBy: 'Owner',
+            modifiedOn: NOW,
+        }));
+        await testEnv.withSecurityRulesDisabled(async (context) => {
+            await setDoc(doc(context.firestore(), 'supportTickets', 'open-widget-escalation-ticket'), ticket({
+                uId: visitorActor.id,
+                createdBy: visitorActor.name,
+                modifiedBy: visitorActor.name,
+                statuses: [statusEntry('Open', visitorActor)],
+                messages: [visitorMessage('open-widget-message-1')],
+                source: 'ai_escalation',
+                knowledgeCandidate: true,
+                id: 'open-widget-escalation-ticket',
+                displayId: 'WE-OPEN-WIDGET',
+                clientDetails: {
+                    storeName: '',
+                    tenantName: '',
+                    email: visitorActor.email,
+                    phone: '',
+                },
+                escalationContext: {
+                    triggerTypes: ['explicit_user_request'],
+                    query: 'I need support.',
+                    retrievalDebug: {
+                        canonicalResult: {
+                            found: false,
+                            confidence: 'low',
+                            fallbackReason: 'no_entity_match',
+                            matchedEntityIds: [],
+                        },
+                    },
+                    escalatedAt: NOW.toDate().toISOString(),
+                },
+                widgetEscalation: {
+                    searchHistoryId: 'history-open-1',
+                    replyEmail: visitorActor.email,
+                    detailsProvided: true,
+                },
+                traceId: 'open-widget-escalation-ticket',
+                requestId: 'open-widget-escalation-ticket',
+            }));
+        });
+        await assertSucceeds(updateDoc(doc(oauthOwnerDb, 'supportTickets', 'open-widget-escalation-ticket'), {
+            messages: [
+                visitorMessage('open-widget-message-1'),
+                message('oauth-owner-reply-1'),
             ],
             modifiedBy: 'Owner',
             modifiedOn: NOW,

@@ -13,10 +13,12 @@ import {
     normalizeAnswerlatticeSupportTicketId,
     parseAnswerlatticeSupportTicketDocument,
     parseAnswerlatticeTicketMessage,
+    prepareAnswerlatticeTicketMessageForPersistence,
     parseAnswerlatticeTicketMutation,
 } from '@lib/answerlattice/supportTicketLifecycle';
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
 import getActiveSession from "@lib/auth/getActiveSession";
+import { ensureFirebaseAuthForSession } from '@lib/auth/firebaseAuthSync';
 import { emitAnswerlatticeSignal } from "@lib/answerlattice/signalEmitter";
 import { resolveAnswerlatticeSupportTicketActor } from '@lib/answerlattice/supportTicketActor';
 import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
@@ -27,7 +29,7 @@ import {
     parseSupportTicketAttachmentUpload,
     type SupportTicketAttachmentUpload,
 } from '@lib/answerlattice/supportTicketAttachmentBoundary';
-import { answerlatticeFirebaseClient, answerlatticeStorage } from "@lib/firebase/answerlatticeFirebaseClient";
+import { answerlatticeAuth, answerlatticeFirebaseClient, answerlatticeStorage } from "@lib/firebase/answerlatticeFirebaseClient";
 import { isValidFirestoreDocumentId } from "@lib/firebase/firestoreDocumentId";
 import { clearCapturedLogs, getCapturedLogs, getClientDebugContext } from "@lib/localLogs/localLogsTracker";
 import { isDataUrl } from "@lib/media/mediaStorage";
@@ -240,6 +242,7 @@ const requireSupportTicketMutationContext = async (
 ): Promise<{ scope: NormalizedSupportTicketScope; session: LoginUserType }> => {
     const session = await getActiveSession();
     if (!session) throw new Error(`${operationCode}_session_missing`);
+    await ensureFirebaseAuthForSession(session);
     const ticketScope = normalizeSupportTicketScope(scope);
 
     if (isPlatformTicketSession(session)) {
@@ -644,7 +647,7 @@ export const addTicketMessage = async (
             const messageId = normalizeAnswerlatticeSupportTicketId(message?.id);
             if (!messageId) throw new Error('answerlattice_ticket_message_id_invalid');
             const uploadedAttachmentUrls: string[] = [];
-            const persistedMessage: TicketMessage = parseAnswerlatticeTicketMessage({
+            const persistedMessage: TicketMessage = prepareAnswerlatticeTicketMessageForPersistence({
                 ...message,
                 id: messageId,
                 sender: actor,
@@ -742,6 +745,28 @@ export const addTicketMessage = async (
                 }
             } catch (transactionError) {
                 logAmbiguousTicketAttachmentRetention('message_append', uploadedAttachmentUrls.length);
+                let authContext: Record<string, boolean | number> = {};
+                try {
+                    const currentUser = answerlatticeAuth?.currentUser;
+                    const token = await currentUser?.getIdTokenResult();
+                    authContext = {
+                        authUserPresent: Boolean(currentUser),
+                        actorMatchesAuthUid: currentUser?.uid === actor.id,
+                        actorMatchesClaimUserId: String(token?.claims?.uId || '') === actor.id,
+                        authProductMatches: token?.claims?.pId === PRODUCT_IDS.ANSWERLATTICE,
+                        authStoreMatches: String(token?.claims?.storeId || '') === String(mutationContext.scope.sId),
+                        authTenantMatches: String(token?.claims?.tenantId || '') === String(mutationContext.scope.tId),
+                    };
+                } catch {
+                    authContext = { authContextReadable: false };
+                }
+                logRuntimeFailure('answerlattice_ticket_message_persist_failed', transactionError, {
+                    ...authContext,
+                    actorIdLength: actor.id.length,
+                    attachmentCount: uploadedAttachmentUrls.length,
+                    messageCountBeforeAppend: messageCount,
+                    ticketIdLength: normalizedTicketId.length,
+                }, { developmentOnly: true });
                 throw transactionError;
             }
 
