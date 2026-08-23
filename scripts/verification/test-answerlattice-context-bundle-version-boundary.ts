@@ -262,6 +262,14 @@ for (const source of [appBuilderSource, functionsBuilderSource]) {
     assert.equal(source.includes('mcpPolicy_${tId}_${sId}'), false, 'bundle builders must not read an MCP authorization policy document');
     assert.equal(source.includes("'branding.json'"), false, 'bundle builders must not serialize an advanced branding payload');
     assert.equal(source.includes("'mcp/policy.json'"), false, 'bundle builders must not serialize an MCP authorization policy payload');
+    const identityValidationIndex = source.indexOf('const publicBundleId = getPublicBundleId(existingManifest, tenantId, storeId);');
+    const leaseClaimIndex = source.indexOf('const claim = await db.runTransaction');
+    assert.ok(identityValidationIndex >= 0, 'bundle builders must validate the public bundle identity');
+    assert.ok(leaseClaimIndex >= 0, 'bundle builders must claim a build lease transactionally');
+    assert.ok(
+        identityValidationIndex < leaseClaimIndex,
+        'bundle builders must reject invalid public ownership configuration before claiming a build lease',
+    );
 }
 assert.equal(
     advancedBrandingDalSource.includes('markAnswerlatticeCompiledContextSourceChanged'),

@@ -832,6 +832,9 @@ export const buildAnswerlatticeContextBundleServer = async (params: {
     }
     const existingBundleVersion = resolveAnswerlatticeExistingBundleVersion(existingManifest);
     if (existingBundleVersion === null) throw new Error('Invalid Answerlattice context bundle manifest version.');
+    // Fail closed on missing or mismatched public ownership configuration
+    // before reserving a bundle version and claiming the build lease.
+    const publicBundleId = getPublicBundleId(existingManifest, tenantId, storeId);
     const sourceVersionsAtStart = await getAnswerlatticeCompiledSourceVersionsAdmin(tenantId, storeId);
     const normalizedStartVersions = normalizeCompiledSourceVersions(sourceVersionsAtStart);
     const buildReason = normalizeAnswerlatticeContextBundleBuildReason(params.reason);
@@ -899,7 +902,6 @@ export const buildAnswerlatticeContextBundleServer = async (params: {
     const claimedManifest = claim.existingManifest;
     const claimedActiveVersion = normalizeAnswerlatticeStoredBundleVersion(claimedManifest?.activeVersion) ?? 0;
     const claimedLastReadyVersion = normalizeAnswerlatticeStoredBundleVersion(claimedManifest?.lastReadyVersion) ?? 0;
-    const publicBundleId = getPublicBundleId(claimedManifest, tenantId, storeId);
 
     try {
         const bundleVersion = claim.bundleVersion;

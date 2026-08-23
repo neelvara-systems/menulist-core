@@ -695,6 +695,9 @@ export const repairCompiledContextBundle = async (tId: number, sId: number): Pro
     if (existingBundleVersion === null) {
         return { status: 'failed', rebuilt: false, bundleVersion: 0, bytesTotal: 0, routes: 0, error: 'invalid_manifest_version' };
     }
+    // Fail closed on missing or mismatched public ownership configuration
+    // before reserving a bundle version and claiming the build lease.
+    const publicBundleId = getPublicBundleId(existingManifest, tenantId, storeId);
     if (existingManifest?.status === 'ready'
         && hasExactAnswerlatticeReadyBundleVersions(existingManifest)
         && compiledSourceVersionsEqual(existingManifest.sourceVersions, sourceVersions)) {
@@ -804,7 +807,6 @@ export const repairCompiledContextBundle = async (tId: number, sId: number): Pro
     const claimedManifest = claim.existingManifest;
     const existingActiveVersion = normalizeAnswerlatticeStoredBundleVersion(claimedManifest?.activeVersion) ?? 0;
     const existingLastReadyVersion = normalizeAnswerlatticeStoredBundleVersion(claimedManifest?.lastReadyVersion) ?? 0;
-    const publicBundleId = getPublicBundleId(claimedManifest, tenantId, storeId);
 
     try {
         const generatedAt = new Date().toISOString();

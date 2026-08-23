@@ -9003,6 +9003,7 @@ function verifyAnswerlatticeContextBundleVersionBoundary() {
   const changelog = read('__docs__/changelog.md');
   const contextBundleVersionTests = read('scripts/verification/test-answerlattice-context-bundle-version-boundary.ts');
   const contentFeedbackEmulator = read('scripts/verification/test-answerlattice-content-feedback-emulator.ts');
+  const localBrowserFixture = read('scripts/answerlattice/seed-local-browser-fixture.ts');
 
   [appVersions, functionsVersions].forEach((content, index) => {
     const label = index === 0 ? 'app' : 'Functions';
@@ -9086,6 +9087,13 @@ function verifyAnswerlatticeContextBundleVersionBoundary() {
   assertIncludes(appInvalidationOwnershipClient, 'isAnswerlatticeContextBundleManifestForScope(manifestSnapshot.data()', 'Answerlattice client rejects malformed or foreign deterministic manifests');
   assertIncludes(appInvalidationOwnershipClient, 'normalizeCacheVersion(data.version) === undefined', 'Answerlattice client rejects malformed deterministic cache versions');
   assertIncludes(appInvalidationControlPlane, 'activeVersion: 0', 'Answerlattice client missing-manifest base is complete');
+  assertIncludes(localBrowserFixture, 'getAnswerlatticeSourceVersionsDocId(answerlatticeTenantId, answerlatticeStoreId)', 'Answerlattice local browser fixture source-version control plane');
+  assertIncludes(localBrowserFixture, 'getAnswerlatticeBundleManifestDocId(answerlatticeTenantId, answerlatticeStoreId)', 'Answerlattice local browser fixture bundle-manifest control plane');
+  assertIncludes(localBrowserFixture, '...getAnswerlatticeMissingSourceVersionsBase(answerlatticeScope)', 'Answerlattice local browser fixture complete source-version base');
+  assertIncludes(localBrowserFixture, '...getAnswerlatticeMissingBundleManifestBase(answerlatticeScope)', 'Answerlattice local browser fixture complete bundle-manifest base');
+  assertIncludes(localBrowserFixture, "status: 'empty'", 'Answerlattice local browser fixture rebuildable initial manifest');
+  assertIncludes(localBrowserFixture, 'areAnswerlatticeCompiledSourceVersionsValid(sourceVersionsSnapshot.data())', 'Answerlattice local browser fixture source-version readback');
+  assertIncludes(localBrowserFixture, 'isAnswerlatticeContextBundleManifestForScope(', 'Answerlattice local browser fixture manifest readback');
   assertNotIncludes(appCacheVersionClient, 'await markAnswerlatticeCompiledContextSourceChanged', 'Answerlattice client sequential cache/source invalidation');
   assertIncludes(appCacheVersionAdmin, 'readAnswerlatticeInvalidationOwnership({', 'Answerlattice Admin verifies cache/source invalidation ownership transactionally');
   assertIncludes(appCacheVersionAdmin, 'transaction.set(ownership.cacheVersionRefs[source]!', 'Answerlattice Admin cache/source invalidation uses the owned deterministic cache ref');

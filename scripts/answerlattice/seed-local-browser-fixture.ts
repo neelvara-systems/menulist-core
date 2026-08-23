@@ -3,6 +3,17 @@
 import { createDefaultAnswerlatticeRoles } from '@constant/answerlattice/permissions';
 import { DB_COLLECTIONS } from '@constant/database';
 import { PRODUCT_IDS } from '@constant/product';
+import {
+    areAnswerlatticeCompiledSourceVersionsValid,
+    getAnswerlatticeBundleManifestDocId,
+    getAnswerlatticeSourceVersionsDocId,
+    isAnswerlatticeContextBundleManifestForScope,
+    normalizeCompiledSourceVersions,
+} from '@lib/answerlattice/compiledContext';
+import {
+    getAnswerlatticeMissingBundleManifestBase,
+    getAnswerlatticeMissingSourceVersionsBase,
+} from '@lib/answerlattice/invalidationControlPlane';
 import { buildAnswerlatticeWidgetApiStateWithNewKey } from '@lib/answerlattice/widgetKeyManager';
 import { createHash } from 'crypto';
 import { initializeApp } from 'firebase-admin/app';
@@ -40,6 +51,14 @@ const answerlatticeTenantId = 78001;
 const answerlatticeStoreId = 78101;
 const userId = 'answerlattice-local-menulist-owner';
 const subscriptionId = 'answerlattice-local-active-subscription';
+const answerlatticeScope = {
+    sId: answerlatticeStoreId,
+    tId: answerlatticeTenantId,
+};
+const compiledSourceVersions = normalizeCompiledSourceVersions({
+    widgetConfig: 1,
+    workspaceProfile: 1,
+});
 
 const answerlatticeMembership = {
     name: 'MenuList Support Workspace',
@@ -313,8 +332,49 @@ async function seedFirestore(): Promise<void> {
         },
         { merge: true },
     );
+    answerlatticeBatch.set(
+        answerlatticeDb.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(
+            getAnswerlatticeSourceVersionsDocId(answerlatticeTenantId, answerlatticeStoreId),
+        ),
+        {
+            ...getAnswerlatticeMissingSourceVersionsBase(answerlatticeScope),
+            ...compiledSourceVersions,
+            updatedAt: now,
+        },
+    );
+    answerlatticeBatch.set(
+        answerlatticeDb.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(
+            getAnswerlatticeBundleManifestDocId(answerlatticeTenantId, answerlatticeStoreId),
+        ),
+        {
+            ...getAnswerlatticeMissingBundleManifestBase(answerlatticeScope),
+            lastReason: 'local_browser_fixture',
+            sourceVersions: compiledSourceVersions,
+            status: 'empty',
+            updatedAt: now,
+        },
+    );
 
     await Promise.all([menuListBatch.commit(), answerlatticeBatch.commit()]);
+
+    const [sourceVersionsSnapshot, manifestSnapshot] = await Promise.all([
+        answerlatticeDb.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(
+            getAnswerlatticeSourceVersionsDocId(answerlatticeTenantId, answerlatticeStoreId),
+        ).get(),
+        answerlatticeDb.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(
+            getAnswerlatticeBundleManifestDocId(answerlatticeTenantId, answerlatticeStoreId),
+        ).get(),
+    ]);
+    if (!areAnswerlatticeCompiledSourceVersionsValid(sourceVersionsSnapshot.data())) {
+        throw new Error('Local fixture source-version control plane is invalid.');
+    }
+    if (!isAnswerlatticeContextBundleManifestForScope(
+        manifestSnapshot.data(),
+        answerlatticeTenantId,
+        answerlatticeStoreId,
+    )) {
+        throw new Error('Local fixture bundle-manifest control plane is invalid.');
+    }
 }
 
 async function run(): Promise<void> {

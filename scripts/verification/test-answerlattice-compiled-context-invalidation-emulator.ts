@@ -16,6 +16,7 @@ const SCOPE = { tId: 73, sId: 7301 };
 
 async function run(): Promise<void> {
     if (!process.env.FIRESTORE_EMULATOR_HOST) throw new Error('FIRESTORE_EMULATOR_HOST is required');
+    process.env.ANSWERLATTICE_PUBLIC_BUNDLE_SALT = 'answerlattice-compiled-context-emulator-test-salt-2026';
     const sourceRef = db.collection('platformSummary').doc(`sourceVersions_${SCOPE.tId}_${SCOPE.sId}`);
     const manifestRef = db.collection('platformSummary').doc(`bundleManifest_${SCOPE.tId}_${SCOPE.sId}`);
     const cacheRef = db.collection('answerlattice_cacheVersions').doc(`canonical_${SCOPE.tId}_${SCOPE.sId}`);
