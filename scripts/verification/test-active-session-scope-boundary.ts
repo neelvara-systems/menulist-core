@@ -150,8 +150,9 @@ const verifyConcurrentClientSessionBoundary = async () => {
         ];
         await new Promise(resolve => setTimeout(resolve, 0));
         assert.equal(sessionFetchCount, 1, 'parallel DAL reads must share one session request');
-        assert.ok(releaseFetch, 'the shared session request must be pending before settlement');
-        releaseFetch();
+        const releasePendingFetch = releaseFetch as (() => void) | null;
+        assert.ok(releasePendingFetch, 'the shared session request must be pending before settlement');
+        releasePendingFetch();
         const settledSessions = await Promise.all(parallelReads);
         assert.equal(settledSessions.length, 3);
         for (const settledSession of settledSessions) {
@@ -277,6 +278,16 @@ assert.match(
     firebaseAuthSyncSource,
     /const nextKey = \[\s*shouldUseAnswerlatticeScope\(effectiveSession\) \? PRODUCT_IDS\.ANSWERLATTICE : PRODUCT_IDS\.MENULIST,/,
     'in-flight Firebase Auth sync deduplication must distinguish MenuList and Answerlattice products',
+);
+assert.match(
+    firebaseAuthSyncSource,
+    /shouldUseSharedAnswerlatticeFirebase[\s\S]*answerlatticeClaimsMatchSessionScope\(currentToken\.claims, sessionScope\)[\s\S]*return \{ ready: true, claims: currentToken\.claims \}/,
+    'shared Answerlattice Firebase auth must reuse a current token whose exact product and workspace claims still match',
+);
+assert.match(
+    firebaseAuthSyncSource,
+    /answerlatticeAuth\?\.currentUser[\s\S]*answerlatticeCurrentUser\.getIdTokenResult\(\)[\s\S]*answerlatticeClaimsMatchSessionScope\(answerlatticeToken\.claims, sessionScope\)[\s\S]*return \{ ready: true, claims: answerlatticeToken\.claims \}/,
+    'separate Answerlattice Firebase auth must reuse its valid current token before calling the set-claims route again',
 );
 
 const sessionCleanupSource = fs.readFileSync(

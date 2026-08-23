@@ -190,9 +190,31 @@ async function runFirebaseAuthSync(session: any): Promise<FirebaseAuthSyncResult
             if (!isAnswerlatticeScope && claimsMatchSessionStore(currentToken.claims, session)) {
                 return { ready: true, claims: currentToken.claims };
             }
+            if (
+                isAnswerlatticeScope
+                && shouldUseSharedAnswerlatticeFirebase
+                && answerlatticeClaimsMatchSessionScope(currentToken.claims, sessionScope)
+            ) {
+                return { ready: true, claims: currentToken.claims };
+            }
             canRefreshCurrentUser = sameEmail(currentUser.email, session.user.email);
         } catch {
             // Continue through the normal fresh-token path when the cached token cannot be inspected.
+        }
+    }
+
+    if (isAnswerlatticeScope && !shouldUseSharedAnswerlatticeFirebase) {
+        const { answerlatticeAuth } = await import('@lib/firebase/answerlatticeFirebaseClient');
+        const answerlatticeCurrentUser = answerlatticeAuth?.currentUser;
+        if (answerlatticeCurrentUser && sameEmail(answerlatticeCurrentUser.email, session.user.email)) {
+            try {
+                const answerlatticeToken = await answerlatticeCurrentUser.getIdTokenResult();
+                if (answerlatticeClaimsMatchSessionScope(answerlatticeToken.claims, sessionScope)) {
+                    return { ready: true, claims: answerlatticeToken.claims };
+                }
+            } catch {
+                // Continue through custom-token synchronization when the cached token is unavailable.
+            }
         }
     }
 
