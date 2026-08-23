@@ -1,6 +1,7 @@
 'use client';
 
 import { LuCheck, LuDatabase, LuLock, LuShield, LuUserCheck, LuUsers } from 'react-icons/lu';
+import { MENULIST_OPERATOR_DISCLOSURE } from '@constant/menulist/commercialIdentity';
 import AnimateOnScroll, { AnimateStaggerChild } from '../shared/AnimateOnScroll';
 import SectionHeading from '../shared/SectionHeading';
 import SectionWrapper from '../shared/SectionWrapper';
@@ -17,6 +18,7 @@ const dataCollected = [
             'Business content: Menus, price lists, images, and documents you upload',
             'Public media prepared by MenuList removes original image metadata before storage',
             'Payment information: Razorpay handles payment entry and payment method details; MenuList stores payment status and billing references needed for subscriptions',
+            'Billing documents and delivery details: Issued invoices or credit notes may be sent through the email or WhatsApp channel you select',
             'Optional discovery information: The closed-list source you select when asked where you first heard about MenuList',
         ],
     },
@@ -56,6 +58,7 @@ const dataCollected = [
 ];
 
 const privacyHighlights = [
+    { label: 'Product operator', value: MENULIST_OPERATOR_DISCLOSURE },
     { label: 'Core data only', value: 'MenuList uses account, business, billing, content, security, reliability, and product-operation data.' },
     { label: 'No data resale flow', value: 'The product does not include advertising-sale or data-broker resale flows.' },
     { label: 'Main website analytics with consent', value: 'Plausible, Google Analytics, and Microsoft Clarity load on the MenuList website only after analytics is accepted and the relevant tool is configured.' },
@@ -68,6 +71,7 @@ const dataLocationFacts = [
     { label: 'Application and customer data', value: 'Firestore, Authentication, and Storage run through Firebase in Google Cloud as configured for each environment/project.' },
     { label: 'Marketing site traffic data', value: 'Optional website analytics tools are configured through third-party services and run under their own privacy/retention settings.' },
     { label: 'Payments', value: 'Payment processing details are handled by Razorpay as a separate card-payment and checkout provider.' },
+    { label: 'Account communications', value: 'Configured email delivery and Meta WhatsApp Business Platform process the recipient details, message content, and attachments needed to send selected account notices.' },
     { label: 'Media processing', value: 'Generated and uploaded content is prepared in provider tools where needed and stored in MenuList storage buckets for delivery.' },
 ];
 
@@ -134,7 +138,7 @@ const retentionFacts = [
 ];
 
 export default function PrivacyPolicyPage() {
-    const lastUpdated = 'August 13, 2026';
+    const lastUpdated = 'August 23, 2026';
 
     return (
         <main className="ws-page">
@@ -262,7 +266,7 @@ export default function PrivacyPolicyPage() {
                                 </div>
                             </div>
                             <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 'var(--ws-space-2)', borderTop: '1px solid var(--ws-border-subtle)', paddingTop: 'var(--ws-space-3)' }}>
-                                {['Payment processing (Razorpay) — payment method details are handled by Razorpay, not MenuList card-entry forms', 'Cloud hosting and infrastructure such as Vercel, Google Cloud, and Firebase', 'Main website analytics (Plausible, Google Analytics, and Microsoft Clarity when configured) — only after analytics consent', 'Configured AI providers such as Google Gemini — when extraction, translation, description, or image features need model processing'].map((p) => (
+                                {['Payment processing (Razorpay) — payment method details are handled by Razorpay, not MenuList card-entry forms', 'Cloud hosting and infrastructure such as Vercel, Google Cloud, and Firebase', 'Configured email delivery and Meta WhatsApp Business Platform — only for account notices and attachments selected through notification settings', 'Main website analytics (Plausible, Google Analytics, and Microsoft Clarity when configured) — only after analytics consent', 'Configured AI providers such as Google Gemini — when extraction, translation, description, or image features need model processing'].map((p) => (
                                 <li key={p} style={{ display: 'flex', gap: 'var(--ws-space-2)', alignItems: 'center' }}>
                                         <LuCheck size={14} color="var(--ws-success)" style={{ flexShrink: 0 }} />
                                         <span style={{ fontSize: '0.875rem', color: 'var(--ws-text-secondary)' }}>{p}</span>

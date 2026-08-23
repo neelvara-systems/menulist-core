@@ -5,7 +5,7 @@ import { normalizeAiBalanceUpdate } from '../../src/services/ai/balanceSync';
 
 assert.deepEqual(
     normalizeAiBalanceUpdate({ billingStoreId: 72, monthlyCredits: 7, topUpCredits: 5 }),
-    { billingStoreId: 72, monthlyCredits: 7, topUpCredits: 5 },
+    { billingStoreId: 72, monthlyCredits: 7, promotionalCredits: 0, topUpCredits: 5 },
     'canonical server balances remain eligible for browser state synchronization',
 );
 

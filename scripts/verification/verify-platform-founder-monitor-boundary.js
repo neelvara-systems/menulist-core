@@ -279,7 +279,7 @@ function verifyRazorpayRuntime(webhook, verifySubscription, verifyTopup, cancelS
     "kind: 'cash_collected'",
     "id: `failed_payment:${paymentEntity?.id || webhookClaim.eventKey}`",
     "kind: 'failed_payment'",
-    "event.event === 'payment.refunded' || event.event === 'refund.processed'",
+    "event.event === 'refund.processed' && processedRefund",
     "kind: 'refund'",
     "source: 'webhook:subscription.updated'",
     'replacementMrrPaise',

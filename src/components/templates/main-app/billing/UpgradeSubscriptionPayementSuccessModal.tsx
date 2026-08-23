@@ -89,8 +89,8 @@ const UpgradeSubscriptionPayementSuccessModal: React.FC<UpgradeSubscriptionPayem
                         you time, eliminate manual work, and make your business look brilliant
                         online. We&apos;re thrilled to have you with us.
                         <br />
-                        → You will receive an email confirmation with your invoice details
-                        shortly.
+                        → Your payment status and any available billing documents appear in
+                        Billing.
                     </p>
                     <Button type="primary" onClick={onClose} block>{'Continue'}</Button>
                 </motion.div>

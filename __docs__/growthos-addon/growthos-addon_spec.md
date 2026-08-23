@@ -1,10 +1,10 @@
 # GrowthOS Add-on - Product Specification
 
-**Status:** Implemented V1 and enabled behind Pro/Premium entitlement gate
+**Status:** Implemented V1 and enabled behind Pro/Multi-location entitlement gate
 **Owner-facing label:** Growth Kits
 **Mobile Today label:** Today's Sales Pack
 **Implementation flag:** `ENABLE_GROWTHOS_ADDON=true` with `GROWTHOS_ADDON_ACCESS="paid"`
-**Scope:** MenuList Pro/Premium plan feature only
+**Scope:** MenuList Pro/Multi-location plan feature only
 
 ---
 
@@ -41,7 +41,7 @@ If the pack is stale or blocked, the owner must update it before copy/share/down
 
 GrowthOS is not the main MenuList value proposition.
 
-MenuList is bought for official menu truth, QR/public menu publishing, customer-facing accuracy, and owner-approved public surfaces. GrowthOS is useful only after those foundations exist. Treat it as a Pro/Premium retention and upsell layer, not as acquisition positioning.
+MenuList is bought for official menu truth, QR/public menu publishing, customer-facing accuracy, and owner-approved public surfaces. GrowthOS is useful only after those foundations exist. Treat it as a Pro/Multi-location retention and upsell layer, not as acquisition positioning.
 
 The feature should stay quiet unless it has something concrete and current for the owner:
 
@@ -95,7 +95,7 @@ They pay because they want:
 
 GrowthOS is not for:
 
-- Starter/base plan users
+- Official/base plan users
 - businesses with incomplete menu truth
 - agencies
 - marketing teams
@@ -112,7 +112,7 @@ GrowthOS lives inside MenuList.
 | Desktop owner app | Add a paid module entry labelled `Growth Kits` only for eligible stores. |
 | Today screen | Show a small eligible-user entry point when a current action exists. Today itself remains focused on operational truth. |
 | Mobile owner app | Show `Today's Sales Pack` from the current Today mobile surface. It must provide fresh customer/staff/counter handoffs and block stale use. |
-| Website/pricing | Mention as included in Pro/Premium, not as a separate product. |
+| Website/pricing | Mention as included in Pro/Multi-location, not as a separate product. |
 | Help center | Explain how to use a kit, not how the system works. |
 
 Implemented route:
@@ -484,7 +484,7 @@ GrowthOS is not a default MenuList feature.
 Required gates:
 
 - `ENABLE_GROWTHOS_ADDON === true`
-- active store subscription is Pro or Premium
+- active store subscription is Pro or Multi-location
 - AI capacity is available for paid generation
 - store has enough MenuList truth to produce accurate outputs
 
@@ -493,8 +493,8 @@ Suggested packaging:
 | Package | Behavior |
 | --- | --- |
 | Pro included access | Core Growth Kits access for active Pro stores. |
-| Premium included access | Higher kit allowance and managed-service readiness for active Premium stores. |
-| Managed growth service | Operator-assisted setup and review for Pro/Premium clients only. |
+| Premium included access | Higher kit allowance and managed-service readiness for active Multi-location stores. |
+| Managed growth service | Operator-assisted setup and review for Pro/Multi-location clients only. |
 
 Exact pricing remains a business decision before implementation.
 
@@ -534,8 +534,8 @@ Current rollout requirements:
 
 - master feature flag is enabled
 - paid access mode remains active
-- Pro/Premium entitlement gate works on desktop and mobile
-- Starter/base plan users cannot access paid generation APIs
+- Pro/Multi-location entitlement gate works on desktop and mobile
+- Official/base plan users cannot access paid generation APIs
 - generated output cites only current MenuList facts
 - stale kit warning appears when source facts change
 - no direct posting path is active

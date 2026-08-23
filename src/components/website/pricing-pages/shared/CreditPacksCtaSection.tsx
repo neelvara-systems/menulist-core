@@ -26,6 +26,7 @@ const CreditPacksCtaSection: React.FC<CreditPacksCtaSectionProps> = ({ currency,
     const normalizedCurrency = String(currency || 'INR').toUpperCase() === 'USD' ? 'USD' : 'INR';
     const [isLoading, setIsLoading] = useState(false);
     const [showConfetti, setShowConfetti] = useState(false);
+    const isPackCheckoutUnavailable = Boolean(activeSubscription && !activeSubscription.taxSnapshot);
 
     const handleLoader = (action: { type: string }) => {
         setIsLoading(action.type === "loader/startLoader");
@@ -91,11 +92,17 @@ const CreditPacksCtaSection: React.FC<CreditPacksCtaSectionProps> = ({ currency,
                 <p style={{ fontSize: '0.8125rem', color: 'var(--ws-text-secondary)', marginTop: 'var(--ws-space-2)' }}>
                     {t('Pricing.creditNote')}
                 </p>
-                <div id="credit-packs" style={{ display: 'flex', justifyContent: 'center', gap: 'var(--ws-space-6)', flexWrap: 'wrap', maxWidth: '800px', margin: 'var(--ws-space-10) auto 0' }}>
-                    {aiEnhancementPacksList.map((pack: AIEnhancementPack) => (
-                        <CreditPackCard activeSubscription={activeSubscription} key={pack.packId} pack={pack} currency={normalizedCurrency} onPurchase={handleCreditsCardClick} />
-                    ))}
-                </div>
+                {isPackCheckoutUnavailable ? (
+                    <p style={{ maxWidth: '620px', margin: 'var(--ws-space-8) auto 0', color: 'var(--ws-text-secondary)' }}>
+                        Your current subscription does not include the billing details needed for a separate pack payment. Contact billing support before buying a pack.
+                    </p>
+                ) : (
+                    <div id="credit-packs" style={{ display: 'flex', justifyContent: 'center', gap: 'var(--ws-space-6)', flexWrap: 'wrap', maxWidth: '800px', margin: 'var(--ws-space-10) auto 0' }}>
+                        {aiEnhancementPacksList.map((pack: AIEnhancementPack) => (
+                            <CreditPackCard activeSubscription={activeSubscription} key={pack.packId} pack={pack} currency={normalizedCurrency} onPurchase={handleCreditsCardClick} />
+                        ))}
+                    </div>
+                )}
             </div>
             {isLoading && <Loader />}
             {showConfetti && (

@@ -291,6 +291,22 @@ function menuStale(meta: Record<string, unknown>): EmailTemplate {
   };
 }
 
+function billingDocumentIssued(meta: Record<string, unknown>): EmailTemplate {
+  const documentUrl = urlValue(meta.documentUrl);
+  const documentNumber = normalizeText(meta.documentNumber, 'Billing document');
+  const documentTypeLabel = normalizeText(meta.documentTypeLabel, 'billing document');
+  const formattedAmount = normalizeText(meta.amountLabel, `${normalizeText(meta.currency, 'INR')} ${normalizeText(meta.amount, '0')}`);
+  return {
+    subject: `MenuList ${documentTypeLabel} ${documentNumber}`,
+    html: wrap(`
+      <h2 style="${STYLES.header}">Your ${escapeHtml(documentTypeLabel)} is ready</h2>
+      <p style="${STYLES.text}">The billing document for <strong>${htmlValue(meta.storeName, 'your business')}</strong> has been issued.</p>
+      <div style="${STYLES.highlight}"><strong>Document:</strong> ${escapeHtml(documentNumber)}<br><strong>Amount:</strong> ${escapeHtml(formattedAmount)}</div>
+      ${documentUrl ? `<p style="margin-top: 20px;"><a href="${escapeHtml(documentUrl)}" style="${STYLES.button}">Open billing document</a></p><p style="${STYLES.text}">Sign in to MenuList to open this private document.</p>` : `<p style="${STYLES.text}">Open Billing in MenuList to access this private document.</p>`}
+    `),
+  };
+}
+
 // ================================================================
 // TEMPLATE RESOLVER
 // ================================================================
@@ -306,6 +322,7 @@ const TEMPLATE_MAP: Record<MessageEventType, (meta: Record<string, unknown>) => 
   CREDIT_PURCHASE_SUCCESS: creditPurchaseSuccess,
   CREDITS_EXHAUSTED: creditsExhausted,
   MENU_STALE: menuStale,
+  BILLING_DOCUMENT_ISSUED: billingDocumentIssued,
 };
 
 /**

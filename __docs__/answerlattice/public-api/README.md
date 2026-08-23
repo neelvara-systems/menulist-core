@@ -1,7 +1,7 @@
 # Answerlattice Public API v1
 
 > **Status:** Implemented, locally audited, and disabled by default
-> **Version:** 1.2.0
+> **Version:** 1.3.0
 > **Last Updated:** 2026-08-22
 > **Feature Flag:** `ENABLE_ANSWERLATTICE_PUBLIC_API` (`false`)
 > **Owner Permission:** `MANAGE_INTEGRATIONS`
@@ -37,6 +37,15 @@ The public [`/openapi.json`](https://answerlattice.com/openapi.json) document de
 | `/api/answerlattice/public/v1/answers` | `POST` | `public:read` | Returns an approved applicable canonical answer, citations, clarification, or deterministic fallback reason. |
 | `/api/answerlattice/public/v1/entities` | `GET` | `public:read` | Returns active/beta public entity records from a compiled bundle or bounded Firestore fallback. |
 | `/api/answerlattice/public/v1/signals` | `POST` | `signals:write` | Accepts allowlisted support signals as evidence; never changes approved truth directly. |
+
+## Versioning and Deprecation
+
+- `/v1` is the current stable major API path.
+- Existing v1 fields, required inputs, authentication semantics, and status-code meanings are not removed, renamed, retyped, or made more restrictive inside v1.
+- Compatible optional response fields may be added after publication in `/openapi.json`; consumers should ignore unknown response fields.
+- A breaking request, response, authentication, or behavior change requires a new major path such as `/v2` and an explicit migration guide.
+- Before an operation is retired, its OpenAPI operation is marked `deprecated`, developer docs publish the replacement, migration steps, and exact sunset date, and responses emit `Deprecation`, `Sunset`, and `Link: <...>; rel="successor-version"` headers.
+- No v1 operation is currently deprecated or scheduled for removal.
 
 ## Credential Lifecycle
 
@@ -108,6 +117,7 @@ Keep the feature flag off until one target tenant has:
 
 | Date | Version | Change |
 | --- | --- | --- |
+| 2026-08-22 | 1.3.0 | Published the stable v1 compatibility and observable deprecation policy in developer HTML and OpenAPI; no operation is deprecated or scheduled for removal. |
 | 2026-08-22 | 1.2.0 | Published a rollout-gated OpenAPI 3.1 contract and added fixed safe resolution guidance to existing JSON errors without enabling the API or changing credential scope. |
 | 2026-07-20 | 1.1.0 | Added exact credential contracts, owner key lifecycle, audit-safe rotation/revocation, server-only admission, immediate invalidation, public entity/signal restrictions, stable ETags, replay-conflict handling, strict UI responses, full docs, and focused tests. |
 | 2026-06-16 | 1.0.1 | Suppressed internal production debug traces and added explicit signal idempotency. |

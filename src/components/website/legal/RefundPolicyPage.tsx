@@ -1,6 +1,10 @@
 'use client';
 
 import { LuCheck, LuCreditCard, LuFileText, LuRefreshCw, LuShield, LuX } from 'react-icons/lu';
+import {
+    MENULIST_OPERATOR_DISCLOSURE,
+    MENULIST_PAYMENT_PROCESSOR_DISCLOSURE,
+} from '@constant/menulist/commercialIdentity';
 import AnimateOnScroll, { AnimateStaggerChild } from '../shared/AnimateOnScroll';
 import SectionHeading from '../shared/SectionHeading';
 import SectionWrapper from '../shared/SectionWrapper';
@@ -8,6 +12,8 @@ import WebsiteButton from '../shared/WebsiteButton';
 import WebsiteHeadline from '../shared/WebsiteHeadline';
 
 const policyFacts = [
+    { label: 'Product operator', value: MENULIST_OPERATOR_DISCLOSURE },
+    { label: 'Payment and billing record', value: MENULIST_PAYMENT_PROCESSOR_DISCLOSURE },
     { label: 'Subscription fees', value: 'Generally final once a billing cycle starts, subject to applicable law and confirmed billing errors' },
     { label: 'Credit pack purchases', value: 'Generally non-refundable once credits are added or used, subject to applicable law and confirmed billing errors' },
     { label: 'Automatic renewals', value: 'Cancel before renewal to avoid the next charge' },
@@ -85,7 +91,7 @@ const cancellationCards = [
 ];
 
 export default function RefundPolicyPage() {
-    const lastUpdated = 'July 16, 2026';
+    const lastUpdated = 'August 22, 2026';
 
     return (
         <main className="ws-page">

@@ -70,8 +70,8 @@ Verdict: approved as a routed print workflow, not as a design tool.
 | Use snapshots and freshness detection. | Agree | Store `printSourceHash`, `menuSnapshotId`, and freshness state in device-local export history. Server records remain behind separate cost approval. |
 | Start with many template families. | Partial | Ship a registry that supports families, but expose only approved Classic, Compact, and Premium styles until each passes the QA matrix. |
 | Use Playwright/Chromium server rendering. | Partial | Keep a renderer adapter boundary. Existing repo dependency is `jsPDF`, not Playwright; any browser renderer requires deployment/runtime proof before adoption. |
-| Add AI style advice. | Agree with guardrails | Pro/Premium-only, JSON-only layout recipe. It never renders final pages or rewrites menu truth. |
-| Make output work without a designer. | Agree | Add deterministic auto print design before Pro/Premium AI or manual style choice. |
+| Add AI style advice. | Agree with guardrails | Pro/Multi-location-only, JSON-only layout recipe. It never renders final pages or rewrites menu truth. |
+| Make output work without a designer. | Agree | Add deterministic auto print design before Pro/Multi-location AI or manual style choice. |
 | Store generated artifacts and export history. | Partial | Local browser history is implemented first to keep Firebase cost at zero. Server artifact storage remains behind future flag approval. |
 | Add report/deck export playbook elements. | Partial | Accept PDF metadata, deterministic filenames, source summary, and practical print checklist. Reject executive summaries, ToC, approvals, confidentiality labels, chart/table defaults, and AI/tool provenance because this is an SMB-facing menu/service/catalog output, not a report. |
 
@@ -87,7 +87,7 @@ The live code already proves demand and a basic path:
 - `src/components/templates/main-app/projects/b2cView/shareModal/index.tsx:327` opens Print Menu from the project Share modal when the feature flag is on.
 - `src/components/templates/main-app/useMenuList/index.tsx:951` opens Print Menu from Use MenuList when the feature flag is on.
 - `src/lib/menu-card-export/navigation.ts:1` centralizes the route path and `projectId` query construction.
-- `src/hooks/useMenuCardExportController.ts:87` owns shared project loading, print source building, preview, preflight, export generation, local history, and Pro/Premium layout suggestion behavior.
+- `src/hooks/useMenuCardExportController.ts:87` owns shared project loading, print source building, preview, preflight, export generation, local history, and Pro/Multi-location layout suggestion behavior.
 - `src/components/mobile/menu-card-export/MobileMenuCardExportScreen.tsx:59` renders the dedicated mobile Print Menu screen while reusing the shared controller.
 - `src/components/mobile/screens/MobileShareScreen.tsx:889` opens Print Menu from Mobile Share when the feature flag is on.
 - `src/components/mobile/components/MobileMenuCommandSheet.tsx:185` exposes Print Menu inside the mobile Menu command sheet.
@@ -224,7 +224,7 @@ Auto print design rule:
 - Inputs are existing print source facts: business profile, category count, item count, description coverage, variant presence, and selected job preset.
 - Food, service, retail/product, professional, and wellness businesses must receive different baseline choices where useful.
 - Owners may still change job, style, density, and safe toggles.
-- Auto print design must be deterministic, client-side, and free. It must not call the Pro/Premium AI advisor.
+- Auto print design must be deterministic, client-side, and free. It must not call the Pro/Multi-location AI advisor.
 
 Physical-menu rule:
 
@@ -235,14 +235,14 @@ Physical-menu rule:
 - Compact may use a warm card-like sheet suitable for dense menus and QR handoff.
 - Do not add owner-controlled ornaments, arbitrary fonts, background images, or manual design controls.
 
-### Pro/Premium Layout Suggestion
+### Pro/Multi-location Layout Suggestion
 
 The route may show **Pro layout suggestion** when `ENABLE_MENU_CARD_EXPORT_AI_ADVISOR=true`.
 
 Rules:
 
-- Available only to active Pro or Premium subscriptions via `MENU_CARD_EXPORT_AI_ADVISOR_PLAN_IDS`.
-- Block Starter/no-subscription users before any provider call.
+- Available only to active Pro or Multi-location subscriptions via `MENU_CARD_EXPORT_AI_ADVISOR_PLAN_IDS`.
+- Block Official/no-subscription users before any provider call.
 - Send only bounded menu summary, current settings, source hash, and preflight warning metadata.
 - Return only approved settings: preset, style, density, description/QR/contact toggles, owner note, reason, and up to three warnings.
 - Require owner action to apply the suggestion.
@@ -374,7 +374,7 @@ Do not show hash values to owners unless support mode is active.
 | MCE-12 | Print-shop packet includes print instructions and QR test checklist when enabled. |
 | MCE-13 | Multi-location batch export is feature-flagged and shares the same access checks per selected store/project. |
 | MCE-14 | Generated PDF text remains selectable wherever the renderer supports text output. |
-| MCE-15 | Pro/Premium layout suggestion is optional, plan-gated, capacity-gated, JSON-only, and never part of final render truth. |
+| MCE-15 | Pro/Multi-location layout suggestion is optional, plan-gated, capacity-gated, JSON-only, and never part of final render truth. |
 | MCE-16 | Auto print design is available before paid AI and never consumes AI capacity. |
 | MCE-16 | Generated PDFs include document properties and deterministic filenames for easier local search and support. |
 | MCE-17 | Print-shop packet instructions include owner-safe source summary, generated/menu-updated dates, template version, renderer version, and live menu destination. |
@@ -386,7 +386,7 @@ Do not show hash values to owners unless support mode is active.
 | Area | Requirement |
 | --- | --- |
 | Security | Authenticated owner route uses existing DAL/session context; the AI advisor API uses `withAuth()`, tenant/store verification, validation, and rate limiting. |
-| Cost | Preview and final export must not write Firestore or upload Storage in the default implementation. AI advisor must be blocked before provider call for non-Pro/Premium users. |
+| Cost | Preview and final export must not write Firestore or upload Storage in the default implementation. AI advisor must be blocked before provider call for non-Pro/Multi-location users. |
 | Performance | Preview should return in under 2 seconds for normal menus; final export must show clear queued/rendering/ready states. |
 | Mobile | Thumb-safe controls, no precision layout editing, same device-local export history model as desktop. |
 | Public output | PDF must not include internal notes, owner-only metadata, draft items, or hidden content. |
@@ -422,7 +422,7 @@ Do not show hash values to owners unless support mode is active.
 | Print-shop preset | Flag off until file size, bleed, and printer specs are verified. |
 | QR error correction | Use short URLs and choose level by preset; default print QR should favor resilience while keeping module size scan-safe. |
 | Accessibility target | Preserve selectable text at launch; treat tagged PDF/PDF-UA as a verified hardening target, not a launch claim. |
-| AI advisor | Enabled as Pro/Premium value-add only. Keep it JSON-only and independent from final rendering. |
+| AI advisor | Enabled as Pro/Multi-location value-add only. Keep it JSON-only and independent from final rendering. |
 
 ---
 

@@ -419,7 +419,7 @@ Primary implementation files:
 - Customer quick answers render visibly from already-visible facts only: today hours, address, menu availability, WhatsApp availability, and directions availability. They do not add hidden FAQ schema, crawl external sources, or claim that menus are always current.
 - OBP photos open an in-page preview on click.
 - Privacy, Terms, and Refund footer links are individually show/hide controlled.
-- Footer utility links/actions and compact MenuList attribution render as separate cards so platform branding stays quiet and terminal spacing stays controlled. The branding card is omitted for Premium stores through the shared MenuList attribution policy; non-Premium and missing plan data keep it visible.
+- Footer utility links/actions and compact MenuList attribution render as separate cards so platform branding stays quiet and terminal spacing stays controlled. The branding card is omitted when the shared MenuList attribution policy grants branding removal; other or missing plan data keeps it visible.
 - Compliance content can be edited from Official Business Page settings using the existing compliance override API.
 - Business attribute defaults can be filled from high-confidence extraction evidence, but owner-entered `true`/`false` values remain authoritative. Client-side desktop/mobile default application requires acknowledged store writes before local state changes.
 

@@ -3,6 +3,7 @@
 import { useTranslations } from 'next-intl';
 import { LuArrowRight, LuBadgeCheck, LuBookOpen, LuBuilding2, LuFileText, LuGlobe2, LuLayoutGrid, LuLink, LuMapPin } from 'react-icons/lu';
 import { FEATURE_FLAGS } from '@config/features';
+import { MENULIST_OPERATOR_DISCLOSURE } from '@constant/menulist/commercialIdentity';
 import PublicAiSummaryLinks from '@/components/shared/publicAiSummaryLinks/PublicAiSummaryLinks';
 import BrandWordmark from './shared/BrandWordmark';
 import Link from './shared/WebsiteLink';
@@ -31,6 +32,7 @@ const sourceLinks = [
 
 const resourceLinks = FEATURE_FLAGS.ENABLE_WEBSITE_RESOURCES
   ? [
+    { href: '/developers', key: 'developers' },
     { href: '/resources/menu-engineering', key: 'menuEngineering' },
     { href: '/resources/qr-menu-for-restaurants', key: 'qrMenuForRestaurants' },
     { href: '/resources/digital-menu-vs-pdf-menu', key: 'digitalMenuVsPdf' },
@@ -42,6 +44,7 @@ const resourceLinks = FEATURE_FLAGS.ENABLE_WEBSITE_RESOURCES
     { href: '/trust-security', key: 'trustSecurity' },
   ]
   : [
+    { href: '/developers', key: 'developers' },
     { href: '/faq', key: 'faq' },
     { href: '/trust-security', key: 'trustSecurity' },
   ];
@@ -121,6 +124,7 @@ export default function Footer() {
             </Link>
             <p>{t('Footer.tagline')}</p>
             <p className="ws-footer-source-line">{t('Footer.sourceLine')}</p>
+            <p className="ws-footer-source-line">{MENULIST_OPERATOR_DISCLOSURE}</p>
             <a href="mailto:hello@menulist.ai" className="ws-footer-email">
               hello@menulist.ai
             </a>

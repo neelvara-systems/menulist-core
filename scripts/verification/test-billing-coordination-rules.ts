@@ -29,6 +29,19 @@ async function run(): Promise<void> {
                 status: 'ready',
                 providerPlanId: 'plan_test123',
             });
+            await setDoc(doc(adminDb, 'menulistPurchasedCreditRecoveries', '1_101'), {
+                purchasedCredits: 250,
+                status: 'frozen',
+            });
+            await setDoc(doc(adminDb, 'billingDocuments', 'inv_test'), {
+                documentNumber: 'ML26-27-000001',
+                productId: 'ML',
+                tenantId: 1,
+                storeId: 101,
+            });
+            await setDoc(doc(adminDb, 'billingDocumentCounters', 'ctr_test'), {
+                lastSequence: 1,
+            });
         });
 
         const contexts = [
@@ -45,6 +58,19 @@ async function run(): Promise<void> {
             await assertFails(setDoc(doc(clientDb, 'billingCheckoutLeases', 'lease-2'), { status: 'processing' }));
             await assertFails(getDoc(doc(clientDb, 'billingProviderPlans', 'plan-1')));
             await assertFails(setDoc(doc(clientDb, 'billingProviderPlans', 'plan-2'), { status: 'ready' }));
+            await assertFails(getDoc(doc(clientDb, 'menulistPurchasedCreditRecoveries', '1_101')));
+            await assertFails(setDoc(doc(clientDb, 'menulistPurchasedCreditRecoveries', '1_102'), {
+                purchasedCredits: 250,
+                status: 'frozen',
+            }));
+            await assertFails(getDoc(doc(clientDb, 'billingDocuments', 'inv_test')));
+            await assertFails(setDoc(doc(clientDb, 'billingDocuments', 'inv_other'), {
+                documentNumber: 'ML26-27-000002',
+            }));
+            await assertFails(getDoc(doc(clientDb, 'billingDocumentCounters', 'ctr_test')));
+            await assertFails(setDoc(doc(clientDb, 'billingDocumentCounters', 'ctr_other'), {
+                lastSequence: 2,
+            }));
         }
         process.stdout.write('Billing coordination Firestore rules tests passed.\n');
     } finally {

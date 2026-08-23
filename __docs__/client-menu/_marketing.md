@@ -80,7 +80,7 @@ Restaurant owners don't have time to manage marketing. They're busy cooking, ser
 | Featured choices      | ❌          | ✅                 |
 | Word-of-mouth trigger | ❌          | ✅                 |
 | Setup complexity      | High        | Low (scan QR)      |
-| Monthly cost          | ₹5,000+     | ₹999               |
+| Monthly cost          | ₹5,000+     | From ₹599          |
 
 ---
 
@@ -262,7 +262,7 @@ Restaurant owners don't have time to manage marketing. They're busy cooking, ser
 - "One tap to mark sold out"
 - "Customers see the approved menu on their phone"
 - "No app download needed — just QR"
-- "₹999/month — less than one day's printing cost"
+- "Plans start at ₹599/month — often less than one menu reprint"
 
 **Language:** Simple Hindi-English mix acceptable
 
@@ -330,7 +330,7 @@ Restaurant owners don't have time to manage marketing. They're busy cooking, ser
 
 **Response:**
 
-> "₹999/month is less than the cost of reprinting your menu once. And you'll never pay for reprinting again. Plus, your staff saves time not answering availability questions."
+> "Plans start at ₹599/month, often less than one menu reprint. The same approved link can stay current without repeatedly replacing old PDFs or screenshots."
 
 ---
 
@@ -365,7 +365,7 @@ Restaurant owners don't have time to manage marketing. They're busy cooking, ser
 
 ### How to Position
 
-**Don't say:** "₹999 for the Pro plan"
+**Don't say:** "It is just another monthly software plan"
 
 **Say:** "For less than the cost of reprinting your menu once, you get one live menu link backed by the approved source."
 

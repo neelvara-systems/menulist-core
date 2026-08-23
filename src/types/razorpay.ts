@@ -1,6 +1,7 @@
 import { Timestamp } from "firebase/firestore";
 import type { ProductId } from "@constant/product";
 import type { RazorpayProviderSubscriptionStatus } from "@data/shared/razorpaySubscriptionLifecycle";
+import type { MenuListTaxSnapshot } from "@data/shared/billingTaxPolicy";
 
 // Core Types for the Payment System
 export type PaymentProvider = "razorpay";
@@ -68,8 +69,8 @@ export interface FirestoreSubscriptionDoc {
   // --- Plan & Status Details ---
   status: PaymentStatus;
   providerStatus?: RazorpayProviderSubscriptionStatus;
-  planName: string;                 // NEW: User-friendly name, e.g., "Pro Plan (Yearly)"
-  planId: string;                   // NEW: The internal plan identifier, e.g., "pro"
+  planName: string;                 // User-friendly name, e.g., "Pro (Yearly)"
+  planId: string;                   // Product-namespaced internal identity, e.g., "menulist_pro"
   planType: PlanInterval;
   analyticsEntitlement?: {
     activePlanType: string | null;
@@ -77,7 +78,9 @@ export interface FirestoreSubscriptionDoc {
     syncedAt?: Timestamp;
     source?: string;
   };
-  amount: number;
+  amount: number;                   // Per-unit price in the smallest currency unit; multiply by quantity for cycle total.
+  chargedUnitAmount?: number;       // Provider charge per unit, including tax where applicable.
+  taxSnapshot?: MenuListTaxSnapshot; // Current provider billing terms; quantity changes resize totals without changing frozen unit tax terms.
   currency: Currency;
 
   // --- CRITICAL: Billing Cycle Dates ---
@@ -89,11 +92,16 @@ export interface FirestoreSubscriptionDoc {
   pastDueSinceAt: Timestamp | null;        // Set only while the subscription is past due.
 
   // --- CRITICAL: Credit Management System ---
-  monthlyCreditsAllowance: number;  // NEW: The fixed number of credits this plan grants per cycle. Set ONCE.
-  monthlyCredits: number;           // NEW: The current balance of recurring credits. RESET every cycle.
-  topUpCredits: number;             // NEW: Balance of purchased credits from top-up packs. Does NOT reset.
+  monthlyCreditsAllowance: number;  // Effective recurring allowance for this cycle and settled plan quantity.
+  monthlyCredits: number;           // Current recurring balance. Resets each billing cycle.
+  topUpCredits: number;             // Purchased balance. Cycle resets do not change it.
+  promotionalCredits?: number;      // Expiring referral/goodwill balance, separate from purchased value.
+  promotionalCreditsExpireAt?: Timestamp | null;
+  purchasedCreditsFrozenAt?: Timestamp | null;
+  purchasedCreditsRestoreUntil?: Timestamp | null;
+  purchasedCreditsRecoveryId?: string | null;
   creditsLastResetMonth?: number;   // YYYYMM format (e.g., 202602). Tracks when monthlyCredits was last reset.
-  carryForwardCredits?: number;      // Server-computed credits moved during a subscription upgrade.
+  carryForwardCredits?: number;      // Server-computed purchased credits moved during a replacement.
   carryForwardFromSubscriptionId?: string;
   carryForwardAppliedAt?: Timestamp;
   upgradeReplacementSubscriptionId?: string;
@@ -180,6 +188,8 @@ export interface FirestoreTopupDoc {
   providerPaymentId?: string; // e.g., pay_xxxxxxxx from a provider
   creditsAdded: number;
   amount: number; // in the smallest currency unit (paise/cents)
+  baseAmount?: number;
+  taxSnapshot?: MenuListTaxSnapshot;
   currency: Currency;
   status: PaymentStatus;
   userId: string;
@@ -206,6 +216,10 @@ export interface BillingHistoryItem {
   status: string;
   invoiceId?: string;
   invoiceUrl?: string;
+  billingDocumentId?: string;
+  billingDocumentNumber?: string;
+  billingDocumentType?: 'tax_invoice' | 'credit_note';
+  billingDocumentUrl?: string;
   billingCycle?: string;
   credits?: number;
 }

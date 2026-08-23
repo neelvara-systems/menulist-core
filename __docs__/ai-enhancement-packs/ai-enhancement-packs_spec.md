@@ -1,8 +1,8 @@
 # AI Enhancement Packs — Specification
 
 **Feature:** AI Enhancement Packs (Outcome-Based AI Pricing & Usage Tracking)
-**Status:** 📝 Specification Complete
-**Last Updated:** July 14, 2026
+**Status:** Implemented policy specification
+**Last Updated:** August 22, 2026
 **Audience:** CEO, PM, Clients, Non-developers
 
 ---
@@ -13,7 +13,7 @@
 
 AI Enhancement Packs are one-time purchasable bundles that unlock additional AI capabilities beyond what's included in a subscription plan. When a subscriber's included AI capacity is used, they purchase a pack to continue using enhancement features like image regeneration, description rewrites, tone adjustments, and bulk translations.
 
-**Internally**, the system tracks every AI operation using a unit-based cost accounting model. **Externally**, the purchasable Pack and referral rewards show exact credit amounts with concrete outcome examples. Monthly included capacity, provider costs, margins, and overdraft policy remain private.
+**Internally**, the system tracks every metered operation using a versioned Content Credit accounting model. **Externally**, owners can see included, promotional, purchased, and usable balances plus the cost of an eligible action. Provider costs and margins remain private.
 
 ### Why Does It Matter?
 
@@ -30,7 +30,7 @@ AI Enhancement Packs are one-time purchasable bundles that unlock additional AI 
 
 ### What Is NOT In Scope
 
-- Exposing provider tokens, provider costs, margins, monthly included capacity, overdraft policy, or internal valuation to customers
+- Exposing provider tokens, provider costs, margins, or internal valuation to customers
 - Usage dashboards, meters, countdowns, or progress bars
 - Per-feature or per-pack separate balances
 - Overage pricing (pay-per-use beyond capacity)
@@ -40,17 +40,21 @@ AI Enhancement Packs are one-time purchasable bundles that unlock additional AI 
 
 ---
 
-## July 11, 2026 Founder Transparency Amendment
+## August 22, 2026 Content Credit Contract
 
-The older sections below preserve implementation history and may describe the former rule that hid all credit amounts. That rule is superseded for purchasable Pack credits and owner-referral reward credits.
+The approved policy is [`content-credit-decision-record-2026-08.md`](./content-credit-decision-record-2026-08.md). Older hidden-capacity and overdraft behavior is retired.
 
 The current contract is:
 
 1. `Content Credit Pack` displays `250 credits` on website pricing, desktop Billing, and mobile Billing.
 2. Every purchase card displays a current example: up to 50 generated menu images or 250 description rewrites.
 3. Operation rates used in public examples come from `src/data/shared/contentCreditPolicy.ts` and are consumed by `src/constants/AI/unitCosts.ts`.
-4. Public copy does not publish a rupee-per-credit value, provider cost, margin, monthly included-credit allowance, or overdraft allowance.
-5. Changes to charged operation rates must update the public-safe policy first so runtime examples and accounting remain aligned.
+4. Billing shows included, promotional, purchased, and usable balances without publishing a rupee-per-credit value, provider cost, or margin.
+5. Included allowances are 75 for Official, 250 for Pro, and 300 per paid Multi-location location.
+6. The one 250-credit Pack costs ₹799 / $29 before applicable tax.
+7. Exact non-negative enforcement replaces hidden overdraft.
+8. Expired promotional credits remain historical data only: they do not authorize work, appear in usable totals, or revive when a later referral reward is issued.
+8. Changes to charged operation rates must update the public-safe policy first so runtime examples and accounting remain aligned.
 
 ---
 
@@ -123,9 +127,9 @@ Bad systems create: meter-running feeling, fear of clicking AI, fear of extra co
 **MenuList avoids all of these because:**
 
 - Included usage is generous (covers 80th percentile)
-- Block happens late (overdraft buffer)
+- Exact balance admission prevents surprise negative balances
 - Single pack purchase (no tier decisions)
-- No monthly included-capacity meter or countdown pressure
+- Calm balance detail without a countdown or running-cost metaphor
 
 User never feels "AI is costing me money constantly." They only feel "sometimes I need extra pack."
 
@@ -139,7 +143,7 @@ The system architecture is correct. It will only fail if execution violates thes
 
 | Failure Mode                      | Why It Breaks ICP                               |
 | --------------------------------- | ----------------------------------------------- |
-| Show monthly allowance/usage internals | Creates monitoring pressure and exposes private plan mechanics |
+| Turn balance detail into a countdown | Creates monitoring pressure |
 | Use word "limit"                  | Implies scarcity — shifts blame to user         |
 | Block too early                   | First-time block feels like being cheated       |
 | Pack price too high for India     | Pack > ₹4k–₹5k causes hesitation for small SMBs |
@@ -261,23 +265,18 @@ Track **pack purchase hesitation rate** — not margin:
 | Principle                                          | Implementation                                      |
 | -------------------------------------------------- | --------------------------------------------------- |
 | Region affects **price only**                      | INR vs USD pricing per market                       |
-| Region NEVER affects units, limits, or AI behavior | Same 250 units per pack globally                    |
+| Region NEVER affects credits or feature behavior  | Same 250-credit Pack globally                       |
 | Same product globally                              | No feature differences by geography                 |
-| PPP gap must be meaningful                         | ₹2,999 India vs $39–49 global (not $29 — too close) |
+| Approved regional price book                       | ₹799 India and $29 global                           |
 | Currency detection must be correct                 | India → INR, outside → USD. No manual confusion.    |
 
-**Why this works:** Global users at $39+ subsidize Indian pricing at ₹2,999. Both maintain strong margins because Gemini cost is identical regardless of what the customer pays. This is standard global SaaS architecture.
+The allowance and Pack size are identical across regions. Currency changes only the commercial price book.
 
 **Forbidden:** Never make India cheaper but feature-limited. Never make global users get more AI capacity. Same product. Only price differs.
 
-### Future Expansion (Capability-Flagged, Not "Phase 2")
+### Pack-shape authority
 
-The system ships with all architecture for tiered packs. At launch, only one tier is active:
-
-```
-packTiers: "single"     // Day 1: One pack, one price
-packTiers: "tiered"     // Future: Basic/Pro/Premium packs (data flag, no re-architecture)
-```
+MenuList has one commercial Content Enhancement Pack: 250 credits for ₹799 / $29 before applicable tax. There is no dormant tier flag or compatibility pack list. Any later pack-shape change requires an explicit commercial-policy revision, source update, provider verification, UI/docs parity, and regression coverage.
 
 ---
 
@@ -303,169 +302,87 @@ Every AI operation has an internal unit cost. Units are abstract — they do not
 
 | Concept                | Implementation                                   |
 | ---------------------- | ------------------------------------------------ |
-| **Total capacity**     | Sum of subscription-included + purchased packs   |
+| **Usable capacity**    | Recurring + valid promotional + purchased balances |
 | **Used capacity**      | Sum of all AI usage events (append-only)         |
-| **Remaining capacity** | `total - used` (derived, never shown to user)    |
+| **Remaining capacity** | Transaction-current bucket sum, shown with breakdown |
 | **Enforcement**        | Server-side check before every paid AI operation |
 | **When exhausted**     | Block action silently → show calm upsell CTA     |
 
 ### Capacity Scope
 
-- **Per-store** (not per-tenant): Capacity lives on the subscription document, aligned with how subscriptions, AI operations, and projects are already scoped (`{tId}/{sId}`). Each store manages its own AI capacity independently. In multi-chain setups, each store has its own subscription and its own capacity.
-- **Not per-feature**: One pooled balance per store, not separate image/translation/description pools
-- **Not time-limited**: Pack capacity does not expire (avoids "use it or lose it" anxiety)
+- **Per effective billing subscription**: a directly billed store owns its balance; linked outlets inheriting a Multi-location HQ subscription consume the shared HQ balance.
+- **Acting-store attribution remains separate**: operation history stays under the store that requested the work even when billing resolves to HQ.
+- **Not per-feature**: one pooled balance, not separate image/translation/description pools.
+- **Bucket-specific lifetime**: recurring resets each cycle, promotional expires explicitly, and purchased value is protected by the 365-day cancellation-recovery policy.
 
-### Multi-Outlet Pack Logic (Detailed)
+### Multi-Outlet Credit Logic
 
-> **Architecture Decision: Per-Store Capacity — VALIDATED**
->
-> ChatGPT originally proposed per-tenant capacity (`tenant.aiCapacity`). This was **REJECTED** after codebase validation AND founder confirmation. Per-store is the only correct model.
+The subscription boundary, not the tenant document and not the acting project, owns paid capacity. This preserves one auditable balance per paid billing scope while retaining operation attribution to the store that requested work.
 
-#### Why Per-Store (Founder's Reasoning)
-
-Local outlets use AI credits **only for overridden/local data** — their own choice, not the master's. If a local outlet adds a new item locally, they need credits for it, but that local item **only benefits their outlet** — no other outlet gets value from it. Therefore each outlet must manage and pay for its own capacity.
-
-#### Concrete Multi-Outlet Scenarios
-
-**Scenario 1: Master Outlet Generates Shared Menu Content**
+#### Effective Billing Scope Example
 
 ```
-Master Outlet (Store A) — has Pro subscription + AI Enhancement Pack
-  ├─ Generates 50 images for shared menu items
-  ├─ Rewrites descriptions for 80 items
-  ├─ Adds Hindi + Tamil translations
-  └─ All consumed from Store A's subscription credits
-      (monthlyCredits first, then topUpCredits)
+HQ billing store — Multi-location plan with 2 paid locations (600 recurring credits)
+Linked Store B — inherits the HQ entitlement and shared billing balance
+Linked Store C — inherits the HQ entitlement and shared billing balance
 
-Linked Outlets (Store B, Store C) — inherit shared menu via sync
-  ├─ Receive images, descriptions, translations automatically
-  ├─ No AI credits consumed — they didn't trigger AI operations
-  └─ Their subscription credits remain untouched
+The effective billing subscription:
+  ├─ scales its recurring allowance by paid active location quantity
+  ├─ owns recurring, promotional, and purchased balances
+  ├─ accepts Pack purchases from an entitled outlet into the same HQ balance
+  └─ serializes consumption so linked locations cannot overspend concurrently
 ```
 
-**Result:** Master pays for shared work. Linked outlets benefit for free. ✅ Fair.
+**Result:** One paid multi-location scope has one auditable shared balance sized to its paid location count. ✅ Correct.
 
-**Scenario 2: Local Outlet Adds Local-Only Content**
-
-```
-Linked Outlet (Store B) — has own subscription + optional pack
-  ├─ Adds 5 local-only menu items (regional specials)
-  ├─ Generates images for those 5 items
-  ├─ Rewrites descriptions with local tone
-  └─ All consumed from Store B's subscription credits
-
-Master Outlet (Store A) — unaffected
-  ├─ Does not see Store B's local items
-  ├─ Credits remain untouched
-  └─ No cross-store drain
-```
-
-**Result:** Local outlet pays for local work. Master is unaffected. ✅ Fair.
-
-**Scenario 3: Why Per-Tenant Would Break This**
+#### How Pack Purchases Work in an Effective Billing Scope
 
 ```
-❌ If capacity were per-tenant (tenant.aiCapacityTotal):
-
-Master buys AI Enhancement Pack → adds to tenant balance
-  ├─ Store B adds 200 local items, generates images → drains tenant balance
-  ├─ Store C does bulk translation → drains tenant balance further
-  ├─ Master tries to generate shared menu images → BLOCKED (capacity exhausted)
-  └─ Master paid, but others consumed. No way to control or track.
-```
-
-**Result:** Cross-store drain, unfair billing, no governance. ❌ Broken.
-
-**Scenario 4: Different Subscription Tiers Per Outlet**
-
-```
-Store A (Master) — Premium plan (600 monthly credits)
-Store B (Linked) — Pro plan (200 monthly credits)
-Store C (Linked) — Basic plan (75 monthly credits)
-
-Each store:
-  ├─ Has its own subscription document
-  ├─ Has its own monthlyCredits + topUpCredits
-  ├─ Buys its own AI Enhancement Packs independently
-  └─ Manages capacity independently
-```
-
-**Result:** Different stores can have different plans and different AI capacity. ✅ Correct.
-
-#### How Pack Purchases Work Per Store
-
-```
-Store B owner clicks "Get more AI enhancements" in their billing page
+An entitled owner clicks "Buy Content Credits" in Billing
   ↓
-Razorpay checkout opens (store-scoped: tId + sId in order metadata)
+Razorpay checkout opens with the effective billing store in immutable order metadata
   ↓
 Payment verified via /api/razorpay/verify-topup
   ↓
-subscription.topUpCredits += pack.internalUnits
+effectiveBillingSubscription.topUpCredits += pack.creditAmount
   ↓
-Store B now has more capacity. Other stores unaffected.
+The paid scope now has more purchased capacity. Linked outlets using that HQ subscription share the updated balance.
 ```
 
-#### Governance (Master Control — Future)
-
-For chains where the master wants control over local outlet AI spending:
-
-| Control Level         | Description                                     | Status                        |
-| --------------------- | ----------------------------------------------- | ----------------------------- |
-| **No control**        | Each outlet manages its own packs independently | ✅ Default (Day 1)            |
-| **Approval required** | Local outlets request packs, master approves    | 🔮 Future (permission toggle) |
-| **Master only**       | Only master can purchase packs for any outlet   | 🔮 Future (permission toggle) |
-
-> **Day 1 rule:** Each store manages its own capacity. Governance controls are a future enhancement, not a launch blocker.
-
-#### Codebase Evidence (Per-Store Scoping)
+#### Codebase Evidence (Effective Billing Scope)
 
 | System Component | Scope     | Evidence                                     |
 | ---------------- | --------- | -------------------------------------------- |
-| Subscriptions    | Per-store | `getActiveSubscriptionForStore(tId, sId)`    |
-| AI Operations    | Per-store | `menulistAiOperations/{tId}/{sId}/`          |
-| Top-ups          | Per-store | `FirestoreTopupDoc` has both `tId` + `sId`   |
-| Projects         | Per-store | `projectsMetadata/{tId}/{sId}/`              |
-| Billing UI       | Per-store | Fetches store's active subscription          |
-| verify-topup     | Per-store | Writes to `subscription.topUpCredits`        |
-| Multi-outlet DAL | Per-store | `canHaveLinkedOutlets()` checks `storesList` |
+| Subscriptions    | Billed store | `getActiveSubscriptionForStore(tId, sId)` resolves direct or inherited entitlement |
+| AI Operations    | Acting store | `menulistAiOperations/{tId}/{sId}/` retains operation attribution |
+| Top-ups          | Billing store | Immutable top-up snapshot records acting and credited scope |
+| Projects         | Acting store | `projectsMetadata/{tId}/{sId}/` retains menu ownership |
+| Billing UI       | Effective subscription | Direct billing actions remain restricted; inherited balance is read-only except Pack purchase |
+| verify-topup     | Effective subscription | Writes purchased credits to the transaction-verified billing subscription |
+| Multi-location   | HQ quantity | Recurring allowance is `300 × paid active locations`, minimum two |
 
-**Every data model is `{tId}/{sId}`. Capacity MUST follow the same pattern.**
+The billing subscription is authoritative for value; `{tId}/{sId}` operation paths remain authoritative for who performed the work.
 
-### Launch Enforcement Strategy
+### Exact Enforcement Strategy
 
 > **Source:** ChatGPT feedback point #1 (Feb 9, 2026 review)
 
-At launch, enforcement should be **soft** — not hard-blocking on the exact unit boundary. This prevents bad first impressions and support friction for early adopters.
-
-| Enforcement Mode   | Behavior                                                                                                                    | When                                   |
-| ------------------ | --------------------------------------------------------------------------------------------------------------------------- | -------------------------------------- |
-| **Soft (Day 1)**   | Allow overdraft up to `OVERDRAFT_BUFFER_PERCENT` (configurable, default 20%) beyond capacity before requiring pack purchase | Launch default                         |
-| **Strict (later)** | Block immediately when capacity = 0                                                                                         | Data flag toggle after real usage data |
+Metered work is admitted only when the exact usable balance covers the full reservation.
 
 **How it works:**
 
 ```
-effectiveCapacity = (monthlyCredits + topUpCredits) * (1 + OVERDRAFT_BUFFER_PERCENT / 100)
-
-if (remaining > 0 OR remaining > -overdraftAllowance):
-  → allow operation, log overdraft usage
-else:
-  → block, show calm upsell CTA
-```
-
-**Config constant** (add to `src/constants/AI/unitCosts.ts`):
-
-```typescript
-export const OVERDRAFT_BUFFER_PERCENT = 20; // Allow 20% overdraft at launch
+usable = monthlyCredits + validPromotionalCredits + topUpCredits
+if (usable >= requiredCredits) reserve exact buckets
+else block before provider work and show the single Pack action
 ```
 
 **Rules:**
 
-- Overdraft is invisible to the user (no "you're in overdraft" messaging)
-- Overdraft usage is logged internally for margin tracking
-- Buffer percentage is adjustable via constant — no code change needed to tighten
-- Once real usage data exists, founder decides whether to reduce to 0% (strict)
+- No balance can become negative.
+- Goodwill uses an explicit expiring promotional grant.
+- Reservation records the exact source buckets and rate version.
+- Failure refunds those same buckets once.
 
 ---
 
@@ -494,7 +411,7 @@ export const OVERDRAFT_BUFFER_PERCENT = 20; // Allow 20% overdraft at launch
 | Scenario           | Approved Language                                          | Forbidden Language                             |
 | ------------------ | ---------------------------------------------------------- | ---------------------------------------------- |
 | Capacity available | Show the eligible operation's exact Pack-credit requirement where a preview is useful | Provider token/cost explanation |
-| Capacity exhausted | "Get more AI enhancements for your menu"                   | Monthly allowance or overdraft breakdown        |
+| Capacity exhausted | "Get more Content Credits"                                 | Provider or margin explanation                   |
 | Pack purchased     | "AI enhancements are ready" plus refreshed Pack balance    | Provider economics or margin                     |
 | Pack active        | Show exact purchased Pack balance without a monthly meter    | Monthly allowance/used-this-cycle countdown      |
 | Support inquiry    | Explain the public Pack amount and current operation rates    | Provider tokens, cost, margin, or internal tax valuation |
@@ -505,21 +422,19 @@ export const OVERDRAFT_BUFFER_PERCENT = 20; // Allow 20% overdraft at launch
 
 ### Included Capacity Per Subscription Tier
 
-Each subscription plan includes a base amount of AI capacity (internal units). This is invisible to the customer — they just know "AI features are included."
+Each subscription plan includes a recurring Content Credit allowance. Billing shows the owner the current balance without turning it into a performance dashboard.
 
-| Subscription Tier | Included AI Capacity (Internal Units) | Typical Coverage                                           |
-| ----------------- | ------------------------------------- | ---------------------------------------------------------- |
-| Basic             | [TBD]                                 | ~Small menu setup (50 items, 1 language)                   |
-| Pro               | [TBD]                                 | ~Medium menu + seasonal refresh (100 items, 2-3 languages) |
-| Premium           | [TBD]                                 | ~Large menu + frequent updates (200+ items, 5+ languages)  |
-
-> **Open Question:** Included capacity per subscription tier needs calibration. Should cover "typical" usage so most subscribers never need a pack. Power users (top 10-20%) should need packs.
+| Subscription tier | Included Content Credits per cycle |
+| ----------------- | ----------------------------------: |
+| Official          | 75                                  |
+| Pro               | 250                                 |
+| Multi-location    | 300 per paid active location        |
 
 ### Capacity Reset
 
 - **On subscription renewal:** Included capacity resets to plan's base amount
-- **Pack capacity:** Does NOT expire with subscription period — carries forward
-- **On plan upgrade:** New plan's included capacity replaces remaining (does not stack)
+- **Pack capacity:** Does not reset with the subscription period
+- **On plan upgrade:** New plan's included capacity replaces remaining; purchased and valid promotional balances transfer separately
 - **On plan downgrade:** Included capacity adjusts to new tier immediately
 
 ---
@@ -580,8 +495,8 @@ Support can name purchased or rewarded credits and explain them through current 
 
 ### Scenario 3: "I want a refund — the AI pack didn't generate enough"
 
-**Response:** "AI features produce results that may vary. If you need additional enhancements, packs are available. Refunds are handled per our terms of service."
-**Why this works:** "May vary" is covered in ToS. No admission of quota or limits.
+**Response:** "Generated results can vary. You can review generated content before using it. Refund requests are handled under our Refund Policy and applicable law."
+**Why this works:** It is accurate about generated output and points the owner to the governing policy without implying that buying another pack resolves a disputed purchase.
 
 ### Scenario 4: "Your sales page says 'unlimited AI' but I'm blocked"
 
@@ -672,7 +587,7 @@ Client shows calm CTA (not error)
 | Browser writes to `menulistAiOperations` disabled             | ✅ Built and deployed | Firestore rules + `npm run verify:ai-accounting` |
 | Razorpay AI Enhancement Pack top-up flow                      | ✅ Built | `create-topup-order` + `verify-topup` |
 | `ENABLE_AI_ENHANCEMENTS` kill switch in `features.ts`         | ✅ Built | Feature flag registry |
-| `OVERDRAFT_BUFFER_PERCENT` config constant                    | HIGH     | Tiny   |
+| Exact no-overdraft reservation                               | ✅ Built | `checkAICapacity()` + `reserveAiCapacity()` |
 | Calm upsell CTA component                                     | MEDIUM   | Small  |
 | Admin margin report (internal)                                | MEDIUM   | Medium |
 
@@ -689,7 +604,7 @@ Client shows calm CTA (not error)
 | Abuse (bulk generation scripts)    | Low      | Multi-layer protection (see below)                                      |
 | Gemini pricing changes             | Medium   | Internal units abstract away API costs — re-map units to new costs      |
 | Customer confusion about "blocked" | Low      | Calm UX + support scripts prepared                                      |
-| Dormant account topUpCredits       | None     | Expired subs don't return from query; new subs start with 0 (see below) |
+| Cancelled-account purchased credits | Low    | Freeze server-side and restore once within 365 days          |
 
 #### Abuse Protection — Multi-Layer Velocity Guard (Already Built)
 
@@ -699,26 +614,17 @@ Client shows calm CTA (not error)
 | ----------------------- | ----------------------------- | ------------------------------- | -------------------------------------- |
 | Rate limit (expensive)  | 5 req/min                     | Max 300 expensive ops/hour      | `src/lib/rateLimit/configs.ts:33-36`   |
 | Rate limit (general AI) | 20 req/min                    | Max 1200 AI ops/hour            | `src/lib/rateLimit/configs.ts:22-25`   |
-| Capacity enforcement    | monthlyCredits + topUpCredits | Can't exceed purchased capacity | `src/lib/ai/capacityCheck.ts`          |
-| Overdraft buffer        | 20% max                       | Limited overshoot               | `src/constants/AI/unitCosts.ts:75`     |
+| Capacity enforcement    | recurring + valid promotional + purchased | Exact non-negative admission | `src/lib/ai/capacityCheck.ts` |
 | Kill switch             | ENABLE_AI_ENHANCEMENTS        | Instant disable all paid ops    | `src/config/features.ts`               |
 | Top-up rate limit       | 10/hour                       | Can't bulk-purchase packs       | `src/lib/rateLimit/configs.ts:148-152` |
 
 **Worst-case abuse math:** At max rate (5 expensive/min × 5 units = 25 units/min), a 250-unit pack is exhausted in ~10 minutes. Max pack purchases = 10/hour. Worst case = 2,500 units/hour = ₹30,000 revenue vs ~₹1,350 Google cost. **Still profitable at max abuse rate.** No additional velocity guard needed at launch.
 
-#### Dormant Account topUpCredits — Already Handled
+#### Cancelled Account Purchased Credits
 
 > **Source:** ChatGPT feedback review (Feb 10, 2026) — validated against codebase
 
-Scenario: User buys packs → cancels → returns months later with old topUpCredits.
-
-**Why this is NOT a risk:**
-
-1. After `cycleEndDate` passes → `getActiveSubscriptionForStore()` returns `null`
-2. `checkAICapacity()` returns `reason: "no_subscription"` → all paid AI blocked
-3. User must create NEW subscription → `topUpCredits` starts at 0
-4. Old subscription's topUpCredits are orphaned on the expired doc — never accessible
-5. Only upgrade flow carries credits forward (intentional, within active lifecycle)
+On cancellation, unused purchased credits move to the server-only `menulistPurchasedCreditRecoveries/{tenantId}_{storeId}` ledger. A different replacement subscription for the same billing store restores them once if captured payment arrives within 365 days. Browser reads and writes are denied.
 
 #### Margin Management Strategy
 
@@ -733,19 +639,19 @@ Current margins are ~94-99% depending on operation. This is acceptable at launch
 - Deploy-only change — no migration, no UI update needed
 - **Rule:** Never change customer-facing price first. Adjust internal unit economics first.
 
-### Open Questions
+### Settled Decisions
 
-1. **Exact pack pricing (₹/USD)?** — Requires Gemini cost analysis and founder willingness-to-pay judgment.
+1. **Exact pack pricing:** ₹799 / $29 before applicable tax for 250 credits.
 
 2. **Internal unit values per operation?** — Requires calibration against actual Gemini API billing data. Current `TOKENS_PER_CREDIT` / `CHARGE_PER_CREDIT` constants provide starting framework.
 
-3. **Included capacity per subscription tier?** — Should cover "typical" usage (80th percentile). Power users (top 10-20%) need packs.
+3. **Included capacity:** Official 75, Pro 250, Multi-location 300 per paid location.
 
-4. **Per-tenant or per-store capacity?** — **RESOLVED: Per-store.** The entire codebase (subscriptions, AI operations, projects, top-ups, billing UI) is scoped by `{tId}/{sId}`. Moving capacity to per-tenant would create a scope mismatch, cross-store drain in multi-chain setups, lifecycle conflicts, and race conditions. Capacity stays on the subscription document where credits already live.
+4. **Capacity scope?** — **RESOLVED: effective billing subscription.** A directly billed single location owns its balance. Linked outlets inheriting a Multi-location HQ subscription consume the shared HQ balance, while operation history remains attributed to the acting `{tId}/{sId}` store.
 
 5. **Existing constants migration?** — `TOKENS_PER_CREDIT=500` and `CHARGE_PER_CREDIT=100` exist. Should these be extended or replaced with the new `AI_UNIT_COSTS` system?
 
-6. **Pack expiry?** — Recommendation: No expiry. Avoids "use it or lose it" anxiety. Capacity carries forward indefinitely.
+6. **Cancellation recovery:** Purchased credits freeze and can be restored within 365 days.
 
 ---
 
@@ -757,30 +663,32 @@ The codebase already has a fully functional pricing, billing, and credit system.
 
 #### Subscription Plans (`src/data/PlatformPlansList.ts`)
 
-| Type | Plan        | Monthly Price (INR) | Monthly Price (USD) | Monthly Credits (INR) | Monthly Credits (USD) | Billing    |
-| ---- | ----------- | ------------------- | ------------------- | --------------------- | --------------------- | ---------- |
-| B2C  | Starter     | ₹499                | $29                 | 75                    | 100                   | Month/Year |
-| B2C  | Pro         | ₹1,499              | $79                 | 200                   | 400                   | Month/Year |
-| B2C  | Premium     | ₹3,999              | $149                | 600                   | 1000                  | Month/Year |
-| B2B  | Starter API | ₹4,999              | $69                 | 200                   | 200                   | Month/Year |
-| B2B  | Pro API     | ₹18,999             | $249                | 1000                  | 1000                  | Month/Year |
+| Type | Plan           | Monthly Price (INR) | Monthly Price (USD) | Monthly Credits (INR) | Monthly Credits (USD) | Billing    |
+| ---- | -------------- | ------------------- | ------------------- | --------------------- | --------------------- | ---------- |
+| B2C  | Official       | ₹599                | $29                 | 75                    | 75                    | Month/Year |
+| B2C  | Pro            | ₹1,499              | $79                 | 250                   | 250                   | Month/Year |
+| B2C  | Multi-location | ₹1,499/location     | $79/location        | 300/location          | 300/location          | Month/Year |
+| B2B  | Starter API    | ₹4,999              | $69                 | 200                   | 200                   | Month/Year |
+| B2B  | Pro API        | ₹18,999             | $249                | 1000                  | 1000                  | Month/Year |
+
+Multi-location requires at least two paid active locations. Public and persisted IDs are `menulist_official`, `menulist_pro`, and `menulist_multi_location`.
 
 #### Credit Pack (One-Time Top-up, `aiEnhancementPacksList` in same file)
 
 | Pack | Credit Amount | Price (INR) | Price (USD) | Current examples |
 | --- | ---: | ---: | ---: | --- |
-| Content Credit Pack | 250 credits | ₹2,999 | $29 | Up to 50 generated menu images or 250 description rewrites |
+| Content Credit Pack | 250 credits | ₹799 | $29 | Up to 50 generated menu images or 250 description rewrites |
 
 #### Feature List (`src/data/PlatformFeaturesList.ts`)
 
-All AI features are currently marked as **"Unlimited"** or **true (boolean)** across all subscription tiers:
+AI features are offered across the subscription tiers with bounded availability language:
 
-- AI Data Extraction: "Unlimited" (all plans)
-- AI Description Generation: "Unlimited" (all plans)
-- AI Multi-Language Translation: "Unlimited" (all plans)
+- AI Data Extraction: "Included" (all plans)
+- AI Description Generation: "Included" (all plans)
+- AI Multi-Language Translation: "Included" (all plans)
 - AI Image Generator: `true` (all plans)
 - AI Image Editor: `true` (all plans)
-- Interactive Studio: Pro/Premium only
+- Interactive Studio: Pro/Multi-location only
 
 #### Payment Flow (Razorpay — Fully Built)
 
@@ -809,16 +717,15 @@ Credits live **on the subscription document**, not on the tenant:
 ```typescript
 interface Price {
   price: number | null;
-  monthlyCredits: number | null; // ⚠️ Exposes "credits" concept
+  monthlyCredits: number | null;
 }
 
-interface CreditPack {
+interface AIEnhancementPack {
   packId: string;
   name: string;
-  creditAmount: number; // ⚠️ Exposes credit amount
+  creditAmount: number;
   priceINR: Price;
   priceUSD: Price;
-  stripePriceId: string;
 }
 ```
 
@@ -833,7 +740,7 @@ The payment system was designed provider-agnostic from the start:
 
 #### Pricing Strategy Doc (`__docs__/strategy/pricing-strategy.md`)
 
-**OUTDATED** — recommends "One Plan: MenuList Pro ₹999/month" with no free tier. The actual codebase has 3 B2C tiers + 2 B2B tiers + credit packs. This doc needs reconciliation but is out of scope for AI Enhancement Packs.
+The current pricing strategy defines the Official, Pro, and Multi-location public plans. AI Enhancement Packs integrate with their existing included-capacity entitlements and remain commercially separate from subscription pricing.
 
 ---
 
@@ -866,38 +773,38 @@ The payment system was designed provider-agnostic from the start:
 4. **Race conditions:** Multiple stores consuming from one counter simultaneously.
 5. **Purchase ambiguity:** Billing page is per-store — no UI for tenant-level purchases.
 
-**Correct approach:** Credits stay on the subscription document. AI operations decrement `monthlyCredits` first, then `topUpCredits`. Pack purchases add to `topUpCredits` (already working). No new documents needed.
+**Correct approach:** Usable credits stay on the effective billing subscription. Metered operations decrement recurring, then valid promotional, then purchased credits. Pack purchases add only to `topUpCredits`; cancellation recovery uses a separate server-only ledger.
 
 #### Conflict 3: Credit Visibility in UI - Superseded July 11, 2026
 
-The former outcome-only rule was replaced by transparent Pack credit amounts plus exact examples. `CreditPackCard.tsx` now renders `pack.creditAmount` and examples calculated from `src/data/shared/contentCreditPolicy.ts`. Monthly included capacity and internal economics remain hidden.
+The former outcome-only rule was replaced by transparent credit balances plus exact examples. `CreditPackCard.tsx` renders `pack.creditAmount` and examples calculated from `src/data/shared/contentCreditPolicy.ts`. Internal provider economics remain private.
 
-#### Conflict 4: Feature List Says "Unlimited"
+#### Conflict 4: Feature List Says "Unlimited" - Resolved
 
-`PlatformFeaturesList.ts` marks AI descriptions, translations as **"Unlimited"** for all plans. If AI Enhancement Packs enforce capacity limits on these operations, the feature list must change:
+`PlatformFeaturesList.ts` now uses **"Included"** for descriptions, translations, and extraction. Boolean image availability remains unchanged:
 
-| Feature              | Current Value           | Required Change                    |
+| Feature              | Current Value           | Contract                           |
 | -------------------- | ----------------------- | ---------------------------------- |
-| `ai_descriptions`    | "Unlimited" (all tiers) | "Included" or `true` (boolean)     |
-| `ai_multi_language`  | "Unlimited" (all tiers) | "Included" or `true` (boolean)     |
-| `ai_image_generator` | `true`                  | No change needed (already boolean) |
-| `ai_image_editor`    | `true`                  | No change needed                   |
+| `ai_descriptions`    | "Included" (all tiers)  | Bounded by Content Credits         |
+| `ai_multi_language`  | "Included" (all tiers)  | Bounded by Content Credits         |
+| `ai_image_generator` | `true`                  | Bounded by Content Credits         |
+| `ai_image_editor`    | `true`                  | Bounded by Content Credits         |
 
 **Critical:** "Unlimited" explicitly promises no limits. If we enforce capacity, we CANNOT say "Unlimited." Changing to "Included" communicates availability without promising infinity.
 
-#### Conflict 5: `monthlyCredits` in Data Structures
+#### Conflict 5: `monthlyCredits` in Data Structures - Resolved
 
-The `Price` interface and every plan object includes `monthlyCredits`. Under the new doctrine, this field:
+The `Price` interface and every plan object includes `monthlyCredits`. Under the maintained contract, this field:
 
-- **Must remain internally** (backend needs it for capacity calculation)
-- **Must NOT be exposed in UI** (no pricing page should show "75 credits/month")
-- **Should be renamed** to `monthlyAICapacity` or kept as-is with a code comment marking it internal-only
+- remains the canonical recurring allowance used by server accounting
+- is shown as an exact balance in authenticated owner Billing
+- is not used as public pricing-page feature-card copy
 
-**Resolution:** Keep field name as-is for backward compatibility. Ensure no UI component renders `monthlyCredits` to the user. Add code comment: `// INTERNAL: Never display to end user. See AI Enhancement Packs doctrine.`
+**Resolution:** Keep the field name as the long-term data contract. Owner Billing may show the recurring balance, while public plan cards use concise included-enhancement language.
 
-#### Conflict 6: CreditPack Interface Exposes Credits - Resolved
+#### Conflict 6: Pack Interface Credit Visibility - Resolved
 
-The `CreditPack` interface in `common.ts` has `creditAmount: number` and the `creditPacksList` array is exported and used in:
+The final `AIEnhancementPack` interface intentionally has owner-visible `creditAmount: number`, and `aiEnhancementPacksList` is the only exported commercial pack list used by:
 
 - `create-topup-order/route.ts` — to set Razorpay order notes
 - `verify-topup/route.ts` — to calculate credits to add
@@ -905,11 +812,9 @@ The `CreditPack` interface in `common.ts` has `creditAmount: number` and the `cr
 
 **Resolution:** The type is `AIEnhancementPack`, while `creditAmount` remains the canonical purchased amount and is intentionally visible for Pack and referral-credit transparency. Provider cost and other internal economic fields remain server-only.
 
-#### Conflict 7: Pricing Strategy Doc Mismatch
+#### Pricing Strategy Alignment
 
-`__docs__/strategy/pricing-strategy.md` says "One Plan: MenuList Pro ₹999/month" — but the codebase has 3 B2C tiers (₹499/₹1,499/₹3,999) and credit packs.
-
-**Resolution:** Out of scope for AI Enhancement Packs. The pricing strategy doc needs a separate update to reflect the current multi-tier reality. The AI Enhancement Packs system works with any number of subscription tiers — it only cares about included capacity per tier.
+`__docs__/strategy/pricing-strategy.md` and `src/data/PlatformPlansList.ts` define the same three public B2C plans. AI Enhancement Packs consume the plan's included capacity without owning or duplicating the subscription-pricing contract.
 
 ---
 
@@ -925,20 +830,18 @@ The `CreditPack` interface in `common.ts` has `creditAmount: number` and the `cr
 - Rate limiting (`PAYMENT_TOPUP`: 10/hr)
 - Security patterns (`withAuth`, `verifyTenantAccess`, Zod validation)
 
-#### What CHANGES (Rename/Refactor)
+#### Current implementation authority
 
-> **3-Year Freeze Rule Applies:** User confirmed not live yet. All renames and re-architecture ship at launch. No migration or backward compatibility needed. "When" column reflects implementation order, not urgency.
+> **3-Year Freeze Rule Applies:** MenuList is not live, so the implementation uses only final names and has no compatibility aliases or migration branches.
 
-**Data Layer:**
-
-| Change                                              | File(s)                             | Effort | When |
-| --------------------------------------------------- | ----------------------------------- | ------ | ---- |
-| Rename `CreditPack` → `AIEnhancementPack`           | `common.ts` + all consumers         | Medium | Wk 3 |
-| Rename `creditAmount` → `internalUnits`             | `common.ts` + all consumers         | Medium | Wk 3 |
-| Rename `creditPacksList` → `aiEnhancementPacksList` | `PlatformPlansList.ts` + consumers  | Small  | Wk 3 |
-| Add `// INTERNAL` comments to `monthlyCredits`      | `common.ts`, `PlatformPlansList.ts` | Tiny   | Wk 3 |
-| Change "Unlimited" to "Included"                    | `PlatformFeaturesList.ts`           | Small  | Wk 3 |
-| Add AI consumption logic (decrement credits on use) | AI API routes + subscription DAL    | Medium | Wk 2 |
+| Contract | Authority |
+| --- | --- |
+| Pack type | `AIEnhancementPack` in `src/data/common.ts` |
+| Commercial pack list | `aiEnhancementPacksList` in `src/data/PlatformPlansList.ts` |
+| Credit amount and INR/USD price | `MENULIST_CONTENT_CREDIT_PACK` in `src/data/shared/contentCreditPolicy.ts` |
+| Operation rates | `CONTENT_CREDIT_OPERATION_COSTS` in `src/data/shared/contentCreditPolicy.ts` |
+| Atomic reservation and settlement | `src/lib/ai/capacityCheck.ts` |
+| Purchase settlement | Razorpay top-up routes plus `src/lib/billing/topupSettlement.ts` |
 
 **Frontend (19 credit visibility violations across 6 files):**
 
@@ -994,7 +897,7 @@ Two parallel billing systems exist. The entire `billingStripe/` folder and Strip
 | One balance per tenant (Firestore schema)  | ❌ REJECTED | Must be per-store — see Multi-Outlet Pack Logic section          |
 | `/tenants/{tenantId}/aiUsageEvents/`       | ❌ REJECTED | Events already at `menulistAiOperations/{tId}/{sId}`             |
 | `/tenants/{tenantId}/aiPackPurchases/`     | ❌ REJECTED | Purchases already at `topups/{tId}/{sId}`                        |
-| `aiCapacityTotal/Used/Remaining` on tenant | ❌ REJECTED | Capacity = `subscription.monthlyCredits + topUpCredits`          |
+| `aiCapacityTotal/Used/Remaining` on tenant | ❌ REJECTED | Capacity remains on the effective billing subscription           |
 | OpenAI/Azure cost model                    | ❌ REJECTED | MenuList uses Gemini exclusively (10-100x cheaper)               |
 | A/B pricing experiments                    | ❌ REJECTED | Forbidden by `06-internal-tracking.md`                           |
 | Human Review Add-on                        | ❌ REJECTED | Law 7: No Feature Without Autonomy                               |
@@ -1009,4 +912,4 @@ Two parallel billing systems exist. The entire `billingStripe/` folder and Strip
 ---
 
 **Document Signature:** Lead Architect (Cascade)
-**Last Updated:** February 9, 2026 (v4 — overdraft buffer, kill switch, ToS dormancy clause per ChatGPT feedback)
+**Last Updated:** August 22, 2026 (approved Content Credit contract)

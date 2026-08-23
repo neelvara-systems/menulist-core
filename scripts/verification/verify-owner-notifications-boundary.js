@@ -478,7 +478,8 @@ function verifyCore(core, recipientResolver, types, emailChannel, whatsappChanne
 
   [
     'sendServerWhatsAppOs',
-    'messageClass: params.messageClass',
+    'const messageClass = templateDefinition?.messageClasses[0] || params.messageClass;',
+    'messageClass,',
     'localDeliveryReference: params.localDeliveryReference',
     'ownerReference:',
     'consentGranted: params.consentGranted',

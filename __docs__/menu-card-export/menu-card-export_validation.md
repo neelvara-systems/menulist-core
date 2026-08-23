@@ -33,8 +33,8 @@ No export persistence, Firestore/Storage schema, rule, index, Cloud Function, se
 | Dedicated route exists | PASS | `src/app/(main)/use-menulist/menu-card-export/page.tsx:1` |
 | Feature flags added | PASS | `src/config/features.ts:1683` |
 | Firebase cost optimized by default | PASS | `src/config/features.ts:1677`, `scripts/verification/verify-menu-card-export.js:63`, `scripts/verification/verify-menu-card-export.js:65` |
-| AI advisor is Pro/Premium only | PASS | `src/config/features.ts:1687`, `src/config/features.ts:1688`, `src/app/api/menu-card-export/design-advisor/route.ts:144` |
-| AI advisor blocks before provider for non-Pro/Premium | PASS | `src/app/api/menu-card-export/design-advisor/route.ts:144`, `src/app/api/menu-card-export/design-advisor/route.ts:145`, `src/app/api/menu-card-export/design-advisor/route.ts:146` |
+| AI advisor is Pro/Multi-location only | PASS | `src/config/features.ts:1687`, `src/config/features.ts:1688`, `src/app/api/menu-card-export/design-advisor/route.ts:144` |
+| AI advisor blocks before provider for non-Pro/Multi-location | PASS | `src/app/api/menu-card-export/design-advisor/route.ts:144`, `src/app/api/menu-card-export/design-advisor/route.ts:145`, `src/app/api/menu-card-export/design-advisor/route.ts:146` |
 | AI advisor validates bounded request/response | PASS | `src/lib/validation/apiSchemas.ts:422`, `src/lib/menu-card-export/ai/designAdvisor.ts:32`, `src/lib/menu-card-export/ai/designAdvisor.ts:71` |
 | AI advisor is capacity-gated and metered after success | PASS | `src/app/api/menu-card-export/design-advisor/route.ts:153`, `src/app/api/menu-card-export/design-advisor/route.ts:176`, `src/app/api/menu-card-export/design-advisor/route.ts:220`, `src/app/api/menu-card-export/design-advisor/route.ts:221` |
 | AI advisor reuses plan-gate subscription for capacity | PASS | `src/app/api/menu-card-export/design-advisor/route.ts:153`, `src/lib/ai/capacityCheck.ts:118` |
@@ -113,7 +113,7 @@ No export persistence, Firestore/Storage schema, rule, index, Cloud Function, se
 | Logo embedding is final-render only and cached in memory | PASS | `src/lib/menu-card-export/render/renderPdf.ts:12`, `src/lib/menu-card-export/render/renderPdf.ts:152`, `src/lib/menu-card-export/render/renderPdf.ts:156`, `src/lib/menu-card-export/render/renderPdf.ts:160`, `src/lib/menu-card-export/render/renderPdf.ts:660` |
 | Business profile selection reuses loaded store context only | PASS | `src/lib/menu-card-export/source/buildPrintSource.ts:117`, `src/lib/menu-card-export/source/buildPrintSource.ts:119`, `src/lib/menu-card-export/source/buildPrintSource.ts:122`, `src/lib/menu-card-export/render/renderPdf.ts:647` |
 | Auto print design uses loaded browser source only | PASS | `src/lib/menu-card-export/templates/autoPrintDesign.ts:12`, `src/lib/menu-card-export/templates/autoPrintDesign.ts:31`, `src/hooks/useMenuCardExportController.ts:262`, `src/hooks/useMenuCardExportController.ts:293` |
-| Non-Pro/Premium suggestions avoid provider cost | PASS | `src/app/api/menu-card-export/design-advisor/route.ts:144`, `src/app/api/menu-card-export/design-advisor/route.ts:153`, `src/app/api/menu-card-export/design-advisor/route.ts:176` |
+| Non-Pro/Multi-location suggestions avoid provider cost | PASS | `src/app/api/menu-card-export/design-advisor/route.ts:144`, `src/app/api/menu-card-export/design-advisor/route.ts:153`, `src/app/api/menu-card-export/design-advisor/route.ts:176` |
 | AI credits are not consumed before validated recommendation | PASS | `src/app/api/menu-card-export/design-advisor/route.ts:183`, `src/app/api/menu-card-export/design-advisor/route.ts:205`, `src/app/api/menu-card-export/design-advisor/route.ts:235` |
 | AI advisor browser response parsing is bounded | PASS | `src/services/ai/menuCardExport/getDesignAdviceViaAPI.ts:2`, `src/services/ai/menuCardExport/getDesignAdviceViaAPI.ts:8`, `src/services/ai/menuCardExport/getDesignAdviceViaAPI.ts:48`, `src/services/ai/menuCardExport/getDesignAdviceViaAPI.ts:60`, `scripts/verification/verify-menu-card-export.js:212` |
 
@@ -184,7 +184,7 @@ Freeze hardening completed on June 2, 2026:
 - Branded output now reuses the store logo and OBP `publicPresence.accentColor`, with logo conversion cached by URL during the route session.
 - Business-type output now uses the existing store business type/category to choose menu, services, or catalog labels and visual tone without adding an owner setting or Firebase cost.
 - Auto print design now chooses the starting style, density, descriptions, QR, and contact block from business type and menu shape before any paid AI/provider path.
-- Pro/Premium layout suggestion now receives the deterministic auto-design baseline and business profile, so it can refine only when warnings or content shape justify a safer choice.
+- Pro/Multi-location layout suggestion now receives the deterministic auto-design baseline and business profile, so it can refine only when warnings or content shape justify a safer choice.
 
 ---
 
@@ -192,4 +192,4 @@ Freeze hardening completed on June 2, 2026:
 
 The reviewed code, cost, route, real-data runtime, and artifact scope passed the June 2026 validation evidence above. Local unauthenticated HTTP smoke returned `200 OK`; visual browser automation was blocked by the local Browser webview attach issue and remains an external certification input, not a launch pass.
 
-The implementation evidence covers the route, preview, preflight, auto-picked print design, PDF export, print-shop packet, mobile/desktop entry points, local history, Pro/Premium layout suggestion, and verification without adding export artifact Firebase write cost. Current launch certification still requires the active audit/runbook gates above.
+The implementation evidence covers the route, preview, preflight, auto-picked print design, PDF export, print-shop packet, mobile/desktop entry points, local history, Pro/Multi-location layout suggestion, and verification without adding export artifact Firebase write cost. Current launch certification still requires the active audit/runbook gates above.

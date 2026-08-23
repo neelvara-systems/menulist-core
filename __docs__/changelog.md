@@ -1,5 +1,39 @@
 # MenuList — Changelog
 
+## August 23, 2026 - Billing Document NotificationOS Delivery
+
+- Routed issued MenuList tax invoices and credit notes through one deterministic NotificationOS event instead of the former direct email-only sender.
+- Added owner preference-aware email, consented WhatsApp, or combined delivery using a secure authenticated document link and the existing per-channel delivery and recovery ledgers.
+- Kept delivery fail-closed behind `MENULIST_BILLING_DOCUMENT_DELIVERY_ENABLED`; the WhatsApp template remains pending Meta approval and billing-document issuance remains subject to the existing legal/operator gates.
+- Preserved billing issuance when notification enqueueing or the secondary aggregate delivery-status update fails. No public invoice URL or parallel billing ledger was added.
+- Added best-effort deletion of an uploaded Meta PDF after a confirmed WhatsApp message rejection, preserved ambiguous outcomes for reconciliation, and disclosed configured email/WhatsApp attachment processing in the MenuList privacy policy.
+
+## August 22, 2026 - Agent Recovery and Developer Discovery
+
+- Added fixed, non-sensitive `resolution` guidance to every MenuList Public API error response.
+- Linked the existing MenuList developer reference from the localized shared public footer so the homepage exposes a direct human-readable developer path.
+- Documented the AnswerLattice Public API v1 compatibility and deprecation contract in its developer page and OpenAPI description; no endpoint is currently deprecated.
+- Added focused source gates for all three boundaries. No Firebase or Vercel deployment was run.
+
+## August 22, 2026 - MenuList Fresh-Launch Pricing Contract
+
+- Set the public plans to Official, Pro, and Multi-location with immutable product-namespaced IDs: `menulist_official`, `menulist_pro`, and `menulist_multi_location`.
+- Namespaced the MenuList API plan IDs as `menulist_api_starter` and `menulist_api_pro`; unnamespaced plan IDs are not accepted as aliases.
+- Set monthly and annual INR/USD prices, with annual billing equal to ten monthly payments and Multi-location requiring at least two active locations.
+- Enforced quantity and plan boundaries across pre-auth purchase intent, onboarding, checkout, upgrades, direct outlet creation, proration, downgrade protection, and desktop/mobile billing surfaces.
+- Updated pricing presentation, current documentation, and localized pricing decision copy to use the launch contract directly.
+- Added focused pricing, purchase-intent, onboarding, entitlement, and settlement verification. No Vercel or Firebase deployment was run.
+
+## August 22, 2026 - MenuList Content Credit Contract
+
+- Set recurring Content Credits to 75 for Official, 250 for Pro, and 300 per paid active Multi-location location, with the two-location minimum providing 600 credits.
+- Set the single 250-credit Pack to ₹799 or $29 before applicable tax and made purchased credits non-expiring while the subscription remains active.
+- Enforced strict no-overdraft accounting across recurring, valid promotional, and purchased balances, with versioned operation rates and rate snapshots on charged operations.
+- Added payment-qualified referral rewards of 100 credits for the referrer and 50 for the referred owner, with a 365-day promotional-credit validity period.
+- Added deterministic upgrade, cancellation, and restart behavior: upgrades preserve purchased and valid promotional balances, cancellation freezes purchased credits, and an eligible restart restores them once within 365 days.
+- Aligned subscription quantity changes, desktop/mobile balance explanations, current documentation, and verification with the same effective billing subscription and shared Multi-location balance.
+- Added a browser-denied cancellation recovery ledger, passed the complete 42-suite MenuList rules predeploy gate, and released the same verified rules artifact to `menulist-qa` and `menulist-prod`. No data migration or backfill is required for the fresh launch.
+
 ## August 22, 2026 - AnswerLattice Agent-Readable Discovery Audit
 
 - Recorded the public Is Agentic baseline at 60/100 and classified each finding against AnswerLattice doctrine, current source, and live production responses.
@@ -6979,7 +7013,7 @@
 
 ### Boundary
 
-- Referral eligibility remains payment-only and uncapped. Reward settlement, attribution, wallet accounting, and the off-by-default rollout flags are unchanged. Monthly included capacity, provider cost, margin, tax valuation, and overdraft remain private.
+- Referral eligibility remains payment-only and uncapped. Reward settlement and attribution remain private, and public examples remain derived from the maintained rate table. The later August 22 Content Credit contract is authoritative for recurring, promotional, purchased, and no-overdraft behavior.
 
 ## July 11, 2026 - Canonical Product Workspace Claims
 
@@ -32633,3 +32667,61 @@ TEMPLATE FOR NEW ENTRIES:
 - Kept campaign-linked archive and Asset Library records branch-scoped, with assigned-location filtering for local managers and fail-closed handling for older linked records without a location identity.
 - Added bounded filename fallback for non-Latin and oversized campaign titles, and pinned ZIP header inspection to the exact Storage generation returned by metadata verification.
 - The final local matrix passed 2,190 runtime assertions, 158 operating-loop assertions, the 60-check archive suite, strict TypeScript, repository lint, and Firestore/Storage rules emulators. The QA rules deploy remains blocked until Firebase CLI authentication is available.
+# 2026-08-22 - MenuList server-authoritative billing taxation
+
+- Added private billing-profile capture for the first commercial checkout.
+- Added immutable domestic GST/export tax snapshots for subscriptions and enhancement packs.
+- Kept net pricing separate from tax-inclusive provider charges and failed checkout closed when verified merchant tax configuration is absent.
+# 2026-08-22 - MenuList billing-document ledger
+
+- Added private immutable MenuList tax invoices and refund credit notes for direct-owner subscription and content-credit settlements.
+- Added FY-scoped transactional numbering, deterministic replay IDs, partial-refund allocation, authenticated PDF downloads, and desktop/mobile Billing history integration.
+- Added fail-closed legal/e-invoice runtime gates and explicit owner/accountant setup actions; no historical backfill or migration was added because the product is pre-launch.
+- Published the server-only collection rules and three required indexes to both `menulist-qa` and `menulist-prod`; exact active-rules readback matched the validated local artifact and all billing indexes reached `READY`.
+
+# 2026-08-22 - MenuList commercial identity boundary
+
+- Kept MenuList as the customer-facing product and Neelvara Systems as the
+  current operating trade name without inventing a registered entity type.
+- Added canonical operator and payment-processor disclosures to MenuList legal
+  and footer surfaces.
+- Added a fail-closed legal-identity verification gate before tax snapshots or
+  billing-document issuance can use supplier configuration.
+- Kept the actual legal supplier server-configured and immutable per billing
+  document; no Firebase schema, backfill, migration, pricing, or payment-flow
+  change was introduced.
+
+# 2026-08-22 - MenuList commercial-readiness certification
+
+- Added one repeatable source gate and one full emulator gate covering plan
+  pricing, entitlements, Content Credits, taxation, billing documents,
+  commercial identity, Razorpay lifecycle handling, concurrency, leases, and
+  cross-product scope.
+- Removed an unconditional emailed-invoice promise from the owner payment
+  success state; Billing now truthfully owns payment status and any available
+  billing documents.
+- Kept QA and production on the same fail-closed environment contract with
+  separate provider credentials and explicit founder/accountant activation
+  tasks. No migration, backfill, Firebase deploy, or Vercel deploy was added.
+
+# 2026-08-23 - MenuList refund and commercial-ledger hardening
+
+- Made Razorpay `refund.processed` the only per-refund accounting authority;
+  cumulative `payment.refunded` snapshots can no longer duplicate founder
+  refund movements or MenuList credit notes.
+- Added exact, replay-safe purchased-credit reversal for full and partial
+  top-up refunds across active and cancellation-frozen balances.
+- Preserved already-consumed refunded value as internal refund debt and made
+  later Pack purchases clear that debt before adding usable credits.
+- Made `paid`, `partially_refunded`, and `refunded` Pack rows immutable replay
+  states across both webhook and authenticated verification paths, preventing
+  delayed paid events from re-crediting a refunded purchase. The authenticated
+  callback now applies the same refund-debt offset as webhook settlement.
+- Persisted the exact credited subscription on paid top-ups, rejected provider
+  quantity drift outside the selected MenuList plan, and added boundary plus
+  Firestore-emulator regression coverage.
+- Hardened billing-document counters and prior-credit totals against coercible,
+  fractional, negative, or unsafe numeric ledger values.
+# August 23, 2026 — Billing document attachments
+
+- MenuList billing-document notifications now render the immutable PDF inside the trusted sender. EmailOS attaches one bounded PDF, while WhatsAppOS uploads the same PDF to Meta and sends it through the registered document-header utility template. Both channels retain the authenticated owner-app document link as fallback; no public invoice URL or stored PDF copy was introduced.

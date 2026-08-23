@@ -25,14 +25,16 @@ export async function sendOwnerNotificationWhatsApp(params: {
     templateName?: string;
     templateLanguage?: string;
     templateParameters?: string[];
+    templateDocument?: NonNullable<NonNullable<Parameters<typeof sendServerWhatsAppOs>[0]['template']>['document']>;
 }): Promise<OwnerNotificationChannelResult> {
     const templateDefinition = params.templateKey
         ? getWhatsAppOsTemplateDefinition(params.templateKey)
         : undefined;
-    const useSession = params.sessionActive === true;
+    const messageClass = templateDefinition?.messageClasses[0] || params.messageClass;
+    const useSession = params.sessionActive === true && !params.templateDocument;
     const result = await sendServerWhatsAppOs({
         productCode: params.productCode || 'ML',
-        messageClass: params.messageClass,
+        messageClass,
         localDeliveryReference: params.localDeliveryReference,
         ownerReference: {
             workflow: params.workflow,
@@ -47,6 +49,7 @@ export async function sendOwnerNotificationWhatsApp(params: {
                     name: templateDefinition.metaName,
                     language: templateDefinition.language,
                     parameters: [params.text],
+                    document: params.templateDocument,
                 },
             }
             : !useSession && params.templateName

@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic';
 import { FEATURE_FLAGS } from '@config/features';
 import { getB2BPlansList, getB2CPlansList } from "@data/PlatformPlansList";
 import { FALLBACK_BUSINESS_TYPE } from "@data/shared/businessTypes";
+import { resolveMenuListMonthlyCreditAllowance } from "@data/shared/contentCreditPolicy";
 import { buildSelfReportedDiscoveryAttribution } from '@data/shared/selfReportedDiscovery';
 import { createInitialSubscription, getSubscriptionById } from "@database/subscriptions/server";
 import { handlePaymentError } from "@lib/errors/firestoreErrors";
@@ -40,6 +41,7 @@ import {
     setOwnerReferralAttributionInTransaction,
 } from "@lib/ownerReferral/ownerReferralAttributionServer";
 import { isOwnerReferralAcquisitionEnabled } from '@lib/ownerReferral/ownerReferralFeature';
+import { buildOnboardingOwnerNotificationSettings } from '@lib/notification-os/onboardingDefaults';
 import { validateAPIInput } from "@lib/security/inputValidation";
 import { OnboardingSubscriptionSchema } from "@lib/validation/apiSchemas";
 import { FirestoreSubscriptionDoc } from "@type/razorpay";
@@ -50,6 +52,8 @@ import { NextResponse } from "next/server";
 import { hashPublicRateLimitValue } from "src/middleware/publicApi";
 import { type AuthenticatedHandler, withAuth } from "../../../../middleware/auth";
 import { isValidMenuListPlanQuantity } from '@lib/billing/menulistPricingPolicy';
+import { calculateConfiguredMenuListTax } from '@lib/billing/menulistTaxServer';
+import { BillingTaxConfigurationError, BillingTaxProfileError } from '@data/shared/billingTaxPolicy';
 
 const LOG_FILE = "razorpay-subscription.log";
 const ONBOARDING_SUBSCRIPTION_MAX_BODY_BYTES = 16 * 1024;
@@ -366,7 +370,7 @@ export const POST = withOnboardingPrivateResponse(async (request, session) => {
             }, { status: 400 });
         }
 
-        const { businessName, businessIndustry, planId, interval, currency, userType, quantity, timeZone, businessDayEndTime, selfReportedDiscoveryChannel } = validation.data;
+        const { billingProfile, businessName, businessIndustry, planId, interval, currency, userType, quantity, timeZone, businessDayEndTime, selfReportedDiscoveryChannel } = validation.data;
         const selfReportedDiscovery = FEATURE_FLAGS.ENABLE_MENULIST_SELF_REPORTED_DISCOVERY
             ? buildSelfReportedDiscoveryAttribution(selfReportedDiscoveryChannel)
             : null;
@@ -408,6 +412,12 @@ export const POST = withOnboardingPrivateResponse(async (request, session) => {
             );
             return NextResponse.json({ error: 'Plan is not available for purchase.' }, { status: 400 });
         }
+        const taxSnapshot = calculateConfiguredMenuListTax({
+            baseUnitAmount: selectedPrice.price,
+            billingProfile,
+            currency,
+            quantity,
+        });
 
         // 4. 🔒 ATOMIC TRANSACTION: Create Tenant, Store, Update User
         await writeLogEntry({
@@ -422,7 +432,7 @@ export const POST = withOnboardingPrivateResponse(async (request, session) => {
         const preCheckedSubdomain = await preCheckSubdomain(db, businessName);
 
         const result = await db.runTransaction(async (transaction) => {
-            await assertCurrentUserAvailableForOnboardingInTransaction(
+            const onboardingUser = await assertCurrentUserAvailableForOnboardingInTransaction(
                 transaction,
                 db,
                 userId,
@@ -440,6 +450,11 @@ export const POST = withOnboardingPrivateResponse(async (request, session) => {
                 onboardingSource: 'WEBSITE_ONBOARDING',
                 subdomain: { preChecked: preCheckedSubdomain },
                 includeTimeSlotPresets: true,
+                notificationSettings: buildOnboardingOwnerNotificationSettings({
+                    ...onboardingUser,
+                    email: onboardingUser.email || session.user.email,
+                    emailVerified: onboardingUser.isVerified === true,
+                }),
                 tenantExtra: selfReportedDiscovery ? { selfReportedDiscovery } : undefined,
             });
 
@@ -513,7 +528,7 @@ export const POST = withOnboardingPrivateResponse(async (request, session) => {
 
         try {
             razorpayPlanId = await getOrCreateRazorpayPlan({
-                price: selectedPrice.price,
+                price: taxSnapshot.grossUnitAmount,
                 currency,
                 interval,
                 userType,
@@ -536,7 +551,9 @@ export const POST = withOnboardingPrivateResponse(async (request, session) => {
                     email: session.user.email,
                     onboardingAttemptId,
                     onboardingSource: 'WEBSITE_ONBOARDING',
-                    price: selectedPrice.price,
+                    price: taxSnapshot.grossUnitAmount,
+                    basePrice: selectedPrice.price,
+                    taxPolicyVersion: taxSnapshot.policyVersion,
                     remainingCredits: 0, // New user, no carry-forward credits
                 },
             });
@@ -695,6 +712,11 @@ export const POST = withOnboardingPrivateResponse(async (request, session) => {
         });
 
         // 6. Create Firestore Subscription Record
+        const monthlyCredits = resolveMenuListMonthlyCreditAllowance({
+            fallbackAllowance: selectedPrice.monthlyCredits,
+            planId: selectedPlan.planId,
+            quantity,
+        });
         const subscriptionPayload: Omit<FirestoreSubscriptionDoc, "id"> = {
             paymentProvider: "razorpay",
             providerSubscriptionId: razorpaySubscription.id,
@@ -707,7 +729,11 @@ export const POST = withOnboardingPrivateResponse(async (request, session) => {
             planType: interval,
             userType,
             currency,
-            amount: selectedPrice.price * quantity,
+            // Subscription amount is the per-location unit price. Quantity is
+            // stored separately and consumers derive the cycle total.
+            amount: selectedPrice.price,
+            chargedUnitAmount: taxSnapshot.grossUnitAmount,
+            taxSnapshot,
             status: "pending",
             providerStatus: "created",
             lastWebhook: null,
@@ -721,9 +747,11 @@ export const POST = withOnboardingPrivateResponse(async (request, session) => {
             totalPaymentsMadeCount: 0,
             cycleEndDate: null,
             renewsOn: null,
-            monthlyCreditsAllowance: selectedPrice.monthlyCredits,
-            monthlyCredits: selectedPrice.monthlyCredits,
+            monthlyCreditsAllowance: monthlyCredits,
+            monthlyCredits,
             topUpCredits: 0, // New user, no carry-forward
+            promotionalCredits: 0,
+            promotionalCreditsExpireAt: null,
             creditsLastResetMonth: new Date().getFullYear() * 100 + (new Date().getMonth() + 1),
             shortUrl: providerCheckoutUrl,
             paymentMethod: {
@@ -737,7 +765,7 @@ export const POST = withOnboardingPrivateResponse(async (request, session) => {
                 {
                     status: "pending",
                     timestamp: ClientTimestamp.now(),
-                    amount: selectedPrice.price * quantity,
+                    amount: taxSnapshot.grossAmount,
                     currency: currency,
                     remark: "Onboarding Subscription Initiated",
                 },
@@ -818,6 +846,16 @@ export const POST = withOnboardingPrivateResponse(async (request, session) => {
         return response;
 
     } catch (error) {
+        if (error instanceof BillingTaxProfileError) {
+            return NextResponse.json({ error: error.message }, { status: 400 });
+        }
+        if (error instanceof BillingTaxConfigurationError) {
+            logger.error('[Onboarding] Billing tax configuration unavailable', error, onboardingLogContext);
+            return NextResponse.json(
+                { error: 'Checkout is temporarily unavailable while billing details are being configured.' },
+                { status: 503 },
+            );
+        }
         if (error instanceof OnboardingUserUnavailableError) {
             logger.security('Onboarding Attempt by Unavailable Current User', {
                 ...getBoundedSecurityRouteContext(session, request),

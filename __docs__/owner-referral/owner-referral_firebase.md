@@ -232,7 +232,7 @@ At the conservative image-operation estimate of USD 0.045:
 | Referred business | 50 | 10 | USD 0.45 |
 | **Total** | **150** | **30** | **USD 1.35** |
 
-With the current 20 percent overdraft buffer, reserve up to USD 1.62 per paid referral in the conservative maximum model.
+The strict non-negative reservation model bounds provider exposure to the explicit 100/50 promotional grants. Both balances expire 365 days after issue.
 
 There is no referral cap, so aggregate liability scales linearly with paid referred businesses:
 

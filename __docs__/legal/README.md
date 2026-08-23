@@ -7,6 +7,7 @@ This folder holds legal and entity-structure reference material.
 - [Company Structure](<./company-structure.md>)
 - [Company Structure PDF](<./Company Structure.pdf>)
 - [Three-Product Legal Readiness and Counsel Packet](./three-product-legal-readiness-and-counsel-packet.md)
+- [MenuList Commercial Identity](../commercial-identity/README.md)
 
 ## Notes
 

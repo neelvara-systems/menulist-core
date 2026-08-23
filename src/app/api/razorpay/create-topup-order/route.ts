@@ -36,6 +36,9 @@ import { writeLogEntry } from 'logs/utils';
 import { NextResponse } from 'next/server';
 import { hashPublicRateLimitValue } from "src/middleware/publicApi";
 import { verifyTenantAccess, withAuth } from "../../../../middleware/auth";
+import { PRODUCT_IDS } from '@constant/product';
+import { calculateConfiguredMenuListTax, getBillingProfileFromTaxSnapshot } from '@lib/billing/menulistTaxServer';
+import { BillingTaxConfigurationError, BillingTaxProfileError } from '@data/shared/billingTaxPolicy';
 
 const LOG_FILE = "razorpay-topup.log";
 const RAZORPAY_PAYMENT_ACTION_MAX_BODY_BYTES = 8 * 1024;
@@ -229,7 +232,7 @@ export const POST = withAuth(async (request, session) => {
         }
         const billingStoreId = activeSubscriptionScope.storeId;
 
-        const { packId, currency } = validation.data;
+        const { billingProfile, packId, currency } = validation.data;
         // 3. Find Pack Details
         const selectedPack = getCreditPacksForProduct(productId).find((p) => p.packId === packId);
 
@@ -242,6 +245,17 @@ export const POST = withAuth(async (request, session) => {
         if (typeof price !== 'number' || !Number.isSafeInteger(price) || price <= 0) {
             return NextResponse.json({ error: `Pricing for currency ${currency} not available for this pack.` }, { status: 400 });
         }
+        const taxSnapshot = productId === PRODUCT_IDS.MENULIST
+            ? calculateConfiguredMenuListTax({
+                baseUnitAmount: price,
+                billingProfile: billingProfile
+                    || getBillingProfileFromTaxSnapshot(activeSubscription.taxSnapshot)
+                    || (() => { throw new BillingTaxProfileError('Complete billing details before checkout.'); })(),
+                currency,
+                quantity: 1,
+            })
+            : null;
+        const chargedAmount = taxSnapshot?.grossAmount ?? price;
 
         checkoutLeaseIdentity = {
             actorId: userId,
@@ -252,7 +266,9 @@ export const POST = withAuth(async (request, session) => {
             requestFacts: {
                 currency,
                 packId,
-                price,
+                price: chargedAmount,
+                basePrice: price,
+                taxPolicyVersion: taxSnapshot?.policyVersion || null,
                 productId,
                 billingStoreId,
                 storeId: String(storeId),
@@ -269,7 +285,7 @@ export const POST = withAuth(async (request, session) => {
         checkoutAttemptId = checkoutClaim.attemptId;
         let receipt = getTopupCheckoutReceipt(checkoutAttemptId);
         const orderExpectation = () => ({
-            amount: price,
+            amount: chargedAmount,
             attemptId: checkoutAttemptId as string,
             billingStoreId,
             currency,
@@ -319,7 +335,7 @@ export const POST = withAuth(async (request, session) => {
         // 4. Orchestration Logic
         // Step A: Create or recover the Razorpay Order.
         const orderPayload = {
-            amount: price,
+            amount: chargedAmount,
             currency,
             receipt,
             notes: {
@@ -334,7 +350,7 @@ export const POST = withAuth(async (request, session) => {
                 packId,
                 creditAmount: selectedPack.creditAmount,
                 packName: selectedPack.name,
-                price: price,
+                price: chargedAmount,
                 currency,
                 checkoutAttemptId,
                 billingStoreId,
@@ -370,7 +386,8 @@ export const POST = withAuth(async (request, session) => {
         }
 
         await persistPendingProductTopupSnapshot({
-            amount: price,
+            amount: chargedAmount,
+            baseAmount: price,
             billingDb: getBillingFirestoreAdminForProduct(productId),
             billingStoreId,
             creditsAdded: selectedPack.creditAmount,
@@ -382,6 +399,7 @@ export const POST = withAuth(async (request, session) => {
             storeId,
             tenantId,
             userId,
+            taxSnapshot: taxSnapshot || undefined,
         });
         topupPersisted = true;
 
@@ -402,6 +420,18 @@ export const POST = withAuth(async (request, session) => {
         return NextResponse.json(responsePayload);
 
     } catch (error) {
+        if (error instanceof BillingTaxProfileError) {
+            return NextResponse.json({ error: error.message }, { status: 400 });
+        }
+        if (error instanceof BillingTaxConfigurationError) {
+            logger.error('MenuList billing tax configuration unavailable', error, {
+                ...getBoundedRazorpayStringContext('userId', userId),
+            });
+            return NextResponse.json(
+                { error: 'Checkout is temporarily unavailable while billing details are being configured.' },
+                { status: 503 },
+            );
+        }
         if (
             checkoutLeaseIdentity
             && checkoutAttemptId

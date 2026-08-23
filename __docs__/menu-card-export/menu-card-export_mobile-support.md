@@ -53,7 +53,7 @@ Implemented behavior:
 - The route gates preview/export by the loaded project id so a project switch cannot mix old menu data with the newly selected menu URL.
 - The shared controller auto-picks a business-aware starting layout, density, and safe toggles from the current menu before any owner action or AI call.
 - Default generation remains client-side with no Firebase writes.
-- Pro/Premium layout suggestion is available from the dedicated mobile screen and uses the same plan/capacity-gated API as desktop.
+- Pro/Multi-location layout suggestion is available from the dedicated mobile screen and uses the same plan/capacity-gated API as desktop.
 
 ---
 
@@ -100,7 +100,7 @@ Mobile uses:
 - Same artifact download flow.
 - Same legacy PDF compatibility bridge for flag-off direct-download paths.
 - Same `createArtifact` controller action for dashboard and mobile outputs.
-- Same Pro/Premium layout suggestion API.
+- Same Pro/Multi-location layout suggestion API.
 - Same preflight engine.
 - Same print-shop packet builder.
 - Same auth/session.

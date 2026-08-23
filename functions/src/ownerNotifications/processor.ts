@@ -42,6 +42,7 @@ import { buildWhatsAppPhoneParam } from '../utils/phoneNumber';
 import { sanitizeForFirestore as sanitizeFirestoreValue } from '../lib/sanitizeForFirestore';
 import { getBoundedFunctionsErrorContext } from '../utils/boundedErrorContext';
 import { sendFunctionsWhatsAppOs } from '../whatsappOs/provider';
+import { resolveBillingDocumentAttachment } from './billingDocumentAttachment';
 
 const logger = functions.logger;
 const MAX_PER_RECIPIENT_PER_DAY = 20;
@@ -583,15 +584,17 @@ async function sendWhatsApp(params: {
   messageClass: WhatsAppOsMessageClass;
   templateKey: string;
   metadata: Record<string, any>;
+  templateDocument?: NonNullable<NonNullable<Parameters<typeof sendFunctionsWhatsAppOs>[0]['template']>['document']>;
 }): Promise<{ success: boolean; providerMessageId?: string; error?: string; ambiguous?: boolean }> {
   const to = buildWhatsAppPhoneParam({ phoneNumber: params.to });
   if (to.length < 10 || to.length > 15) return { success: false, error: 'whatsapp_recipient_missing' };
 
-  const sessionActive = params.metadata.whatsappSessionActive === true;
+  const sessionActive = params.metadata.whatsappSessionActive === true && !params.templateDocument;
   const templateDefinition = getWhatsAppOsTemplateDefinition(params.templateKey);
+  const messageClass = templateDefinition?.messageClasses[0] || params.messageClass;
   const result = await sendFunctionsWhatsAppOs({
     productCode: 'ML',
-    messageClass: params.messageClass,
+    messageClass,
     localDeliveryReference: `${params.eventId}:whatsapp`,
     ownerReference: { workflow: 'owner_notification', documentId: params.deliveryId },
     to,
@@ -603,6 +606,7 @@ async function sendWhatsApp(params: {
           name: templateDefinition.metaName,
           language: templateDefinition.language,
           parameters: [params.text],
+          document: params.templateDocument,
         },
       }
       : { session: { active: sessionActive, text: params.text } }),
@@ -785,7 +789,6 @@ export async function processOwnerNotificationEvent(eventId: string): Promise<bo
       await eventRef.set({ status: 'failed', error: 'template_not_found', updatedAt: Timestamp.now() }, { merge: true });
       return false;
     }
-
     const selectedEmail = event.recipientRole === 'billing_owner' ? storeInfo.billingEmail || storeInfo.email : storeInfo.email;
     const channelPlan = planNotificationOsChannels({
       allowedChannels: registryEntry.defaultChannels,
@@ -804,6 +807,14 @@ export async function processOwnerNotificationEvent(eventId: string): Promise<bo
         whatsapp: FUNCTION_FLAGS.ENABLE_OWNER_NOTIFICATION_WHATSAPP,
       },
     }).filter((item) => item.reason !== 'not_requested' && item.reason !== 'channel_disabled');
+    const billingAttachment = channelPlan.some((item) => item.eligible)
+      ? await resolveBillingDocumentAttachment({
+          triggerType: event.triggerType,
+          referenceId: event.referenceId,
+          tenantId: event.tenantId,
+          storeId: event.storeId,
+        })
+      : undefined;
     let sent = 0;
     let failed = 0;
     let skipped = 0;
@@ -875,6 +886,8 @@ export async function processOwnerNotificationEvent(eventId: string): Promise<bo
               html: template.html,
               eventType: String(event.triggerType),
               referenceId: eventId,
+              classification: billingAttachment ? 'transactional' : 'operational',
+              attachments: billingAttachment ? [billingAttachment] : undefined,
             })
         : await sendWhatsApp({
               eventId,
@@ -885,6 +898,7 @@ export async function processOwnerNotificationEvent(eventId: string): Promise<bo
               messageClass: event.priority === 'critical' ? 'transactional' : 'operational',
               templateKey: registryEntry.templateKey,
           metadata: event.metadata,
+          templateDocument: billingAttachment,
         });
 
       if (result.success) sent++;

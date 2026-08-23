@@ -6,10 +6,12 @@ export const dynamic = 'force-dynamic';
  * @see __docs__/multi-outlet-consistency/store-onboarding/store-onboarding_impl.md §16
  */
 import { FEATURE_FLAGS } from "@config/features";
+import { resolveMenuListQuantityCreditUpdate } from "@data/shared/contentCreditPolicy";
 import { DB_COLLECTIONS } from "@constant/database";
 import { PERMISSIONS } from "@constant/permissions";
 import { getActiveSubscriptionForStore, updateSubscription } from "@database/subscriptions/server";
 import { hasVerifiedSubscriptionPaymentEvidence } from '@lib/billing/subscriptionPlanEntitlement';
+import { resizeMenuListTaxSnapshot } from '@data/shared/billingTaxPolicy';
 import {
     MENULIST_MULTI_LOCATION_MINIMUM_QUANTITY,
     MENULIST_MULTI_LOCATION_PLAN_ID,
@@ -328,7 +330,20 @@ export const POST = withAuth(async (request, session) => {
                             ? Math.max(activeStoresAfterDeactivation, MENULIST_MULTI_LOCATION_MINIMUM_QUANTITY)
                             : activeStoresAfterDeactivation;
                         await updateRazorpaySubscriptionQuantity(providerSubId, newQty);
-                        await updateSubscription(sub.id, { quantity: newQty });
+                        await updateSubscription(sub.id, {
+                            quantity: newQty,
+                            ...(sub.taxSnapshot ? {
+                                taxSnapshot: resizeMenuListTaxSnapshot(sub.taxSnapshot, newQty),
+                            } : {}),
+                            ...(sub.planId === MENULIST_MULTI_LOCATION_PLAN_ID
+                                ? resolveMenuListQuantityCreditUpdate({
+                                    currentMonthlyCredits: sub.monthlyCredits,
+                                    currentMonthlyCreditsAllowance: sub.monthlyCreditsAllowance,
+                                    planId: sub.planId,
+                                    quantity: newQty,
+                                })
+                                : {}),
+                        });
                         billingReduced = true;
                     } else if (sub.billingMode !== "manual") {
                         billingReductionPending = true;

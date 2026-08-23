@@ -118,7 +118,8 @@ const PricingPageRenderer: React.FC<{ welcomeTenantName?: string | null, activeS
             const intent = parseStoredPurchaseIntent(purchaseIntentString);
             if (intent) return intent;
             logPaymentFailure('payment_pricing_purchase_intent_invalid', undefined, buildPricingPaymentLogContext(flow, {
-                ...getBoundedPaymentStringContext('purchaseIntent', purchaseIntentString),
+                purchaseIntentLength: purchaseIntentString.length,
+                purchaseIntentPresent: true,
             }));
             sessionStorage.removeItem(PURCHASE_INTENT_STORAGE_KEY);
             return null;
@@ -171,7 +172,7 @@ const PricingPageRenderer: React.FC<{ welcomeTenantName?: string | null, activeS
                         descardPaymentFlow();
                         return;
                     }
-                    handlePaymentCardClick(purchaseIntent.plan)
+                    handlePaymentCardClick(purchaseIntent.plan, purchaseIntent.billingProfile)
                 } else {
                     startPaymentprocessing()
                 }
@@ -185,16 +186,38 @@ const PricingPageRenderer: React.FC<{ welcomeTenantName?: string | null, activeS
         clearStoredPurchaseIntent();
     }
 
-    const handleOnboardingModalSubmit = (details: Pick<PurchaseIntent, 'businessName' | 'businessIndustry' | 'timeZone' | 'businessDayEndTime' | 'selfReportedDiscoveryChannel'>) => {
+    const handleOnboardingModalSubmit = (details: Pick<PurchaseIntent, 'billingProfile' | 'businessName' | 'businessIndustry' | 'timeZone' | 'businessDayEndTime' | 'selfReportedDiscoveryChannel'>) => {
         if (!pendingPlan) {
             logPaymentFailure('payment_pricing_pending_plan_missing', undefined, buildPricingPaymentLogContext('onboarding_submit'));
             return;
         }
 
         const purchaseIntent: PurchaseIntent = {
-            ...details,//businessName, businessIndustry
-            ...pendingPlan,//plan, currency
+            ...details,
+            ...pendingPlan,
         };
+
+        if (session?.user?.tenantId) {
+            setIsOnboardingModalOpen(false);
+            setIsLoading(true);
+            void onClickPaymentCard(
+                pendingPlan.plan,
+                pendingPlan.currency,
+                () => setIsOnboardingModalOpen(true),
+                pendingPlan.quantity,
+                { billingProfile: details.billingProfile, requireBillingProfile: true },
+            )
+                .then((paymentResponse) => handlePaymentSuccessResponse(paymentResponse, purchaseIntent))
+                .catch((error) => {
+                    descardPaymentFlow();
+                    if (isPaymentCheckoutDismissedError(error)) return;
+                    logPaymentFailure('payment_pricing_existing_tenant_checkout_failed', error, buildPricingPaymentLogContext('existing_tenant_checkout', {
+                        ...getBoundedPaymentStringContext('planId', pendingPlan.plan.planId),
+                    }));
+                    showPaymentError();
+                });
+            return;
+        }
 
         const serializedPurchaseIntent = serializePurchaseIntent(purchaseIntent);
         if (!serializedPurchaseIntent) {
@@ -217,10 +240,10 @@ const PricingPageRenderer: React.FC<{ welcomeTenantName?: string | null, activeS
         }
     };
 
-    const handlePaymentSuccessResponse = async (paymentResponse: any) => {
+    const handlePaymentSuccessResponse = async (paymentResponse: any, purchaseIntent?: PurchaseIntent | null) => {
         if (Boolean(paymentResponse)) {
-            const purchaseIntent = readStoredPurchaseIntent('payment_success_modal');
-            setIsSuccessModalOpen({ active: true, purchaseIntent: purchaseIntent, paymentDetails: paymentResponse, });
+            const resolvedPurchaseIntent = purchaseIntent ?? readStoredPurchaseIntent('payment_success_modal');
+            setIsSuccessModalOpen({ active: true, purchaseIntent: resolvedPurchaseIntent, paymentDetails: paymentResponse, });
             descardPaymentFlow();
         }
     }
@@ -246,10 +269,19 @@ const PricingPageRenderer: React.FC<{ welcomeTenantName?: string | null, activeS
             });
     }
 
-    const handlePaymentCardClick = (plan: Plan) => {
+    const handlePaymentCardClick = (plan: Plan, billingProfile?: PurchaseIntent['billingProfile']) => {
         try {
             setIsLoading(true);
-            const paymentPromise = onClickPaymentCard(plan, currency, () => setIsOnboardingModalOpen(true)) as Promise<any> | undefined;
+            const paymentPromise = onClickPaymentCard(
+                plan,
+                currency,
+                () => setIsOnboardingModalOpen(true),
+                undefined,
+                {
+                    billingProfile,
+                    requireBillingProfile: Boolean(session?.user?.tenantId && !activeSubscription),
+                },
+            ) as Promise<any> | undefined;
             if (!paymentPromise) {
                 setIsLoading(false);
                 return;
@@ -304,7 +336,7 @@ const PricingPageRenderer: React.FC<{ welcomeTenantName?: string | null, activeS
                 {/* LAYER 2 — Outcome + Pain (merged, 3 items max) */}
                 <AnimateOnScroll delay={0.08}>
                     <div className="ws-container" style={{ marginTop: 'var(--ws-space-10)' }}>
-                        <div style={{ display: 'flex', justifyContent: 'center', gap: 'var(--ws-space-10)', flexWrap: 'wrap', fontSize: '0.875rem', color: 'var(--ws-text-secondary)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'center', columnGap: 'var(--ws-space-10)', rowGap: 'var(--ws-space-3)', flexWrap: 'wrap', fontSize: '0.875rem', color: 'var(--ws-text-secondary)' }}>
                             <span>{t('Pricing.proof0')}</span>
                             <span>{t('Pricing.proof1')}</span>
                             <span>{t('Pricing.proof2')}</span>
@@ -348,6 +380,9 @@ const PricingPageRenderer: React.FC<{ welcomeTenantName?: string | null, activeS
                         </div>
                         <p style={{ textAlign: 'center', fontSize: '0.75rem', color: 'var(--ws-text-secondary)', marginTop: 'var(--ws-space-3)' }}>
                             {t('Pricing.locationNote')}
+                        </p>
+                        <p style={{ textAlign: 'center', fontSize: '0.75rem', color: 'var(--ws-text-muted)', marginTop: 'var(--ws-space-2)' }}>
+                            {t('Pricing.taxNote')}
                         </p>
                         <div
                             style={{
@@ -572,6 +607,8 @@ const PricingPageRenderer: React.FC<{ welcomeTenantName?: string | null, activeS
                 }}
                 onSubmit={handleOnboardingModalSubmit}
                 businessType={activeBusinessType}
+                currency={pendingPlan?.currency || currency}
+                collectBusinessDetails={!session?.user?.tenantId}
             />
 
             <SubscriptionPayementSuccessModal

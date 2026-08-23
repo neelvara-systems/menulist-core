@@ -73,7 +73,12 @@ async function main() {
         assert.match(openApiResponse.headers.get('content-type') || '', /^application\/vnd\.oai\.openapi\+json/);
         const openApi = await openApiResponse.json();
         assert.equal(openApi.openapi, '3.1.0');
+        assert.equal(openApi.info.version, '1.3.0');
+        assert.equal(openApi.info['x-versioning-policy'].currentMajor, 'v1');
+        assert.deepEqual(openApi.info['x-versioning-policy'].currentDeprecations, []);
+        assert.equal(openApi.externalDocs.url, 'https://answerlattice.com/developers#public-api-versioning');
         assert.equal(openApi.paths['/api/answerlattice/public/v1/answers'].post.operationId, 'retrieveGovernedAnswer');
+        assert.equal(openApi.paths['/api/answerlattice/public/v1/answers'].post.deprecated, false);
         assert.equal(openApi.paths['/api/answerlattice/public/v1/entities'].get.operationId, 'listGovernedEntities');
         assert.equal(openApi.paths['/api/answerlattice/public/v1/signals'].post.operationId, 'submitGovernanceSignal');
         assert.equal(openApi.components.securitySchemes.answerlatticeApiKey.name, 'X-API-Key');

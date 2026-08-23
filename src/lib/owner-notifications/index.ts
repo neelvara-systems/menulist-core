@@ -25,6 +25,7 @@ import type { Firestore } from 'firebase-admin/firestore';
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 import { sendOwnerNotificationEmail, isOwnerNotificationEmailConfigured } from './channels/email';
 import { sendOwnerNotificationWhatsApp, isOwnerNotificationWhatsAppConfigured } from './channels/whatsapp';
+import { resolveOwnerNotificationBillingAttachment } from './billingDocumentAttachment';
 import {
     buildFormattedNotificationMetadata,
     resolveOwnerNotificationFormattingContext,
@@ -615,7 +616,6 @@ export async function processOwnerNotificationEvent(
             );
             return { eventId, status: 'failed', sent: 0, failed: 1, skipped: 0 };
         }
-
         const channelPlan = planNotificationOsChannels({
             allowedChannels: registryEntry.defaultChannels,
             requestedChannels: event.requestedChannels,
@@ -648,6 +648,15 @@ export async function processOwnerNotificationEvent(
             );
             return { eventId, status: 'skipped', sent: 0, failed: 0, skipped: 1 };
         }
+        const billingAttachment = channelPlan.some((item) => item.eligible)
+            ? await resolveOwnerNotificationBillingAttachment({
+                productId: event.productId,
+                triggerType: event.triggerType,
+                referenceId: event.referenceId,
+                tenantId: event.tenantId,
+                storeId: event.storeId,
+            })
+            : undefined;
 
         let sent = 0;
         let failed = 0;
@@ -730,6 +739,8 @@ export async function processOwnerNotificationEvent(
                     html: template.html,
                     eventType: event.triggerType,
                     referenceId: eventId,
+                    classification: billingAttachment ? 'transactional' : 'operational',
+                    attachments: billingAttachment ? [billingAttachment] : undefined,
                 })
                 : await sendOwnerNotificationWhatsApp({
                     productCode: event.productId,
@@ -742,6 +753,7 @@ export async function processOwnerNotificationEvent(
                     text: template.text,
                     sessionActive: event.metadata.whatsappSessionActive === true,
                     templateKey: registryEntry.templateKey,
+                    templateDocument: billingAttachment,
                 });
 
             if (result.ok) {

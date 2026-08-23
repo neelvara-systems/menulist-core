@@ -73,7 +73,7 @@
 
 ## Legacy Single-Store Repair
 
-Older demo/production accounts may have a premium subscription but no `isMaster: true` flag on the first store. Mobile and desktop treat a tenant with exactly one store and no master as a safe master candidate. The actual data repair is server-side:
+An account may have a Multi-location subscription but no `isMaster: true` flag on the first store. Mobile and desktop treat a tenant with exactly one store and no master as a safe master candidate. The actual data repair is server-side:
 
 - `/api/outlets/create` promotes the current store to `isMaster: true` while creating the first outlet.
 - `/api/outlets/policy` promotes the current store to `isMaster: true` when HQ saves policy before creating the first outlet.

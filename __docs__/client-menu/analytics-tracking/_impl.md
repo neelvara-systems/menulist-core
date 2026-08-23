@@ -209,7 +209,7 @@ MENU_ACTION_CLICK -> engagedSessions + intentSessions + actionSessions
 - Category interest only comes from existing item view/click events. MenuList does not track category scroll/open events.
 - Public PDP tracking resolves the stable category id/name from the project file categories before sending analytics metadata.
 - Entry source is stored in sessionStorage and attached to existing `MENU_VIEW` / `MENU_ACTION_CLICK` writes as `viewsByEntrySource`, `menuSessionsBySource`, `actionSessionsBySource`, and `menuActionClicksBySource`. This supports action-rate-by-source without a new source event stream.
-- Paid Gemini wording for owner analytics is off unless Cloud Functions has `ENABLE_OWNER_ANALYTICS_AI_SUMMARIES=true` and the store summary has `activePlanType` set to `pro` or `premium`. Missing plan data fails closed.
+- Paid Gemini wording for owner analytics is off unless Cloud Functions has `ENABLE_OWNER_ANALYTICS_AI_SUMMARIES=true` and the store summary has `activePlanType` set to `menulist_pro` or `menulist_multi_location`. Missing plan data fails closed.
 - Non-Pro dashboards keep factual metrics, source quality, and confidence. The Pro action-list / summary layer writes `analyticsAiEntitlement` so desktop and mobile can show a locked state instead of silently hiding the card.
 - Owner analytics wording uses `gemini-2.5-flash-lite`, not the global extraction model, because this flow only rewrites deterministic summaries/actions.
 - When analytics AI is enabled, daily / weekly / monthly summaries are generated as in-memory payloads and saved inside the existing `{tId}_{sId}_{projectId}_dashboard_summary` write. They are not written as separate daily / summary / monthly documents.

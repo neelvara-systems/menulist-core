@@ -1,5 +1,10 @@
 # AI Enhancement Packs
 
+## Current decision authority
+
+- [`content-credit-decision-record-2026-08.md`](./content-credit-decision-record-2026-08.md) is the approved long-term Content Credit policy and current implementation authority.
+- Where older launch-history notes conflict with that record, the approved decision record and current runtime behavior take precedence.
+
 This folder holds the implementation, cost, owner-support, and validation docs for AI Enhancement Packs.
 
 ## Current Credit Transparency Contract
@@ -9,7 +14,7 @@ Founder direction on July 11, 2026 supersedes the earlier outcome-only presentat
 - website, desktop Billing, and mobile Billing Pack cards show the exact `250 credits` amount;
 - pricing can explain that 250 credits currently cover up to 50 generated menu images or 250 description rewrites;
 - owner-referral rewards show their exact 100/50 credit amounts and matching examples;
-- monthly included capacity, provider costs, margins, internal tax valuation, and overdraft policy remain private.
+- provider costs, margins, and internal tax valuation remain private; owner Billing shows the approved Content Credit balances.
 
 Public examples are derived from `src/data/shared/contentCreditPolicy.ts`; charged AI operations consume the same rates through `src/constants/AI/unitCosts.ts`.
 

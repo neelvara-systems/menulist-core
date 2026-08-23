@@ -585,7 +585,7 @@ service cloud.firestore {
     // Note: Firestore does not support field-level read restrictions.
     // Client can read full doc (needed for state management) but all writes
     // are server-only (payment APIs + capacity consumption in AI routes).
-    // Credit values are NOT displayed in UI (doctrine compliance).
+    // Credit values are owner-visible, but only trusted server paths may mutate them.
     match /subscriptions/{subscriptionId} {
       // Answerlattice billing requires its narrower persisted permission even
       // when local/shared mode uses the MenuList Firebase project.
@@ -594,10 +594,26 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // Purchased MenuList credit recovery is a server-only cancellation ledger.
+    match /menulistPurchasedCreditRecoveries/{recoveryId} {
+      allow read, write: if false;
+    }
+
     // Payment Transactions — Server-side writes, tenant-scoped owner reads
     match /payment_transactions/{transactionId} {
       allow read: if canReadProductPaymentTransaction();
       allow write: if false;
+    }
+
+    // Tax invoices, credit notes, and their legal-number counters are private
+    // server records. Owners receive bounded summaries and PDFs only through
+    // authenticated routes that enforce the active tenant/store scope.
+    match /billingDocuments/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /billingDocumentCounters/{counterId} {
+      allow read, write: if false;
     }
 
     // Razorpay Webhook Events — server-only idempotency locks

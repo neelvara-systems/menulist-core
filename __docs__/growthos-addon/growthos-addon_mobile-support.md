@@ -1,6 +1,6 @@
 # GrowthOS Add-on - Mobile Support
 
-**Status:** Implemented behind Pro/Premium entitlement gate; required for rollout verification
+**Status:** Implemented behind Pro/Multi-location entitlement gate; required for rollout verification
 **Mobile owner label:** Growth Kits
 **Today card label:** Today's Sales Pack
 **Primary mobile rule:** Owners must be able to use a kit from a phone without desktop setup.
@@ -71,7 +71,7 @@ Today trigger rule:
 - show when a previously used/copied/shared stale pack needs an update
 - show when the current menu action is strong, such as a new item, a customer favorite, or a high-confidence action
 - do not show for weak generic `share this item` actions
-- do not render the older `No today action yet` generation card for Pro/Premium stores while GrowthOS owns this surface
+- do not render the older `No today action yet` generation card for Pro/Multi-location stores while GrowthOS owns this surface
 - do not reintroduce the legacy `Generate Today Action` owner prompt on mobile; existing Today campaigns remain usable, but GrowthOS owns new generated action creation
 
 The mobile card must not feel like another module. It should feel like today's finished handoff:
@@ -185,7 +185,7 @@ These are not launch scope:
 | Capability | Desktop | Mobile |
 | --- | --- | --- |
 | View eligible actions | Yes | Yes, compact |
-| Generate kit | Yes | Yes, if Pro/Premium entitlement and capacity pass |
+| Generate kit | Yes | Yes, if Pro/Multi-location entitlement and capacity pass |
 | Copy/share text | Yes | Yes |
 | Download/print | Yes | Download/share handoff |
 | Review reply from pasted text | Yes | Yes |
@@ -259,7 +259,7 @@ Mobile should not add extra read paths beyond the shared summary pattern.
 
 Target:
 
-- one shared summary read for latest GrowthOS state on eligible Pro/Premium mobile Today
+- one shared summary read for latest GrowthOS state on eligible Pro/Multi-location mobile Today
 - no realtime listener by default
 - no refresh, generation, export, or write from the trigger check
 - no extra write unless the owner generates, copies, shares, downloads, prints, or marks used

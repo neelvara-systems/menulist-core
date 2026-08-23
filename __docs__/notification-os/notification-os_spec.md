@@ -1,7 +1,7 @@
 # NotificationOS — Product Specification
 
 > **Status:** Approved for implementation; no runtime activation implied
-> **Last Updated:** August 15, 2026
+> **Last Updated:** August 23, 2026
 > **Decision Horizon:** Three years
 
 ## Decision
@@ -40,6 +40,8 @@ NotificationOS owns **why, who, when and which channels**. A channel OS owns **h
 | `all_eligible_critical` | For approved critical triggers, plan every eligible required channel                                             | one or two planned channels                                |
 
 The requested mode is policy input, not a command to bypass consent, suppression, recipient validity, product activation or provider configuration.
+
+For a newly created MenuList store, the default mode is `email_and_whatsapp`. This means "use every eligible owner channel," not "assume every channel is permitted." Onboarding stores verified contact capability in the same store-creation transaction. Email is eligible when the authenticated or authorized onboarding flow supplies a verified, non-internal address. WhatsApp is eligible only when number verification and a separate explicit notification-consent record both exist.
 
 ## Recipient Capability Model
 
@@ -82,6 +84,7 @@ MenuList phone users receive an internal generated email identity while `display
 - Google/email owner: email may be eligible; WhatsApp is unavailable until a verified number and opt-in exist;
 - owner with both: email, WhatsApp or both may be eligible;
 - OTP verification proves number possession only and never grants notification consent.
+- Onboarding may preselect the combined routing mode, but it must never preselect or infer the WhatsApp consent control.
 
 ## Routing Order
 

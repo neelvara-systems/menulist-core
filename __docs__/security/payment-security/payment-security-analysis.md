@@ -17,7 +17,7 @@
 ```
 Step 1: User visits /pricing page (public website)
 ├─ No session exists
-├─ Clicks "Buy Starter Plan (B2C Monthly)"
+├─ Clicks "Buy Official (B2C Monthly)"
 └─ Triggers: handlePaymentCardClick(plan)
         ↓
 Step 2: onClickPaymentCard checks session (usePaymentHandler.ts:85)

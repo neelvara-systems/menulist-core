@@ -126,7 +126,7 @@ export function calculateProration(
     sub: FirestoreSubscriptionDoc,
     now: Date = new Date(),
 ): { proratedAmount: number; fullCycleAmount: number; daysRemaining: number; totalDays: number } {
-    const amount = toNonNegativeSafeInteger(sub.amount);
+    const amount = toNonNegativeSafeInteger(sub.chargedUnitAmount ?? sub.amount);
     const cycleStart = toValidDate(sub.cycleStartDate);
     const cycleEnd = toValidDate(sub.cycleEndDate);
 
@@ -147,6 +147,10 @@ export function calculateProration(
 export function calculateRemainingCredits(
     activeSubscription: FirestoreSubscriptionDoc | null | undefined,
     today: Date = new Date(),
+    options: {
+        includeCurrentMonthlyCredits?: boolean;
+        includeFutureYearlyCredits?: boolean;
+    } = {},
 ): {
     monthlyCreditsAllowance: number;
     monthsRemaining: number;
@@ -159,13 +163,16 @@ export function calculateRemainingCredits(
     const monthlyCreditsAllowance = toNonNegativeSafeInteger(activeSubscription.monthlyCreditsAllowance);
     const monthlyCredits = toNonNegativeSafeInteger(activeSubscription.monthlyCredits);
     const topUpCredits = toNonNegativeSafeInteger(activeSubscription.topUpCredits);
+    const includeCurrentMonthlyCredits = options.includeCurrentMonthlyCredits !== false;
+    const includeFutureYearlyCredits = options.includeFutureYearlyCredits !== false;
+    const transferableMonthlyCredits = includeCurrentMonthlyCredits ? monthlyCredits : 0;
 
     if (activeSubscription.planType === "MONTH") {
         return {
-            unusedThisMonth: monthlyCredits,
+            unusedThisMonth: transferableMonthlyCredits,
             monthsRemaining: 0,
             monthlyCreditsAllowance,
-            totalRemainingCredits: monthlyCredits + topUpCredits,
+            totalRemainingCredits: transferableMonthlyCredits + topUpCredits,
         };
     }
 
@@ -187,7 +194,7 @@ export function calculateRemainingCredits(
     }
 
     // Remaining credits in current month
-    const unusedThisMonth = monthlyCredits;
+    const unusedThisMonth = transferableMonthlyCredits;
 
     // Last month case → only unused credits
     if (monthsRemaining <= 1) {
@@ -199,6 +206,10 @@ export function calculateRemainingCredits(
         unusedThisMonth,
         monthsRemaining: monthsRemaining - 1,
         monthlyCreditsAllowance,
-        totalRemainingCredits: (unusedThisMonth + (monthsRemaining - 1) * monthlyCreditsAllowance) + topUpCredits,
+        totalRemainingCredits: (
+            unusedThisMonth
+            +
+            (includeFutureYearlyCredits ? (monthsRemaining - 1) * monthlyCreditsAllowance : 0)
+        ) + topUpCredits,
     };
 }

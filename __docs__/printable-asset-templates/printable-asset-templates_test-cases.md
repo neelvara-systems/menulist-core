@@ -25,7 +25,7 @@
 | Customize editor | The fullscreen editor opens from the selected template, QR/link source layers are locked, editable copy can change, no MenuList attribution layer appears in the editor canvas, and Image/Print PDF download uses the latest edited document. |
 | Business Card frame protection | Business Card generated structure layers show as protected/locked, cannot be unlocked, deleted, duplicated, copied, grouped, or dragged in Layers, and canvas size presets are disabled. |
 | Business Card split safety | Moving editable front/back copy near or beyond the face boundary still exports front and back PNG files with each layer clamped into its assigned face. Newly added layers are assigned to the nearest face at export time; the side divider never appears in downloads. |
-| Runtime attribution | Non-premium Image/Print PDF output includes MenuList attribution added during render, while the saved editor document remains free of MenuList branding layers. |
+| Runtime attribution | Image/Print PDF output without branding-removal entitlement includes MenuList attribution added during render, while the saved editor document remains free of MenuList branding layers. |
 | Save as template | The fullscreen editor exposes **Save as template** for supported non-menu assets and saves the current neutral document to Saved designs. |
 | Saved designs | Saved templates appear above Ready templates for the same asset type and can reopen in the editor. |
 | Rehydration | Opening a saved template after changing selected project refreshes QR/source values from the current project. |
@@ -55,8 +55,8 @@
 | Store without logo | Initials render. |
 | Bright brand color | Text remains readable through derived tokens. |
 | Dark brand color | Accent remains readable and QR panel stays white. |
-| Premium plan | Visible MenuList attribution is hidden when existing flag is enabled. |
-| Non-premium plan | MenuList attribution is visible. |
+| Multi-location plan | Visible MenuList attribution is hidden when existing flag is enabled. |
+| Plan without branding removal | MenuList attribution is visible. |
 | Restaurant business type | Uses menu copy. |
 | Service business type | Uses service/list copy where supported. |
 | Feedback disabled | Feedback QR is disabled with plain reason. |

@@ -152,7 +152,12 @@ assertNotIncludes(structuredData, "'@type': 'PostalAddress'", 'AnswerLattice unv
 assertIncludes(footer, '<h2>/{title}</h2>', 'AnswerLattice footer heading hierarchy');
 assertIncludes(developersPage, 'disabled by default', 'AnswerLattice developer API rollout gate');
 assertIncludes(developersPage, 'href="/openapi.json"', 'AnswerLattice developer OpenAPI link');
+assertIncludes(developersPage, 'id="public-api-versioning"', 'AnswerLattice developer versioning policy anchor');
+assertIncludes(developersPage, 'No v1 operation is currently deprecated or scheduled for removal.', 'AnswerLattice current deprecation state');
 assertIncludes(openApiRoute, "openapi: '3.1.0'", 'AnswerLattice OpenAPI version');
+assertIncludes(openApiRoute, "'x-versioning-policy'", 'AnswerLattice OpenAPI versioning policy');
+assertIncludes(openApiRoute, 'currentDeprecations: []', 'AnswerLattice OpenAPI current deprecation state');
+assertIncludes(openApiRoute, "url: 'https://answerlattice.com/developers#public-api-versioning'", 'AnswerLattice OpenAPI version policy link');
 assertIncludes(openApiRoute, "operationId: 'retrieveGovernedAnswer'", 'AnswerLattice OpenAPI answer operation');
 assertIncludes(openApiRoute, "operationId: 'listGovernedEntities'", 'AnswerLattice OpenAPI entity operation');
 assertIncludes(openApiRoute, "operationId: 'submitGovernanceSignal'", 'AnswerLattice OpenAPI signal operation');

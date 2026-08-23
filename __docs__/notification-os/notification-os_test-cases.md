@@ -1,7 +1,7 @@
 # NotificationOS — Test Cases
 
 > **Status:** Source and Firestore emulator gates passed; browser/provider certification and remaining deploy evidence are pending
-> **Last Updated:** August 15, 2026
+> **Last Updated:** August 23, 2026
 
 ## Firing integrity
 
@@ -26,6 +26,10 @@
 | Real email only + `email_only`                  | One email plan; no WhatsApp claim/call                            |
 | Verified/consented phone only + `whatsapp_only` | One WhatsApp plan; no email claim/call                            |
 | Both contacts + `email_and_whatsapp`            | Two child plans from one context                                  |
+| New store + verified email only                 | Combined default persists; email is eligible and WhatsApp skips   |
+| New store + verified phone without consent      | Combined default persists; WhatsApp skips for missing consent     |
+| New store + both verified + WhatsApp consent    | Email and WhatsApp are both eligible                              |
+| Internal `msg.menulist.*` onboarding identity   | Email is excluded from initial notification settings              |
 | Internal generated auth email + phone           | Email ineligible; no send to generated address                    |
 | WhatsApp number without consent                 | WhatsApp skipped with stable reason; email may proceed            |
 | Revoked consent with legacy boolean true        | Revocation wins                                                   |

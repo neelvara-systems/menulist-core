@@ -933,29 +933,30 @@ function verifyPricingPublicCopyBoundary() {
   ].forEach((token) => assertIncludes(englishHero?.subtitle || '', token, 'Homepage supported intake copy'));
   assert(
     englishPricing?.setupStateBody ===
-      'The starter link and QR can go live during setup. Choose a paid plan before the setup deadline to keep the same URL live after day seven.',
-    'English pricing setup state must describe the live starter URL and paid deadline',
+      'Seven-day setup access lets you publish and review the real link and QR. It is not the Official paid plan. Choose a paid plan before the deadline to keep the same URL live after day seven.',
+    'English pricing setup state must distinguish setup access from the Official paid plan',
   );
   assert(
     typeof hindiPricing?.setupStateBody === 'string'
-      && hindiPricing.setupStateBody.includes('setup के दौरान live')
+      && hindiPricing.setupStateBody.includes('setup access में real link और QR publish')
+      && hindiPricing.setupStateBody.includes('Official paid plan नहीं है')
       && hindiPricing.setupStateBody.includes('deadline से पहले paid plan'),
-    'Hindi pricing setup state must describe the live starter URL and paid deadline',
+    'Hindi pricing setup state must distinguish setup access from the Official paid plan',
   );
   assert(
     typeof englishPricing?.faqDayEightAnswer === 'string'
-      && englishPricing.faqDayEightAnswer.includes('starter access stops after the setup deadline'),
+      && englishPricing.faqDayEightAnswer.includes('setup access stops after the deadline'),
     'English pricing FAQ must explain the no-plan state after day seven',
   );
   assert(
     typeof hindiPricing?.faqDayEightAnswer === 'string'
-      && hindiPricing.faqDayEightAnswer.includes('starter access setup deadline के बाद रुक जाता है'),
+      && hindiPricing.faqDayEightAnswer.includes('setup access deadline के बाद रुक जाता है'),
     'Hindi pricing FAQ must explain the no-plan state after day seven',
   );
   [
     'Custom domains',
-    'Supported content enhancements use the capacity included with Starter.',
-  ].forEach((token) => assertIncludes(englishPricing?.starterNotIncluded || '', token, 'Starter plan capacity copy'));
+    'Supported content enhancements use the capacity included with Official.',
+  ].forEach((token) => assertIncludes(englishPricing?.officialNotIncluded || '', token, 'Official plan capacity copy'));
   assert(!('typedTitle' in englishCreateMenuPreview), 'English create-menu preview locale must not advertise unsupported typed intake');
   assert(!('typedTitle' in (hindiLocale.Website?.CreateMenuPreview || {})), 'Hindi create-menu preview locale must not advertise unsupported typed intake');
   assertNotIncludes(createMenuPreview, "{ key: 'typed'", 'Homepage create-menu preview source boundary');
@@ -1071,9 +1072,10 @@ function verifyWebsiteAliasAndLocaleRoutingBoundary() {
 function verifyWebsiteLegalRuntimeTruthBoundary() {
   const refundPolicy = read('src/components/website/legal/RefundPolicyPage.tsx');
   const terms = read('src/components/website/legal/TermsOfServicePage.tsx');
+  const commercialIdentity = read('src/constants/menulist/commercialIdentity.ts');
 
   [
-    'July 16, 2026',
+    'August 22, 2026',
     'Current paid plan continues until the end of its billing period',
     'purpose-based retention terms in our Privacy Policy',
     'applicable law requires otherwise or MenuList confirms a duplicate or incorrect charge',
@@ -1086,12 +1088,17 @@ function verifyWebsiteLegalRuntimeTruthBoundary() {
     'All fees are final and non-refundable.',
   ].forEach((token) => assertNotIncludes(refundPolicy, token, 'MenuList refund policy stale absolute claim boundary'));
   [
-    'July 17, 2026',
+    'August 22, 2026',
     'You retain the rights you already hold in content you upload',
     'subject to applicable law, your input rights, and relevant provider terms',
-    'Razorpay handles checkout and payment-method entry',
+    'MENULIST_PAYMENT_PROCESSOR_DISCLOSURE',
     'MenuList QR links, web pages, screens, and fresh downloadable assets',
   ].forEach((token) => assertIncludes(terms, token, 'MenuList terms runtime-truth boundary'));
+  assertIncludes(
+    commercialIdentity,
+    'Razorpay processes checkout and payment-method details. MenuList records the payment and prepares the applicable billing document.',
+    'MenuList shared payment-processor disclosure',
+  );
   [
     'Publish everywhere',
     'All generated content belongs to you',

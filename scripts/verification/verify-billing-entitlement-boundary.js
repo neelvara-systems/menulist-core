@@ -1028,7 +1028,8 @@ function verifyBillingEntitlementBoundary() {
     'resolveVerifiedTopupSettlement({',
     'resolveCurrentTopupSubscriptionSettlement({',
     'billingDb.runTransaction(async (tx) =>',
-    "topupData?.status === 'paid'",
+    'isSettledTopupStatus(topupData.status)',
+    'resolveTopupCreditDebtAllocation({',
     'topUpCredits: newBalance',
     "status: 'paid'",
   ].forEach((token) => assertIncludes(topupSettlementServer, token, 'top-up webhook settlement server boundary'));
@@ -1086,7 +1087,7 @@ function verifyBillingEntitlementBoundary() {
     'const storeDocumentId = storeScope.documentId;',
     'orderTenantId !== tenantId || orderStoreId !== storeId',
     'const topupRef = billingDb.collection(DB_COLLECTIONS.TOPUPS).doc(topupDocumentId);',
-    'existingTopup?.status === \'paid\'',
+    'isSettledTopupStatus(existingTopup.status)',
     'capturedPaymentOrderId !== razorpay_order_id',
     'getActiveProductSubscriptionForStore(productId, tenantId, storeId)',
     'billingDb.runTransaction(async (tx) => {',
@@ -1454,6 +1455,7 @@ function verifyBillingEntitlementBoundary() {
     'providerSubscriptionId: string | null;',
     'asBoundedNonEmptyString(subscription.providerSubscriptionId, 180)',
     'export function resolveVerifiedTopupSettlement(',
+    'export function isSettledTopupStatus(value: unknown): boolean',
     'providerOrderId !== params.expectedOrderId',
     'topup.pId !== params.expectedProductId',
     'topup.productId !== params.expectedProductId',
@@ -1461,7 +1463,9 @@ function verifyBillingEntitlementBoundary() {
     "resolveNormalizedProviderIdentityAliases(notes, ['storeId', 'sId'], params.expectedStoreId)",
     'asPositiveSafeInteger(notes.billingStoreId) !== billingStoreId',
     'asPositiveSafeInteger(payment.amount) !== amount',
-    "status === 'paid' && storedPaymentId !== params.expectedPaymentId",
+    'asExactPositiveSafeInteger(topup.amount)',
+    'asExactPositiveSafeInteger(topup.creditsAdded)',
+    "status !== 'pending' && storedPaymentId !== params.expectedPaymentId",
   ].forEach((token) => assertIncludes(topupSettlement, token, 'top-up immutable settlement boundary'));
   assertNotIncludes(topupSettlement, 'allowMissingProductId', 'top-up settlement must not infer legacy product identity');
   assertNotIncludes(topupSettlement, 'topup.productId ?? topup.pId', 'top-up settlement must not collapse conflicting product aliases');
@@ -1663,7 +1667,8 @@ function verifyBillingEntitlementBoundary() {
     'const normalizedSubscriptionId = normalizeBillingSubscriptionDocumentId(subscription?.id);',
     'throw new Error("Billing subscription is not available.");',
     'const billingPeriod = getBillingPeriodKey(current.cycleStartDate);',
-    'unitsToConsume > effectiveCapacity',
+    'const totalRemaining = monthlyRemaining + promotional.credits + topUpRemaining;',
+    'unitsToConsume > totalRemaining',
     "throw new Error('Not enough billing credits for this operation.');",
     '...(billingPeriod !== null ? { creditsLastResetMonth: billingPeriod } : {})',
   ].forEach((token) => assertIncludes(capacityCheck, token, 'MenuList AI capacity subscription document ID boundary'));
@@ -1975,9 +1980,9 @@ function verifyBillingEntitlementBoundary() {
   assertIncludes(answerlatticeFirestoreRules, 'isExactAnswerlatticeBillingScopeMember(resource.data)', 'dedicated Answerlattice billing exact duplicate-scope rule');
 
   [
-    'const { onUpgradePlan, onClickPaymentCard, handleTopupPurchase } = usePaymentHandler(dispatch);',
+    'const { onUpgradePlan, handleTopupPurchase } = usePaymentHandler(dispatch);',
     'await onUpgradePlan(activeSubscription, newPlan, currency)',
-    'await onClickPaymentCard(newPlan, currency',
+    "router.push('/pricing');",
     'await handleTopupPurchase(pack',
     "activeSubscription?.status === 'active' && canManageSelectedSubscription && !isManualBilling && !isInheritedBilling",
   ].forEach((token) => assertIncludes(desktopBilling, token, 'desktop billing payment hook parity'));
@@ -2041,7 +2046,7 @@ function verifyBillingEntitlementBoundary() {
     'onContinuePendingSubscriptionCheckout,',
     '} = usePaymentHandler(noopDispatcher);',
     'await onUpgradePlan(sub, plan, currency)',
-    'await onClickPaymentCard(plan, currency',
+    "router.push('/pricing');",
     'await handleTopupPurchase(pack, currency)',
     'await onCancelSubscription({',
     'reason: cancellationReason',
@@ -2143,10 +2148,10 @@ function verifyBillingEntitlementBoundary() {
   ].forEach((token) => assertIncludes(razorpayReadmeDoc, token, 'Razorpay README launch boundary'));
 
   [
-    'Historical pricing strategy; not current launch certification',
-    'website/pricing copy review',
-    'Razorpay sandbox evidence',
-  ].forEach((token) => assertIncludes(pricingStrategyDoc, token, 'Pricing strategy launch boundary'));
+    '**Status:** Current launch strategy',
+    'Website plan names and pricing copy in every locale',
+    'Razorpay sandbox subscription creation and webhook settlement',
+  ].forEach((token) => assertIncludes(pricingStrategyDoc, token, 'Pricing strategy current launch contract'));
 
   [
     'implemented and billing-slice audited; current launch certification still requires active gates',
@@ -2226,7 +2231,7 @@ function verifyBillingEntitlementBoundary() {
   });
   assertIncludes(
     aiBillingExplainerDoc,
-    'monthlyCredits = 200  (full starting balance after subscription activation)',
+    'monthlyCredits = 250  (full starting balance after subscription activation)',
     'AI billing explainer activation timing boundary',
   );
   assertIncludes(

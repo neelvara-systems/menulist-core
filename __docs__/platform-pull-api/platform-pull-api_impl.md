@@ -118,7 +118,7 @@ Linked outlet project documents intentionally persist only their master referenc
 
 ### Structured Errors
 
-All errors follow `{ error: { code, message } }` format. See spec for full error code list.
+All pull API errors follow `{ error: { code, message, resolution } }`. `pullApiError()` selects recovery guidance from a fixed code-owned map and uses a generic fallback for an unknown code. Callers cannot supply the hint, and the hint never echoes credentials, request payloads, provider failures, tenant IDs, or store IDs. See the spec for the full error code list.
 
 ### Route Diagnostics
 

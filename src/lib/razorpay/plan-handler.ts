@@ -14,7 +14,7 @@ interface PlanInfo {
     currency: Currency;
     interval: PlanInterval;
     userType: UserType;
-    planId: string; // e.g., 'pro', 'starter'
+    planId: string; // e.g., 'menulist_pro', 'menulist_official'
     productId?: ProductId;
 }
 

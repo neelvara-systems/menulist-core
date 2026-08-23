@@ -123,6 +123,14 @@ Key-management requests separately reject cross-origin browser submissions befor
 - Authentication and error responses: private/no-store with fixed public error bodies.
 - No CORS allow headers are emitted because browser use is unsupported.
 
+## Versioning and Deprecation Contract
+
+- The URL path carries the API major (`/v1`); the OpenAPI `info.version` tracks compatible contract-document revisions.
+- Existing v1 fields, required inputs, auth semantics, and status-code meanings remain compatible. Compatible optional response fields are documented before use; clients must ignore unknown response fields.
+- Breaking changes use a new major path and migration guide rather than silently replacing v1.
+- A scheduled retirement requires `deprecated: true` on the affected OpenAPI operation, an exact sunset date and migration instructions on `/developers`, and `Deprecation`, `Sunset`, and `Link` with `rel="successor-version"` on affected responses.
+- The current OpenAPI policy reports an empty `currentDeprecations` list, and all three operations explicitly declare `deprecated: false`.
+
 ## Deliberate Non-Goals
 
 - browser or mobile secret use;

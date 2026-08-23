@@ -1,7 +1,7 @@
 # NotificationOS — Implementation
 
-> **Status:** Implemented in source; scoped MenuList webhook deployed to QA; provider activation and remaining QA certification pending
-> **Last Updated:** August 15, 2026
+> **Status:** Implemented in source; MenuList owner-channel selection is enabled; provider calls remain fail-closed when credentials, templates, verified contacts, consent, or certification are absent
+> **Last Updated:** August 23, 2026
 
 ## Reuse Decision
 
@@ -89,7 +89,7 @@ Current evidence: `resolveOwnerNotificationScope()` performs the product-scope r
 ### 7. Onboarding and settings
 
 - Phone OTP remains an authentication call directly to WhatsAppOS.
-- Add a separate, optional WhatsApp notification opt-in after successful phone verification and canonical owner/store creation; do not preselect it. If the UX asks earlier, keep the choice in the bounded onboarding operation and commit consent only when the authoritative recipient/scope exists.
+- Default new MenuList stores to the combined routing mode so every eligible owner channel is used. The MenuList owner-channel gates are enabled in the Next.js source. Keep the WhatsApp notification opt-in separate and unselected: a provided or OTP-verified phone establishes contact capability, not notification consent. If the UX asks earlier, keep the choice in the bounded onboarding operation and commit consent only when the authoritative recipient/scope exists. Provider configuration and approved-template checks remain fail-closed.
 - Google/email onboarding may invite the owner to add and verify WhatsApp later.
 - MenuList desktop and mobile owner settings expose the same contact capability, preference and consent state. Answerlattice's responsive Settings surface owns the workspace support delivery address; lifecycle routing falls back to that address when no dedicated notification or billing address exists. Its governed workflow-notification settings remain separate from account lifecycle delivery.
 
@@ -153,6 +153,8 @@ The three OS verifiers are also registered in SecurityOS as internal, non-produc
 - Consent audit events use create-only writes. Current projection and append-only audit are committed in one batch.
 - `whatsapp_only`, `email_only`, and `email_and_whatsapp` remain explicit modes. The preferred channel records the first selected channel instead of silently forcing email.
 - `preferred_available` requires neither channel individually; it uses the first eligible preferred channel and falls back, so an email-only owner is not blocked by missing WhatsApp consent.
+- `buildOnboardingOwnerNotificationSettings()` writes the verified contact projection and `email_and_whatsapp` default inside the existing tenant/store transaction. It excludes generated `msg.menulist.*` identities and never writes granted WhatsApp consent.
+- Messaging onboarding records provider-verified number possession on the owner and store, but the channel remains ineligible until the owner grants notification consent.
 - A stale legacy consent boolean cannot override an explicit revoked status.
 
 ## Deploy Boundary

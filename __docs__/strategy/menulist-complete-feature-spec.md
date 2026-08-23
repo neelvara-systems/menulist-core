@@ -758,7 +758,7 @@ Complete isolation between different businesses using the same platform.
 
 ## Pricing
 
-### MenuList Pro — ₹999/month/location
+### MenuList Pro — ₹1,499/month/location
 
 **What's Included:**
 
@@ -783,7 +783,7 @@ Complete isolation between different businesses using the same platform.
 
 - Free = "timepass tool" with zero serious usage
 - Product only works when properly configured
-- If someone won't pay ₹999, they won't give usable feedback
+- Paid plans begin at ₹599/month so owners can start with a serious, supported public presence
 
 ---
 

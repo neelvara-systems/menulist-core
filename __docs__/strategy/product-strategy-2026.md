@@ -196,9 +196,9 @@ These features have been explicitly rejected for 2026:
 
 ---
 
-## Pricing Strategy (No Changes)
+## Pricing Strategy
 
-### MenuList Pro — ₹999/month/location
+### MenuList Pro — ₹1,499/month/location
 
 **What's Included:**
 

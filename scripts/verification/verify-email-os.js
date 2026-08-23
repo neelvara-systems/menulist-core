@@ -103,6 +103,12 @@ assert(genericNotifications.includes("productId !== PRODUCT_IDS.MENULIST && prod
 assert(canonicalContract.includes("CC: {\n        productCode: 'CC',\n        activationState: 'export_only'"), 'CampaignCue must remain export-only');
 assert(canonicalContract.includes("MC: {\n        productCode: 'MC',\n        activationState: 'disabled'"), 'MyCodex email must remain disabled');
 assert(canonicalContract.includes('MAX_TAG_COUNT: 6'), 'Two provider tag slots must remain reserved for product and delivery identity');
+assert(canonicalContract.includes('MAX_ATTACHMENT_COUNT: 1'), 'EmailOS must admit at most one bounded attachment');
+assert(canonicalContract.includes("contentType: 'application/pdf'"), 'EmailOS attachments must stay PDF-only');
+assert(canonicalContract.includes("contentBase64.startsWith('JVBERi0')"), 'EmailOS attachments must require a PDF file signature');
+for (const providerPath of ['src/lib/email-os/provider.ts', 'functions/src/emailOs/provider.ts', 'functions-answerlattice/src/emailOs/provider.ts']) {
+  assert(read(providerPath).includes('attachments: envelope.attachments?.map'), `${providerPath} must forward validated local attachment bytes`);
+}
 assert(canonicalContract.includes("EMAIL_OS_PRODUCT_TAG_NAME = 'email_os_product'"), 'EmailOS must define the reserved product-routing tag');
 
 const ttlPolicies = [

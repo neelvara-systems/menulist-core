@@ -103,7 +103,7 @@ export interface MenuKitInput {
   lastPublishedAt?: Date; // For "Updated on" footer
   businessType?: string;
   businessCategory?: string;
-  activePlanType?: string | null; // Premium hides visible MenuList attribution
+  activePlanType?: string | null; // Multi-location hides visible MenuList attribution
   locale?: string;
 }
 
@@ -138,7 +138,7 @@ Standalone branded QR cards and feedback QR cards use a taller portrait card tre
 - `Powered by MenuList | menulist.ai`
 - `Menu powered by MenuList | menulist.ai`
 
-`src/lib/platform/menuListBranding.ts` is the entitlement gate for visible MenuList attribution. It hides printable/downloadable attribution only when `activePlanType` normalizes to `premium`; missing, Starter, Pro, and unknown plan data keep attribution visible. The check uses plan data already present in store context and does not read subscriptions.
+`src/lib/platform/menuListBranding.ts` is the entitlement gate for visible MenuList attribution. It hides printable/downloadable attribution only when `activePlanType` normalizes to `menulist_multi_location`; missing, Official, Pro, and unknown plan data keep attribution visible. The check uses plan data already present in store context and does not read subscriptions.
 
 Menu Kit templates, standalone QR cards, Menu Card Export PDFs, and active legacy physical-surface downloads use this helper or its PDF-safe logo data URL so every printed/downloaded output includes the MenuList name and domain without making the owner configure another setting.
 
@@ -217,7 +217,7 @@ Both renderers use `drawPrintMenuCardFace()` so the folded tent and single card 
 - Business-type-aware print title and instruction from `getOfferingLabels()`, such as `CURRENT MENU` + `Scan to view current menu`, `CURRENT SERVICES` + `Scan to view current services`, or catalog/offering variants.
 - Large near-black QR on a white panel for scan reliability.
 - Store brand color for the top band, badge, and outer card accents; the QR panel keeps a neutral border.
-- MenuList attribution unless `activePlanType` is Premium.
+- MenuList attribution unless `activePlanType` is `menulist_multi_location`.
 - Four-module QR quiet zone. Business logo/initials stay outside the QR pattern.
 
 Trust-cue boundary: use business identity, current-link wording, short link, and attribution. Do not add center-logo QR overlays, WhatsApp consent copy, self-declared official badges, "verified", "secure", "no spam", or ordinary scan preview pages inside Menu Kit.
@@ -435,7 +435,7 @@ npm install jszip
 | `MENU_KIT_DOWNLOAD` GA4-only (no Firestore)   | Owner-side event, not customer-side. Zero Firebase cost. Skip Firestore write in switch.          | Mar 8, 2026  |
 | Feature flag `ENABLE_MENU_KIT_UTM`            | Allows toggling UTM params without touching template code. Defaults ON.                           | Mar 8, 2026  |
 | Shared premium output tokens                  | All active QR/card downloads reuse store logo/color, premium gradient accents, and a near-black scan-safe QR panel.                     | Jun 4, 2026  |
-| Premium attribution removal                   | Only Premium stores hide visible MenuList logo/name/domain in generated files and public footers. | Jun 3, 2026  |
+| Multi-location attribution removal            | Only Multi-location stores hide visible MenuList logo/name/domain in generated files and public footers. | Jun 3, 2026  |
 
 ---
 

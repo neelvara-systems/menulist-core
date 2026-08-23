@@ -217,7 +217,7 @@ Document rules:
 - Business Card export normalizes frame-assigned layers back into their front/back bounds before PDF or split PNG rendering. Newly added layers without a `printFrameId` are assigned to the nearest front/back frame during normalization. The side divider is an `editorGuide`/`excludeFromExport` layer, so it helps editing but never appears in downloaded files.
 - Any legacy MenuList attribution elements are stripped from editor documents and saved templates.
 - Business name, headline, instruction, and CTA copy remain editable.
-- PNG/PDF export applies MenuList attribution at runtime through `resolveMenuListAttributionPolicy()`, so non-premium output is branded and eligible higher plans can remove it without placing branding inside the editor canvas.
+- PNG/PDF export applies MenuList attribution at runtime through `resolveMenuListAttributionPolicy()`, so output without branding-removal entitlement is branded and eligible plans can remove it without placing branding inside the editor canvas.
 - The editor document is the source for preview, default download, and customized download.
 - Business logo/initials, short link, and attribution remain outside the QR pattern. Do not add center-logo QR overlays or unsupported trust/consent copy to normal MenuList page QR assets.
 
@@ -279,7 +279,7 @@ All output content must come from input:
 | QR short link | Existing short-link display source. |
 | Action copy | Business type labels from Menu Kit/business type helpers. |
 | Currency | Current menu/project currency source for Print Menu. |
-| Branding visibility | Existing `activePlanType` plus `ENABLE_PREMIUM_MENULIST_BRANDING_REMOVAL`. |
+| Branding visibility | Existing `activePlanType` plus `ENABLE_MULTI_LOCATION_MENULIST_BRANDING_REMOVAL`. |
 
 No renderer may contain example business names, fixed restaurant-only text, fixed URLs, or fixed logos.
 
@@ -294,13 +294,13 @@ No renderer may contain example business names, fixed restaurant-only text, fixe
 
 ## Plan and Branding Rules
 
-Use existing premium branding removal:
+Use the existing branding-removal entitlement:
 
-- Premium hides visible MenuList logo/name/domain when `ENABLE_PREMIUM_MENULIST_BRANDING_REMOVAL` is true.
-- Non-premium plans show MenuList attribution.
+- Multi-location hides visible MenuList logo/name/domain when `ENABLE_MULTI_LOCATION_MENULIST_BRANDING_REMOVAL` is true.
+- Plans without branding removal show MenuList attribution.
 - Do not add a separate owner toggle for branding removal.
 
-Template access can be tiered, but output quality must not be poor on Starter. Starter gets fewer styles, not worse QR or weak layout.
+Template access can be tiered, but output quality must not be poor on Official. Official gets fewer styles, not worse QR or weak layout.
 
 ## Optional Style Suggestion
 
@@ -320,8 +320,8 @@ Add:
 ENABLE_PRINTABLE_ASSET_TEMPLATES: true,
 ENABLE_PRINTABLE_ASSET_EDITOR_RENDERER: true,
 ENABLE_PRINTABLE_ASSET_EDITOR_CUSTOMIZE: true,
-PRINTABLE_ASSET_TEMPLATE_PLAN_IDS: ['starter', 'pro', 'premium'],
-PRINTABLE_ASSET_TEMPLATE_FULL_CATALOG_PLAN_IDS: ['pro', 'premium'],
+PRINTABLE_ASSET_TEMPLATE_PLAN_IDS: ['menulist_official', 'menulist_pro', 'menulist_multi_location'],
+PRINTABLE_ASSET_TEMPLATE_FULL_CATALOG_PLAN_IDS: ['menulist_pro', 'menulist_multi_location'],
 ```
 
 No Cloud Function flag is needed because generation is client-side.

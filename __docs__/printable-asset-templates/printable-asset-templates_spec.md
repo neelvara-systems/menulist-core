@@ -135,9 +135,9 @@ The base system should avoid creating a new decision burden:
 
 | Plan | Access |
 | --- | --- |
-| Starter | Reliable templates: `modern-calm`, `qr-first`, `clean-utility`. |
+| Official | Reliable templates: `modern-calm`, `qr-first`, `clean-utility`. |
 | Pro | All supported template families for the selected asset and "Use this style for this download session". |
-| Premium | All Pro access plus visible MenuList attribution removal through the existing premium branding policy. |
+| Multi-location | All Pro access plus visible MenuList attribution removal through the existing branding-removal policy. |
 
 If plan gating is too much for first implementation, ship all supported families first and enforce only premium attribution removal. Do not block QR reliability or core output quality by plan.
 

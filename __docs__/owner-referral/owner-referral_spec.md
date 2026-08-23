@@ -15,7 +15,7 @@ An eligible MenuList business can privately share a referral link with a busines
 
 The reward is based on payment only. MenuList does not require the referred business to publish, share, download a QR, complete distribution actions, remain paid for a waiting period, or meet a usage threshold.
 
-Credits are added to the existing `topUpCredits` Pack balance. At current rates, 100 credits can cover up to 20 generated menu images or 100 description rewrites; 50 credits can cover up to 10 generated menu images or 50 description rewrites. They are not cash, monthly plan allowance, commission, or a transferable asset.
+Credits are added to the separate `promotionalCredits` balance and expire 365 days after issue. At current rates, 100 credits can cover up to 20 generated menu images or 100 description rewrites; 50 credits can cover up to 10 generated menu images or 50 description rewrites. They are not cash, recurring plan allowance, purchased Pack value, commission, or a transferable asset.
 
 ---
 
@@ -78,7 +78,7 @@ Pilot allowlisting and feature flags are rollout controls. They are not reward-e
 
 | Existing behavior | Evidence | Referral decision |
 | --- | --- | --- |
-| Subscription wallets contain `monthlyCredits` and non-resetting `topUpCredits`. | `src/types/razorpay.ts:92` | Add rewards only to `topUpCredits`. |
+| Subscription wallets separate recurring, promotional, and purchased balances. | `src/types/razorpay.ts` | Add rewards only to `promotionalCredits` with an expiry. |
 | AI capacity consumes monthly credits before Pack credits. | `src/lib/ai/capacityCheck.ts:136,159-215` | Referral credits work through the existing capacity model. |
 | Pack copy names generated images, descriptions, and translations. | `src/data/PlatformPlansList.ts:116`; `src/components/templates/main-app/billing/ActiveSubscriptionCard.tsx:482-483` | Explain the reward through those outcomes. |
 | Public-safe credit rates are centralized. | `src/data/shared/contentCreditPolicy.ts` | Derive pricing and referral examples from one rate source; keep provider cost and margin internal. |
@@ -123,8 +123,8 @@ No other product, usage, identity, source, or volume condition applies.
 
 | Recipient | Reward | Issue time | Destination |
 | --- | ---: | --- | --- |
-| Referring business | 100 credits | As soon as both paid subscriptions are verified | Current `topUpCredits` wallet |
-| Referred business | 50 credits | Same atomic transaction | Current `topUpCredits` wallet |
+| Referring business | 100 credits | As soon as both paid subscriptions are verified | Current `promotionalCredits` balance |
+| Referred business | 50 credits | Same atomic transaction | Current `promotionalCredits` balance |
 
 There is no cap. Every distinct referred business that reaches the two-paid-business state can issue one reward pair.
 
@@ -230,8 +230,8 @@ One Firestore transaction must:
 - verify both paid entitlements;
 - verify that the reward has not already issued;
 - reject malformed, negative, non-integer, or overflow-prone Pack balances;
-- add 100 to referrer `topUpCredits`;
-- add 50 to referred `topUpCredits`;
+- add 100 to referrer `promotionalCredits` and set/extend its 365-day expiry;
+- add 50 to referred `promotionalCredits` and set/extend its 365-day expiry;
 - leave monthly credit fields unchanged;
 - record the deterministic issue ID, payment evidence, before/after balances, and issue time;
 - set `reward_issued` exactly once.
@@ -353,6 +353,7 @@ No owner ranking, threshold, or reward limit is derived from these metrics.
 - [x] Pending repair is a bounded single batch with backlog evidence rather than an unbounded cursor loop.
 - [x] Status reveals no cross-business financial or contact information.
 - [x] Credit examples are derived from `src/data/shared/contentCreditPolicy.ts` and match the charged operation rates.
+- [x] An expired promotional balance is treated as zero before a new referral reward is added, so stale rewards cannot revive.
 - [x] Acquisition and settlement controls default off; an empty or invalid pilot allowlist fails closed.
 - [x] English/Hindi runtime copy, legal source copy, help source, website, desktop, and mobile are aligned.
 

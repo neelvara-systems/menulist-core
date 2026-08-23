@@ -2594,9 +2594,9 @@
       "a15": "No. MenuList does not publish to or update those platforms from AI Menu Manager. Unsupported destinations show a not-supported card and MenuList truth stays unchanged."
     },
     "Pricing": {
-      "proof2": "Approval-based. Owner-approved.",
-      "decision2Desc": "Starter covers simple publishing. Pro adds AI Menu Manager, stronger presentation, and owner controls. Premium supports location governance.",
-      "proReinforcementAdvice": "Starter is enough for one current public menu. Choose Pro when AI Menu Manager, presentation, languages, and owner controls matter."
+      "proof2": "Nothing changes without your approval",
+      "decision2Desc": "Official covers one customer link. Pro adds AI Menu Manager, stronger presentation, and owner controls. Multi-location supports location governance.",
+      "proReinforcementAdvice": "Official is enough for one current customer link. Choose Pro when AI Menu Manager, presentation, languages, and owner controls matter."
     },
     "HowItWorks": {
       "step4Title": "Tell MenuList what changed.",

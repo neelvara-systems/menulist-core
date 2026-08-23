@@ -41,7 +41,13 @@ async function main(): Promise<void> {
         subject: 'Your menu is live',
         html: rendered.html,
         text: rendered.text,
+        attachments: [{
+            filename: 'MenuList-ML26-27-000001.pdf',
+            contentBase64: Buffer.from('%PDF-1.7 test').toString('base64'),
+            contentType: 'application/pdf',
+        }],
     });
+    assert.equal(envelope.attachments?.[0]?.contentType, 'application/pdf');
     assert.equal(assertEmailOsSenderDomain(envelope.from, 'mail.menulist.ai'), envelope.from);
     const key = buildEmailOsIdempotencyKey(envelope, sha256);
     assert.equal(key, buildEmailOsIdempotencyKey(envelope, sha256));
@@ -104,6 +110,22 @@ async function main(): Promise<void> {
     assert.throws(() => assertEmailOsEnvelope({
         ...envelope,
         tags: [{ name: EMAIL_OS_PRODUCT_TAG_NAME, value: 'AL' }],
+    }), EmailOsContractError);
+    assert.throws(() => assertEmailOsEnvelope({
+        ...envelope,
+        attachments: [{
+            filename: '../invoice.pdf',
+            contentBase64: Buffer.from('%PDF-1.7 test').toString('base64'),
+            contentType: 'application/pdf',
+        }],
+    }), EmailOsContractError);
+    assert.throws(() => assertEmailOsEnvelope({
+        ...envelope,
+        attachments: [{
+            filename: 'invoice.pdf',
+            contentBase64: Buffer.from('not a PDF').toString('base64'),
+            contentType: 'application/pdf',
+        }],
     }), EmailOsContractError);
     assert.throws(() => normalizeEmailOsProviderEvent({
         type: 'email.sent',

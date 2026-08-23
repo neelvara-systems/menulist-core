@@ -153,6 +153,11 @@ export async function sendMenuListEmailOs(envelopeInput: EmailOsEnvelope): Promi
             subject: envelope.subject,
             html: envelope.html,
             text: envelope.text,
+            attachments: envelope.attachments?.map((attachment) => ({
+                filename: attachment.filename,
+                content: attachment.contentBase64,
+                contentType: attachment.contentType,
+            })),
             tags: [
                 ...Array.from(envelope.tags || []),
                 { name: EMAIL_OS_PRODUCT_TAG_NAME, value: envelope.productCode },

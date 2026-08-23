@@ -1,14 +1,14 @@
 # GrowthOS Add-on - Firebase And Cost Plan
 
-**Status:** Enabled behind Pro/Premium entitlement gate
-**Runtime cost today:** Only active Pro/Premium stores can reach Growth Kits reads/writes while `GROWTHOS_ADDON_ACCESS="paid"`
-**Cost principle:** Pro/Premium plan value must cover Firestore, Storage, and provider usage.
+**Status:** Enabled behind Pro/Multi-location entitlement gate
+**Runtime cost today:** Only active Pro/Multi-location stores can reach Growth Kits reads/writes while `GROWTHOS_ADDON_ACCESS="paid"`
+**Cost principle:** Pro/Multi-location plan value must cover Firestore, Storage, and provider usage.
 
 ---
 
 ## 1. Current Cost Impact
 
-The implementation adds Firestore rules and gated code paths. The master feature flag is enabled, but Growth Kits remains limited to active Pro/Premium stores.
+The implementation adds Firestore rules and gated code paths. The master feature flag is enabled, but Growth Kits remains limited to active Pro/Multi-location stores.
 
 No Storage rules, Cloud Functions, provider calls, scheduled jobs, or indexes were added.
 
@@ -152,7 +152,7 @@ Do not add these indexes until queries are final and the used-history UI flag is
 Implemented rules enforce:
 
 - default deny
-- browser reads and writes for `growthosKits` and `growthosExports` are denied; tenant membership, support access, or a platform claim cannot bypass the Pro/Premium entitlement boundary
+- browser reads and writes for `growthosKits` and `growthosExports` are denied; tenant membership, support access, or a platform claim cannot bypass the Pro/Multi-location entitlement boundary
 - authenticated APIs read and write kit/export documents through the server Admin SDK after tenant, entitlement, output, and stale checks
 - generated kit writes are routed through authenticated API routes in V1; admin SDK writes bypass rules but routes enforce tenant access and entitlement
 - source project reads use scoped project paths first; legacy fallback requires matching tenant/store identity or MenuList tenant-store project ID shape
@@ -166,7 +166,7 @@ Historical deployment evidence: `firebase deploy --only firestore:rules --projec
 Implemented V1 optimizations:
 
 - disabled or ineligible desktop route does not fetch project lists
-- mobile Today trigger gating uses the existing `platformSummary/growthos_{sId}` summary read for eligible Pro/Premium stores
+- mobile Today trigger gating uses the existing `platformSummary/growthos_{sId}` summary read for eligible Pro/Multi-location stores
 - mobile Today trigger gating does not refresh actions, generate kits, write exports, update summaries, query project lists, or start listeners
 - legacy Social Content owner generation is deleted, including its API route and campaign engine, so there is no hidden endpoint or surprise campaign write path
 - summary refresh skips Firestore writes when the normalized summary did not change

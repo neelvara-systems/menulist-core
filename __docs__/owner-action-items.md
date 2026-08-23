@@ -226,7 +226,7 @@ No Firebase rules, indexes, Storage rules, or Cloud Function logic changed in th
 | 7   | Keep direct provider activation separate from the current CampaignCue export/download release | Google Business Profile OAuth/API access, WhatsApp WABA/templates/opt-in/pricing, provider metrics, billing, and direct posting/sending remain future provider-layer work. | P1 (before provider launch) | ⬜     |
 | 8   | Keep KitStamp as a separate product decision, not a MenuList/CampaignCue merge | KitStamp remains foundation/planning only. Before implementation, decide domain, Firebase targets, billing package, initial ICP, export schema, and public claims. | P2 (only if KitStamp is activated) | ⬜     |
 
-### Public Starter Menu Entry Launch
+### Public Setup Menu Entry Launch
 
 | #   | Task                                                                 | Why                                                                                                              | Priority                    | Status |
 | --- | -------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- | --------------------------- | ------ |
@@ -419,6 +419,60 @@ https://us-central1-{firebaseProject}.cloudfunctions.net/messagingOnboarding/wha
 
 > **Full setup guide:** `__docs__/answerlattice/doctrine/10-implementation-action-items.md`
 
+### MenuList Commercial Readiness
+
+Keep the legal, tax, international, document, and email gates disabled until
+the matching item is verified. Local source and emulator success does not
+replace accountant, provider, QA-host, or production-host evidence.
+
+- [ ] Confirm the exact legal supplier/contracting name and entity type from
+  current PAN, GST, bank, and Razorpay merchant records. Do not substitute the
+  MenuList product name, the bare Neelvara Systems trade name, or an assumed
+  company suffix.
+- [ ] Confirm GST registration status, GSTIN, registered address, two-digit
+  supplier state code, and accountant-approved SAC for subscriptions and
+  Content Credit packs.
+- [ ] Confirm e-invoicing applicability and authorised-signatory treatment. Use
+  `not_required` only after that conclusion is verified; a `required` result
+  needs reviewed IRP integration before document issuance.
+- [ ] Confirm LUT reference, export declaration, exchange-rate treatment, and
+  destination-tax obligations before enabling international checkout or
+  zero-rated export treatment.
+- [ ] Approve invoice and credit-note retention/correction policy. Current
+  records are retained; refunds use credit notes rather than rewriting issued
+  invoices.
+- [ ] Configure Razorpay invoice emails and MenuList NotificationOS document
+  delivery so customers never receive duplicate or contradictory messages.
+- [ ] Approve the `menulist_billing_document_issued_v1` Meta template before
+  enabling invoice or credit-note WhatsApp delivery. The approved utility
+  template must have a required PDF document header and one body-text
+  parameter matching the source registry. Verify the billing
+  owner's phone, explicit WhatsApp consent, and email/WhatsApp/both preference
+  on desktop and mobile settings. In QA, confirm the received WhatsApp message
+  opens the attached invoice/credit-note PDF and that the private owner-app link
+  remains a usable fallback.
+- [ ] Reauthenticate the Firebase CLI, rerun
+  `npm run verify:functions-deploy-preflight`, and deploy the current
+  `triggerStoreNightlyScheduler` retry/recovery runtime to MenuList QA and then
+  production with redacted deployment evidence.
+- [ ] Match Razorpay KYC legal identity, business type, PAN-linked merchant
+  record, settlement account, and displayed details to the approved supplier.
+- [ ] Run `npm run verify:menulist-commercial-readiness`, then run
+  `npm run smoke:razorpay-sandbox-readonly` with test-mode credentials and
+  retain the redacted result.
+- [ ] Complete a disposable QA subscription and pack journey: checkout,
+  captured settlement, renewal, quantity change, cancellation, refund, invoice,
+  credit note, desktop Billing, and mobile Billing.
+- [ ] Repeat the same configuration review for production with separate live
+  provider credentials and webhook secret. Do not deploy or enable production
+  gates merely because QA passes.
+- [ ] Only after all applicable items pass, set
+  `MENULIST_BILLING_LEGAL_IDENTITY_VERIFIED=true`; independently enable
+  international checkout, billing documents, and NotificationOS document
+  delivery as approved.
+
+> **Certification contract:** `__docs__/commercial-readiness/README.md`
+
 ---
 
 ## Completed Items
@@ -445,8 +499,9 @@ _Move items here when done. Keep as history._
 | `__docs__/campaigncue/campaigncue-production-implementation-audit.md` | CampaignCue current export/download runtime status and external blockers |
 | `__docs__/growthos-addon/growthos-addon_validation.md` | Growth Kits verification and production-readiness hardening notes |
 | `__docs__/kitstamp/kitstamp_impl.md` | KitStamp separate-product implementation plan and activation gates |
+| `__docs__/commercial-readiness/README.md` | MenuList pricing, credits, tax, documents, identity, Razorpay, and environment certification |
 
 ---
 
-_Last Updated: August 13, 2026_
-_Updated By: Codex (MenuList Gemini credential-contract audit)_
+_Last Updated: August 22, 2026_
+_Updated By: Codex (MenuList commercial-readiness certification)_

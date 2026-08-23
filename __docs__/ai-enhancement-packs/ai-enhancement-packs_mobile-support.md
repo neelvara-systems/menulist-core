@@ -18,7 +18,7 @@
 
 ## Credit Presentation
 
-Mobile and desktop must use the same transparent Pack contract: 250 credits, with current examples of up to 50 generated menu images or 250 description rewrites. Examples come from `src/data/shared/contentCreditPolicy.ts`. Do not expose monthly included capacity, provider cost, margin, internal tax valuation, or overdraft.
+Mobile and desktop use the same transparent contract: included, valid promotional, purchased, and usable Content Credit balances plus one 250-credit Pack for ₹799 / $29 before tax. Current examples are up to 50 generated menu images or 250 description rewrites and come from `src/data/shared/contentCreditPolicy.ts`. Do not expose provider cost, margin, or internal tax valuation.
 
 ---
 

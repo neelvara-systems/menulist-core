@@ -8,32 +8,33 @@
 
 This document explains the complete subscription, credit, and AI billing system as it exists in the codebase today. Nothing here is proposed or planned — everything described is built and working.
 
-## July 14 Current Runtime and Owner-Display Contract
+## August 22 Current Runtime and Owner-Display Contract
 
 - Paid actions reserve exact credits transactionally before Gemini, settle the same hidden operation row after valid output, and refund the exact charged buckets on terminal failure.
 - The operation belongs to the selected outlet. If that outlet inherits HQ billing, `accountingBillingStoreId` records the effective HQ subscription used for reserve, settle, refund, and recovery.
 - API `remainingBalance` includes that effective `billingStoreId`; the browser applies it only to the matching active subscription.
 - Owner Transactions read `menulistAiOperations/{tId}/{selectedOutletId}`. Successful/partial authenticated menu extraction is mirrored there as a compact no-credit activity row while its detailed cost/token audit remains in `MENULIST_AI_OPERATIONS` for platform operators.
-- MenuList owners see exact purchased Pack balance and exact credits required/used by eligible actions. They do not see monthly included allowance, monthly remaining, used-this-cycle counts, provider cost, or margin.
+- MenuList owners see the usable total plus included, promotional, and purchased balances. They also see exact credits required/used by eligible actions. Provider cost and margin remain private.
 
-Where older explanatory examples below expose monthly internal values, treat them as founder/internal mechanics only, not owner-facing UI copy.
+The authoritative policy is [`content-credit-decision-record-2026-08.md`](./content-credit-decision-record-2026-08.md).
 
 ---
 
 ## 1. The Big Picture
 
 ```
-Customer subscribes to a plan  →  Gets monthly AI credits (e.g., 200 units/month)
+Customer subscribes to a plan  →  Gets monthly Content Credits
 Credits reset every billing cycle  →  Unused monthly credits do NOT carry forward
-Customer uses AI features  →  Units deducted from monthlyCredits first, then topUpCredits
-If they need more  →  They buy an AI Enhancement Pack (one-time, ₹2,999 = 250 units)
-We pay Google per operation  →  Margins are 16x–300x depending on operation
+Customer requests prepared content  →  Included, then valid promotional, then Pack credits are used
+If they need more  →  They buy one Content Credit Pack (₹799 / $29 = 250 credits)
+Normal menu and business updates  →  Always use zero Content Credits
 ```
 
-There are **two types of credits** a store can have:
+There are **three types of credits** a billing store can have:
 
 - **`monthlyCredits`** — Included with the subscription plan. Resets to full every billing cycle.
-- **`topUpCredits`** — Purchased separately via AI Enhancement Packs. Never expire. Never reset.
+- **`promotionalCredits`** — Referral or goodwill value with an explicit expiry.
+- **`topUpCredits`** — Purchased separately via the Content Credit Pack. Never resets during an active paid entitlement.
 
 ---
 
@@ -45,11 +46,13 @@ Payment is handled entirely through **Razorpay** (recurring subscriptions).
 
 ### B2C Plans (Restaurants, Salons, Retail — End-Customer Facing)
 
-| Plan    | Monthly (INR) | Yearly (INR) | Monthly Credits (INR) |
-| ------- | ------------- | ------------ | --------------------- |
-| Starter | ₹499/mo       | ₹4,990/yr    | 75 units/month        |
-| Pro     | ₹1,499/mo     | ₹14,990/yr   | 200 units/month       |
-| Premium | ₹3,999/mo     | ₹39,990/yr   | 600 units/month       |
+| Plan           | Monthly (INR)       | Yearly (INR)         | Monthly Credits (INR) |
+| -------------- | ------------------- | -------------------- | --------------------- |
+| Official       | ₹599/mo             | ₹5,990/yr            | 75 units/month        |
+| Pro            | ₹1,499/mo           | ₹14,990/yr           | 250 credits/month     |
+| Multi-location | ₹1,499/location/mo  | ₹14,990/location/yr  | 300 credits/location  |
+
+Multi-location billing requires at least two paid active locations, so its minimum included allowance is 600 credits per cycle.
 
 ### B2B Plans (API Customers — Developer Facing)
 
@@ -64,9 +67,9 @@ USD pricing is also available and auto-selected based on user timezone.
 
 | Pack                | Price (INR) | Credits Added |
 | ------------------- | ----------- | ------------- |
-| AI Enhancement Pack | ₹2,999      | 250 units     |
+| Content Credit Pack | ₹799 / $29 before tax | 250 credits |
 
-Top-up credits are added to `topUpCredits`. They never expire and never reset. A customer can buy multiple packs.
+Purchased credits are added to `topUpCredits`. They do not reset with the monthly allowance. On cancellation they are frozen and can be restored once if the same billing store reactivates within 365 days.
 
 ---
 
@@ -77,8 +80,9 @@ Top-up credits are added to `topUpCredits`. They never expire and never reset. A
 When a customer subscribes (onboarding or plan change):
 
 ```
-monthlyCreditsAllowance = plan's monthly credit value (e.g., 200 for Pro)
-monthlyCredits = 200  (full starting balance after subscription activation)
+monthlyCreditsAllowance = plan's monthly credit value (250 for Pro)
+monthlyCredits = 250  (full starting balance after subscription activation)
+promotionalCredits = 0
 topUpCredits = 0
 creditsLastResetMonth = current billing period key (YYYYMM)
 ```
@@ -93,7 +97,7 @@ When a customer uses a paid AI feature (e.g., generates an image):
 2. If yes, it atomically reserves exact units and writes the hidden operation shell.
 3. Only after reservation succeeds does it call Google Gemini.
 4. Valid output settles the same shell without a second debit; terminal failure refunds the exact reservation once.
-5. **Reservation order:** `monthlyCredits` are used first. Only when `monthlyCredits` hits 0, `topUpCredits` are used.
+5. **Reservation order:** `monthlyCredits`, then unexpired `promotionalCredits`, then `topUpCredits`.
 
 Example: Store has 10 monthlyCredits + 50 topUpCredits. Generates 1 image (5 units).
 → After: 5 monthlyCredits + 50 topUpCredits. Monthly credits were consumed first.
@@ -111,7 +115,7 @@ There are two mechanisms that handle this reset:
 When Razorpay charges the customer for the next month, it sends a `subscription.charged` webhook. Our webhook handler resets:
 
 ```
-monthlyCredits → monthlyCreditsAllowance (e.g., back to 200)
+monthlyCredits → monthlyCreditsAllowance (for example, Pro returns to 250)
 creditsLastResetMonth → new billing period key
 ```
 
@@ -147,21 +151,21 @@ When a customer buys an AI Enhancement Pack:
 3. `topUpCredits += 250` (added to existing balance)
 4. Frontend updates immediately
 
-Top-up credits are never reset, never expire, and persist across billing cycles.
+Purchased credits persist across billing-cycle resets. Cancellation uses the bounded 365-day freeze-and-restore policy described above.
 
 ### 3.5 Credits Carry Forward on Plan Upgrade
 
-When a customer upgrades their plan (e.g., Starter → Pro):
+When a customer upgrades their plan (for example, Official → Pro):
 
 1. New Razorpay subscription is created with `topUpCredits = 0`
 2. Razorpay checkout completes and `/api/razorpay/verify-subscription` verifies the checkout signature, captured payment, and payment-subscription ownership
 3. `/api/razorpay/upgrade-subscription` verifies both old and new subscription documents belong to the same billing scope
-4. Remaining credits from the old plan are calculated server-side
+4. Purchased and unexpired promotional credits are calculated server-side
 5. Old subscription is expired
-6. Server writes the remaining credits onto the new subscription as `topUpCredits` and stamps `carryForwardFromSubscriptionId`
+6. Server transfers purchased credits to `topUpCredits`, preserves valid promotional credits separately, and stamps `carryForwardFromSubscriptionId`
 7. New subscription starts with fresh `monthlyCredits` from the new plan
 
-This means customers never lose paid-for credits when upgrading.
+Unused included credits and future annual allowances are not converted into purchased value during an upgrade.
 
 ---
 
@@ -193,7 +197,7 @@ Internal audit may still record token usage and estimated platform cost for thes
 | Rewrite Description | 1     | ₹12.00         | ₹0.13           | ₹11.87 | 99%      |
 | Item Translation    | 1     | ₹12.00         | ₹0.04           | ₹11.96 | 99.7%    |
 
-**Unit value:** 1 unit ≈ ₹12 (derived from ₹2,999 / 250 units in the Enhancement Pack).
+Content Credits are product units, not a rupee-per-credit promise. The versioned rate catalog maps each supported operation to its credit cost.
 
 ---
 
@@ -204,17 +208,15 @@ Before every paid AI call, the system runs a capacity check:
 ```
 User clicks "Generate Image"
   → checkAICapacity(tenantId, storeId, 'image_generation')
-  → Calculates: monthlyCredits + topUpCredits = total available
+  → Calculates: monthlyCredits + valid promotionalCredits + topUpCredits
   → Needs 5 units for image generation
   → If total available >= 5 → proceed to Google Gemini
   → If total available < 5 → return 402 error
 ```
 
-### Overdraft Buffer (Soft Enforcement)
+### Strict Non-Negative Enforcement
 
-At launch, we allow a **20% overdraft** to prevent bad first impressions. If a customer has 4 units left and needs 5, they're within the 20% buffer (4 × 1.2 = 4.8 ≈ allows up to 4.8 units). In this case, 4.8 < 5, so they're still blocked. But if they had 5 units and needed 6, the buffer (5 × 1.2 = 6) would allow it.
-
-This overdraft buffer can be set to 0 for strict enforcement once we have real usage data.
+The operation proceeds only when the exact usable balance covers the full reservation. No hidden overdraft is allowed. Goodwill is represented as an explicit promotional grant instead of an invisible negative balance.
 
 ### What the Customer Sees
 
@@ -285,7 +287,7 @@ This data is queryable by store, by action type, by date range. No separate summ
 
 ### Scenario A: "Raju's Biryani House" — Small Restaurant, Pro Plan (₹1,499/mo)
 
-Raju gets 200 monthly credits. His first month:
+Raju gets 250 monthly credits. His first month:
 
 | Step                               | Operation                | Units Used    | Google Cost |
 | ---------------------------------- | ------------------------ | ------------- | ----------- |
@@ -295,38 +297,38 @@ Raju gets 200 monthly credits. His first month:
 | Runs one menu-file or public-copy Hindi translation request | LANGUAGE_ADDITION × 1 | 3 | ₹0.37 |
 | Generates AI images for 15 items   | IMAGE_GENERATION × 15    | 75            | ₹50.70      |
 | Edits 3 images (background change) | IMAGE_EDITING × 3        | 15            | ₹10.14      |
-| **TOTAL**                          |                          | **94 / 200**  | **₹62.83**  |
+| **TOTAL**                          |                          | **94 / 250**  | **₹62.83**  |
 
-Raju used 94 of 200 monthly credits. He has 106 credits left this month. A separate single-item refresh is another request and therefore another credit.
+Raju used 94 of 250 monthly credits. He has 156 credits left this cycle. A separate single-item refresh is another request and therefore another credit.
 
 Language addition is charged per `/api/translations` request, not once per language-selection gesture. For example, translating two menu files and one project-public-copy batch can create three `LANGUAGE_ADDITION` operations (9 units total). The UI processes and records each request separately so partial completion and transaction history remain truthful.
 
-**Next month:** His 200 monthly credits reset to full. The unused 106 do NOT carry forward. He starts fresh with 200 again.
+**Next cycle:** His 250 included credits reset to full. The unused 156 do not carry forward.
 
-If Raju runs out mid-month, he can buy an Enhancement Pack (₹2,999 = 250 topUpCredits). Those topUp credits persist even after monthly reset.
+If Raju runs out mid-cycle, he can buy one Pack (₹799 / $29 = 250 purchased credits). Those credits persist through monthly resets.
 
 ### Scenario B: Yearly Plan — How Monthly Reset Works
 
-A salon subscribes to Pro Yearly (₹14,990/yr, 200 credits/month) on February 15th.
+A salon subscribes to Pro Yearly (₹14,990/yr, 250 credits/month) on February 15th.
 
-- **Feb 15 – Mar 14:** 200 credits available. Uses 150. 50 unused (lost at reset).
-- **Mar 15:** Lazy reset triggers on first AI call. monthlyCredits back to 200.
-- **Mar 15 – Apr 14:** Fresh 200 credits. Uses 80.
-- **Apr 15:** Lazy reset again. 200 credits.
+- **Feb 15 – Mar 14:** 250 credits available. Uses 150. 100 unused at reset.
+- **Mar 15:** Lazy reset triggers on first eligible action. `monthlyCredits` returns to 250.
+- **Mar 15 – Apr 14:** Fresh 250 credits. Uses 80.
+- **Apr 15:** Lazy reset again. 250 credits.
 - ... continues for 12 months. No monthly payment, no monthly webhook — lazy reset handles it.
 
-Total value over the year: 200 credits × 12 months = 2,400 credits of capacity.
+Annual billing replenishes 250 credits monthly; it does not grant 3,000 credits in advance.
 
 ### Scenario C: Credits Exhausted — Purchase Flow
 
 ```
 Store has: 2 monthlyCredits + 1 topUpCredit = 3 total
 Wants to: Generate image (needs 5 units)
-Overdraft check: 3 × 1.2 = 3.6 < 5 → BLOCKED
+Exact balance check: 3 < 5 → BLOCKED
 
 → API returns 402
 → Frontend shows "Get More Enhancements" button
-→ User buys Enhancement Pack (₹2,999)
+→ User buys Content Credit Pack (₹799 / $29 before tax)
 → topUpCredits becomes 1 + 250 = 251
 → Retries image generation → succeeds
 → Balance after: 0 monthlyCredits + 246 topUpCredits
@@ -335,13 +337,13 @@ Overdraft check: 3 × 1.2 = 3.6 < 5 → BLOCKED
 
 ### Scenario D: Plan Upgrade — Credits Carry Forward
 
-Store on Starter (75 credits/mo) has used 30 credits this month. Remaining: 45 monthly + 10 topUp = 55 total.
+Store on Official (75 credits/mo) has used 30 credits this month. Remaining: 45 monthly + 10 topUp = 55 total.
 
-User upgrades to Pro (200 credits/mo):
+User upgrades to Pro (250 credits/mo):
 
-1. Old subscription cancelled. Remaining 55 credits saved.
-2. New subscription created with: monthlyCredits = 200, topUpCredits = 55 (carried forward)
-3. Total available immediately: 255 credits
+1. Old subscription is replaced. Its 45 unused included credits are not converted.
+2. The 10 purchased credits transfer to the replacement.
+3. New subscription starts with `monthlyCredits = 250` and `topUpCredits = 10`.
 
 ---
 
@@ -359,19 +361,11 @@ User upgrades to Pro (200 credits/mo):
 | Rewrite Description | $0.0016           | ₹0.13           | Gemini 2.5 Flash        |
 | Item Translation    | $0.0004           | ₹0.04           | Gemini 2.5 Flash        |
 
-### Per-Pack Economics (₹2,999 Enhancement Pack = 250 units)
+### Per-Pack Economics (₹799 Content Credit Pack = 250 credits)
 
 Typical usage of one pack:
 
-| Usage                     | Units Used  | Our Revenue | Google Cost |
-| ------------------------- | ----------- | ----------- | ----------- |
-| 20 images generated       | 100         | ₹1,200      | ₹67.60      |
-| 3 languages added         | 9           | ₹108        | ₹1.11       |
-| 50 descriptions rewritten | 50          | ₹600        | ₹6.50       |
-| 30 items translated       | 30          | ₹360        | ₹1.20       |
-| **TOTAL**                 | **189/250** | **₹2,268**  | **₹76.41**  |
-
-**Pack revenue: ₹2,999. Google cost: ~₹76. Gross margin: ~₹2,923 (97.5%)**
+One Pack is ₹799 before applicable tax. Provider-cost estimates remain internal and are monitored by operation and model. Credits are not allocated a public per-operation rupee value.
 
 ### Yearly Subscription Margin Simulation
 
@@ -425,16 +419,16 @@ Only if ALL of these happen simultaneously:
 
 Image generation is the most expensive operation. The credits-per-image number determines whether packs feel "scarce" or "comfortable."
 
-| Credits/Image | Images per 200 Monthly | Effect                                                  |
+| Credits/Image | Images per 250 Pro Cycle | Effect                                                  |
 | ------------- | ---------------------- | ------------------------------------------------------- |
-| 1–2           | 100–200                | Abused heavily — everyone generates everything          |
-| 3             | 66                     | Overused — cost rises, no pack revenue                  |
-| **5**         | **40**                 | **Balanced — covers normal SMB, power users buy packs** |
-| 7–10          | 20–28                  | Feels restrictive — "AI finished quickly"               |
+| 1–2           | 125–250                | Abused heavily — everyone generates everything          |
+| 3             | 83                     | Overused — cost rises, no pack revenue                  |
+| **5**         | **50**                 | **Balanced — covers normal SMB, power users buy packs** |
+| 7–10          | 25–35                  | Feels restrictive — "AI finished quickly"               |
 
 **Why 5 is the sweet spot:**
 
-- **Pro plan (200 credits):** 40 images/month. Most menus are 30–80 items, but not all need AI images. 20–40 images in first month, then near-zero. Comfortable.
+- **Pro plan (250 credits):** up to 50 generated images per cycle at the current 5-credit rate. Most menus are 30–80 items, but not every item needs a generated image.
 - **Natural segmentation:** Normal SMBs never buy pack. Heavy SMBs buy occasionally. Chains buy regularly.
 - **Future-proof:** If Gemini cost rises, we're safe. If it drops, margin increases. If usage explodes, packs absorb load.
 
@@ -489,13 +483,14 @@ SUBSCRIPTION LIFECYCLE:
   Every billing cycle → webhook resets monthlyCredits → active
   Payment fails → past_due → 7-day grace → expired
   User cancels → cancelled → access until cycleEndDate → expired
-  User upgrades → old plan expired (credits carried) → new plan active
+  User upgrades → purchased + valid promo transfer → new recurring allowance starts
 
 CREDIT FLOW:
-  Plan gives monthlyCreditsAllowance (e.g., 200)
-  monthlyCredits = 200 (resets every billing cycle)
-  topUpCredits = purchased separately (never resets)
-  AI request → reserve from monthlyCredits first, then topUpCredits
+  Plan gives monthlyCreditsAllowance (75 Official, 250 Pro, or 300 per paid Multi-location location)
+  monthlyCredits resets every billing cycle
+  promotionalCredits = valid reward or goodwill balance with an expiry
+  topUpCredits = purchased separately; cycle resets do not change it
+  Metered request → reserve from monthlyCredits, then valid promotionalCredits, then topUpCredits
   Valid output → settle; terminal failure → refund the exact reservation
   Credits exhausted → 402 → "Get More Enhancements" → buy pack
 

@@ -2,7 +2,7 @@
 
 **Status:** Local source complete
 
-Starter setup asks for two different practical sharing or placement actions.
+Setup access asks for two different practical sharing or placement actions.
 
 MenuList can record when you copy the official link, download a QR/Menu Kit, complete device sharing, or open WhatsApp sharing. For Google, Apple, Bing, Instagram, or a WhatsApp profile, use Search & Discovery to confirm that you placed the link.
 

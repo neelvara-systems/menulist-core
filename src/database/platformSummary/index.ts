@@ -56,7 +56,7 @@ export interface StoreSummaryData {
     timeZone?: string;         // IANA timezone (e.g., 'Asia/Kolkata') — used for DST-safe runtime scheduling
     businessDayEndTime?: string; // Store-local HH:mm analytics business-day cutoff
     schedulerHour?: number;    // UTC hour (0-23) — FALLBACK ONLY when timeZone is missing
-    activePlanType?: string;    // Denormalized billing plan id for scheduler entitlements, e.g. 'starter' | 'pro' | 'premium'
+    activePlanType?: string;    // Denormalized product-namespaced billing plan id, e.g. 'menulist_pro'
     menuPresence?: StoreDistributionPresence;
     presence?: StoreDistributionPresence;
     modifiedOn?: unknown;

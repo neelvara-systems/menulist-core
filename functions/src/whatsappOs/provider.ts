@@ -85,7 +85,7 @@ export async function postWhatsAppOsProviderBody(params: {
   }
 }
 
-function buildProviderBody(request: WhatsAppOsSendRequest): Record<string, unknown> {
+function buildProviderBody(request: WhatsAppOsSendRequest, providerMediaId?: string): Record<string, unknown> {
   if (request.template) {
     return {
       messaging_product: 'whatsapp',
@@ -94,11 +94,20 @@ function buildProviderBody(request: WhatsAppOsSendRequest): Record<string, unkno
       template: {
         name: request.template.name,
         language: { code: request.template.language },
-        ...(request.template.parameters?.length ? {
-          components: [{
-            type: 'body',
-            parameters: request.template.parameters.map((text) => ({ type: 'text', text })),
-          }],
+        ...((providerMediaId || request.template.parameters?.length) ? {
+          components: [
+            ...(providerMediaId && request.template.document ? [{
+              type: 'header',
+              parameters: [{
+                type: 'document',
+                document: { id: providerMediaId, filename: request.template.document.filename },
+              }],
+            }] : []),
+            ...(request.template.parameters?.length ? [{
+              type: 'body',
+              parameters: request.template.parameters.map((text) => ({ type: 'text', text })),
+            }] : []),
+          ],
         } : {}),
       },
     };
@@ -109,6 +118,65 @@ function buildProviderBody(request: WhatsAppOsSendRequest): Record<string, unkno
     type: 'text',
     text: { body: request.session?.text || '' },
   };
+}
+
+async function uploadProviderDocument(
+  request: WhatsAppOsSendRequest,
+): Promise<{ mediaId?: string; errorCode?: string }> {
+  const document = request.template?.document;
+  if (!document) return {};
+  const config = resolveConfig(request.productCode === 'AL' ? 'AL' : 'ML');
+  if (!isWhatsAppProviderRuntimeEnabled() || !config.phoneNumberId || !config.accessToken) {
+    return { errorCode: 'WHATSAPP_OS_CONFIG_MISSING' };
+  }
+  try {
+    const form = new FormData();
+    form.set('messaging_product', 'whatsapp');
+    form.set('type', document.contentType);
+    form.set(
+      'file',
+      new Blob([Buffer.from(document.contentBase64, 'base64')], { type: document.contentType }),
+      document.filename,
+    );
+    const response = await fetch(
+      `https://graph.facebook.com/${WHATSAPP_OS_GRAPH_API_VERSION}/${encodeURIComponent(config.phoneNumberId)}/media`,
+      {
+        method: 'POST',
+        redirect: 'manual',
+        headers: { Authorization: `Bearer ${config.accessToken}` },
+        body: form,
+        signal: AbortSignal.timeout(PROVIDER_TIMEOUT_MS),
+      },
+    );
+    if (!response.ok) return { errorCode: 'WHATSAPP_OS_DOCUMENT_UPLOAD_FAILED' };
+    const parsed = await readJsonResponseWithLimit(response, WHATSAPP_OS_LIMITS.MAX_PROVIDER_BODY_BYTES);
+    const id = (parsed as { id?: unknown } | null)?.id;
+    const mediaId = typeof id === 'string' ? id.trim() : '';
+    return mediaId && mediaId.length <= WHATSAPP_OS_LIMITS.MAX_PROVIDER_MESSAGE_ID_LENGTH
+      ? { mediaId }
+      : { errorCode: 'WHATSAPP_OS_DOCUMENT_UPLOAD_FAILED' };
+  } catch {
+    return { errorCode: 'WHATSAPP_OS_DOCUMENT_UPLOAD_FAILED' };
+  }
+}
+
+async function deleteRejectedProviderDocument(params: {
+  mediaId: string;
+  accessToken: string;
+}): Promise<void> {
+  try {
+    await fetch(
+      `https://graph.facebook.com/${WHATSAPP_OS_GRAPH_API_VERSION}/${encodeURIComponent(params.mediaId)}`,
+      {
+        method: 'DELETE',
+        redirect: 'manual',
+        headers: { Authorization: `Bearer ${params.accessToken}` },
+        signal: AbortSignal.timeout(PROVIDER_TIMEOUT_MS),
+      },
+    );
+  } catch {
+    // Cleanup is best-effort and must not change the confirmed send outcome.
+  }
 }
 
 async function persistReference(request: WhatsAppOsSendRequest, providerMessageId: string): Promise<void> {
@@ -179,11 +247,21 @@ export async function sendFunctionsWhatsAppOs(input: WhatsAppOsSendRequest): Pro
       errorCode: error instanceof Error ? error.message : 'WHATSAPP_OS_REQUEST_REJECTED',
     };
   }
+  const media = await uploadProviderDocument(request);
+  if (media.errorCode) {
+    return { accepted: false, ambiguous: false, status: 'failed', errorCode: media.errorCode };
+  }
   const result = await postWhatsAppOsProviderBody({
     productCode: request.productCode === 'AL' ? 'AL' : 'ML',
-    body: buildProviderBody(request),
+    body: buildProviderBody(request, media.mediaId),
   });
   if (!result.ok) {
+    if (media.mediaId && !result.ambiguous) {
+      const config = resolveConfig(request.productCode === 'AL' ? 'AL' : 'ML');
+      if (config.accessToken) {
+        await deleteRejectedProviderDocument({ mediaId: media.mediaId, accessToken: config.accessToken });
+      }
+    }
     return {
       accepted: false,
       ambiguous: result.ambiguous,

@@ -4,6 +4,7 @@ import { RESERVED_SUBDOMAINS as ROUTING_RESERVED_SUBDOMAINS } from '../../src/co
 import { AVAILABLE_LANGUAGES } from '../../src/constants/common';
 import PlatformFeaturesList, { commonFeaturesList } from '../../src/data/PlatformFeaturesList';
 import { B2BplansList, B2CplansList } from '../../src/data/PlatformPlansList';
+import { MENULIST_B2B_PLAN_IDS, MENULIST_B2C_PLAN_IDS } from '../../src/constants/menulistPlans';
 import {
     calculateOfflineAmount,
     calculateOfflineLocationTopup,
@@ -61,8 +62,12 @@ for (const plans of [B2CplansList, B2BplansList]) {
 }
 
 const activePlanIds = {
-    B2C: ['starter', 'pro', 'premium'],
-    B2B: ['starter', 'pro', 'custom'],
+    B2C: [
+        MENULIST_B2C_PLAN_IDS.OFFICIAL,
+        MENULIST_B2C_PLAN_IDS.PRO,
+        MENULIST_B2C_PLAN_IDS.MULTI_LOCATION,
+    ],
+    B2B: [MENULIST_B2B_PLAN_IDS.STARTER_API, MENULIST_B2B_PLAN_IDS.PRO_API, 'custom'],
 } as const;
 for (const planType of ['B2C', 'B2B'] as const) {
     for (const feature of [...commonFeaturesList[planType], ...PlatformFeaturesList[planType]]) {

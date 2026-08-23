@@ -1,7 +1,7 @@
 # GrowthOS Add-on - Website Copy Candidate
 
 **Status:** Hold from main website; candidate copy only
-**Placement:** Not on the MenuList homepage. Possible future placement: Pro/Premium pricing or Features page after owner usage proves demand.
+**Placement:** Not on the MenuList homepage. Possible future placement: Pro/Multi-location pricing or Features page after owner usage proves demand.
 **Public name:** Growth Kits
 
 ## Website Placement Decision - June 1, 2026
@@ -18,7 +18,7 @@ Current homepage coverage is enough:
 
 Allowed later:
 
-- Add a small Pro/Premium pricing-row mention only after rollout evidence shows owners understand and use it.
+- Add a small Pro/Multi-location pricing-row mention only after rollout evidence shows owners understand and use it.
 - Add a Features-page card only if it stays outcome-first, for example `Menu-based messages and prompts`, not `GrowthOS`.
 - Keep all public copy clear that MenuList prepares drafts/materials only. No auto-posting, scheduler, revenue lift, or sales promise.
 

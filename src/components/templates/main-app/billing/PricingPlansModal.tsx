@@ -1,10 +1,11 @@
 
 import { Currency, Feature, Plan } from '@data/common';
+import { MENULIST_B2B_PLAN_IDS, MENULIST_B2C_PLAN_IDS } from '@constant/menulistPlans';
 import PlatformFeaturesList, {
     CustomPlanFeaturesList,
-    PremiumPlanFeaturesList,
+    MultiLocationPlanFeaturesList,
     ProPlanFeaturesList,
-    StarterPlanFeaturesList
+    OfficialPlanFeaturesList
 } from '@data/PlatformFeaturesList';
 import { getB2CPlansList } from '@data/PlatformPlansList';
 import { getMenuListPlanMinimumQuantity } from '@lib/billing/menulistPricingPolicy';
@@ -30,15 +31,22 @@ const formatCurrency = (price: number, currency: Currency) => {
 
 const getPlanfeaturesLable = (plan: Plan) => {
     let label = "";
-    if (plan.planId === "pro") {
+    if (plan.planId === MENULIST_B2C_PLAN_IDS.PRO || plan.planId === MENULIST_B2B_PLAN_IDS.PRO_API) {
         label = "Everything in Official, plus:";
-    } else if (plan.planId === "premium") {
+    } else if (plan.planId === MENULIST_B2C_PLAN_IDS.MULTI_LOCATION) {
         label = "Everything in Pro, plus:";
     }
     return label;
 }
 
-const PLAN_TIER_ORDER: Record<string, number> = { starter: 1, pro: 2, premium: 3, custom: 4 };
+const PLAN_TIER_ORDER: Record<string, number> = {
+    [MENULIST_B2C_PLAN_IDS.OFFICIAL]: 1,
+    [MENULIST_B2C_PLAN_IDS.PRO]: 2,
+    [MENULIST_B2C_PLAN_IDS.MULTI_LOCATION]: 3,
+    [MENULIST_B2B_PLAN_IDS.STARTER_API]: 1,
+    [MENULIST_B2B_PLAN_IDS.PRO_API]: 2,
+    custom: 4,
+};
 
 const PlanCardComponent = ({
     action,
@@ -66,7 +74,7 @@ const PlanCardComponent = ({
                 ? `Change to ${planDisplayName}`
                 : `Upgrade to ${planDisplayName}`)
             : `Get started with ${planDisplayName}`;
-    const style = plan.planId === 'starter'
+    const style = plan.planId === MENULIST_B2C_PLAN_IDS.OFFICIAL || plan.planId === MENULIST_B2B_PLAN_IDS.STARTER_API
         ? {
             color: token.colorSuccess,
             badgeColor: token.colorSuccess,
@@ -77,7 +85,7 @@ const PlanCardComponent = ({
             },
             icon: <LuZap size={20} color={token.colorSuccessText} />,
         }
-        : plan.planId === 'pro'
+        : plan.planId === MENULIST_B2C_PLAN_IDS.PRO || plan.planId === MENULIST_B2B_PLAN_IDS.PRO_API
             ? {
                 color: token.colorWarning,
                 badgeColor: token.colorWarning,
@@ -88,7 +96,7 @@ const PlanCardComponent = ({
                 },
                 icon: <LuBuilding2 size={20} color={token.colorWarningText} />,
             }
-            : plan.planId === 'premium'
+            : plan.planId === MENULIST_B2C_PLAN_IDS.MULTI_LOCATION
                 ? {
                     color: token.colorInfo,
                     badgeColor: token.colorInfo,
@@ -112,13 +120,13 @@ const PlanCardComponent = ({
     const price = plan[`price${currency}`].price;
     const minimumQuantity = getMenuListPlanMinimumQuantity(plan);
     const displayedPrice = typeof price === 'number' ? price * minimumQuantity : price;
-    const isMultiLocationPlan = plan.type === 'B2C' && plan.planId === 'premium';
+    const isMultiLocationPlan = plan.type === 'B2C' && plan.planId === MENULIST_B2C_PLAN_IDS.MULTI_LOCATION;
     const allPlatformFeatures = PlatformFeaturesList.B2C;
 
-    const featuresListIds = plan.planId === 'starter' ?
-        StarterPlanFeaturesList : plan.planId === 'pro' ?
-            ProPlanFeaturesList : plan.planId === 'premium' ?
-                PremiumPlanFeaturesList : CustomPlanFeaturesList;
+    const featuresListIds = plan.planId === MENULIST_B2C_PLAN_IDS.OFFICIAL || plan.planId === MENULIST_B2B_PLAN_IDS.STARTER_API ?
+        OfficialPlanFeaturesList : plan.planId === MENULIST_B2C_PLAN_IDS.PRO || plan.planId === MENULIST_B2B_PLAN_IDS.PRO_API ?
+            ProPlanFeaturesList : plan.planId === MENULIST_B2C_PLAN_IDS.MULTI_LOCATION ?
+                MultiLocationPlanFeaturesList : CustomPlanFeaturesList;
 
     const ListItemStyle = { borderBlockEnd: 'none', padding: '6px 0', justifyContent: "flex-start", gap: 8 }
 

@@ -14,7 +14,7 @@ This help article is customer-copy source evidence only. It is not current launc
 
 Do not publish with TBD price placeholders, unverified activation timing, or provider behavior that lacks current Razorpay evidence.
 
-The current Content Credit Pack contains 250 credits. At current rates, that can cover up to 50 generated menu images or 250 description rewrites. MenuList shows the required credits before an eligible operation; monthly included capacity and internal provider economics are not owner-facing.
+The current Content Credit Pack contains 250 credits and costs ₹799 or $29 before applicable tax. At current rates, that can cover up to 50 generated menu images or 250 description rewrites. MenuList shows included, reward, and Pack balances and the required credits before an eligible operation. Internal provider economics remain private.
 
 ---
 
@@ -52,11 +52,11 @@ No setup. No activation steps. It just works.
 
 ## How much does it cost?
 
-AI Enhancement Pack pricing must be inserted from the approved pricing source before publication. This draft must not be published with TBD price placeholders.
+One 250-credit Content Credit Pack costs ₹799 or $29 before applicable tax.
 
 - **No subscription** — Buy only when you need it
-- **No expiry** — Use whenever your menu needs more
-- **Per store** — Each store manages its own AI enhancements
+- **Protected value** — Pack credits remain available while the paid billing account is current
+- **One paid scope** — Single-location balances stay with that store; linked Multi-location outlets share the HQ billing balance
 
 ---
 
@@ -88,13 +88,13 @@ Yes. Every MenuList plan includes AI features for typical menu needs. Enhancemen
 
 Yes. Purchase additional packs whenever your menu needs them.
 
-### "Does a pack expire?"
+### "What happens to Pack credits if I cancel?"
 
-No. Enhancement Packs never expire.
+Unused Pack credits are frozen when you cancel. If the same billing store starts a paid MenuList plan again within 365 days, the frozen Pack credits are restored once.
 
 ### "Does one pack work for all my stores?"
 
-Each store manages its own AI enhancements. Buy an Enhancement Pack for any store that needs more.
+Single-location subscriptions use their own balance. Linked outlets on a Multi-location plan use the shared HQ billing balance; a Pack bought from an entitled outlet is credited to that same paid scope.
 
 ### "What happens after I buy a pack?"
 
@@ -121,7 +121,7 @@ Contact MenuList support. We're here to help with any questions about your menu.
 | Check                                       | Status |
 | ------------------------------------------- | ------ |
 | Pack credits are shown only where useful    | ✅     |
-| Monthly included capacity remains private   | ✅     |
+| Included, reward, and Pack balances are clear | ✅   |
 | No "AI-powered" or "Smart" language         | ✅     |
 | No monitoring or tracking invitations       | ✅     |
 | Every sentence under 2-second comprehension | ✅     |

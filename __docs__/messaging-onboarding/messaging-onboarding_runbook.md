@@ -49,6 +49,13 @@ normal deploy, callback, smoke and launch gates continue to apply.
 
 Do not create dummy WhatsApp secrets to satisfy deploy checks. Dummy secrets hide the real operational blocker and make provider behavior unreliable.
 
+Firebase function discovery evaluates secret bindings before target dotenv
+values are guaranteed to be available. The centralized secret manifest
+therefore also recognizes `menulist-prod` as the parked provider target and
+omits WhatsApp secrets there. Remove that project guard only as part of the
+approved production provider activation pass that creates the real secrets,
+enables the target flags, and redeploys every affected function.
+
 ---
 
 ## Monitor

@@ -44,7 +44,7 @@ The original February audit found missing usage tracking across the billable AI 
 | Cloud Functions menu-image processing | Operation log and token/cost metadata use the same `TOKENS_PER_CREDIT = 500` accounting basis as app routes |
 | Image generation model boundary | Active single and batch image generation use `gemini-2.5-flash-image`; the deprecated Imagen branch and Imagen charge constants are removed from active routes |
 
-Balance reservation now happens through `reserveAiCapacity()` in a Firestore transaction before provider work. It deducts `monthlyCredits` first, then `topUpCredits`, and returns a billing-store-scoped `remainingBalance` for desktop/mobile state sync. `consumeAICapacity()` remains only as a guarded legacy compatibility path.
+Balance reservation now happens through `reserveAiCapacity()` in a Firestore transaction before provider work. It deducts recurring `monthlyCredits`, then unexpired `promotionalCredits`, then purchased `topUpCredits`, and returns a billing-store-scoped `remainingBalance` for desktop/mobile state sync. `consumeAICapacity()` remains only as a guarded compatibility path.
 
 June 2 hardening centralizes billable app-route accounting in `finalizeAiOperationAccounting()`. Operation logging is best-effort, credit consumption is mandatory for billable actions, browser writes to `menulistAiOperations` are denied, and unknown AI actions throw unless explicitly listed in both `AI_UNIT_COSTS` and `GEMINI_COST_USD`.
 
@@ -433,7 +433,7 @@ CHARGE_PER_CREDIT = 100 (paise)
 │  API Route (/api/image-generation, etc.)                         │
 │    │                                                             │
 │    ├──→ [1] PRE-CALL: checkCapacity(tId, sId, estimatedUnits)   │
-│    │         └─ Read subscription credits (monthlyCredits+topUp) │
+│    │         └─ Read recurring + valid promo + purchased credits │
 │    │         └─ If insufficient → 402 Payment Required           │
 │    │                                                             │
 │    ├──→ [2] EXECUTE: genAIClient.models.generateContent(...)     │
@@ -614,12 +614,12 @@ This audit directly feeds into the implementation plan documented in:
 2. **Impl doc Task 2** ("Add capacity check before AI call") — This audit identifies the exact injection point: after rate limiting, before `genAIClient.models.generateContent()`.
 3. **Spec doc "Internal Cost Accounting"** — The `TOKENS_PER_CREDIT` mismatch (500 vs 1000) was NOT caught in the spec review. This audit surfaces it as a **critical fix**.
 4. **Firebase doc** — Platform AI calls (Features I-L, 12 call points) were not accounted for in the Firebase cost estimates. They don't consume user credits but do consume Google AI quota and should be tracked for observability.
-5. **Spec doc "Existing Infrastructure Alignment"** (added Feb 2026) — Documents 7 critical conflicts between the existing credit system (`PlatformPlansList.ts`, `CreditPack`, Razorpay top-up flow, `subscription.topUpCredits`) and the proposed AI Enhancement Packs model. Key findings:
+5. **Spec doc "Existing Infrastructure Alignment"** (added Feb 2026) — Records the conflicts that were resolved while adapting the existing Razorpay top-up and subscription-credit infrastructure. Current findings:
    - Existing Razorpay top-up flow is implemented, billing-slice audited, and must be **adapted**, not replaced; current release approval still requires the active production-readiness audit, External Certification Runbook evidence, `npm run verify:billing-entitlement-boundary`, Razorpay sandbox top-up smoke, desktop/mobile Billing browser QA, target deploy evidence, and production-host smoke
    - Credit storage **stays on subscription** (per-store). Per-tenant was REJECTED after codebase validation — see spec doc Conflict 2
-   - UI currently exposes "credits" (violates doctrine) — needs label rename to "AI enhancements"
-   - `PlatformFeaturesList.ts` marks AI features as "Unlimited" — must change to "Included" to align with capacity enforcement
-   - `CreditPack` interface and `creditPacksList` must be renamed to `AIEnhancementPack` / `aiEnhancementPacksList`
+   - Owner Billing intentionally shows recurring, valid promotional, purchased, and total usable Content Credits
+   - `PlatformFeaturesList.ts` uses bounded included-enhancement language rather than "Unlimited"
+   - The single maintained Pack contract lives in `contentCreditPolicy.ts`; `AIEnhancementPack` is the only commercial Pack interface
 
 ---
 

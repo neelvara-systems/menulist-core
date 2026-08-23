@@ -7,6 +7,7 @@ import { renderEmailOsLegacyContent } from '@lib/email-os/render';
 import { sendServerEmailOs } from '@lib/email-os/provider';
 import { createHash } from 'node:crypto';
 import type { OwnerNotificationProductId } from '@data/shared/ownerNotificationRegistry';
+import type { EmailOsAttachment, EmailOsClassification } from '@data/shared/emailOs';
 
 let cachedTransporter: Transporter | null = null;
 const OWNER_NOTIFICATION_SMTP_CONNECTION_TIMEOUT_MS = 10_000;
@@ -72,6 +73,8 @@ export async function sendOwnerNotificationEmail(params: {
     html: string;
     eventType: string;
     referenceId: string;
+    classification?: EmailOsClassification;
+    attachments?: readonly EmailOsAttachment[];
 }): Promise<OwnerNotificationChannelResult> {
     const providerEnabled = params.productCode === 'AL'
         ? FEATURE_FLAGS.ENABLE_ANSWERLATTICE_EMAIL_OS_PROVIDER_SEND
@@ -83,7 +86,7 @@ export async function sendOwnerNotificationEmail(params: {
             .digest('hex');
         const result = await sendServerEmailOs({
             productCode: params.productCode,
-            classification: 'operational',
+            classification: params.classification || 'operational',
             eventType: params.eventType.toLowerCase().replace(/[^a-z0-9._-]+/g, '_'),
             localDeliveryReference,
             from: params.productCode === 'AL'
@@ -96,6 +99,7 @@ export async function sendOwnerNotificationEmail(params: {
             subject: params.subject,
             html: content.html,
             text: content.text,
+            attachments: params.attachments,
         });
         return result.accepted
             ? { ok: true, providerMessageId: result.providerMessageId }
@@ -113,6 +117,11 @@ export async function sendOwnerNotificationEmail(params: {
             to: params.to,
             subject: params.subject,
             html: params.html,
+            attachments: params.attachments?.map((attachment) => ({
+                filename: attachment.filename,
+                content: Buffer.from(attachment.contentBase64, 'base64'),
+                contentType: attachment.contentType,
+            })),
         });
 
         return { ok: true, providerMessageId: normalizeProviderMessageId(info.messageId) };

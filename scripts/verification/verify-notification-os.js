@@ -20,6 +20,7 @@ for (const file of [
   "__docs__/notification-os/notification-os_mobile-support.md",
   "__docs__/notification-os/notification-os_test-cases.md",
   "src/app/api/notification-os/preferences/route.ts",
+  "src/lib/notification-os/onboardingDefaults.ts",
   "src/lib/notification-os/readiness.ts",
   "src/components/templates/main-app/businessSettings/NotificationSettingsTab.tsx",
   "src/components/mobile/screens/MobileNotificationSettingsScreen.tsx",
@@ -240,6 +241,20 @@ assert(
   "Owner-editable display email must not become verified implicitly",
 );
 const readiness = read("src/lib/notification-os/readiness.ts");
+const onboardingDefaults = read("src/lib/notification-os/onboardingDefaults.ts");
+assert(
+  onboardingDefaults.includes("channelMode: 'email_and_whatsapp'"),
+  "New MenuList stores must default to every eligible owner channel",
+);
+assert(
+  onboardingDefaults.includes("isInternalNotificationEmail") &&
+    onboardingDefaults.includes("phoneVerifiedAt"),
+  "Onboarding defaults must exclude internal email identities and require phone verification evidence",
+);
+assert(
+  !onboardingDefaults.includes("whatsappConsent: true"),
+  "Onboarding contact capture must not imply WhatsApp notification consent",
+);
 assert(
   readiness.includes("resolveNotificationOsContactReadiness"),
   "Shared contact readiness must serve desktop and mobile",

@@ -11,7 +11,7 @@ The card is intentionally not a score or a full checklist. It shows the one step
 2. Make sure visible menu items were imported.
 3. Review prices and important menu details.
 4. Publish when ready.
-5. Open Share and place the official link. Starter setup records two distinct sharing or owner-confirmed placement actions.
+5. Open Share and place the official link. Setup access records two distinct sharing or owner-confirmed placement actions.
 
 Descriptions, images, extra languages, official-page links, and photos are optional improvements.
 

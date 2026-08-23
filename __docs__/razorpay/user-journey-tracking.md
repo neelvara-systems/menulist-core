@@ -274,9 +274,9 @@ statuses: [..., { status: "cancelled", remark: "Cancelled by user, reason: ..." 
 | 5 | Razorpay Checkout → payment → verify → active | Same as Journey 1 | — |
 | 6 | Server-verified browser settlement or a captured matching `subscription.charged` webhook finalizes the replacement; the browser upgrade route is an idempotent recovery | `subscriptionReplacementFinalization.ts` | Authentication/activation alone cannot cancel the old provider row or transfer credits |
 
-**Credit carry-forward formula:**
-- Monthly: `monthlyCredits + topUpCredits`
-- Yearly: `unusedThisMonth + (monthsRemaining - 1) × monthlyCreditsAllowance + topUpCredits`
+**Credit transfer contract:**
+- Transfer purchased credits and still-valid promotional credits.
+- Do not transfer recurring credits or projected future annual-cycle allowances.
 
 ---
 
@@ -391,8 +391,12 @@ Same flow as Journey 12 (Upgrade). The PricingPlansModal shows all plans except 
 
 **Key code:** `PricingPlansModal.tsx` — plan tier comparison:
 ```
-const tierOrder = ['starter', 'growth', 'premium'];
-const currentTierIndex = tierOrder.indexOf(activeSubscription.planId);
+const tierOrder = {
+  menulist_official: 1,
+  menulist_pro: 2,
+  menulist_multi_location: 3,
+};
+const currentTierIndex = tierOrder[activeSubscription.planId];
 // Shows "Downgrade" for plans below current tier, "Upgrade" for above
 ```
 
@@ -437,12 +441,12 @@ Credits are carried forward identically to upgrades.
 | Step | What Happens | File | Key Code |
 |------|-------------|------|----------|
 | 1 | User triggers AI operation | Various AI feature components | — |
-| 2 | Backend: `checkAICapacity()` verifies credits available | `src/lib/ai/capacityCheck.ts` | Checks `monthlyCredits + topUpCredits > 0` |
-| 3 | Backend: `consumeAICapacity()` deducts from monthlyCredits first, then topUpCredits | `src/lib/ai/capacityCheck.ts` | Two-layer deduction |
+| 2 | Backend: `checkAICapacity()` verifies exact usable credits | `src/lib/ai/capacityCheck.ts` | Compares recurring + valid promotional + purchased with the full operation cost |
+| 3 | Backend: `reserveAiCapacity()` deducts recurring, then promotional, then purchased | `src/lib/ai/capacityCheck.ts` | Three-bucket transactional reservation |
 | 4 | Backend: lazy credit reset safety net (checks `creditsLastResetMonth`) | `src/lib/ai/capacityCheck.ts` | If billing period key changed → reset |
-| 5 | API response includes `remainingBalance` | Various AI API routes | `{ remainingBalance: { monthly, topUp } }` |
+| 5 | API response includes `remainingBalance` | Various AI API routes | Recurring, promotional, expiry, purchased, and usable total |
 | 6 | Frontend: `syncBalanceFromResponse()` dispatches CustomEvent | `src/services/ai/balanceSync.ts` | `window.dispatchEvent(new CustomEvent('ai-balance-update'))` |
-| 7 | SessionProvider listener: patches `activeSubscription` credits | `sessionProvider.tsx` | Event listener updates `monthlyCredits` + `topUpCredits` |
+| 7 | SessionProvider listener patches all balance buckets | `sessionProvider.tsx` | Updates recurring, promotional, expiry, and purchased balances |
 | 8 | UI re-renders with updated credit counts | `ActiveSubscriptionCard.tsx` | Automatic via context |
 
 **Zero extra Firestore reads:** The CustomEvent pattern avoids re-fetching the subscription doc on every AI call.

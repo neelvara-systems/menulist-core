@@ -103,7 +103,7 @@ These dashboard signals are produced from existing counters and catalog fields. 
 | Search-fix actions | `zeroResultSearchTerms` | Suggest adding, renaming, or mapping searched terms that produced no result |
 | Open/closed action timing | Existing final menu action writes with `openHoursState` | Show whether customers tried to act while the business appeared open, closed, or hours were hidden |
 
-Paid Gemini wording is gated by both the Cloud Functions env flag `ENABLE_OWNER_ANALYTICS_AI_SUMMARIES=true` and `platformSummary/storesSummary.stores.{sId}.activePlanType`. Only `pro` and `premium` are eligible. Missing plan data fails closed and writes an `analyticsAiEntitlement` lock state into the dashboard read model. When enabled, owner analytics wording uses the analytics-specific `gemini-2.5-flash-lite` model because the underlying metrics and action choices are deterministic.
+Paid Gemini wording is gated by both the Cloud Functions env flag `ENABLE_OWNER_ANALYTICS_AI_SUMMARIES=true` and `platformSummary/storesSummary.stores.{sId}.activePlanType`. Only `menulist_pro` and `menulist_multi_location` are eligible. Missing plan data fails closed and writes an `analyticsAiEntitlement` lock state into the dashboard read model. When enabled, owner analytics wording uses the analytics-specific `gemini-2.5-flash-lite` model because the underlying metrics and action choices are deterministic.
 
 ### Explicitly Not Tracked
 

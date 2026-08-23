@@ -74,7 +74,7 @@ const pausedCycleRepair = getReconciliationEntitlementDecision(
         ...paymentEvidence,
         id: 'sub_repair',
         status: 'paused',
-        planId: 'PRO',
+        planId: 'MENULIST_PRO',
         cycleEndDate: { seconds: Math.floor((nowMs - 60_000) / 1000) },
         analyticsEntitlement: { activePlanType: null },
     },
@@ -84,7 +84,7 @@ const pausedCycleRepair = getReconciliationEntitlementDecision(
     'sub_repair',
     nowMs,
 );
-assert.equal(pausedCycleRepair.desiredActivePlanType, 'pro');
+assert.equal(pausedCycleRepair.desiredActivePlanType, 'menulist_pro');
 assert.equal(pausedCycleRepair.shouldSyncEntitlement, true);
 assert.equal(
     pausedCycleRepair.nextSubscription.cycleEndDate.seconds,
@@ -96,8 +96,8 @@ const terminalTransition = getReconciliationEntitlementDecision(
         ...paymentEvidence,
         id: 'sub_terminal',
         status: 'active',
-        planId: 'starter',
-        analyticsEntitlement: { activePlanType: 'starter' },
+        planId: 'menulist_official',
+        analyticsEntitlement: { activePlanType: 'menulist_official' },
     },
     { status: 'completed' },
     'sub_terminal',
@@ -111,15 +111,15 @@ const unchangedActive = getReconciliationEntitlementDecision(
         ...paymentEvidence,
         id: 'sub_stable',
         status: 'active',
-        planId: 'Starter',
+        planId: 'MenuList_Official',
         cycleEndDate: { seconds: Math.floor((nowMs + 86_400_000) / 1_000) },
-        analyticsEntitlement: { activePlanType: 'starter' },
+        analyticsEntitlement: { activePlanType: 'menulist_official' },
     },
     {},
     'sub_stable',
     nowMs,
 );
-assert.equal(unchangedActive.desiredActivePlanType, 'starter');
+assert.equal(unchangedActive.desiredActivePlanType, 'menulist_official');
 assert.equal(unchangedActive.shouldSyncEntitlement, false);
 
 const elapsedActive = getReconciliationEntitlementDecision(
@@ -127,9 +127,9 @@ const elapsedActive = getReconciliationEntitlementDecision(
         ...paymentEvidence,
         id: 'sub_elapsed',
         status: 'active',
-        planId: 'Starter',
+        planId: 'MenuList_Official',
         cycleEndDate: { seconds: Math.floor((nowMs - 60_000) / 1_000) },
-        analyticsEntitlement: { activePlanType: 'starter' },
+        analyticsEntitlement: { activePlanType: 'menulist_official' },
     },
     {},
     'sub_elapsed',
@@ -143,9 +143,9 @@ const malformedActive = getReconciliationEntitlementDecision(
         ...paymentEvidence,
         id: 'sub_malformed',
         status: 'active',
-        planId: { toString: () => 'starter' },
+        planId: { toString: () => 'menulist_official' },
         cycleEndDate: { seconds: String(Math.floor((nowMs + 60_000) / 1_000)) },
-        analyticsEntitlement: { activePlanType: 'starter' },
+        analyticsEntitlement: { activePlanType: 'menulist_official' },
     },
     {},
     'sub_malformed',

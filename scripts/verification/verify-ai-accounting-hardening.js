@@ -388,13 +388,14 @@ for (const route of billableRoutes) {
   assert(accountingCore.includes('paid provider work requires a pre-provider credit reservation'), 'shared accounting rejects unreserved paid provider output');
   assert(accountingCore.includes('finalizeAiCapacityReservation'), 'shared accounting settles reserved capacity atomically');
   assert(accountingCore.includes('getPositiveCreditInteger(data.accountingBillingStoreId ?? data.sId)'), 'legacy idempotent replay requires an exact effective billing store scope');
-  assert(accountingCore.includes('remainingBalance: { billingStoreId, monthlyCredits, topUpCredits }'), 'legacy idempotent replay returns a scoped balance event');
+  assert(accountingCore.includes('remainingBalance: { billingStoreId, monthlyCredits, promotionalCredits, topUpCredits }'), 'legacy idempotent replay returns the complete scoped balance event');
   [
     'const unitsConsumed = getNonNegativeCreditInteger(',
     'data.accountingUnits !== unitsConsumed',
     'getNonNegativeCreditInteger(data.remainingMonthlyCredits)',
+    'getNonNegativeCreditInteger(data.remainingPromotionalCredits ?? 0)',
     'getNonNegativeCreditInteger(data.remainingTopUpCredits)',
-    '!Number.isSafeInteger(monthlyCredits + topUpCredits)',
+    '!Number.isSafeInteger(monthlyCredits + promotionalCredits + topUpCredits)',
   ].forEach((token) => assert(accountingCore.includes(token), `shared accounting includes exact AI credit scalar token ${token}`));
   [
     'Number(input.unitsConsumed',
@@ -3755,7 +3756,7 @@ assert(
   'if (!normalizedSubscriptionId || !expectedScope || initialAllowance === null) {',
   'const normalizedSubscriptionId = normalizeBillingSubscriptionDocumentId(subscription?.id);',
   'throw new Error("Billing subscription is not available.");',
-  'unitsToConsume > effectiveCapacity',
+  'unitsToConsume > totalRemaining',
   "throw new Error('Not enough billing credits for this operation.');",
 ].forEach((token) => {
   assert(capacityCheck.includes(token), `AI capacity check includes subscription document ID boundary token ${token}`);
@@ -3961,9 +3962,10 @@ assert(!operationPresentation.includes('clientResponse?: any'), 'AI operation pr
     'billingStoreId: number;',
     'getPositiveCreditInteger(balance.billingStoreId)',
     'getNonNegativeCreditInteger(balance.monthlyCredits)',
+    'getNonNegativeCreditInteger(balance.promotionalCredits ?? 0)',
     'getNonNegativeCreditInteger(balance.topUpCredits)',
-    '!Number.isSafeInteger(monthlyCredits + topUpCredits)',
-    'return { billingStoreId, monthlyCredits, topUpCredits };',
+    '!Number.isSafeInteger(monthlyCredits + promotionalCredits + topUpCredits)',
+    'return { billingStoreId, monthlyCredits, promotionalCredits, topUpCredits };',
   ].forEach((token) => assert(balanceSync.includes(token), `AI balance sync validates scoped response token ${token}`));
   assert(!balanceSync.includes('Number(balance.'), 'AI balance sync must not coerce server response credit scalars');
   assert(sessionProvider.includes('normalizeAiBalanceUpdate((e as CustomEvent<unknown>).detail)'), 'session provider revalidates direct custom-event payloads');
@@ -4010,21 +4012,14 @@ assert(!operationPresentation.includes('clientResponse?: any'), 'AI operation pr
   const mobileBilling = read('src/components/mobile/screens/MobileBillingScreen.tsx');
   const pricingPlans = read('src/components/templates/main-app/billing/PricingPlansModal.tsx');
   const carryForwardNote = read('src/components/templates/main-app/billing/RemainingCreditNote.tsx');
-  const privateBranchStart = desktopBilling.indexOf('keepsMonthlyCapacityPrivate ? (');
-  const privateBranchEnd = desktopBilling.indexOf(') : (', privateBranchStart);
-  const privateBranch = desktopBilling.slice(privateBranchStart, privateBranchEnd);
-  assert(desktopBilling.includes('const keepsMonthlyCapacityPrivate = productId === PRODUCT_IDS.MENULIST;'), 'desktop Billing applies the MenuList monthly-capacity privacy boundary');
-  assert(privateBranch.includes('title="Pack balance"'), 'desktop MenuList Billing shows exact purchased Pack balance');
-  assert(privateBranch.includes('Your plan enhancements are included automatically.'), 'desktop MenuList Billing describes plan enhancements without a monthly meter');
-  assert(!privateBranch.includes('monthlyCreditsAllowance'), 'desktop MenuList private branch does not render monthly allowance');
-  assert(desktopBilling.includes('!keepsMonthlyCapacityPrivate && totalCredits <='), 'desktop low-balance meter is excluded from MenuList');
-  [
-    'Enhancement balance remaining',
-    '<Text>{monthlyCredits} plan</Text>',
-    'Used this cycle',
-    'credits/mo',
-    'Running low. Add a pack before generation pauses.',
-  ].forEach((token) => assert(!mobileBilling.includes(token), `mobile MenuList Billing hides monthly usage copy token ${token}`));
+  assert(!desktopBilling.includes('keepsMonthlyCapacityPrivate'), 'desktop Billing must not hide the maintained MenuList credit contract');
+  assert(desktopBilling.includes('<Text strong>{monthlyCredits} of {monthlyCreditsAllowance}</Text>'), 'desktop MenuList Billing shows recurring balance and cycle allowance');
+  assert(desktopBilling.includes('<Text>{monthlyCreditsUsed}</Text>'), 'desktop MenuList Billing shows recurring credits used this cycle');
+  assert(desktopBilling.includes('<Text>{topUpCredits}</Text>'), 'desktop MenuList Billing shows exact purchased Pack balance');
+  assert(desktopBilling.includes('<Text>{promotionalCredits}</Text>'), 'desktop MenuList Billing shows valid promotional balance when present');
+  assert(desktopBilling.includes('totalCredits <= Math.max(10, monthlyCreditsAllowance * 0.2)'), 'desktop low-balance warning uses the complete MenuList balance');
+  assert(mobileBilling.includes('<Text strong>{monthlyCredits} credits</Text>'), 'mobile MenuList Billing shows recurring balance');
+  assert(mobileBilling.includes('<Text strong>{promotionalCredits} credits</Text>'), 'mobile MenuList Billing shows valid promotional balance when present');
   assert(mobileBilling.includes('<Text strong>{topUpCredits} credits</Text>'), 'mobile MenuList Billing shows exact purchased Pack balance');
   assert(pricingPlans.includes('Content enhancements included'), 'MenuList plan cards use generic included-enhancement copy');
   assert(!pricingPlans.includes('Monthly Credits'), 'MenuList plan cards do not expose monthly credit allowance');

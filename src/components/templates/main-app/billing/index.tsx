@@ -3,6 +3,7 @@
 
 import Confetti from '@atoms/Confetti';
 import { helpCenterTabRouting } from '@constant/navigations';
+import { MENULIST_B2C_PLAN_IDS } from '@constant/menulistPlans';
 import { AIEnhancementPack, Plan } from '@data/common';
 import { aiEnhancementPacksList, getB2BPlansList, getB2CPlansList } from '@data/PlatformPlansList';
 import { getActiveSubscriptionForStore } from '@database/subscriptions';
@@ -13,6 +14,10 @@ import usePaymentHandler, { isPaymentCheckoutDismissedError } from '@hook/usePay
 import { AUTH_ACCOUNT_REQUEST_POLICY, readAuthAccountResponse } from '@lib/auth/accountClientResponses';
 import { refreshFirebaseAuthClaims } from '@lib/auth/firebaseAuthSync';
 import { formatBillingHistoryEvents } from '@lib/billing/billingHistoryFormatter';
+import {
+    fetchMenuListBillingDocumentSummaries,
+    mergeMenuListBillingDocumentsIntoHistory,
+} from '@lib/billing/billingDocumentsClient';
 import {
     claimStoreSwitchAttempt,
     getAccessibleStoreSummaries,
@@ -60,7 +65,7 @@ function BillingPage() {
     const [isSuccessModalOpen, setIsSuccessModalOpen] = useState<{ active: boolean; paymentDetails: any | null; }>({ active: false, paymentDetails: null });
     const [isPricingModalOpen, setIsPricingModalOpen] = useState<{ action: "upgrade" | "new"; active: boolean }>({ action: "upgrade", active: false });
     const [isCreditsModalOpen, setIsCreditsModalOpen] = useState(false);
-    const { onUpgradePlan, onClickPaymentCard, handleTopupPurchase } = usePaymentHandler(dispatch);
+    const { onUpgradePlan, handleTopupPurchase } = usePaymentHandler(dispatch);
     const buildBillingPaymentLogContext = (flow: string, metadata: Record<string, unknown> = {}) => ({
         surface: 'desktop_billing',
         flow,
@@ -104,11 +109,12 @@ function BillingPage() {
     const isSwitchedBillingContext = Boolean(loginStoreId && billingStoreId && loginStoreId !== billingStoreId);
     const isSignedInBillingContext = Boolean(loginStoreId && billingStoreId && loginStoreId === billingStoreId);
     const canManageSelectedSubscription = isSignedInBillingContext && !isInheritedBilling;
-    const canBuyEnhancementPacks = isSignedInBillingContext;
+    const hasEnhancementPackBillingTerms = Boolean(activeSubscription?.taxSnapshot);
+    const canBuyEnhancementPacks = isSignedInBillingContext && hasEnhancementPackBillingTerms;
     const isManualBilling = activeSubscription?.billingMode === 'manual';
     const activeStoreCount = tenantStoresList.filter((store: any) => store?.active !== false).length || 1;
     const paidLocationCount = Math.max(1, Number(activeSubscription?.quantity || 1));
-    const isMultiLocationPlan = activeSubscription?.planId === 'premium';
+    const isMultiLocationPlan = activeSubscription?.planId === MENULIST_B2C_PLAN_IDS.MULTI_LOCATION;
     const nextPaidLocationCount = Math.max(paidLocationCount + 1, activeStoreCount + 1);
     const currentSubscriptionPlan = useMemo(() => {
         if (!activeSubscription) return null;
@@ -129,7 +135,10 @@ function BillingPage() {
         const requestScopeKey = billingScopeKey;
 
         // 2. Fetch transaction logs from the unified ledger. New rows are lean v2 audit summaries.
-        const rawHistory = await getBillingHistoryForStore(session?.user?.tenantId, effectiveHistoryStoreId);
+        const [rawHistory, billingDocuments] = await Promise.all([
+            getBillingHistoryForStore(session?.user?.tenantId, effectiveHistoryStoreId),
+            fetchMenuListBillingDocumentSummaries().catch(() => []),
+        ]);
         if (
             billingHistoryRequestSequenceRef.current !== requestSequence
             || billingScopeKeyRef.current !== requestScopeKey
@@ -143,7 +152,7 @@ function BillingPage() {
                 return `${startDate}-${endDate}`;
             },
         });
-        setBillingHistory(formattedHistory);
+        setBillingHistory(mergeMenuListBillingDocumentsIntoHistory(formattedHistory, billingDocuments));
     };
 
     const refetchActiveSubscription = async () => {
@@ -238,11 +247,14 @@ function BillingPage() {
             message.info(`Return to ${loginStore?.name || 'your signed-in store'} to change a subscription.`);
             return;
         }
+        if (!activeSubscription) {
+            setIsPricingModalOpen({ active: false, action: 'upgrade' });
+            router.push('/pricing');
+            return;
+        }
         try {
             dispatch(startLoader("Upgrading Plan"));
-            const paymentResponse = activeSubscription
-                ? await onUpgradePlan(activeSubscription, newPlan, currency)
-                : await onClickPaymentCard(newPlan, currency, () => { })
+            const paymentResponse = await onUpgradePlan(activeSubscription, newPlan, currency);
             if (paymentResponse?.activationStatus === 'processing') {
                 message.info('Payment received. Subscription activation is being confirmed.');
                 await refetchActiveSubscription();
@@ -411,6 +423,16 @@ function BillingPage() {
                 />
             ) : null}
 
+            {activeSubscription && isSignedInBillingContext && !hasEnhancementPackBillingTerms ? (
+                <Alert
+                    message="Billing details are required for enhancement packs."
+                    description="Your current subscription does not include the tax details needed for a separate pack payment. Contact billing support before buying a pack."
+                    type="info"
+                    showIcon
+                    style={{ marginBottom: 16 }}
+                />
+            ) : null}
+
             {activeSubscription?.status === 'active' && canManageSelectedSubscription && !isManualBilling && !isInheritedBilling ? (
                 <Card style={{ marginBottom: 16 }}>
                     <Flex align="center" justify="space-between" gap={16} wrap>
@@ -487,7 +509,7 @@ function BillingPage() {
                         >
                             <Flex justify="center" style={{ marginTop: '24px', width: '100%' }}>
                                 {canManageSelectedSubscription ? (
-                                    <Button type="primary" onClick={() => setIsPricingModalOpen({ action: "new", active: true })} icon={<LuZap />}>
+                                    <Button type="primary" onClick={() => router.push('/pricing')} icon={<LuZap />}>
                                         {t('viewPlans')}
                                     </Button>
                                 ) : null}

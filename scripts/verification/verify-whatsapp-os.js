@@ -34,6 +34,11 @@ const sharedContract = read('src/data/shared/whatsappOs.ts');
 assert(sharedContract.includes('WHATSAPP_OS_TEMPLATE_REGISTRY'), 'WhatsAppOS must own a product-scoped lifecycle template registry');
 assert(sharedContract.includes("approvalState !== 'approved'"), 'Unapproved lifecycle templates must fail before provider work');
 assert(sharedContract.includes('WHATSAPP_OS_WORKFLOW_CLASS_MISMATCH'), 'Workflow and message classification must be runtime validated');
+assert(sharedContract.includes("headerType?: 'document'"), 'WhatsAppOS templates must declare document-header policy explicitly');
+assert(sharedContract.includes('MAX_DOCUMENT_BYTES: 8 * 1024 * 1024'), 'WhatsAppOS PDF attachments must remain bounded below provider limits');
+assert(sharedContract.includes("contentType: 'application/pdf'"), 'WhatsAppOS document attachments must remain PDF-only');
+assert(sharedContract.includes("contentBase64.startsWith('JVBERi0')"), 'WhatsAppOS document attachments must require a PDF file signature');
+assert(sharedContract.includes("headerType: 'document'"), 'Billing-document delivery must require a document-header template');
 const webhook = read('functions/src/whatsappOs/webhook.ts');
 assert(webhook.includes('shouldAdvanceWhatsAppOsProviderStatus'), 'Webhook status changes must be monotonic');
 assert(webhook.includes('transaction.create(receiptRef'), 'Webhook receipts must be idempotent');
@@ -54,6 +59,15 @@ assert(rootProvider.includes("request.productCode === 'AL' ? answerlatticeFirest
 assert(rootProvider.includes("current.get('unresolved') === true"), 'Provider reference persistence must reconcile early webhook placeholders');
 assert(rootProvider.includes('providerStatusAt: statusOccurredAt'), 'Early webhook reconciliation must advance the owning workflow document');
 assert(rootProvider.includes('WHATSAPP_OS_PROVIDER_REFERENCE_PERSIST_UNKNOWN'), 'Accepted provider sends must preserve ambiguous mapping-persistence outcomes');
+assert(rootProvider.includes('uploadProviderDocument'), 'App-side WhatsAppOS must upload private PDF bytes to Meta before template delivery');
+assert(rootProvider.includes('deleteRejectedProviderDocument'), 'App-side WhatsAppOS must clean up orphaned Meta media after a confirmed send rejection');
+assert(rootProvider.includes("method: 'DELETE'"), 'App-side WhatsAppOS media cleanup must use the provider delete endpoint');
+assert(rootProvider.includes("type: 'document'"), 'App-side WhatsAppOS must send the uploaded PDF as a document header');
+const functionsProvider = read('functions/src/whatsappOs/provider.ts');
+assert(functionsProvider.includes('uploadProviderDocument'), 'Functions WhatsAppOS must upload private PDF bytes to Meta before template delivery');
+assert(functionsProvider.includes('deleteRejectedProviderDocument'), 'Functions WhatsAppOS must clean up orphaned Meta media after a confirmed send rejection');
+assert(functionsProvider.includes('media.mediaId && !result.ambiguous'), 'Functions WhatsAppOS must preserve media when the provider send outcome is ambiguous');
+assert(functionsProvider.includes("type: 'document'"), 'Functions WhatsAppOS must send the uploaded PDF as a document header');
 
 const indexes = readJson('firestore.indexes.json');
 for (const collectionGroup of ['whatsappOsMessageRefs', 'whatsappOsWebhookReceipts']) {
@@ -69,6 +83,8 @@ const adapter = read('functions/src/messagingOnboarding/providers/whatsapp/Whats
 assert(adapter.includes('postWhatsAppOsProviderBody'), 'Messaging onboarding must reuse the WhatsAppOS provider client');
 const rootOwnerChannel = read('src/lib/owner-notifications/channels/whatsapp.ts');
 assert(rootOwnerChannel.includes('getWhatsAppOsTemplateDefinition'), 'Owner lifecycle delivery must resolve templates from WhatsAppOS governance');
+assert(rootOwnerChannel.includes('templateDefinition?.messageClasses[0] || params.messageClass'), 'Owner lifecycle delivery must use the governed template classification');
+assert(read('functions/src/ownerNotifications/processor.ts').includes('templateDefinition?.messageClasses[0] || params.messageClass'), 'Functions owner lifecycle delivery must use the governed template classification');
 assert(!read('src/lib/owner-notifications/index.ts').includes('event.metadata.whatsappTemplateName'), 'Owner events must not inject arbitrary Meta template names');
 assert(!read('functions/src/ownerNotifications/processor.ts').includes('params.metadata.whatsappTemplateName'), 'Functions owner events must not inject arbitrary Meta template names');
 

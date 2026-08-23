@@ -14,7 +14,7 @@ This website copy is source evidence only. It is not current launch certificatio
 
 Do not publish with TBD price placeholders, unverified activation timing, or provider behavior that lacks current Razorpay evidence.
 
-The pricing card must show `250 credits` and the current examples derived from `src/data/shared/contentCreditPolicy.ts`: up to 50 generated menu images or 250 description rewrites. Do not show a rupee-per-credit conversion, monthly included capacity, provider cost, margin, or overdraft.
+The pricing card must show `250 credits`, ₹799 / $29 before applicable tax, and examples derived from `src/data/shared/contentCreditPolicy.ts`: up to 50 generated menu images or 250 description rewrites. Do not show a rupee-per-credit conversion, provider cost, margin, or any overdraft claim.
 
 ---
 
@@ -26,7 +26,7 @@ The pricing card must show `250 credits` and the current examples derived from `
 
 ### Subheadline
 
-> Your plan includes AI features. Enhancement Packs give your menu more — images, descriptions, translations. One purchase. No expiry.
+> Your plan includes Content Credits. Buy one Pack when you need more for images, descriptions, or translations.
 
 ### Body Copy
 
@@ -42,7 +42,7 @@ The pricing card must show `250 credits` and the current examples derived from `
 
 ### CTA Sub-text
 
-> One pack per store. One-time purchase. No subscription required.
+> One-time purchase for the current paid billing store.
 
 ---
 
@@ -92,15 +92,15 @@ The pricing card must show `250 credits` and the current examples derived from `
 
 ### "How much does an Enhancement Pack cost?"
 
-> AI Enhancement Pack pricing must come from the approved pricing source before publication. Do not publish this draft with TBD price placeholders.
+> One 250-credit Pack costs ₹799 or $29 before applicable tax.
 
-### "Does an Enhancement Pack expire?"
+### "What happens to Pack credits if I cancel?"
 
-> No. Enhancement Packs never expire. Use them whenever your menu needs more.
+> Unused Pack credits are frozen on cancellation and restored once if the same billing store starts a paid plan again within 365 days.
 
 ### "Does one pack cover all my stores?"
 
-> Each store manages its own AI enhancements. Buy an Enhancement Pack for any store that needs more.
+> Single locations use their own balance. Linked outlets on a Multi-location plan share the HQ billing balance, sized by paid active location count.
 
 ### "Can I buy more than one pack?"
 
@@ -124,7 +124,7 @@ The pricing card must show `250 credits` and the current examples derived from `
 
 |            | AI Enhancement Pack                         |
 | ---------- | ------------------------------------------- |
-| **Price**  | Approved launch price only                  |
+| **Price**  | ₹799 / $29 before applicable tax            |
 | **Type**   | One-time purchase                           |
 | **Covers** | Images, descriptions, translations          |
 | **Stores** | Per store (each store manages own capacity) |

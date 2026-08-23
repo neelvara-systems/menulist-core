@@ -7,9 +7,9 @@ const PlatformFeaturesList = {
             "description": "Each list has its own items, design, customer link, and settings.",
             "valueLabel": "{value} lists",
             "values": {
-                "starter": 1,
-                "pro": 5,
-                "premium": 20
+                "menulist_official": 1,
+                "menulist_pro": 5,
+                "menulist_multi_location": 20
             }
         },
         {
@@ -19,9 +19,9 @@ const PlatformFeaturesList = {
             "description": "Prepare items, categories, prices, and available descriptions from a supported photo, image, PDF, or owned public source.",
             "valueLabel": "{name}",
             "values": {
-                "starter": "Included",
-                "pro": "Included",
-                "premium": "Included"
+                "menulist_official": "Included",
+                "menulist_pro": "Included",
+                "menulist_multi_location": "Included"
             }
         },
         {
@@ -31,9 +31,9 @@ const PlatformFeaturesList = {
             "description": "Prepare clear item descriptions for the owner to review before publishing.",
             "valueLabel": "{name}",
             "values": {
-                "starter": "Included",
-                "pro": "Included",
-                "premium": "Included"
+                "menulist_official": "Included",
+                "menulist_pro": "Included",
+                "menulist_multi_location": "Included"
             }
         },
         {
@@ -43,9 +43,9 @@ const PlatformFeaturesList = {
             "description": "Prepare supported customer-language versions for the owner to review before publishing.",
             "valueLabel": "{name}",
             "values": {
-                "starter": "Included",
-                "pro": "Included",
-                "premium": "Included"
+                "menulist_official": "Included",
+                "menulist_pro": "Included",
+                "menulist_multi_location": "Included"
             }
         },
         {
@@ -55,9 +55,9 @@ const PlatformFeaturesList = {
             "description": "Generate one or more item-image options from an owner prompt, then keep only the approved results.",
             "valueLabel": "{name}",
             "values": {
-                "starter": true,
-                "pro": true,
-                "premium": true
+                "menulist_official": true,
+                "menulist_pro": true,
+                "menulist_multi_location": true
             }
         },
         {
@@ -67,9 +67,9 @@ const PlatformFeaturesList = {
             "description": "Prepare supported photo improvements, background removal, and preset edits for owner review.",
             "valueLabel": "{name}",
             "values": {
-                "starter": true,
-                "pro": true,
-                "premium": true
+                "menulist_official": true,
+                "menulist_pro": true,
+                "menulist_multi_location": true
             }
         },
         {
@@ -79,9 +79,9 @@ const PlatformFeaturesList = {
             "description": "Prepare composite product-image options, such as an item in a selected setting, for owner review.",
             "valueLabel": "{name}",
             "values": {
-                "starter": false,
-                "pro": true,
-                "premium": true
+                "menulist_official": false,
+                "menulist_pro": true,
+                "menulist_multi_location": true
             }
         },
         {
@@ -91,9 +91,9 @@ const PlatformFeaturesList = {
             "description": "Copy or share the approved customer link through the apps already available on your device.",
             "valueLabel": "{name}",
             "values": {
-                "starter": true,
-                "pro": true,
-                "premium": true
+                "menulist_official": true,
+                "menulist_pro": true,
+                "menulist_multi_location": true
             }
         },
         {
@@ -103,9 +103,9 @@ const PlatformFeaturesList = {
             "description": "Generate print-ready QR codes with your brand's colors and logo.",
             "valueLabel": "{name}",
             "values": {
-                "starter": true,
-                "pro": true,
-                "premium": true
+                "menulist_official": true,
+                "menulist_pro": true,
+                "menulist_multi_location": true
             }
         },
         {
@@ -115,9 +115,9 @@ const PlatformFeaturesList = {
             "description": "Download a complete set of branded, print-ready materials (table tents, counter stickers, A-frame signs, wall posters) with your QR code.",
             "valueLabel": "{name}",
             "values": {
-                "starter": true,
-                "pro": true,
-                "premium": true
+                "menulist_official": true,
+                "menulist_pro": true,
+                "menulist_multi_location": true
             }
         },
         {
@@ -127,9 +127,9 @@ const PlatformFeaturesList = {
             "description": "A professional business page with your menu, hours, location, and current status. Link out to your existing booking and ordering platforms.",
             "valueLabel": "{name}",
             "values": {
-                "starter": true,
-                "pro": true,
-                "premium": true
+                "menulist_official": true,
+                "menulist_pro": true,
+                "menulist_multi_location": true
             }
         },
         {
@@ -139,9 +139,9 @@ const PlatformFeaturesList = {
             "description": "Add amenities, dietary options, service modes, and payment methods to your Official Business Page.",
             "valueLabel": "{name}",
             "values": {
-                "starter": true,
-                "pro": true,
-                "premium": true
+                "menulist_official": true,
+                "menulist_pro": true,
+                "menulist_multi_location": true
             }
         },
         {
@@ -151,9 +151,9 @@ const PlatformFeaturesList = {
             "description": "See visits, popular items and categories, searches, and customer actions from the menu and Official Business Page.",
             "valueLabel": "{name} - {value}",
             "values": {
-                "starter": "Core metrics",
-                "pro": "Core + action summaries",
-                "premium": "Core + action summaries"
+                "menulist_official": "Core metrics",
+                "menulist_pro": "Core + action summaries",
+                "menulist_multi_location": "Core + action summaries"
             }
         },
         {
@@ -163,9 +163,9 @@ const PlatformFeaturesList = {
             "description": "Get a plain-language summary and a short action list from settled customer activity.",
             "valueLabel": "{name}",
             "values": {
-                "starter": false,
-                "pro": true,
-                "premium": true
+                "menulist_official": false,
+                "menulist_pro": true,
+                "menulist_multi_location": true
             }
         },
         {
@@ -175,9 +175,9 @@ const PlatformFeaturesList = {
             "description": "Set supported page titles and descriptions and use the generated sitemap for your customer pages.",
             "valueLabel": "{name}",
             "values": {
-                "starter": false,
-                "pro": true,
-                "premium": true
+                "menulist_official": false,
+                "menulist_pro": true,
+                "menulist_multi_location": true
             }
         },
         {
@@ -187,9 +187,9 @@ const PlatformFeaturesList = {
             "description": "Connect your own supported analytics IDs for additional measurement on customer pages.",
             "valueLabel": "{name}",
             "values": {
-                "starter": false,
-                "pro": true,
-                "premium": true
+                "menulist_official": false,
+                "menulist_pro": true,
+                "menulist_multi_location": true
             }
         },
         {
@@ -199,9 +199,9 @@ const PlatformFeaturesList = {
             "description": "Use your own domain name for your catalog (e.g., menu.yourbrand.com).",
             "valueLabel": "{name}",
             "values": {
-                "starter": false,
-                "pro": true,
-                "premium": true
+                "menulist_official": false,
+                "menulist_pro": true,
+                "menulist_multi_location": true
             }
         },
         {
@@ -211,9 +211,9 @@ const PlatformFeaturesList = {
             "description": "Remove MenuList branding from your customer pages.",
             "valueLabel": "{name}",
             "values": {
-                "starter": false,
-                "pro": false,
-                "premium": true
+                "menulist_official": false,
+                "menulist_pro": false,
+                "menulist_multi_location": true
             }
         },
         {
@@ -223,9 +223,9 @@ const PlatformFeaturesList = {
             "description": "Get help from our team when you need it.",
             "valueLabel": "{value}",
             "values": {
-                "starter": "Email Support",
-                "pro": "Standard Email Support",
-                "premium": "Priority Email Support"
+                "menulist_official": "Email Support",
+                "menulist_pro": "Standard Email Support",
+                "menulist_multi_location": "Priority Email Support"
             }
         }
     ],
@@ -237,8 +237,8 @@ const PlatformFeaturesList = {
             "description": "The number of times you can call our API to extract data from a document each month.",
             "valueLabel": "{value} Calls",
             "values": {
-                "starter": 1000,
-                "pro": 5000,
+                "menulist_api_starter": 1000,
+                "menulist_api_pro": 5000,
                 "custom": "Custom"
             }
         },
@@ -249,8 +249,8 @@ const PlatformFeaturesList = {
             "description": "Receive event notifications for supported account activity.",
             "valueLabel": "{name}",
             "values": {
-                "starter": true,
-                "pro": true,
+                "menulist_api_starter": true,
+                "menulist_api_pro": true,
                 "custom": true
             }
         },
@@ -261,8 +261,8 @@ const PlatformFeaturesList = {
             "description": "Directly download the clean, structured data for use anywhere.",
             "valueLabel": "{name}",
             "values": {
-                "starter": true,
-                "pro": true,
+                "menulist_api_starter": true,
+                "menulist_api_pro": true,
                 "custom": true
             }
         },
@@ -273,8 +273,8 @@ const PlatformFeaturesList = {
             "description": "Prepare clear item descriptions for review before downstream use.",
             "valueLabel": "{name}",
             "values": {
-                "starter": "Included",
-                "pro": "Included",
+                "menulist_api_starter": "Included",
+                "menulist_api_pro": "Included",
                 "custom": "Included"
             }
         },
@@ -285,8 +285,8 @@ const PlatformFeaturesList = {
             "description": "Prepare supported-language versions for review before downstream use.",
             "valueLabel": "{name}",
             "values": {
-                "starter": "Included",
-                "pro": "Included",
+                "menulist_api_starter": "Included",
+                "menulist_api_pro": "Included",
                 "custom": "Included"
             }
         },
@@ -297,8 +297,8 @@ const PlatformFeaturesList = {
             "description": "Generate one or more item-image options from a prompt and keep the approved results.",
             "valueLabel": "{name}",
             "values": {
-                "starter": true,
-                "pro": true,
+                "menulist_api_starter": true,
+                "menulist_api_pro": true,
                 "custom": true
             }
         },
@@ -309,8 +309,8 @@ const PlatformFeaturesList = {
             "description": "Prepare supported photo improvements, background removal, and preset edits for review.",
             "valueLabel": "{name}",
             "values": {
-                "starter": true,
-                "pro": true,
+                "menulist_api_starter": true,
+                "menulist_api_pro": true,
                 "custom": true
             }
         },
@@ -321,8 +321,8 @@ const PlatformFeaturesList = {
             "description": "Prepare composite product-image options, such as an item in a selected setting, for review.",
             "valueLabel": "{name}",
             "values": {
-                "starter": false,
-                "pro": true,
+                "menulist_api_starter": false,
+                "menulist_api_pro": true,
                 "custom": true
             }
         },
@@ -333,8 +333,8 @@ const PlatformFeaturesList = {
             "description": "Access to our technical team for integration help and support.",
             "valueLabel": "{value}",
             "values": {
-                "starter": "Email Support",
-                "pro": "Priority Email Support",
+                "menulist_api_starter": "Email Support",
+                "menulist_api_pro": "Priority Email Support",
                 "custom": "Dedicated Support"
             }
         }
@@ -343,7 +343,7 @@ const PlatformFeaturesList = {
 
 export default PlatformFeaturesList
 
-export const StarterPlanFeaturesList = [
+export const OfficialPlanFeaturesList = [
     "projects",
     "ai_data_extraction",
     "ai_descriptions",
@@ -366,7 +366,7 @@ export const ProPlanFeaturesList = [
     "support",
 ]
 
-export const PremiumPlanFeaturesList = [
+export const MultiLocationPlanFeaturesList = [
     "projects",
     "remove_branding",
     "support"
@@ -386,9 +386,9 @@ export const commonFeaturesList = {
             "category": "Platform Essentials",
             "valueLabel": "Included",
             "values": {
-                "starter": true,
-                "pro": true,
-                "premium": true
+                "menulist_official": true,
+                "menulist_pro": true,
+                "menulist_multi_location": true
             }
         },
         {
@@ -398,9 +398,9 @@ export const commonFeaturesList = {
             "category": "Platform Essentials",
             "valueLabel": "Included",
             "values": {
-                "starter": true,
-                "pro": true,
-                "premium": true
+                "menulist_official": true,
+                "menulist_pro": true,
+                "menulist_multi_location": true
             }
         }
     ],
@@ -412,8 +412,8 @@ export const commonFeaturesList = {
             "category": "Platform Essentials",
             "valueLabel": "Included",
             "values": {
-                "starter": true,
-                "pro": true,
+                "menulist_api_starter": true,
+                "menulist_api_pro": true,
                 "custom": true
             }
         },
@@ -424,8 +424,8 @@ export const commonFeaturesList = {
             "category": "Platform Essentials",
             "valueLabel": "Included",
             "values": {
-                "starter": true,
-                "pro": true,
+                "menulist_api_starter": true,
+                "menulist_api_pro": true,
                 "custom": true
             }
         },

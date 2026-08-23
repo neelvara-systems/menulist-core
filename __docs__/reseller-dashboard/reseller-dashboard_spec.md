@@ -99,13 +99,13 @@ A controlled, role-gated dashboard where authorized resellers (friends, sales pa
 
 ### 3.1 Public Price Anchor (Sacred — Never Changes Per Client)
 
-| Plan    | Monthly (INR) | Monthly (USD) |
-| ------- | ------------- | ------------- |
-| Starter | ₹499          | $29           |
-| Pro     | ₹1,499        | $79           |
-| Premium | ₹3,999        | $149          |
+| Plan           | Monthly (INR)      | Monthly (USD)      |
+| -------------- | ------------------ | ------------------ |
+| Official       | ₹599               | $29                |
+| Pro            | ₹1,499             | $79                |
+| Multi-location | ₹1,499/location    | $79/location       |
 
-These are the standard prices from `PlatformPlansList.ts`. They remain the public anchor.
+These are the standard prices from `PlatformPlansList.ts`. Multi-location requires at least two active locations. Direct public pricing is a reference point only; reseller pricing remains a separate commercial contract.
 
 ### 3.2 Reseller Pricing Tiers (Internal Only)
 
@@ -115,7 +115,7 @@ Resellers see predefined discounted tiers. These are NOT visible publicly.
 | ------------- | -------------- | ------------------------ | ------------------------------ |
 | `FOUNDER_400` | Founder Tier A | ₹400/mo                  | Close family, early supporters |
 | `FOUNDER_500` | Founder Tier B | ₹500/mo                  | Friends, local contacts        |
-| `STANDARD`    | Standard       | ₹499/mo (same as public) | Regular reseller sales         |
+| `STANDARD`    | Standard       | ₹499/mo                  | Regular reseller sales         |
 
 **Rules:**
 
@@ -202,7 +202,7 @@ Reseller selects a commitment period (3 / 6 / 12 months) which is tracked for re
 - Offline subscriptions show as "Offline one-time prepaid" with prepaid period and prepaid-until date.
 - Offline active subscriptions do not show Razorpay pause/cancel/upgrade actions because those actions only apply to recurring Razorpay subscriptions.
 - Offline outlet creation requires unused prepaid capacity. If the client needs another location, reseller collects cash/UPI and records "Add prepaid location" before the owner creates the outlet.
-- Enhancement packs remain available while the prepaid subscription is active.
+- Enhancement-pack checkout is unavailable for reseller-created subscriptions until reseller payer identity, tax treatment, invoice issuer, and collection responsibility are implemented under a dedicated reviewed billing contract. The direct owner checkout must not silently treat the reseller or public business profile as the billed customer.
 
 **Safeguards:**
 
@@ -417,7 +417,7 @@ Dashboard (founder only) shows:
 
 The client has **zero awareness** of the reseller layer:
 
-- Their plan shows "MenuList Starter" (not "Founder Tier A")
+- Their plan shows "MenuList Official" (not "Founder Tier A")
 - Their billing page shows subscription details normally
 - If online: they see Razorpay payment history
 - If offline: they see "Prepaid until [date]"

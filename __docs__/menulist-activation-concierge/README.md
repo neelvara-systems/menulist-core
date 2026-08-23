@@ -3,7 +3,7 @@
 **Status:** Local source complete; internal orchestration name only
 **Last reviewed:** July 22, 2026
 
-Activation Concierge is not a new route or public product. It is the existing starter setup handoff across create-menu success, the global starter banner, Use MenuList, Mobile Share, Search & Discovery, Presence Monitor, and Menu Setup Progress.
+Activation Concierge is not a new route or public product. It is the existing setup-access handoff across create-menu success, the global setup banner, Use MenuList, Mobile Share, Search & Discovery, Presence Monitor, and Menu Setup Progress.
 
 ## Current contract
 

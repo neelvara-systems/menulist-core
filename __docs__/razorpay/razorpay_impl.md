@@ -337,7 +337,7 @@ interface FirestoreSubscriptionDoc {
     | "past_due"
     | "completed";
   planName: string; // e.g., "Pro Plan (Yearly)"
-  planId: string; // e.g., "pro"
+  planId: string; // e.g., "menulist_pro"
   planType: "MONTH" | "YEAR";
   amount: number; // In smallest currency unit (paise/cents)
   currency: "INR" | "USD";
@@ -351,9 +351,11 @@ interface FirestoreSubscriptionDoc {
   pastDueSinceAt: Timestamp; // When payment first failed (null if not past_due)
 
   // Credit Management System
-  monthlyCreditsAllowance: number; // Fixed credits per cycle (set once, e.g., 200)
+  monthlyCreditsAllowance: number; // Effective recurring allowance for this cycle
   monthlyCredits: number; // Current balance (resets every billing cycle)
-  topUpCredits: number; // Purchased credits (never resets, never expires)
+  promotionalCredits: number; // Expiring referral/goodwill balance
+  promotionalCreditsExpireAt: Timestamp | null;
+  topUpCredits: number; // Purchased balance; protected by cancellation recovery policy
   creditsLastResetMonth?: number; // YYYYMM billing-period key (e.g., 202602)
 
   // Razorpay Metadata
@@ -433,18 +435,18 @@ interface BillingHistoryItem {
 
 | Plan ID   | Plan Name    | Monthly Price (INR) | Yearly Price (INR) | Monthly Credits (INR) | Monthly Price (USD) | Yearly Price (USD) | Monthly Credits (USD) |
 | --------- | ------------ | ------------------- | ------------------ | --------------------- | ------------------- | ------------------ | --------------------- |
-| `starter` | Official | ₹599 | ₹5,990 | 75 | $29 | $290 | 100 |
-| `pro` | Pro | ₹1,499 | ₹14,990 | 200 | $79 | $790 | 400 |
-| `premium` | Multi-location (per active location; minimum 2) | ₹1,499/location | ₹14,990/location | 600 | $79/location | $790/location | 1,000 |
+| `menulist_official` | Official | ₹599 | ₹5,990 | 75 | $29 | $290 | 100 |
+| `menulist_pro` | Pro | ₹1,499 | ₹14,990 | 200 | $79 | $790 | 400 |
+| `menulist_multi_location` | Multi-location (per active location; minimum 2) | ₹1,499/location | ₹14,990/location | 600 | $79/location | $790/location | 1,000 |
 
-Public labels changed without changing the stable internal IDs. Annual prices equal ten monthly payments. The Multi-location checkout quantity starts at two; direct Official and Pro subscriptions use quantity one. This pricing decision predates launch, so no customer backfill, grandfathering, compatibility record, or old-price migration exists.
+Public labels and immutable product-namespaced IDs are separate contracts. Annual prices equal ten monthly payments. The Multi-location checkout quantity starts at two; direct Official and Pro subscriptions use quantity one.
 
 ### B2B Plans
 
 | Plan ID   | Plan Name   | Monthly Price (INR) | Yearly Price (INR) | Monthly Credits (INR) | API Call Allowance |
 | --------- | ----------- | ------------------- | ------------------ | --------------------- | ------------------ |
-| `starter` | Starter API | ₹4,999              | ₹49,990            | 200                   | 1,000/mo           |
-| `pro`     | Pro API     | ₹18,999             | ₹1,89,990          | 1,000                 | 5,000/mo           |
+| `menulist_api_starter` | Starter API | ₹4,999 | ₹49,990 | 200 | 1,000/mo |
+| `menulist_api_pro` | Pro API | ₹18,999 | ₹1,89,990 | 1,000 | 5,000/mo |
 
 ### AI Enhancement Pack (Top-Up)
 
@@ -452,7 +454,7 @@ Public labels changed without changing the stable internal IDs. Annual prices eq
 
 | Pack ID       | Name                | Credits | Price (INR) | Price (USD) |
 | ------------- | ------------------- | ------- | ----------- | ----------- |
-| `enhancement` | AI Enhancement Pack | 250     | ₹2,999      | $35         |
+| `enhancement` | Content Credit Pack | 250     | ₹799        | $29         |
 
 ### Razorpay Plan Deduplication
 
@@ -805,19 +807,17 @@ BACKEND:
 18. Return { success: true }
 ```
 
-### Credit Carry-Forward Calculation
+### Credit Transfer Calculation
 
 **File:** `src/utils/razorpay.ts:34-74` → `calculateRemainingCredits()`
 
 ```
-Monthly plans: totalRemainingCredits = monthlyCredits + topUpCredits
-Yearly plans:
-  monthsRemaining = (endYear - todayYear) * 12 + (endMonth - todayMonth)
-  if today.date <= end.date: monthsRemaining += 1
-  totalRemainingCredits = unusedThisMonth + (monthsRemaining - 1) * monthlyCreditsAllowance + topUpCredits
+transferablePurchasedCredits = topUpCredits
+transferablePromotionalCredits = promotionalCredits when not expired
+newRecurringCredits = allowance for the replacement plan and effective quantity
 ```
 
-All remaining credits become `topUpCredits` on the new subscription (they never expire).
+Unused recurring credits and projected future annual allowances do not transfer. Purchased credits remain purchased; valid promotional credits remain promotional with their original expiry.
 
 ---
 
@@ -1065,14 +1065,15 @@ BillingPage
 │   ├── Status tag (Active/Cancelled/Past Due/Expired)
 │   ├── Payment method display (Card brand/last4 or UPI VPA)
 │   ├── Action buttons (context-dependent):
-│   │   ├── Active: "Cancel" + "Upgrade Plan" (if not premium)
+│   │   ├── Active: "Cancel" + "Upgrade Plan" (if not `menulist_multi_location`)
 │   │   ├── Active (final cycle): "Change Plan"
 │   │   ├── Cancelled/Expired: "Choose a New Plan"
 │   │   └── Past Due: "Cancel" + "Retry Payment"
 │   └── Credit Card (right column):
-│       ├── Total Available Credits (monthlyCredits + topUpCredits)
-│       ├── Monthly Credits progress bar (monthlyCredits / allowance)
-│       ├── Top-up Credits count
+│       ├── Usable Content Credits total
+│       ├── Recurring balance and cycle allowance
+│       ├── Promotional balance and expiry when present
+│       ├── Purchased balance
 │       └── "View Usage" + "Buy More Credits" buttons
 ├── BillingHistory (lazy-loaded table)
 ├── PricingPlansModal (upgrade/new plan selection)
@@ -1088,7 +1089,7 @@ BillingPage
 ```
 isFinalCycle = |renewsOn - subscriptionEndDate| <= 86400 (within 1 day)
 
-Active + not final cycle → "Cancel" + "Upgrade" (if not premium)
+Active + not final cycle → "Cancel" + "Upgrade" (if not `menulist_multi_location`)
 Active + final cycle → "Change Plan" (subscription ends, need new one)
 Cancelled/Expired → "Choose a New Plan"
 Past Due + not final cycle → "Cancel" + "Retry Payment"
@@ -1099,8 +1100,8 @@ Past Due + not final cycle → "Cancel" + "Retry Payment"
 **File:** `src/components/templates/main-app/billing/PricingPlansModal.tsx:212-223`
 
 ```
-If upgrading from Starter → show Pro + Premium only
-If upgrading from Pro → show Premium only
+If upgrading from Official (`menulist_official`) → show Pro + Multi-location only
+If upgrading from Pro (`menulist_pro`) → show Multi-location (`menulist_multi_location`) only
 If new subscription → show all plans
 ```
 
@@ -1296,22 +1297,23 @@ Input: pastDueTimestamp, graceDays (default 7)
 Output: { remainingDays, graceEndsDate, graceEndsTimestamp }
 ```
 
-### calculateRemainingCredits()
+### calculateTransferableCredits()
 
 **File:** `src/utils/razorpay.ts:34-74`
 
 ```
-Input: activeSubscription (FirestoreSubscriptionDoc)
-Output: { unusedThisMonth, monthsRemaining, monthlyCreditsAllowance, totalRemainingCredits }
+Input: activeSubscription (FirestoreSubscriptionDoc), now
+Output: { purchasedCredits, promotionalCredits, promotionalCreditsExpireAt }
 
-Monthly: totalRemainingCredits = monthlyCredits + topUpCredits
-Yearly: totalRemainingCredits = unusedThisMonth + (monthsRemaining - 1) * allowance + topUpCredits
+Purchased: topUpCredits
+Promotional: promotionalCredits only when promotionalCreditsExpireAt is valid and in the future
+Recurring: never transferred
 ```
 
 Used in:
 
-- `RemainingCreditNote.tsx` — shows carry-forward on upgrade
-- `usePaymentHandler.ts` — calculates carry-forward for upgrade flow
+- replacement confirmation copy — explains which buckets transfer
+- server replacement finalization — performs the authoritative transfer
 
 ### getOrCreateRazorpayPlan()
 
@@ -1343,12 +1345,12 @@ Calculates billing-cycle-aware YYYYMM key from subscription's `cycleStartDate`. 
 1. **Razorpay-only:** Stripe fully removed (Feb 2026). Single payment provider reduces complexity.
 2. **Store-scoped rows with HQ inheritance:** Direct subscriptions and billing cycles are stored per billed store. Outlets may inherit the HQ subscription and shared credit balance for entitlement; only the directly billed signed-in store can mutate recurring provider state.
 3. **Razorpay sub ID = Firestore doc ID:** The `providerSubscriptionId` is used as the Firestore document ID. This creates a 1:1 mapping and simplifies lookups.
-4. **Credits carry forward on upgrade:** Remaining credits (monthly + topUp + future months for yearly) are calculated and added as `topUpCredits` on the new subscription.
+4. **Bounded transfer on replacement:** Purchased credits and valid promotional credits transfer in their original buckets. Recurring and future annual allowances do not transfer.
 5. **Two-layer credit reset:** provider-payment transaction (monthly charges) + lazy reset/debit transaction in `checkAICapacity()` and `consumeAICapacity()` (yearly plans + safety net). Both use the shared UTC anchor-period contract and serialize against current balances.
 6. **Billing-period-aware reset:** Uses subscription anchor day, not calendar month. Prevents premature resets for mid-month subscriptions.
 7. **7-day grace period:** Enforced in DAL (`getActiveSubscriptionForStore`), not in a Cloud Function. Auto-expires on next query after grace period.
 8. **Optimistic verification:** `verify-subscription` activates the subscription immediately after payment, without waiting for the webhook. Both webhook and verify converge to the same state.
-9. **Top-ups use Orders, not Subscriptions:** AI Enhancement Packs use Razorpay Orders API (one-time) with programmatic capture. Credits are added to `topUpCredits` which never reset.
+9. **Packs use Orders, not Subscriptions:** The 250-credit Pack uses Razorpay Orders API (one-time) with programmatic capture. Purchased credits are added to `topUpCredits`; unused purchased value is protected by the bounded cancellation-recovery ledger.
 10. **Transaction logging:** Every webhook event is stored in `paymentTransactions` collection. Serves as audit trail and billing history source.
 11. **Plan deduplication:** `getOrCreateRazorpayPlan()` uses a lookup key to avoid creating duplicate plans on Razorpay.
 12. **Immediate cancellation:** Cancellations are immediate on Razorpay (not end-of-cycle). User retains access until `cycleEndDate` via our Firestore query logic.

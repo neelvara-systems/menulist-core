@@ -1,7 +1,11 @@
 # EmailOS — Implementation Blueprint
 
 > **Status:** Source implemented; MenuList provider prepared; Answerlattice QA key hosted; provider sends disabled
-> **Last Updated:** August 21, 2026
+> **Last Updated:** August 23, 2026
+
+## Bounded PDF attachments
+
+`EmailOsEnvelope.attachments` admits at most one `application/pdf` attachment with a safe ASCII filename and an 8MB decoded-size ceiling. The caller supplies base64 bytes after its own product-scope authorization. Resend receives those local bytes directly; the SMTP compatibility adapter receives the decoded buffer. EmailOS never follows an attachment URL, reads product data, or persists attachment content in its delivery ledger.
 
 ## Architecture
 

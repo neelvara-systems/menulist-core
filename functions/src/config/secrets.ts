@@ -28,6 +28,18 @@
 
 import { isFunctionFeatureEnabled, isWhatsAppProviderRuntimeEnabled } from '../constants/features';
 
+const currentFirebaseProjectId = (
+    process.env.GCLOUD_PROJECT
+    || process.env.GOOGLE_CLOUD_PROJECT
+    || ''
+).trim().toLowerCase();
+
+// Production WhatsApp remains parked until its owned provider setup and real
+// credentials are approved. Keep those optional secrets out of the generated
+// deployment manifest so unrelated Functions can still be promoted safely.
+const canBindWhatsAppProviderSecrets = currentFirebaseProjectId !== 'menulist-prod'
+    && isWhatsAppProviderRuntimeEnabled();
+
 // ═══════════════════════════════════════════════════════════════
 // SECRET NAMES — All secret names in one place
 // ═══════════════════════════════════════════════════════════════
@@ -81,7 +93,7 @@ export const SECRETS = {
 // SECRET GROUPS — Pre-built arrays for function `secrets:` option
 // ═══════════════════════════════════════════════════════════════
 
-const whatsAppProviderSecrets = isWhatsAppProviderRuntimeEnabled()
+const whatsAppProviderSecrets = canBindWhatsAppProviderSecrets
     ? [
         SECRETS.WHATSAPP_PHONE_NUMBER_ID,
         SECRETS.WHATSAPP_ACCESS_TOKEN,
@@ -90,7 +102,7 @@ const whatsAppProviderSecrets = isWhatsAppProviderRuntimeEnabled()
     ]
     : [];
 
-const whatsAppOutboundSecrets = isWhatsAppProviderRuntimeEnabled()
+const whatsAppOutboundSecrets = canBindWhatsAppProviderSecrets
     ? [
         SECRETS.WHATSAPP_PHONE_NUMBER_ID,
         SECRETS.WHATSAPP_ACCESS_TOKEN,

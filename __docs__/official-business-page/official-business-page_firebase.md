@@ -60,7 +60,7 @@
 
 **Starter placeholders:** Unpaid starter OBP placeholders are computed from the already-loaded store document and missing publicPresence/social/service/payment fields. They add no Firestore read, write, listener, index, Cloud Function, or Storage operation, and they do not persist fake links, service modes, payment methods, or attributes. Compact starter layout and deterministic menu placeholder thumbnails are CSS/React render behavior only. Payment entitlement sync already revalidates `menu-store-{storeId}`, `store-{storeId}`, and `client-stores`, so paid pages render without placeholders after the cache purge.
 
-**Premium attribution removal:** OBP footer branding uses the already-loaded `stores/{storeId}.activePlanType` field through the shared MenuList branding policy. This adds no subscription lookup, Firestore read, write, listener, Cloud Function, rule, index, or Storage operation. Missing/non-Premium plan data keeps attribution visible.
+**Multi-location attribution removal:** OBP footer branding uses the already-loaded `stores/{storeId}.activePlanType` field through the shared MenuList branding policy. This adds no subscription lookup, Firestore read, write, listener, Cloud Function, rule, index, or Storage operation. Missing/non-Multi-location plan data keeps attribution visible.
 
 **Custom attribute icons:** Desktop and mobile settings use the shared category icon/emoji picker for owner-defined custom attributes. This changes only the value stored in `publicPresence.customAttributes[].icon`; it adds no reads, writes, listeners, indexes, Storage operations, or Cloud Functions beyond the existing OBP settings save.
 

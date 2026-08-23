@@ -1,9 +1,10 @@
 import type { PurchaseIntent } from '@data/common';
 import { getB2BPlansList, getB2CPlansList } from '@data/PlatformPlansList';
+import { isValidMenuListPlanQuantity } from '@lib/billing/menulistPricingPolicy';
 import { OnboardingSubscriptionSchema } from '@lib/validation/apiSchemas';
 
 export const PURCHASE_INTENT_STORAGE_KEY = 'purchaseIntent';
-export const PURCHASE_INTENT_STORAGE_VERSION = 2;
+export const PURCHASE_INTENT_STORAGE_VERSION = 3;
 export const PURCHASE_INTENT_MAX_AGE_MS = 2 * 60 * 60 * 1_000;
 
 type StoredPurchaseIntentEnvelope = {
@@ -27,6 +28,7 @@ export const normalizePurchaseIntent = (value: unknown): PurchaseIntent | null =
         businessName: value.businessName,
         businessIndustry: value.businessIndustry,
         businessDayEndTime: normalizeOptionalString(value.businessDayEndTime),
+        billingProfile: value.billingProfile,
         currency: value.currency,
         interval: value.plan.billingInterval,
         planId: value.plan.planId,
@@ -44,11 +46,17 @@ export const normalizePurchaseIntent = (value: unknown): PurchaseIntent | null =
         && candidate.type === parsed.data.userType
     ));
     if (!plan) return null;
+    if (!isValidMenuListPlanQuantity({
+        planId: parsed.data.planId,
+        quantity: parsed.data.quantity,
+        userType: parsed.data.userType,
+    })) return null;
 
     return {
         businessName: parsed.data.businessName,
         businessIndustry: parsed.data.businessIndustry,
         businessDayEndTime: parsed.data.businessDayEndTime,
+        billingProfile: parsed.data.billingProfile,
         currency: parsed.data.currency,
         plan,
         quantity: parsed.data.quantity,

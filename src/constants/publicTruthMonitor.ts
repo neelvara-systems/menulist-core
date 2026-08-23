@@ -1,10 +1,14 @@
 import type { PublicTruthMonitorSourceBoundary } from "@type/publicTruthMonitor";
+import { MENULIST_B2C_PLAN_IDS } from "./menulistPlans";
 
 export const PUBLIC_TRUTH_MONITOR_OWNER_LABEL = "Public truth history";
 
 export const PUBLIC_TRUTH_MONITOR_SUMMARY_DOC_PREFIX = "publicTruthMonitor";
 
-export const PUBLIC_TRUTH_MONITOR_SUPPORTED_PAID_PLANS = ["pro", "premium"];
+export const PUBLIC_TRUTH_MONITOR_SUPPORTED_PAID_PLANS = [
+    MENULIST_B2C_PLAN_IDS.PRO,
+    MENULIST_B2C_PLAN_IDS.MULTI_LOCATION,
+];
 
 export const PUBLIC_TRUTH_MONITOR_DEFAULT_HISTORY_LIMIT = 6;
 

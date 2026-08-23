@@ -360,7 +360,12 @@ export default function SessionProvider({ children, session }: Props) {
             setActiveSubscription((prev: FirestoreSubscriptionDoc | null) => {
                 const scope = getMenuListSubscriptionEntitlementScope(prev);
                 if (!prev || !scope || scope.storeId !== detail.billingStoreId) return prev;
-                return { ...prev, monthlyCredits: detail.monthlyCredits, topUpCredits: detail.topUpCredits };
+                return {
+                    ...prev,
+                    monthlyCredits: detail.monthlyCredits,
+                    promotionalCredits: detail.promotionalCredits,
+                    topUpCredits: detail.topUpCredits,
+                };
             });
         };
         window.addEventListener('ai-balance-update', handleBalanceUpdate);

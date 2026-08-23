@@ -154,17 +154,19 @@ export async function finalizeAiOperationAccounting({
                 }
                 const billingStoreId = getPositiveCreditInteger(data.accountingBillingStoreId ?? data.sId);
                 const monthlyCredits = getNonNegativeCreditInteger(data.remainingMonthlyCredits);
+                const promotionalCredits = getNonNegativeCreditInteger(data.remainingPromotionalCredits ?? 0);
                 const topUpCredits = getNonNegativeCreditInteger(data.remainingTopUpCredits);
                 if (
                     billingStoreId === null
                     || monthlyCredits === null
+                    || promotionalCredits === null
                     || topUpCredits === null
-                    || !Number.isSafeInteger(monthlyCredits + topUpCredits)
+                    || !Number.isSafeInteger(monthlyCredits + promotionalCredits + topUpCredits)
                 ) {
                     throw new Error(`${logLabel} accounting replay balance is invalid.`);
                 }
                 return {
-                    remainingBalance: { billingStoreId, monthlyCredits, topUpCredits },
+                    remainingBalance: { billingStoreId, monthlyCredits, promotionalCredits, topUpCredits },
                     transactionId: operationId,
                     unitsConsumed,
                 };

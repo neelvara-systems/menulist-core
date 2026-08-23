@@ -75,7 +75,7 @@ Returns full menu data in the same format as POS Webhook Sync payload: categorie
 | FR-05 | Feature flag `ENABLE_PUBLIC_API`                      | P0       | ✅     |
 | FR-06 | Key generation UI in settings                         | P0       | ✅     |
 | FR-07 | Key regeneration (invalidates old key)                | P1       | ✅     |
-| FR-08 | Structured error responses `{error: {code, message}}` | P0       | ✅     |
+| FR-08 | Structured error responses `{error: {code, message, resolution}}` | P0       | ✅     |
 | FR-09 | ETag + conditional requests (304 Not Modified)        | P0       | ✅     |
 | FR-10 | `Retry-After` header on 429 responses                 | P1       | ✅     |
 | FR-11 | `schemaVersion` field in all responses                | P0       | ✅     |
@@ -133,6 +133,8 @@ Two APIs (business + menu) is the industry standard pattern:
 ---
 
 ## Error Codes
+
+Every error includes a fixed, code-owned `resolution` string with the safest next action. Recovery guidance never contains credential, request-payload, provider-error, tenant, or store data.
 
 | HTTP | Code                  | When                                                |
 | ---- | --------------------- | --------------------------------------------------- |

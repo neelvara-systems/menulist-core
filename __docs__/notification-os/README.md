@@ -1,8 +1,8 @@
 # NotificationOS — Documentation Hub
 
 > **Feature:** Cross-product, multi-channel notification orchestration
-> **Status:** Source implementation complete; email/WhatsApp provider activation remains gated
-> **Last Updated:** August 15, 2026
+> **Status:** Source implementation active; delivery remains gated by verified contacts, consent, provider configuration, and product kill switches
+> **Last Updated:** August 23, 2026
 > **Decision Horizon:** Three years
 
 NotificationOS is the policy and orchestration layer for product notifications. It decides whether an event should notify, resolves the recipient and business context once, plans eligible channels in memory, and delegates delivery to EmailOS and WhatsAppOS.
@@ -46,7 +46,8 @@ Product event
 - The pure planner and internal-email boundary live in `src/data/shared/notificationOs.ts` and are mirrored into MenuList Functions.
 - App and Functions processors resolve scope once, reuse that immutable data for every planned channel and preserve ambiguous provider outcomes without replay.
 - Desktop and `MobileShell` settings write through the authenticated, permission-checked consent API; direct browser store writes cannot alter `notificationSettings`.
-- WhatsApp owner delivery remains disabled until Meta number, templates, signed webhooks and QA evidence are certified.
+- New MenuList stores default to every eligible owner channel. Email requires a verified real address; WhatsApp requires a verified number and explicit owner consent.
+- WhatsApp provider delivery remains fail-closed unless Meta number, templates, signed webhooks, credentials and QA evidence are available.
 - The August 15 Answerlattice completion audit verifies 35 active product-trigger pairs and dry-plans all 68 registered policies. `MENU_PUBLISHED` is a compatibility alias; 27 MenuList catalogue entries and five Answerlattice workflow entries are intentionally reserved and non-firing. Reserved entries are not represented as live product behavior.
 - The long-term catalogue is governed in the registry with explicit `active`, `reserved`, and `alias` states. New billing/capacity events activate only where current Razorpay or capacity state already provides an authoritative transition; all other proposed owner events remain non-firing until their product workflow exists.
 
@@ -58,3 +59,4 @@ Product event
 | 1.1.0   | 2026-08-15 | Implemented planner, consent API, settings and channel adapters |
 | 1.2.0   | 2026-08-15 | Closed phone-only and non-awaited producer gaps; added complete registry dry-firing and active-producer audit gates |
 | 1.3.0   | 2026-08-15 | Added producer lifecycle governance, five authoritative billing/capacity triggers, and the reserved long-term owner catalogue |
+| 1.4.0   | 2026-08-23 | Defaulted new stores to every eligible owner channel while preserving verified-contact and explicit WhatsApp-consent gates |

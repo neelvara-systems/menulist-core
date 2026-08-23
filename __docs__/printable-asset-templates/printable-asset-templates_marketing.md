@@ -59,9 +59,9 @@ The strongest QR story is not decorative QR art. It is a branded customer action
 
 | Plan | Message |
 | --- | --- |
-| Starter | Good default print files are included. |
+| Official | Good default print files are included. |
 | Pro | More finished styles for a stronger business presence. |
-| Premium | More finished styles plus visible MenuList attribution removal. |
+| Multi-location | More finished styles plus visible MenuList attribution removal. |
 
 ## SMB Scenarios
 

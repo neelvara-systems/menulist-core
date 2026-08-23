@@ -24,6 +24,11 @@ export type WhatsAppOsSendRequest = {
         name: string;
         language: string;
         parameters?: readonly string[];
+        document?: {
+            filename: string;
+            contentBase64: string;
+            contentType: 'application/pdf';
+        };
     };
     session?: {
         active: boolean;
@@ -36,6 +41,7 @@ export type WhatsAppOsTemplateDefinition = {
     metaName: string;
     language: string;
     parameterCount: number;
+    headerType?: 'document';
     messageClasses: readonly WhatsAppOsMessageClass[];
     approvalState: 'pending_approval' | 'approved';
     version: 1;
@@ -51,6 +57,7 @@ export const WHATSAPP_OS_TEMPLATE_REGISTRY: Readonly<Record<string, WhatsAppOsTe
     'menulist.grace_period_started': { productCode: 'ML', metaName: 'menulist_grace_period_started_v1', language: 'en_US', parameterCount: 1, messageClasses: ['transactional'], approvalState: 'pending_approval', version: 1 },
     'menulist.suspension_warning': { productCode: 'ML', metaName: 'menulist_suspension_warning_v1', language: 'en_US', parameterCount: 1, messageClasses: ['transactional'], approvalState: 'pending_approval', version: 1 },
     'menulist.credits_exhausted': { productCode: 'ML', metaName: 'menulist_credits_exhausted_v1', language: 'en_US', parameterCount: 1, messageClasses: ['transactional'], approvalState: 'pending_approval', version: 1 },
+    'menulist.billing_document_issued': { productCode: 'ML', metaName: 'menulist_billing_document_issued_v1', language: 'en_US', parameterCount: 1, headerType: 'document', messageClasses: ['transactional'], approvalState: 'pending_approval', version: 1 },
     'answerlattice.support_email_missing': { productCode: 'AL', metaName: 'answerlattice_support_email_missing_v1', language: 'en_US', parameterCount: 1, messageClasses: ['transactional'], approvalState: 'pending_approval', version: 1 },
     'answerlattice.payment_recovered': { productCode: 'AL', metaName: 'answerlattice_payment_recovered_v1', language: 'en_US', parameterCount: 1, messageClasses: ['transactional'], approvalState: 'pending_approval', version: 1 },
     'answerlattice.payment_failed': { productCode: 'AL', metaName: 'answerlattice_payment_failed_v1', language: 'en_US', parameterCount: 1, messageClasses: ['transactional'], approvalState: 'pending_approval', version: 1 },
@@ -78,6 +85,8 @@ export const WHATSAPP_OS_LIMITS = {
     MAX_OWNER_DOCUMENT_ID_LENGTH: 200,
     MAX_PROVIDER_BODY_BYTES: 64 * 1024,
     MAX_PROVIDER_MESSAGE_ID_LENGTH: 256,
+    MAX_DOCUMENT_BYTES: 8 * 1024 * 1024,
+    MAX_DOCUMENT_FILENAME_LENGTH: 160,
     MAX_SESSION_TEXT_LENGTH: 4_096,
     MAX_TEMPLATE_LANGUAGE_LENGTH: 32,
     MAX_TEMPLATE_NAME_LENGTH: 128,
@@ -205,10 +214,34 @@ export function assertWhatsAppOsSendRequest(value: WhatsAppOsSendRequest): Whats
                 || definition.metaName !== name
                 || definition.language !== language
                 || definition.parameterCount !== parameters.length
+                || definition.headerType !== (template.document ? 'document' : undefined)
                 || !definition.messageClasses.includes(value.messageClass)
             ) throw new WhatsAppOsContractError('WHATSAPP_OS_TEMPLATE_POLICY_MISMATCH');
         }
-        template = { ...(registryKey ? { registryKey } : {}), name, language, ...(parameters.length ? { parameters } : {}) };
+        const document = template.document;
+        if (document && (
+            document.contentType !== 'application/pdf'
+            || typeof document.filename !== 'string'
+            || document.filename.length < 5
+            || document.filename.length > WHATSAPP_OS_LIMITS.MAX_DOCUMENT_FILENAME_LENGTH
+            || !/^[A-Za-z0-9][A-Za-z0-9._-]*\.pdf$/.test(document.filename)
+            || typeof document.contentBase64 !== 'string'
+            || document.contentBase64.length === 0
+            || document.contentBase64.length % 4 !== 0
+            || document.contentBase64.length > Math.ceil(WHATSAPP_OS_LIMITS.MAX_DOCUMENT_BYTES / 3) * 4
+            || !document.contentBase64.startsWith('JVBERi0')
+            || !/^[A-Za-z0-9+/]+={0,2}$/.test(document.contentBase64)
+            || Math.floor((document.contentBase64.length * 3) / 4)
+                - (document.contentBase64.endsWith('==') ? 2 : document.contentBase64.endsWith('=') ? 1 : 0)
+                > WHATSAPP_OS_LIMITS.MAX_DOCUMENT_BYTES
+        )) throw new WhatsAppOsContractError('WHATSAPP_OS_DOCUMENT_INVALID');
+        template = {
+            ...(registryKey ? { registryKey } : {}),
+            name,
+            language,
+            ...(parameters.length ? { parameters } : {}),
+            ...(document ? { document } : {}),
+        };
     }
 
     let session = value.session;

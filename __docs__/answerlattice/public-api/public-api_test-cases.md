@@ -41,6 +41,7 @@
 | Response | Owner/API payload malformed or oversized | Fixed error; no raw body/error projection. |
 | Error recovery | Public API failure | JSON contains fixed code, message, and safe resolution guidance without request, secret, or provider echo. |
 | OpenAPI | Public contract requested | OpenAPI 3.1 describes three unique operations, typed inputs and success responses, API-key scopes, errors, and the disabled-by-default rollout boundary. |
+| Version policy | OpenAPI and developer page requested | Both identify `/v1` as the stable major, reserve breaking changes for a new major path, describe observable retirement signals, and report no current deprecations. |
 | Agent discovery | Homepage requested with `Accept: text/markdown` | Compact Markdown with `Vary: Accept, Accept-Encoding`; unknown public path keeps 404 with recovery links. |
 
 ## Automated Commands

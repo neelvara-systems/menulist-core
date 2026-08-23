@@ -4,6 +4,7 @@
  */
 
 import { MENU_INTELLIGENCE_POLICY } from "@data/shared/menuIntelligencePolicy";
+import { MENULIST_B2C_PLAN_IDS } from "@constant/menulistPlans";
 
 export const FEATURE_FLAGS = {
     /**
@@ -17,7 +18,7 @@ export const FEATURE_FLAGS = {
     ENABLE_CAMPAIGNCUE_EMAIL_OS_PROVIDER_SEND: false,
     ENABLE_NOTIFICATION_OS: true,
     ENABLE_WHATSAPP_OS: true,
-    ENABLE_MENULIST_WHATSAPP_OS_OWNER_NOTIFICATIONS: false,
+    ENABLE_MENULIST_WHATSAPP_OS_OWNER_NOTIFICATIONS: true,
     ENABLE_ANSWERLATTICE_WHATSAPP_OS_OWNER_NOTIFICATIONS: false,
 
     /**
@@ -588,7 +589,7 @@ export const FEATURE_FLAGS = {
      * Pro/Multi-location MenuList module that prepares copy/share-ready local growth
      * kits from current MenuList truth. This is intentionally separate from the
      * paused Today Weekly Growth Pack and is visible only when the owner has
-     * an active Pro or Premium subscription.
+     * an active Pro or Multi-location subscription.
      *
      * Launch boundaries:
      * - Manual copy/share/download/print only
@@ -599,7 +600,7 @@ export const FEATURE_FLAGS = {
     ENABLE_GROWTHOS_ADDON: true,
     GROWTHOS_ADDON_ACCESS: "paid" as "disabled" | "pilot" | "paid",
     GROWTHOS_PILOT_STORE_IDS: [] as Array<string | number>,
-    GROWTHOS_PAID_PLAN_IDS: ["pro", "premium"] as string[],
+    GROWTHOS_PAID_PLAN_IDS: [MENULIST_B2C_PLAN_IDS.PRO, MENULIST_B2C_PLAN_IDS.MULTI_LOCATION] as string[],
     GROWTHOS_DIRECT_POSTING: "disabled" as "disabled",
     GROWTHOS_STAFF_BRIEF_MODE: "deterministic" as "disabled" | "deterministic",
     GROWTHOS_IMAGE_MODE: "disabled" as "disabled" | "existing_only",
@@ -968,6 +969,7 @@ export const FEATURE_FLAGS = {
     ENABLE_OUTLET_CREATION: true,           // Allow creating outlet stores from master
     ENABLE_PROJECT_PROPAGATION: true,       // Auto-create outlet projects when master creates new project
     ENABLE_OUTLET_BILLING: true,            // Quantity-based billing for outlets
+    ENABLE_BILLING_DOCUMENTS: true,          // Source capability; runtime issuance remains gated by verified seller configuration
     ENABLE_OUTLET_PRORATION_DISPLAY: true,  // Show proration estimate in add-outlet modal
     ENABLE_OUTLET_DEACTIVATE: true,         // Allow outlet deactivation from Chain Control Panel
     ENABLE_CHAIN_CONTROL_PANEL: true,       // Show "Locations" sidebar item for master stores
@@ -1994,11 +1996,11 @@ export const FEATURE_FLAGS = {
      * - /use-menulist/menu-card-export route is available
      * - Share Modal, Use MenuList, and Mobile Share can link to the route
      * - Preview, preflight, PDF creation, print-shop packet, and local history run client-side
-     * - Optional Pro/Premium layout suggestion calls one AI route only after owner click
+     * - Optional Pro/Multi-location layout suggestion calls one AI route only after owner click
      *
      * Firebase cost: $0.00 for export. AI advisor adds one subscription read,
      * one AI operation write, and one subscription credit write after a valid
-     * Pro/Premium recommendation. Starter users are blocked before provider call.
+     * Pro/Multi-location recommendation. Official users are blocked before provider call.
      *
      * @see __docs__/menu-card-export/
      */
@@ -2007,8 +2009,8 @@ export const FEATURE_FLAGS = {
     ENABLE_MENU_CARD_EXPORT_PRINT_SHOP: true,
     ENABLE_MENU_CARD_EXPORT_BATCH: false,
     ENABLE_MENU_CARD_EXPORT_AI_ADVISOR: true,
-    MENU_CARD_EXPORT_AI_ADVISOR_PLAN_IDS: ["pro", "premium"] as string[],
-    ENABLE_PREMIUM_MENULIST_BRANDING_REMOVAL: true,
+    MENU_CARD_EXPORT_AI_ADVISOR_PLAN_IDS: [MENULIST_B2C_PLAN_IDS.PRO, MENULIST_B2C_PLAN_IDS.MULTI_LOCATION] as string[],
+    ENABLE_MULTI_LOCATION_MENULIST_BRANDING_REMOVAL: true,
 
     /**
      * Print Menu Surfaces — tabletop and in-store scan-first print assets
@@ -2030,8 +2032,15 @@ export const FEATURE_FLAGS = {
     ENABLE_PRINTABLE_ASSET_EDITOR_CUSTOMIZE: true,
     ENABLE_PRINTABLE_ASSET_USER_TEMPLATES: true,
     ENABLE_PLATFORM_ASSET_TEMPLATE_MANAGER: true,
-    PRINTABLE_ASSET_TEMPLATE_PLAN_IDS: ['starter', 'pro', 'premium'] as string[],
-    PRINTABLE_ASSET_TEMPLATE_FULL_CATALOG_PLAN_IDS: ['pro', 'premium'] as string[],
+    PRINTABLE_ASSET_TEMPLATE_PLAN_IDS: [
+        MENULIST_B2C_PLAN_IDS.OFFICIAL,
+        MENULIST_B2C_PLAN_IDS.PRO,
+        MENULIST_B2C_PLAN_IDS.MULTI_LOCATION,
+    ] as string[],
+    PRINTABLE_ASSET_TEMPLATE_FULL_CATALOG_PLAN_IDS: [
+        MENULIST_B2C_PLAN_IDS.PRO,
+        MENULIST_B2C_PLAN_IDS.MULTI_LOCATION,
+    ] as string[],
 
     /**
      * QR WhatsApp Experiments — consent-aware physical campaign testing
@@ -2888,7 +2897,7 @@ export const FEATURE_FLAGS = {
      */
     ENABLE_OWNER_NOTIFICATIONS: true,
     ENABLE_OWNER_NOTIFICATION_EMAIL: true,
-    ENABLE_OWNER_NOTIFICATION_WHATSAPP: false,
+    ENABLE_OWNER_NOTIFICATION_WHATSAPP: true,
     ENABLE_OWNER_NOTIFICATION_MENULIST_MIGRATION: true,
     ENABLE_OWNER_NOTIFICATION_ANSWERLATTICE_MIGRATION: true,
     ENABLE_OWNER_NOTIFICATION_OPS_DASHBOARD: true,
@@ -3503,7 +3512,7 @@ export const FEATURE_FLAGS = {
     ENABLE_PUBLIC_TRUTH_MONITOR_ADDON: true,
     PUBLIC_TRUTH_MONITOR_ACCESS: "paid" as "disabled" | "pilot" | "paid",
     PUBLIC_TRUTH_MONITOR_PILOT_STORE_IDS: [] as Array<string | number>,
-    PUBLIC_TRUTH_MONITOR_PAID_PLAN_IDS: ["pro", "premium"] as string[],
+    PUBLIC_TRUTH_MONITOR_PAID_PLAN_IDS: [MENULIST_B2C_PLAN_IDS.PRO, MENULIST_B2C_PLAN_IDS.MULTI_LOCATION] as string[],
     PUBLIC_TRUTH_MONITOR_HISTORY_LIMIT: 6,
     PUBLIC_TRUTH_MONITOR_MULTI_LOCATION_LIMIT: 10,
     PUBLIC_TRUTH_MONITOR_SCHEDULER_MODE: "manual" as "disabled" | "manual" | "scheduled",

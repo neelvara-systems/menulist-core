@@ -129,6 +129,31 @@ export default async function AnswerlatticeDevelopersPage() {
                         </AnswerlatticeLink>
                     </div>
                 </section>
+
+                <section id="public-api-versioning" className="border-t border-white/[0.06] bg-white/[0.01] px-6 py-16">
+                    <div className="mx-auto max-w-5xl">
+                        <SectionHeader
+                            className="mb-8"
+                            eyebrow="Public API stability"
+                            title="Versioned for integrations that must stay predictable."
+                            description="The current server API uses the /v1 path. Existing v1 fields, required inputs, authentication semantics, and status-code meanings will not be removed, renamed, retyped, or made more restrictive inside v1. Compatible optional response fields may be added after they appear in OpenAPI, so consumers should ignore unknown response fields."
+                        />
+                        <div className="grid gap-4 md:grid-cols-2">
+                            <article className="rounded-[1.5rem] border border-white/[0.06] bg-[#09091a]/45 p-6">
+                                <h2 className="text-xl font-semibold text-white">Breaking changes use a new major path</h2>
+                                <p className="mt-3 text-sm leading-relaxed text-[#a0a0c0]">
+                                    A breaking request, response, authentication, or behavior change requires a new major URL such as /v2 plus an explicit migration guide. It does not silently replace the v1 contract.
+                                </p>
+                            </article>
+                            <article className="rounded-[1.5rem] border border-white/[0.06] bg-[#09091a]/45 p-6">
+                                <h2 className="text-xl font-semibold text-white">Deprecation must be observable</h2>
+                                <p className="mt-3 text-sm leading-relaxed text-[#a0a0c0]">
+                                    Before an operation is retired, its OpenAPI operation will be marked deprecated, this page will publish the replacement, migration steps, and exact sunset date, and responses will emit Deprecation, Sunset, and successor-version Link headers. No v1 operation is currently deprecated or scheduled for removal.
+                                </p>
+                            </article>
+                        </div>
+                    </div>
+                </section>
             </main>
             <AnswerlatticeFooter basePath={basePath} />
         </>

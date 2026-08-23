@@ -24,6 +24,7 @@ import { compensateFailedTenantStoreOnboarding } from "@lib/onboarding/compensat
 import { createTenantStoreInTransaction, preCheckSubdomain } from "@lib/onboarding/createTenantStore";
 import { requireOnboardingUserId } from "@lib/onboarding/onboardingUserId";
 import { normalizePhoneNumberForStorage } from "@lib/phone/phoneNumber";
+import { buildOnboardingOwnerNotificationSettings } from "@lib/notification-os/onboardingDefaults";
 import {
     canDeleteCreatedResellerAuthUser,
     readResellerOwnerClaimInTransaction,
@@ -650,6 +651,10 @@ export const POST = withAuth(async (request, session) => {
                     onboardingSource: 'RESELLER_ONBOARDING',
                     subdomain: { preChecked: preCheckedSubdomain },
                     includeTimeSlotPresets: true,
+                    notificationSettings: buildOnboardingOwnerNotificationSettings({
+                        email: normalizedOwnerEmail || ownerLoginEmail,
+                        emailVerified: true,
+                    }),
                     tenantExtra: {
                         countryCode: normalizedOwnerPhone.countryCode,
                         dialCode: normalizedOwnerPhone.dialCode,
@@ -1060,6 +1065,8 @@ export const POST = withAuth(async (request, session) => {
                 renewsOn: null,
                 monthlyCreditsAllowance: tier.monthlyCredits,
                 monthlyCredits: tier.monthlyCredits,
+                promotionalCredits: 0,
+                promotionalCreditsExpireAt: null,
                 topUpCredits: 0,
                 creditsLastResetMonth: new Date().getFullYear() * 100 + (new Date().getMonth() + 1),
                 shortUrl,
@@ -1188,6 +1195,8 @@ export const POST = withAuth(async (request, session) => {
                 renewsOn: null,
                 monthlyCreditsAllowance: tier.monthlyCredits,
                 monthlyCredits: tier.monthlyCredits,
+                promotionalCredits: 0,
+                promotionalCreditsExpireAt: null,
                 topUpCredits: 0,
                 creditsLastResetMonth: new Date().getFullYear() * 100 + (new Date().getMonth() + 1),
                 shortUrl: '',

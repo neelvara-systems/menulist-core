@@ -3064,6 +3064,7 @@ function verifyMenuListDiscovery() {
   const menulistAgentReadiness = read('src/lib/seo/menulistAgentReadiness.ts');
   const menulistDevelopersPage = read('src/app/(website)/developers/page.tsx');
   const menulistOpenApi = read('src/app/(website)/developers/openapi/route.ts');
+  const menulistFooter = read('src/components/website/Footer.tsx');
   const proxy = read('src/proxy.ts');
   const schemaMarkup = read('src/components/website/SchemaMarkup.tsx');
   const pageStructuredData = read('src/components/website/WebsitePageStructuredData.tsx');
@@ -3353,6 +3354,7 @@ function verifyMenuListDiscovery() {
   assertIncludes(menulistAgentReadiness, 'Accept, Accept-Encoding', 'MenuList Markdown Vary contract');
   assertIncludes(proxy, 'buildMenuListAgentMarkdownResponse', 'MenuList Markdown negotiation proxy boundary');
   assertIncludes(menulistDevelopersPage, 'WebsitePageStructuredData', 'MenuList developer reference structured data');
+  assertIncludes(menulistFooter, "{ href: '/developers', key: 'developers' }", 'MenuList homepage footer developer discoverability');
   assertIncludes(menulistOpenApi, "openapi: '3.1.0'", 'MenuList OpenAPI version');
   assertIncludes(menulistOpenApi, "name: 'X-API-Key'", 'MenuList OpenAPI authentication boundary');
 

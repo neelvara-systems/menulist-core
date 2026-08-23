@@ -34,7 +34,7 @@ The founder amendment is [owner-referral_payment-only-policy-amendment-2026-07-1
 
 | Runtime truth | Evidence | Implementation use |
 | --- | --- | --- |
-| Pack credits live in `topUpCredits`. | `src/types/razorpay.ts:92` | Reward writes increment only this field. |
+| Referral rewards live in `promotionalCredits`. | `src/types/razorpay.ts` | Reward writes increment this field and set the 365-day expiry. |
 | Billing capacity consumes monthly then Pack balance. | `src/lib/ai/capacityCheck.ts:136,159-215` | No new wallet or consumption model. |
 | Protected billing mutations use session, tenant/store scope, and billing permission. | `src/lib/billing/billingAccess.ts:35-105` | Owner link/status API uses the same authority boundary. |
 | Regular subscription creation supports existing businesses. | `src/app/api/razorpay/create-subscription/route.ts:188` | Bind a captured referral before an existing-unpaid business creates its first subscription. |
@@ -170,10 +170,10 @@ interface OwnerReferralDocument {
   referredSubscriptionIdAtIssue?: string;
   referrerCreditsAdded?: 100;
   referredCreditsAdded?: 50;
-  referrerTopUpBefore?: number;
-  referrerTopUpAfter?: number;
-  referredTopUpBefore?: number;
-  referredTopUpAfter?: number;
+  referrerPromotionalBefore?: number;
+  referrerPromotionalAfter?: number;
+  referredPromotionalBefore?: number;
+  referredPromotionalAfter?: number;
   referrerRewardTransactionId?: string;
   referredRewardTransactionId?: string;
 }
@@ -423,8 +423,8 @@ For each candidate:
 6. confirm `reward_issued` is not already set;
 7. require both Pack balances to be non-negative safe integers with room for the fixed reward; malformed or overflow-prone values fail the transaction;
 8. derive deterministic `rewardIssueId`;
-9. add 100 to referrer `topUpCredits`;
-10. add 50 to referred `topUpCredits`;
+9. add 100 to referrer `promotionalCredits` with the approved expiry;
+10. add 50 to referred `promotionalCredits` with the approved expiry;
 11. leave monthly fields unchanged;
 12. record before/after balances, subscription IDs, evidence, and `rewardIssuedAt`;
 13. create deterministic `payment_transactions` rows for the referrer and referred business with `transactionType: 'reward_credit'`, `event: 'owner_referral.reward_issued'`, recipient role, credits added, wallet before/after, subscription ID, referral ID, and reward issue ID;
@@ -434,7 +434,7 @@ The transaction does not write top-up purchase records, Razorpay payment events,
 
 ### Refunds and Cancellations
 
-Once issued, referral credits are final. The pooled wallet cannot safely identify whether purchased or referral credits were consumed. Never decrement `topUpCredits`, create a negative balance, or reverse the referral reward. Existing billing/account enforcement remains separate.
+Once issued, referral credits remain promotional value and are never reclassified as purchased Pack credits. Never create a negative balance or reverse a consumed reward. Existing billing/account enforcement remains separate.
 
 ---
 
@@ -499,6 +499,7 @@ Required concepts:
 - Your business receives 100 credits
 - Invited business receives 50 credits
 - Exact examples from `src/data/shared/contentCreditPolicy.ts`
+- Shared promotional-expiry resolution before reward addition; expired stored value remains historical and is not revived
 - Credits are added after both subscriptions are paid
 - No referral limit
 - Their payment pending
@@ -634,7 +635,7 @@ No referral Cloud Function, scheduler task, Functions policy mirror, starter-act
 - [x] Integrate signed webhook first payment and activation repair.
 - [x] Integrate authorized manual/offline activation and renewal repair paths.
 - [x] Add event-driven pending repair for paid referrer/referred stores.
-- [x] Implement atomic 100/50 top-up transaction.
+- [x] Implement atomic 100/50 promotional-credit transaction with a 365-day expiry.
 - [x] Create and display two deterministic reward-credit ledger rows in the same transaction.
 - [x] Prove monthly fields remain unchanged and no duplicate issue occurs.
 - [x] Prove there is no cap, qualification deadline, distribution check, retention wait, or scheduler dependency.

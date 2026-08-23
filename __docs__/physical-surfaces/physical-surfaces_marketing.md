@@ -145,7 +145,7 @@ Download → Print → Done.
 
 ## Pricing Impact
 
-Physical Surfaces included in MenuList Pro (₹999/month).
+Current print and physical-surface entitlements follow the active Menu Kit and plan configuration. Pro is ₹1,499/month.
 
 No additional charge. No separate SKU.
 

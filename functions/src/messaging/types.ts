@@ -24,6 +24,7 @@ export const MESSAGE_EVENTS = {
   CREDIT_PURCHASE_SUCCESS: 'CREDIT_PURCHASE_SUCCESS',
   CREDITS_EXHAUSTED: 'CREDITS_EXHAUSTED',
   MENU_STALE: 'MENU_STALE',
+  BILLING_DOCUMENT_ISSUED: 'BILLING_DOCUMENT_ISSUED',
 } as const;
 
 export type MessageEventType = typeof MESSAGE_EVENTS[keyof typeof MESSAGE_EVENTS];
@@ -45,6 +46,7 @@ export const EVENT_PRIORITY: Record<MessageEventType, MessagePriority> = {
   CREDIT_PURCHASE_SUCCESS: 'important',
   CREDITS_EXHAUSTED: 'warning',
   MENU_STALE: 'warning',
+  BILLING_DOCUMENT_ISSUED: 'important',
 };
 
 // ================================================================

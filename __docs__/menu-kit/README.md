@@ -40,7 +40,7 @@ Menu Kit is an auto-generated "Launch Pack" of print-ready and social-ready asse
 
 ### What's in the Kit (Frozen — 10 Generated Asset Files + Staff Script + Print Instructions)
 
-All visual assets use the store's existing logo and brand accent color when available. Brand color is used for gradient framing, accent panels, and borders; QR modules stay near-black on a high-contrast white scan panel with a generated four-module quiet zone for scan reliability. Printable/downloadable assets carry subtle MenuList attribution with the logo mark, name, and `menulist.ai` domain unless the store's already-loaded active plan is `premium`.
+All visual assets use the store's existing logo and brand accent color when available. Brand color is used for gradient framing, accent panels, and borders; QR modules stay near-black on a high-contrast white scan panel with a generated four-module quiet zone for scan reliability. Printable/downloadable assets carry subtle MenuList attribution with the logo mark, name, and `menulist.ai` domain unless the store's already-loaded active plan is `menulist_multi_location`.
 
 1. **Table Tent (A5 fold PDF)** — Print Menu Surfaces-owned tabletop card with QR + instruction line + short link fallback + branding
 2. **Single Table / Counter Card (A6 PDF)** — Upright non-folded card for acrylic holders, counters, wall clips, and single-sided stands
@@ -109,7 +109,7 @@ Menu Kit does not own WhatsApp opt-in flows, WhatsApp preview pages, scan-to-Wha
 | Component                     | File                                             | Reusable?                           |
 | ----------------------------- | ------------------------------------------------ | ----------------------------------- |
 | Premium output tokens         | `src/lib/menu-kit/brandTokens.ts`                | ✅ Shared logo/color/gradient/near-black QR readability defaults |
-| Platform attribution          | `src/lib/menu-kit/platformAttribution.ts`, `src/lib/platform/menuListBranding.ts` | ✅ Shared MenuList logo/name/domain footer for printable/downloadable outputs, hidden only for Premium stores |
+| Platform attribution          | `src/lib/menu-kit/platformAttribution.ts`, `src/lib/platform/menuListBranding.ts` | ✅ Shared MenuList logo/name/domain footer for printable/downloadable outputs, hidden only for Multi-location stores |
 | Table tent renderer           | `src/lib/print-menu-surfaces/templates/tableTentTemplate.ts` | ✅ Owned by Print Menu Surfaces and bundled by Menu Kit |
 | Tent card PDF generator       | `src/lib/physical-surfaces/tentCardGenerator.ts` | ✅ Legacy Today cards now reuse premium output tokens |
 | Counter sticker PNG generator | `src/lib/physical-surfaces/stickerGenerator.ts`  | ✅ Legacy Today stickers now reuse premium output tokens |
@@ -139,7 +139,7 @@ An independent ChatGPT strategic review of the original Physical Surfaces spec (
 
 1. **Identity surfaces > Recommendation surfaces** — "SCAN TO VIEW MENU" creates infrastructure dependency; "Most customers order Butter Chicken" creates marketing noise
 2. **Physical surfaces = offline distribution nodes** — Every restaurant with Menu Kit assets becomes a MenuList discovery point
-3. **"Powered by" growth loop** — Customers encountering MenuList branding across non-Premium stores builds platform recognition; Premium stores receive visible branding removal as paid value
+3. **"Powered by" growth loop** — Customers encountering MenuList branding across non-Multi-location stores builds platform recognition; Multi-location stores receive visible branding removal as paid value
 4. **Zero campaign dependency** — Printed objects must remain valid for months/years; campaign-tied content becomes stale
 5. **Staff script is critical** — Staff behavior determines whether QR systems succeed or fail
 

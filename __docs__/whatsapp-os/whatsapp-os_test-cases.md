@@ -1,7 +1,12 @@
 # WhatsAppOS — Test Cases
 
 > **Status:** Source and emulator certification passed; Meta/provider and remaining deploy evidence required before activation
-> **Last Updated:** August 15, 2026
+> **Last Updated:** August 23, 2026
+
+- Billing-document templates declare a required document header; the sender rejects a missing or mismatched header contract, unsafe filename, non-PDF content type, or decoded attachment above 8MB before sending the customer message.
+- A successful bounded media upload supplies only its media ID to the approved template header. MenuList does not persist PDF bytes or a provider media URL.
+- A media-upload failure is an explicit failed attempt with no customer message request. An ambiguous `/messages` outcome remains non-retryable until reconciliation, preserving the existing duplicate-send boundary.
+- A confirmed `/messages` rejection triggers best-effort orphan-media deletion. A timeout or other ambiguous result does not delete the uploaded document because Meta may have accepted the message.
 
 ## Configuration And Templates
 

@@ -1,5 +1,8 @@
 import { AI_ACTIONS_TYPES } from "@constant/common";
-import { CONTENT_CREDIT_OPERATION_COSTS } from "@data/shared/contentCreditPolicy";
+import {
+    CONTENT_CREDIT_OPERATION_COSTS,
+    MENULIST_CONTENT_CREDIT_PACK,
+} from "@data/shared/contentCreditPolicy";
 import { calculateGeminiResponseCostMicroUsd } from "@data/shared/geminiSpendPolicy";
 
 // ═══════════════════════════════════════════════════════════════
@@ -66,7 +69,7 @@ export const GEMINI_COST_USD: Record<string, number> = {
 // Calibrated so: 250 units ≈ enough for a typical store's first
 // month of active AI usage (descriptions + 20 images + 3 languages)
 //
-// 1 unit ≈ ₹12 at ₹2,999 per 250-unit pack
+// Public rates are versioned separately from internal provider cost and margin.
 //
 // Eligible owner-operation rates are public so credit packs and referral
 // rewards have concrete meaning. Provider cost, margin, and overdraft remain
@@ -109,7 +112,7 @@ export const AI_UNIT_COSTS: Record<string, number> = {
     // Paid operations (consumes units from monthly credits)
     // These are VALUE-ADD operations that produce premium outputs.
     [AI_ACTIONS_TYPES.CAMPAIGN_CAPTION]: 1, // Tiny owner-requested campaign copy generation
-    [AI_ACTIONS_TYPES.MENU_CARD_EXPORT_DESIGN_ADVISOR]: 1, // Pro/Premium print-layout recommendation
+    [AI_ACTIONS_TYPES.MENU_CARD_EXPORT_DESIGN_ADVISOR]: 1, // Pro/Multi-location print-layout recommendation
     [AI_ACTIONS_TYPES.REVIEW_REPLY_SUGGESTION]: 1, // Owner-requested review reply draft
     [AI_ACTIONS_TYPES.REWRITE_DESCRIPTION]: CONTENT_CREDIT_OPERATION_COSTS.DESCRIPTION_REWRITE,
     [AI_ACTIONS_TYPES.IMAGE_GENERATION]: CONTENT_CREDIT_OPERATION_COSTS.GENERATED_MENU_IMAGE,
@@ -119,17 +122,6 @@ export const AI_UNIT_COSTS: Record<string, number> = {
     [AI_ACTIONS_TYPES.IMAGE_TRANSLATION]: CONTENT_CREDIT_OPERATION_COSTS.IMAGE_TRANSLATION,
     [AI_ACTIONS_TYPES.IMAGE_EDITING]: CONTENT_CREDIT_OPERATION_COSTS.IMAGE_EDIT,
 };
-
-/**
- * Overdraft buffer for soft enforcement at launch.
- *
- * Allows users to exceed their exact capacity by this percentage
- * before blocking. Prevents bad first impressions and support friction.
- *
- * Set to 0 for strict enforcement (after real usage data collected).
- * NEVER expose this to customers.
- */
-export const OVERDRAFT_BUFFER_PERCENT = 20; // 20% overdraft allowed at launch
 
 const hasOwnCostEntry = (registry: Record<string, number>, actionType: string) =>
     Object.prototype.hasOwnProperty.call(registry, actionType);
@@ -190,9 +182,11 @@ export function getRealCostPaise(actionType: string, usage?: GeminiRealCostUsage
 
 /**
  * Get what we charge the customer for an operation (in INR paise)
- * Based on: 1 unit = ₹2999 / 250 = ₹11.996 ≈ ₹12
+ * Derived from the canonical INR content-credit Pack price.
  */
-export const CHARGE_PER_UNIT_PAISE = Math.round((299900 / 250)); // 1199.6 → 1200 paise = ₹12
+export const CHARGE_PER_UNIT_PAISE = Math.round(
+    MENULIST_CONTENT_CREDIT_PACK.priceINRPaise / MENULIST_CONTENT_CREDIT_PACK.creditAmount,
+);
 
 export function getOurChargePaise(actionType: string): number {
     return getUnitCost(actionType) * CHARGE_PER_UNIT_PAISE;

@@ -1,11 +1,13 @@
 # NotificationOS — Firebase Cost And Data Plan
 
-> **Status:** Implemented cost contract; provider activation pending
-> **Last Updated:** August 15, 2026
+> **Status:** Implemented cost contract; provider delivery remains configuration- and consent-gated
+> **Last Updated:** August 23, 2026
 
 ## Primary Cost Decision
 
 Reuse the current collections and resolve business context once per processing attempt. Email-only, WhatsApp-only and combined delivery must have the same product-scope read count.
+
+Initial notification settings are included in the existing store-creation write. Onboarding adds zero Firestore operations.
 
 ## Collections
 

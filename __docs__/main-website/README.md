@@ -2,9 +2,9 @@
 
 The current public brand framing is `The official customer-facing version of your business.` with the supporting line `Publish your menu, hours, links, and business information from one owner-approved source.` The implementation keeps the existing official-customer-link conversion story and owner-approved surface boundaries.
 
-**Version:** 3.6.119 (Operational Proof Placement)
+**Version:** 3.6.120 (Developer Reference Discoverability)
 **Status:** ✅ IMPLEMENTED — Canonical
-**Last Updated:** August 14, 2026
+**Last Updated:** August 22, 2026
 **Workflow:** `.codex/workflows/website.md`
 
 ---
@@ -15,9 +15,12 @@ The current implementation is the only default MenuList marketing website.
 
 | Canonical Version | Name | Core Message | Status |
 | ----------------- | ---- | ------------ | ------ |
+| **3.6.120** | **Developer Reference Discoverability** | **The shared public footer links directly to the existing localized `/developers` reference so human and agent journeys can reach the implemented read-only API contract from homepage HTML.** | **ACTIVE** |
 | **3.6.119** | **Operational Proof Placement** | **Weekly Menu Review and outlet launch readiness appear as narrow proof inside existing homepage, Features, Business Health, and Multi-location stories without adding a route or homepage section.** | **ACTIVE** |
 | **3.6.118** | **Website Audit Hardening** | **Public pages load without the authenticated Firebase sign-out chain, closed menus leave the keyboard order, contact submissions have a bounded platform inbox, and dense conversion surfaces remain readable across practical viewports.** | **ACTIVE** |
 | **3.6.117** | **Homepage Private Preview Surface Polish** | **The try-first homepage preview now uses one readable, responsive product surface instead of nested card layers and low-contrast panel text.** | **ACTIVE** |
+
+Version 3.6.120 adds one localized `Developers` link to the shared footer Resources column. It points to the already-implemented `/developers` page and OpenAPI reference; it does not add an endpoint, credential, OAuth flow, SDK, MCP action, entitlement, Firebase operation, or deployment. The agent-readiness verifier now source-gates the visible homepage/footer route.
 
 Version 3.6.119 adds the smallest public proof for two shipped owner improvements. The mounted homepage `OwnerProofSection`, `/features`, and `/features/business-health` now describe Weekly Menu Review as a comparison of existing selected-menu activity for this week and last week beside the location-level current check. `/features` and `/multi-location` now explain that opening an outlet shows its next required menu, publish, or customer-link step. The deeper homepage `BusinessHealthSection` remains unmounted, and no route, navigation item, section order, image, layout, runtime data path, Firebase artifact, Function, provider, dependency, build, or deployment changed. `npm run verify:website-operational-proof-placement` is the focused source/docs/discovery/localization gate for this placement.
 
@@ -33,7 +36,7 @@ Version 3.6.116 repairs the `/how-it-works` source-map connector network on narr
 
 Version 3.6.115 remains Website Truth and Owner Journey Audit and is preserved below as the previous website version note.
 
-Version 3.6.115 audits the website from first owner question through create-menu, pricing, contact, public proof, and owner-dashboard handoff. Homepage and How It Works no longer advertise direct typed-list or direct PDF upload through `/create-menu`; the supported public entry is a photo/image upload or an owned public menu/service-list/image/PDF link. The starter link and QR can be published and tried during the seven-day setup; a paid plan must be active before the deadline to keep the same URL live afterward. Pricing comparison entitlement values are preserved while unsupported accuracy, direct social-posting, search-appearance, virtual-try-on, and hype claims are removed. About and Contact remain discoverable from the footer, stale anchors and three public placeholder-proof blocks are removed, `/ml/create-menu` retains the alias through sign-in and preview, and private owner routes now use honest metadata with `noindex, nofollow, nocache`.
+Version 3.6.115 audits the website from first owner question through create-menu, pricing, contact, public proof, and owner-dashboard handoff. Homepage and How It Works no longer advertise direct typed-list or direct PDF upload through `/create-menu`; the supported public entry is a photo/image upload or an owned public menu/service-list/image/PDF link. The customer link and QR can be published and tried during the seven-day setup; a paid plan must be active before the deadline to keep the same URL live afterward. Pricing comparison entitlement values are preserved while unsupported accuracy, direct social-posting, search-appearance, virtual-try-on, and hype claims are removed. About and Contact remain discoverable from the footer, stale anchors and three public placeholder-proof blocks are removed, `/ml/create-menu` retains the alias through sign-in and preview, and private owner routes now use honest metadata with `noindex, nofollow, nocache`.
 
 The same pass improves keyboard, screen-reader, reduced-motion, and mobile behavior across the shared header/drawer, language menu, create-menu upload target, contact form, pricing controls/table/dialogs, sticky CTA, hero media, and contrast tokens. Route-specific Open Graph metadata now keeps the approved preview image and matching Twitter title/description through one shared completion helper, including generated localized Resource metadata. Version 3.6.118 supersedes the earlier contact-consumer gap: accepted MenuList contact rows can now be reviewed manually by a verified platform operator at `/ops/website-enquiries`. The source implementation does not promise a response time or automatic notification, and hosted release/operating observation remain external evidence. Doctrine keeps silence for healthy routine operation while explicitly allowing owner review for public truth, billing, legal, security, and exceptions. No extraction, publish, subscription, Razorpay, owner data mutation, Firebase rule/index, Cloud Function, provider, dependency, Vercel deployment, or production build contract changed in this website pass.
 

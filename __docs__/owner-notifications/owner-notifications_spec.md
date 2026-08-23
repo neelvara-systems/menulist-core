@@ -6,6 +6,8 @@
 
 > **Current release boundary (July 16, 2026):** This specification records owner-notification architecture and local source evidence only. It is not current production-launch approval. Current owner-notification release approval requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md) evidence, `npm run verify:owner-notifications-boundary`, scoped provider smoke for SMTP/WhatsApp where enabled, platform recovery monitor browser QA, target Firebase deploy evidence where Functions logic changes, target Vercel deploy evidence where app routes change, and production-host smoke.
 
+August 23 billing-document boundary: an issued MenuList tax invoice or credit note produces one deterministic `BILLING_DOCUMENT_ISSUED` event keyed by the billing-document ID. NotificationOS applies the owner's saved email/WhatsApp/both mode, channel availability, and explicit WhatsApp consent. It reconstructs the PDF from the scoped immutable billing record: email attaches it, while WhatsApp uses the approved utility template's document header after a direct Meta media upload. Both messages retain the authenticated owner-document link as fallback. The system does not create a public invoice URL, persist PDF bytes in NotificationOS, or duplicate the billing ledger.
+
 > **July 13 internal-recovery boundary:** Platform recovery access now requires the exact current persisted platform user after a fail-closed limiter, not only a signed session claim. Dashboard status metrics are explicitly recent-window counts. This does not change owner recipients, triggers, templates, delivery channels, or public behavior.
 
 ## Executive Summary
@@ -75,6 +77,8 @@ Email is the baseline. WhatsApp is not a blanket mirror of every email.
 No trigger may send to a recipient field that was not resolved through the product-specific resolver.
 
 WhatsApp recipient fields are resolved to canonical international digits before delivery. The resolver may use `notificationSettings.whatsappNumber`, owner/store/workspace WhatsApp fields, explicit recipient hints, canonical `phone`, or local `phoneNumber` with stored `countryCode`/`dialCode`; it must not send a local number directly to the WhatsApp API.
+
+MenuList onboarding defaults the new store to all eligible owner channels. The default does not weaken admission: email still requires a verified real address, and WhatsApp still requires a verified number plus explicit notification consent. A provided public business phone, reseller-entered phone, or OTP event is not consent by itself.
 
 ## Formatting Rules
 

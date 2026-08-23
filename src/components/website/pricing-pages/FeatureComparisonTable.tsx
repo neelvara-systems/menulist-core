@@ -1,6 +1,7 @@
 
 import { Feature, Plan, PlanType } from '@data/common';
 import { commonFeaturesList } from '@data/PlatformFeaturesList';
+import { MENULIST_B2C_PLAN_IDS } from '@constant/menulistPlans';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@shadcncomponents/table';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@shadcncomponents/tooltip';
 import { FC, Fragment } from 'react';
@@ -15,6 +16,12 @@ const featureCategoryKeys: Record<string, string> = {
     'Support & Services': 'supportServices',
     'Platform Essentials': 'platformEssentials',
     'API & Integrations': 'apiIntegrations',
+};
+
+const planNameKeys: Record<string, string> = {
+    [MENULIST_B2C_PLAN_IDS.OFFICIAL]: 'planOfficial',
+    [MENULIST_B2C_PLAN_IDS.PRO]: 'planPro',
+    [MENULIST_B2C_PLAN_IDS.MULTI_LOCATION]: 'planMultiLocation',
 };
 
 const renderFeatureValue = (
@@ -76,7 +83,7 @@ const FeatureComparisonTable: FC<{ allFeaturesList: Feature[], plans: Plan[], pl
                         <TableHead scope="col" className="w-[300px] text-slate-800 dark:text-slate-100 font-semibold text-base">{t('Pricing.comparisonFeatures')}</TableHead>
                         {plans.map(plan => (
                             <TableHead scope="col" key={plan.planId} className="text-center text-slate-800 dark:text-slate-100 font-semibold text-base">
-                                {t(`Pricing.plan${plan.planId[0].toUpperCase()}${plan.planId.slice(1)}`)}
+                                {t(`Pricing.${planNameKeys[plan.planId] || 'planCustom'}`)}
                             </TableHead>
                         ))}
                     </TableRow>

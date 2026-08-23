@@ -26,7 +26,7 @@
 | Become the default link owners share | Owner stops sending PDFs/Zomato/Instagram and sends only MenuList link                      |
 | Instant access to business info      | Page loads in <1.5s on mobile 4G in India                                                   |
 | Official source stays current        | OBP reflects store changes within 60 seconds                                                |
-| Brand spread                         | "Powered by MenuList" visible on non-Premium OBP pages                                      |
+| Brand spread                         | "Powered by MenuList" remains visible unless branding removal is included                    |
 | Distribution surface                 | Thousands of MenuList links circulating in the wild                                         |
 | Link replacement rate                | Owner uses OBP link for ≥80% of customer interactions (replaces PDFs, Maps, manual replies) |
 | Distribution behavior                | Owner shares OBP via WhatsApp ≥2 times per week (tracked via OBP_SHARE event)               |
@@ -71,7 +71,7 @@
 - Update signal: "Updated today" or "Updated {date}" from the store's generic `modifiedOn` timestamp. This is page-update evidence, not owner verification of every fact.
 - Established year: "Serving since [year]"
 - Permanent closure state: "Permanently Closed" with disabled menu CTA
-- Footer: "Official Page · Powered by MenuList" for non-Premium stores
+- Footer: "Official Page · Powered by MenuList" for non-Multi-location stores
 - Dashboard integration: link display, copy link, copy message, dual QR (Share + Menu)
 - Schema.org: `@id`, `mainEntityOfPage`, `identifier` (MenuList Entity ID), normalized telephone, bounded `priceRange`, temporary full-day closure hours, `foundingDate`, image array, and `permanentlyClosed` signal. Owner-entered Google rating references render visibly only and are not emitted as `AggregateRating` markup.
 - AEO canonical title: "Name — Menu, Hours, Contact"
@@ -180,7 +180,7 @@
 | FR-04 | Call, WhatsApp, Directions, Google reviews, feedback, reserve, and order quick action buttons with owner visibility controls | P0       |
 | FR-05 | Address and today's hours displayed                      | P0       |
 | FR-06 | Social links (Instagram, Facebook, Website) if available | P1       |
-| FR-07 | "Powered by MenuList" footer for non-Premium stores; Premium stores hide visible MenuList attribution | P0       |
+| FR-07 | "Powered by MenuList" footer for non-Multi-location stores; Multi-location stores hide visible MenuList attribution | P0       |
 | FR-08 | Dashboard shows official link with copy + QR download    | P0       |
 | FR-09 | Schema.org LocalBusiness JSON-LD                         | P0       |
 | FR-10 | "Menu coming soon" state if no published menu            | P0       |

@@ -7,30 +7,26 @@
 
 | Public plan | Internal plan ID | INR monthly | INR annual | USD monthly | USD annual | Checkout quantity |
 | --- | --- | ---: | ---: | ---: | ---: | ---: |
-| Official | `starter` | ₹599 | ₹5,990 | $29 | $290 | 1 |
-| Pro | `pro` | ₹1,499 | ₹14,990 | $79 | $790 | 1 |
-| Multi-location | `premium` | ₹1,499 per active location | ₹14,990 per active location | $79 per active location | $790 per active location | Minimum 2 |
+| Official | `menulist_official` | ₹599 | ₹5,990 | $29 | $290 | 1 |
+| Pro | `menulist_pro` | ₹1,499 | ₹14,990 | $79 | $790 | 1 |
+| Multi-location | `menulist_multi_location` | ₹1,499 per active location | ₹14,990 per active location | $79 per active location | $790 per active location | Minimum 2 |
 
 Annual billing equals ten monthly payments. The public pricing page must describe this as two months included, not as an unverified percentage or daily-price anchor.
 
 ## Naming and lifecycle boundaries
 
-- Public `Official` maps to stable internal ID `starter`.
-- Public `Multi-location` maps to stable internal ID `premium`.
+- Official uses persisted billing ID `menulist_official`.
+- Pro uses persisted billing ID `menulist_pro`.
+- Multi-location uses persisted billing ID `menulist_multi_location`.
 - The seven-day setup is not a paid plan. It lets the owner prepare, publish, and review the customer link before choosing paid continuity.
 - Official and Pro are single-location direct subscriptions. Multi-location is the direct plan that can purchase more than one location.
 - Reseller/manual prepaid capacity remains a separate billing mode and is not forced through the direct Multi-location checkout.
-- Credits, enhancement packs, taxes, invoices, and reseller commercial pricing are outside this decision.
+- Direct subscription documents store `amount` as the per-location unit price in the smallest currency unit and store paid location capacity separately in `quantity`. Cycle totals are `amount × quantity`.
+- Credits, enhancement packs, invoices, and reseller commercial pricing are outside this decision. MenuList tax calculation is governed separately by `__docs__/billing-taxation/README.md`; plan prices in this contract remain tax-exclusive.
 
-## Pre-launch data decision
+## Internal billing identity
 
-MenuList is not live. This contract is fresh launch truth. Do not add:
-
-- backfill jobs;
-- old-price migrations;
-- grandfathered plans;
-- compatibility aliases beyond the intentionally stable plan IDs;
-- dual-read or dual-write logic for a previous public pricing model.
+Internal plan IDs are immutable, product-namespaced runtime billing and entitlement contracts, separate from public plan names. MenuList API plans use `menulist_api_starter` and `menulist_api_pro`. Unnamespaced IDs are not accepted as aliases.
 
 ## Source contracts
 
@@ -47,9 +43,11 @@ MenuList is not live. This contract is fresh launch truth. Do not add:
 Run:
 
 ```bash
-npx ts-node --project tsconfig.scripts.json scripts/verification/test-menulist-pricing-policy.ts
-npx ts-node --project tsconfig.scripts.json scripts/verification/test-purchase-intent-boundary.ts
-npx ts-node --project tsconfig.scripts.json scripts/verification/test-onboarding-subscription-boundary.ts
+npm run test:menulist-pricing-policy
+npm run test:purchase-intent-boundary
+npm run test:onboarding-subscription-boundary
+npm run test:billing-settlement-boundaries
+npm run verify:onboarding-subscription-boundary
 npx tsc --noEmit
 ```
 

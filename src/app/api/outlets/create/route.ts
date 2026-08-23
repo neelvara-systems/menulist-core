@@ -16,6 +16,9 @@ import {
 } from "@data/shared/platformCounterBoundary";
 import { DB_COLLECTIONS } from "@constant/database";
 import { PERMISSIONS } from "@constant/permissions";
+import { MENULIST_B2C_PLAN_IDS } from "@constant/menulistPlans";
+import { resolveMenuListQuantityCreditUpdate } from "@data/shared/contentCreditPolicy";
+import { resizeMenuListTaxSnapshot, type MenuListTaxSnapshot } from "@data/shared/billingTaxPolicy";
 import { isReservedOutletSlug } from "@constant/reservedSlugs";
 import { createDefaultRoles, getOwnerRoleId } from "@data/defaultRoles";
 import { getActiveSubscriptionForStore, updateSubscription } from "@database/subscriptions/server";
@@ -190,6 +193,11 @@ export const POST = withAuth(async (request, session) => {
     let newQty = 1;
     let subId: string | undefined;
     let providerSubId: string | undefined;
+    let previousTaxSnapshot: MenuListTaxSnapshot | undefined;
+    let previousQuantityCreditState: {
+        monthlyCredits: number;
+        monthlyCreditsAllowance: number;
+    } | null = null;
     let masterPromoted = false;
     let lockAcquired = false;
     let subscriptionQuantityUpdated = false;
@@ -294,6 +302,13 @@ export const POST = withAuth(async (request, session) => {
         }
 
         const sub = await getActiveSubscriptionForStore(tenantId as number, storeId as number);
+        previousTaxSnapshot = sub?.taxSnapshot;
+        if (sub?.planId === MENULIST_B2C_PLAN_IDS.MULTI_LOCATION) {
+            previousQuantityCreditState = {
+                monthlyCredits: Number(sub.monthlyCredits || 0),
+                monthlyCreditsAllowance: Number(sub.monthlyCreditsAllowance || 0),
+            };
+        }
         if (FEATURE_FLAGS.ENABLE_OUTLET_BILLING) {
             if (!sub) {
                 return NextResponse.json(
@@ -307,7 +322,7 @@ export const POST = withAuth(async (request, session) => {
                     { status: 402 },
                 );
             }
-            if (sub.billingMode !== 'manual' && sub.planId !== 'premium') {
+            if (sub.billingMode !== 'manual' && sub.planId !== MENULIST_B2C_PLAN_IDS.MULTI_LOCATION) {
                 return NextResponse.json(
                     { error: "Choose the Multi-location plan before adding another location" },
                     { status: 402 },
@@ -373,7 +388,20 @@ export const POST = withAuth(async (request, session) => {
             }
         }
         if (FEATURE_FLAGS.ENABLE_OUTLET_BILLING && subId && newQty !== previousQty) {
-            await updateSubscription(subId, { quantity: newQty });
+            await updateSubscription(subId, {
+                quantity: newQty,
+                ...(sub?.taxSnapshot ? {
+                    taxSnapshot: resizeMenuListTaxSnapshot(sub.taxSnapshot, newQty),
+                } : {}),
+                ...(sub?.planId === MENULIST_B2C_PLAN_IDS.MULTI_LOCATION
+                    ? resolveMenuListQuantityCreditUpdate({
+                        currentMonthlyCredits: sub.monthlyCredits,
+                        currentMonthlyCreditsAllowance: sub.monthlyCreditsAllowance,
+                        planId: sub.planId,
+                        quantity: newQty,
+                    })
+                    : {}),
+            });
             subscriptionQuantityUpdated = true;
         }
 
@@ -790,7 +818,13 @@ export const POST = withAuth(async (request, session) => {
         }
         if (subscriptionQuantityUpdated && subId) {
             try {
-                await updateSubscription(subId, { quantity: previousQty });
+                await updateSubscription(subId, {
+                    quantity: previousQty,
+                    ...(previousTaxSnapshot ? {
+                        taxSnapshot: resizeMenuListTaxSnapshot(previousTaxSnapshot, previousQty),
+                    } : {}),
+                    ...(previousQuantityCreditState || {}),
+                });
             } catch (revertErr) {
                 logMultiOutletFailure(
                     "multi_outlet_subscription_quantity_revert_failed",

@@ -74,7 +74,7 @@ AI Menu Manager appears in these website surfaces:
 | Feature menu | Add AI Menu Manager as the first Operate feature. |
 | Features page | Add AI Menu Manager as the first Operations card. |
 | How It Works | Update step 04 to "Tell MenuList what changed." |
-| Pricing | Show AI Menu Manager as a Pro/Premium value driver. |
+| Pricing | Show AI Menu Manager as a Pro/Multi-location value driver. |
 | FAQ | Add safety questions around approval, chatbot boundary, staff access, and unsupported external platforms. |
 | Sitemap / LLM files | Include `/ai-menu-manager` in discovery files. |
 

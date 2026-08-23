@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic';
 import { menulistServerEnv } from '@lib/env/menulistServerEnv';
 import { DB_COLLECTIONS } from "@constant/database";
+import { PRODUCT_IDS } from '@constant/product';
 import { canManageAnswerlatticeBillingMutation, canManageBillingMutation } from "@lib/billing/billingAccess";
 import {
     getActiveProductSubscriptionForStore,
@@ -19,7 +20,9 @@ import {
 } from "@lib/billing/razorpayDiagnostics";
 import { isAnswerlatticeBillingProduct, normalizeBillingProductId, resolveProviderBillingProductId } from "@lib/billing/productBillingPlans";
 import {
+    isSettledTopupStatus,
     resolveCurrentTopupSubscriptionSettlement,
+    resolveTopupCreditDebtAllocation,
     resolveVerifiedTopupSettlement,
     type CurrentTopupSubscriptionSettlement,
 } from '@lib/billing/topupSettlement';
@@ -328,7 +331,8 @@ export const POST = withAuth(async (request, session) => {
             })
         );
 
-        if (existingTopup?.status === 'paid') {
+        const isExistingSettledTopup = Boolean(existingTopup && isSettledTopupStatus(existingTopup.status));
+        if (isExistingSettledTopup && existingTopup) {
             if (existingTopup.providerPaymentId && existingTopup.providerPaymentId !== razorpay_payment_id) {
                 logger.security('Topup Order Payment Mismatch', {
                     ...getBoundedRazorpaySecurityContext(session, request),
@@ -502,7 +506,8 @@ export const POST = withAuth(async (request, session) => {
             const topupData = topupSnap.exists ? topupSnap.data() : null;
             const subscriptionData = subscriptionSnap.exists ? subscriptionSnap.data() : null;
 
-            if (topupData?.status === 'paid') {
+            const isSettledTopup = Boolean(topupData && isSettledTopupStatus(topupData.status));
+            if (isSettledTopup && topupData) {
                 const existingSettlement = resolveVerifiedTopupSettlement({
                     expectedOrderId: razorpay_order_id,
                     expectedPaymentId: razorpay_payment_id,
@@ -582,7 +587,28 @@ export const POST = withAuth(async (request, session) => {
                 };
             }
 
-            const newBalance = currentSubscription.topUpCredits + transactionSettlement.creditsToAdd;
+            const currentRefundDebt = productId === PRODUCT_IDS.MENULIST
+                ? subscriptionData?.topUpCreditRefundDebt ?? 0
+                : 0;
+            const debtAllocation = resolveTopupCreditDebtAllocation({
+                creditsPurchased: transactionSettlement.creditsToAdd,
+                refundDebt: currentRefundDebt,
+            });
+            if (!debtAllocation) {
+                return {
+                    alreadyVerified: false,
+                    invalidSettlement: false,
+                    invalidSubscription: true,
+                    newBalance: 0,
+                    paymentMismatch: false,
+                };
+            }
+            const {
+                creditsAppliedToBalance,
+                creditsOffsetAgainstRefundDebt,
+                remainingRefundDebt,
+            } = debtAllocation;
+            const newBalance = currentSubscription.topUpCredits + creditsAppliedToBalance;
             if (!Number.isSafeInteger(newBalance)) {
                 return {
                     alreadyVerified: false,
@@ -596,13 +622,20 @@ export const POST = withAuth(async (request, session) => {
 
             tx.set(subscriptionRef, {
                 topUpCredits: newBalance,
+                ...(productId === PRODUCT_IDS.MENULIST ? { topUpCreditRefundDebt: remainingRefundDebt } : {}),
                 modifiedOn: serverNow,
             }, { merge: true });
             tx.set(topupRef, {
                 paymentProvider: 'razorpay',
                 providerOrderId: topupDocumentId,
                 providerPaymentId: razorpay_payment_id,
+                subscriptionDocumentId: subscriptionId,
+                providerSubscriptionId: currentSubscription.providerSubscriptionId
+                    || currentSubscription.id
+                    || null,
                 creditsAdded: transactionSettlement.creditsToAdd,
+                creditsAppliedToBalance,
+                creditsOffsetAgainstRefundDebt,
                 amount: transactionSettlement.amount,
                 currency: transactionSettlement.currency,
                 status: 'paid',

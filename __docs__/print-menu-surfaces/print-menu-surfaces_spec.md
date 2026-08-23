@@ -13,7 +13,7 @@ This feature is separate from full menu PDF export and separate from social imag
 
 - Make tabletop menu access look professional and easy to scan.
 - Keep QR reliability stronger than decoration.
-- Reuse the existing business name, logo, brand color, live menu URL, short URL, business type, and Premium attribution rule.
+- Reuse the existing business name, logo, brand color, live menu URL, short URL, business type, and Multi-location attribution rule.
 - Keep desktop and mobile downloads visually identical.
 - Add no Firebase cost.
 
@@ -46,7 +46,7 @@ The table tent and single table/counter card are owned by Print Menu Surfaces. C
 - Use the old-card visual structure owners already recognized: brand top band, floating white card, centered QR, scan line, short link, and footer attribution.
 - The instruction must be short: scan code, view menu.
 - Store name must fit within the card; long names are truncated.
-- MenuList attribution is visible unless the already-loaded plan is Premium.
+- MenuList attribution is visible unless the already-loaded plan is Multi-location (`menulist_multi_location`).
 - Business logo/initials stay outside the QR pattern. Do not add a center-logo QR overlay until scan-regression coverage exists.
 - Approved trust language is factual: current menu, service list, catalog, live page, short link, and powered-by attribution. Do not use "official", "verified", "secure", "no spam", WhatsApp badge, or WhatsApp opt-in copy on normal MenuList page QR surfaces.
 - Normal menu/page QR scans should go straight to the live page. A preview interstitial is a separate WhatsApp/consent feature, not part of Print Menu Surfaces.

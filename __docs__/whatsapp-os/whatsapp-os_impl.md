@@ -1,7 +1,7 @@
 # WhatsAppOS — Implementation
 
 > **Status:** Implemented in source; MenuList status-webhook runtime deployed to QA; Meta credentials/templates/subscription and live QA pending
-> **Last Updated:** August 15, 2026
+> **Last Updated:** August 23, 2026
 
 ## Consolidated Consumers
 
@@ -32,6 +32,8 @@ Use exact product environment names such as `MENULIST_*` and `ANSWERLATTICE_*`; 
 - Encode phone-number IDs and canonicalize E.164 destinations.
 - Use manual redirect handling, bounded response reads and abort timeouts.
 - Validate template registry key, language and parameter schema before network work.
+- Admit a document attachment only when the registered template declares a `document` header. Accept only one bounded PDF with a safe filename; upload it directly to `/{phone-number-id}/media`, then place the returned media ID in the template header.
+- If the subsequent message request is definitively rejected, best-effort delete the orphaned uploaded media through Meta's media endpoint. Do not delete it when the message outcome is ambiguous or accepted because delivery may still depend on it.
 - Return stable local error codes and a bounded provider message ID.
 - Never expose raw Graph response or tokens to logs/callers.
 
@@ -105,6 +107,7 @@ Meta publishes the WhatsApp Business Platform collection and webhook payload ref
 - Arbitrary event metadata cannot select a Meta template.
 - Current MenuList and Answerlattice lifecycle entries are `pending_approval`; provider calls fail closed until the exact templates are approved and the registry is updated from onboarding evidence.
 - The current lifecycle templates accept one bounded semantic text parameter. Any future parameter-shape change requires a registry version change and new Meta certification.
+- `menulist.billing_document_issued` additionally requires a document header. Its PDF bytes are transient provider input supplied by NotificationOS after billing-scope validation; WhatsAppOS performs no billing or product-context read and stores no PDF or media URL.
 - Authentication and owner-started messaging onboarding keep their dedicated workflow contracts and are not silently reclassified as lifecycle notifications.
 
 ## Delivery-State Race Handling

@@ -9,11 +9,16 @@ export type AnalyticsAiEntitlementReason =
 export interface AnalyticsAiEntitlement {
     enabled: boolean;
     activePlanType?: string | null;
-    requiredPlanType: 'pro';
+    requiredPlanType: typeof ANALYTICS_AI_REQUIRED_PLAN_TYPE;
     reason: AnalyticsAiEntitlementReason;
 }
 
-const ANALYTICS_AI_PLAN_TYPES = new Set(['pro', 'premium']);
+export const ANALYTICS_AI_REQUIRED_PLAN_TYPE = 'menulist_pro' as const;
+
+const ANALYTICS_AI_PLAN_TYPES = new Set([
+    ANALYTICS_AI_REQUIRED_PLAN_TYPE,
+    'menulist_multi_location',
+]);
 
 function normalizePlanType(value: unknown): string | null {
     const normalized = typeof value === 'string' ? value.trim().toLowerCase() : '';
@@ -27,7 +32,7 @@ export function resolveAnalyticsAiEntitlement(storeSummary?: Record<string, unkn
         return {
             enabled: false,
             activePlanType,
-            requiredPlanType: 'pro',
+            requiredPlanType: ANALYTICS_AI_REQUIRED_PLAN_TYPE,
             reason: 'feature_flag_disabled',
         };
     }
@@ -36,7 +41,7 @@ export function resolveAnalyticsAiEntitlement(storeSummary?: Record<string, unkn
         return {
             enabled: false,
             activePlanType: null,
-            requiredPlanType: 'pro',
+            requiredPlanType: ANALYTICS_AI_REQUIRED_PLAN_TYPE,
             reason: 'missing_plan',
         };
     }
@@ -45,7 +50,7 @@ export function resolveAnalyticsAiEntitlement(storeSummary?: Record<string, unkn
         return {
             enabled: false,
             activePlanType,
-            requiredPlanType: 'pro',
+            requiredPlanType: ANALYTICS_AI_REQUIRED_PLAN_TYPE,
             reason: 'plan_not_eligible',
         };
     }
@@ -53,7 +58,7 @@ export function resolveAnalyticsAiEntitlement(storeSummary?: Record<string, unkn
     return {
         enabled: true,
         activePlanType,
-        requiredPlanType: 'pro',
+        requiredPlanType: ANALYTICS_AI_REQUIRED_PLAN_TYPE,
         reason: 'eligible',
     };
 }

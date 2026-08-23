@@ -13,6 +13,48 @@ const readConfiguredValue = (canonicalName: string, ...legacyNames: string[]): s
  * fallbacks only and are intentionally absent from managed env templates.
  */
 export const menulistServerEnv = {
+    get billingExportZeroRatingEnabled() {
+        return readConfiguredValue('MENULIST_BILLING_EXPORT_ZERO_RATING_ENABLED');
+    },
+    get billingGstin() {
+        return readConfiguredValue('MENULIST_BILLING_GSTIN');
+    },
+    get billingInternationalCheckoutEnabled() {
+        return readConfiguredValue('MENULIST_BILLING_INTERNATIONAL_CHECKOUT_ENABLED');
+    },
+    get billingLegalIdentityVerified() {
+        return readConfiguredValue('MENULIST_BILLING_LEGAL_IDENTITY_VERIFIED');
+    },
+    get billingLegalSupplierName() {
+        return readConfiguredValue('MENULIST_BILLING_LEGAL_SUPPLIER_NAME');
+    },
+    get billingLutReference() {
+        return readConfiguredValue('MENULIST_BILLING_LUT_REFERENCE');
+    },
+    get billingMerchantEntityId() {
+        return readConfiguredValue('MENULIST_BILLING_MERCHANT_ENTITY_ID');
+    },
+    get billingRegisteredAddress() {
+        return readConfiguredValue('MENULIST_BILLING_REGISTERED_ADDRESS');
+    },
+    get billingSacCode() {
+        return readConfiguredValue('MENULIST_BILLING_SAC_CODE');
+    },
+    get billingSupplierStateCode() {
+        return readConfiguredValue('MENULIST_BILLING_SUPPLIER_STATE_CODE');
+    },
+    get billingDocumentsEnabled() {
+        return readConfiguredValue('MENULIST_BILLING_DOCUMENTS_ENABLED');
+    },
+    get billingDocumentDeliveryEnabled() {
+        return readConfiguredValue('MENULIST_BILLING_DOCUMENT_DELIVERY_ENABLED');
+    },
+    get billingEInvoiceStatus() {
+        return readConfiguredValue('MENULIST_BILLING_E_INVOICE_STATUS');
+    },
+    get billingAuthorisedSignatoryName() {
+        return readConfiguredValue('MENULIST_BILLING_AUTHORISED_SIGNATORY_NAME');
+    },
     get batchImageGenerationQueueId() {
         return readConfiguredValue('MENULIST_BATCH_IMAGE_GENERATION_QUEUE_ID', 'BATCH_IMAGE_GENERATION_QUEUE_ID');
     },

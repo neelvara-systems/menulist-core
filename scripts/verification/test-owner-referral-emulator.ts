@@ -61,10 +61,13 @@ const makePaidSubscription = (params: {
         cycleEndDate: future,
         subscriptionEndDate: future,
         totalPaymentsMadeCount: 1,
-        billingHistory: ['payment_captured'],
-        billingMode: params.manual ? 'manual' : 'provider',
+        billingHistory: ['pay_OwnerReferralFixture123'],
+        billingMode: params.manual ? 'manual' : 'auto',
         manualPaymentConfirmed: params.manual === true,
+        paymentProvider: 'razorpay',
         topUpCredits: params.topUpCredits,
+        promotionalCredits: params.topUpCredits,
+        promotionalCreditsExpireAt: future,
         monthlyCredits: 100,
         monthlyCreditsAllowance: 100,
         statuses: [],
@@ -114,7 +117,7 @@ const seedReferral = async (params: {
 
 const readCredits = async (subscriptionId: string): Promise<number> => {
     const snapshot = await firestoreAdmin.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc(subscriptionId).get();
-    return Number(snapshot.data()?.topUpCredits || 0);
+    return Number(snapshot.data()?.promotionalCredits || 0);
 };
 
 const verifyAtomicSettlementAndReplay = async (): Promise<void> => {
@@ -162,12 +165,12 @@ const verifyAtomicSettlementAndReplay = async (): Promise<void> => {
         firestoreAdmin.collection(DB_COLLECTIONS.PAYMENT_TRANSACTIONS).doc(referredLedgerId).get(),
     ]);
     assert(referral.data()?.status === OWNER_REFERRAL_STATUS.REWARD_ISSUED, 'Referral must be marked issued in the same settlement');
-    assert(referral.data()?.referrerTopUpBefore === 7 && referral.data()?.referrerTopUpAfter === 107, 'Referral must record referrer balance movement');
-    assert(referral.data()?.referredTopUpBefore === 3 && referral.data()?.referredTopUpAfter === 53, 'Referral must record referred balance movement');
+    assert(referral.data()?.referrerPromotionalBefore === 7 && referral.data()?.referrerPromotionalAfter === 107, 'Referral must record referrer balance movement');
+    assert(referral.data()?.referredPromotionalBefore === 3 && referral.data()?.referredPromotionalAfter === 53, 'Referral must record referred balance movement');
     assert(referrerLedger.data()?.event === OWNER_REFERRAL_LEDGER_EVENT, 'Referrer reward ledger row is missing');
-    assert(referrerLedger.data()?.credits === 100 && referrerLedger.data()?.topUpCreditsBefore === 7 && referrerLedger.data()?.topUpCreditsAfter === 107, 'Referrer ledger amount or balance movement is wrong');
+    assert(referrerLedger.data()?.credits === 100 && referrerLedger.data()?.promotionalCreditsBefore === 7 && referrerLedger.data()?.promotionalCreditsAfter === 107, 'Referrer ledger amount or balance movement is wrong');
     assert(referredLedger.data()?.event === OWNER_REFERRAL_LEDGER_EVENT, 'Referred reward ledger row is missing');
-    assert(referredLedger.data()?.credits === 50 && referredLedger.data()?.topUpCreditsBefore === 3 && referredLedger.data()?.topUpCreditsAfter === 53, 'Referred ledger amount or balance movement is wrong');
+    assert(referredLedger.data()?.credits === 50 && referredLedger.data()?.promotionalCreditsBefore === 3 && referredLedger.data()?.promotionalCreditsAfter === 53, 'Referred ledger amount or balance movement is wrong');
 
     const replay = await recordReferredOwnerReferralPaymentAndSettle({
         referredScope,
@@ -282,7 +285,7 @@ const verifyMalformedWalletBalanceFailsClosed = async (): Promise<void> => {
     await Promise.all([
         firestoreAdmin.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc(referrerSubscriptionId).set({
             ...makePaidSubscription({ ...referrerScope, topUpCredits: 0 }),
-            topUpCredits: 'corrupt',
+            promotionalCredits: 'corrupt',
         }),
         firestoreAdmin.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc(referredSubscriptionId).set(
             makePaidSubscription({ ...referredScope, topUpCredits: 9 }),
@@ -524,6 +527,57 @@ const verifyConflictingPaymentHistoryCannotBlockAttribution = async (): Promise<
     assert(result.status === 'bound', 'Conflicting subscription aliases must not count as prior paid history');
 };
 
+const verifyExpiredPromotionalBalanceDoesNotRevive = async (): Promise<void> => {
+    const referrerScope = { tenantId: 8761, storeId: 8861 };
+    const referredScope = { tenantId: 8762, storeId: 8862 };
+    const referrerSubscriptionId = 'owner_referral_test_expired_promo_referrer';
+    const referredSubscriptionId = 'owner_referral_test_expired_promo_referred';
+    const expiredAt = admin.firestore.Timestamp.fromMillis(Date.now() - 60_000);
+    await Promise.all([
+        firestoreAdmin.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc(referrerSubscriptionId).set({
+            ...makePaidSubscription({ ...referrerScope, topUpCredits: 0 }),
+            promotionalCredits: 40,
+            promotionalCreditsExpireAt: expiredAt,
+        }),
+        firestoreAdmin.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc(referredSubscriptionId).set({
+            ...makePaidSubscription({ ...referredScope, topUpCredits: 0 }),
+            promotionalCredits: 30,
+            promotionalCreditsExpireAt: expiredAt,
+        }),
+    ]);
+    const referralId = await seedReferral({
+        referredStoreId: referredScope.storeId,
+        referredTenantId: referredScope.tenantId,
+        referrerStoreId: referrerScope.storeId,
+        referrerTenantId: referrerScope.tenantId,
+    });
+
+    const result = await recordReferredOwnerReferralPaymentAndSettle({
+        referredScope,
+        evidence: {
+            paidAt: new Date(),
+            paymentEvidenceId: 'expired_promotional_balance_payment',
+            source: 'emulator:expired-promotional-balance',
+            subscriptionId: referredSubscriptionId,
+        },
+    });
+    assert(result === 'reward_issued', 'A valid referral should settle after stale promotional value is discarded');
+    assert(
+        await readCredits(referrerSubscriptionId) === OWNER_REFERRAL_REFERRER_CREDITS,
+        'Expired referrer promotional credits must not revive when a new reward is issued',
+    );
+    assert(
+        await readCredits(referredSubscriptionId) === OWNER_REFERRAL_REFERRED_CREDITS,
+        'Expired referred promotional credits must not revive when a new reward is issued',
+    );
+    const referral = await firestoreAdmin.collection(DB_COLLECTIONS.OWNER_REFERRALS).doc(referralId).get();
+    assert(
+        referral.data()?.referrerPromotionalBefore === 0
+        && referral.data()?.referredPromotionalBefore === 0,
+        'Referral evidence must record expired promotional balances as unavailable',
+    );
+};
+
 const verifyRules = async (): Promise<void> => {
     const rules = fs.readFileSync(path.join(ROOT, 'firestore.rules'), 'utf8');
     const testEnvironment = await initializeTestEnvironment({
@@ -586,6 +640,7 @@ const run = async (): Promise<void> => {
     await verifyReferrerStoreScopeRequiresExactScalars();
     await verifyCoerciblePaymentCountCannotBlockAttribution();
     await verifyConflictingPaymentHistoryCannotBlockAttribution();
+    await verifyExpiredPromotionalBalanceDoesNotRevive();
     await verifySaturatedHistoryFailsClosed();
     await verifyMalformedWalletBalanceFailsClosed();
     await verifyConflictingWalletScopeFailsClosed();

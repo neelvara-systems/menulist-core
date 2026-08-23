@@ -61,7 +61,7 @@ for (const token of ['findOnboardingProviderSubscriptionForAttempt', 'isMatching
 }
 for (const token of [
   'record.plan_id === params.providerPlanId',
-  'record.quantity === 1',
+  'record.quantity === params.quantity',
   'record.total_count === params.totalCount',
   "exactProviderNote(noteRecord.onboardingAttemptId) === params.attemptId",
   "exactProviderNote(noteRecord.onboardingSource) === 'WEBSITE_ONBOARDING'",
@@ -91,6 +91,15 @@ assert.ok(cancellation >= 0 && persistenceWrite >= 0 && compensationCall > persi
 requireText(paymentHandler, 'const subscriptionId = subscription.id;', 'bounded client response consumer');
 requireText(route, 'isMatchingPersistedOnboardingSubscription({', 'exact ambiguous local persistence recovery');
 requireText(route, 'providerStatus: "created"', 'pending onboarding provider state');
+requireText(route, 'amount: selectedPrice.price,', 'persisted subscription unit amount');
+requireText(route, 'chargedUnitAmount: taxSnapshot.grossUnitAmount,', 'persisted tax-inclusive provider unit amount');
+requireText(route, 'taxSnapshot,', 'persisted immutable tax snapshot');
+requireText(route, 'amount: taxSnapshot.grossAmount,', 'pending status tax-inclusive cycle total');
+assert.equal(
+  route.match(/amount: taxSnapshot\.grossAmount,/g)?.length,
+  1,
+  'only the pending status entry may persist the quantity total',
+);
 requireText(boundary, 'resolveRazorpayProviderSubscriptionStatus(record.providerStatus)', 'persisted provider state validation');
 requireText(boundary, 'RAZORPAY_PROVIDER_SUBSCRIPTION_STATUS_MAP[providerStatus] === record.status', 'provider/local lifecycle consistency');
 forbidText(route, 'subscription: razorpaySubscription,', 'raw provider response');
@@ -104,6 +113,8 @@ const schemaEnd = schemas.indexOf('export type OnboardingSubscriptionRequest', s
 const onboardingSchema = schemas.slice(schemaStart, schemaEnd);
 requireText(onboardingSchema, 'businessName: z.string().trim()', 'trimmed business name');
 requireText(onboardingSchema, 'businessIndustry: z.string().trim()', 'trimmed industry');
+requireText(onboardingSchema, 'quantity: z.number().int().min(1).max(MAX_SUBSCRIPTION_QUANTITY)', 'bounded plan quantity');
+requireText(onboardingSchema, 'billingProfile: BillingProfileSchema', 'required billing profile');
 requireText(onboardingSchema, '}).strict();', 'strict onboarding request');
 
 for (const [source, label] of [

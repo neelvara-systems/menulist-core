@@ -12,6 +12,10 @@ import {
     OWNER_REFERRAL_STATUS,
 } from '@data/shared/ownerReferralPolicy';
 import { FEATURE_FLAGS } from '@config/features';
+import {
+    MENULIST_PROMOTIONAL_CREDIT_VALIDITY_DAYS,
+    resolveMenuListPromotionalCreditState,
+} from '@data/shared/contentCreditPolicy';
 import { admin, firestoreAdmin } from '@lib/firebase/firebaseAdmin';
 import { logger } from '@lib/monitoring/logger';
 import { isPlatformEntityBlocked } from '@lib/platform/entityBlock';
@@ -107,7 +111,7 @@ export const getDirectVerifiedPaidOwnerReferralWallet = async (
     return { id: subscription.id, subscription };
 };
 
-const normalizeTopUpCredits = (value: unknown, creditsToAdd: number): number | null => {
+const normalizeCreditBalance = (value: unknown, creditsToAdd: number): number | null => {
     if (value === undefined || value === null) return 0;
     if (
         typeof value !== 'number'
@@ -158,8 +162,8 @@ const buildRewardLedgerDocument = (params: {
     role: 'referrer' | 'referred';
     scope: OwnerReferralScope;
     subscriptionId: string;
-    topUpAfter: number;
-    topUpBefore: number;
+    promotionalAfter: number;
+    promotionalBefore: number;
 }) => {
     const now = admin.firestore.FieldValue.serverTimestamp();
     return {
@@ -179,8 +183,8 @@ const buildRewardLedgerDocument = (params: {
         subscriptionId: params.subscriptionId,
         credits: params.credits,
         creditAmount: params.credits,
-        topUpCreditsBefore: params.topUpBefore,
-        topUpCreditsAfter: params.topUpAfter,
+        promotionalCreditsBefore: params.promotionalBefore,
+        promotionalCreditsAfter: params.promotionalAfter,
         amount: 0,
         currency: 'CREDITS',
         status: 'credited',
@@ -359,28 +363,49 @@ const settleOwnerReferral = async (params: {
             return 'payment_pending';
         }
 
-        const referrerTopUpBefore = normalizeTopUpCredits(
-            referrerSubscription.topUpCredits,
-            OWNER_REFERRAL_REFERRER_CREDITS,
-        );
-        const referredTopUpBefore = normalizeTopUpCredits(
-            referredSubscription.topUpCredits,
-            OWNER_REFERRAL_REFERRED_CREDITS,
-        );
-        if (referrerTopUpBefore === null || referredTopUpBefore === null) {
+        const rewardIssuedAt = admin.firestore.Timestamp.now();
+        const referrerPromotionalState = resolveMenuListPromotionalCreditState({
+            credits: referrerSubscription.promotionalCredits,
+            expiresAt: referrerSubscription.promotionalCreditsExpireAt,
+            nowMs: rewardIssuedAt.toMillis(),
+        });
+        const referredPromotionalState = resolveMenuListPromotionalCreditState({
+            credits: referredSubscription.promotionalCredits,
+            expiresAt: referredSubscription.promotionalCreditsExpireAt,
+            nowMs: rewardIssuedAt.toMillis(),
+        });
+        if (referrerPromotionalState.credits === null || referredPromotionalState.credits === null) {
             throw new Error('owner_referral_wallet_credit_invalid');
         }
-        const referrerTopUpAfter = referrerTopUpBefore + OWNER_REFERRAL_REFERRER_CREDITS;
-        const referredTopUpAfter = referredTopUpBefore + OWNER_REFERRAL_REFERRED_CREDITS;
-        const rewardIssuedAt = admin.firestore.Timestamp.now();
+        const referrerPromotionalBefore = normalizeCreditBalance(
+            referrerPromotionalState.credits,
+            OWNER_REFERRAL_REFERRER_CREDITS,
+        );
+        const referredPromotionalBefore = normalizeCreditBalance(
+            referredPromotionalState.credits,
+            OWNER_REFERRAL_REFERRED_CREDITS,
+        );
+        if (referrerPromotionalBefore === null || referredPromotionalBefore === null) {
+            throw new Error('owner_referral_wallet_credit_invalid');
+        }
+        const referrerPromotionalAfter = referrerPromotionalBefore + OWNER_REFERRAL_REFERRER_CREDITS;
+        const referredPromotionalAfter = referredPromotionalBefore + OWNER_REFERRAL_REFERRED_CREDITS;
+        const rewardExpiresAtMillis = rewardIssuedAt.toMillis()
+            + (MENULIST_PROMOTIONAL_CREDIT_VALIDITY_DAYS * 24 * 60 * 60 * 1000);
+        const resolveExpiry = (value: unknown) => admin.firestore.Timestamp.fromMillis(Math.max(
+            timestampToMillis(value) ?? 0,
+            rewardExpiresAtMillis,
+        ));
         const modifiedOn = admin.firestore.FieldValue.serverTimestamp();
 
         transaction.set(referrerSubscriptionRef, {
-            topUpCredits: referrerTopUpAfter,
+            promotionalCredits: referrerPromotionalAfter,
+            promotionalCreditsExpireAt: resolveExpiry(referrerSubscription.promotionalCreditsExpireAt),
             modifiedOn,
         }, { merge: true });
         transaction.set(referredSubscriptionRef, {
-            topUpCredits: referredTopUpAfter,
+            promotionalCredits: referredPromotionalAfter,
+            promotionalCreditsExpireAt: resolveExpiry(referredSubscription.promotionalCreditsExpireAt),
             modifiedOn,
         }, { merge: true });
         transaction.create(referrerRewardRef, buildRewardLedgerDocument({
@@ -391,8 +416,8 @@ const settleOwnerReferral = async (params: {
             role: 'referrer',
             scope: referrerScope,
             subscriptionId: referrerSubscriptionSnapshot.id,
-            topUpAfter: referrerTopUpAfter,
-            topUpBefore: referrerTopUpBefore,
+            promotionalAfter: referrerPromotionalAfter,
+            promotionalBefore: referrerPromotionalBefore,
         }));
         transaction.create(referredRewardRef, buildRewardLedgerDocument({
             credits: OWNER_REFERRAL_REFERRED_CREDITS,
@@ -402,8 +427,8 @@ const settleOwnerReferral = async (params: {
             role: 'referred',
             scope: referredScope,
             subscriptionId: referredSubscriptionSnapshot.id,
-            topUpAfter: referredTopUpAfter,
-            topUpBefore: referredTopUpBefore,
+            promotionalAfter: referredPromotionalAfter,
+            promotionalBefore: referredPromotionalBefore,
         }));
         transaction.update(referralRef, {
             status: OWNER_REFERRAL_STATUS.REWARD_ISSUED,
@@ -414,10 +439,10 @@ const settleOwnerReferral = async (params: {
             referredSubscriptionIdAtIssue: referredSubscriptionSnapshot.id,
             referrerCreditsAdded: OWNER_REFERRAL_REFERRER_CREDITS,
             referredCreditsAdded: OWNER_REFERRAL_REFERRED_CREDITS,
-            referrerTopUpBefore,
-            referrerTopUpAfter,
-            referredTopUpBefore,
-            referredTopUpAfter,
+            referrerPromotionalBefore,
+            referrerPromotionalAfter,
+            referredPromotionalBefore,
+            referredPromotionalAfter,
             referrerRewardTransactionId,
             referredRewardTransactionId,
             ...(effectiveEvidence && !referral.referredFirstPaidAt ? {
