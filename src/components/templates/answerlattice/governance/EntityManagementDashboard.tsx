@@ -417,7 +417,7 @@ export default function EntityManagementDashboard() {
                                         variant="roleStructureContext"
                                     />
                                 ) : Empty.PRESENTED_IMAGE_SIMPLE}
-                                imageStyle={{ height: 96 }}
+                                styles={{ image: { height: 96 } }}
                             />
                         ),
                     }}

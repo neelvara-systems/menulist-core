@@ -751,3 +751,138 @@ Those fields are explicitly `unknown` instead of guessed.
   server refs, Rules source bytes/hashes, index/TTL inventories, function
   revisions/configuration, and secret metadata. Prior/concurrent source author
   attribution remains `unknown`.
+
+### GIT-20260824-115721-four-ref-certification-baseline
+
+- Timestamp: `2026-08-24T11:57:21+05:30`
+- Record type: `AUDIT`
+- Actor/session/thread ID: current Codex Answerlattice pre-production
+  certification task; raw thread ID unavailable
+- Registered worktrees: one worktree at
+  `/Users/danny/Projects/MenuListAi/menulist-core`, checked out on `staging`
+- Branch matrix before:
+
+  | Branch | Local full SHA | Server ref/full SHA | Tracking ref | Ahead/behind | Worktree | Staged/unstaged/untracked | Status |
+  | --- | --- | --- | --- | --- | --- | --- | --- |
+  | `main` | `58b8eb73d88825aa0ae44e35e5b17b7b5cc3dde1` | `refs/heads/main` / `58b8eb73d88825aa0ae44e35e5b17b7b5cc3dde1` | `origin/main` | `0/0` | not checked out | `N/A` | `IN_SYNC` |
+  | `staging` | `58b8eb73d88825aa0ae44e35e5b17b7b5cc3dde1` | `refs/heads/staging` / `58b8eb73d88825aa0ae44e35e5b17b7b5cc3dde1` | `origin/staging` | `0/0` | primary worktree | `0/0/0` | `IN_SYNC` |
+
+- Starting filesystem state: clean; zero staged, unstaged, or untracked paths.
+- Operation: fetched and pruned `origin`, inventoried all registered worktrees,
+  compared local refs with tracking refs, and performed direct
+  `git ls-remote` readback. No commit, merge, rebase, reset, push, branch
+  deletion, or worktree mutation was needed or performed.
+- Branch matrix after: identical to the matrix before. Local `main`, local
+  `staging`, server `main`, and server `staging` are all on the exact same full
+  SHA with zero divergence.
+- Validation: `git worktree list --porcelain`, `git fetch --prune origin`,
+  three independent `git rev-list --left-right --count` comparisons, direct
+  server readback, clean status, and exact HEAD metadata.
+- Firebase matrix before/after:
+
+  | Product | Environment/project | Component | Local source/config | Local hash/bytes or Git tree | Local validation | Server release/revision/inventory | Server hash/bytes | Readback time | Delta | Deployment state |
+  | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+  | MenuList | QA / `menulist-qa` | Firestore Rules | `firestore-menulist.rules` | `2059459e3b0263bdeca75f89ad0b490e8cebf1dee19cdef9012e0c02fbab5b89`, 132684 bytes | not rerun | not read back in this audit | none | none | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | QA / `menulist-qa` | Firestore indexes | `firestore.indexes.json` | `5629ae4d5004bc59c82528f2e7f9b7e5bb1ffbf74e0fc2e2e5e5252abf0744e0`, 78310 bytes | not rerun | not read back in this audit | none | none | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | QA / `menulist-qa` | Storage Rules | `storage.rules` | `226d2a206d7de8a442bf356a61ad048118322acb993eb89fa45744ed78ed1838`, 18176 bytes | not rerun | not read back in this audit | none | none | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | QA / `menulist-qa` | Cloud Functions | `functions/` | Git tree `a5545e490f7f13f8bce11b5e5f48164a91e76582` | not rerun | not read back in this audit | none | none | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | production / `menulist-prod` | Firestore Rules | `firestore-menulist.rules` | same validated local artifact as QA | not rerun | not read back in this audit | none | none | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | production / `menulist-prod` | Firestore indexes | `firestore.indexes.json` | same local artifact as QA | not rerun | not read back in this audit | none | none | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | production / `menulist-prod` | Storage Rules | `storage.rules` | same local artifact as QA | not rerun | not read back in this audit | none | none | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | production / `menulist-prod` | Cloud Functions | `functions/` | same Git tree as QA | not rerun | not read back in this audit | none | none | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Firestore Rules | `firestore-answerlattice.rules` | `461bf3a20a5bf5259653f6f7e99e2fee3305ed0b1e0d774f3720ff63e358f31a`, 115461 bytes | not rerun | not read back in this audit | none | none | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Firestore indexes | `firestore-answerlattice.indexes.json` | `3f69df50df9628a0cf2ff90aeea1ad206a40418274585addc0f1907cb8735ec5`, 50143 bytes | not rerun | not read back in this audit | none | none | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Storage Rules | `storage-answerlattice.rules` | `5fc8f980f289889da557ac69c91edd61f8e8646b066c9b0101b87141d67106cc`, 6948 bytes | not rerun | not read back in this audit | none | none | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Cloud Functions | `functions-answerlattice/` | Git tree `16ebe54239a17e47b4198172bfcc21e8d29ca550` | not rerun | not read back in this audit | none | none | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Firestore Rules | `firestore-answerlattice.rules` | same validated local artifact as QA | not rerun | not read back in this audit | none | none | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Firestore indexes | `firestore-answerlattice.indexes.json` | same local artifact as QA | not rerun | not read back in this audit | none | none | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Storage Rules | `storage-answerlattice.rules` | same local artifact as QA | not rerun | not read back in this audit | none | none | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Cloud Functions | `functions-answerlattice/` | same Git tree as QA | not rerun | not read back in this audit | none | none | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+
+- Firebase deployment evidence or blocker: no Firebase deployment or current
+  authenticated Firebase readback was part of this branch-only baseline. The
+  prior full authenticated evidence remains recorded in
+  `GIT-20260824-114529-full-promotion-and-firebase-parity-result`; this audit
+  deliberately does not convert historical evidence into a current readback.
+- Git server readback and divergence: direct server readback at this timestamp
+  proves both branches at `58b8eb73d88825aa0ae44e35e5b17b7b5cc3dde1`;
+  local/server divergence is `0/0` for each branch and local `main...staging`
+  divergence is also `0/0`.
+- Final filesystem state: this append-only audit entry is the only new
+  unstaged path change; no pre-existing source or user work was altered.
+- Attribution confidence: exact.
+- Notes: this is the locked Git baseline for the Answerlattice final
+  pre-production release-candidate certification. No ref movement was required.
+
+### GIT-20260824-135204-answerlattice-certification-staging
+
+- Timestamp: `2026-08-24T13:52:04+05:30`
+- Record type: `PLANNED`
+- Actor/session/thread ID: current Codex Answerlattice production-certification
+  task; raw thread ID unavailable
+- Registered worktrees: one worktree at
+  `/Users/danny/Projects/MenuListAi/menulist-core`, checked out on `staging`
+- Branch matrix before:
+
+  | Branch | Local full SHA | Server ref/full SHA | Tracking ref | Ahead/behind | Worktree | Staged/unstaged/untracked | Status |
+  | --- | --- | --- | --- | --- | --- | --- | --- |
+  | `main` | `58b8eb73d88825aa0ae44e35e5b17b7b5cc3dde1` | `refs/heads/main` / `58b8eb73d88825aa0ae44e35e5b17b7b5cc3dde1` | `origin/main` | `0/0` | not checked out | `N/A` | `IN_SYNC` |
+  | `staging` | `58b8eb73d88825aa0ae44e35e5b17b7b5cc3dde1` | `refs/heads/staging` / `58b8eb73d88825aa0ae44e35e5b17b7b5cc3dde1` | `origin/staging` | `0/0` | primary worktree | `0/45/4` | `IN_SYNC` |
+
+- Starting filesystem state: 45 unstaged tracked paths and four untracked
+  source paths. No environment, credential, generated build-output, Firebase
+  Rules, Firebase indexes, Storage Rules, or Cloud Functions path is in the
+  candidate set. Status SHA-256
+  `8c03a3660ab24176c22f5a9af93db5e8e1be35ae2bdf1d40e59b6087ec32a34a`
+  and binary diff SHA-256
+  `81253954fe6bd2a500b87c66334bca9c7f9d7a08576fe43d733dcba2d0e57411`
+  were unchanged across the release-cutoff window.
+- Operation: validate the complete Answerlattice certification snapshot,
+  create one commit on local `staging`, and perform exactly one non-force
+  `staging` push to `origin/staging`. Leave local/server `main` untouched. The
+  repository's Vercel Git integration may automatically create the mapped QA
+  deployment; no Vercel CLI deploy or Firebase deployment is authorized.
+- Branch matrix after: pending commit, single push, and direct server readback.
+  `main` must remain at the starting SHA.
+- Validation: pending root TypeScript, zero-warning lint, unstaged and staged
+  whitespace checks, focused secret/generated-path review, and exact index
+  inspection. Earlier broad Answerlattice runtime, production build, emulator,
+  security, and browser results are recorded in the certification document but
+  are not substituted for these final snapshot gates.
+- Firebase matrix before/after:
+
+  | Product | Environment/project | Component | Local source/config | Local hash/bytes or Git tree | Local validation | Server release/revision/inventory | Server hash/bytes | Readback time | Delta | Deployment state |
+  | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+  | MenuList | QA / `menulist-qa` | Firestore Rules | `firestore-menulist.rules` | `2059459e3b0263bdeca75f89ad0b490e8cebf1dee19cdef9012e0c02fbab5b89`, 132684 bytes | not rerun | not read back in this operation | none | none | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | QA / `menulist-qa` | Firestore indexes | `firestore.indexes.json` | `5629ae4d5004bc59c82528f2e7f9b7e5bb1ffbf74e0fc2e2e5e5252abf0744e0`, 78310 bytes | not rerun | not read back in this operation | none | none | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | QA / `menulist-qa` | Storage Rules | `storage.rules` | `226d2a206d7de8a442bf356a61ad048118322acb993eb89fa45744ed78ed1838`, 18176 bytes | not rerun | not read back in this operation | none | none | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | QA / `menulist-qa` | Cloud Functions | `functions/` | Git tree `a5545e490f7f13f8bce11b5e5f48164a91e76582` | not rerun | not read back in this operation | none | none | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | production / `menulist-prod` | Firestore Rules | `firestore-menulist.rules` | same local artifact as QA | not rerun | not read back in this operation | none | none | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | production / `menulist-prod` | Firestore indexes | `firestore.indexes.json` | same local artifact as QA | not rerun | not read back in this operation | none | none | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | production / `menulist-prod` | Storage Rules | `storage.rules` | same local artifact as QA | not rerun | not read back in this operation | none | none | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | production / `menulist-prod` | Cloud Functions | `functions/` | same Git tree as QA | not rerun | not read back in this operation | none | none | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Firestore Rules | `firestore-answerlattice.rules` | `461bf3a20a5bf5259653f6f7e99e2fee3305ed0b1e0d774f3720ff63e358f31a`, 115461 bytes | not rerun | not read back in this operation | none | none | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Firestore indexes | `firestore-answerlattice.indexes.json` | `3f69df50df9628a0cf2ff90aeea1ad206a40418274585addc0f1907cb8735ec5`, 50143 bytes | not rerun | not read back in this operation | none | none | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Storage Rules | `storage-answerlattice.rules` | `5fc8f980f289889da557ac69c91edd61f8e8646b066c9b0101b87141d67106cc`, 6948 bytes | not rerun | not read back in this operation | none | none | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Cloud Functions | `functions-answerlattice/` | Git tree `16ebe54239a17e47b4198172bfcc21e8d29ca550` | not rerun | not read back in this operation | none | none | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Firestore Rules | `firestore-answerlattice.rules` | same local artifact as QA | not rerun | not read back in this operation | none | none | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Firestore indexes | `firestore-answerlattice.indexes.json` | same local artifact as QA | not rerun | not read back in this operation | none | none | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Storage Rules | `storage-answerlattice.rules` | same local artifact as QA | not rerun | not read back in this operation | none | none | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Cloud Functions | `functions-answerlattice/` | same Git tree as QA | not rerun | not read back in this operation | none | none | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+
+- Firebase deployment evidence or blocker: the candidate changes no Firebase
+  infrastructure source. No authenticated Firebase readback is performed in
+  this Git operation, so current server state remains explicitly unknown rather
+  than inferred from the prior release evidence. No Firebase deployment is
+  requested or permitted.
+- Git server readback and divergence: direct `git ls-remote` after fetch proves
+  local/server `main` and `staging` all begin at
+  `58b8eb73d88825aa0ae44e35e5b17b7b5cc3dde1`, with `0/0` divergence for both
+  tracked branches and for local `main...staging`.
+- Final filesystem state: pending validation, commit, one push, automatic QA
+  deployment observation, and post-operation ledger append.
+- Attribution confidence: exact.
+- Notes: Chrome was restarted after enabling file-URL access. The browser
+  automation file chooser still did not emit an upload event; this is retained
+  as an automation-evidence limitation and is not classified as a product
+  failure. No moving snapshot or concurrent worktree was observed.

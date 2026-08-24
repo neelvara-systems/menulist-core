@@ -306,7 +306,7 @@ export default function AnswerUsageAnalytics() {
                                         variant="analyticsContext"
                                     />
                                 )}
-                                imageStyle={{ height: 88 }}
+                                styles={{ image: { height: 88 } }}
                             />
                         ),
                     }}

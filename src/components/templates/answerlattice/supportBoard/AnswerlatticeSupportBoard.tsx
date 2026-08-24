@@ -580,7 +580,7 @@ export default function AnswerlatticeSupportBoard() {
                 onOk={handleCreate}
                 okText="Create card"
                 confirmLoading={saving}
-                destroyOnClose
+                destroyOnHidden
             >
                 <Form form={createForm} layout="vertical" initialValues={{ priority: ANSWERLATTICE_SUPPORT_BOARD_PRIORITY.MEDIUM, status: ANSWERLATTICE_SUPPORT_BOARD_STATUS.NEEDS_TRIAGE }}>
                     <Form.Item name="title" label="Title" rules={[{ required: true, message: 'Add a title' }]}>
@@ -633,7 +633,7 @@ export default function AnswerlatticeSupportBoard() {
                 okText="Save changes"
                 confirmLoading={saving}
                 width={760}
-                destroyOnClose
+                destroyOnHidden
                 footer={(_, { OkBtn, CancelBtn }) => (
                     <Flex justify="space-between" gap={12} wrap="wrap">
                         <Space wrap>

@@ -334,7 +334,7 @@ export default function WidgetSecurityControls({ isMobile }: { isMobile: boolean
                 onCancel={() => setPrivateKey(null)}
                 footer={<Button type="primary" onClick={() => setPrivateKey(null)} style={ACTION_BUTTON_STYLE}>I stored the key</Button>}
                 width={720}
-                destroyOnClose
+                destroyOnHidden
             >
                 <Alert type="warning" showIcon message="Shown once" description="Answerlattice does not store this private key and cannot show it again." style={{ marginBottom: 14 }} />
                 <Input.TextArea value={privateKey || ''} readOnly rows={5} style={{ fontFamily: 'monospace', fontSize: 12 }} />

@@ -60,6 +60,23 @@ function verifyPackageContract() {
   for (const retired of ['next-pwa', '@emoji-mart/react']) {
     assert(!declared[retired], `${retired} must remain removed`);
   }
+  assert(
+    packageJson.scripts?.dev === 'node scripts/dev/prepare-next-dev-ports.mjs && next dev',
+    'the dev command must use listener-scoped port preparation before starting Next',
+  );
+  const portPreparation = read('scripts/dev/prepare-next-dev-ports.mjs');
+  assert(
+    portPreparation.includes("'-sTCP:LISTEN'"),
+    'dev port preparation must inspect listeners without targeting browser client connections',
+  );
+  assert(
+    portPreparation.includes('isThisRepository') && portPreparation.includes('isNextDev'),
+    'dev port preparation must refuse to terminate unrelated listeners',
+  );
+  assert(
+    !packageJson.scripts.dev.includes('kill -9') && !packageJson.scripts.dev.includes('$(lsof'),
+    'the dev command must not force-kill every process connected to a port',
+  );
 }
 
 function verifyFrameworkConfiguration() {

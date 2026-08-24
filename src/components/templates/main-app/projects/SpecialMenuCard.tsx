@@ -192,7 +192,7 @@ export default function SpecialMenuCard({
                                 variant="scheduleContext"
                             />
                         )}
-                        imageStyle={{ height: 96 }}
+                        styles={{ image: { height: 96 } }}
                         description={
                             <Text type="secondary" style={{ fontSize: 12 }}>
                                 No special menus yet. Create one for festivals, events, or seasonal items.

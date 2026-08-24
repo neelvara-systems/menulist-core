@@ -38,9 +38,9 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
     >
       <Empty
         image={image || <InboxOutlined style={{ fontSize: 64, color: '#d9d9d9' }} />}
-        imageStyle={{
+        styles={{ image: {
           height: 100,
-        }}
+        } }}
         description={
           <Space direction="vertical" size="small">
             <Text strong style={{ fontSize: 16 }}>

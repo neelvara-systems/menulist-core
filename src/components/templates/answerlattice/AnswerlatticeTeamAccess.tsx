@@ -575,7 +575,7 @@ export default function AnswerlatticeTeamAccess({ initialTab }: AnswerlatticeTea
                     variant="teamContext"
                 />
             )}
-            imageStyle={{ height: isMobile ? 88 : 104 }}
+            styles={{ image: { height: isMobile ? 88 : 104 } }}
         />
     );
     const roleEmptyState = (
@@ -589,7 +589,7 @@ export default function AnswerlatticeTeamAccess({ initialTab }: AnswerlatticeTea
                     variant="roleStructureContext"
                 />
             )}
-            imageStyle={{ height: isMobile ? 88 : 104 }}
+            styles={{ image: { height: isMobile ? 88 : 104 } }}
         />
     );
 
@@ -731,7 +731,7 @@ export default function AnswerlatticeTeamAccess({ initialTab }: AnswerlatticeTea
             />
 
             <Modal
-                destroyOnClose
+                destroyOnHidden
                 okButtonProps={{ loading: savingStaff }}
                 okText={editingStaff ? 'Save Member' : 'Add Member'}
                 onCancel={() => {
@@ -781,7 +781,7 @@ export default function AnswerlatticeTeamAccess({ initialTab }: AnswerlatticeTea
             </Modal>
 
             <Modal
-                destroyOnClose
+                destroyOnHidden
                 okButtonProps={{ loading: savingRole, disabled: isDefaultAnswerlatticeRoleId(editingRole?.id) }}
                 okText="Save Role"
                 onCancel={() => {

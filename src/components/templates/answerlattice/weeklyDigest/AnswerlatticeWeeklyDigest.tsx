@@ -245,7 +245,7 @@ export default function AnswerlatticeWeeklyDigest() {
                             variant="analyticsContext"
                         />
                     )}
-                    imageStyle={{ height: isMobile ? 96 : 128 }}
+                    styles={{ image: { height: isMobile ? 96 : 128 } }}
                 >
                     <Space wrap>
                         {canPrepareDigest ? (

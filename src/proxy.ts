@@ -415,6 +415,15 @@ function rewriteWithProductHeaders(
     } else {
         requestHeaders.delete('x-product-base-path');
     }
+    if (productConfig.id === 'answerlattice' && (
+        url.pathname === '/answerlattice'
+        || url.pathname.startsWith('/answerlattice/')
+    )) {
+        requestHeaders.set(
+            'x-answerlattice-request-path',
+            `${request.nextUrl.pathname}${request.nextUrl.search}`,
+        );
+    }
 
     const response = NextResponse.rewrite(url, {
         request: {
@@ -448,7 +457,14 @@ const CONTROLLED_PRODUCT_REQUEST_HEADERS = [
     'x-product-id',
     'x-product-name',
     'x-product-base-path',
+    'x-answerlattice-request-path',
 ] as const;
+
+function setAnswerlatticeRequestPathHeader(requestHeaders: Headers, request: NextRequest): void {
+    const pathname = request.nextUrl.pathname;
+    if (pathname !== '/answerlattice' && !pathname.startsWith('/answerlattice/')) return;
+    requestHeaders.set('x-answerlattice-request-path', `${pathname}${request.nextUrl.search}`);
+}
 
 function getSanitizedRoutingRequestHeaders(request: NextRequest): Headers {
     const requestHeaders = new Headers(request.headers);
@@ -459,8 +475,10 @@ function getSanitizedRoutingRequestHeaders(request: NextRequest): Headers {
 }
 
 function nextWithSanitizedRoutingHeaders(request: NextRequest): NextResponse {
+    const requestHeaders = getSanitizedRoutingRequestHeaders(request);
+    setAnswerlatticeRequestPathHeader(requestHeaders, request);
     return NextResponse.next({
-        request: { headers: getSanitizedRoutingRequestHeaders(request) },
+        request: { headers: requestHeaders },
     });
 }
 

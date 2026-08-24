@@ -5433,6 +5433,7 @@ function verifySearchAndRetrievalTruth() {
   assertIncludes(platformArticleModal, 'answerlattice_article_summary_refresh_after_create_failed', 'Platform KB article create summary refresh diagnostic');
   assertIncludes(platformArticleModal, 'platform_kb_article_update_rejected', 'Platform KB article update rejection code');
   assertIncludes(platformArticleModal, 'platform_kb_article_create_rejected', 'Platform KB article create rejection code');
+  assertIncludes(platformKnowledgeBase, 'form.setFieldsValue(article);', 'Platform KB article editor must seed fetched content before opening the modal');
   assertIncludes(kbGenerationReviewModal, 'kb_generation_review_article_update_rejected', 'KB generation review article update rejection code');
   assertIncludes(kbGenerationReviewModal, 'answerlattice_kb_generation_summary_refresh_after_publish_failed', 'KB generation publish summary refresh diagnostic');
   assertIncludes(platformArticlePane, 'platform_kb_bulk_article_status_update_rejected', 'Platform KB bulk article status rejection code');
@@ -9007,6 +9008,12 @@ function verifyAnswerlatticeContextBundleVersionBoundary() {
   const contextBundleVersionTests = read('scripts/verification/test-answerlattice-context-bundle-version-boundary.ts');
   const contentFeedbackEmulator = read('scripts/verification/test-answerlattice-content-feedback-emulator.ts');
   const localBrowserFixture = read('scripts/answerlattice/seed-local-browser-fixture.ts');
+  const localWidgetCertificationPage = read('src/app/answerlattice-widget-certification/page.tsx');
+  assertIncludes(localBrowserFixture, 'const browserAuthProjectId = menuListProjectId;', 'Answerlattice local browser fixture shared credentials Auth namespace');
+  assertIncludes(localBrowserFixture, "'http://localhost:3000'", 'Answerlattice local browser fixture actual Next dev widget origin');
+  assertIncludes(localWidgetCertificationPage, "process.env.NODE_ENV !== 'development'", 'Answerlattice widget certification page local-only boundary');
+  assertIncludes(localWidgetCertificationPage, 'notFound()', 'Answerlattice widget certification page production denial');
+  assertIncludes(localWidgetCertificationPage, 'data-answerlattice-key={widgetKey}', 'Answerlattice widget certification page runtime key binding');
 
   [appVersions, functionsVersions].forEach((content, index) => {
     const label = index === 0 ? 'app' : 'Functions';

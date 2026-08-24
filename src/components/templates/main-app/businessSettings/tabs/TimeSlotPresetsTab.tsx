@@ -286,7 +286,7 @@ const TimeSlotPresetsTab: React.FC<TimeSlotPresetsTabProps> = ({
                             variant="scheduleContext"
                         />
                     )}
-                    imageStyle={{ height: 104 }}
+                    styles={{ image: { height: 104 } }}
                     description={t('noPresetsYet')}
                 >
                     <Button type="primary" onClick={openAddModal}>{t('createFirstPreset')}</Button>

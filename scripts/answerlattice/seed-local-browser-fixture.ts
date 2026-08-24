@@ -22,7 +22,11 @@ import { FieldValue, getFirestore, Timestamp } from 'firebase-admin/firestore';
 
 const menuListProjectId = 'menulist-qa';
 const answerlatticeProjectId = 'neelvara-answerlattice-qa';
-const browserAuthProjectId = 'demo-answerlattice-browser';
+// Credentials login is intentionally established through the shared MenuList
+// Firebase Auth client before `/api/auth/set-claims` issues the separate
+// Answerlattice custom token. Seed the same emulator project namespace that
+// the login screen and the NextAuth credentials provider actually use.
+const browserAuthProjectId = menuListProjectId;
 const email = String(process.env.ANSWERLATTICE_LOCAL_FIXTURE_EMAIL || '').trim().toLowerCase();
 const password = String(process.env.ANSWERLATTICE_LOCAL_FIXTURE_PASSWORD || '');
 const localWidgetKey = String(process.env.ANSWERLATTICE_LOCAL_WIDGET_KEY || '').trim();
@@ -44,6 +48,9 @@ const browserAuth = getAuth(browserAuthApp);
 const menuListDb = getFirestore(menuListApp);
 const answerlatticeDb = getFirestore(answerlatticeApp);
 const now = Timestamp.now();
+const currentBillingPeriod = now.toDate().getFullYear() * 100 + (now.toDate().getMonth() + 1);
+const cycleStartDate = Timestamp.fromMillis(now.toMillis() - 60_000);
+const cycleEndDate = Timestamp.fromMillis(now.toMillis() + (30 * 24 * 60 * 60 * 1000));
 
 const menuListTenantId = 99001;
 const menuListStoreId = 99101;
@@ -200,6 +207,8 @@ async function seedFirestore(): Promise<void> {
         }),
         answerlatticeSubscription: {
             id: subscriptionId,
+            monthlyCredits: 100,
+            monthlyCreditsAllowance: 100,
             pId: PRODUCT_IDS.ANSWERLATTICE,
             planId: 'answerlattice_launch',
             planName: 'Launch',
@@ -207,6 +216,7 @@ async function seedFirestore(): Promise<void> {
             sId: answerlatticeStoreId,
             status: 'active',
             tId: answerlatticeTenantId,
+            topUpCredits: 0,
         },
         authDisabled: false,
         createdOn: now,
@@ -223,6 +233,7 @@ async function seedFirestore(): Promise<void> {
         tenantId: answerlatticeTenantId,
         timeZone: 'Asia/Kolkata',
         widgetAllowedOrigins: [
+            'http://localhost:3000',
             'http://localhost:3014',
             'https://app.menulist.digital',
         ],
@@ -254,7 +265,12 @@ async function seedFirestore(): Promise<void> {
         active: true,
         billingMode: 'manual',
         createdOn: now,
+        creditsLastResetMonth: currentBillingPeriod,
+        cycleEndDate,
+        cycleStartDate,
         id: subscriptionId,
+        monthlyCredits: 100,
+        monthlyCreditsAllowance: 100,
         pId: PRODUCT_IDS.ANSWERLATTICE,
         planId: 'answerlattice_launch',
         planName: 'Launch',
@@ -266,6 +282,7 @@ async function seedFirestore(): Promise<void> {
         storeId: answerlatticeStoreId,
         tId: answerlatticeTenantId,
         tenantId: answerlatticeTenantId,
+        topUpCredits: 0,
         updatedOn: FieldValue.serverTimestamp(),
         userId,
     }, { merge: true });

@@ -1503,7 +1503,7 @@ function MobileSpecialMenuScreenContent({ onBack, onOpenMenuTab }: MobileSpecial
                                         variant="scheduleContext"
                                     />
                                 )}
-                                imageStyle={{ height: 88 }}
+                                styles={{ image: { height: 88 } }}
                             />
                             <Text type="secondary" style={{ textAlign: 'center' }}>
                                 {t('createFirstHelp')}

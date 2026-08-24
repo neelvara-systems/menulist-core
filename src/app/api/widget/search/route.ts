@@ -47,6 +47,7 @@ import {
     AnswerlatticeSupportSearchCapacityError,
     createAnswerlatticeSupportSearchAccounting,
 } from '@lib/answerlattice/supportSearchAccounting';
+import { persistAnswerlatticeWidgetConversation } from '@lib/answerlattice/widgetConversationServer';
 import {
     normalizeAnswerlatticePublicCitations,
     normalizeAnswerlatticePublicCitationUrl,
@@ -435,6 +436,31 @@ export async function POST(request: NextRequest) {
             beforeAiProviderCall: supportSearchAccounting.beforeAiProviderCall,
         });
         await supportSearchAccounting.settle(result, Date.now() - operationStart);
+        try {
+            await persistAnswerlatticeWidgetConversation({
+                mode: conversationHistory && conversationHistory.length > 0 ? 'assistant' : 'qna',
+                query,
+                requestId,
+                result,
+                sId,
+                sessionId: cleanWidgetIdentityText(body.sessionId, 120),
+                tId,
+                visitor: {
+                    id: verifiedVisitor?.id
+                        || (acceptUnsignedVisitor ? cleanWidgetIdentityText(body.visitor?.id || body.visitor?.customerId, 120) : null),
+                    name: verifiedVisitor?.name
+                        || (acceptUnsignedVisitor ? cleanWidgetIdentityText(body.visitor?.name || body.visitor?.displayName, 160) : null),
+                    email: verifiedVisitor?.email
+                        || (acceptUnsignedVisitor ? cleanWidgetEmail(body.visitor?.email) : null),
+                    verified: Boolean(verifiedVisitor),
+                },
+            });
+        } catch (conversationError) {
+            logRuntimeFailure('answerlattice_widget_conversation_persist_failed', conversationError, {
+                ...getBoundedRuntimeStringContext('tenantId', tId),
+                ...getBoundedRuntimeStringContext('storeId', sId),
+            });
+        }
 
         // ===== FORMAT RESPONSE for Widget frontend =====
         // Keep KB references separate from reviewer-approved canonical citations.

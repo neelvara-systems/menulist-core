@@ -126,6 +126,7 @@ const pricing = read(`${WEBSITE_ROOT}/pricing/page.tsx`);
 const faq = read(`${WEBSITE_ROOT}/faq/page.tsx`);
 const pricingArticle = read('src/content/answerlatticePublic/articles.ts');
 const onboarding = read(`${WEBSITE_ROOT}/get-started/OnboardingForm.tsx`);
+const onboardingRoute = read('src/app/api/answerlattice/onboard/route.ts');
 const onboardingProofSource = read('src/lib/answerlattice/onboardingProof.ts');
 const starterQuestionsSource = read('src/lib/answerlattice/firstTrustedAnswerStarterQuestions.ts');
 const onboardingResponse = read('src/lib/answerlattice/onboardingResponse.ts');
@@ -223,7 +224,22 @@ assertIncludes(onboardingResponse, "getAnswerlatticePlanById(value.plan.id, 'MON
 assertIncludes(onboardingResponse, 'value.plan.name !== plan.name', 'onboarding response current plan-name admission');
 assertIncludes(onboarding, "interval: 'MONTH'", 'onboarding request interval');
 assertIncludes(onboarding, 'billingProfile: normalizedBillingProfile', 'onboarding request normalized billing profile');
-assertNotIncludes(onboarding, 'currency,', 'onboarding user-selected currency bypass');
+const onboardingRequestStart = onboarding.indexOf('body: JSON.stringify({');
+const onboardingRequestEnd = onboarding.indexOf('\n                }),', onboardingRequestStart);
+assert(
+  onboardingRequestStart >= 0 && onboardingRequestEnd > onboardingRequestStart,
+  'onboarding request body must remain statically inspectable',
+);
+const onboardingRequestBody = onboarding.slice(onboardingRequestStart, onboardingRequestEnd);
+assert(
+  !/(?:^|[\n,{])\s*currency\s*(?::|,)/m.test(onboardingRequestBody),
+  'onboarding request must not accept a user-selected currency',
+);
+assertIncludes(
+  onboardingRoute,
+  'resolveAnswerlatticeBillingCurrency(billingProfile.countryCode)',
+  'onboarding server-derived billing currency',
+);
 assertIncludes(billingPlans, 'getAnswerlatticePlans()', 'Billing plan source');
 assertIncludes(structuredData, "getAnswerlatticePlanById('answerlattice_launch', 'MONTH')", 'structured-data plan source');
 assertIncludes(structuredData, 'launchPlan.priceINR.price / 100', 'structured-data price conversion');

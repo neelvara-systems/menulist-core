@@ -47,7 +47,7 @@ const WeeklyView: React.FC<WeeklyViewProps> = ({ data }) => {
                             variant="analyticsContext"
                         />
                     )}
-                    imageStyle={{ height: 112 }}
+                    styles={{ image: { height: 112 } }}
                     description={
                         <Text type="secondary">
                             {t('empty.noWeeklyData')}

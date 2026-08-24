@@ -85,7 +85,7 @@ export default function AnswerlatticeSurfaceReadinessMatrix({
                                 variant="roleStructureContext"
                             />
                         )}
-                        imageStyle={{ height: isMobile ? 88 : 112 }}
+                        styles={{ image: { height: isMobile ? 88 : 112 } }}
                     >
                         <Button
                             type="primary"

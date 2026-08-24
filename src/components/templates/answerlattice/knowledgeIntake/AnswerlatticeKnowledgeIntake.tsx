@@ -634,6 +634,7 @@ export default function AnswerlatticeKnowledgeIntake() {
         setDiscovering(false);
         setEntityOptions([]);
         setEntitySearching(false);
+        if (!activeJobId) return;
         editForm.resetFields();
         governanceForm.resetFields();
         replyForm.resetFields();
@@ -1029,7 +1030,7 @@ export default function AnswerlatticeKnowledgeIntake() {
                                         variant="uploadContext"
                                     />
                                 )}
-                                imageStyle={{ height: isMobile ? 88 : 104 }}
+                                styles={{ image: { height: isMobile ? 88 : 104 } }}
                             >
                                 <Button type="primary" onClick={() => setCreateOpen(true)}>Create first intake</Button>
                             </Empty>
@@ -1484,6 +1485,7 @@ export default function AnswerlatticeKnowledgeIntake() {
                 onOk={handleCreateJob}
                 okText="Create intake"
                 confirmLoading={saving}
+                forceRender
             >
                 <Form form={jobForm} layout="vertical">
                     <Form.Item name="title" label="Name" rules={[{ required: true, message: 'Add an intake name.' }]}>
@@ -1514,6 +1516,7 @@ export default function AnswerlatticeKnowledgeIntake() {
                 width={760}
                 okButtonProps={{ style: { minHeight: 44 } }}
                 cancelButtonProps={{ style: { minHeight: 44 } }}
+                forceRender
             >
                 <Alert
                     type="info"
@@ -1618,6 +1621,7 @@ export default function AnswerlatticeKnowledgeIntake() {
                 okText="Save draft"
                 confirmLoading={saving}
                 width={760}
+                forceRender
             >
                 {editingItem ? (
                     <Flex vertical gap={10} style={{ marginBottom: 16 }}>

@@ -400,7 +400,7 @@ function MobileRolesScreenContent({ onBack }: MobileRolesScreenProps) {
                                         variant="roleStructureContext"
                                     />
                                 )}
-                                imageStyle={{ height: 88 }}
+                                styles={{ image: { height: 88 } }}
                             />
                             <Button color="primary" disabled={!canAssignRoles} onClick={handleAddRole} size="large">
                                 <Flex align="center" gap={6}>

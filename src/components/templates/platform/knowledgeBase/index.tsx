@@ -114,6 +114,10 @@ function PlatformKnowledgeBase() {
     };
 
     const handleEditArticle = (article: KnowledgeBaseArticleType) => {
+        // Seed the shared form before the modal mounts. Otherwise the rich-text
+        // editor can initialize from an empty registered value and overwrite the
+        // fetched article body during the first open transition.
+        form.setFieldsValue(article);
         setEditingArticle(article);
         setIsArticleModalVisible(true);
     };

@@ -77,13 +77,21 @@ export const metadata: Metadata = {
 
 export default async function AnswerlatticeLayout({ children }: { children: React.ReactNode }) {
     const session = await getServerSession(authOptions);
-    const host = (await headers()).get('host');
+    const requestHeaders = await headers();
+    const host = requestHeaders.get('host');
     const answerlatticePricingPath = isAnswerlatticeProductHostname(host)
         ? '/pricing'
         : `${ANSWERLATTICE_LOCAL_DEV_PATH_PREFIX}/pricing`;
 
     if (!session) {
-        redirect("/signin");
+        const requestPath = requestHeaders.get('x-answerlattice-request-path');
+        const fallbackPath = isAnswerlatticeProductHostname(host)
+            ? '/dashboard'
+            : ANSWERLATTICE_LOCAL_DEV_PATH_PREFIX;
+        const callbackPath = requestPath && requestPath.startsWith('/') && !requestPath.startsWith('//')
+            ? requestPath
+            : fallbackPath;
+        redirect(`/signin?callbackUrl=${encodeURIComponent(callbackPath)}`);
     }
     if (!resolveCurrentSessionUserDocumentId(session) || session.user?.active === false || session.user?.deleted === true || session.user?.isVerified === false || isPlatformEntityBlocked(session.user)) {
         redirect("/unauthorized");

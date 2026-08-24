@@ -1122,7 +1122,7 @@ export default function AnswerlatticeAnswerTests({ entryMode = 'suite' }: Answer
                     variant="feedbackContext"
                 />
             )}
-            imageStyle={{ height: isMobile ? 88 : 96 }}
+            styles={{ image: { height: isMobile ? 88 : 96 } }}
         />
     );
 
@@ -1521,7 +1521,7 @@ export default function AnswerlatticeAnswerTests({ entryMode = 'suite' }: Answer
                                 variant="analyticsContext"
                             />
                         )}
-                        imageStyle={{ height: 96 }}
+                        styles={{ image: { height: 96 } }}
                     />
                 ) : (
                     <Flex vertical gap={16}>
@@ -1619,7 +1619,7 @@ export default function AnswerlatticeAnswerTests({ entryMode = 'suite' }: Answer
                 okButtonProps={{ style: ACTION_BUTTON_STYLE }}
                 cancelButtonProps={{ style: ACTION_BUTTON_STYLE }}
                 width={720}
-                destroyOnClose
+                destroyOnHidden
                 styles={{
                     body: {
                         maxHeight: isMobile ? 'calc(100dvh - 168px)' : 'calc(100vh - 220px)',

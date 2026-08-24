@@ -521,7 +521,7 @@ export default function MutationProposalReview() {
                 title="Publish Trusted Answer"
                 open={Boolean(draftProposal)}
                 onCancel={closeDraftModal}
-                destroyOnClose
+                destroyOnHidden
                 styles={{
                     body: {
                         maxHeight: isMobile ? 'calc(100dvh - 168px)' : 'calc(100vh - 220px)',
@@ -666,7 +666,7 @@ export default function MutationProposalReview() {
                         overflowY: 'auto',
                     },
                 }}
-                destroyOnClose
+                destroyOnHidden
                 footer={[
                     <Button key="close" onClick={() => setImpactResult(null)} style={ACTION_BUTTON_STYLE}>
                         Close

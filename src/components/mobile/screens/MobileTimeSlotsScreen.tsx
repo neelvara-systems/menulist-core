@@ -336,7 +336,7 @@ function MobileTimeSlotsScreenContent({ onBack }: MobileTimeSlotsScreenProps) {
                                         variant="scheduleContext"
                                     />
                                 )}
-                                imageStyle={{ height: 88 }}
+                                styles={{ image: { height: 88 } }}
                             />
                             <Button onClick={openAdd}><Flex align="center" gap={6}><LuPlus size={16} /><Text>{t('createFirstSlot')}</Text></Flex></Button>
                         </Flex>

@@ -301,7 +301,7 @@ const FeedbackInboxContent: React.FC<FeedbackInboxProps> = ({
                                     variant="feedbackContext"
                                 />
                             ) : Empty.PRESENTED_IMAGE_SIMPLE}
-                            imageStyle={{ height: filter === 'all' ? 112 : 60 }}
+                            styles={{ image: { height: filter === 'all' ? 112 : 60 } }}
                             description={
                                 filter === 'all'
                                     ? 'No feedback yet'

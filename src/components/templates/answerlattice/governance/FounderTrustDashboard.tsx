@@ -180,7 +180,7 @@ export default function FounderTrustDashboard({ tId, sId }: FounderTrustDashboar
                         variant="analyticsContext"
                     />
                 )}
-                imageStyle={{ height: loadFailed ? 112 : 128 }}
+                styles={{ image: { height: loadFailed ? 112 : 128 } }}
                 style={{ padding: 48 }}
             />
         );

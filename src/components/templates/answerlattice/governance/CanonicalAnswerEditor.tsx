@@ -771,7 +771,7 @@ export default function CanonicalAnswerEditor() {
                                         variant="feedbackContext"
                                     />
                                 ) : Empty.PRESENTED_IMAGE_SIMPLE}
-                                imageStyle={{ height: 96 }}
+                                styles={{ image: { height: 96 } }}
                             >
                                 <Space direction="vertical" size={8} align="center">
                                     <Text type="secondary">

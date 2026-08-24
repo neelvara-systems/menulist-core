@@ -460,7 +460,7 @@ function MobileFeedbackScreenContent({ onBack }: MobileFeedbackScreenProps) {
                                             variant="feedbackContext"
                                         />
                                     ) : Empty.PRESENTED_IMAGE_SIMPLE}
-                                    imageStyle={{ height: filter === 'all' ? 88 : 60 }}
+                                    styles={{ image: { height: filter === 'all' ? 88 : 60 } }}
                                 />
                             ) : (
                                 <List>

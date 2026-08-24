@@ -248,7 +248,7 @@ assert.doesNotThrow(() => {
 const validOnboardResponse = {
     apiKey: `al_${'a'.repeat(32)}`,
     billing: {
-        amount: 99_900,
+        amount: 149_900,
         currency: 'INR',
         interval: 'MONTH',
     },

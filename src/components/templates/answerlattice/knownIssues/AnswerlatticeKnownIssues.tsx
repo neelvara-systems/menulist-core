@@ -340,7 +340,7 @@ export default function AnswerlatticeKnownIssues() {
                 okText={editing ? 'Save changes' : 'Publish notice'}
                 confirmLoading={saving}
                 width={700}
-                destroyOnClose
+                destroyOnHidden
             >
                 <Form form={form} layout="vertical">
                     <Form.Item name="title" label="Notice title" rules={[{ required: true, message: 'Enter a title.' }]}>

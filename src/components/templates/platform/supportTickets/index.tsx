@@ -25,10 +25,10 @@ const segmentedLabelStyle: CSSProperties = {
     display: 'inline-flex',
     flexDirection: 'row',
     flexWrap: 'nowrap',
-    gap: 8,
+    gap: 6,
     justifyContent: 'center',
     lineHeight: 1.25,
-    padding: '4px 8px',
+    padding: '2px 0',
     whiteSpace: 'nowrap',
 };
 

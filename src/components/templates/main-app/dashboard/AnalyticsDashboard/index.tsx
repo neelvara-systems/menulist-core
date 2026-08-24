@@ -122,7 +122,7 @@ function AnalyticsDashboard() {
                                     variant="analyticsContext"
                                 />
                             )}
-                            imageStyle={{ height: 128 }}
+                            styles={{ image: { height: 128 } }}
                         />
                     </Card>
                 ) : (

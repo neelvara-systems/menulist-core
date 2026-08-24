@@ -30,7 +30,7 @@ const EmptyState: React.FC<EmptyStateProps> = ({
         <Card className={styles.emptyStateCard}>
             <Empty
                 image={icon || <LuLineChart className={styles.emptyIcon} />}
-                imageStyle={{ height: 60, fontSize: 48, color: token.colorTextQuaternary }}
+                styles={{ image: { height: 60, fontSize: 48, color: token.colorTextQuaternary } }}
                 description={
                     <div className={styles.emptyContent}>
                         <Title level={5} className={styles.emptyTitle}>

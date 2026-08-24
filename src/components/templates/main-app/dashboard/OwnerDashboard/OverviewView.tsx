@@ -64,7 +64,7 @@ const OverviewView: React.FC<OverviewViewProps> = ({ data, qualitySignalsSlot, p
                                 variant="analyticsContext"
                             />
                         )}
-                        imageStyle={{ height: 112 }}
+                        styles={{ image: { height: 112 } }}
                         description={
                             <Text type="secondary">
                                 {t('empty.noAnalyticsYet')}

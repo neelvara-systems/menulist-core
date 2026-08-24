@@ -424,6 +424,14 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         }
 
         if (!dbUser) {
+            logAuthDiagnostic('set_claims_user_not_found', {
+                ...getSetClaimsEmailLogContext(session.user.email),
+                ...getBoundedAuthStringContext('productId', requestedProductId),
+                answerlatticeContextRequested: shouldUseAnswerlatticeUserContext,
+                answerlatticeSessionScopePresent: Boolean(answerlatticeSessionScope),
+                defaultUserPresent: Boolean(defaultDbUser),
+                productUserPresent: Boolean(answerlatticeDbUser),
+            });
             return authJson(
                 { error: 'User not found' },
                 { status: 404 }

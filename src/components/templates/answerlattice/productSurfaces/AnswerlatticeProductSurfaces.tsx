@@ -387,7 +387,7 @@ export default function AnswerlatticeProductSurfaces() {
                                             variant="roleStructureContext"
                                         />
                                     )}
-                                    imageStyle={{ height: 104 }}
+                                    styles={{ image: { height: 104 } }}
                                     style={{ padding: 24 }}
                                 />
                             ) : (

@@ -29,8 +29,10 @@ import { FEATURE_FLAGS } from '@config/features';
 import { DB_COLLECTIONS } from '@constant/database';
 import { PRODUCT_IDS } from '@constant/product';
 import { normalizeAnswerlatticeSearchHistoryId } from '@lib/answerlattice/searchHistoryIdBoundary';
+import { normalizeAnswerlatticeChatSessionId } from '@lib/answerlattice/chatSessionContracts';
 import { isAnswerlatticeSearchHistoryAvailableForInteraction } from '@lib/answerlattice/searchHistoryInteractionServer';
 import { normalizeAnswerlatticeScopeDocumentId } from '@lib/answerlattice/sessionScope';
+import { getAnswerlatticeWidgetConversationDocumentId } from '@lib/answerlattice/widgetConversationServer';
 import { requireAnswerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { handlePublicApiCorsPreflight, hashApiKey, hasPublicApiCredentialScope, validatePublicApiKey, withPublicApiCors, } from '@lib/publicApi/auth';
 import { ANSWERLATTICE_WIDGET_RUNTIME_TOKEN_HEADER, isAnswerlatticeWidgetRuntimeRequestAuthorized, } from '@lib/answerlattice/widgetRuntimeTokenServer';
@@ -258,24 +260,69 @@ export async function POST(request: NextRequest) {
             ) return null;
             const alreadySubmitted = typeof current.submittedAt !== 'undefined'
                 || typeof current.isGood === 'boolean';
-            if (alreadySubmitted) {
-                const authoritativeOutcome = current.resolutionOutcome === 'resolved' || current.resolutionOutcome === 'not_resolved'
+            const authoritativeOutcome = alreadySubmitted
+                ? current.resolutionOutcome === 'resolved' || current.resolutionOutcome === 'not_resolved'
                     ? current.resolutionOutcome
                     : typeof current.isGood === 'boolean'
                         ? current.isGood ? 'resolved' : 'not_resolved'
-                        : null;
+                        : null
+                : resolutionOutcome || (isGood ? 'resolved' : 'not_resolved');
+            if (!authoritativeOutcome) return null;
+
+            const widgetSessionId = normalizeAnswerlatticeChatSessionId(current.widgetSessionId);
+            const conversationRef = widgetSessionId
+                ? db.collection(DB_COLLECTIONS.CHAT_SESSIONS).doc(
+                    getAnswerlatticeWidgetConversationDocumentId(tId, sId, widgetSessionId),
+                )
+                : null;
+            const conversationDoc = conversationRef ? await transaction.get(conversationRef) : null;
+            const now = admin.firestore.Timestamp.now();
+            if (!alreadySubmitted) {
+                transaction.set(historyRef, {
+                    isGood,
+                    resolutionOutcome: authoritativeOutcome,
+                    reasonsToImprove: [],
+                    comments: '',
+                    submittedAt: now,
+                    modifiedOn: now,
+                }, { merge: true });
+            }
+
+            const conversation = conversationDoc?.exists ? conversationDoc.data() || {} : null;
+            if (
+                conversationRef
+                && conversation
+                && conversation.pId === PRODUCT_IDS.ANSWERLATTICE
+                && normalizeAnswerlatticeScopeDocumentId(conversation.tId) === tId
+                && normalizeAnswerlatticeScopeDocumentId(conversation.sId) === sId
+                && Array.isArray(conversation.messages)
+            ) {
+                let matchedMessage = false;
+                const messages = conversation.messages.map((message: unknown) => {
+                    if (!message || typeof message !== 'object' || Array.isArray(message)) return message;
+                    const record = message as Record<string, unknown>;
+                    if (record.role !== 'assistant' || record.searchHistoryId !== searchHistoryId) return message;
+                    matchedMessage = true;
+                    return {
+                        ...record,
+                        feedback: {
+                            isGood: authoritativeOutcome === 'resolved',
+                            reasonsToImprove: [],
+                            comments: '',
+                            submittedAt: current.submittedAt || now,
+                        },
+                    };
+                });
+                if (matchedMessage) {
+                    transaction.set(conversationRef, {
+                        messages,
+                        modifiedOn: now,
+                    }, { merge: true });
+                }
+            }
+            if (alreadySubmitted) {
                 return { historyData: current, feedbackCreated: false, authoritativeOutcome };
             }
-            const now = admin.firestore.Timestamp.now();
-            const authoritativeOutcome = resolutionOutcome || (isGood ? 'resolved' : 'not_resolved');
-            transaction.set(historyRef, {
-                isGood,
-                resolutionOutcome: authoritativeOutcome,
-                reasonsToImprove: [],
-                comments: '',
-                submittedAt: now,
-                modifiedOn: now,
-            }, { merge: true });
             return { historyData: current, feedbackCreated: true, authoritativeOutcome };
         });
         if (!transactionResult?.historyData) {

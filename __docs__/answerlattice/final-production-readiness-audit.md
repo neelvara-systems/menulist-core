@@ -272,3 +272,94 @@ Partially verified: monolithic Firebase orchestration, production host routing, 
 Unverified: production deployment state, production secrets/rotation, backup existence and restore time, production traffic/cost/latency, live payment webhooks, DNS/OAuth callbacks, and real browser/device behavior.
 
 Not every objective release gate passed. The final source clean pass passes locally, but the external blockers above continue to prevent a production-ready classification until they are resolved with operational evidence.
+
+## 23. Superseding local certification update — 2026-08-24
+
+This update supersedes the older local dependency, browser, and source-evidence
+statements in sections 15-22. It does not convert local evidence into hosted QA
+or production evidence.
+
+### Current local verdict
+
+**NOT READY FOR PRODUCTION.** The complete local certification round is green,
+but hosted QA and product-specific AI-provider execution remain unverified. No
+payment-provider transaction, charging, refund, or payment-webhook completion
+was executed.
+
+### Defects fixed and retested
+
+- Widget questions now persist a tenant/workspace-scoped, idempotent,
+  50-message-bounded owner conversation. The end-user canonical-answer flow was
+  repeated from a fresh emulator and the two-message transcript appeared in the
+  owner Conversations screen.
+- Widget feedback now updates the matching assistant transcript inside the
+  existing feedback transaction. Replay semantics remain idempotent; the fresh
+  browser pass showed `Helpful` and `100% positive feedback`.
+- The local subscription fixture now includes a current credit cycle and a
+  bounded 100-credit allowance, so the real widget flow does not fail with an
+  unintended zero-credit `402`.
+- Signed-out Answerlattice deep links preserve a sanitized callback path and
+  cannot trust an inbound spoofed routing header. A fresh
+  `/answerlattice/tickets` journey returned to that exact route after login.
+- The narrow ticket segmented control now keeps Dashboard, Ticket Queue, and
+  Deleted visible in one horizontal line. The owner navigation and real widget
+  were also checked at a 390-by-844 viewport.
+- Knowledge Intake no longer validates a hidden form, and the article editor
+  synchronously hydrates the selected article before opening. Representative
+  MenuList source text was generated, reviewed, accepted, published, searched,
+  and edited locally.
+- Deprecated Ant Design Empty and Modal properties were migrated across the
+  reachable shared surfaces. The production build succeeds; the remaining
+  Ant Design React 19 compatibility message is development-only and does not
+  appear as a production build failure.
+- The local development-port preflight is repository-scoped and bounded instead
+  of issuing unguarded process kills.
+
+### Current passing evidence
+
+- `npm run verify:answerlattice-runtime-truth` — full aggregate passed, including
+  dedicated/shared Firestore and Storage rules, lifecycle, staff access,
+  tickets, conversations, analytics, billing, scheduler, integrations,
+  retrieval, governance, support controls, daily brief, and knowledge map.
+- `npm run verify:answerlattice-widget-conversation-emulator` — create, replay,
+  append, workspace isolation, and cleanup passed.
+- `npm run verify:answerlattice-final-readiness` — passed.
+- `npm run typecheck:answerlattice` — passed.
+- `npm run lint` — passed with zero warnings.
+- `npm --prefix functions-answerlattice run build` — passed.
+- `npm --prefix packages/answerlattice-web run build` — passed.
+- `NEXT_DIST_DIR=.next-answerlattice-certification NEXT_SKIP_NEXT_BUILD_CHECKS=1 npm run build`
+  — passed with 451 static pages; the generated output was moved outside the
+  worktree after verification.
+- `npm run verify:dependency-freeze` — passed.
+- `npm run verify:answerlattice-security-audit` — root and all Functions full
+  and production audits reported zero vulnerabilities.
+- `npm run verify:answerlattice-backup-recovery` — backup/recovery contracts
+  passed; this is not a hosted restore rehearsal.
+- `npm run verify:answerlattice-pwa` and `git diff --check` — passed.
+- Chrome fresh-system journey — exact auth callback, owner Ticket Inbox,
+  embedded canonical answer, solved feedback, persisted owner transcript, and
+  mobile widget/owner controls passed against Auth, Firestore, and Storage
+  emulators.
+
+### Remaining gates
+
+- Local embedding and provider-backed RAG correctly remain unavailable because
+  the disposable local environment has no Answerlattice Gemini credential. The
+  Vercel QA environment already has a dedicated hidden
+  `ANSWERLATTICE_GEMINI_AI_KEY`, and eight active QA Functions bind secret
+  version 3; verify provider-backed behavior on hosted QA after deployment.
+- Enable Chrome extension access to local file URLs before the final automated
+  upload-chooser pass. Pasted-text ingestion and server/browser file-safety
+  contracts are already green.
+- Deploy this release candidate to the Vercel QA environment only after explicit
+  deployment authorization, verify its build ID, then repeat the fresh-system
+  journey on the hosted QA origin.
+- Firebase CLI access for `admin@neelvara.com` was reauthenticated. Read-only
+  inventory confirmed 13 active QA Functions, 12 active production Functions,
+  103 indexes and 18 TTL fields in each project, plus dedicated Gemini secret
+  bindings in both environments. This inventory does not prove exact deployed
+  Rules or source-hash parity; no infrastructure deploy was requested or
+  performed in this round.
+- Rehearse a hosted backup restore, provider failure/timeout behavior, and the
+  supported physical-device/browser matrix before the final production verdict.

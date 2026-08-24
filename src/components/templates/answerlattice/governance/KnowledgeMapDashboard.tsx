@@ -283,7 +283,7 @@ export default function KnowledgeMapDashboard({ tId, sId }: KnowledgeMapDashboar
                         variant="roleStructureContext"
                     />
                 )}
-                imageStyle={{ height: loadFailed ? 112 : 128 }}
+                styles={{ image: { height: loadFailed ? 112 : 128 } }}
                 style={{ padding: 48 }}
             >
                 {loadFailed ? <Button icon={<LuRefreshCw />} onClick={() => void load()}>Try again</Button> : null}
