@@ -1,6 +1,7 @@
 #!/usr/bin/env ts-node
 
 import { buildAuditReport } from './lib/asset-audit';
+import type { AssetBrand } from '../schemas/asset-schema';
 import {
   allAssetSlots,
   fileExists,
@@ -9,9 +10,14 @@ import {
   loadManifest,
 } from './lib/asset-runtime';
 
-const report = buildAuditReport();
+const brandIndex = process.argv.indexOf('--brand');
+const brand = brandIndex >= 0 ? process.argv[brandIndex + 1] : undefined;
+if (brand && brand !== 'menulist' && brand !== 'answerlattice') {
+  throw new Error(`Unsupported asset brand filter: ${brand}`);
+}
+const report = buildAuditReport({ brand: brand as AssetBrand | undefined });
 const manifest = loadManifest();
-const slots = allAssetSlots();
+const slots = brand ? allAssetSlots().filter((slot) => slot.brand === brand) : allAssetSlots();
 
 function hasBlockingFinding(slotId: string): boolean {
   return Object.values(report.groups)
@@ -33,6 +39,7 @@ function getFileSummary(files: Record<string, string | undefined>): string {
 
 console.log('Website Asset Operating System Review');
 console.log('Boundary: internal only, no public runtime');
+if (brand) console.log(`Asset brand filter: ${brand}`);
 console.log('');
 console.log('| Slot | Status | Decision | Score | Files |');
 console.log('| --- | --- | --- | ---: | --- |');
@@ -69,4 +76,3 @@ console.log(`Summary: ${blocked} blocked, ${needsReview} need founder review, ${
 if (blocked > 0 || report.errorCount > 0) {
   process.exit(1);
 }
-

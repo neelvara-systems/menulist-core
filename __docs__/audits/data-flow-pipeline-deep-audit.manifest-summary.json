@@ -1,118 +1,120 @@
 {
-  "generatedAt": "2026-08-16T14:48:07.952Z",
-  "repositoryHead": "4cbe53d0691c74eec2b526a10519d4c882dccfd5",
-  "totalDiscoveredFiles": 9309,
+  "generatedAt": "2026-08-24T20:05:20.625Z",
+  "repositoryHead": "b857a164944012d42131917e7c62215c94022c0f",
+  "totalDiscoveredFiles": 9409,
   "vanishedDuringInventory": 0,
-  "inScopeFiles": 8997,
-  "excludedFiles": 312,
+  "inScopeFiles": 9095,
+  "excludedFiles": 314,
   "byCategory": {
-    "documentation/contract": 3514,
-    "shared-runtime": 1192,
-    "ui-component": 1045,
-    "verifier/test": 755,
-    "asset/public-output": 564,
-    "nextjs-entrypoint": 376,
+    "documentation/contract": 3579,
+    "shared-runtime": 1208,
+    "ui-component": 1018,
+    "verifier/test": 770,
+    "asset/public-output": 568,
+    "nextjs-entrypoint": 386,
     "runtime/support": 347,
-    "firebase-functions": 342,
-    "api-route": 241,
-    "constant/config/data": 156,
+    "firebase-functions": 345,
+    "api-route": 244,
+    "constant/config/data": 161,
     "configuration/data": 100,
     "data-access-layer": 98,
     "hook/state-flow": 81,
     "type/schema-contract": 70,
     "presentation/public-output": 51,
-    "script/maintenance": 45,
-    "security-rules": 8,
+    "script/maintenance": 48,
+    "security-rules": 9,
     "redux-state": 7,
     "test": 4,
     "proxy/routing": 1
   },
   "byReviewStatus": {
-    "reviewed": 7493,
-    "in-progress": 1116,
-    "inventory-only": 388
+    "reviewed": 7091,
+    "in-progress": 1482,
+    "inventory-only": 522
   },
   "byCategoryAndReviewStatus": {
     "documentation/contract": {
-      "reviewed": 2895,
-      "in-progress": 396,
-      "inventory-only": 223
+      "reviewed": 2740,
+      "in-progress": 551,
+      "inventory-only": 288
     },
     "shared-runtime": {
-      "reviewed": 1037,
-      "in-progress": 108,
-      "inventory-only": 47
+      "reviewed": 999,
+      "in-progress": 139,
+      "inventory-only": 70
     },
     "ui-component": {
-      "reviewed": 834,
-      "in-progress": 206,
-      "inventory-only": 5
+      "reviewed": 768,
+      "in-progress": 244,
+      "inventory-only": 6
     },
     "verifier/test": {
-      "reviewed": 596,
-      "in-progress": 120,
-      "inventory-only": 39
+      "reviewed": 537,
+      "in-progress": 178,
+      "inventory-only": 55
     },
     "asset/public-output": {
-      "reviewed": 545,
-      "inventory-only": 18,
-      "in-progress": 1
+      "reviewed": 539,
+      "inventory-only": 22,
+      "in-progress": 7
     },
     "nextjs-entrypoint": {
-      "reviewed": 329,
-      "in-progress": 46,
-      "inventory-only": 1
+      "reviewed": 320,
+      "in-progress": 55,
+      "inventory-only": 11
     },
     "runtime/support": {
-      "reviewed": 292,
-      "in-progress": 50,
+      "reviewed": 276,
+      "in-progress": 66,
       "inventory-only": 5
     },
     "firebase-functions": {
-      "reviewed": 285,
-      "in-progress": 34,
-      "inventory-only": 23
+      "reviewed": 276,
+      "in-progress": 43,
+      "inventory-only": 26
     },
     "api-route": {
-      "reviewed": 187,
-      "in-progress": 44,
-      "inventory-only": 10
+      "reviewed": 178,
+      "in-progress": 53,
+      "inventory-only": 13
     },
     "constant/config/data": {
-      "reviewed": 125,
-      "in-progress": 17,
-      "inventory-only": 14
+      "reviewed": 110,
+      "in-progress": 32,
+      "inventory-only": 19
     },
     "configuration/data": {
-      "in-progress": 59,
-      "reviewed": 40,
+      "in-progress": 63,
+      "reviewed": 36,
       "inventory-only": 1
     },
     "data-access-layer": {
-      "reviewed": 95,
-      "in-progress": 3
+      "reviewed": 90,
+      "in-progress": 8
     },
     "hook/state-flow": {
-      "reviewed": 79,
-      "inventory-only": 1,
-      "in-progress": 1
+      "reviewed": 77,
+      "in-progress": 3,
+      "inventory-only": 1
     },
     "type/schema-contract": {
-      "reviewed": 63,
-      "in-progress": 7
+      "reviewed": 62,
+      "in-progress": 8
     },
     "presentation/public-output": {
-      "reviewed": 46,
-      "in-progress": 4,
+      "reviewed": 45,
+      "in-progress": 5,
       "inventory-only": 1
     },
     "script/maintenance": {
-      "reviewed": 31,
-      "in-progress": 14
+      "reviewed": 26,
+      "in-progress": 19,
+      "inventory-only": 3
     },
     "security-rules": {
-      "reviewed": 5,
-      "in-progress": 3
+      "in-progress": 5,
+      "reviewed": 3,
+      "inventory-only": 1
     },
     "redux-state": {
       "reviewed": 5,

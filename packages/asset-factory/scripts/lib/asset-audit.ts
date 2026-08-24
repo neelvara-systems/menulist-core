@@ -1,4 +1,4 @@
-import type { AssetManifestEntry, AssetOutputRole, AssetSlot } from '../../schemas/asset-schema';
+import type { AssetBrand, AssetManifestEntry, AssetOutputRole, AssetSlot } from '../../schemas/asset-schema';
 import {
   allAssetSlots,
   fileExists,
@@ -58,8 +58,12 @@ function shouldBlockOnEntry(entry: AssetManifestEntry, slot: AssetSlot): boolean
   return slot.blocking || blockingStatuses.has(entry.status);
 }
 
-function auditSlotManifest(groups: Record<AuditGroup, AuditFinding[]>): void {
-  const slots = allAssetSlots();
+function selectedSlots(brand?: AssetBrand): AssetSlot[] {
+  return brand ? allAssetSlots().filter((slot) => slot.brand === brand) : allAssetSlots();
+}
+
+function auditSlotManifest(groups: Record<AuditGroup, AuditFinding[]>, brand?: AssetBrand): void {
+  const slots = selectedSlots(brand);
   const manifest = loadManifest();
 
   for (const slot of slots) {
@@ -127,6 +131,7 @@ function auditSlotManifest(groups: Record<AuditGroup, AuditFinding[]>): void {
 
   const slotIds = new Set(slots.map((slot) => slot.id));
   for (const manifestId of Object.keys(manifest.assets)) {
+    if (brand && manifest.assets[manifestId]?.brand !== brand) continue;
     if (!slotIds.has(manifestId)) {
       addFinding(groups, 'Disconnected', {
         severity: 'error',
@@ -138,9 +143,9 @@ function auditSlotManifest(groups: Record<AuditGroup, AuditFinding[]>): void {
   }
 }
 
-function auditFiles(groups: Record<AuditGroup, AuditFinding[]>): void {
+function auditFiles(groups: Record<AuditGroup, AuditFinding[]>, brand?: AssetBrand): void {
   const manifest = loadManifest();
-  const slotsById = new Map(allAssetSlots().map((slot) => [slot.id, slot]));
+  const slotsById = new Map(selectedSlots(brand).map((slot) => [slot.id, slot]));
 
   for (const [slotId, entry] of Object.entries(manifest.assets)) {
     const slot = slotsById.get(slotId);
@@ -206,9 +211,9 @@ function auditFiles(groups: Record<AuditGroup, AuditFinding[]>): void {
   }
 }
 
-function auditFingerprints(groups: Record<AuditGroup, AuditFinding[]>): void {
+function auditFingerprints(groups: Record<AuditGroup, AuditFinding[]>, brand?: AssetBrand): void {
   const manifest = loadManifest();
-  const slotsById = new Map(allAssetSlots().map((slot) => [slot.id, slot]));
+  const slotsById = new Map(selectedSlots(brand).map((slot) => [slot.id, slot]));
 
   for (const [slotId, entry] of Object.entries(manifest.assets)) {
     const slot = slotsById.get(slotId);
@@ -256,9 +261,9 @@ function auditFingerprints(groups: Record<AuditGroup, AuditFinding[]>): void {
   }
 }
 
-function auditBriefs(groups: Record<AuditGroup, AuditFinding[]>): void {
+function auditBriefs(groups: Record<AuditGroup, AuditFinding[]>, brand?: AssetBrand): void {
   const manifest = loadManifest();
-  const slotsById = new Map(allAssetSlots().map((slot) => [slot.id, slot]));
+  const slotsById = new Map(selectedSlots(brand).map((slot) => [slot.id, slot]));
   const briefOwners = new Map<string, string[]>();
 
   for (const [slotId, entry] of Object.entries(manifest.assets)) {
@@ -308,9 +313,9 @@ function auditBriefs(groups: Record<AuditGroup, AuditFinding[]>): void {
   });
 }
 
-function auditApprovals(groups: Record<AuditGroup, AuditFinding[]>): void {
+function auditApprovals(groups: Record<AuditGroup, AuditFinding[]>, brand?: AssetBrand): void {
   const manifest = loadManifest();
-  const slotsById = new Map(allAssetSlots().map((slot) => [slot.id, slot]));
+  const slotsById = new Map(selectedSlots(brand).map((slot) => [slot.id, slot]));
 
   for (const [slotId, entry] of Object.entries(manifest.assets)) {
     const slot = slotsById.get(slotId);
@@ -364,12 +369,14 @@ function auditApprovals(groups: Record<AuditGroup, AuditFinding[]>): void {
   }
 }
 
-function auditDisconnectedPublicFiles(groups: Record<AuditGroup, AuditFinding[]>): void {
+function auditDisconnectedPublicFiles(groups: Record<AuditGroup, AuditFinding[]>, brand?: AssetBrand): void {
   const manifest = loadManifest();
+  const selectedSlotIds = new Set(selectedSlots(brand).map((slot) => slot.id));
   const declaredFiles = new Set<string>();
   const fileOwners = new Map<string, string[]>();
 
   for (const [slotId, entry] of Object.entries(manifest.assets)) {
+    if (!selectedSlotIds.has(slotId)) continue;
     for (const repoPath of Object.values(entry.files)) {
       if (!repoPath) continue;
       declaredFiles.add(repoPath);
@@ -387,6 +394,8 @@ function auditDisconnectedPublicFiles(groups: Record<AuditGroup, AuditFinding[]>
     }
   });
 
+  if (brand) return;
+
   for (const repoPath of findTrackedPublicAssetFiles()) {
     if (!declaredFiles.has(repoPath)) {
       addFinding(groups, 'Disconnected', {
@@ -398,15 +407,16 @@ function auditDisconnectedPublicFiles(groups: Record<AuditGroup, AuditFinding[]>
   }
 }
 
-export function buildAuditReport(): AssetAuditReport {
+export function buildAuditReport(options: { brand?: AssetBrand } = {}): AssetAuditReport {
   const groups = emptyGroups();
+  const { brand } = options;
 
-  auditSlotManifest(groups);
-  auditFiles(groups);
-  auditFingerprints(groups);
-  auditBriefs(groups);
-  auditApprovals(groups);
-  auditDisconnectedPublicFiles(groups);
+  auditSlotManifest(groups, brand);
+  auditFiles(groups, brand);
+  auditFingerprints(groups, brand);
+  auditBriefs(groups, brand);
+  auditApprovals(groups, brand);
+  auditDisconnectedPublicFiles(groups, brand);
 
   const findings = Object.values(groups).flat();
   const errorCount = findings.filter((finding) => finding.severity === 'error').length;

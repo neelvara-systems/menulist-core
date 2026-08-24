@@ -940,7 +940,9 @@ function verifyEnvironmentTargets() {
   assertIncludes(menulistProductionProviderSetup, '`menulist-prod` Secret Manager `SENTRY_DSN@1`', 'MenuList production provider ledger Sentry Functions secret');
   assertIncludes(menulistProductionProviderSetup, '- [x] `PROD-D08`', 'MenuList production provider ledger Razorpay event freeze');
   assertIncludes(menulistProductionProviderSetup, '13 route-handled events', 'MenuList production provider ledger exact Razorpay event count');
-  assertIncludes(menulistProductionProviderSetup, 'must not subscribe to it in addition to', 'MenuList production provider ledger duplicate refund-event prohibition');
+  assertIncludes(menulistProductionProviderSetup, 'uses that exact refund entity as its only refund accounting authority', 'MenuList production provider ledger single refund-event authority');
+  assertIncludes(menulistProductionProviderSetup, 'cannot create a second refund movement', 'MenuList production provider ledger duplicate refund-event prohibition');
+  assertNotIncludes(read('src/app/api/razorpay/webhook/route.ts'), "'payment.refunded'", 'MenuList Razorpay webhook retired cumulative refund event');
   assertIncludes(menulistProductionProviderSetup, 'KYC verification is needed to collect live payments', 'MenuList production provider ledger Razorpay KYC blocker');
   assertIncludes(menulistProductionProviderSetup, 'Approved temporary pre-live exception', 'MenuList production Razorpay Test Mode reuse exception');
   assertIncludes(menulistProductionProviderSetup, 'The QA webhook secret was deliberately not copied', 'MenuList production Razorpay webhook isolation');
@@ -1011,7 +1013,8 @@ function verifyEnvironmentTargets() {
   assertIncludes(menulistRulesPredeployRunner, "name.includes('rules')", 'MenuList Firebase rules predeploy direct rule-script discovery');
   assertIncludes(menulistRulesPredeployRunner, "command.includes('firebase emulators:exec')", 'MenuList Firebase rules predeploy emulator boundary');
   assertIncludes(menulistRulesPredeployRunner, "command.includes('--project demo-')", 'MenuList Firebase rules predeploy demo-project boundary');
-  assertIncludes(menulistRulesPredeployRunner, "'firestore.rules': config.firestore?.rules", 'MenuList Firebase rules predeploy Firestore source wiring');
+  assertIncludes(menulistRulesPredeployRunner, "'firestore-menulist.rules': config.firestore?.rules", 'MenuList Firebase generated deploy-rules wiring');
+  assertIncludes(menulistRulesPredeployRunner, "'scripts/verification/generate-menulist-firestore-rules.mjs'", 'MenuList Firebase canonical-to-generated rules staleness check');
   assertIncludes(menulistRulesPredeployRunner, "'firestore.indexes.json': config.firestore?.indexes", 'MenuList Firebase rules predeploy index source wiring');
   assertIncludes(menulistRulesPredeployRunner, "'storage.rules': config.storage?.rules", 'MenuList Firebase rules predeploy Storage source wiring');
   assertIncludes(menulistStagingQaSetup, 'npm run verify:menulist-firebase-rules-predeploy', 'MenuList QA setup local rules predeploy gate');
@@ -1066,7 +1069,9 @@ function verifyEnvironmentTargets() {
   assertIncludes(productionReadinessLocalRunner, 'local source gate only; does not run Next.js production build, Firebase deploy, Vercel deploy, provider smoke, browser/device QA, live Firestore/Storage writes, or production-host behavior.', 'Local readiness runner aggregate proof boundary');
   assertIncludes(productionReadinessLocalRunner, '[local-readiness] boundary:', 'Local readiness runner must print boundary before checks');
   assertIncludes(productionReadinessLocalRunner, '[local-readiness-summary] boundary:', 'Local readiness runner must print boundary in summary');
-  assertIncludes(productionReadinessLocalRunner, "process.argv.slice(2).includes('--list')", 'Local readiness runner must expose list-only mode');
+  assertIncludes(productionReadinessLocalRunner, "const listOnly = arguments.includes('--list');", 'Local readiness runner must expose list-only mode');
+  assertIncludes(productionReadinessLocalRunner, "selectedProduct !== 'menulist'", 'Local readiness runner must reject unknown product filters');
+  assertIncludes(productionReadinessLocalRunner, 'explicitly excluded sibling-product scripts', 'MenuList readiness mode must disclose sibling-product exclusions');
   assertIncludes(productionReadinessLocalRunner, '[local-readiness-list]', 'Local readiness runner must print a list-only section');
   assertIncludes(productionReadinessLocalRunner, 'formatCommand(check.command, check.args)', 'Local readiness runner list mode must print the child command');
   assertIncludes(productionReadinessLocalRunner, 'process.exit(0);', 'Local readiness runner list mode must exit before running checks');
@@ -1074,7 +1079,8 @@ function verifyEnvironmentTargets() {
   assertIncludes(productionReadinessLocalRunner, 'Object.keys(packageJson.scripts || {})', 'Local readiness runner must derive root verify scripts from package.json');
   assertIncludes(productionReadinessLocalRunner, ".filter((name) => name.startsWith('verify:') && name !== SELF_SCRIPT)", 'Local readiness runner must include every root verify script except itself');
   assertIncludes(productionReadinessLocalRunner, '...verifyScripts.map((scriptName) => ({', 'Local readiness runner must map child verify scripts into checks');
-  assertIncludes(productionReadinessLocalRunner, "args: ['run', scriptName]", 'Local readiness runner must execute child verify scripts through npm');
+  assertIncludes(productionReadinessLocalRunner, "['run', scriptName]", 'Local readiness runner must execute child verify scripts through npm');
+  assertIncludes(productionReadinessLocalRunner, "['run', scriptName, '--', '--product', 'menulist']", 'MenuList readiness mode must scope the mixed agent-readiness verifier');
   assertIncludes(productionReadinessLocalRunner, "args: ['run', 'docs:check-links']", 'Local readiness runner must include documentation link health');
   assertIncludes(productionReadinessLocalRunner, "args: ['run', 'typecheck']", 'Local readiness runner must use root typecheck script');
   assertNotIncludes(productionReadinessLocalRunner, "args: ['tsc', '--noEmit'", 'Local readiness runner must not bypass root typecheck script');
@@ -3779,6 +3785,9 @@ function verifyAnswerlatticeInstallContract() {
 }
 
 function main() {
+  const productArgumentIndex = process.argv.indexOf('--product');
+  const product = productArgumentIndex >= 0 ? process.argv[productArgumentIndex + 1] : null;
+  assert(product === null || product === 'menulist', 'Agent-readiness product filter must be menulist when provided');
   const retiredMcpConfig = JSON.parse(read('.windsurf/mcp-config.json'));
   const serwistRoute = read('src/app/serwist/[path]/route.ts');
   assert(
@@ -3807,6 +3816,10 @@ function main() {
   verifyGeneratedArtifactTrackingBoundary();
   verifyMenuListStorageBucketFallbackBoundary();
   verifyMenuListDiscovery();
+  if (product === 'menulist') {
+    console.log('MenuList agent-readiness discovery surfaces verified; sibling-product discovery checks explicitly excluded.');
+    return;
+  }
   verifyAnswerlatticeDiscovery();
   verifyAnswerlatticeInstallContract();
   console.log('Agent-readiness discovery surfaces verified');

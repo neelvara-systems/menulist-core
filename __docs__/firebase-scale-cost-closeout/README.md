@@ -7,10 +7,10 @@
 
 ## Outcome
 
-The current usage-map scanner found 533 runtime files with Firebase, Storage,
+The current usage-map scanner found 534 runtime files with Firebase, Storage,
 API, callable, query, listener, or write signals. The scanner classifies 9
 listener-risk files, 2 public-read-risk files, 2 query-scope-risk files,
-and 52 write-volume-risk files. These are review bands, not automatic defects.
+and 53 write-volume-risk files. These are review bands, not automatic defects.
 The owning feature audits already justify or bound the active listeners, public
 routes, queries, and write-heavy mutation flows.
 

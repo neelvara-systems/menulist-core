@@ -141,9 +141,9 @@ const expectedMyCodexStateLikeJsxText = new Map([
   ['No documents match your query', 1],
   ['No India voice is installed in this browser. MyCodex will use the device default until an Indian English, Hindi, or other India voice is available.', 1],
 ]);
-const expectedGlobalAntEmptyRenderCount = 173;
-const expectedGlobalAntEmptyFileCount = 121;
-const expectedGlobalAntEmptyInventoryFingerprint = '81d6bb78ae771da4532d0835822643bcf502ecb20d19f5d913ab80667e5a7e31';
+const expectedGlobalAntEmptyRenderCount = 160;
+const expectedGlobalAntEmptyFileCount = 111;
+const expectedGlobalAntEmptyInventoryFingerprint = '90887344b84ddd520a375531b0b4c47ac5fb50ab85a481e914defc41438b9eee';
 const codexIllustrationRulePath = '.codex/rules/CONTEXTUAL_STATE_ILLUSTRATION_RULES.md';
 const cascadeIllustrationRulePath = '.cascade/rules/CONTEXTUAL_STATE_ILLUSTRATION_RULES.md';
 
@@ -519,12 +519,12 @@ assert(
 );
 
 assert(
-  contextualIllustrationAudit.length === 74,
-  `Expected 74 reviewed contextual illustration renders, found ${contextualIllustrationAudit.length}`,
+  contextualIllustrationAudit.length === 73,
+  `Expected 73 reviewed contextual illustration renders, found ${contextualIllustrationAudit.length}`,
 );
 assert(
-  contextualIllustrationAudit.filter(({ treatment }) => treatment === 'softHalo').length === 55,
-  'Expected 55 positive, first-use, or spacious recovery illustrations to use the branded soft halo',
+  contextualIllustrationAudit.filter(({ treatment }) => treatment === 'softHalo').length === 54,
+  'Expected 54 positive, first-use, or spacious recovery illustrations to use the branded soft halo',
 );
 
 const actualResultRenderCounts = new Map();
@@ -640,4 +640,4 @@ assert(
   'State illustrations must not be exposed as a public asset library',
 );
 
-console.log('Cross-product contextual state boundary verified (74 illustrations; MenuList Result, Answerlattice Empty, CampaignCue, SignalDesk, and MyCodex inventories reviewed).');
+console.log('Cross-product contextual state boundary verified (73 illustrations; MenuList Result, Answerlattice Empty, CampaignCue, SignalDesk, and MyCodex inventories reviewed).');

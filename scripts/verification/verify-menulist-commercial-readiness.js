@@ -75,7 +75,8 @@ includes(creditPolicy, 'priceUSDCents: 2_900', 'Content Credit policy');
 
 const taxPolicy = read('src/data/shared/billingTaxPolicy.ts');
 includes(taxPolicy, 'legalIdentityVerified: boolean', 'Billing tax policy');
-includes(taxPolicy, 'MenuList billing legal identity is not verified.', 'Billing tax policy');
+includes(taxPolicy, "`${normalizeText(supplier.productName, 80) || 'Product'} billing legal identity is not verified.`", 'Billing tax policy');
+includes(read('src/lib/billing/menulistTaxServer.ts'), "productName: 'MenuList'", 'MenuList tax supplier identity');
 
 const billingDocumentServer = read('src/lib/billing/billingDocumentServer.ts');
 includes(billingDocumentServer, "typeof value !== 'number' || !Number.isSafeInteger(value)", 'Billing document scalar admission');
@@ -109,8 +110,9 @@ const verifyTopupRoute = read('src/app/api/razorpay/verify-topup/route.ts');
 const topupSettlementServer = read('src/lib/billing/topupSettlementServer.ts');
 includes(razorpayWebhook, "event.event === 'refund.processed' && processedRefund", 'Razorpay refund accounting authority');
 excludes(razorpayWebhook, "event.event === 'payment.refunded' || event.event === 'refund.processed'", 'Razorpay refund accounting authority');
-includes(razorpayWebhook, 'await settleMenuListTopupRefund({', 'refunded purchased-credit reversal');
-includes(topupSettlementServer, 'export async function settleMenuListTopupRefund(', 'refunded purchased-credit reversal');
+includes(razorpayWebhook, 'await settleProductTopupRefund({', 'refunded purchased-credit reversal');
+includes(razorpayWebhook, 'productId: eventProductId', 'refunded purchased-credit product scope');
+includes(topupSettlementServer, 'export const settleMenuListTopupRefund =', 'refunded purchased-credit reversal');
 includes(topupSettlementServer, "topupRef.collection('refunds').doc(refundId)", 'per-refund idempotency ledger');
 includes(topupSettlementServer, "status: cumulativeRefundAmount === purchaseAmount ? 'refunded' : 'partially_refunded'", 'top-up refund lifecycle');
 includes(topupSettlementServer, 'topUpCreditRefundDebt: nextRefundDebt', 'consumed refunded-credit debt');
@@ -118,7 +120,7 @@ includes(topupSettlementServer, 'creditsOffsetAgainstRefundDebt', 'future top-up
 includes(topupSettlementServer, 'isSettledTopupStatus(topupData.status)', 'settled top-up replay lifecycle');
 includes(verifyTopupRoute, 'resolveTopupCreditDebtAllocation({', 'authenticated top-up refund-debt offset');
 includes(verifyTopupRoute, 'isSettledTopupStatus(existingTopup.status)', 'authenticated settled top-up replay lifecycle');
-includes(razorpayWebhook, 'Updated provider quantity conflicts with the MenuList plan.', 'provider quantity plan boundary');
+includes(razorpayWebhook, 'Provider quantity conflicts with the stored MenuList subscription.', 'provider quantity plan boundary');
 
 const successModal = read('src/components/templates/main-app/billing/UpgradeSubscriptionPayementSuccessModal.tsx');
 includes(successModal, 'any available billing documents appear in', 'Owner payment-success copy');

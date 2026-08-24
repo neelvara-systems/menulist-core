@@ -421,8 +421,8 @@ assert(
         && fontPresetRow.includes('write')
         && fontPresetRow.includes('delete')
         && fontPresetRow.includes('firestore.rules')
-        && fontPresetRow.includes('"reviewed"'),
-    'collection catalog must trace scalar collection constants and close only against current reviewed rule evidence',
+        && fontPresetRow.includes('"in-progress"'),
+    'collection catalog must trace scalar collection constants and preserve the current in-progress audit status',
 );
 for (const sharedAssetCollection of ['graphics', 'illustrations', 'images']) {
     const sharedAssetRow = collectionCsv
@@ -540,10 +540,10 @@ const ownerControlUsageRow = collectionCsv
     .find((row) => row.startsWith('"ownerControlUsage",'));
 assert(ownerControlUsageRow, 'collection catalog must contain ownerControlUsage');
 assert(
-    ownerControlUsageRow.includes('"reviewed"')
+    ownerControlUsageRow.includes('"in-progress"')
         && ownerControlUsageRow.includes('firestore.rules')
         && ownerControlUsageRow.includes('AUDIT-OWNER-CONTROL-WRITE-INTEGRITY-001'),
-    'collection catalog must retain owner-control evidence and its current reviewed shared-rules fingerprint',
+    'collection catalog must retain owner-control evidence and its current in-progress shared-rules fingerprint',
 );
 for (const collectionName of ['applicationLogs', 'errorLogs']) {
     const row = collectionCsv

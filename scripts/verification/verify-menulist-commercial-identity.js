@@ -37,10 +37,11 @@ for (const [label, relativePath] of publicConsumers) {
 
 const taxPolicy = read('src/data/shared/billingTaxPolicy.ts');
 includes(taxPolicy, 'legalIdentityVerified: boolean', 'Tax supplier contract');
-includes(taxPolicy, 'MenuList billing legal identity is not verified.', 'Tax supplier gate');
+includes(taxPolicy, "`${normalizeText(supplier.productName, 80) || 'Product'} billing legal identity is not verified.`", 'Tax supplier gate');
 
 const taxServer = read('src/lib/billing/menulistTaxServer.ts');
 includes(taxServer, 'billingLegalIdentityVerified', 'Server supplier configuration');
+includes(taxServer, "productName: 'MenuList'", 'Server supplier product identity');
 
 for (const relativePath of ['.env.staging.example', '.env.production.example']) {
   const template = read(relativePath);

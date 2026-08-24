@@ -2,7 +2,7 @@
 
 > **Scope:** MenuList product only
 > **Status:** Maintained integration ledger
-> **Last reviewed:** July 16, 2026
+> **Last reviewed:** August 25, 2026
 > **Authority:** Runtime code, feature flags, environment validators, Firebase Functions exports, and focused verifiers
 
 ## Classification
@@ -25,6 +25,7 @@ An enabled source flag is not proof that credentials, provider dashboards, webho
 | WhatsApp messaging onboarding | Active in source; provider-dependent | `ENABLE_MESSAGING_ONBOARDING`, provider allow-list, verified Meta webhook, Function secrets | Messaging acquisition/onboarding | `functions/src/messagingOnboarding/`, `__docs__/messaging-onboarding/`; strict item 6 |
 | WhatsApp phone OTP | Active in source; provider-dependent | `ENABLE_PHONE_OTP_AUTH`, server challenges/tokens/rate limits, approved Meta template/credentials | Login/create-menu | `src/lib/auth/phoneOtp.ts`, `__docs__/phone-otp-auth/`; strict item 3 |
 | SMTP owner notifications | Active email channel; provider-dependent | owner notification registry, preferences, idempotency/rate limits, SMTP secrets | Account/operational notices | `functions/src/ownerNotifications/`, `__docs__/owner-notifications/`; strict item 6 |
+| WhatsApp owner notifications | Active in source; provider-dependent | `ENABLE_OWNER_NOTIFICATION_WHATSAPP: true`, MenuList product-channel gate, owner preferences, approved Meta templates/credentials, idempotency and rate limits | Account, billing, and operational notices | `src/lib/owner-notifications/`, `functions/src/ownerNotifications/`, `__docs__/owner-notifications/`; strict item 6 |
 | Platform alert WhatsApp | Internal active flag; provider-dependent | platform alert registry, recipient/template/session config, Meta credentials | Platform operations only | `functions/src/monitoring/platformNotificationDelivery.ts` |
 | Sentry | Configuration-dependent | source flags plus valid DSN; sanitization and environment posture | Internal monitoring only | `src/lib/monitoring/`, `functions/src/lib/sentry.ts`; strict item 9 |
 | Vercel custom domains | Active provider boundary | protected domain API, Vercel credentials, deterministic claim, DNS verification | Owner Search & Discovery | custom-domain docs; strict item 13 |
@@ -58,7 +59,6 @@ These scripts are analytics integrations, not business-truth publishing channels
 | Integration | Code truth |
 | --- | --- |
 | Google Business Profile sync | `ENABLE_GBP_SYNC: false`. Token DAL throws `GBP_TOKEN_STORE_DISABLED`; no OAuth/sync job is active. The manual Google Profile tool is the supported surface. |
-| Owner notification WhatsApp channel | `ENABLE_OWNER_NOTIFICATION_WHATSAPP: false`. Email can remain active; this flag does not disable messaging onboarding, phone OTP, or internal platform alerts. |
 | GrowthOS direct posting | Disabled. No provider account connection or publish transport. |
 | General social direct posting | Disabled. No universal posting scheduler/provider send. |
 | QR WhatsApp experiments | Disabled feature; ordinary WhatsApp links/tools are separate deterministic surfaces. |

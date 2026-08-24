@@ -1716,3 +1716,95 @@ Those fields are explicitly `unknown` instead of guessed.
 - Attribution confidence: exact for current worktree, stable snapshot, local
   refs, direct server refs, and changed-path classification; source author is
   `unknown`.
+
+### GIT-20260825-003727-auth-pricing-mobile-staging-result
+
+- Timestamp: `2026-08-25T00:37:27+05:30`
+- Record type: `PERFORMED`
+- Actor/session/thread ID: Codex thread
+  `019e3e73-7d6a-7142-9c09-24bce20e1c65`
+- Completes: `GIT-20260825-003235-auth-pricing-mobile-staging-release`
+- Operation: the reviewed credential-login normalization, authenticated
+  pricing-plan handoff, mobile billing recovery, verification, documentation,
+  and MobileShell asset-fingerprint snapshot was committed as
+  `b857a164944012d42131917e7c62215c94022c0f` with message
+  `Fix login and pricing handoff flows` and non-force pushed to `staging`.
+  No `main`, Firebase, Vercel, Hosting, external-provider, payment, or
+  dependency-version mutation occurred.
+- Branch matrix after:
+
+  | Branch | Local full SHA | Direct server ref/full SHA | Tracking ref | Ahead/behind | Worktree | Staged/unstaged/untracked | Status |
+  | --- | --- | --- | --- | --- | --- | --- | --- |
+  | `main` | `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `refs/heads/main` / `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `origin/main` | `0/0` | not checked out | `N/A` | `IN_SYNC` |
+  | `staging` | `b857a164944012d42131917e7c62215c94022c0f` | `refs/heads/staging` / `b857a164944012d42131917e7c62215c94022c0f` | `origin/staging` | `0/0` | primary worktree | `0/0/0` before this evidence-only append | `IN_SYNC` |
+
+- Firebase matrix after:
+
+  | Product | Environment/project | Component | Local source/config | Local evidence | Server evidence | Delta | Deployment state |
+  | --- | --- | --- | --- | --- | --- | --- | --- |
+  | MenuList | QA / `menulist-qa` | Firestore Rules | `firestore-menulist.rules` unchanged | no changed path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | QA / `menulist-qa` | Firestore indexes | `firestore.indexes.json` unchanged | no changed path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | QA / `menulist-qa` | Storage Rules | `storage.rules` unchanged | no changed path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | QA / `menulist-qa` | Cloud Functions | `functions/` unchanged | no changed path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | production / `menulist-prod` | Firestore Rules | `firestore-menulist.rules` unchanged | no changed path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | production / `menulist-prod` | Firestore indexes | `firestore.indexes.json` unchanged | no changed path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | production / `menulist-prod` | Storage Rules | `storage.rules` unchanged | no changed path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | production / `menulist-prod` | Cloud Functions | `functions/` unchanged | no changed path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Firestore Rules | `firestore-answerlattice.rules` unchanged | no changed path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Firestore indexes | `firestore-answerlattice.indexes.json` unchanged | no changed path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Storage Rules | `storage-answerlattice.rules` unchanged | no changed path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Cloud Functions | `functions-answerlattice/` unchanged | no changed path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Firestore Rules | `firestore-answerlattice.rules` unchanged | no changed path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Firestore indexes | `firestore-answerlattice.indexes.json` unchanged | no changed path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Storage Rules | `storage-answerlattice.rules` unchanged | no changed path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Cloud Functions | `functions-answerlattice/` unchanged | no changed path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+
+- Validation: the source commit contains exactly the 20 reviewed paths from
+  the planned snapshot. Direct server readback confirms exact `staging` SHA
+  parity, and `git rev-list --left-right --count HEAD...origin/staging`
+  returned `0 0`.
+- Final filesystem state: clean before this evidence-only append.
+- Attribution confidence: exact for commit contents, local/server refs,
+  worktree inventory, and post-push filesystem state.
+
+### GIT-20260825-015642-menulist-rc-certification-staging
+
+- Timestamp: `2026-08-25T01:56:42+05:30`
+- Record type: `PLANNED`
+- Actor/session/thread ID: current Codex MenuList RC certification task; raw
+  thread ID unavailable
+- Registered worktrees: one worktree at
+  `/Users/danny/Projects/MenuListAi/menulist-core`, checked out on `staging`
+- Operation: commit only the MenuList RC inventory, report, regenerated
+  data-flow evidence, scoped readiness/audit corrections, and this ledger;
+  perform one non-force push to `staging`, then directly read back the server
+  ref. Preserve all concurrently modified Answerlattice and changelog paths.
+  Keep `main`, Firebase infrastructure, Vercel CLI, and live providers
+  unchanged.
+- Snapshot evidence: full status SHA-256
+  `7decb9b6ce77c2fba704d7b87ad2204d501d8f78829590950b20a65e0ea2241b`;
+  scoped binary diff SHA-256
+  `ad731e0fdd4e7467053d0c20589d5f70a7a532bfb7dcd934155f09bc65c60617`.
+- Branch matrix before:
+
+  | Branch | Local full SHA | Direct server ref/full SHA | Tracking ref | Ahead/behind | Worktree | Staged/unstaged/untracked | Status |
+  | --- | --- | --- | --- | --- | --- | --- | --- |
+  | `main` | `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `refs/heads/main` / `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `origin/main` | `0/0` | not checked out | `N/A` | `IN_SYNC` |
+  | `staging` | `b857a164944012d42131917e7c62215c94022c0f` | `refs/heads/staging` / `b857a164944012d42131917e7c62215c94022c0f` | `origin/staging` | `0/0` | primary worktree | `0/28/4` | `IN_SYNC` |
+
+- Validation: clean final MenuList aggregate `160/161` with all 157 child
+  verifiers passing and only Upstash target credentials `BLOCKED_EXTERNAL`;
+  exact direct TypeScript, lint, `git diff --check`, Functions preflight,
+  emulator/Rules suites, and production build passed. Browser QA is bounded as
+  recorded in `__docs__/audits/MENULIST_RC_CERTIFICATION.md`.
+- Firebase matrix before/after: MenuList QA (`menulist-qa`) and production
+  (`menulist-prod`) Firestore Rules, indexes, Storage Rules, and Cloud
+  Functions all have `NO_INFRA_CHANGE` / `SERVER_STATE_UNKNOWN`; no Firebase
+  deployment or authenticated server parity readback is authorized. The same
+  classification applies to sibling-product Firebase components because no
+  infrastructure source is included in this operation.
+- Branch matrix after, commit SHA, direct server readback, and filesystem
+  attribution: pending.
+- Attribution confidence: exact for current worktree, refs, direct server
+  readback, scoped files, and validation; concurrent unrelated source authors
+  are `unknown`.

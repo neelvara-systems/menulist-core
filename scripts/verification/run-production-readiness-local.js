@@ -14,7 +14,17 @@ const RETRY_ONCE_VERIFY_SCRIPTS = new Set([
 const EXTERNAL_BLOCKED_VERIFY_SCRIPTS = new Set([
   'verify:upstash-readiness',
 ]);
-const listOnly = process.argv.slice(2).includes('--list');
+const arguments = process.argv.slice(2);
+const listOnly = arguments.includes('--list');
+const productArgumentIndex = arguments.indexOf('--product');
+const selectedProduct = productArgumentIndex >= 0 ? arguments[productArgumentIndex + 1] : null;
+const startAtArgumentIndex = arguments.indexOf('--start-at');
+const startAtLabel = startAtArgumentIndex >= 0 ? arguments[startAtArgumentIndex + 1] : null;
+const MENULIST_EXCLUDED_SCRIPT_PATTERN = /answerlattice|campaign[-:]?cue|signaldesk|mycodex|growth[-:]?os|kitstamp|neelvara/i;
+
+if (selectedProduct && selectedProduct !== 'menulist') {
+  throw new Error(`Unsupported local-readiness product filter: ${selectedProduct}`);
+}
 
 function sleep(ms) {
   Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
@@ -134,17 +144,34 @@ function isSatisfied(result) {
 }
 
 const packageJson = readPackageJson();
-const verifyScripts = Object.keys(packageJson.scripts || {})
+const allVerifyScripts = Object.keys(packageJson.scripts || {})
   .filter((name) => name.startsWith('verify:') && name !== SELF_SCRIPT)
   .sort();
+const excludedVerifyScripts = selectedProduct === 'menulist'
+  ? allVerifyScripts.filter((name) => MENULIST_EXCLUDED_SCRIPT_PATTERN.test(name))
+  : [];
+const verifyScripts = selectedProduct === 'menulist'
+  ? allVerifyScripts.filter((name) => !MENULIST_EXCLUDED_SCRIPT_PATTERN.test(name))
+  : allVerifyScripts;
 
 console.log(`[local-readiness] boundary: ${LOCAL_READINESS_BOUNDARY}`);
+if (selectedProduct === 'menulist') {
+  console.log(`[local-readiness] product: menulist`);
+  console.log(`[local-readiness] explicitly excluded sibling-product scripts: ${excludedVerifyScripts.length}`);
+  for (const script of excludedVerifyScripts) console.log(`[local-readiness] excluded ${script}`);
+}
 
 const checks = [
   ...verifyScripts.map((scriptName) => ({
     label: scriptName,
     command: 'npm',
-    args: ['run', scriptName],
+    args: selectedProduct === 'menulist' && scriptName === 'verify:agent-readiness'
+      ? ['run', scriptName, '--', '--product', 'menulist']
+      : selectedProduct === 'menulist' && scriptName === 'verify:asset-factory'
+        ? ['run', 'certify:asset-factory-menulist']
+        : selectedProduct === 'menulist' && scriptName === 'verify:global-failure-observability'
+          ? ['run', 'certify:global-failure-observability-menulist']
+        : ['run', scriptName],
   })),
   {
     label: 'docs:check-links',
@@ -168,6 +195,15 @@ const checks = [
   },
 ];
 
+if (startAtLabel) {
+  const startAtCheckIndex = checks.findIndex(check => check.label === startAtLabel);
+  if (startAtCheckIndex < 0) {
+    throw new Error(`Unknown local-readiness --start-at label: ${startAtLabel}`);
+  }
+  checks.splice(0, startAtCheckIndex);
+  console.log(`[local-readiness] resuming at: ${startAtLabel}`);
+}
+
 if (listOnly) {
   console.log('\n[local-readiness-list]');
   for (const check of checks) {
@@ -175,6 +211,9 @@ if (listOnly) {
   }
   console.log(`[local-readiness-list] ${checks.length} checks listed`);
   console.log(`[local-readiness-list] child verify scripts: ${verifyScripts.length}`);
+  if (selectedProduct === 'menulist') {
+    console.log(`[local-readiness-list] explicitly excluded sibling-product scripts: ${excludedVerifyScripts.length}`);
+  }
   console.log(`[local-readiness-list] boundary: ${LOCAL_READINESS_BOUNDARY}`);
   process.exit(0);
 }
@@ -221,6 +260,9 @@ for (const result of results) {
 console.log(`[local-readiness-summary] ${passedCount}/${checks.length} checks passed`);
 console.log(`[local-readiness-summary] external blockers: ${blockedCount}`);
 console.log(`[local-readiness-summary] child verify scripts: ${verifyScripts.length}`);
+if (selectedProduct === 'menulist') {
+  console.log(`[local-readiness-summary] explicitly excluded sibling-product scripts: ${excludedVerifyScripts.length}`);
+}
 console.log(`[local-readiness-summary] boundary: ${LOCAL_READINESS_BOUNDARY}`);
 
 if (!allSatisfied) {

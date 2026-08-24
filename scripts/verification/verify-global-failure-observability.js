@@ -4,6 +4,14 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const ROOT = path.resolve(__dirname, '..', '..');
+const arguments = process.argv.slice(2);
+const productArgumentIndex = arguments.indexOf('--product');
+const selectedProduct = productArgumentIndex >= 0 ? arguments[productArgumentIndex + 1] : null;
+const MENULIST_SIBLING_ROUTE_PATTERN = /^src\/app\/api\/(?:answerlattice|campaigncue|signaldesk|growthos|kitstamp|mycodex|neelvara)(?:\/|$)/i;
+
+if (selectedProduct && selectedProduct !== 'menulist') {
+  throw new Error(`Unsupported failure-observability product filter: ${selectedProduct}`);
+}
 const read = (relPath) => fs.readFileSync(path.join(ROOT, relPath), 'utf8');
 const assert = (condition, message) => {
   if (!condition) throw new Error(message);
@@ -107,12 +115,16 @@ const rawMessageAllowlist = new Map([
   ['src/app/api/answerlattice/answer-tests/release-check/route.ts', ['AnswerlatticeAnswerTestRunConflictError', 'AnswerlatticeAnswerTestCapacityError']],
   ['src/app/api/answerlattice/answer-tests/route.ts', ['AnswerlatticeAnswerTestSummaryTooLargeError']],
   ['src/app/api/answerlattice/integrations/route.ts', ['IntegrationConfigInputError']],
+  ['src/app/api/onboarding/create-subscription/route.ts', ['BillingTaxProfileError']],
   ['src/app/api/projects/delete/route.ts', ['ProjectDeleteRejection']],
+  ['src/app/api/razorpay/create-subscription/route.ts', ['BillingTaxProfileError']],
+  ['src/app/api/razorpay/create-topup-order/route.ts', ['BillingTaxProfileError']],
 ]);
 for (const absolute of routeFiles) {
   const content = fs.readFileSync(absolute, 'utf8');
   if (!/\berror\s*:\s*(?:err|error|e)\.message\b/.test(content)) continue;
   const relative = path.relative(ROOT, absolute);
+  if (selectedProduct === 'menulist' && MENULIST_SIBLING_ROUTE_PATTERN.test(relative)) continue;
   const requiredTypes = rawMessageAllowlist.get(relative);
   assert(requiredTypes, `${relative} returns an unreviewed raw exception message`);
   requiredTypes.forEach((typeName) => includes(content, `instanceof ${typeName}`, `${relative} typed public error`));
@@ -131,4 +143,6 @@ for (const absolute of routeFiles) {
   '__docs__/global-failure-observability/global-failure-observability_verification.md',
 ].forEach((relPath) => assert(fs.existsSync(path.join(ROOT, relPath)), `${relPath} must exist`));
 
-console.log('Global failure and observability source boundary passed.');
+console.log(selectedProduct === 'menulist'
+  ? 'MenuList and shared failure-observability source boundary passed; explicit sibling-product API routes excluded.'
+  : 'Global failure and observability source boundary passed.');

@@ -295,7 +295,7 @@ function verifyTicketBoundary() {
     assertIncludes(rules, 'answerlatticeSupportTicketMessagesAppendOne', `Answerlattice ${label} append-only message rule`);
     assertIncludes(rules, 'answerlatticeSupportTicketStatusesAppendOne', `Answerlattice ${label} append-only status rule`);
     assertIncludes(rules, 'isValidAnswerlatticeSupportTicketSatisfaction', `Answerlattice ${label} immutable satisfaction rule`);
-    assertIncludes(rules, "actor.id == request.auth.uid || actor.id == request.auth.token.get('uId', '')", `Answerlattice ${label} ticket actor auth binding`);
+    assertIncludes(rules, "actor.id == request.auth.uid || actor.id == string(request.auth.token.get('uId', ''))", `Answerlattice ${label} ticket actor auth binding`);
   }
 
   assertIncludes(ticketHistoryView, 'from="client"', 'MenuList Help Center ticket detail client mode');
