@@ -15,6 +15,13 @@ function UnAuthorized() {
 
     // Get error message from query parameter
     const errorParam = searchParams?.get('error') || '';
+    const callbackParam = searchParams?.get('callbackUrl') || '';
+    const safeCallbackUrl = callbackParam.startsWith('/') && !callbackParam.startsWith('//')
+        ? callbackParam
+        : '';
+    const signInPath = safeCallbackUrl
+        ? `${NAVIGARIONS_ROUTINGS.SIGNIN}?callbackUrl=${encodeURIComponent(safeCallbackUrl)}`
+        : NAVIGARIONS_ROUTINGS.SIGNIN;
 
     // Check if this is an email validation error
     const isEmailError = (
@@ -63,7 +70,7 @@ function UnAuthorized() {
                             <Button
                                 size='large'
                                 icon={<LuMail />}
-                                onClick={() => router.push(NAVIGARIONS_ROUTINGS.SIGNIN)}
+                                onClick={() => router.push(signInPath)}
                             >
                                 {isEmailError ? 'Try Another Email' : 'Sign In Again'}
                             </Button>

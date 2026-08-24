@@ -341,6 +341,9 @@ export function buildAnswerlatticeActivationSummary(params: {
     trustMetrics?: AnswerlatticeTrustMetrics | null;
     compiledContext?: AnswerlatticeCompiledContextReadiness | null;
     answerTests?: AnswerlatticeActivationAnswerTestSummary | null;
+    hasActiveEntity?: boolean | null;
+    hasActiveCanonicalAnswer?: boolean | null;
+    additionalFirestoreReads?: number;
     existingSummary?: Record<string, any> | null;
     nowMillis?: number;
 }): AnswerlatticeActivationSummary {
@@ -375,12 +378,18 @@ export function buildAnswerlatticeActivationSummary(params: {
     const hasWidgetSeenRecently = isWidgetRuntimeProofCurrent(runtimeLastSeenMillis, nowMillis);
     const hasRuntimeContextMarker = Boolean(runtimeStatus?.lastContextKey || runtimeStatus?.lastFeature || runtimeStatus?.lastPage);
     const hasRuntimeContext = hasWidgetSeenRecently && hasRuntimeContextMarker;
-    const entityCount = Number(
+    const trustMetricEntityCount = Number(
         params.trustMetrics?.entityAnswerCoverage?.totalEntities
         || params.trustMetrics?.entityHealth?.totalEntities
         || 0
     );
-    const activeCanonicalAnswerCount = Number(params.trustMetrics?.drift?.activeCount || 0);
+    const trustMetricCanonicalAnswerCount = Number(params.trustMetrics?.drift?.activeCount || 0);
+    const entityCount = trustMetricEntityCount > 0
+        ? trustMetricEntityCount
+        : params.hasActiveEntity === true ? 1 : 0;
+    const activeCanonicalAnswerCount = trustMetricCanonicalAnswerCount > 0
+        ? trustMetricCanonicalAnswerCount
+        : params.hasActiveCanonicalAnswer === true ? 1 : 0;
     const primarySurfaces = Array.isArray(storeData.primarySurfaces)
         ? storeData.primarySurfaces
             .filter((value: unknown): value is string => typeof value === 'string')
@@ -790,9 +799,11 @@ export function buildAnswerlatticeActivationSummary(params: {
         firstValueEvidence,
         steps,
         readModel: {
-            firestoreReads: 8,
+            firestoreReads: 8 + normalizeNonNegativeSafeInteger(params.additionalFirestoreReads, 2),
             firestoreWrites: '0 on normal view; 1 compact platformSummary write only when readiness signature changes or becomes stale.',
-            source: 'stores + platformSummary activation/context/coverage/trust/bundle/answer-tests/source-version docs',
+            source: params.additionalFirestoreReads
+                ? 'stores + platformSummary activation/context/coverage/trust/bundle/answer-tests/source-version docs + bounded stale-metrics existence checks'
+                : 'stores + platformSummary activation/context/coverage/trust/bundle/answer-tests/source-version docs',
         },
     };
 }

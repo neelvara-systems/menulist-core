@@ -4,8 +4,9 @@ export const dynamic = 'force-dynamic';
  * Answerlattice Activation Summary
  *
  * Cost-optimized management read model. This route reads the store document and
- * compact platformSummary docs; it does not scan KB, tickets, changelog, or
- * product surface collections.
+ * compact platformSummary docs. When source versions are ahead of nightly trust
+ * metrics, it may issue at most two indexed limit(1) existence checks; it never
+ * scans KB, tickets, changelog, or product surface collections.
  */
 
 import { FEATURE_FLAGS } from '@config/features';
@@ -283,14 +284,57 @@ export const GET = withAuth(async (_request: NextRequest, session) => {
             sId,
         );
         const rawSourceVersions = sourceVersionsSnap.exists ? sourceVersionsSnap.data() : null;
-        const currentAnswerTestSourceVersions = !rawSourceVersions
+        const normalizedSourceVersions = !rawSourceVersions
             ? normalizeAnswerlatticeAnswerTestSourceVersions(normalizeCompiledSourceVersions({}))
             : rawSourceVersions.pId === PRODUCT_IDS.ANSWERLATTICE
                 && rawSourceVersions.tId === tId
                 && rawSourceVersions.sId === sId
                 && areAnswerlatticeCompiledSourceVersionsValid(rawSourceVersions)
-                ? normalizeAnswerlatticeAnswerTestSourceVersions(normalizeCompiledSourceVersions(rawSourceVersions))
+                ? normalizeCompiledSourceVersions(rawSourceVersions)
                 : null;
+        const currentAnswerTestSourceVersions = normalizedSourceVersions
+            ? normalizeAnswerlatticeAnswerTestSourceVersions(normalizedSourceVersions)
+            : null;
+        const trustMetrics = trustSnap.exists
+            ? parseAnswerlatticeTrustMetrics(trustSnap.data(), { tenantId: tId, storeId: sId })
+            : null;
+        const trustMetricEntityCount = Number(
+            trustMetrics?.entityAnswerCoverage?.totalEntities
+            || trustMetrics?.entityHealth?.totalEntities
+            || 0
+        );
+        const trustMetricCanonicalAnswerCount = Number(trustMetrics?.drift?.activeCount || 0);
+        const shouldCheckActiveEntity = Boolean(
+            normalizedSourceVersions
+            && Number(normalizedSourceVersions.entities || 0) > 0
+            && trustMetricEntityCount === 0
+        );
+        const shouldCheckActiveCanonicalAnswer = Boolean(
+            normalizedSourceVersions
+            && Number(normalizedSourceVersions.canonical || 0) > 0
+            && trustMetricCanonicalAnswerCount === 0
+        );
+        const [activeEntitySnap, activeCanonicalAnswerSnap] = await Promise.all([
+            shouldCheckActiveEntity
+                ? db.collection(DB_COLLECTIONS.ANSWERLATTICE_ENTITIES)
+                    .where('pId', '==', PRODUCT_IDS.ANSWERLATTICE)
+                    .where('tId', '==', tId)
+                    .where('sId', '==', sId)
+                    .where('status', '==', 'active')
+                    .limit(1)
+                    .get()
+                : null,
+            shouldCheckActiveCanonicalAnswer
+                ? db.collection(DB_COLLECTIONS.ANSWERLATTICE_CANONICAL_ANSWERS)
+                    .where('pId', '==', PRODUCT_IDS.ANSWERLATTICE)
+                    .where('tId', '==', tId)
+                    .where('sId', '==', sId)
+                    .where('status', '==', 'active')
+                    .limit(1)
+                    .get()
+                : null,
+        ]);
+        const additionalFirestoreReads = Number(shouldCheckActiveEntity) + Number(shouldCheckActiveCanonicalAnswer);
         const existingSummary = existingSummarySnap.exists ? existingSummarySnap.data() || null : null;
         const summary = buildAnswerlatticeActivationSummary({
             tId,
@@ -303,9 +347,7 @@ export const GET = withAuth(async (_request: NextRequest, session) => {
             coverage: coverageSnap.exists
                 ? parseAnswerlatticeCoverageData(coverageSnap.data(), { tenantId: tId, storeId: sId })
                 : null,
-            trustMetrics: trustSnap.exists
-                ? parseAnswerlatticeTrustMetrics(trustSnap.data(), { tenantId: tId, storeId: sId })
-                : null,
+            trustMetrics,
             compiledContext,
             answerTests: buildAnswerlatticeActivationAnswerTestSummary(
                 answerTestsSnap.exists ? answerTestsSnap.data() : null,
@@ -313,6 +355,9 @@ export const GET = withAuth(async (_request: NextRequest, session) => {
                 sId,
                 currentAnswerTestSourceVersions,
             ),
+            hasActiveEntity: activeEntitySnap ? !activeEntitySnap.empty : null,
+            hasActiveCanonicalAnswer: activeCanonicalAnswerSnap ? !activeCanonicalAnswerSnap.empty : null,
+            additionalFirestoreReads,
             existingSummary,
         });
 

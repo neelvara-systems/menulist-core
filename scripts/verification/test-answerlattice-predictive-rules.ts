@@ -48,6 +48,11 @@ const trigger = (overrides: Record<string, unknown> = {}) => ({
     modifiedBy: 'Owner',
     role: 'OWNER',
     uId: 'owner-1',
+    sourceContext: {
+        uId: 'owner-1',
+        name: 'Owner',
+        email: 'owner@example.com',
+    },
     traceId: 'trace_predictive_1',
     requestId: 'trace_predictive_1',
     ...overrides,

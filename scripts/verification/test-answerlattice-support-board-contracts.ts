@@ -27,6 +27,9 @@ assertIncludes(dal, "globalThis.crypto.subtle.digest('SHA-256'", 'source-card SH
 assertIncludes(dal, 'cleanNullableText(cardData.sourceId, ANSWERLATTICE_SUPPORT_BOARD_CONSTRAINTS.MAX_REFERENCE_ID_LENGTH)', 'stored source identity bound');
 assertIncludes(dal, "throw new Error('Create the support card before resolving it')", 'resolved create rejection');
 assertIncludes(dal, 'return await runTransaction(answerlatticeFirebaseClient, async (transaction) => {', 'transactional source-card creation');
+assertIncludes(dal, 'const compactSupportBoardCreateDocument = <T extends Record<string, unknown>>(data: T): T => {', 'compact optional create fields');
+assertIncludes(dal, 'if (compact[field] == null) delete compact[field];', 'omit absent optional create fields');
+assertIncludes(dal, 'const submitData = compactSupportBoardCreateDocument(', 'compact create document before Firestore write');
 assertIncludes(dal, 'resolvedOn: isResolved ? Timestamp.now() : null', 'DAL-owned resolution timestamp');
 assertNotIncludes(hook, 'resolvedOn: Timestamp.now()', 'hook must not control resolution timestamp');
 assertIncludes(dal, 'export const redactAnswerlatticeSupportBoardSourceIdentity', 'one-way source identity redaction');

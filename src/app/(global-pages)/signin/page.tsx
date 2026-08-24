@@ -4,13 +4,35 @@ import React, { Suspense } from 'react'
 import ServerSidePageLoader from 'src/app/loading'
 import { SafeClientWrapper } from 'src/providers/safeClientWrapper'
 
-export const metadata: Metadata = {
-  title: 'MenuList - Authentication',
-  description: 'Sign in to MenuList.',
-  robots: {
-    index: false,
-    follow: false,
-  },
+type SignInPageProps = {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+};
+
+const isAnswerlatticeCallback = (callbackUrl?: string | string[]) => {
+  const value = Array.isArray(callbackUrl) ? callbackUrl[0] : callbackUrl;
+  if (!value) return false;
+
+  try {
+    const pathname = new URL(value, 'https://local.neelvara.invalid').pathname;
+    return pathname === '/answerlattice' || pathname.startsWith('/answerlattice/');
+  } catch {
+    return false;
+  }
+};
+
+export async function generateMetadata({ searchParams }: SignInPageProps): Promise<Metadata> {
+  const params = await searchParams;
+  const isAnswerlattice = isAnswerlatticeCallback(params.callbackUrl)
+    || params.product === 'answerlattice';
+
+  return {
+    title: isAnswerlattice ? 'Answerlattice - Authentication' : 'MenuList - Authentication',
+    description: isAnswerlattice ? 'Sign in to Answerlattice.' : 'Sign in to MenuList.',
+    robots: {
+      index: false,
+      follow: false,
+    },
+  };
 }
 
 function page() {

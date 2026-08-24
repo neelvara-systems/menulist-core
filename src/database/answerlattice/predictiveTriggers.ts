@@ -12,7 +12,7 @@
 
 import { DB_COLLECTIONS } from "@constant/database";
 import { PRODUCT_IDS } from "@constant/product";
-import { collection, doc, getCountFromServer, getDoc, getDocs, limit, orderBy, query, runTransaction, Timestamp, where, writeBatch } from "@firebase/firestore";
+import { collection, doc, getCountFromServer, getDoc, getDocs, limit, orderBy, query, runTransaction, serverTimestamp, Timestamp, where, writeBatch } from "@firebase/firestore";
 import { appendAnswerlatticeCompiledContextSourceChange } from '@lib/answerlattice/compiledSourceVersionsClient';
 import { answerlatticeRequestBodyComposer } from '@lib/answerlattice/documentComposer';
 import { normalizeAnswerlatticePredictiveTriggerId } from '@lib/answerlattice/predictiveTriggerIdBoundary';
@@ -176,15 +176,20 @@ const composePredictiveTriggerAudit = async (params: {
     action: string;
     entityId: string;
     newState: Record<string, unknown>;
-}) => answerlatticeRequestBodyComposer({
-    ...params.scope,
-    action: params.action,
-    entityType: 'predictiveTrigger',
-    entityId: params.entityId,
-    newState: params.newState,
-    performedBy: 'admin',
-    timestamp: Timestamp.now(),
-}, { isNew: true });
+}) => {
+    const audit = await answerlatticeRequestBodyComposer({
+        ...params.scope,
+        action: params.action,
+        entityType: 'predictiveTrigger',
+        entityId: params.entityId,
+        newState: params.newState,
+    }, { isNew: true });
+    return {
+        ...audit,
+        performedBy: String(audit.uId),
+        timestamp: serverTimestamp(),
+    };
+};
 
 /**
  * Get all predictive triggers for a tenant+store.

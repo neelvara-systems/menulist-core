@@ -25,6 +25,7 @@ import {
     normalizeAnswerlatticeRoutePathname,
     toAnswerlatticeDashboardRoute,
 } from '@constant/answerlattice/navigations';
+import { isAnswerlatticeProductHostname } from '@constant/answerlattice/domains';
 import { FEATURE_FLAGS } from '@config/features';
 import DashboardHeaderShell from '@/components/shared/dashboardShell/DashboardHeaderShell';
 import { useAppDispatch } from '@hook/useAppDispatch';
@@ -73,6 +74,11 @@ export default function AnswerlatticeHeader({ showMenuButton = false, onMenuClic
     const { access } = useAnswerlatticeAccess();
     const isCollapsed = useAppSelector(getSidebarState);
     const isDarkMode = useAppSelector(getDarkModeState);
+    const answerlatticeSignOutCallbackUrl = typeof window !== 'undefined'
+        ? `/signin?callbackUrl=${encodeURIComponent(
+            isAnswerlatticeProductHostname(window.location.hostname) ? '/dashboard' : '/answerlattice',
+        )}`
+        : '/signin?callbackUrl=%2Fanswerlattice';
     const currentHostname = typeof window === 'undefined' ? undefined : window.location.hostname;
     const normalizedPathname = normalizeAnswerlatticeRoutePathname(pathname ?? '');
     const canUseManagementSurfaces = access?.canUseManagement ?? canUseAnswerlatticeManagement(session);
@@ -367,6 +373,7 @@ export default function AnswerlatticeHeader({ showMenuButton = false, onMenuClic
             ) : null}
             <ProfileActionsModal
                 onOpenAppearance={handleOpenAppSettings}
+                signOutCallbackUrl={answerlatticeSignOutCallbackUrl}
                 userData={userData}
             >
                 <Button

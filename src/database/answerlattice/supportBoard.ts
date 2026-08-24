@@ -175,6 +175,38 @@ const cleanTags = (tags?: string[]) => (
 
 const cleanRelatedEntityId = (value: unknown) => normalizeAnswerlatticeResolvedEntityId(value);
 
+const NULLABLE_SUPPORT_BOARD_CREATE_FIELDS = [
+    'sourceCustomerName',
+    'sourceCustomerEmail',
+    'sourceCustomerPhone',
+    'sourceCustomerUserId',
+    'sourceOrigin',
+    'sourcePath',
+    'sourceSessionId',
+    'assigneeId',
+    'assigneeName',
+    'dueDate',
+    'relatedTicketId',
+    'relatedConversationId',
+    'relatedAnswerId',
+    'relatedProposalId',
+    'relatedReleaseId',
+    'relatedSurfaceId',
+    'relatedEntityId',
+] as const;
+
+const compactSupportBoardCreateDocument = <T extends Record<string, unknown>>(data: T): T => {
+    const compact = { ...data };
+    for (const field of NULLABLE_SUPPORT_BOARD_CREATE_FIELDS) {
+        if (compact[field] == null) delete compact[field];
+    }
+    if (Array.isArray(compact.tags) && compact.tags.length === 0) delete compact.tags;
+    if (Array.isArray(compact.relatedContextKeys) && compact.relatedContextKeys.length === 0) {
+        delete compact.relatedContextKeys;
+    }
+    return compact as T;
+};
+
 const normalizePriority = (priority?: string): AnswerlatticeSupportBoardCard['priority'] => {
     if (priority === ANSWERLATTICE_SUPPORT_BOARD_PRIORITY.HIGH) return ANSWERLATTICE_SUPPORT_BOARD_PRIORITY.HIGH;
     if (priority === ANSWERLATTICE_SUPPORT_BOARD_PRIORITY.LOW) return ANSWERLATTICE_SUPPORT_BOARD_PRIORITY.LOW;
@@ -408,7 +440,13 @@ export const createAnswerlatticeSupportBoardCard = async (data: CreateAnswerlatt
         async () => {
             const normalized = normalizeCardInput(data);
             if (!normalized.title) throw new Error('Support board card title is required');
-            const submitData = await answerlatticeRequestBodyComposer(normalized, { isNew: true });
+            // Optional null fields carry no business meaning and make the strict
+            // Firestore create rule evaluate unnecessary branches. Keep the
+            // required null state markers, but omit absent optional values so a
+            // valid owner create remains below Firebase's expression ceiling.
+            const submitData = compactSupportBoardCreateDocument(
+                await answerlatticeRequestBodyComposer(normalized, { isNew: true }),
+            );
             const deterministicId = await buildSourceCardDocumentId(
                 normalized.tId,
                 normalized.sId,

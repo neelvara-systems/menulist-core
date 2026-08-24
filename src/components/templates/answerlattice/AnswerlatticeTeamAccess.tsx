@@ -215,26 +215,11 @@ export default function AnswerlatticeTeamAccess({ initialTab }: AnswerlatticeTea
     const openCreateStaff = () => {
         setEditingStaff(null);
         createStaffRequestIdRef.current = globalThis.crypto.randomUUID();
-        staffForm.resetFields();
-        staffForm.setFieldsValue({
-            countryCode: '',
-            dialCode: '',
-            phoneNumber: '',
-            roleId: DEFAULT_ANSWERLATTICE_ROLE_IDS.STAFF,
-        });
         setStaffModalOpen(true);
     };
 
     const openEditStaff = (user: AnswerlatticeStaffUserSummary) => {
         setEditingStaff(user);
-        staffForm.setFieldsValue({
-            countryCode: user.countryCode || '',
-            dialCode: user.dialCode || '',
-            email: user.displayEmail || user.email,
-            name: user.name,
-            phoneNumber: user.phoneNumber || '',
-            roleId: user.roleId,
-        });
         setStaffModalOpen(true);
     };
 
@@ -374,18 +359,11 @@ export default function AnswerlatticeTeamAccess({ initialTab }: AnswerlatticeTea
             createdBy: access?.user.email || 'system',
             createdOn: new Date().toISOString(),
         });
-        roleForm.resetFields();
-        roleForm.setFieldsValue({ active: true });
         setRoleModalOpen(true);
     };
 
     const openEditRole = (role: AnswerlatticeRoleDefinition) => {
         setEditingRole({ ...role, permissions: { ...role.permissions } });
-        roleForm.setFieldsValue({
-            active: role.active !== false,
-            description: role.description,
-            name: role.name,
-        });
         setRoleModalOpen(true);
     };
 
@@ -731,6 +709,23 @@ export default function AnswerlatticeTeamAccess({ initialTab }: AnswerlatticeTea
             />
 
             <Modal
+                afterOpenChange={(open) => {
+                    if (!open) return;
+                    staffForm.resetFields();
+                    staffForm.setFieldsValue(editingStaff ? {
+                        countryCode: editingStaff.countryCode || '',
+                        dialCode: editingStaff.dialCode || '',
+                        email: editingStaff.displayEmail || editingStaff.email,
+                        name: editingStaff.name,
+                        phoneNumber: editingStaff.phoneNumber || '',
+                        roleId: editingStaff.roleId,
+                    } : {
+                        countryCode: '',
+                        dialCode: '',
+                        phoneNumber: '',
+                        roleId: DEFAULT_ANSWERLATTICE_ROLE_IDS.STAFF,
+                    });
+                }}
                 destroyOnHidden
                 okButtonProps={{ loading: savingStaff }}
                 okText={editingStaff ? 'Save Member' : 'Add Member'}
@@ -781,6 +776,15 @@ export default function AnswerlatticeTeamAccess({ initialTab }: AnswerlatticeTea
             </Modal>
 
             <Modal
+                afterOpenChange={(open) => {
+                    if (!open || !editingRole) return;
+                    roleForm.resetFields();
+                    roleForm.setFieldsValue({
+                        active: editingRole.active !== false,
+                        description: editingRole.description,
+                        name: editingRole.name,
+                    });
+                }}
                 destroyOnHidden
                 okButtonProps={{ loading: savingRole, disabled: isDefaultAnswerlatticeRoleId(editingRole?.id) }}
                 okText="Save Role"

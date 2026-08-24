@@ -65,16 +65,12 @@ function PlatformKnowledgeBase() {
     useEffect(() => {
         if (editingArticle) {
             form.setFieldsValue(editingArticle);
-        } else {
-            form.resetFields();
         }
     }, [editingArticle, form]);
 
     useEffect(() => {
         if (editingCategory) {
             categoryForm.setFieldsValue(editingCategory);
-        } else {
-            categoryForm.resetFields();
         }
     }, [editingCategory, categoryForm]);
 

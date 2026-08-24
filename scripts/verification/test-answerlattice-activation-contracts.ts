@@ -167,6 +167,42 @@ const regressedSummary = buildAnswerlatticeActivationSummary({
     storeData: {},
     existingSummary: summary as unknown as Record<string, unknown>,
 });
+
+const metricsLagSummary = buildAnswerlatticeActivationSummary({
+    tId: 7,
+    sId: 9,
+    nowMillis,
+    storeData: {},
+    trustMetrics: null,
+    hasActiveEntity: true,
+    hasActiveCanonicalAnswer: true,
+    additionalFirestoreReads: 2,
+});
+assert.equal(
+    metricsLagSummary.steps.find((step) => step.key === 'entities')?.status,
+    'complete',
+    'a bounded existence result must prevent newly created entities from appearing pending while trust metrics lag',
+);
+assert.equal(
+    metricsLagSummary.steps.find((step) => step.key === 'canonical-answers')?.status,
+    'complete',
+    'a bounded existence result must prevent newly approved answers from appearing pending while trust metrics lag',
+);
+assert.equal(metricsLagSummary.readModel.firestoreReads, 10);
+assert.match(metricsLagSummary.readModel.source, /bounded stale-metrics existence checks/);
+
+const emptyMetricsLagSummary = buildAnswerlatticeActivationSummary({
+    tId: 7,
+    sId: 9,
+    nowMillis,
+    storeData: {},
+    trustMetrics: null,
+    hasActiveEntity: false,
+    hasActiveCanonicalAnswer: false,
+    additionalFirestoreReads: 2,
+});
+assert.equal(emptyMetricsLagSummary.steps.find((step) => step.key === 'entities')?.status, 'pending');
+assert.equal(emptyMetricsLagSummary.steps.find((step) => step.key === 'canonical-answers')?.status, 'pending');
 const missingLicenseStep = regressedSummary.steps.find((step) => step.key === 'license');
 assert.equal(missingLicenseStep?.status, 'pending');
 assert.equal(missingLicenseStep?.description, 'Choose and activate a paid plan before launch.');

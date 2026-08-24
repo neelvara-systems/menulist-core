@@ -30,6 +30,7 @@ type ProfileActionUser = Partial<Pick<
 type ProfileActionsModalProps = {
     children: ReactNode;
     onOpenAppearance?: () => void;
+    signOutCallbackUrl?: string;
     userData?: ProfileActionUser;
 };
 
@@ -51,6 +52,7 @@ function ProfileActionsModal({
     children,
     userData = { name: '', email: '', image: '' },
     onOpenAppearance,
+    signOutCallbackUrl,
 }: ProfileActionsModalProps) {
     const [isLoading, setIsLoading] = useState(false)
     const [isOpen, setIsOpen] = useState(false)
@@ -103,7 +105,7 @@ function ProfileActionsModal({
     const logoutUser = async (): Promise<void> => {
         setIsLoading(true);
         try {
-            await signOutSession()
+            await signOutSession(signOutCallbackUrl)
             dispatch(showSuccessToast(t('logoutSuccess')))
         } catch {
             dispatch(showErrorToast(t('logoutFailed')))

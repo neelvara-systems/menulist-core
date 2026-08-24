@@ -286,68 +286,14 @@ async function seedFirestore(): Promise<void> {
         updatedOn: FieldValue.serverTimestamp(),
         userId,
     }, { merge: true });
-    answerlatticeBatch.set(
+    // A fresh browser fixture must not ship hidden approved product truth. The
+    // former billing answer referenced an entity that the fixture never created,
+    // so reruns also remove those two known legacy documents from older fixtures.
+    answerlatticeBatch.delete(
         answerlatticeDb.collection(DB_COLLECTIONS.ANSWERLATTICE_ENTITY_SEARCH_INDEX).doc('entity_index_billing'),
-        {
-            canonicalName: 'Billing payment recovery',
-            entityId: 'entity_billing',
-            normalizedTokens: ['billing', 'invoice', 'payment', 'method', 'failed', 'renewal', 'retry'],
-            pId: PRODUCT_IDS.ANSWERLATTICE,
-            prefixTokens: ['bil', 'inv', 'pay', 'met', 'fai', 'ren', 'ret'],
-            sId: answerlatticeStoreId,
-            synonyms: ['payment method', 'failed renewal', 'billing recovery'],
-            tId: answerlatticeTenantId,
-            weight: 1,
-        },
-        { merge: true },
     );
-    answerlatticeBatch.set(
+    answerlatticeBatch.delete(
         answerlatticeDb.collection(DB_COLLECTIONS.ANSWERLATTICE_CANONICAL_ANSWERS).doc('canonical_billing_payment_recovery'),
-        {
-            answerType: 'explanation',
-            content: {
-                detailedExplanation: 'Workspace owners can update the payment method in Billing and retry the failed renewal. Workspace data and approved support content remain intact while payment is recovered.',
-                structuredSummary: 'Workspace owners can update the billing payment method and retry the failed renewal; existing workspace data remains intact.',
-            },
-            createdBy: userId,
-            createdOn: now,
-            governance: {
-                driftFlag: false,
-                reviewRequired: false,
-            },
-            id: 'canonical_billing_payment_recovery',
-            modifiedBy: userId,
-            modifiedOn: now,
-            pId: PRODUCT_IDS.ANSWERLATTICE,
-            productBinding: {
-                applicableVersions: { from: 1, to: null },
-                introducedInVersion: 1,
-                lastValidatedInVersion: 1,
-            },
-            sId: answerlatticeStoreId,
-            scope: {
-                entityIds: ['entity_billing'],
-                planIds: [],
-                roleIds: [],
-                stateIds: [],
-            },
-            signalMetrics: {
-                linkedChatCount: 0,
-                linkedTicketCount: 0,
-                negativeFeedbackCount: 0,
-            },
-            slug: 'billing-payment-recovery',
-            status: 'active',
-            tId: answerlatticeTenantId,
-            title: 'How to update the billing payment method',
-            validation: {
-                confidenceScore: 1,
-                lastValidatedOn: now,
-                validatedBy: userId,
-                validationSource: 'manual',
-            },
-        },
-        { merge: true },
     );
     answerlatticeBatch.set(
         answerlatticeDb.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(

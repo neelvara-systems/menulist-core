@@ -82,19 +82,19 @@ export default async function AnswerlatticeLayout({ children }: { children: Reac
     const answerlatticePricingPath = isAnswerlatticeProductHostname(host)
         ? '/pricing'
         : `${ANSWERLATTICE_LOCAL_DEV_PATH_PREFIX}/pricing`;
+    const requestPath = requestHeaders.get('x-answerlattice-request-path');
+    const fallbackPath = isAnswerlatticeProductHostname(host)
+        ? '/dashboard'
+        : ANSWERLATTICE_LOCAL_DEV_PATH_PREFIX;
+    const callbackPath = requestPath && requestPath.startsWith('/') && !requestPath.startsWith('//')
+        ? requestPath
+        : fallbackPath;
 
     if (!session) {
-        const requestPath = requestHeaders.get('x-answerlattice-request-path');
-        const fallbackPath = isAnswerlatticeProductHostname(host)
-            ? '/dashboard'
-            : ANSWERLATTICE_LOCAL_DEV_PATH_PREFIX;
-        const callbackPath = requestPath && requestPath.startsWith('/') && !requestPath.startsWith('//')
-            ? requestPath
-            : fallbackPath;
         redirect(`/signin?callbackUrl=${encodeURIComponent(callbackPath)}`);
     }
     if (!resolveCurrentSessionUserDocumentId(session) || session.user?.active === false || session.user?.deleted === true || session.user?.isVerified === false || isPlatformEntityBlocked(session.user)) {
-        redirect("/unauthorized");
+        redirect(`/unauthorized?product=answerlattice&callbackUrl=${encodeURIComponent(callbackPath)}`);
     }
     if (!resolveAnswerlatticeSessionScope(session) && !canUseAnswerlatticeManagement(session)) {
         redirect(answerlatticePricingPath);
@@ -108,7 +108,7 @@ export default async function AnswerlatticeLayout({ children }: { children: Reac
                 <ReduxStoreProvider>
                     <SessionProvider session={session} productContext="answerlattice">
                         <NoSSRProvider>
-                            <AnswerlatticeDashboardLayout globalOverlays={<SessionExpiryMonitor />}>
+                            <AnswerlatticeDashboardLayout globalOverlays={<SessionExpiryMonitor loginCallbackPath={callbackPath} />}>
                                 <Suspense fallback={<ServerSidePageLoader page="Answerlattice Dashboard" brand="answerlattice" />}>
                                     {children}
                                 </Suspense>

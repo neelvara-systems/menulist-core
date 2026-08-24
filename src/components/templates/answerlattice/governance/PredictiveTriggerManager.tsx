@@ -106,18 +106,19 @@ export default function PredictiveTriggerManager({ tId, sId }: PredictiveTrigger
     const handleCreate = useCallback(async () => {
         try {
             const values = await createForm.validateFields();
+            const page = normalizeTriggerCondition(values.page);
             const conditions = {
-                page: normalizeTriggerCondition(values.page),
-                feature: normalizeTriggerCondition(values.feature),
-                workflow: normalizeTriggerCondition(values.workflow),
-                plan: normalizeTriggerCondition(values.plan),
-                userRole: normalizeTriggerCondition(values.userRole),
+                ...(page ? { page } : {}),
+                ...(normalizeTriggerCondition(values.feature) ? { feature: normalizeTriggerCondition(values.feature) } : {}),
+                ...(normalizeTriggerCondition(values.workflow) ? { workflow: normalizeTriggerCondition(values.workflow) } : {}),
+                ...(normalizeTriggerCondition(values.plan) ? { plan: normalizeTriggerCondition(values.plan) } : {}),
+                ...(normalizeTriggerCondition(values.userRole) ? { userRole: normalizeTriggerCondition(values.userRole) } : {}),
             };
             if (!conditions.page) {
                 createForm.setFields([{ name: 'page', errors: ['Use letters, numbers, underscores, or hyphens.'] }]);
                 return;
             }
-            await create({
+            const created = await create({
                 tId,
                 sId,
                 name: values.name,
@@ -125,16 +126,17 @@ export default function PredictiveTriggerManager({ tId, sId }: PredictiveTrigger
                 conditions,
                 action: {
                     type: values.actionType || ANSWERLATTICE_TRIGGER_ACTION_TYPES.HELP_CARD,
-                    entityId: values.entityId || undefined,
-                    articleId: values.articleId || undefined,
-                    customTitle: values.customTitle || undefined,
-                    customSummary: values.customSummary || undefined,
+                    ...(values.entityId ? { entityId: values.entityId } : {}),
+                    ...(values.articleId ? { articleId: values.articleId } : {}),
+                    ...(values.customTitle ? { customTitle: values.customTitle } : {}),
+                    ...(values.customSummary ? { customSummary: values.customSummary } : {}),
                 },
                 priority: values.priority ?? 50,
                 cooldownHours: values.cooldownHours ?? 24,
                 status: 'active',
                 source: ANSWERLATTICE_TRIGGER_SOURCE.MANUAL,
             });
+            if (!created) return;
             setCreateModalOpen(false);
             createForm.resetFields();
         } catch {
@@ -146,12 +148,13 @@ export default function PredictiveTriggerManager({ tId, sId }: PredictiveTrigger
         if (!editingTrigger) return;
         try {
             const values = await editForm.validateFields();
+            const page = normalizeTriggerCondition(values.page);
             const conditions = {
-                page: normalizeTriggerCondition(values.page),
-                feature: normalizeTriggerCondition(values.feature),
-                workflow: normalizeTriggerCondition(values.workflow),
-                plan: normalizeTriggerCondition(values.plan),
-                userRole: normalizeTriggerCondition(values.userRole),
+                ...(page ? { page } : {}),
+                ...(normalizeTriggerCondition(values.feature) ? { feature: normalizeTriggerCondition(values.feature) } : {}),
+                ...(normalizeTriggerCondition(values.workflow) ? { workflow: normalizeTriggerCondition(values.workflow) } : {}),
+                ...(normalizeTriggerCondition(values.plan) ? { plan: normalizeTriggerCondition(values.plan) } : {}),
+                ...(normalizeTriggerCondition(values.userRole) ? { userRole: normalizeTriggerCondition(values.userRole) } : {}),
             };
             if (!conditions.page) {
                 editForm.setFields([{ name: 'page', errors: ['Use letters, numbers, underscores, or hyphens.'] }]);
@@ -164,10 +167,10 @@ export default function PredictiveTriggerManager({ tId, sId }: PredictiveTrigger
                 conditions,
                 action: {
                     type: values.actionType,
-                    entityId: values.entityId || undefined,
-                    articleId: values.articleId || undefined,
-                    customTitle: values.customTitle || undefined,
-                    customSummary: values.customSummary || undefined,
+                    ...(values.entityId ? { entityId: values.entityId } : {}),
+                    ...(values.articleId ? { articleId: values.articleId } : {}),
+                    ...(values.customTitle ? { customTitle: values.customTitle } : {}),
+                    ...(values.customSummary ? { customSummary: values.customSummary } : {}),
                 },
                 priority: values.priority,
                 cooldownHours: values.cooldownHours,

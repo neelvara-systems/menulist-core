@@ -3,6 +3,7 @@ import AntdLayoutWrapper from '@antdComponent/layoutWrapper'
 import { authOptions } from '@lib/auth'
 import { getCurrentUser } from '@lib/auth/currentPlatformUser'
 import { APP_THEME_COLOR } from '@constant/common'
+import { PRODUCT_IDS } from '@constant/product'
 import { isPlatformEntityBlocked } from '@lib/platform/entityBlock'
 import LocalisationProvider from '@providers/localisationProvider'
 import NoSSRProvider from '@providers/noSSRProvider'
@@ -45,6 +46,9 @@ export default async function MainLayout({ children }: { children: React.ReactNo
   }
   if (session.user?.active === false || session.user?.deleted === true || session.user?.isVerified === false || isPlatformEntityBlocked(session.user)) {
     redirect("/unauthorized");
+  }
+  if (session.user?.pId === PRODUCT_IDS.ANSWERLATTICE || session.user?.productId === PRODUCT_IDS.ANSWERLATTICE) {
+    redirect("/answerlattice");
   }
   const currentUser = await getCurrentUser(session);
   if (!currentUser) {

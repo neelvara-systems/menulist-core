@@ -1,6 +1,7 @@
 'use client';
 
-import { Flex, Typography } from 'antd';
+import { FEATURE_FLAGS } from '@config/features';
+import { Alert, Flex, Typography } from 'antd';
 import AnswerlatticePublicApiManagement from './AnswerlatticePublicApiManagement';
 
 const { Text, Title } = Typography;
@@ -14,7 +15,16 @@ export default function AnswerlatticePublicApiAccess() {
                     Manage server-side access to approved answers, public entities, and governed support-signal intake.
                 </Text>
             </div>
-            <AnswerlatticePublicApiManagement />
+            {FEATURE_FLAGS.ENABLE_ANSWERLATTICE_PUBLIC_API ? (
+                <AnswerlatticePublicApiManagement />
+            ) : (
+                <Alert
+                    type="info"
+                    showIcon
+                    message="Public API access is not available"
+                    description="This workspace cannot create or use Public API credentials while the feature is disabled. No action is needed."
+                />
+            )}
         </Flex>
     );
 }

@@ -88,10 +88,12 @@ const LOGIN_ERRORS = {
 const { Text } = Typography;
 const CLAIM_ACCOUNT_SETUP_FAILED_MESSAGE = 'Failed to set up account';
 const LOGIN_FAILED_MESSAGE = 'Login failed. Please check your details and try again.';
+const OAUTH_CALLBACK_FAILED_MESSAGE = 'Google sign-in could not be completed. Please try again.';
 const LOGIN_PAGE_RESPONSE_JSON_MAX_BYTES = 32 * 1024;
 const LOGIN_PAGE_ERROR_MESSAGES = new Set([
   CLAIM_ACCOUNT_SETUP_FAILED_MESSAGE,
   LOGIN_FAILED_MESSAGE,
+  OAUTH_CALLBACK_FAILED_MESSAGE,
 ]);
 const JOURNEY_MOTION_MEDIA = '(hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference)';
 const NON_MENULIST_PRODUCT_ROUTE_ROOTS = new Set([
@@ -429,6 +431,13 @@ function LoginPage() {
     if (typeof window === 'undefined') return;
     setLoginHostname(window.location.hostname);
   }, []);
+
+  useEffect(() => {
+    const oauthError = searchParams?.get('error');
+    if (oauthError === 'OAuthCallback' || oauthError === 'OAuthSignin') {
+      setError({ id: 'oauth', message: OAUTH_CALLBACK_FAILED_MESSAGE });
+    }
+  }, [searchParams]);
 
   const getSafePostLoginRedirect = () => {
     const target = getPostLoginRedirect();
@@ -1057,7 +1066,7 @@ function LoginPage() {
                     icon={<FcGoogle />}
                     onClick={() => {
                       dispatch(startLoader("LoginPage:signInWithGoogle"));
-                      signIn('google', { callbackUrl: `${location.origin}${NAVIGARIONS_ROUTINGS.SIGNIN}` });
+                      signIn('google', { callbackUrl: `${location.origin}${getPostLoginRedirect()}` });
                     }}
                   >
                     Continue with Google</Button>

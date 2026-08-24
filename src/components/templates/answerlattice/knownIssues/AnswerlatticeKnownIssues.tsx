@@ -121,37 +121,13 @@ export default function AnswerlatticeKnownIssues() {
 
     const openCreate = useCallback(() => {
         setEditing(null);
-        const now = new Date();
-        const offset = now.getTimezoneOffset() * 60_000;
-        form.setFieldsValue({
-            title: '',
-            summary: '',
-            page: '',
-            severity: 'degraded',
-            startsAt: new Date(now.getTime() - offset).toISOString().slice(0, 16),
-            endsAt: '',
-            statusPageUrl: '',
-        });
         setModalOpen(true);
-    }, [form]);
+    }, []);
 
     const openEdit = useCallback((issue: AnswerlatticePredictiveTrigger) => {
         setEditing(issue);
-        form.setFieldsValue({
-            title: issue.action.customTitle || issue.name,
-            summary: issue.action.customSummary || '',
-            page: issue.conditions.page || '',
-            feature: issue.conditions.feature || '',
-            workflow: issue.conditions.workflow || '',
-            plan: issue.conditions.plan || '',
-            userRole: issue.conditions.userRole || '',
-            severity: issue.knownIssue?.severity || 'degraded',
-            statusPageUrl: issue.knownIssue?.statusPageUrl || '',
-            startsAt: toDateTimeInput(issue.knownIssue?.startsAt),
-            endsAt: toDateTimeInput(issue.knownIssue?.endsAt),
-        });
         setModalOpen(true);
-    }, [form]);
+    }, []);
 
     const saveIssue = useCallback(async () => {
         const values = await form.validateFields();
@@ -341,6 +317,36 @@ export default function AnswerlatticeKnownIssues() {
                 confirmLoading={saving}
                 width={700}
                 destroyOnHidden
+                afterOpenChange={(open) => {
+                    if (!open) return;
+                    if (editing) {
+                        form.setFieldsValue({
+                            title: editing.action.customTitle || editing.name,
+                            summary: editing.action.customSummary || '',
+                            page: editing.conditions.page || '',
+                            feature: editing.conditions.feature || '',
+                            workflow: editing.conditions.workflow || '',
+                            plan: editing.conditions.plan || '',
+                            userRole: editing.conditions.userRole || '',
+                            severity: editing.knownIssue?.severity || 'degraded',
+                            statusPageUrl: editing.knownIssue?.statusPageUrl || '',
+                            startsAt: toDateTimeInput(editing.knownIssue?.startsAt),
+                            endsAt: toDateTimeInput(editing.knownIssue?.endsAt),
+                        });
+                        return;
+                    }
+                    const now = new Date();
+                    const offset = now.getTimezoneOffset() * 60_000;
+                    form.setFieldsValue({
+                        title: '',
+                        summary: '',
+                        page: '',
+                        severity: 'degraded',
+                        startsAt: new Date(now.getTime() - offset).toISOString().slice(0, 16),
+                        endsAt: '',
+                        statusPageUrl: '',
+                    });
+                }}
             >
                 <Form form={form} layout="vertical">
                     <Form.Item name="title" label="Notice title" rules={[{ required: true, message: 'Enter a title.' }]}>

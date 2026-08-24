@@ -7,13 +7,12 @@ import {
     getAnswerlatticeRouteRequiredPermission,
 } from '@constant/answerlattice/permissions';
 import { ANSWERLATTICE_ROUTES, toAnswerlatticeDashboardRoute } from '@constant/answerlattice/routes';
-import { useClientAuthSession } from '@hook/useClientAuthSession';
+import { useAnswerlatticePublicContentRequestScope } from '@hook/answerlattice/useAnswerlatticeCacheScope';
 import {
     type AnswerlatticeWeeklySummary,
     getAnswerlatticeWeeklySummaryFreshness,
     parseAnswerlatticeWeeklySummary,
 } from '@lib/answerlattice/analyticsIntelligenceContracts';
-import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
 import { answerlatticeFirebaseClient } from '@lib/firebase/answerlatticeFirebaseClient';
 import { logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
@@ -98,7 +97,7 @@ const buildWeeklyDigestExport = (digest: AnswerlatticeWeeklySummary): string => 
 
 export default function AnswerlatticeWeeklyDigest() {
     const { token } = theme.useToken();
-    const session = useClientAuthSession();
+    const requestScope = useAnswerlatticePublicContentRequestScope();
     const { access } = useAnswerlatticeAccess();
     const router = useRouter();
     const screens = Grid.useBreakpoint();
@@ -111,8 +110,7 @@ export default function AnswerlatticeWeeklyDigest() {
     const [loadError, setLoadError] = useState(false);
 
     const loadDigest = useCallback(async (silent = false) => {
-        const scope = resolveAnswerlatticeSessionScope(session);
-        if (!scope) {
+        if (!requestScope) {
             setDigest(null);
             setLoadError(false);
             setLoading(false);
@@ -128,9 +126,9 @@ export default function AnswerlatticeWeeklyDigest() {
             const digestSnapshot = await getDoc(doc(
                 answerlatticeFirebaseClient,
                 'insights',
-                String(scope.tenantId),
+                String(requestScope.tId),
                 'stores',
-                String(scope.storeId),
+                String(requestScope.sId),
                 'ai',
                 'weekly',
             ));
@@ -138,7 +136,10 @@ export default function AnswerlatticeWeeklyDigest() {
                 setDigest(null);
                 return;
             }
-            const parsed = parseAnswerlatticeWeeklySummary(digestSnapshot.data(), scope);
+            const parsed = parseAnswerlatticeWeeklySummary(digestSnapshot.data(), {
+                tenantId: requestScope.tId,
+                storeId: requestScope.sId,
+            });
             if (!parsed) throw new Error('answerlattice_weekly_digest_contract_invalid');
             setDigest(parsed);
         } catch (error) {
@@ -150,7 +151,7 @@ export default function AnswerlatticeWeeklyDigest() {
             setLoading(false);
             setRefreshing(false);
         }
-    }, [session]);
+    }, [requestScope]);
 
     useEffect(() => {
         void loadDigest();

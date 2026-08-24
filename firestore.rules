@@ -3752,13 +3752,21 @@ service cloud.firestore {
         )
         && (!data.keys().hasAny(['tags']) || isValidAnswerlatticeSupportBoardTextList(data.tags, 8, 48))
         && (!data.keys().hasAny(['relatedContextKeys']) || isValidAnswerlatticeSupportBoardTextList(data.relatedContextKeys, 8, 48))
-        && isValidAnswerlatticeSupportBoardOptionalText(data, 'sourceCustomerName', 160)
-        && isValidAnswerlatticeSupportBoardOptionalText(data, 'sourceCustomerEmail', 180)
-        && isValidAnswerlatticeSupportBoardOptionalText(data, 'sourceCustomerPhone', 80)
-        && isValidAnswerlatticeSupportBoardOptionalText(data, 'sourceCustomerUserId', 120)
-        && isValidAnswerlatticeSupportBoardOptionalText(data, 'sourceOrigin', 180)
-        && isValidAnswerlatticeSupportBoardOptionalText(data, 'sourcePath', 180)
-        && isValidAnswerlatticeSupportBoardOptionalText(data, 'sourceSessionId', 120)
+        && (
+          !data.keys().hasAny([
+            'sourceCustomerName', 'sourceCustomerEmail', 'sourceCustomerPhone',
+            'sourceCustomerUserId', 'sourceOrigin', 'sourcePath', 'sourceSessionId'
+          ])
+          || (
+            isValidAnswerlatticeSupportBoardOptionalText(data, 'sourceCustomerName', 160)
+            && isValidAnswerlatticeSupportBoardOptionalText(data, 'sourceCustomerEmail', 180)
+            && isValidAnswerlatticeSupportBoardOptionalText(data, 'sourceCustomerPhone', 80)
+            && isValidAnswerlatticeSupportBoardOptionalText(data, 'sourceCustomerUserId', 120)
+            && isValidAnswerlatticeSupportBoardOptionalText(data, 'sourceOrigin', 180)
+            && isValidAnswerlatticeSupportBoardOptionalText(data, 'sourcePath', 180)
+            && isValidAnswerlatticeSupportBoardOptionalText(data, 'sourceSessionId', 120)
+          )
+        )
         && isValidAnswerlatticeSupportBoardOptionalText(data, 'assigneeId', 100)
         && isValidAnswerlatticeSupportBoardOptionalText(data, 'assigneeName', 100)
         && isValidAnswerlatticeSupportBoardOptionalText(data, 'dueDate', 10)

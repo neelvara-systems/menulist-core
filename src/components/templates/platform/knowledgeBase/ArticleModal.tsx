@@ -213,7 +213,6 @@ const ArticleModal = ({ open, editingArticle, form, onOk, onCancel, onSuccess, s
             }
         } else {
             setLinkedFaqIds([]);
-            form.resetFields();
         }
     }, [open, editingArticle, selectedCategory, selectedSection, form]);
 

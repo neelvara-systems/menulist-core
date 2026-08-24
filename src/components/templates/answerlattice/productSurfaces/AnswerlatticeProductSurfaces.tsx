@@ -150,6 +150,7 @@ export default function AnswerlatticeProductSurfaces() {
     }, [loadData]);
 
     useEffect(() => {
+        if (loading) return;
         if (!selectedSurface) {
             form.setFieldsValue(DEFAULT_SURFACE_VALUES);
             return;
@@ -162,7 +163,7 @@ export default function AnswerlatticeProductSurfaces() {
             tags: selectedSurface.tags || [],
             visibility: selectedSurface.visibility || DEFAULT_SURFACE_VALUES.visibility,
         });
-    }, [form, selectedSurface]);
+    }, [form, loading, selectedSurface]);
 
     const handleNewSurface = useCallback(() => {
         setSelectedSurfaceId(null);

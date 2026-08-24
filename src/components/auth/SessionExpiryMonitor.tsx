@@ -33,6 +33,10 @@ type AccessStatusResponse = {
 };
 type SessionExpiryModalMode = 'expired' | 'access-ended';
 
+type SessionExpiryMonitorProps = {
+    loginCallbackPath?: string;
+};
+
 type AccessEndedCopy = {
     description: string;
     title: string;
@@ -59,6 +63,18 @@ const getAccessStatusResponseLogContext = (response: Response) => ({
 const isManualRedirectResponse = (response: Response): boolean => (
     response.type === 'opaqueredirect' || (response.status >= 300 && response.status < 400)
 );
+
+const buildSessionLoginPath = (
+    modalMode: SessionExpiryModalMode,
+    loginCallbackPath?: string,
+): string => {
+    const params = new URLSearchParams();
+    params.set(modalMode === 'access-ended' ? 'access' : 'expired', modalMode === 'access-ended' ? 'ended' : 'true');
+    if (loginCallbackPath?.startsWith('/') && !loginCallbackPath.startsWith('//')) {
+        params.set('callbackUrl', loginCallbackPath);
+    }
+    return `${NAVIGARIONS_ROUTINGS.SIGNIN}?${params.toString()}`;
+};
 
 const readAccessStatusResponseJson = async (
     response: Response,
@@ -206,7 +222,7 @@ function SessionExpiryDialog({
  * 
  * @see assessment-05-security.md Task 16: Session Timeout Handling
  */
-export default function SessionExpiryMonitor() {
+export default function SessionExpiryMonitor({ loginCallbackPath }: SessionExpiryMonitorProps = {}) {
     const { data: session, status } = useSession();
     const router = useRouter();
     const [showExpiryModal, setShowExpiryModal] = useState(false);
@@ -274,7 +290,7 @@ export default function SessionExpiryMonitor() {
             const hasShownBefore = localStorage.getItem('session_expired_shown');
             if (hasShownBefore) {
                 // Redirect silently
-                router.push(`${NAVIGARIONS_ROUTINGS.SIGNIN}?expired=true`);
+                router.push(buildSessionLoginPath('expired', loginCallbackPath));
                 return;
             }
 
@@ -286,7 +302,7 @@ export default function SessionExpiryMonitor() {
             // Set flag to prevent showing again
             localStorage.setItem('session_expired_shown', 'true');
         }
-    }, [status, router]);
+    }, [loginCallbackPath, status, router]);
 
     const endAccess = useCallback(async (requestId: number, reason?: string) => {
         if (!accessStatusRequestGuardRef.current?.isCurrent(requestId)) return;
@@ -303,11 +319,11 @@ export default function SessionExpiryMonitor() {
         }
 
         try {
-            await signOutSession(NAVIGARIONS_ROUTINGS.SIGNIN);
+            await signOutSession(buildSessionLoginPath('access-ended', loginCallbackPath));
         } catch {
             // The access decision already came from the server; keep the local logout flow moving.
         }
-    }, []);
+    }, [loginCallbackPath]);
 
     const checkAccessStatus = useCallback(async () => {
         if (status !== 'authenticated' || !session?.user || accessEndedInFlight.current) return;
@@ -401,7 +417,7 @@ export default function SessionExpiryMonitor() {
 
     const handleGoToLogin = () => {
         setShowExpiryModal(false);
-        router.push(`${NAVIGARIONS_ROUTINGS.SIGNIN}?${modalMode === 'access-ended' ? 'access=ended' : 'expired=true'}`);
+        router.push(buildSessionLoginPath(modalMode, loginCallbackPath));
     };
 
     const accessEndedCopy = getAccessEndedCopy(accessEndedReason);

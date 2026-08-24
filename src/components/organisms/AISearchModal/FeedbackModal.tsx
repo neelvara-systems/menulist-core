@@ -44,6 +44,7 @@ export default function FeedbackModal({ visible, onClose, onSubmit, feedbackData
         <Modal
             title="What went wrong?"
             open={visible}
+            forceRender
             onCancel={onClose}
             footer={null}
             centered

@@ -1544,10 +1544,12 @@ function verifyAnswerlatticeDashboardFailureCopy() {
   assertIncludes(workflowNotifications, 'AnswerlatticeWorkflowIntegrationsResponseSchema.safeParse', 'Answerlattice workflow notifications strict settings response contract');
   assertIncludes(workflowNotifications, 'AnswerlatticeWorkflowIntegrationTestResponseSchema.safeParse', 'Answerlattice workflow notifications strict test response contract');
   assertIncludes(workflowNotifications, 'preserveHealth: true', 'Answerlattice workflow notification save preserves prior delivery health');
-  assertIncludes(workflowNotifications, 'const scopeIsCurrent = Boolean(cacheScopeKey && loadedScopeKey === cacheScopeKey);', 'Answerlattice workflow notifications exact retained workspace identity');
+  assertIncludes(workflowNotifications, 'const scopeIsCurrent = Boolean(', 'Answerlattice workflow notifications exact retained workspace identity guard');
+  assertIncludes(workflowNotifications, 'cacheScopeKey && loadedScopeKey === cacheScopeKey', 'Answerlattice workflow notifications retained workspace identity comparison');
   assertIncludes(workflowNotifications, 'currentScopeKeyRef.current !== requestScopeKey || loadRequestRef.current !== requestId', 'Answerlattice workflow notifications obsolete load settlement rejection');
   assertIncludes(workflowNotifications, 'if (!requestScopeKey || !scopeIsCurrent) return;', 'Answerlattice workflow notification mutations require current loaded workspace');
   assertIncludes(workflowNotifications, 'loading || !scopeIsCurrent', 'Answerlattice workflow notifications hide prior-workspace values');
+  assertIncludes(workflowNotifications, '<Form form={form} layout="vertical" component={false}>', 'Answerlattice workflow notifications keeps the form instance connected while loading');
   assertIncludes(workflowNotifications, 'disabled={!scopeIsCurrent || !hasSavedAdapter || loading}', 'Answerlattice workflow notification tests require current scope and saved enabled adapter');
   assertIncludes(workflowIntegrationContracts, ').strict();', 'Answerlattice workflow integration browser contracts reject extra fields');
   assertIncludes(workflowIntegrationContracts, 'NullableDeliveryStatusSchema', 'Answerlattice workflow integration health status allowlist');
@@ -1638,7 +1640,8 @@ function verifyAnswerlatticeDashboardFailureCopy() {
   assertIncludes(activation, 'ANSWERLATTICE_COMPILED_CONTEXT_REBUILD_NEEDS_REVIEW', 'Answerlattice compiled-context non-ready result copy');
   assertIncludes(activation, "if (data.ok && data.manifest.status === 'ready')", 'Answerlattice compiled-context ready success gate');
   assertIncludes(operations, 'readAnswerlatticeActivationDashboardResponse', 'Answerlattice operations bounded response reader');
-  assertIncludes(weeklyDigest, 'resolveAnswerlatticeSessionScope(session)', 'Answerlattice weekly digest exact active scope');
+  assertIncludes(weeklyDigest, 'useAnswerlatticePublicContentRequestScope()', 'Answerlattice weekly digest exact stable active scope');
+  assertNotIncludes(weeklyDigest, 'resolveAnswerlatticeSessionScope(session)', 'Answerlattice weekly digest must not retrigger on unstable session object identity');
   assertIncludes(weeklyDigest, 'parseAnswerlatticeWeeklySummary', 'Answerlattice weekly digest strict persisted summary parser');
   assertNotIncludes(weeklyDigest, '/api/answerlattice/activation/summary', 'Answerlattice weekly digest must not reuse activation readiness data');
   const activationDashboardRequestPolicySpreads = [
@@ -6363,6 +6366,7 @@ function verifyPredictiveTriggerPublicSummary() {
   const predictiveTriggerIdBoundary = read('src/lib/answerlattice/predictiveTriggerIdBoundary.ts');
   const triggers = read('src/database/answerlattice/predictiveTriggers.ts');
   const predictiveTriggerHook = read('src/hooks/answerlattice/usePredictiveTriggers.ts');
+  const predictiveTriggerManager = read('src/components/templates/answerlattice/governance/PredictiveTriggerManager.tsx');
   const predictiveEngine = read('src/lib/answerlattice/predictiveEngine.ts');
   const predictiveRoute = read('src/app/api/answerlattice/predictive-help/route.ts');
   const interactionRoute = read('src/app/api/answerlattice/predictive-interaction/route.ts');
@@ -6433,6 +6437,11 @@ function verifyPredictiveTriggerPublicSummary() {
   assertIncludes(predictiveTriggerHook, 'const normalizedTriggerId = normalizeAnswerlatticePredictiveTriggerId(triggerId);', 'Answerlattice predictive trigger hook actions normalize trigger ID');
   assertNotIncludes(predictiveTriggerHook, 'addAuditLog', 'Answerlattice predictive trigger hook must not write a second non-atomic audit event');
   assertIncludes(triggers, 'batch.set(getAuditDocRef(), auditData);', 'Answerlattice predictive trigger source mutation and audit share one atomic batch');
+  assertIncludes(triggers, 'performedBy: String(audit.uId)', 'Answerlattice predictive trigger audit attributes the authenticated actor');
+  assertIncludes(triggers, 'timestamp: serverTimestamp()', 'Answerlattice predictive trigger audit uses the commit timestamp required by rules');
+  assertNotIncludes(triggers, "performedBy: 'admin'", 'Answerlattice predictive trigger audit must not use a forged generic actor');
+  assertIncludes(predictiveTriggerManager, 'if (!created) return;', 'Answerlattice predictive trigger modal remains open after a failed create');
+  assertNotIncludes(predictiveTriggerManager, 'entityId: values.entityId || undefined', 'Answerlattice predictive trigger form omits absent optional action keys');
   assertIncludes(triggers, 'rebuildPredictiveTriggerSummaryAfterCommit', 'Answerlattice predictive trigger DAL distinguishes committed source truth from pending summary repair');
   assertIncludes(predictiveTriggerHook, 'warnIfPredictiveTriggerSummaryPending(outcome.summarySynchronized);', 'Answerlattice predictive trigger hook reports post-commit summary lag without treating the source mutation as failed');
   assertIncludes(triggers, 'rebuildPredictiveTriggerSummary', 'Answerlattice predictive trigger summary rebuild');
@@ -7343,7 +7352,7 @@ function verifyChatAnalyticsDiagnostics() {
   );
   assertIncludes(intelligenceContracts, 'const previousWeekEnd = shiftUtcDateKey(weekStart, -1);', 'Answerlattice weekly comparison does not overlap');
   assertIncludes(answerlatticeWeeklyDigest, 'answerlatticeFirebaseClient', 'Answerlattice weekly digest browser reader uses the separate project');
-  assertIncludes(answerlatticeWeeklyDigest, 'resolveAnswerlatticeSessionScope(session)', 'Answerlattice weekly digest resolves exact active scope');
+  assertIncludes(answerlatticeWeeklyDigest, 'useAnswerlatticePublicContentRequestScope()', 'Answerlattice weekly digest resolves exact stable active scope');
   assertIncludes(answerlatticeWeeklyDigest, 'parseAnswerlatticeWeeklySummary', 'Answerlattice weekly digest runtime parser');
   assertIncludes(answerlatticeWeeklyDigest, 'getAnswerlatticeWeeklySummaryFreshness', 'Answerlattice weekly digest centralized freshness boundary');
   assertIncludes(answerlatticeWeeklyDigest, 'digest.sourceCompleteness.comparisonComplete', 'Answerlattice weekly digest hides incomplete comparisons');
@@ -9700,7 +9709,7 @@ function verifyAnswerlatticeAnswerTestsRuntime() {
   assertIncludes(activationProof, 'answerlatticeAnswerTestSourceVersionsEqual(', 'Answer Tests source-change proof invalidation');
   assertIncludes(activationProof, 'latestProofStale: firstTenIds.length >= 10 && coveredRuns.length > 0 && !matchingRun', 'Answer Tests stale activation proof');
   assertIncludes(activationRoute, 'const sourceVersionsRef = db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(getAnswerlatticeSourceVersionsDocId(tId, sId));', 'Activation current source-version summary read');
-  assertIncludes(activationRoute, 'normalizeAnswerlatticeAnswerTestSourceVersions(normalizeCompiledSourceVersions(rawSourceVersions))', 'Activation bounded source-version projection');
+  assertIncludes(activationRoute, 'normalizeAnswerlatticeAnswerTestSourceVersions(normalizedSourceVersions)', 'Activation bounded source-version projection');
   assertNotIncludes(activationRoute, 'compiledContext.sourceVersions', 'Activation must not expose internal source-version counters to the browser');
   [runHandler, releaseHandler].forEach((handler, index) => {
     assertIncludes(handler, 'getAnswerlatticeAnswerTestRunRequestFingerprint({', `Answer Tests ${index === 0 ? 'run' : 'release check'} request fingerprint`);
