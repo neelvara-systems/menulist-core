@@ -544,10 +544,17 @@ No known P0 or P1 remains. Production environment testing may begin after the va
 3. install or otherwise provide authenticated `gcloud` tooling before the next backup preflight or isolated-restore rehearsal; and
 4. reserve the final production-host verdict for authenticated production runtime, scheduler, telemetry, provider, and physical-device evidence.
 
+### 12.4 Scoped release completion
+
+The source-release condition in item 1 above was completed on 2026-08-24. Commit `80a812fea9ef6b9fcb302c6be92bdf9887916fdb` was pushed to `staging`. Only `answerlatticeNightly` and `triggerAnswerlatticeNightly` were deployed to Answerlattice QA and then production. Authenticated Functions inventory confirmed all four resulting revisions `ACTIVE`, and both manual endpoints returned 401 for a JSON request without the cron secret. No scheduler/provider work was invoked by the verification request.
+
+Production environment testing may now begin. The remaining licensed hosted-intake repetition, fresh backup preflight, production telemetry, and physical-device evidence remain non-blocking follow-ups and must not be represented as already completed.
+
 ## Version History
 
 | Date       | Change                                                      |
 | ---------- | ----------------------------------------------------------- |
+| 2026-08-24 | Deployed and read back the provider-health fix in the scoped QA and production scheduler Functions; opened production environment testing |
 | 2026-08-24 | Completed the final delta and production-transition certification; fixed hostile provider-health error-name handling and recorded the scoped Functions deployment requirement |
 | 2026-08-24 | Closed the pre-production gate after exact QA rules publication/readback and hosted support-board lifecycle |
 | 2026-08-24 | Began the final pre-production release-candidate certification; recorded route, runtime, emulator, fix, and blocker evidence |

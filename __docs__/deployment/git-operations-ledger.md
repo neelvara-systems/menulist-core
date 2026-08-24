@@ -1537,3 +1537,106 @@ Those fields are explicitly `unknown` instead of guessed.
 
 - Branch matrix after, commit SHA, direct server readback, and final filesystem state: pending.
 - Attribution confidence: exact for worktree inventory, reviewed file set, local/server refs, local source digest, focused deployed Functions inventory, and validation results.
+
+### GIT-20260824-232953-answerlattice-final-delta-staging-result
+
+- Timestamp: `2026-08-24T23:29:53+05:30`
+- Record type: `PERFORMED`
+- Actor/session/thread ID: current Codex Answerlattice final delta certification task; raw thread ID unavailable
+- Completes: `GIT-20260824-232802-answerlattice-final-delta-staging-release`
+- Operation: committed all nine reviewed tracked paths as `80a812fea9ef6b9fcb302c6be92bdf9887916fdb` with message `fix(answerlattice): close production transition gate` and non-force pushed `staging`. No `main`, Vercel, Firebase, or external social mutation occurred.
+- Branch matrix after:
+
+  | Branch | Local full SHA | Server ref/full SHA | Tracking ref | Ahead/behind | Worktree | Staged/unstaged/untracked | Status |
+  | --- | --- | --- | --- | --- | --- | --- | --- |
+  | `main` | `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `refs/heads/main` / `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `origin/main` | `0/0` | not checked out | `N/A` | `IN_SYNC` |
+  | `staging` | `80a812fea9ef6b9fcb302c6be92bdf9887916fdb` | `refs/heads/staging` / `80a812fea9ef6b9fcb302c6be92bdf9887916fdb` | `origin/staging` | `0/0` | primary worktree | `0/0/0` immediately after push | `IN_SYNC` |
+
+- Firebase matrix after: unchanged from the Git-only before matrix in `GIT-20260824-232802-answerlattice-final-delta-staging-release`; only the two Answerlattice scheduler Functions remain `INFRA_CHANGE / DEPLOY_REQUIRED` in QA and production. All other rows retain their recorded independent states.
+- Git server readback and divergence: direct `git ls-remote` confirmed the exact staging commit; local/tracking/server staging is `0/0`. Local/server main remains unchanged and `IN_SYNC`.
+- Final filesystem state: clean immediately after the push. The following deployment ledger append begins the separately authorized Firebase operation.
+- Attribution confidence: exact.
+
+### FIREBASE-20260824-232953-answerlattice-provider-health-functions-release
+
+- Timestamp: `2026-08-24T23:29:53+05:30`
+- Record type: `PLANNED`
+- Actor/session/thread ID: current Codex Answerlattice final delta certification task; raw thread ID unavailable
+- Authorization: Danny's current “do the needful” instruction following the explicit handoff requirement to deploy and read back `answerlatticeNightly` and `triggerAnswerlatticeNightly` QA first and then production.
+- Operation: deploy only `functions:answerlattice:answerlatticeNightly` and `functions:answerlattice:triggerAnswerlatticeNightly` from commit `80a812fea9ef6b9fcb302c6be92bdf9887916fdb` to `neelvara-answerlattice-qa`; perform authenticated active inventory readback and bounded runtime/failure verification; only after QA passes, repeat the same source and readback in `neelvara-answerlattice-prod`. Do not deploy Rules, indexes, Storage Rules, other Functions, Hosting, Vercel, payment execution, or parked provider ingress.
+- Branch matrix before: local/server `staging` at `80a812fea9ef6b9fcb302c6be92bdf9887916fdb`, local/server `main` at `fe625d5bbf527c1b7e537b00ab32a4f655905c35`; both individually `IN_SYNC`; one worktree on staging; filesystem clean before this append.
+- Firebase matrix before:
+
+  | Product | Environment/project | Component | Local source/config | Local artifact | Local validation | Server evidence | Readback time | Delta | Deployment state |
+  | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+  | MenuList | QA / `menulist-qa` | Firestore Rules | `firestore-menulist.rules` | unchanged | unchanged | not refreshed | none | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | QA / `menulist-qa` | Firestore indexes | `firestore.indexes.json` | unchanged | unchanged | not refreshed | none | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | QA / `menulist-qa` | Storage Rules | `storage.rules` | unchanged | unchanged | not refreshed | none | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | QA / `menulist-qa` | Cloud Functions | `functions/` | unchanged | unchanged | not refreshed | none | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | production / `menulist-prod` | Firestore Rules | `firestore-menulist.rules` | unchanged | unchanged | not refreshed | none | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | production / `menulist-prod` | Firestore indexes | `firestore.indexes.json` | unchanged | unchanged | not refreshed | none | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | production / `menulist-prod` | Storage Rules | `storage.rules` | unchanged | unchanged | not refreshed | none | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | production / `menulist-prod` | Cloud Functions | `functions/` | unchanged | unchanged | not refreshed | none | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Firestore Rules | `firestore-answerlattice.rules` | exact prior artifact | passed | exact prior active readback | `2026-08-24T22:53:20+05:30` | `NO_INFRA_CHANGE` | `DEPLOYED_AND_READ_BACK` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Firestore indexes | `firestore-answerlattice.indexes.json` | exact prior artifact | passed | 103/33 semantic parity | `2026-08-24T22:36:00+05:30` | `NO_INFRA_CHANGE` | `SOURCE_RESTORED_TO_DEPLOYED_BYTES` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Storage Rules | `storage-answerlattice.rules` | exact prior artifact | passed | exact prior active readback | `2026-08-24T22:53:20+05:30` | `NO_INFRA_CHANGE` | `DEPLOYED_AND_READ_BACK` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Cloud Functions | `functions-answerlattice/` | source digest `c282d7919e6d831cedd2cee2b1ec8faf9b3c4c0efce31a8a2ad04c2fde65f80a`, 1098093 bytes | build/emulator/aggregate passed | nightly `8230aeff6a1fc593d8b602002514de910c5196f0`; trigger `6a7e174c26e5c4075b9b68a2301ab233da83254d`; `ACTIVE` | `2026-08-24T23:28:02+05:30` | `INFRA_CHANGE` | `DEPLOY_REQUIRED` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Firestore Rules | `firestore-answerlattice.rules` | exact prior artifact | passed | exact prior active readback | `2026-08-24T22:53:20+05:30` | `NO_INFRA_CHANGE` | `DEPLOYED_AND_READ_BACK` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Firestore indexes | `firestore-answerlattice.indexes.json` | exact prior artifact | passed | 103/33 semantic parity | `2026-08-24T22:36:00+05:30` | `NO_INFRA_CHANGE` | `SOURCE_RESTORED_TO_DEPLOYED_BYTES` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Storage Rules | `storage-answerlattice.rules` | exact prior artifact | passed | exact prior active readback | `2026-08-24T22:53:20+05:30` | `NO_INFRA_CHANGE` | `DEPLOYED_AND_READ_BACK` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Cloud Functions | `functions-answerlattice/` | same source digest as QA | build/emulator/aggregate passed | nightly `933e378f5c32ceccc5ae72aaa8f1f0e4aa97eed2`; trigger `8e40a523c161321a7ad3ea52ab904ed736ba3249`; `ACTIVE` | `2026-08-24T23:28:02+05:30` | `INFRA_CHANGE` | `DEPLOY_REQUIRED` |
+
+- Firebase matrix after, revision/hash readbacks, bounded QA verification, production decision, Git closeout, and final filesystem state: pending.
+- Attribution confidence: exact.
+
+### FIREBASE-20260824-233501-answerlattice-provider-health-functions-result
+
+- Timestamp: `2026-08-24T23:35:01+05:30`
+- Record type: `PERFORMED`
+- Actor/session/thread ID: current Codex Answerlattice final delta certification task; raw thread ID unavailable
+- Completes: `FIREBASE-20260824-232953-answerlattice-provider-health-functions-release`
+- Operation: deployed only `answerlatticeNightly` and `triggerAnswerlatticeNightly` from committed staging source `80a812fea9ef6b9fcb302c6be92bdf9887916fdb` to Answerlattice QA, performed authenticated inventory and fail-closed HTTP readback, then deployed and read back the identical source scope in Answerlattice production. No other Function, Rules, indexes, Storage Rules, Hosting, Vercel, payment, provider delivery, or data mutation was performed.
+- QA verification: both Functions became `ACTIVE`; `answerlatticeNightly` hash/generation is `1d9f8a791d75ad340207043587aecdae444da7ce` / `1787594496842576`, and `triggerAnswerlatticeNightly` is `2ea3b07b989018bca9f1e16a38fb3fe0f9dd81cf` / `1787594534512921`. The manual endpoint returned 415 for unsupported content and 401 for valid JSON without the cron secret, proving fail-closed admission without running scheduler/provider work.
+- Production verification: both Functions became `ACTIVE`; `answerlatticeNightly` hash/generation is `846855a2d2187aed828a749b1eb2533549b54ed7` / `1787594628538912`, and `triggerAnswerlatticeNightly` is `21721556e996282d12ca4183dd83cfcd39ef047f` / `1787594676425194`. The valid JSON request without the cron secret returned 401; no scheduler/provider work ran.
+- Validation: focused provider-health emulator regression, dedicated Functions build, deployment prebuilds, authenticated Functions inventories, exact target scope, and fail-closed manual-trigger requests passed. The Firebase CLI emitted only its pre-existing pinned-version advisory; dependency versions were not changed outside a separately governed migration.
+- Firebase matrix after:
+
+  | Product | Environment/project | Component | Local source/config | Local artifact | Local validation | Server evidence | Readback time | Delta | Deployment state |
+  | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+  | MenuList | QA / `menulist-qa` | Firestore Rules | `firestore-menulist.rules` | unchanged | unchanged | not refreshed | none | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | QA / `menulist-qa` | Firestore indexes | `firestore.indexes.json` | unchanged | unchanged | not refreshed | none | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | QA / `menulist-qa` | Storage Rules | `storage.rules` | unchanged | unchanged | not refreshed | none | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | QA / `menulist-qa` | Cloud Functions | `functions/` | unchanged | unchanged | not refreshed | none | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | production / `menulist-prod` | Firestore Rules | `firestore-menulist.rules` | unchanged | unchanged | not refreshed | none | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | production / `menulist-prod` | Firestore indexes | `firestore.indexes.json` | unchanged | unchanged | not refreshed | none | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | production / `menulist-prod` | Storage Rules | `storage.rules` | unchanged | unchanged | not refreshed | none | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | production / `menulist-prod` | Cloud Functions | `functions/` | unchanged | unchanged | not refreshed | none | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Firestore Rules | `firestore-answerlattice.rules` | exact prior artifact | passed | exact prior active readback | `2026-08-24T22:53:20+05:30` | `NO_INFRA_CHANGE` | `DEPLOYED_AND_READ_BACK` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Firestore indexes | `firestore-answerlattice.indexes.json` | exact prior artifact | passed | 103/33 semantic parity | `2026-08-24T22:36:00+05:30` | `NO_INFRA_CHANGE` | `SOURCE_RESTORED_TO_DEPLOYED_BYTES` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Storage Rules | `storage-answerlattice.rules` | exact prior artifact | passed | exact prior active readback | `2026-08-24T22:53:20+05:30` | `NO_INFRA_CHANGE` | `DEPLOYED_AND_READ_BACK` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Cloud Functions | `functions-answerlattice/` | source digest `c282d7919e6d831cedd2cee2b1ec8faf9b3c4c0efce31a8a2ad04c2fde65f80a`, 1098093 bytes | build/emulator/aggregate passed | nightly `1d9f8a791d75ad340207043587aecdae444da7ce`; trigger `2ea3b07b989018bca9f1e16a38fb3fe0f9dd81cf`; both `ACTIVE` | `2026-08-24T23:35:01+05:30` | `INFRA_CHANGE` | `DEPLOYED_AND_READ_BACK` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Firestore Rules | `firestore-answerlattice.rules` | exact prior artifact | passed | exact prior active readback | `2026-08-24T22:53:20+05:30` | `NO_INFRA_CHANGE` | `DEPLOYED_AND_READ_BACK` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Firestore indexes | `firestore-answerlattice.indexes.json` | exact prior artifact | passed | 103/33 semantic parity | `2026-08-24T22:36:00+05:30` | `NO_INFRA_CHANGE` | `SOURCE_RESTORED_TO_DEPLOYED_BYTES` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Storage Rules | `storage-answerlattice.rules` | exact prior artifact | passed | exact prior active readback | `2026-08-24T22:53:20+05:30` | `NO_INFRA_CHANGE` | `DEPLOYED_AND_READ_BACK` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Cloud Functions | `functions-answerlattice/` | same source digest as QA | build/emulator/aggregate passed | nightly `846855a2d2187aed828a749b1eb2533549b54ed7`; trigger `21721556e996282d12ca4183dd83cfcd39ef047f`; both `ACTIVE` | `2026-08-24T23:35:01+05:30` | `INFRA_CHANGE` | `DEPLOYED_AND_READ_BACK` |
+
+- Git server readback and divergence: direct readback still shows `origin/staging` at `80a812fea9ef6b9fcb302c6be92bdf9887916fdb` and `origin/main` at `fe625d5bbf527c1b7e537b00ab32a4f655905c35`; no branch moved during Firebase deployment.
+- Final filesystem state: only this append-only ledger closeout is modified before the documentation closeout below.
+- Attribution confidence: exact.
+
+### GIT-20260824-233501-answerlattice-provider-health-closeout
+
+- Timestamp: `2026-08-24T23:35:01+05:30`
+- Record type: `PLANNED`
+- Actor/session/thread ID: current Codex Answerlattice final delta certification task; raw thread ID unavailable
+- Operation: update the production-transition report with the completed QA/production Functions release, commit the complete documentation/ledger closeout on `staging`, non-force push staging, and perform direct server readback. Keep `main` unchanged because the current instruction did not explicitly authorize a new main promotion.
+- Branch matrix before:
+
+  | Branch | Local full SHA | Server ref/full SHA | Tracking ref | Ahead/behind | Worktree | Staged/unstaged/untracked | Status |
+  | --- | --- | --- | --- | --- | --- | --- | --- |
+  | `main` | `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `refs/heads/main` / `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `origin/main` | `0/0` | not checked out | `N/A` | `IN_SYNC` |
+  | `staging` | `80a812fea9ef6b9fcb302c6be92bdf9887916fdb` | `refs/heads/staging` / `80a812fea9ef6b9fcb302c6be92bdf9887916fdb` | `origin/staging` | `0/0` | primary worktree | `0/1/0` before report update | `IN_SYNC` |
+
+- Firebase matrix before/after: identical to `FIREBASE-20260824-233501-answerlattice-provider-health-functions-result`; both scoped QA and production Functions are `DEPLOYED_AND_READ_BACK`, and this Git-only closeout performs no infrastructure mutation.
+- Branch matrix after, commit SHA, server readback, and final filesystem state: pending.
+- Attribution confidence: exact.
