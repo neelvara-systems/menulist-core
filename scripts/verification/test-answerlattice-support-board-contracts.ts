@@ -34,6 +34,8 @@ assertIncludes(dal, 'resolvedOn: isResolved ? Timestamp.now() : null', 'DAL-owne
 assertNotIncludes(hook, 'resolvedOn: Timestamp.now()', 'hook must not control resolution timestamp');
 assertIncludes(dal, 'export const redactAnswerlatticeSupportBoardSourceIdentity', 'one-way source identity redaction');
 assertIncludes(ui, 'Remove source details', 'source identity redaction UI');
+assertIncludes(ui, "maxHeight: 'calc(100dvh - 220px)'", 'short-viewport modal body bound');
+assertIncludes(ui, 'styles={{ body: SUPPORT_BOARD_MODAL_BODY_STYLE }}', 'support-board modal scrolling contract');
 assertIncludes(hook, 'answerlattice_support_board_proposal_note_add_failed', 'proposal note partial-failure diagnostic');
 assertIncludes(hook, 'Answer proposal created; private board note was not added', 'truthful proposal partial-success copy');
 assertIncludes(hook, 'status: ANSWERLATTICE_SUPPORT_BOARD_STATUS.DRAFT_READY', 'proposal moves card to draft-ready review');

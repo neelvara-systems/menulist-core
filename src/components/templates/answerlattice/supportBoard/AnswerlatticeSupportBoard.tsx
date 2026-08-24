@@ -36,6 +36,12 @@ import {
 const { Text, Title, Paragraph } = Typography;
 const { TextArea } = Input;
 
+const SUPPORT_BOARD_MODAL_BODY_STYLE = {
+    maxHeight: 'calc(100dvh - 220px)',
+    overflowY: 'auto',
+    overscrollBehavior: 'contain',
+} as const;
+
 const BOARD_COLUMNS: Array<{
     status: AnswerlatticeSupportBoardStatus;
     title: string;
@@ -581,6 +587,7 @@ export default function AnswerlatticeSupportBoard() {
                 okText="Create card"
                 confirmLoading={saving}
                 destroyOnHidden
+                styles={{ body: SUPPORT_BOARD_MODAL_BODY_STYLE }}
             >
                 <Form form={createForm} layout="vertical" initialValues={{ priority: ANSWERLATTICE_SUPPORT_BOARD_PRIORITY.MEDIUM, status: ANSWERLATTICE_SUPPORT_BOARD_STATUS.NEEDS_TRIAGE }}>
                     <Form.Item name="title" label="Title" rules={[{ required: true, message: 'Add a title' }]}>
@@ -634,6 +641,7 @@ export default function AnswerlatticeSupportBoard() {
                 confirmLoading={saving}
                 width={760}
                 destroyOnHidden
+                styles={{ body: SUPPORT_BOARD_MODAL_BODY_STYLE }}
                 footer={(_, { OkBtn, CancelBtn }) => (
                     <Flex justify="space-between" gap={12} wrap="wrap">
                         <Space wrap>

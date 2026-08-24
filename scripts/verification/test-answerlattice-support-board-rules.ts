@@ -264,6 +264,42 @@ async function run(): Promise<void> {
             role: 'SUPPORT',
             uId: 'support-1',
         }));
+        await assertSucceeds(setDoc(doc(supportDb, 'answerlattice_supportBoardCards/card-ui-create'), {
+            pId: 'AL', tId: 1, sId: 101,
+            title: 'QA rules lifecycle', description: 'Synthetic hosted QA fixture.',
+            status: 'needs_triage', priority: 'medium',
+            sourceType: 'manual', sourceId: null,
+            assigneeName: 'QA owner',
+            tags: ['qa', 'rules-publication', 'disposable'],
+            notes: [], notesCount: 0, lastNoteAt: null,
+            statuses: [{
+                status: 'needs_triage',
+                timestamp: Timestamp.now(),
+                createdBy: {
+                    id: 'support-1',
+                    name: 'Support One',
+                    email: 'support@example.com',
+                },
+                remark: 'Card created',
+            }],
+            resolvedOn: null,
+            resolvedBy: null,
+            sourceIdentityRedactedAt: null,
+            sourceIdentityRedactedBy: null,
+            sourceContext: {
+                uId: 'support-1',
+                name: 'Support One',
+                email: 'support@example.com',
+            },
+            traceId: 'al-ui-create',
+            requestId: 'al-ui-create',
+            createdOn: Timestamp.now(),
+            createdBy: 'Support One',
+            modifiedOn: Timestamp.now(),
+            modifiedBy: 'Support One',
+            role: 'SUPPORT',
+            uId: 'support-1',
+        }));
         await assertFails(setDoc(doc(supportDb, 'answerlattice_supportBoardCards/card-resolved-at-create'), {
             pId: 'AL', tId: 1, sId: 101,
             title: 'Invalid resolved card', description: '',

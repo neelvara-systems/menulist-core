@@ -976,17 +976,36 @@ service cloud.firestore {
             && isValidAnswerlatticeSupportBoardOptionalText(data, 'sourceSessionId', 120)
           )
         )
-        && isValidAnswerlatticeSupportBoardOptionalText(data, 'assigneeId', 100)
-        && isValidAnswerlatticeSupportBoardOptionalText(data, 'assigneeName', 100)
-        && isValidAnswerlatticeSupportBoardOptionalText(data, 'dueDate', 10)
-        && (!data.keys().hasAny(['dueDate']) || data.dueDate == null || data.dueDate.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$'))
-        && isValidAnswerlatticeSupportBoardOptionalText(data, 'relatedTicketId', 180)
-        && isValidAnswerlatticeSupportBoardOptionalText(data, 'relatedConversationId', 180)
-        && isValidAnswerlatticeSupportBoardOptionalText(data, 'relatedAnswerId', 180)
-        && isValidAnswerlatticeSupportBoardOptionalText(data, 'relatedProposalId', 180)
-        && isValidAnswerlatticeSupportBoardOptionalText(data, 'relatedReleaseId', 180)
-        && isValidAnswerlatticeSupportBoardOptionalText(data, 'relatedSurfaceId', 180)
-        && isValidAnswerlatticeSupportBoardOptionalText(data, 'relatedEntityId', 180);
+        && (
+          !data.keys().hasAny(['assigneeId', 'assigneeName'])
+          || (
+            isValidAnswerlatticeSupportBoardOptionalText(data, 'assigneeId', 100)
+            && isValidAnswerlatticeSupportBoardOptionalText(data, 'assigneeName', 100)
+          )
+        )
+        && (
+          !data.keys().hasAny(['dueDate'])
+          || (
+            isValidAnswerlatticeSupportBoardOptionalText(data, 'dueDate', 10)
+            && (data.dueDate == null || data.dueDate.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$'))
+          )
+        )
+        && (
+          !data.keys().hasAny([
+            'relatedTicketId', 'relatedConversationId', 'relatedAnswerId',
+            'relatedProposalId', 'relatedReleaseId', 'relatedSurfaceId',
+            'relatedEntityId'
+          ])
+          || (
+            isValidAnswerlatticeSupportBoardOptionalText(data, 'relatedTicketId', 180)
+            && isValidAnswerlatticeSupportBoardOptionalText(data, 'relatedConversationId', 180)
+            && isValidAnswerlatticeSupportBoardOptionalText(data, 'relatedAnswerId', 180)
+            && isValidAnswerlatticeSupportBoardOptionalText(data, 'relatedProposalId', 180)
+            && isValidAnswerlatticeSupportBoardOptionalText(data, 'relatedReleaseId', 180)
+            && isValidAnswerlatticeSupportBoardOptionalText(data, 'relatedSurfaceId', 180)
+            && isValidAnswerlatticeSupportBoardOptionalText(data, 'relatedEntityId', 180)
+          )
+        );
     }
 
     function isValidAnswerlatticeSupportBoardChangedOptionalFields(after, affected) {
