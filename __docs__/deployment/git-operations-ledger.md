@@ -662,3 +662,92 @@ Those fields are explicitly `unknown` instead of guessed.
 - Notes: this planned operation supersedes no prior entry. It consumes the
   completed concurrent source and deployment evidence without claiming another
   task's identity or repeating deployments without a current readback need.
+
+### GIT-20260824-114529-full-promotion-and-firebase-parity-result
+
+- Timestamp: `2026-08-24T11:45:29+05:30`
+- Record type: `PERFORMED` and `CORRECTION`
+- Actor/session/thread ID: Codex thread
+  `019e3e73-7d6a-7142-9c09-24bce20e1c65`; concurrent source author `unknown`
+- Completes: `GIT-20260824-110713-full-promotion-and-firebase-parity`
+- Registered worktrees: one worktree at
+  `/Users/danny/Projects/MenuListAi/menulist-core`, checked out on `staging`
+- Source operation: the stable 25-path source snapshot was committed as
+  `504a2db327e3732dd176560ea370c98251f4647b` with subject
+  `Complete Answerlattice billing and notification controls`, pushed to
+  `staging`, then promoted to `main` without force. No merge, rebase, reset,
+  branch deletion, worktree mutation, Vercel deployment, or Hosting deployment
+  was performed.
+- Branch matrix after the source promotion and before this corrective ledger
+  commit:
+
+  | Branch | Local full SHA | Direct server ref/full SHA | Tracking ref | Ahead/behind | Worktree | Staged/unstaged/untracked | Status |
+  | --- | --- | --- | --- | --- | --- | --- | --- |
+  | `main` | `504a2db327e3732dd176560ea370c98251f4647b` | `refs/heads/main` / `504a2db327e3732dd176560ea370c98251f4647b` | `origin/main` | `0/0` | not checked out | `N/A` | `IN_SYNC` |
+  | `staging` | `504a2db327e3732dd176560ea370c98251f4647b` | `refs/heads/staging` / `504a2db327e3732dd176560ea370c98251f4647b` | `origin/staging` | `0/0` | primary worktree | `0/1/0` before this ledger append | `IN_SYNC` |
+
+- Validation before the source commit: root TypeScript, zero-warning root
+  lint, MenuList Functions lint/build, Answerlattice Functions build,
+  notification verification, the complete Answerlattice commercial-readiness
+  suite, and all 42 maintained MenuList Firestore predeploy emulator scripts
+  passed. Staged whitespace and focused secret/generated-path checks passed.
+- Deployment-boundary correction: the first scoped Answerlattice production
+  nightly deployment stopped before upload because Firebase's whole-manifest
+  analyzer treated the globally declared but absent
+  `ANSWERLATTICE_RESEND_API_KEY` as required even though neither selected
+  nightly function binds it. `RESEND_API_KEY` was restored to the existing
+  explicit optional-provider declaration gate. Provider-function deployment
+  must set `ANSWERLATTICE_BIND_OPTIONAL_PROVIDER_SECRETS=true` only after the
+  real target secret exists. Answerlattice Functions build and EmailOS source
+  and contract checks passed after this correction. The broad runtime-truth
+  verifier then exposed two stale release assertions: onboarding analytics now
+  uses billing country rather than currency, and the system inventory had not
+  moved the enabled EmailOS/WhatsAppOS provider flags out of the disabled
+  sections. Those exact verifier/documentation contracts were corrected and
+  the complete Answerlattice runtime-truth verifier passed.
+- Firestore index correction: the first MenuList QA CLI indexes-only attempt
+  stopped on HTTP `409` while trying to recreate an existing composite index;
+  no `--force` deletion was used. The exact five missing `expiresAt` TTL field
+  policies were then applied through authenticated Firestore field PATCH calls
+  with `updateMask=ttlConfig`, preserving all existing composite indexes. All
+  five subsequently read back `ACTIVE`.
+- Firebase matrix after authenticated readback:
+
+  | Product | Environment/project | Component | Local evidence | Authenticated server evidence | Delta | Deployment state |
+  | --- | --- | --- | --- | --- | --- | --- |
+  | MenuList | QA / `menulist-qa` | Firestore Rules | `firestore-menulist.rules`; `132684` bytes; SHA-256 `2059459e3b0263bdeca75f89ad0b490e8cebf1dee19cdef9012e0c02fbab5b89`; predeploy passed | active ruleset `6269d422-639a-4a83-a020-fc561ee01c43`; exact bytes/hash | `INFRA_CHANGE` | `DEPLOYED_AND_READ_BACK` |
+  | MenuList | production / `menulist-prod` | Firestore Rules | same validated artifact | active ruleset `92997f26-07f7-420a-a249-f7f93ba3c3fb`; exact bytes/hash | `INFRA_CHANGE` | `DEPLOYED_AND_READ_BACK` |
+  | MenuList | QA / `menulist-qa` | Firestore indexes | `firestore.indexes.json`; SHA-256 `5629ae4d5004bc59c82528f2e7f9b7e5bb1ffbf74e0fc2e2e5e5252abf0744e0`; 169 composite indexes and 69 field overrides | 169/169 composite indexes `READY`; 69 field overrides; five corrected TTL fields `ACTIVE`; no creating or repair index | `INFRA_CHANGE` | `DEPLOYED_AND_READ_BACK` |
+  | MenuList | production / `menulist-prod` | Firestore indexes | same 169/69 config | 169/169 composite indexes `READY`; all 69 field overrides exact | `NO_INFRA_CHANGE` | `DEPLOYED_AND_READ_BACK` |
+  | MenuList | QA / `menulist-qa` | Storage Rules | `storage.rules`; `18176` bytes; SHA-256 `226d2a206d7de8a442bf356a61ad048118322acb993eb89fa45744ed78ed1838` | active ruleset `d37f8e26-60c3-47d4-97e2-f04d5327f2ff`; exact bytes/hash | `NO_INFRA_CHANGE` | `DEPLOYED_AND_READ_BACK` |
+  | MenuList | production / `menulist-prod` | Storage Rules | same artifact | active ruleset `7fe352ab-ba9b-433f-870d-e0d1a54294e3`; exact bytes/hash | `NO_INFRA_CHANGE` | `DEPLOYED_AND_READ_BACK` |
+  | MenuList | QA / `menulist-qa` | Cloud Functions: `messagingOnboarding` | committed `functions/` source; lint/build passed | `ACTIVE`; revision `messagingonboarding-00009-viw`; Node.js 22; four existing WhatsApp secret bindings retained | `INFRA_CHANGE` | `DEPLOYED_AND_READ_BACK` |
+  | MenuList | production / `menulist-prod` | Cloud Functions: `messagingOnboarding` | same committed source and validation | `ACTIVE`; revision `messagingonboarding-00003-rur`; Node.js 22; no WhatsApp secret binding per the parked production-provider contract | `INFRA_CHANGE` | `DEPLOYED_AND_READ_BACK` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Firestore Rules | `firestore-answerlattice.rules`; `115461` bytes; SHA-256 `461bf3a20a5bf5259653f6f7e99e2fee3305ed0b1e0d774f3720ff63e358f31a`; commercial rules suites passed | active ruleset `1c3c138d-e7c2-40ba-95ff-065590a863c0`; exact bytes/hash | `INFRA_CHANGE` | `DEPLOYED_AND_READ_BACK` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Firestore Rules | same validated artifact | active ruleset `5b0ccca7-fc6a-4775-aaec-40ee442db1d6`; exact bytes/hash | `INFRA_CHANGE` | `DEPLOYED_AND_READ_BACK` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Firestore indexes | `firestore-answerlattice.indexes.json`; SHA-256 `3f69df50df9628a0cf2ff90aeea1ad206a40418274585addc0f1907cb8735ec5`; 103/33 config | 103/103 composite indexes `READY`; all 33 field overrides exact | `INFRA_CHANGE` | `DEPLOYED_AND_READ_BACK` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Firestore indexes | same 103/33 config | 103/103 composite indexes `READY`; all 33 field overrides exact | `INFRA_CHANGE` | `DEPLOYED_AND_READ_BACK` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Storage Rules | `storage-answerlattice.rules`; `6948` bytes; SHA-256 `5fc8f980f289889da557ac69c91edd61f8e8646b066c9b0101b87141d67106cc` | active ruleset `c24abda5-7c44-4bb5-889a-e400372ae4a6`; exact bytes/hash | `NO_INFRA_CHANGE` | `DEPLOYED_AND_READ_BACK` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Storage Rules | same artifact | active ruleset `593fa3bb-1ea1-44df-bd2a-4a1c26849775`; exact bytes/hash | `NO_INFRA_CHANGE` | `DEPLOYED_AND_READ_BACK` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Cloud Functions: nightly pair | committed `functions-answerlattice/` source; build passed | `answerlatticeNightly` revision `answerlatticenightly-00005-jov` and `triggerAnswerlatticeNightly` revision `triggeranswerlatticenightly-00006-miz`, both `ACTIVE` with exact existing secret groups | `INFRA_CHANGE` | `DEPLOYED_AND_READ_BACK` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Cloud Functions: nightly pair | same corrected source and build | `answerlatticeNightly` revision `answerlatticenightly-00004-vox` and `triggerAnswerlatticeNightly` revision `triggeranswerlatticenightly-00005-not`, both `ACTIVE` with exact existing secret groups | `INFRA_CHANGE` | `DEPLOYED_AND_READ_BACK` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Cloud Functions: EmailOS integration | corrected source; real QA Resend secret exists | `processIntegrationEvent` revision `processintegrationevent-00003-yod` remains `ACTIVE`, retry-enabled, and bound only to `ANSWERLATTICE_RESEND_API_KEY` | `INFRA_CHANGE` | `DEPLOYED_AND_READ_BACK` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Cloud Functions: EmailOS integration | corrected source remains fail-closed | function absent and authenticated Secret Manager inventory confirms no `ANSWERLATTICE_RESEND_API_KEY` | `INFRA_CHANGE` | `DEPLOY_BLOCKED` |
+  | Answerlattice | QA and production | Cloud Functions: WhatsApp webhook/provider | source present; provider template remains `pending_approval` | all four product-scoped WhatsApp secrets absent in both projects; webhook functions absent | `INFRA_CHANGE` | `DEPLOY_BLOCKED` |
+
+- Secret evidence boundary: only Secret Manager metadata and enabled-version
+  numbers/timestamps were read. No secret payload was accessed, printed,
+  written, copied, or committed. No placeholder secret was created.
+- Firebase command class: scoped Firestore index field updates and scoped
+  Functions updates only. Firestore Rules and Storage Rules were not redeployed
+  because exact authenticated readback proved parity. No Firebase Hosting or
+  Vercel operation was performed.
+- Corrective Git snapshot: four tracked paths only: the optional Answerlattice
+  Resend declaration, two runtime-truth assertions, the Answerlattice feature
+  inventory, and this append-only ledger. Final root typecheck, zero-warning
+  lint, Answerlattice Functions build, EmailOS verification, runtime-truth
+  verification, and `git diff --check` all passed.
+- Attribution confidence: exact for commands performed in this task, direct Git
+  server refs, Rules source bytes/hashes, index/TTL inventories, function
+  revisions/configuration, and secret metadata. Prior/concurrent source author
+  attribution remains `unknown`.

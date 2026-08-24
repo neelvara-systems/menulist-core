@@ -337,6 +337,8 @@ Dashboard and scheduler flows should prefer summary docs over scanning growing c
 - `ENABLE_ANSWERLATTICE_KNOWLEDGE_GRAPH`
 - `ENABLE_ANSWERLATTICE_KNOWLEDGE_MAP`
 - `ENABLE_ANSWERLATTICE_PREDICTIVE_SUPPORT`
+- `ENABLE_ANSWERLATTICE_EMAIL_OS_PROVIDER_SEND`
+- `ENABLE_ANSWERLATTICE_WHATSAPP_OS_OWNER_NOTIFICATIONS`
 
 ### Disabled / rollout-gated by default
 
@@ -354,8 +356,6 @@ Dashboard and scheduler flows should prefer summary docs over scanning growing c
 - `ENABLE_ANSWERLATTICE_AI_ESCALATION`
 - `ENABLE_ANSWERLATTICE_MCP`
 - `ENABLE_ANSWERLATTICE_WIDGET_BUNDLE_BOOTSTRAP`
-- `ENABLE_ANSWERLATTICE_EMAIL_OS_PROVIDER_SEND`
-- `ENABLE_ANSWERLATTICE_WHATSAPP_OS_OWNER_NOTIFICATIONS`
 
 ### Enabled in Cloud Functions by default
 
@@ -374,14 +374,14 @@ Dashboard and scheduler flows should prefer summary docs over scanning growing c
 - `ENABLE_ANSWERLATTICE_KNOWLEDGE_INTAKE_SCHEDULER`
 - `ENABLE_ANSWERLATTICE_CONTEXT_BUNDLES`
 - `ENABLE_ANSWERLATTICE_BUNDLE_BUILDER`
+- `ENABLE_ANSWERLATTICE_EMAIL_OS_PROVIDER_SEND`
+- `ENABLE_ANSWERLATTICE_WHATSAPP_OS_PROVIDER_SEND`
 
 ### Disabled in Cloud Functions by default
 
-- `ENABLE_ANSWERLATTICE_EMAIL_OS_PROVIDER_SEND`
-- `ENABLE_ANSWERLATTICE_WHATSAPP_OS_PROVIDER_SEND`
 - `ENABLE_ANSWERLATTICE_SUPPORT_BOARD_SYNC`
 
-`ENABLE_ANSWERLATTICE_INTAKE_NATIVE_CONNECTORS` and `ENABLE_ANSWERLATTICE_SIGNAL_QUALITY` have no runtime consumer in the audited source tree. Treat them as reserved placeholders, not implemented capabilities, until code and verification evidence exist. The EmailOS and WhatsAppOS owner-delivery flags have guarded runtime consumers but remain off until product-scoped provider onboarding and QA certification. All other disabled flags represent implemented or partially implemented surfaces that still require an explicit rollout decision and their documented gates.
+`ENABLE_ANSWERLATTICE_INTAKE_NATIVE_CONNECTORS` and `ENABLE_ANSWERLATTICE_SIGNAL_QUALITY` have no runtime consumer in the audited source tree. Treat them as reserved placeholders, not implemented capabilities, until code and verification evidence exist. The EmailOS and WhatsAppOS owner-delivery flags have guarded runtime consumers and are enabled, but provider transmission still fails closed unless the target has its real product-scoped credentials, verified sender or webhook configuration, consent where required, and an approved WhatsApp template. All other disabled flags represent implemented or partially implemented surfaces that still require an explicit rollout decision and their documented gates.
 
 Enabled nightly intelligence loops are capped and summary-backed. Predictive support, workflow notifications, and knowledge graph traversal are active expansion paths and must stay guarded by cooldown storage, event caps, sanitized delivery payloads, and compact `platformSummary` reads.
 

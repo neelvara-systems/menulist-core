@@ -3718,7 +3718,7 @@ function verifyAnswerlatticeOnboardRouteGuards() {
   assertIncludes(onboardingResponse, 'normalizeRazorpaySubscriptionCheckoutUrl(value.subscription.shortUrl)', 'Answerlattice onboarding client checkout response guard');
   assertIncludes(onboardingResponse, 'value.billing.amount !== expectedAmount', 'Answerlattice onboarding exact current-plan billing acknowledgement');
   assertIncludes(onboardingResponse, 'ANSWERLATTICE_WIDGET_KEY_PATTERN.test(apiKey)', 'Answerlattice onboarding exact one-time widget key acknowledgement');
-  assertIncludes(onboardingForm, 'data-answerlattice-label={`${planId}_${currency.toLowerCase()}`}', 'Answerlattice paid workspace creation analytics uses selected plan and currency');
+  assertIncludes(onboardingForm, 'data-answerlattice-label={`${planId}_${billingProfile.countryCode.toLowerCase()}`}', 'Answerlattice paid workspace creation analytics uses selected plan and billing country');
   assertIncludes(onboardingForm, "data-answerlattice-label={result.subscription ? 'open_billing' : 'continue_in_answerlattice'}", 'Answerlattice completion analytics distinguishes Billing handoff from the single workspace continuation');
   assertIncludes(onboardingForm, "if (result.apiKey) trackPlausibleEvent('widget_key_generated');", 'Answerlattice onboarding widget-key analytics requires a returned key');
   assertIncludes(onboardingForm, "data.code === 'ANSWERLATTICE_PROVIDER_RECOVERY_PENDING'", 'Answerlattice onboarding client provider recovery guidance');
@@ -8081,10 +8081,13 @@ function verifyWorkflowIntegrationAdapterSafety() {
   assertIncludes(networkTarget, 'export async function validateNetworkTargetUrl', 'Answerlattice Functions network target validator');
   assertIncludes(functionsIndex, 'timeoutSeconds: 240', 'Answerlattice integration processor bounded retry timeout headroom');
   assertIncludes(functionsIndex, 'retry: true', 'Answerlattice integration trigger retries pre-claim infrastructure failures');
-  assertIncludes(functionsIndex, 'secrets: ANSWERLATTICE_SECRET_GROUPS.WORKFLOW_INTEGRATIONS', 'Answerlattice integration processor SMTP secret binding');
+  assertIncludes(functionsIndex, 'secrets: FUNCTION_FLAGS.ENABLE_ANSWERLATTICE_EMAIL_OS_PROVIDER_SEND', 'Answerlattice integration processor provider-specific secret binding');
+  assertIncludes(functionsIndex, '? ANSWERLATTICE_SECRET_GROUPS.EMAIL_OS', 'Answerlattice integration processor EmailOS secret group');
+  assertIncludes(functionsIndex, ': ANSWERLATTICE_SECRET_GROUPS.WORKFLOW_INTEGRATIONS', 'Answerlattice integration processor SMTP fallback secret group');
   assertIncludes(functionsIndex, "failureCode: 'answerlattice_integration_processor_invocation_failed'", 'Answerlattice integration invocation failure diagnostic');
   assertIncludes(functionSecrets, "SMTP_HOST: defineOptionalProviderSecret('ANSWERLATTICE_SMTP_HOST')", 'Answerlattice conditionally declared product-scoped SMTP host secret');
   assertIncludes(functionSecrets, "SMTP_PASS: defineOptionalProviderSecret('ANSWERLATTICE_SMTP_PASS')", 'Answerlattice conditionally declared product-scoped SMTP password secret');
+  assertIncludes(functionSecrets, "RESEND_API_KEY: defineOptionalProviderSecret('ANSWERLATTICE_RESEND_API_KEY')", 'Answerlattice conditionally declared product-scoped Resend secret');
   assertIncludes(functionSecrets, "process.env.ANSWERLATTICE_BIND_OPTIONAL_PROVIDER_SECRETS === 'true'", 'Answerlattice explicit optional-provider secret deployment gate');
   assertIncludes(functionSecrets, 'function defineOptionalProviderSecret', 'Answerlattice optional-provider declaration gate');
   assertIncludes(functionSecrets, 'function bindOptionalProviderSecrets', 'Answerlattice optional-provider secret binding helper');
