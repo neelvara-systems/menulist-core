@@ -3,9 +3,8 @@
 // NEVER import this in PricingPlansModal or any public UI component.
 // These tiers are only used by /api/reseller/* routes and billingUtils.ts.
 //
-// ⚠️ THESE ARE EXAMPLE TIERS — NOT FINAL PRICING.
-// Edit the array below to add/remove/change tiers at any time.
-// The system dynamically reads from this array — no hardcoded tier IDs elsewhere.
+// Prices are internal reseller-channel commercial terms. Changes require a
+// reviewed billing decision because existing provider plans are immutable.
 //
 // @see __docs__/reseller-dashboard/reseller-dashboard_impl.md §3
 // ═══════════════════════════════════════════════════════════════
@@ -95,6 +94,17 @@ export function getResellerPlanByPlanId(planId: string, interval: 'MONTH' | 'YEA
     };
 }
 
+/** Reseller subscriptions license and fund each included location. */
+export function calculateResellerMonthlyCredits(tier: ResellerPricingTier, locationCount: number = 1): number {
+    return tier.monthlyCredits * normalizeLocationCount(locationCount);
+}
+
+export function resolveResellerMonthlyCreditsByPlanId(planId: string, locationCount: number): number | null {
+    const tier = RESELLER_PRICING_TIERS.find(candidate => candidate.planId === planId);
+    if (!tier || !Number.isSafeInteger(locationCount) || locationCount < 1) return null;
+    return tier.monthlyCredits * locationCount;
+}
+
 export const RESELLER_COMMITMENT_OPTIONS = [3, 6, 12] as const;
 export type ResellerCommitment = (typeof RESELLER_COMMITMENT_OPTIONS)[number];
 
@@ -178,7 +188,9 @@ export function calculateOfflineLocationTopup(params: {
  * Set to false to disable without code changes.
  */
 export const RESELLER_SYSTEM_FLAGS = {
-    OFFLINE_MODE_ACTIVE: true,  // Set false to disable offline/cash payment mode entirely
+    // Manual collection stays fail-closed until the seller, reseller,
+    // remittance, refund, invoice, and credit-note contract is approved.
+    OFFLINE_MODE_ACTIVE: false,
 } as const;
 
 /**

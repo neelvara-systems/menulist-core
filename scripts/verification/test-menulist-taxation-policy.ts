@@ -12,6 +12,7 @@ import {
 const supplier: MenuListTaxSupplierConfig = {
     legalIdentityVerified: true,
     merchantEntityId: 'merchant_test',
+    productName: 'MenuList',
     legalName: 'Example Supplier Private Limited',
     registeredAddress: 'Mumbai, Maharashtra, India',
     gstin: '27ABCDE1234F1Z5',

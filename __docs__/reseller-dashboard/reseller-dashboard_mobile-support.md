@@ -1,5 +1,7 @@
 # Reseller Dashboard — Mobile Support Assessment
 
+> **Current billing admission (August 24, 2026):** New reseller sales are online-only through Razorpay. Billing profile and frozen MenuList tax evidence are required before provisioning; the standard invoice, refund, credit-note, and notification pipeline applies after settlement. Recurring credits scale with paid locations. Manual cash/UPI collection, confirmation, renewal, and location-capacity sales are dormant and fail closed until their seller/remittance/accounting contract is approved. Historical offline detail below is retained for implementation history only.
+
 **Feature:** Assisted Onboarding Portal for Authorized Resellers  
 **Status:** Implemented - reseller boundary source gate added July 2, 2026
 **Created:** February 27, 2026  

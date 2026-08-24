@@ -84,6 +84,7 @@ const SectionModal = ({ open, editingSection, form, onOk, onCancel, onSuccess, o
         <Modal
             title={editingSection ? "Edit Section" : "Add Section"}
             open={open}
+            forceRender
             onOk={onOk}
             onCancel={onCancel}
         >

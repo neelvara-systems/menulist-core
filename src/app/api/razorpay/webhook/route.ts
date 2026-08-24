@@ -1,9 +1,10 @@
 export const dynamic = 'force-dynamic';
 import { menulistServerEnv } from '@lib/env/menulistServerEnv';
 import { DEFAULT_PRODUCT_ID, PRODUCT_IDS, type ProductId } from '@constant/product';
-import { MENULIST_B2C_PLAN_IDS } from '@constant/menulistPlans';
-import { isValidMenuListPlanQuantity } from '@lib/billing/menulistPricingPolicy';
-import { resolveMenuListQuantityCreditUpdate } from '@data/shared/contentCreditPolicy';
+import {
+    isValidMenuListStoredSubscriptionQuantity,
+    resolveMenuListStoredSubscriptionQuantityCreditUpdate,
+} from '@lib/billing/menulistStoredSubscriptionPricingPolicy';
 import {
     resizeBillingTaxSnapshot,
     resolveBillingTaxSettlementSnapshot,
@@ -90,6 +91,33 @@ import { checkPublicRateLimit } from "src/middleware/publicApi";
 const LOG_FILE = "razorpay-subscription.log";
 const RAZORPAY_WEBHOOK_MAX_BODY_BYTES = 256 * 1024;
 const RAZORPAY_WEBHOOK_RETRY_AFTER_SECONDS = 30;
+
+const resolveMenuListProviderQuantityUpdate = (
+    productId: ProductId,
+    subscription: FirestoreSubscriptionDoc,
+    quantity: number,
+): Partial<FirestoreSubscriptionDoc> => {
+    if (productId !== PRODUCT_IDS.MENULIST) return {};
+    if (!isValidMenuListStoredSubscriptionQuantity({
+        onboardingSource: subscription.onboardingSource,
+        planId: subscription.planId,
+        quantity,
+        resellerId: subscription.resellerId,
+        userType: subscription.userType,
+    })) {
+        throw new Error('Provider quantity conflicts with the stored MenuList subscription.');
+    }
+    return resolveMenuListStoredSubscriptionQuantityCreditUpdate({
+        currentMonthlyCredits: subscription.monthlyCredits,
+        currentMonthlyCreditsAllowance: subscription.monthlyCreditsAllowance,
+        fallbackAllowance: subscription.monthlyCreditsAllowance,
+        onboardingSource: subscription.onboardingSource,
+        planId: subscription.planId,
+        quantity,
+        resellerId: subscription.resellerId,
+        userType: subscription.userType,
+    });
+};
 
 const sanitizeForAdminFirestore = (value: any): any => {
     return sanitizeForFirestore(value);
@@ -1078,6 +1106,11 @@ export async function POST(request: NextRequest) {
                         totalPaymentsNeededCount: providerState.totalCount,
                         totalPaymentsMadeCount: providerState.paidCount,
                         quantity: providerState.quantity,
+                        ...resolveMenuListProviderQuantityUpdate(
+                            eventProductId,
+                            internalSub,
+                            providerState.quantity,
+                        ),
                         ...(productUsesConfiguredTax(eventProductId) && internalSub.taxSnapshot ? {
                             taxSnapshot: resizeBillingTaxSnapshot(internalSub.taxSnapshot, providerState.quantity),
                         } : {}),
@@ -1134,6 +1167,11 @@ export async function POST(request: NextRequest) {
                         pastDueSinceAt: null,
                         totalPaymentsNeededCount: providerState.totalCount,
                         quantity: providerState.quantity,
+                        ...resolveMenuListProviderQuantityUpdate(
+                            eventProductId,
+                            internalSub,
+                            providerState.quantity,
+                        ),
                         ...(productUsesConfiguredTax(eventProductId) && internalSub.taxSnapshot ? {
                             taxSnapshot: resizeBillingTaxSnapshot(internalSub.taxSnapshot, providerState.quantity),
                         } : {}),
@@ -1255,6 +1293,11 @@ export async function POST(request: NextRequest) {
                         totalPaymentsNeededCount: providerState.totalCount,
                         totalPaymentsMadeCount: providerState.paidCount,
                         quantity: providerState.quantity,
+                        ...resolveMenuListProviderQuantityUpdate(
+                            eventProductId,
+                            internalSub,
+                            providerState.quantity,
+                        ),
                         ...(currentTaxSnapshot ? { taxSnapshot: currentTaxSnapshot } : {}),
                         paymentMethod,
                         lastWebhook: { event: event.event, timestamp: Timestamp.now() },
@@ -1738,17 +1781,13 @@ export async function POST(request: NextRequest) {
                     if (!providerStatus || (hasQuantity && quantity == null)) {
                         throw new Error('Invalid updated provider subscription state.');
                     }
-                    if (
-                        eventProductId === PRODUCT_IDS.MENULIST
-                        && quantity != null
-                        && !isValidMenuListPlanQuantity({
-                            planId: updatedInternalSub.planId,
+                    const quantityCreditUpdate = quantity == null
+                        ? {}
+                        : resolveMenuListProviderQuantityUpdate(
+                            eventProductId,
+                            updatedInternalSub,
                             quantity,
-                            userType: updatedInternalSub.userType,
-                        })
-                    ) {
-                        throw new Error('Updated provider quantity conflicts with the MenuList plan.');
-                    }
+                        );
                     if (quantity != null && (updatedInternalSub.status === 'active' || updatedInternalSub.status === 'past_due')) {
                         await recordFounderSubscriptionMrrChange({
                             eventKey: webhookClaim.eventKey,
@@ -1773,15 +1812,7 @@ export async function POST(request: NextRequest) {
                                 ...(productUsesConfiguredTax(eventProductId) && updatedInternalSub.taxSnapshot
                                     ? { taxSnapshot: resizeBillingTaxSnapshot(updatedInternalSub.taxSnapshot, quantity) }
                                     : {}),
-                                ...(eventProductId === PRODUCT_IDS.MENULIST
-                                    && updatedInternalSub.planId === MENULIST_B2C_PLAN_IDS.MULTI_LOCATION
-                                    ? resolveMenuListQuantityCreditUpdate({
-                                        currentMonthlyCredits: updatedInternalSub.monthlyCredits,
-                                        currentMonthlyCreditsAllowance: updatedInternalSub.monthlyCreditsAllowance,
-                                        planId: updatedInternalSub.planId,
-                                        quantity,
-                                    })
-                                    : {}),
+                                ...quantityCreditUpdate,
                             }),
                             lastWebhook: { event: event.event, timestamp: Timestamp.now() },
                         },

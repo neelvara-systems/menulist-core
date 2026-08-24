@@ -31,6 +31,7 @@ function assertNoDirectConsole(content, label) {
 function verifyAnswerlatticeGoogleOAuthParity() {
   const authRoute = read('src/app/api/auth/[...nextauth]/route.ts');
   const authRuntime = read('src/lib/auth/googleOAuthRuntime.ts');
+  const loginPage = read('src/components/templates/loginPage/index.tsx');
   const onboarding = read('src/app/sites/answerlattice/get-started/OnboardingForm.tsx');
   const sentry = read('src/lib/monitoring/sentryShared.ts');
   const stagingEnv = read('.env.staging.example');
@@ -40,6 +41,16 @@ function verifyAnswerlatticeGoogleOAuthParity() {
     onboarding,
     "signIn('google'",
     'Answerlattice onboarding must use the shared NextAuth Google provider flow',
+  );
+  assertIncludes(
+    loginPage,
+    'Continue with Google',
+    'Answerlattice login must expose the shared NextAuth Google provider flow',
+  );
+  assertNotIncludes(
+    loginPage,
+    'shouldOfferGoogleAuth = !isAnswerlatticeExperience',
+    'Answerlattice login must not hide the configured Google provider',
   );
   assertIncludes(
     authRoute,

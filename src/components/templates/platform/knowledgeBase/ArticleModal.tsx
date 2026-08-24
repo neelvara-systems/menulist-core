@@ -499,6 +499,7 @@ const ArticleModal = ({ open, editingArticle, form, onOk, onCancel, onSuccess, s
         <Modal
             title={<RenderTitle />}
             open={open}
+            forceRender
             onOk={onOk}
             onCancel={onCancel}
             centered={!isMobile}

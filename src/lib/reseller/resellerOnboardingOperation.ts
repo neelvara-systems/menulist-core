@@ -7,6 +7,19 @@ import {
 } from '@lib/publicTruth/entityEligibility';
 
 export type ResellerOnboardingOperationInput = {
+    billingProfile: {
+        addressLine1: string;
+        addressLine2?: string;
+        city: string;
+        countryCode: string;
+        email: string;
+        indianStateCode?: string;
+        legalName: string;
+        postalCode: string;
+        region: string;
+        taxId?: string;
+        taxIdType?: 'GSTIN' | 'OTHER';
+    };
     billingInterval: 'MONTH' | 'YEAR';
     businessName: string;
     businessType: string;
@@ -28,6 +41,7 @@ export function getResellerOnboardingOperationFingerprint(
 ): string {
     return createHash('sha256')
         .update(JSON.stringify([
+            input.billingProfile,
             input.billingInterval,
             input.businessName,
             input.businessType,

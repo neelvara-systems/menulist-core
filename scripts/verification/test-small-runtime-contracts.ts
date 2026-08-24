@@ -17,11 +17,6 @@ import {
 } from '../../src/lib/businessIdentity/names';
 import { normalizeCategoryIconValue } from '../../src/lib/categoryIcons';
 import {
-    normalizeImageProviderOrientation,
-    normalizeImageProviderPage,
-    normalizeImageProviderQuery,
-} from '../../src/lib/imageProviderRequests';
-import {
     getLocalizedStringList,
     getLocalizedText,
     isLocalizedStringList,
@@ -356,18 +351,6 @@ const hostileLocalizedText = new Proxy({}, {
 });
 assert.equal(getLocalizedText(hostileLocalizedText, 'en', 'en', 'Fallback'), 'Fallback');
 assert.deepEqual(getLocalizedStringList(hostileLocalizedText, 'en', 'en', ['Fallback']), ['Fallback']);
-
-const coerciveImageProviderInput = {
-    toString() {
-        throw new Error('image-provider string coercion must not execute');
-    },
-    valueOf() {
-        throw new Error('image-provider numeric coercion must not execute');
-    },
-};
-assert.equal(normalizeImageProviderPage(coerciveImageProviderInput), 1);
-assert.equal(normalizeImageProviderOrientation(coerciveImageProviderInput), 'landscape');
-assert.equal(normalizeImageProviderQuery(coerciveImageProviderInput), '');
 
 const hostileFreshnessTimestamp = new Proxy({}, {
     get() {

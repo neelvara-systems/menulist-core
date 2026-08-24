@@ -1,5 +1,16 @@
 # MenuList — Changelog
 
+## August 24, 2026 - Internal FinanceOS Governance
+
+- Established an internal, founder-operated FinanceOS contract for portfolio expenses, payment obligations, subscriptions, prepaid and usage-based balances, assets, evidence, forecasts, reminders, and reconciliation.
+- Added mirrored Codex/Cascade rules, a repository skill, a canonical ledger schema, private-data Git guardrails, and governed internal documentation.
+- Added a separate provider-account lifecycle register for paid, free-plan, trial, prepaid, usage-based, transaction-fee, unknown, and gated providers, with dated plan evidence and explicit upgrade authorization boundaries.
+- Kept real invoices, payment proofs, statements, balances, tax records, ledger exports, and asset evidence outside Git in a founder-controlled local Documents store.
+- Separated FinanceOS from customer billing and product runtime, prohibited autonomous payment/subscription mutations, and retained professional review for accounting, GST, tax, depreciation, and legal classifications.
+- Initialized the founder-controlled local Documents structure with a separate provider lifecycle register and review log. No invoice/payment evidence, reminder, payment, provider mutation, Firebase change, deployment, commit, or push was performed.
+- Froze FinanceOS v1 as one independent open-format operating contract with a canonical private-register manifest, transaction/obligation/prepaid/asset/budget/forecast/evidence registers, append-only corrections, period-close and exception controls, provider-exit checks, monthly backup verification, and quarterly sample-restore evidence.
+- Kept reporting currency, FX, fiscal year, GST/TDS, capitalization/depreciation, statutory retention, exact reminder times, and backup destination explicitly unresolved until founder or professional evidence exists; no reminder, backup, restore, provider-console review, or financial mutation was performed during the freeze.
+
 ## August 23, 2026 - Answerlattice Owner Reply Persistence
 
 - Synchronized the dedicated Answerlattice Firebase identity before owner-side

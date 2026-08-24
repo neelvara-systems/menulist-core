@@ -120,7 +120,9 @@ export const POST = withAuth(async (request, session) => {
         }
 
         if (!RESELLER_SYSTEM_FLAGS.OFFLINE_MODE_ACTIVE) {
-            return resellerPrivateJson({ error: "Offline payment mode is no longer available." }, { status: 400 });
+            return resellerPrivateJson({
+                error: 'Manual reseller collection is unavailable until its invoicing and remittance contract is approved.',
+            }, { status: 409 });
         }
 
         // Find existing subscription for this store using Admin SDK.

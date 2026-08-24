@@ -18,6 +18,7 @@ import { formatBillingHistoryEvents } from '@lib/billing/billingHistoryFormatter
 import {
     fetchMenuListBillingDocumentSummaries,
     mergeMenuListBillingDocumentsIntoHistory,
+    requestBillingDocumentEmail,
 } from '@lib/billing/billingDocumentsClient';
 import { hasVerifiedSubscriptionPaymentEvidence } from '@lib/billing/subscriptionPlanEntitlement';
 import { openIsolatedBrowserUrl } from '@lib/browser/openIsolatedBrowserUrl';
@@ -42,7 +43,7 @@ import { useSession } from 'next-auth/react';
 import { useFormatter, useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import { useContext, useMemo, useRef, useState } from 'react';
-import { LuBuilding2, LuCheck, LuChevronRight, LuCreditCard, LuExternalLink, LuMapPin, LuMessageCircle, LuPause, LuPlay, LuPlus, LuReceipt, LuStore, LuX, LuXCircle, LuZap } from 'react-icons/lu';
+import { LuBuilding2, LuCheck, LuChevronRight, LuCreditCard, LuExternalLink, LuMail, LuMapPin, LuMessageCircle, LuPause, LuPlay, LuPlus, LuReceipt, LuStore, LuX, LuXCircle, LuZap } from 'react-icons/lu';
 import { Button, Card, Dialog, DotLoading, Flex, List, NavBar, Popup, Tag, Text, TextArea, Title, Toast } from '../antd';
 import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
 
@@ -54,6 +55,9 @@ type MobileBillingExternalLinkKind = 'retry_payment' | 'invoice';
 
 export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps) {
     const t = useTranslations('Billing');
+    const tCommon = useTranslations('Common');
+    const tMobileAdvancedSettings = useTranslations('MobileAdvancedSettings');
+    const tMobileToday = useTranslations('MobileToday');
     const formatter = useFormatter();
     const { token } = theme.useToken();
     const {
@@ -78,6 +82,7 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
     const [cancellationReasonDetail, setCancellationReasonDetail] = useState('');
     const [billingInterval, setBillingInterval] = useState<'MONTH' | 'YEAR'>('MONTH');
     const [isLoading, setIsLoading] = useState(false);
+    const [sendingBillingDocumentId, setSendingBillingDocumentId] = useState<string | null>(null);
 
     const noopDispatcher: Parameters<typeof usePaymentHandler>[0] = () => undefined;
     const {
@@ -488,6 +493,55 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
             ) return;
             logPaymentFailure('payment_mobile_billing_history_load_failed', err, buildMobileBillingPaymentLogContext('history_load'));
             Toast.show({ content: t('failedToLoadHistory'), duration: 2000 });
+        }
+    };
+
+    const getBillingDocumentDeliveryLabel = (status: unknown) => {
+        switch (status) {
+            case 'sent':
+                return { color: 'success', label: `${tMobileAdvancedSettings('email')}: ${tCommon('success')}` };
+            case 'partial':
+                return { color: 'warning', label: t('processing') };
+            case 'queued':
+                return { color: 'processing', label: t('processing') };
+            case 'failed':
+                return { color: 'error', label: tMobileToday('failed') };
+            case 'outcome_unknown':
+                return { color: 'warning', label: t('processing') };
+            default:
+                return null;
+        }
+    };
+
+    const handleEmailBillingDocument = async (documentId: string) => {
+        if (!documentId || sendingBillingDocumentId) return;
+        const requestScopeKey = billingScopeKey;
+        setSendingBillingDocumentId(documentId);
+        try {
+            const delivery = await requestBillingDocumentEmail(documentId);
+            if (billingScopeKeyRef.current !== requestScopeKey) return;
+            switch (delivery.status) {
+                case 'sent':
+                    Toast.show({ content: `${t('invoice')}: ${tCommon('success')}`, duration: 2000, icon: 'success' });
+                    break;
+                case 'queued':
+                    Toast.show({ content: `${t('invoice')}: ${t('processing')}`, duration: 2000, icon: 'success' });
+                    break;
+                case 'partial':
+                case 'outcome_unknown':
+                    Toast.show({ content: t('processing'), duration: 2600 });
+                    break;
+                default:
+                    throw new Error('Billing document email could not be sent.');
+            }
+            await fetchHistory();
+        } catch (error) {
+            logPaymentFailure('payment_mobile_billing_document_email_failed', error, buildMobileBillingPaymentLogContext('billing_document_email', {
+                ...getBoundedPaymentStringContext('billingDocumentId', documentId),
+            }));
+            Toast.show({ content: `${t('invoice')}: ${tMobileToday('failed')}`, duration: 2600 });
+        } finally {
+            setSendingBillingDocumentId(current => current === documentId ? null : current);
         }
     };
 
@@ -1086,38 +1140,56 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
                             </Text>
                         ) : (
                             <List>
-                                {billingHistory.map((item: any, index: number) => (
-                                    <List.Item
+                                {billingHistory.map((item: any, index: number) => {
+                                    const delivery = getBillingDocumentDeliveryLabel(item.billingDocumentDeliveryStatus);
+                                    return <List.Item
                                         key={item.id || index}
                                         extra={
-                                            <Flex align="center" gap={8}>
+                                            <Flex align="flex-end" gap={6} vertical>
                                                 <Text>
                                                     {item.type === 'Referral reward'
                                                         ? `+${item.credits || 0} credits`
                                                         : formatCurrency(item.amount, item.currency)}
                                                 </Text>
-                                                {item.billingDocumentUrl || item.invoiceUrl ? (
-                                                    <Button
-                                                        onClick={() => handleOpenExternalBillingLink(item.billingDocumentUrl || item.invoiceUrl, 'invoice', {
-                                                            ...getBoundedPaymentStringContext('billingHistoryItemId', item.id),
-                                                            ...getBoundedPaymentStringContext('billingHistoryItemType', item.type),
-                                                            ...getBoundedPaymentStringContext('invoiceStatus', item.status),
-                                                        })}
-                                                        size="small"
-                                                    >
-                                                        <LuExternalLink size={16} color={token.colorPrimary} />
-                                                    </Button>
-                                                ) : null}
+                                                <Flex align="center" gap={4}>
+                                                    {item.billingDocumentUrl || item.invoiceUrl ? (
+                                                        <Button
+                                                            aria-label={`${tCommon('download')} ${t('invoice')}`}
+                                                            fill="none"
+                                                            onClick={() => handleOpenExternalBillingLink(item.billingDocumentUrl || item.invoiceUrl, 'invoice', {
+                                                                ...getBoundedPaymentStringContext('billingHistoryItemId', item.id),
+                                                                ...getBoundedPaymentStringContext('billingHistoryItemType', item.type),
+                                                                ...getBoundedPaymentStringContext('invoiceStatus', item.status),
+                                                            })}
+                                                            style={{ minHeight: 44, minWidth: 44, paddingInline: 0 }}
+                                                        >
+                                                            <LuExternalLink aria-hidden size={18} color={token.colorPrimary} />
+                                                        </Button>
+                                                    ) : null}
+                                                    {item.billingDocumentId ? (
+                                                        <Button
+                                                            aria-label={`${tMobileAdvancedSettings('email')} ${t('invoice')}`}
+                                                            disabled={Boolean(sendingBillingDocumentId && sendingBillingDocumentId !== item.billingDocumentId)}
+                                                            fill="none"
+                                                            loading={sendingBillingDocumentId === item.billingDocumentId}
+                                                            onClick={() => void handleEmailBillingDocument(item.billingDocumentId)}
+                                                            style={{ minHeight: 44, minWidth: 44, paddingInline: 0 }}
+                                                        >
+                                                            <LuMail aria-hidden size={18} color={token.colorPrimary} />
+                                                        </Button>
+                                                    ) : null}
+                                                </Flex>
                                             </Flex>
                                         }
                                         title={<Text>{item.type}</Text>}
                                         description={
-                                            <Text type="secondary">
-                                                {formatDate(item.date)}
-                                            </Text>
+                                            <Flex align="flex-start" gap={6} vertical>
+                                                <Text type="secondary">{formatDate(item.date)}</Text>
+                                                {item.billingDocumentId && delivery ? <Tag color={delivery.color}>{delivery.label}</Tag> : null}
+                                            </Flex>
                                         }
                                     />
-                                ))}
+                                })}
                             </List>
                         )}
                     </Flex>

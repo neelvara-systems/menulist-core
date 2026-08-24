@@ -1,6 +1,6 @@
 # Reseller Dashboard
 
-**Feature:** Assisted onboarding portal for authorized resellers to manually onboard SMB clients with flexible pricing and payment modes.
+**Feature:** Assisted onboarding portal for authorized resellers to create a customer account and online recurring checkout.
 
 **Status:** ✅ IMPLEMENTED — Feature Flag ON in current repo
 **Created:** February 27, 2026  
@@ -11,12 +11,27 @@
 
 ## What Is This?
 
+## Current billing admission (August 24, 2026)
+
+- New reseller onboarding is online-only through Razorpay.
+- The reseller enters the billed customer's legal name, invoice email, Indian
+  billing address/state, postal code, and optional GSTIN.
+- The server freezes the MenuList tax snapshot before account provisioning,
+  charges the tax-inclusive amount, and stores the same evidence used by the
+  standard MenuList invoice, refund, credit-note, and NotificationOS pipeline.
+- Recurring credits scale with the paid location quantity.
+- Offline cash/UPI collection, manual renewal, manual payment confirmation,
+  and manual location-capacity sales are fail-closed until a reviewed seller,
+  reseller, remittance, refund, invoice, and credit-note contract exists.
+- Historical offline implementation notes below describe dormant code, not an
+  admitted new-sale path.
+
 A separate dashboard accessible to authorized resellers (friends, sales partners) who onboard SMB clients on their behalf. Resellers can:
 
 1. Create stores/accounts for clients and hand over dashboard/customer links
 2. Select from predefined pricing tiers (not arbitrary prices)
-3. Choose payment mode: Online (Razorpay) or Offline (cash/UPI collected manually)
-4. Select license duration: 3 / 6 / 12 months
+3. Create an online Razorpay recurring payment link
+4. Optionally record a commercial commitment period
 5. Track their onboarded clients and license statuses
 
 **This is NOT:**

@@ -19,7 +19,6 @@ const mobileProjectSelector = read('src/components/mobile/components/MobileProje
 const mobileProjectsProvider = read('src/components/mobile/providers/MobileProjectsProvider.tsx');
 const mobileSpecialMenuScreen = read('src/components/mobile/screens/MobileSpecialMenuScreen.tsx');
 const ownerProjectSelection = read('src/lib/projects/projectSelection.ts');
-const analyticsDashboard = read('src/components/templates/main-app/dashboard/AnalyticsDashboard/index.tsx');
 const ownerDashboard = read('src/components/templates/main-app/dashboard/OwnerDashboard/index.tsx');
 const desktopCreateModal = read('src/components/templates/main-app/projects/CreateSpecialMenuModal.tsx');
 const desktopScheduleModal = read('src/components/templates/main-app/projects/EditSpecialMenuScheduleModal.tsx');
@@ -80,7 +79,6 @@ requireText(mobileProjectsProvider, 'getProjectsListWithoutLoader(true, expected
 requireText(mobileProjectsProvider, 'getProjectDataWithoutLoader(nextProjectId, expectedScope)', 'mobile project detail DAL calls must retain expected scope');
 requireText(mobileProjectsProvider, 'hydratedScopeKeyRef.current === `${currentScope.tId}:${currentScope.sId}`', 'mobile project output must be masked until exact tenant/store hydration');
 requireText(ownerProjectSelection, '`${OWNER_SELECTED_PROJECT_KEY}:${tenantScope}:${storeScope}`', 'owner project selection storage must be tenant/store partitioned');
-requireText(analyticsDashboard, '[storeDetails?.storeId, storeDetails?.tenantId]', 'analytics project selection must refresh when either tenant or store changes');
 requireText(ownerDashboard, '[storeDetails?.storeId, storeDetails?.tenantId]', 'owner dashboard project-selection callbacks must refresh when either tenant or store changes');
 requireText(ownerDashboard, '[selectedProjectId, storeDetails?.storeId, storeDetails?.tenantId]', 'owner dashboard project selection persistence must retain current tenant/store');
 

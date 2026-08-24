@@ -15,9 +15,6 @@ export const PREVIEW_PAGE_LINK = 'PREVIEW_LINK';
 export const PATTERN_PAGE = 'PATTERN';
 export const EMPTY_ERROR = { id: '', message: '' };
 export const NO_COLOR_VALUE = '#ffffff00';
-export const SEARCHED_IMAGES_COUNT_PER_REQUEST_UNSPLASH = 30;
-export const SEARCHED_IMAGES_COUNT_PER_REQUEST_PEXELS = 80;
-export const SEARCHED_IMAGES_COUNT_PER_REQUEST_PIXABAY = 200;
 export const IMAGE_COMPRESSION_LIMIT = 500000;//500kb
 export const BGRCreditValueInPrice = 100;//1 credit = 100 paise(1rs) // used only when purchasing credits
 export const BGRCreditValueInTokens = 500;//1 credit = 500 token (ex. 1mb image = 1000kb cost 1000token/500 = 2credits = 2rs)
@@ -28,12 +25,6 @@ export const LOGO_TEXT = 'MenuList'
 export const LOGO_LARGE = '/icons/icon-512x512.png';
 export const LOGO_SMALL = '/icons/icon-192x192.png';
 export const LOGO_ANIMATED = '/icons/icon-512x512.png';
-export const BACKGROUND_IMAGES_ORIENTATIONS = {
-    LANDSCAPE: 'landscape',
-    PORTRAIT: 'portrait',
-    SQUARE: 'square',
-}
-
 export const ERROR_TYPES = {
     FUNCTIONAL: "FUNCTIONAL"
 }

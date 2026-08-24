@@ -1500,11 +1500,6 @@ const staticAssetDiagnostics = read('src/database/static/staticDiagnostics.ts');
 const staticAssetData = read('src/database/static/static.ts');
 const tenantData = read('src/database/tenants/index.tsx');
 const firebaseStorageHelper = read('src/lib/firebase/storage.ts');
-const imageProviderDiagnostics = read('src/lib/imageProviderDiagnostics.ts');
-const imageProviderRequests = read('src/lib/imageProviderRequests.ts');
-const unsplashProvider = read('src/lib/unsplash/index.ts');
-const pexelsProvider = read('src/lib/pexels/index.ts');
-const pixabayProvider = read('src/lib/pixabay/index.ts');
 const firebaseDiagnostics = read('src/lib/firebase/firebaseDiagnostics.ts');
 const firebaseAdminDiagnostics = read('src/lib/firebase/firebaseAdminDiagnostics.ts');
 const firebaseAdmin = read('src/lib/firebase/firebaseAdmin.ts');
@@ -1528,7 +1523,6 @@ const profileActionsModal = read('src/components/organisms/headerComponent/profi
 const userProfileModal = read('src/components/organisms/headerComponent/profileActionsModal/userProfileModal/index.tsx');
 const addSupportTicket = read('src/components/organisms/addSupportTicket/index.tsx');
 const supportTicketDiagnostics = read('src/components/organisms/addSupportTicket/supportTicketDiagnostics.ts');
-const internalUserApi = read('src/lib/internalApi/user/index.ts');
 const hookDiagnostics = read('src/hooks/hookDiagnostics.ts');
 const useContentViewTracking = read('src/hooks/useContentViewTracking.ts');
 const useFullscreen = read('src/hooks/useFullscreen.ts');
@@ -3125,49 +3119,6 @@ assert(!tenantData.includes('User not found.'), 'Tenant email lookup misses must
 assert(!tenantData.includes('Tenant Logo Deleted'), 'Tenant DAL must not keep stale commented raw logo delete diagnostics.');
 assert(!tenantData.includes('Tenant Deleted'), 'Tenant DAL must not keep stale commented raw delete diagnostics.');
 assertIncludes(
-    imageProviderDiagnostics,
-    "import { secureError } from '@lib/security/secureLogger';",
-    'Image provider diagnostics must use secure logging.',
-);
-assertIncludes(
-    imageProviderDiagnostics,
-    'getBoundedImageProviderStringContext',
-    'Image provider diagnostics must expose bounded string context.',
-);
-assertIncludes(
-    imageProviderDiagnostics,
-    "'[Image Provider] Operation failed'",
-    'Image provider diagnostics must use normalized provider failure logging.',
-);
-assertNoDirectConsole(imageProviderDiagnostics, 'Image provider diagnostics must not direct-console failures.');
-assertIncludes(imageProviderRequests, 'IMAGE_PROVIDER_REQUEST_TIMEOUT_MS = 10000', 'Image provider requests must use a bounded provider timeout.');
-assertIncludes(imageProviderRequests, 'normalizeImageProviderPage', 'Image provider requests must normalize pages.');
-assertIncludes(imageProviderRequests, 'normalizeImageProviderQuery', 'Image provider requests must bound search queries.');
-assertIncludes(imageProviderRequests, 'normalizeImageProviderOrientation', 'Image provider requests must normalize orientations.');
-assertIncludes(imageProviderRequests, 'url.searchParams.set', 'Image provider requests must encode outbound provider params.');
-[
-    ['Unsplash provider', unsplashProvider, 'image_provider_unsplash_search_failed'],
-    ['Unsplash topics provider', unsplashProvider, 'image_provider_unsplash_topics_failed'],
-    ['Pexels provider', pexelsProvider, 'image_provider_pexels_search_failed'],
-    ['Pixabay provider', pixabayProvider, 'image_provider_pixabay_search_failed'],
-].forEach(([label, source, failureCode]) => {
-    assertIncludes(source, 'buildImageProviderUrl', `${label} must build encoded provider URLs.`);
-    assertIncludes(source, 'IMAGE_PROVIDER_REQUEST_TIMEOUT_MS', `${label} must apply bounded provider timeouts.`);
-    assertIncludes(source, 'normalizeImageProvider', `${label} must normalize provider inputs before outbound calls.`);
-    assertIncludes(source, 'logImageProviderFailure', `${label} must use bounded image-provider diagnostics.`);
-    assertIncludes(source, 'getImageProviderRequestLogContext', `${label} must log bounded request metadata.`);
-    assertIncludes(source, failureCode, `${label} must include bounded failure code ${failureCode}.`);
-    assertNoDirectConsole(source, `${label} must not direct-console provider errors.`);
-    assert(!source.includes('rej(error.response.data)'), `${label} must not reject raw provider response data.`);
-    assert(!source.includes('rej(error?.response?.data'), `${label} must not reject raw provider response data.`);
-    assert(!source.includes('query=${searchQuery}'), `${label} must not interpolate raw search queries into provider URLs.`);
-    assert(!source.includes('q=${searchQuery}'), `${label} must not interpolate raw search queries into provider URLs.`);
-    assert(!source.includes('orientation=${orientation}&page=${page}'), `${label} must not interpolate raw orientation/page into provider URLs.`);
-    assert(!source.includes('Error in api/unsplash/getImages'), `${label} must remove old raw provider diagnostic text.`);
-});
-assertIncludes(pexelsProvider, 'headers: {', 'Pexels provider must pass Authorization under Axios headers.');
-assertIncludes(pexelsProvider, 'Authorization: process.env.NEXT_PUBLIC_PEXELS_API_CLIENTID ||', 'Pexels provider must send the configured provider key as an Axios header.');
-assertIncludes(
     hookDiagnostics,
     "import { secureError, secureLog } from '@lib/security/secureLogger';",
     'Shared hook diagnostics must use secure logging.',
@@ -3727,11 +3678,6 @@ assert(!getActiveSessionHelper.includes('tId: effectiveSession'), 'Active sessio
 });
 assertMenuListBrowserSurfacesUseAllowedFirebaseAuthDirectMethods();
 assertBrowserFirebaseAuthBoundaryDocs();
-assertIncludes(internalUserApi, 'internal_user_login_failed', 'Internal user API helper must code login failures.');
-assertIncludes(internalUserApi, 'internal_user_token_lookup_failed', 'Internal user API helper must code token lookup failures.');
-assertIncludes(internalUserApi, 'logAuthFailure', 'Internal user API helper must use bounded auth diagnostics.');
-assertNoDirectConsole(internalUserApi, 'Internal user API helper must not direct-console auth failures.');
-assert(!internalUserApi.includes('NEXT_PUBLIC_UPDATE_ADDRESS'), 'Internal user API helper must not keep stale commented URL diagnostics.');
 [
     'mobile_more_store_switch_failed',
     'mobile_account_profile_update_failed',

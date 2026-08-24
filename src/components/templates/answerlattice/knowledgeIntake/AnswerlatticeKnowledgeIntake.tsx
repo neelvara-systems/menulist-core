@@ -634,18 +634,14 @@ export default function AnswerlatticeKnowledgeIntake() {
         setDiscovering(false);
         setEntityOptions([]);
         setEntitySearching(false);
-        if (!activeJobId) return;
-        editForm.resetFields();
-        governanceForm.resetFields();
+        if (!activeJob || activeJob.id !== activeJobId) return;
         replyForm.resetFields();
         releaseForm.resetFields();
-        releaseForm.setFieldValue('releasedAt', dayjs());
         textForm.resetFields();
         urlForm.resetFields();
     }, [
+        activeJob?.id,
         activeJobId,
-        editForm,
-        governanceForm,
         replyForm,
         releaseForm,
         textForm,

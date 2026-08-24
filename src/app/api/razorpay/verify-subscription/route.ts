@@ -7,7 +7,10 @@ import {
     resolveRazorpayProviderSubscriptionStatus,
 } from '@data/shared/razorpaySubscriptionLifecycle';
 import { PRODUCT_IDS } from '@constant/product';
-import { resolveMenuListMonthlyCreditAllowance } from '@data/shared/contentCreditPolicy';
+import {
+    isValidMenuListStoredSubscriptionQuantity,
+    resolveMenuListStoredSubscriptionMonthlyCreditAllowance,
+} from '@lib/billing/menulistStoredSubscriptionPricingPolicy';
 import {
     resizeBillingTaxSnapshot,
     resolveBillingTaxSettlementSnapshot,
@@ -383,6 +386,26 @@ export const POST = withAuth(async (request, session) => {
         const paymentAmount = requireRazorpayRevenueAmountPaise(payment.amount);
         const paymentOccurredAt = resolveRazorpayRevenueOccurredAtMillis(payment.created_at);
         const providerState = resolveRazorpaySubscriptionState(providerSubscription, internalSub.quantity);
+        if (
+            productId === PRODUCT_IDS.MENULIST
+            && providerState
+            && !isValidMenuListStoredSubscriptionQuantity({
+                onboardingSource: internalSub.onboardingSource,
+                planId: internalSub.planId,
+                quantity: providerState.quantity,
+                resellerId: internalSub.resellerId,
+                userType: internalSub.userType,
+            })
+        ) {
+            logger.security('Subscription Quantity Verification Failed', {
+                ...getBoundedRazorpaySecurityContext(session, request),
+                endpoint: '/api/razorpay/verify-subscription',
+                error: 'Provider quantity conflicts with stored subscription origin',
+                quantity: providerState.quantity,
+                ...getBoundedRazorpayStringContext('subscriptionId', razorpay_subscription_id),
+            }, 'critical');
+            return NextResponse.json({ error: 'Payment quantity could not be matched.' }, { status: 409 });
+        }
         const expectedTaxSnapshot = productUsesConfiguredTax(productId) && internalSub.taxSnapshot && providerState
             ? resizeBillingTaxSnapshot(internalSub.taxSnapshot, providerState.quantity)
             : undefined;
@@ -409,10 +432,13 @@ export const POST = withAuth(async (request, session) => {
             return NextResponse.json({ error: 'Payment amount could not be matched.' }, { status: 409 });
         }
         const creditsForPlan = productId === PRODUCT_IDS.MENULIST
-            ? resolveMenuListMonthlyCreditAllowance({
+            ? resolveMenuListStoredSubscriptionMonthlyCreditAllowance({
                 fallbackAllowance: planCredits,
-                planId: planDetails.planId,
-                quantity: providerState?.quantity ?? internalSub.quantity,
+                onboardingSource: internalSub.onboardingSource,
+                planId: internalSub.planId,
+                quantity: providerState?.quantity ?? internalSub.quantity ?? 1,
+                resellerId: internalSub.resellerId,
+                userType: internalSub.userType,
             })
             : planCredits;
         const billingInterval = providerSubscription.notes?.interval;

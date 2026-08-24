@@ -419,6 +419,17 @@ function verifyOnboardRoute(route, ownerClaim, resellerServer, resellerLedger, o
     "action: 'ONBOARD'",
     "status: 'pending_payment'",
     "logResellerApiFailure('reseller_onboard_route_failed'",
+    'calculateConfiguredMenuListTax({',
+    'billingProfile: taxSnapshot.billingProfile',
+    'price: taxSnapshot.grossUnitAmount',
+    'chargedUnitAmount: taxSnapshot.grossUnitAmount',
+    'taxSnapshot,',
+    'amount: taxSnapshot.grossAmount',
+    'calculateResellerMonthlyCredits(tier, locationCount)',
+    'productId: PRODUCT_IDS.MENULIST',
+    'pId: PRODUCT_IDS.MENULIST',
+    'email: taxSnapshot.billingProfile.email',
+    'manualCollectionRequested',
   ].forEach((token) => assertIncludes(route, token, 'Reseller onboarding API'));
 
   assertOrder(route, [
@@ -648,6 +659,37 @@ function verifyRenewRoute(route) {
     'Reseller profile counters are invalid.',
     'paymentEvidenceId: operationId',
   ].forEach((token) => assertIncludes(route, token, 'Reseller renew API'));
+}
+
+function verifyCurrentCommercialAdmission(files) {
+  assertIncludes(files.pricing, 'OFFLINE_MODE_ACTIVE: false', 'Reseller manual collection flag');
+  assertIncludes(files.pricing, 'calculateResellerMonthlyCredits', 'Reseller location credit policy');
+  assertIncludes(files.pricing, 'resolveResellerMonthlyCreditsByPlanId', 'Reseller provider-cycle credit policy');
+  assertIncludes(files.schema, 'billingProfile: BillingProfileSchema', 'Reseller billing-profile schema');
+  assertIncludes(files.onboardingOperation, 'input.billingProfile', 'Reseller retry billing identity');
+  [files.webhookRoute, files.verifySubscriptionRoute].forEach((route) => {
+    assertIncludes(route, 'isValidMenuListStoredSubscriptionQuantity({', 'Reseller provider quantity admission');
+  });
+  assertIncludes(files.webhookRoute, 'resolveMenuListStoredSubscriptionQuantityCreditUpdate({', 'Reseller provider quantity credit sync');
+  assertIncludes(files.verifySubscriptionRoute, 'resolveMenuListStoredSubscriptionMonthlyCreditAllowance({', 'Reseller immediate verification credit sync');
+  assertIncludes(files.onboardRoute, 'monthlyCreditsAllowance,', 'Reseller manual onboarding credit allowance');
+  assertIncludes(files.addLocationRoute, 'resolveMenuListStoredSubscriptionQuantityCreditUpdate({', 'Reseller manual location credit sync');
+  assertIncludes(files.addLocationRoute, '...quantityCreditUpdate,', 'Reseller manual location credit persistence');
+  [
+    "input.onboardingSource !== 'RESELLER_ONBOARDING'",
+    "getResellerPlanByPlanId(input.planId, 'MONTH') !== null",
+    'resolveResellerMonthlyCreditsByPlanId(input.planId, input.quantity)',
+  ].forEach((token) => assertIncludes(files.pricingPolicy, token, 'Stored reseller subscription policy'));
+  [files.renewRoute, files.addLocationRoute, files.confirmPaymentRoute].forEach((route) => {
+    assertIncludes(route, 'RESELLER_SYSTEM_FLAGS.OFFLINE_MODE_ACTIVE', 'Dormant reseller manual mutation');
+    assertIncludes(route, 'Manual reseller collection is unavailable', 'Dormant reseller manual mutation copy');
+  });
+  [files.desktopOnboarding, files.mobileOnboarding].forEach((surface) => {
+    assertIncludes(surface, 'billingProfile:', 'Reseller onboarding billing-profile UI');
+    assertIncludes(surface, 'billingIndianStateCode', 'Reseller onboarding Indian state UI');
+    assertIncludes(surface, "paymentMode: 'online'", 'Reseller online-only UI');
+    assert(!surface.includes("paymentMode: 'offline'"), 'Reseller onboarding UI must not offer manual collection');
+  });
 }
 
 function verifyAddLocationRoute(route) {
@@ -1135,6 +1177,9 @@ function verifyOnboardingResponseBoundary(boundary, test, route) {
 }
 
 function verifyDocs(readme, spec, impl, marketingDoc, websiteDoc, helpDoc, firebaseDoc, mobileDoc, auditDoc, changelog) {
+  [readme, spec, impl, marketingDoc, websiteDoc, helpDoc, firebaseDoc, mobileDoc].forEach((doc) => {
+    assertIncludes(doc, 'Current billing admission (August 24, 2026)', 'Reseller current billing admission docs');
+  });
   [
     'verify:reseller-dashboard-boundary',
     'This is NOT:',
@@ -1325,6 +1370,11 @@ const files = {
   managementProfileTest: read('scripts/verification/test-reseller-management-profile.ts'),
   resellerLedger: read('src/lib/reseller/resellerLedger.ts'),
   onboardingOperation: read('src/lib/reseller/resellerOnboardingOperation.ts'),
+  pricing: read('src/config/resellerPricing.ts'),
+  pricingPolicy: read('src/lib/billing/menulistStoredSubscriptionPricingPolicy.ts'),
+  webhookRoute: read('src/app/api/razorpay/webhook/route.ts'),
+  verifySubscriptionRoute: read('src/app/api/razorpay/verify-subscription/route.ts'),
+  schema: read('src/lib/validation/resellerSchemas.ts'),
   profileAuthority: read('src/lib/reseller/resellerProfileAuthority.ts'),
   onboardingBoundaryTest: read('scripts/verification/test-reseller-onboarding-boundary.ts'),
   onboardingEmulatorTest: read('scripts/verification/test-reseller-onboarding-billing-emulator.ts'),
@@ -1402,6 +1452,7 @@ verifyOnboardRoute(
   files.onboardingBoundaryTest,
   files.onboardingEmulatorTest,
 );
+verifyCurrentCommercialAdmission(files);
 verifyOnboardingResponseBoundary(
   files.onboardingResponseBoundary,
   files.onboardingResponseTest,

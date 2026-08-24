@@ -90,6 +90,7 @@ const CategoryModal = ({ open, editingCategory, categoriesData, form, onOk, onCa
         <Modal
             title={editingCategory ? "Edit Category" : "Add Category"}
             open={open}
+            forceRender
             onOk={onOk}
             okText={editingCategory ? "Update" : "Create"}
             onCancel={onCancel}

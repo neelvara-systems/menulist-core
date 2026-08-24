@@ -1,8 +1,9 @@
 'use client';
 
 import ContextualStateIllustration from '@atoms/contextualStateIllustration';
-import { getActiveResellerTiers, calculateOfflineAmount, RESELLER_COMMITMENT_OPTIONS, ResellerPricingTier } from "@config/resellerPricing";
+import { getActiveResellerTiers, RESELLER_COMMITMENT_OPTIONS, ResellerPricingTier } from "@config/resellerPricing";
 import { BUSINESS_TYPES } from "@data/shared/businessTypes";
+import { INDIAN_GST_STATES } from '@data/shared/indianGstStates';
 import { DEFAULT_PHONE_COUNTRY_CODE, getDialCodeForCountry, getUniquePhoneCountries, normalizePhoneNumberForStorage } from "@lib/phone/phoneNumber";
 import { readJsonResponseWithLimit } from "@lib/security/boundedResponseBody";
 import {
@@ -86,12 +87,13 @@ function OnboardingWizard() {
     ];
 
     const getStepFieldNames = (step: number) => {
-        if (step === 0) return ['businessName', 'businessType', 'ownerPhone', 'ownerPassword'];
+        if (step === 0) return [
+            'businessName', 'businessType', 'ownerPhone', 'ownerPassword',
+            'billingLegalName', 'billingEmail', 'billingAddressLine1', 'billingCity',
+            'billingIndianStateCode', 'billingPostalCode',
+        ];
         if (step === 1) {
-            const paymentMode = form.getFieldValue('paymentMode');
-            return paymentMode === 'offline'
-                ? ['pricingTier', 'paymentMode', 'locationCount', 'commitmentMonths']
-                : ['pricingTier', 'paymentMode', 'locationCount', 'billingInterval'];
+            return ['pricingTier', 'locationCount', 'billingInterval'];
         }
         return [];
     };
@@ -112,10 +114,15 @@ function OnboardingWizard() {
                 'businessType',
                 'ownerPhone',
                 'ownerPassword',
+                'billingLegalName',
+                'billingEmail',
+                'billingAddressLine1',
+                'billingCity',
+                'billingIndianStateCode',
+                'billingPostalCode',
                 'pricingTier',
-                'paymentMode',
                 'locationCount',
-                ...(form.getFieldValue('paymentMode') === 'offline' ? ['commitmentMonths'] : ['billingInterval']),
+                'billingInterval',
             ]);
             const values = form.getFieldsValue(true);
             const normalizedOwnerPhone = normalizePhoneNumberForStorage({
@@ -131,10 +138,18 @@ function OnboardingWizard() {
                 values.locationCount || 1,
                 values.ownerEmail || '',
                 values.ownerPassword,
+                values.billingLegalName,
+                values.billingEmail,
+                values.billingAddressLine1,
+                values.billingAddressLine2 || '',
+                values.billingCity,
+                values.billingIndianStateCode,
+                values.billingPostalCode,
+                values.billingGstin || '',
                 normalizedOwnerPhone.countryCode,
                 normalizedOwnerPhone.dialCode,
                 normalizedOwnerPhone.phoneNumber,
-                values.paymentMode,
+                'online',
                 values.pricingTier,
             ]);
             const operationId = getOrCreateResellerOperationId(operationIntentKey);
@@ -143,7 +158,7 @@ function OnboardingWizard() {
                 locationCount: Number(values?.locationCount || 0),
                 ...getBoundedResellerStringContext('businessName', values?.businessName),
                 ...getBoundedResellerStringContext('businessType', values?.businessType),
-                ...getBoundedResellerStringContext('paymentMode', values?.paymentMode),
+                paymentMode: 'online',
                 ...getBoundedResellerStringContext('pricingTier', values?.pricingTier),
             };
             setLoading(true);
@@ -165,7 +180,20 @@ function OnboardingWizard() {
                     billingInterval: values.billingInterval || 'MONTH',
                     commitmentMonths: values.commitmentMonths || undefined,
                     locationCount: values.locationCount || 1,
-                    paymentMode: values.paymentMode,
+                    paymentMode: 'online',
+                    billingProfile: {
+                        legalName: values.billingLegalName,
+                        email: values.billingEmail,
+                        countryCode: 'IN',
+                        addressLine1: values.billingAddressLine1,
+                        addressLine2: values.billingAddressLine2 || undefined,
+                        city: values.billingCity,
+                        region: INDIAN_GST_STATES.find((state) => state.code === values.billingIndianStateCode)?.name || '',
+                        indianStateCode: values.billingIndianStateCode,
+                        postalCode: values.billingPostalCode,
+                        taxId: values.billingGstin || undefined,
+                        taxIdType: values.billingGstin ? 'GSTIN' : undefined,
+                    },
                 }),
             });
 
@@ -197,7 +225,7 @@ function OnboardingWizard() {
                 locationCount: Number(values?.locationCount || 0),
                 ...getBoundedResellerStringContext('businessName', values?.businessName),
                 ...getBoundedResellerStringContext('businessType', values?.businessType),
-                ...getBoundedResellerStringContext('paymentMode', values?.paymentMode),
+                paymentMode: 'online',
                 ...getBoundedResellerStringContext('pricingTier', values?.pricingTier),
             });
             message.error('Failed to onboard client');
@@ -241,17 +269,11 @@ function OnboardingWizard() {
     };
 
     const selectedTier = tiers.find(t => t.id === form.getFieldValue('pricingTier'));
-    const paymentMode = form.getFieldValue('paymentMode');
-    const commitmentMonths = form.getFieldValue('commitmentMonths');
     const billingInterval = form.getFieldValue('billingInterval');
     const locationCount = Number(form.getFieldValue('locationCount') || 1);
 
     const getDisplayAmount = () => {
         if (!selectedTier) return '';
-        if (paymentMode === 'offline' && commitmentMonths) {
-            const total = calculateOfflineAmount(selectedTier.id, commitmentMonths, locationCount);
-            return `${formatInrPaise(total)} one-time prepaid (${commitmentMonths} months, ${locationCount} location${locationCount > 1 ? 's' : ''})`;
-        }
         const quantitySuffix = locationCount > 1 ? ` × ${locationCount} locations` : '';
         if (billingInterval === 'YEAR') {
             return `${formatInrPaise(selectedTier.yearlyPriceINR * locationCount)}/year (recurring${quantitySuffix})`;
@@ -315,6 +337,27 @@ function OnboardingWizard() {
             <Form.Item name="ownerPassword" label="Owner Login Password" rules={[{ required: true, min: 6, message: 'Password must be at least 6 characters' }]}>
                 <Input.Password placeholder="Create password to share with owner" size="large" />
             </Form.Item>
+            <Divider orientation="left">Billing details</Divider>
+            <Form.Item name="billingLegalName" label="Customer or Business Legal Name" rules={[{ required: true, message: 'Enter the billing name' }]}>
+                <Input autoComplete="organization" size="large" />
+            </Form.Item>
+            <Form.Item name="billingEmail" label="Invoice Email" rules={[{ required: true, type: 'email', message: 'Enter a valid invoice email' }]}>
+                <Input autoComplete="email" size="large" type="email" />
+            </Form.Item>
+            <Form.Item name="billingAddressLine1" label="Billing Address" rules={[{ required: true, message: 'Enter the billing address' }]}>
+                <Input autoComplete="address-line1" size="large" />
+            </Form.Item>
+            <Form.Item name="billingAddressLine2" label="Address Line 2 (Optional)">
+                <Input autoComplete="address-line2" size="large" />
+            </Form.Item>
+            <Row gutter={12}>
+                <Col xs={24} md={8}><Form.Item name="billingCity" label="City" rules={[{ required: true }]}><Input autoComplete="address-level2" /></Form.Item></Col>
+                <Col xs={24} md={8}><Form.Item name="billingIndianStateCode" label="State" rules={[{ required: true }]}><Select showSearch options={INDIAN_GST_STATES.map((state) => ({ label: state.name, value: state.code }))} /></Form.Item></Col>
+                <Col xs={24} md={8}><Form.Item name="billingPostalCode" label="Postal Code" rules={[{ required: true }]}><Input autoComplete="postal-code" /></Form.Item></Col>
+            </Row>
+            <Form.Item name="billingGstin" label="GSTIN (Optional)">
+                <Input maxLength={15} placeholder="Enter only when registered for GST" />
+            </Form.Item>
         </div>
     );
 
@@ -339,12 +382,7 @@ function OnboardingWizard() {
                 </Radio.Group>
             </Form.Item>
 
-            <Form.Item name="paymentMode" label="Payment Mode" rules={[{ required: true, message: 'Select payment mode' }]}>
-                <Radio.Group size="large">
-                    <Radio.Button value="online">Online (Razorpay)</Radio.Button>
-                    <Radio.Button value="offline">Offline (One-time Prepaid)</Radio.Button>
-                </Radio.Group>
-            </Form.Item>
+            <Paragraph type="secondary">The customer pays through Razorpay. Access starts only after verified payment.</Paragraph>
 
             <Form.Item
                 initialValue={1}
@@ -355,37 +393,14 @@ function OnboardingWizard() {
                 <InputNumber min={1} max={30} size="large" style={{ width: '100%' }} />
             </Form.Item>
 
-            <Form.Item noStyle shouldUpdate={(prev, cur) => prev.paymentMode !== cur.paymentMode}>
-                {() => {
-                    const mode = form.getFieldValue('paymentMode');
-                    if (mode === 'online') {
-                        return (
-                            <>
-                                <Form.Item name="billingInterval" label="Billing Interval" initialValue="MONTH">
-                                    <Radio.Group size="large">
-                                        <Radio.Button value="MONTH">Monthly</Radio.Button>
-                                        <Radio.Button value="YEAR">Yearly</Radio.Button>
-                                    </Radio.Group>
-                                </Form.Item>
-                                <Form.Item name="commitmentMonths" label="Commitment Period (tracking only)">
-                                    <Select placeholder="Optional" size="large" allowClear options={RESELLER_COMMITMENT_OPTIONS.map(m => ({ label: `${m} months`, value: m }))} />
-                                </Form.Item>
-                            </>
-                        );
-                    }
-                    if (mode === 'offline') {
-                        return (
-                            <Form.Item name="commitmentMonths" label="One-time prepaid duration" rules={[{ required: true, message: 'Select duration' }]}>
-                                <Radio.Group size="large">
-                                    {RESELLER_COMMITMENT_OPTIONS.map(m => (
-                                        <Radio.Button key={m} value={m}>{m} months</Radio.Button>
-                                    ))}
-                                </Radio.Group>
-                            </Form.Item>
-                        );
-                    }
-                    return null;
-                }}
+            <Form.Item name="billingInterval" label="Billing Interval" initialValue="MONTH">
+                <Radio.Group size="large">
+                    <Radio.Button value="MONTH">Monthly</Radio.Button>
+                    <Radio.Button value="YEAR">Yearly</Radio.Button>
+                </Radio.Group>
+            </Form.Item>
+            <Form.Item name="commitmentMonths" label="Commitment Period (tracking only)">
+                <Select placeholder="Optional" size="large" allowClear options={RESELLER_COMMITMENT_OPTIONS.map(m => ({ label: `${m} months`, value: m }))} />
             </Form.Item>
         </div>
     );
@@ -421,23 +436,18 @@ function OnboardingWizard() {
                     <Col span={8}><Text type="secondary">Tier</Text></Col>
                     <Col span={16}><Text strong>{selectedTier?.name || values.pricingTier}</Text></Col>
                     <Col span={8}><Text type="secondary">Payment</Text></Col>
-                    <Col span={16}><Text>{values.paymentMode === 'online' ? 'Online (Razorpay recurring)' : 'Offline (one-time prepaid)'}</Text></Col>
+                    <Col span={16}><Text>Online (Razorpay recurring)</Text></Col>
                     <Col span={8}><Text type="secondary">Locations</Text></Col>
                     <Col span={16}><Text>{values.locationCount || 1}</Text></Col>
                     <Col span={8}><Text type="secondary">Amount</Text></Col>
-                    <Col span={16}><Text strong>{getDisplayAmount()}</Text></Col>
+                    <Col span={16}><Text strong>{getDisplayAmount()} before GST</Text></Col>
+                    <Col span={8}><Text type="secondary">Invoice email</Text></Col>
+                    <Col span={16}><Text>{values.billingEmail}</Text></Col>
                 </Row>
                 <Divider />
-                {values.paymentMode === 'offline' && (
-                    <Paragraph type="warning" style={{ background: token.colorWarningBg, padding: 12, borderRadius: 8 }}>
-                        By confirming, you declare that you have collected {getDisplayAmount()} from the client. The store will be activated immediately until the selected prepaid end date.
-                    </Paragraph>
-                )}
-                {values.paymentMode === 'online' && (
-                    <Paragraph type="secondary" style={{ background: token.colorInfoBg, padding: 12, borderRadius: 8 }}>
-                        A Razorpay recurring checkout link will be generated. Share it with the client to complete payment. The store activates after payment.
-                    </Paragraph>
-                )}
+                <Paragraph type="secondary" style={{ background: token.colorInfoBg, padding: 12, borderRadius: 8 }}>
+                    A Razorpay recurring checkout link will be generated. Share it with the client to complete payment. The store activates after payment.
+                </Paragraph>
             </Card>
         );
     };
@@ -524,12 +534,13 @@ function OnboardingWizard() {
     const canProceed = () => {
         if (currentStep === 0) {
             const values = form.getFieldsValue();
-            return values.businessName && values.businessType && values.ownerPhone && values.ownerPassword;
+            return values.businessName && values.businessType && values.ownerPhone && values.ownerPassword
+                && values.billingLegalName && values.billingEmail && values.billingAddressLine1
+                && values.billingCity && values.billingIndianStateCode && values.billingPostalCode;
         }
         if (currentStep === 1) {
             const values = form.getFieldsValue();
-            if (!values.pricingTier || !values.paymentMode) return false;
-            if (values.paymentMode === 'offline' && !values.commitmentMonths) return false;
+            if (!values.pricingTier) return false;
             return true;
         }
         return true;
@@ -560,7 +571,7 @@ function OnboardingWizard() {
                     </Button>
                 ) : (
                     <Button type="primary" onClick={handleSubmit} loading={loading} icon={<LuCheck />}>
-                        {paymentMode === 'offline' ? 'Confirm Prepaid Payment & Activate' : 'Create Recurring Payment Link'}
+                        Create Recurring Payment Link
                     </Button>
                 )}
             </Flex>

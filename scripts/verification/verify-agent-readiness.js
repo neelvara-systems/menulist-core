@@ -272,33 +272,6 @@ function verifyGeneratedArtifactTrackingBoundary() {
   );
 }
 
-function verifySharedHttpClientBoundary() {
-  const axiosClient = read('src/lib/axios/axiosClient.ts');
-  const productionReadinessAudit = read('__docs__/audits/menulist-production-readiness-audit.md');
-  const changelog = read('__docs__/changelog.md');
-
-  assertIncludes(
-    axiosClient,
-    'const PATCH = (path: string, data: any, config: AxiosRequestConfig = {}): Promise<AxiosResponse> =>\n    axios.patch(path, data, getAxiosConfig(config));',
-    'Shared axios PATCH helper must use the PATCH HTTP verb',
-  );
-  assertNotIncludes(
-    axiosClient,
-    'const PATCH = (path: string, data: any, config: AxiosRequestConfig = {}): Promise<AxiosResponse> =>\n    axios.post(path, data, getAxiosConfig(config));',
-    'Shared axios PATCH helper must not route PATCH through POST',
-  );
-  assertIncludes(
-    productionReadinessAudit,
-    'Shared axios PATCH verb checkpoint:',
-    'Production readiness audit shared axios PATCH verb checkpoint',
-  );
-  assertIncludes(
-    changelog,
-    'Shared Axios PATCH Verb Boundary',
-    'Changelog shared axios PATCH verb boundary',
-  );
-}
-
 function verifyMenuListStorageBucketFallbackBoundary() {
   const productionReadinessAudit = read('__docs__/audits/menulist-production-readiness-audit.md');
   const changelog = read('__docs__/changelog.md');
@@ -3832,7 +3805,6 @@ function main() {
   verifyVerificationRegistryCoverage();
   verifyRuntimeLogTrackingBoundary();
   verifyGeneratedArtifactTrackingBoundary();
-  verifySharedHttpClientBoundary();
   verifyMenuListStorageBucketFallbackBoundary();
   verifyMenuListDiscovery();
   verifyAnswerlatticeDiscovery();

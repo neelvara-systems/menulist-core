@@ -50,6 +50,7 @@ const ANSWERLATTICE_INTAKE_REVIEW_ITEM_UPDATE_FAILED = 'Could not update review 
 const ANSWERLATTICE_INTAKE_ITEMS_PUBLISH_FAILED = 'Could not publish intake items.';
 const ANSWERLATTICE_KNOWLEDGE_INTAKE_RESPONSE_JSON_MAX_BYTES = 64 * 1024;
 const ANSWERLATTICE_KNOWLEDGE_INTAKE_ERROR_MESSAGE_MAX_LENGTH = 240;
+const ANSWERLATTICE_KNOWLEDGE_INTAKE_REQUEST_TIMEOUT_MS = 30_000;
 const ANSWERLATTICE_SOURCE_GOVERNANCE_MAX_PENDING_ATTEMPTS = 20;
 const ANSWERLATTICE_KNOWLEDGE_INTAKE_REQUEST_POLICY: Pick<RequestInit, 'cache' | 'credentials' | 'redirect'> = {
     cache: 'no-store',
@@ -333,15 +334,25 @@ const apiJson = async <T>(
     options: KnowledgeIntakeResponseOptions<T>,
     init?: RequestInit,
 ): Promise<T> => {
-    const response = await fetch(url, {
-        ...init,
-        ...ANSWERLATTICE_KNOWLEDGE_INTAKE_REQUEST_POLICY,
-        headers: {
-            'Content-Type': 'application/json',
-            ...(init?.headers || {}),
-        },
-    });
-    return readKnowledgeIntakeResponse(response, options);
+    const controller = new AbortController();
+    const timeout = globalThis.setTimeout(
+        () => controller.abort(),
+        ANSWERLATTICE_KNOWLEDGE_INTAKE_REQUEST_TIMEOUT_MS,
+    );
+    try {
+        const response = await fetch(url, {
+            ...init,
+            ...ANSWERLATTICE_KNOWLEDGE_INTAKE_REQUEST_POLICY,
+            headers: {
+                'Content-Type': 'application/json',
+                ...(init?.headers || {}),
+            },
+            signal: controller.signal,
+        });
+        return await readKnowledgeIntakeResponse(response, options);
+    } finally {
+        globalThis.clearTimeout(timeout);
+    }
 };
 
 export function useKnowledgeIntake() {

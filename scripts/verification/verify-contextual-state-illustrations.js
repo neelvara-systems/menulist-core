@@ -61,7 +61,6 @@ const approvedConsumers = new Map([
   ['src/components/templates/main-app/aiMenuManager/AiMenuManagerRoute.tsx', { count: 3, softHaloCount: 3, variants: ['emptyWorkspace', 'serverErrorContext'] }],
   ['src/components/templates/main-app/helpChat/ChatErrorBoundary.tsx', { count: 1, softHaloCount: 0, variant: 'warningContext' }],
   ['src/components/templates/main-app/businessSettings/tabs/TimeSlotPresetsTab.tsx', { count: 1, softHaloCount: 1, variant: 'scheduleContext' }],
-  ['src/components/templates/main-app/dashboard/AnalyticsDashboard/index.tsx', { count: 1, softHaloCount: 1, variant: 'analyticsContext' }],
   ['src/components/templates/main-app/dashboard/OwnerDashboard/DailyView.tsx', { count: 1, softHaloCount: 1, variant: 'analyticsContext' }],
   ['src/components/templates/main-app/dashboard/OwnerDashboard/MonthlyView.tsx', { count: 1, softHaloCount: 1, variant: 'analyticsContext' }],
   ['src/components/templates/main-app/dashboard/OwnerDashboard/OverviewView.tsx', { count: 1, softHaloCount: 1, variant: 'analyticsContext' }],

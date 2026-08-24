@@ -1,7 +1,8 @@
 export const dynamic = 'force-dynamic';
 import { FEATURE_FLAGS } from "@config/features";
-import { calculateOfflineAmount, getResellerTierById, RESELLER_CAPS, RESELLER_SYSTEM_FLAGS } from "@config/resellerPricing";
+import { calculateOfflineAmount, calculateResellerMonthlyCredits, getResellerTierById, RESELLER_CAPS, RESELLER_SYSTEM_FLAGS } from "@config/resellerPricing";
 import { DB_COLLECTIONS } from "@constant/database";
+import { PRODUCT_IDS } from "@constant/product";
 import { getGeneratedEmail, getMenuUrl, SIGNIN_URL } from "@constant/urls";
 import { getOwnerRoleId } from "@data/defaultRoles";
 import { FALLBACK_BUSINESS_TYPE } from "@data/shared/businessTypes";
@@ -19,6 +20,8 @@ import { revalidateMenuCache } from "@lib/actions/revalidateMenuCache";
 import { admin, authAdmin } from "@lib/firebase/firebaseAdmin";
 import { sanitizeForFirestore } from "@lib/firestore/sanitizeForFirestore";
 import { getBoundedErrorCode } from '@lib/monitoring/boundedLogContext';
+import { BillingTaxConfigurationError, BillingTaxProfileError } from '@data/shared/billingTaxPolicy';
+import { calculateConfiguredMenuListTax } from '@lib/billing/menulistTaxServer';
 import { logger } from "@lib/monitoring/logger";
 import { compensateFailedTenantStoreOnboarding } from "@lib/onboarding/compensateFailedOnboarding";
 import { createTenantStoreInTransaction, preCheckSubdomain } from "@lib/onboarding/createTenantStore";
@@ -286,8 +289,8 @@ async function compensateResellerOnboardingFailure(params: {
  * POST /api/reseller/onboard — Reseller creates store + subscription for a client
  * 
  * Reuses atomic transaction pattern from /api/onboarding/create-subscription.
- * For online: creates Razorpay subscription (same as self-serve).
- * For offline: creates manual subscription with validUntil.
+ * Current admission creates a tax-aware Razorpay subscription. The retained
+ * manual branch remains unreachable while its accounting contract is closed.
  * 
  * @see __docs__/reseller-dashboard/reseller-dashboard_impl.md §4.1
  */
@@ -337,7 +340,7 @@ export const POST = withAuth(async (request, session) => {
             return resellerPrivateJson({ error: 'Invalid input', details: errorMsg }, { status: 400 });
         }
 
-        const { operationId, businessName, businessType, ownerCountryCode, ownerDialCode, ownerPhone, ownerEmail, ownerPassword, pricingTier, billingInterval, commitmentMonths, locationCount, paymentMode } = validation.data;
+        const { operationId, businessName, businessType, ownerCountryCode, ownerDialCode, ownerPhone, ownerEmail, ownerPassword, pricingTier, billingInterval, commitmentMonths, locationCount, paymentMode, billingProfile } = validation.data;
 
         // 3. Validate reseller profile exists and is active
         const [currentActor, resellerProfile] = await Promise.all([
@@ -371,6 +374,22 @@ export const POST = withAuth(async (request, session) => {
         if (!tier) {
             return resellerPrivateJson({ error: "Selected pricing tier is not available." }, { status: 400 });
         }
+
+        const manualCollectionRequested = String(paymentMode) !== 'online';
+        if (manualCollectionRequested) {
+            return resellerPrivateJson({
+                error: 'Manual reseller collection is unavailable until its invoicing and remittance contract is approved.',
+            }, { status: 409 });
+        }
+
+        const billingAmount = billingInterval === 'MONTH' ? tier.monthlyPriceINR : tier.yearlyPriceINR;
+        const taxSnapshot = calculateConfiguredMenuListTax({
+            baseUnitAmount: billingAmount,
+            billingProfile,
+            currency: 'INR',
+            quantity: locationCount,
+        });
+        const monthlyCreditsAllowance = calculateResellerMonthlyCredits(tier, locationCount);
 
         // 5. If offline: check concurrent cap + system flag
         if (paymentMode === 'offline') {
@@ -426,6 +445,7 @@ export const POST = withAuth(async (request, session) => {
         }
 
         const operationFingerprint = getResellerOnboardingOperationFingerprint({
+            billingProfile: taxSnapshot.billingProfile,
             billingInterval,
             businessName,
             businessType,
@@ -652,7 +672,7 @@ export const POST = withAuth(async (request, session) => {
                     subdomain: { preChecked: preCheckedSubdomain },
                     includeTimeSlotPresets: true,
                     notificationSettings: buildOnboardingOwnerNotificationSettings({
-                        email: normalizedOwnerEmail || ownerLoginEmail,
+                        email: taxSnapshot.billingProfile.email,
                         emailVerified: true,
                     }),
                     tenantExtra: {
@@ -833,7 +853,6 @@ export const POST = withAuth(async (request, session) => {
         let shortUrl: string | undefined;
         const transactionId = operationId;
         const durationForOffline = commitmentMonths || 3;
-        const billingAmount = billingInterval === 'MONTH' ? tier.monthlyPriceINR : tier.yearlyPriceINR;
         const transactionBase = {
             action: 'ONBOARD' as const,
             billingInterval,
@@ -861,11 +880,12 @@ export const POST = withAuth(async (request, session) => {
 
             try {
                 razorpayPlanId = await getOrCreateRazorpayPlan({
-                    price: billingAmount,
+                    price: taxSnapshot.grossUnitAmount,
                     currency: 'INR',
                     interval: billingInterval,
                     userType: 'B2C',
                     planId: tier.planId,
+                    productId: PRODUCT_IDS.MENULIST,
                 });
                 if (persistedProviderPlanId && persistedProviderPlanId !== razorpayPlanId) {
                     return resellerPrivateJson({ error: "This onboarding result needs support review." }, { status: 409 });
@@ -935,22 +955,20 @@ export const POST = withAuth(async (request, session) => {
                             total_count: totalCount,
                             quantity: locationCount,
                             notes: {
+                                productId: PRODUCT_IDS.MENULIST,
                                 tenantId: result.tenantId,
                                 storeId: result.storeId,
                                 userId: result.userId,
                                 userType: 'B2C',
                                 planId: tier.planId,
-                                priceKey: 'priceINR',
                                 interval: billingInterval,
-                                name: businessName,
-                                email: result.loginEmail,
-                                ownerUsername: result.ownerUsername,
-                                price: billingAmount,
+                                price: taxSnapshot.grossUnitAmount,
+                                basePrice: billingAmount,
+                                taxPolicyVersion: taxSnapshot.policyVersion,
                                 locationCount,
                                 resellerId,
                                 operationId,
                                 operationFingerprint,
-                                remainingCredits: 0,
                             },
                         });
                         razorpaySubscription = projectResellerProviderSubscriptionForAttempt(
@@ -1042,14 +1060,21 @@ export const POST = withAuth(async (request, session) => {
                 providerSubscriptionId: subscriptionId,
                 providerPlanId: razorpayPlanId,
                 userId: result.userId,
+                uId: result.userId,
+                productId: PRODUCT_IDS.MENULIST,
+                pId: PRODUCT_IDS.MENULIST,
                 name: businessName,
-                email: result.loginEmail,
+                email: taxSnapshot.billingProfile.email,
                 tenantId: result.tenantId,
+                tId: result.tenantId,
                 storeId: result.storeId,
+                sId: result.storeId,
                 planType: billingInterval,
                 userType: 'B2C',
                 currency: 'INR',
                 amount: billingAmount,
+                chargedUnitAmount: taxSnapshot.grossUnitAmount,
+                taxSnapshot,
                 status: 'pending',
                 providerStatus: 'created',
                 lastWebhook: null,
@@ -1063,8 +1088,8 @@ export const POST = withAuth(async (request, session) => {
                 totalPaymentsMadeCount: 0,
                 cycleEndDate: null,
                 renewsOn: null,
-                monthlyCreditsAllowance: tier.monthlyCredits,
-                monthlyCredits: tier.monthlyCredits,
+                monthlyCreditsAllowance,
+                monthlyCredits: monthlyCreditsAllowance,
                 promotionalCredits: 0,
                 promotionalCreditsExpireAt: null,
                 topUpCredits: 0,
@@ -1074,7 +1099,7 @@ export const POST = withAuth(async (request, session) => {
                 statuses: [{
                     status: 'pending',
                     timestamp: Timestamp.now(),
-                    amount: billingAmount * locationCount,
+                    amount: taxSnapshot.grossAmount,
                     currency: 'INR',
                     remark: `Reseller onboarding (${tier.name}) — ${locationCount} location${locationCount > 1 ? 's' : ''} awaiting client payment`,
                 }],
@@ -1095,7 +1120,7 @@ export const POST = withAuth(async (request, session) => {
                     subscriptionId,
                     transaction: {
                         ...transactionBase,
-                        amountExpected: billingAmount * locationCount,
+                        amountExpected: taxSnapshot.grossAmount,
                         profileRevenueRecognized: false,
                         status: 'pending_payment',
                         subscriptionId,
@@ -1193,8 +1218,8 @@ export const POST = withAuth(async (request, session) => {
                 totalPaymentsMadeCount: 1,
                 cycleEndDate: validUntilTimestamp,
                 renewsOn: null,
-                monthlyCreditsAllowance: tier.monthlyCredits,
-                monthlyCredits: tier.monthlyCredits,
+                monthlyCreditsAllowance,
+                monthlyCredits: monthlyCreditsAllowance,
                 promotionalCredits: 0,
                 promotionalCreditsExpireAt: null,
                 topUpCredits: 0,
@@ -1338,6 +1363,19 @@ export const POST = withAuth(async (request, session) => {
         });
 
     } catch (error) {
+        if (error instanceof BillingTaxProfileError) {
+            return resellerPrivateJson({
+                error: 'Complete and verify the customer billing details before creating checkout.',
+            }, { status: 400 });
+        }
+        if (error instanceof BillingTaxConfigurationError) {
+            logResellerApiFailure('reseller_onboard_tax_configuration_unavailable', error, {
+                ...getBoundedResellerApiStringContext('resellerId', resellerId),
+            });
+            return resellerPrivateJson({
+                error: 'Checkout is temporarily unavailable while billing details are being configured.',
+            }, { status: 503 });
+        }
         logResellerApiFailure('reseller_onboard_route_failed', error, {
             ...getBoundedResellerApiStringContext('resellerId', resellerId),
         });

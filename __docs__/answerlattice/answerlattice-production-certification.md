@@ -442,9 +442,58 @@ All fixes verified with `npx tsc --noEmit` → 0 errors.
 
 ---
 
+## 11. August 2026 Final Pre-Production Release-Candidate Certification
+
+> **Execution date:** 2026-08-24
+> **Gate name:** Answerlattice Final Pre-Production Release-Candidate Certification
+> **Interim verdict:** `NOT READY FOR PRODUCTION ENVIRONMENT TESTING`
+> **Execution boundary:** local runtime, Firebase emulators, disposable synthetic fixtures, and bounded hosted-QA reachability. No production mutation, provider execution, deploy, commit, or push was performed.
+
+This section records the current execution evidence. It does not convert the historical May code-only verdict above into production approval. The gate remains open until the blocked authenticated and physical viewport evidence is completed and the final fresh-workspace journey is repeated after all fixes.
+
+### 11.1 Evidence matrix
+
+| Surface | Evidence status | Evidence |
+| --- | --- | --- |
+| Code-derived implementation inventory | `PASS_STATIC` | 51 concrete management-route variants, 77 public routes, 81 relevant API routes, feature flags, DAL paths, Firebase surfaces, and Answerlattice Functions were inventoried from current runtime source. |
+| Local management routes | `PASS_RUNTIME` | All 51 discovered route variants loaded in Chrome without uncaught exceptions after warning fixes; compatibility redirects were verified for legacy help/docs/support/release routes and disabled governance routes. |
+| Public routes, local | `PASS_RUNTIME` | All 77 discovered public routes loaded without console-error evidence. |
+| Public routes, hosted QA | `PASS_HOSTED_QA` | 77/77 routes were reachable on `canonica.app`: 76 returned 200 and `/home` intentionally returned 308 to `/`. |
+| Hosted authenticated owner routes | `BLOCKED` | Hosted QA redirects to sign-in, but the deployed login build hides its configured Google OAuth action. The source regression is fixed and locally verified; a later authorized staging commit/push and automatic QA deployment are required before hosted authentication can be certified. |
+| Knowledge intake to published article | `PASS_RUNTIME` | A disposable MenuList-derived synthetic source was created, generated into a review draft, edited, accepted, published, and opened in Knowledge Base with title, content, tags, and context preserved. |
+| Widget conversation persistence | `PASS_EMULATOR` | Dedicated widget-conversation emulator suite passed. |
+| Onboarding provisioning | `PASS_EMULATOR` | Dedicated onboarding provisioning emulator suite passed. |
+| Knowledge intake server lifecycle | `PASS_EMULATOR` | Intake generation and lifecycle suite passed without a Gemini key by exercising the maintained deterministic provider-failure boundary. |
+| Knowledge intake tenant/security rules | `PASS_EMULATOR` | Dedicated and shared Firestore rules suites passed, including expected wrong-tenant and forbidden-write denials. |
+| Governance lifecycle and tenant/security rules | `PASS_EMULATOR` | Governance lifecycle plus dedicated/shared Firestore rules suites passed. |
+| Feedback, content feedback, signals, retention failure handling | `PASS_EMULATOR` | Feedback contracts, Firestore/Storage persistence, dedicated/shared rules, signal rules, and expected cleanup-task failure observability passed. |
+| Commercial and billing boundary | `PASS_EMULATOR` | Entitlements, taxation, billing documents, subscription reads, dedicated/shared billing rules, concurrent checkout protection, provider-plan registry, subscription-state lifecycle, and webhook lease behavior passed using emulators only. |
+| Actual Razorpay/provider execution | `NOT_APPLICABLE` | Intentionally excluded: no checkout, charge, real webhook completion, refund, or provider transaction was performed. |
+| Maintained Answerlattice runtime truth | `PASS_EMULATOR` | Full maintained runtime-truth suite passed, including expected authorization denials. |
+| Dependency and security audit | `PASS_STATIC` | Dependency freeze passed; root and all Functions dependency audits reported zero vulnerabilities after removing a stale verifier assertion for the intentionally removed, unused root Axios dependency. |
+| TypeScript and lint | `PASS_STATIC` | `typecheck:answerlattice` and repository lint passed against the current worktree. |
+| Mobile/responsive management runtime | `BLOCKED` | Chrome viewport emulation did not create a real narrow window, and the Mac is locked, so the same Chrome window could not be resized through Computer Use. |
+| Final fresh-workspace journey | `BLOCKED` | The disposable emulator fixture was not present after an emulator export/import namespace mismatch, which also invalidated the local browser auth session. The final journey must be recreated after local re-authentication. |
+
+### 11.2 Defects found and fixed in this pass
+
+| Severity | Root cause | Durable fix | Verification |
+| --- | --- | --- | --- |
+| P1 | The shared login component set `shouldOfferGoogleAuth = !isAnswerlatticeExperience`, hiding Google OAuth precisely on Answerlattice hosts even though dedicated QA/production OAuth clients are configured and Google login is the documented owner flow. | Removed the Answerlattice-only suppression from both normal login and claim-account login; updated auth and Answerlattice runtime verifiers to reject the regression. | Local Chrome now renders `Continue with Google` on the Answerlattice sign-in route; auth/onboarding verification, runtime-truth source verification, Answerlattice typecheck, focused lint, and diff checks passed. Hosted QA retest requires deployment. |
+| P1 | Knowledge-intake mutations could wait indefinitely when a network request never settled. | Added a 30-second `AbortController` timeout to the shared knowledge-intake JSON client. | Complete intake edit, accept, publish, and KB-open journey passed; emulator intake suite passed. |
+| P2 | Active-job synchronization reset hidden edit/governance forms and emitted a circular dayjs warning. | Scoped synchronization to the selected job and removed the non-serializable form write. | Route reload and intake workflow completed without the warning. |
+| P2 | Ant Design `Spin` and modal forms emitted runtime warnings; React 19 static modal behavior lacked the required compatibility bridge. | Nested Spin content, pre-rendered modal form trees, and registered the Answerlattice-scoped React 19 renderer bridge. | Governance/history and Knowledge Base routes reloaded cleanly; route matrix and lint passed. |
+| P2 | Commercial-readiness verifier still expected the billing-email request inside the UI after the request moved to the billing client module. | Updated the verifier to inspect the UI action and client endpoint contract at their actual ownership boundaries. | Source and full commercial-readiness suites passed. |
+| P2 | Security verifier required a direct Axios pin after the unused root Axios runtime was intentionally removed. | Removed only the obsolete direct-version assertion; vulnerability audits and dependency freeze remain enforced. | Root and all Functions full/production audits passed with zero vulnerabilities. |
+
+### 11.3 Fixture and evidence handling
+
+The disposable intake fixture was synthetic and contained no customer data. It was created only in a local emulator. During the certification restart, the emulator export captured the active `menulist-qa` namespace while the Answerlattice Admin client had written to the separate `neelvara-answerlattice-qa` namespace. The disposable documents therefore were not restored. Runtime screenshots and the completed-flow evidence remain, but the loss is not hidden: the mandatory fresh-system pass will create a new disposable workspace after authentication is restored.
+
 ## Version History
 
 | Date       | Change                                                      |
 | ---------- | ----------------------------------------------------------- |
+| 2026-08-24 | Began the final pre-production release-candidate certification; recorded route, runtime, emulator, fix, and blocker evidence |
 | 2026-05-12 | Added public-key lookup cost guards, fail-closed tenant validation, scoped search-cache lookup, and tenant-filtered `kb_articles` vector index coverage |
 | 2026-03-03 | Initial production certification — forensic audit from code |

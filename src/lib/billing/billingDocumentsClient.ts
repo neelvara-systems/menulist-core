@@ -12,6 +12,10 @@ export type BillingDocumentSummary = {
     deliveryStatus: 'not_requested' | 'queued' | 'partial' | 'sent' | 'failed' | 'outcome_unknown';
 };
 
+export type BillingDocumentDelivery = {
+    status: BillingDocumentSummary['deliveryStatus'];
+};
+
 export const fetchBillingDocumentSummaries = async (): Promise<BillingDocumentSummary[]> => {
     const response = await fetch('/api/billing-documents', {
         method: 'GET',
@@ -22,6 +26,26 @@ export const fetchBillingDocumentSummaries = async (): Promise<BillingDocumentSu
     if (!response.ok) throw new Error('Billing documents could not be loaded.');
     const payload = await response.json() as { documents?: unknown };
     return Array.isArray(payload.documents) ? payload.documents as BillingDocumentSummary[] : [];
+};
+
+export const requestBillingDocumentEmail = async (documentId: string): Promise<BillingDocumentDelivery> => {
+    const normalizedDocumentId = documentId.trim();
+    if (!/^(inv|crn)_[a-f0-9]{40}$/.test(normalizedDocumentId)) {
+        throw new Error('Billing document is unavailable.');
+    }
+    const response = await fetch(`/api/billing-documents/${encodeURIComponent(normalizedDocumentId)}/email`, {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { Accept: 'application/json' },
+    });
+    const payload = await response.json().catch(() => ({})) as {
+        delivery?: BillingDocumentDelivery;
+        error?: string;
+    };
+    if (!response.ok || !payload.delivery) {
+        throw new Error(payload.error || 'Billing document email could not be sent.');
+    }
+    return payload.delivery;
 };
 
 export const mergeBillingDocumentsIntoHistory = (

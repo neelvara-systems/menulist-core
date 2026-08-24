@@ -2232,7 +2232,7 @@ if (type_confidence === "high" || type_confidence === "medium") {
 
 ```typescript
 // In src/lib/messaging-onboarding/publish.ts — country/currency inference
-import { parsePhoneNumber } from "libphonenumber-js"; // Already in project or use lightweight equivalent
+import { normalizePhoneNumberForStorage } from "@lib/phone/phoneNumber";
 
 const phoneInfo = parsePhoneNumber(session.providerDisplayId);
 const inferredCountry = phoneInfo?.country || ""; // e.g., 'IN', 'US', 'GB'

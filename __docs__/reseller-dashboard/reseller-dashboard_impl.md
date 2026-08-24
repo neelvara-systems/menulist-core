@@ -1,5 +1,7 @@
 # Reseller Dashboard — Implementation Plan
 
+> **Current billing admission (August 24, 2026):** New reseller sales are online-only through Razorpay. Billing profile and frozen MenuList tax evidence are required before provisioning; the standard invoice, refund, credit-note, and notification pipeline applies after settlement. Recurring credits scale with paid locations. Manual cash/UPI collection, confirmation, renewal, and location-capacity sales are dormant and fail closed until their seller/remittance/accounting contract is approved. Historical offline detail below is retained for implementation history only.
+
 **Feature:** Assisted Onboarding Portal for Authorized Resellers  
 **Status:** Implemented - reseller boundary source gate added July 2, 2026
 **Created:** February 27, 2026  
@@ -732,7 +734,7 @@ const razorpaySubscription = await razorpayClient.subscriptions.create({
 const checkoutUrl = razorpaySubscription.short_url;
 ```
 
-**Webhook handling:** Existing `/api/razorpay/webhook` route handles `subscription.activated` and `subscription.charged` — **zero changes needed.** Reseller subscriptions flow through the same webhook as self-serve.
+**Webhook handling:** `/api/razorpay/webhook` handles reseller subscriptions through the same settlement state machine as self-serve, but the quantity policy remains origin-aware. A stored reseller subscription must carry `onboardingSource: 'RESELLER_ONBOARDING'`, a reseller identity, a configured reseller plan ID, and a safe paid location quantity. `subscription.updated` resizes the frozen tax snapshot and preserves already-used credits while scaling the recurring allowance per paid location. `subscription.charged` revalidates that quantity before settlement.
 
 ---
 
@@ -971,7 +973,7 @@ When reseller onboards a client, the system must return a usable owner access pa
 - **Not in database** — Only 3 tiers that change rarely (months between changes). Building admin CRUD + UI for 3 static entries is over-engineering. Matches existing pattern (`PlatformPlansList.ts` is hardcoded `as const`). Avoids unnecessary Firestore reads.
 - **Separate file** — Clean separation of concerns. Import only in `/api/reseller/*` routes and `billingUtils.ts`. Never imported by public-facing components.
 
-**Critical integration:** `getPlanDetailsFromConstants()` in `billingUtils.ts` must be updated to resolve reseller `planId` prefixed with `reseller_`. Without this, webhooks for reseller subscriptions would fail silently.
+**Critical integration:** `getPlanDetailsFromConstants()` resolves configured reseller plan IDs, while `isValidMenuListStoredSubscriptionQuantity()` keeps reseller-origin quantity validation separate from direct public-plan rules. The immediate verification route and webhook both use the same origin-aware recurring-credit allowance so a multi-location reseller subscription cannot collapse to a one-location allowance.
 
 ---
 

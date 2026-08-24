@@ -35,16 +35,37 @@ import AntdThemeProvider from '@providers/antdThemeProvider';
 import { AnswerlatticeAccessProvider, useAnswerlatticeAccess } from '@providers/answerlatticeAccessProvider';
 import NetworkStatusProvider from '@providers/NetworkStatusProvider';
 import { getSidebarState } from '@reduxSlices/clientThemeConfig';
-import { Alert, Drawer, Grid, Layout, Spin, theme } from 'antd';
+import { Alert, Drawer, Grid, Layout, Spin, theme, unstableSetRender } from 'antd';
 import { useSession } from 'next-auth/react';
 import dynamic from 'next/dynamic';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
+import { createRoot, type Root } from 'react-dom/client';
 import AnswerlatticeSidebar from './AnswerlatticeSidebar';
 import AnswerlatticeHeader from './AnswerlatticeHeader';
 
 const { Content } = Layout;
 const ANSWERLATTICE_MOBILE_BOTTOM_CLEARANCE = 'calc(24px + env(safe-area-inset-bottom))';
+type AnswerlatticeAntdRenderContainer = (Element | DocumentFragment) & { _answerlatticeReactRoot?: Root };
+
+// Ant Design v5 uses the legacy ReactDOM renderer for static message, modal,
+// notification, and wave roots unless the host registers the React 19 renderer.
+// Keep the compatibility bridge at the Answerlattice client entry so every
+// management action uses the same supported root lifecycle without adding a
+// dependency outside the frozen runtime.
+unstableSetRender((node, container) => {
+    const renderContainer = container as AnswerlatticeAntdRenderContainer;
+    renderContainer._answerlatticeReactRoot ||= createRoot(container);
+    const root = renderContainer._answerlatticeReactRoot;
+    root.render(node);
+
+    return async () => {
+        await new Promise(resolve => setTimeout(resolve, 0));
+        root.unmount();
+        delete renderContainer._answerlatticeReactRoot;
+    };
+});
+
 const AppSettingsPanel = dynamic(() => import('@organisms/sidebar/appSettingsPanel'), { ssr: false });
 const AppSettingsSheet = dynamic(() => import('@/components/mobile/sheets/AppSettingsSheet'), { ssr: false });
 const ANSWERLATTICE_CUSTOMER_ROUTE_OWNER_FALLBACKS: Partial<Record<string, string>> = {

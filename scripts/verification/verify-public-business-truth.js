@@ -3837,7 +3837,6 @@ function verifyStoreAndUserDalDiagnosticsAreBounded() {
   const desktopPosSync = read('src/components/templates/main-app/businessSettings/tabs/PosSyncTab.tsx');
   const desktopCustomerApp = read('src/components/templates/main-app/businessSettings/tabs/CustomerAppTab.tsx');
   const desktopBusinessCopySetup = read('src/components/templates/main-app/businessSettings/tabs/BusinessCopySetupTab.tsx');
-  const dashboardDateRange = read('src/components/templates/main-app/dashboard/googleAnalytics/DateRangeSelector.tsx');
   const dashboardGoogleListing = read('src/components/templates/main-app/dashboard/OwnerDashboard/GoogleListingCard.tsx');
   const projectsB2c = read('src/components/templates/main-app/projects/b2cView/index.tsx');
   const desktopCustomDomain = read('src/components/templates/main-app/businessSettings/tabs/CustomDomainTab.tsx');
@@ -3913,8 +3912,6 @@ function verifyStoreAndUserDalDiagnosticsAreBounded() {
   assertIncludes(storeNestedUpdateProjection, 'options.detectRemovedRootKeys === true', 'Store complete-map root deletion must be explicit');
   assertIncludes(mobileCustomerApp, 'businessCopyMeta: getStoreDeepDifference(', 'Mobile customer-app metadata changed-leaf write');
   assertIncludes(desktopCustomerApp, 'businessCopyMeta: getStoreDeepDifference(', 'Desktop customer-app metadata changed-leaf write');
-  assertIncludes(dashboardDateRange, 'dashboardPreferences: {', 'Dashboard date-range exact nested patch');
-  assertNotIncludes(dashboardDateRange, '...storeDetails.analytics', 'Dashboard date-range stale analytics spread');
   assertIncludes(dashboardGoogleListing, 'publicPresence: {\n                    googleLinkUpdated: true,', 'Dashboard Google listing exact nested patch');
   assertNotIncludes(mobileLocaleSettings, '...storeDetails,\n            activeLanguages:', 'Mobile locale full-store write');
   assertNotIncludes(mobileSeoAnalytics, 'update.analytics = { ...storeDetails.analytics', 'Mobile analytics stale full-map write');

@@ -4067,14 +4067,8 @@ function verifyAnalyticsErrorBoundary() {
   const chatInsights = read('src/components/templates/platform/chatManagement/ChatInsights.tsx');
   const analyticsNormalizer = read('src/lib/analytics/normalizer.ts');
   const analyticsService = read('src/services/analytics/index.ts');
-  const analyticsDashboard = read('src/components/templates/main-app/dashboard/AnalyticsDashboard/index.tsx');
   const customerAppMetrics = read('src/components/templates/main-app/dashboard/AnalyticsDashboard/CustomerAppMetrics.tsx');
   const menuListEnUsLocale = read('public/locales/menulist.ai/en-US.json');
-  const googleMenuPerformance = read('src/components/templates/main-app/dashboard/googleAnalytics/MenuPerformance.tsx');
-  const googleQuickStats = read('src/components/templates/main-app/dashboard/googleAnalytics/QuickStats.tsx');
-  const googleLocationInsights = read('src/components/templates/main-app/dashboard/googleAnalytics/LocationInsights.tsx');
-  const googleTrendAnalysis = read('src/components/templates/main-app/dashboard/googleAnalytics/TrendAnalysis.tsx');
-  const googleDateRangeSelector = read('src/components/templates/main-app/dashboard/googleAnalytics/DateRangeSelector.tsx');
   const analyticsImplDoc = read('__docs__/client-menu/analytics-tracking/_impl.md');
   const analyticsFirebaseDoc = read('__docs__/client-menu/analytics-tracking/analytics-tracking_firebase.md');
   const aiSystemReadme = read('__docs__/ai-system-layer/README.md');
@@ -5289,10 +5283,8 @@ function verifyAnalyticsErrorBoundary() {
   assert(!chatInsights.includes('description={analyticsMetadata?.lastError'), 'Chat Insights must not render stored analytics job errors directly');
   assert(!chatInsights.includes('PlatformGlobalDataContext'), 'Chat Insights must not read MenuList store state for Answerlattice analytics status');
   assert(!chatInsights.includes('analyticsMetadata?.lastStatus'), 'Chat Insights must not render cross-product analytics job status');
-  assert(analyticsDashboard.includes('description="Try again later."'), 'Analytics dashboard must use fixed error description');
   assert(customerAppMetrics.includes("description={t('customerApp.tryAgainLater')}"), 'Customer App metrics must use the governed localized error description');
   assert(menuListEnUsLocale.includes('"tryAgainLater": "Try again later."'), 'Customer App metrics locale must keep fixed owner-safe error copy');
-  assert(!analyticsDashboard.includes('description={error.message}'), 'Analytics dashboard must not render raw exception text');
   assert(!customerAppMetrics.includes('description={error.message}'), 'Customer App metrics must not render raw exception text');
 
   assertIncludes(
@@ -5431,57 +5423,6 @@ function verifyAnalyticsErrorBoundary() {
   assert(changelog.includes('Owner Action Mark-Done Session Scope Boundary'), 'Changelog must record owner action mark-done session scope boundary');
   assert(changelog.includes('Owner Action Mark-Done Project And Receipt ID Boundary'), 'Changelog must record owner action mark-done project/receipt boundary');
 
-  [
-    [
-      'src/components/templates/main-app/dashboard/googleAnalytics/MenuPerformance.tsx',
-      googleMenuPerformance,
-      'dashboard_google_menu_performance_load_failed',
-      'Error fetching menu stats:',
-    ],
-    [
-      'src/components/templates/main-app/dashboard/googleAnalytics/QuickStats.tsx',
-      googleQuickStats,
-      'dashboard_google_quick_stats_load_failed',
-      'Error fetching stats:',
-    ],
-    [
-      'src/components/templates/main-app/dashboard/googleAnalytics/LocationInsights.tsx',
-      googleLocationInsights,
-      'dashboard_google_location_insights_load_failed',
-      'Error fetching location stats:',
-    ],
-    [
-      'src/components/templates/main-app/dashboard/googleAnalytics/TrendAnalysis.tsx',
-      googleTrendAnalysis,
-      'dashboard_google_trend_analysis_load_failed',
-      'Error fetching trend data:',
-    ],
-  ].forEach(([relPath, source, failureCode, rawMessage]) => {
-    assertIncludes(relPath, ['getBoundedAnalyticsStringContext', 'logAnalyticsFailure', failureCode], `${relPath} bounded dashboard analytics diagnostics`);
-    assert(!/\bconsole\.(?:error|warn|log|debug)\s*\(/.test(source), `${relPath} must not direct-console dashboard analytics failures`);
-    assert(!source.includes(rawMessage), `${relPath} must not include old raw analytics diagnostic`);
-  });
-  assertIncludes(
-    'src/components/templates/main-app/dashboard/googleAnalytics/DateRangeSelector.tsx',
-    [
-      'assertStoreUpdateSucceeded(',
-      'dashboard_google_date_range_preference_store_update_rejected',
-      'dashboard_google_date_range_preference_save_failed',
-      'void saveDashboardPreferences(range);',
-      "getBoundedAnalyticsStringContext('dateRange', dateRange)",
-    ],
-    'legacy analytics date-range preference save acknowledgement and bounded diagnostics',
-  );
-  assert(!/\bconsole\.(?:error|warn|log|debug)\s*\(/.test(googleDateRangeSelector), 'DateRangeSelector must not direct-console preference save failures');
-  assert(googleDateRangeSelector.includes('const writeResult = await updateStore({'), 'DateRangeSelector must capture the store update result before acknowledgement inspection');
-  assert(googleQuickStats.includes("row.metricValues?.[2]?.value || '0'"), 'Quick Stats must read revenue from the reports route totalRevenue metric index');
-  assert(googleQuickStats.includes('const totalOrders = 0;'), 'Quick Stats must not read unavailable order metric from reports route rows');
-  assert(googleTrendAnalysis.includes("row.metricValues?.[2]?.value || '0'"), 'Trend Analysis must read revenue from the reports route totalRevenue metric index');
-  assertIncludes(
-    'src/components/templates/main-app/dashboard/googleAnalytics/LocationInsights.tsx',
-    ['percentage: total > 0 ? (loc.visitors / total) * 100 : 0'],
-    'LocationInsights zero-total percentage guard',
-  );
 }
 
 function verifyOwnerUtilitySecureLogging() {
@@ -10004,8 +9945,9 @@ function verifyPaymentMutationBoundedJson() {
     [
       'logPaymentFailure',
       'payment_desktop_billing_invoice_open_failed',
-      "openIsolatedBrowserUrl(record.invoiceUrl)",
-      "getBoundedPaymentStringContext('invoiceUrl', record.invoiceUrl)",
+      'const documentUrl = record.billingDocumentUrl || record.invoiceUrl;',
+      'openIsolatedBrowserUrl(documentUrl)',
+      "getBoundedPaymentStringContext('invoiceUrl', documentUrl)",
       "message.error('Could not open invoice.')",
     ],
     'desktop billing-history bounded invoice diagnostics',

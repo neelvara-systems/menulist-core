@@ -80,9 +80,10 @@ includes(billingDocumentServer, "result.status === 'partial'", 'Answerlattice pa
 includes(read('src/lib/billing/answerlatticeBillingDocumentPolicy.ts'), "const prefix = documentType === 'tax_invoice' ? 'AL' : 'AC'", 'Answerlattice numbering policy');
 includes(read('src/lib/owner-notifications/billingDocumentAttachment.ts'), 'renderAnswerlatticeBillingDocumentPdf', 'Answerlattice PDF attachment boundary');
 const billingHistory = read('src/components/templates/main-app/billing/BillingHistory.tsx');
-includes(billingHistory, '/email', 'Billing history document email resend');
-includes(billingHistory, "case 'partial'", 'Billing history partial-delivery state');
-includes(billingHistory, "case 'outcome_unknown'", 'Billing history ambiguous-delivery state');
+includes(billingHistory, 'requestBillingDocumentEmail', 'Billing history document email resend action');
+includes(read('src/lib/billing/billingDocumentsClient.ts'), '/email', 'Billing history document email resend endpoint');
+assert(/case\s+["']partial["']/.test(billingHistory), 'Billing history must present partial-delivery state');
+assert(/case\s+["']outcome_unknown["']/.test(billingHistory), 'Billing history must present ambiguous-delivery state');
 includes(read('src/app/api/billing-documents/[documentId]/email/route.ts'), 'delivery.attempts <= document.delivery.attempts', 'Billing-document email attempt evidence');
 
 const creditNotificationProducer = read('src/lib/answerlattice/creditNotifications.ts');

@@ -305,7 +305,6 @@ function LoginPage() {
     || callbackProduct?.id === 'answerlattice'
     || callbackPathname === '/answerlattice'
     || callbackPathname.startsWith('/answerlattice/');
-  const shouldOfferGoogleAuth = !isAnswerlatticeExperience;
   const loginProductName = isAnswerlatticeExperience ? 'AnswerLattice' : 'MenuList';
   const loginTagline = isAnswerlatticeExperience
     ? ANSWERLATTICE_LOGIN_TAGLINE
@@ -1023,23 +1022,19 @@ function LoginPage() {
             ) : claimInfo && !claimSetupSuccess ? (
               /* ━━━ CLAIM FLOW: Choose Google or Email ━━━ */
               <>
-                {shouldOfferGoogleAuth ? (
-                  <>
-                    <div className={styles.googleLoginWrap}>
-                      <Button type="default"
-                        size="large"
-                        icon={<FcGoogle />}
-                        loading={claimProcessing}
-                        onClick={() => {
-                          dispatch(startLoader("LoginPage:signInWithGoogle"));
-                          signIn('google', { callbackUrl: `${location.origin}${NAVIGARIONS_ROUTINGS.SIGNIN}` });
-                        }}
-                      >
-                        Sign in with Google</Button>
-                    </div>
-                    <Divider className={styles.saperator}>Or</Divider>
-                  </>
-                ) : null}
+                <div className={styles.googleLoginWrap}>
+                  <Button type="default"
+                    size="large"
+                    icon={<FcGoogle />}
+                    loading={claimProcessing}
+                    onClick={() => {
+                      dispatch(startLoader("LoginPage:signInWithGoogle"));
+                      signIn('google', { callbackUrl: `${location.origin}${NAVIGARIONS_ROUTINGS.SIGNIN}` });
+                    }}
+                  >
+                    Sign in with Google</Button>
+                </div>
+                <Divider className={styles.saperator}>Or</Divider>
                 <Button type="default" size="large" style={{ width: '100%' }} onClick={() => setShowClaimEmailSetup(true)}>
                   Set up with email and password
                 </Button>
@@ -1056,22 +1051,18 @@ function LoginPage() {
                   <h2>Welcome back</h2>
                   <p>{loginManagementDescription}</p>
                 </div>
-                {shouldOfferGoogleAuth ? (
-                  <>
-                    <div className={styles.googleLoginWrap}>
-                      <Button type="default"
-                        size="large"
-                        icon={<FcGoogle />}
-                        onClick={() => {
-                          dispatch(startLoader("LoginPage:signInWithGoogle"));
-                          signIn('google', { callbackUrl: `${location.origin}${NAVIGARIONS_ROUTINGS.SIGNIN}` });
-                        }}
-                      >
-                        Continue with Google</Button>
-                    </div>
-                    <Divider className={styles.saperator}>Or use email</Divider>
-                  </>
-                ) : null}
+                <div className={styles.googleLoginWrap}>
+                  <Button type="default"
+                    size="large"
+                    icon={<FcGoogle />}
+                    onClick={() => {
+                      dispatch(startLoader("LoginPage:signInWithGoogle"));
+                      signIn('google', { callbackUrl: `${location.origin}${NAVIGARIONS_ROUTINGS.SIGNIN}` });
+                    }}
+                  >
+                    Continue with Google</Button>
+                </div>
+                <Divider className={styles.saperator}>Or use email</Divider>
                 <Form
                   form={loginForm}
                   name="normal_login"

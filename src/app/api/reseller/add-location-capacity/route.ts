@@ -1,5 +1,5 @@
 export const dynamic = 'force-dynamic';
-import { calculateOfflineLocationTopup } from "@config/resellerPricing";
+import { calculateOfflineLocationTopup, RESELLER_SYSTEM_FLAGS } from "@config/resellerPricing";
 import { FEATURE_FLAGS } from "@config/features";
 import { DB_COLLECTIONS } from "@constant/database";
 import { DEFAULT_PRODUCT_ID } from "@constant/product";
@@ -9,6 +9,7 @@ import { getCurrentPlatformUser } from "@lib/auth/currentPlatformUser";
 import { resolveExactSessionPlatformRole } from "@lib/auth/sessionPlatformRole";
 import { appendBoundedBillingStatusHistory } from '@lib/billing/subscriptionStatusHistory';
 import { getMenuListSubscriptionEntitlementScope } from '@lib/billing/menuListSubscriptionEntitlementBoundary';
+import { resolveMenuListStoredSubscriptionQuantityCreditUpdate } from '@lib/billing/menulistStoredSubscriptionPricingPolicy';
 import { admin, firestoreAdmin } from "@lib/firebase/firebaseAdmin";
 import { logger } from "@lib/monitoring/logger";
 import {
@@ -36,9 +37,8 @@ const RESELLER_ACTION_MAX_BODY_BYTES = 16 * 1024;
 /**
  * POST /api/reseller/add-location-capacity
  *
- * Manual/offline clients cannot be charged automatically when they add an
- * outlet. This route records the reseller-collected prepaid amount first and
- * increases the licensed location capacity until the current prepaid expiry.
+ * Retained manual-capacity implementation. The route fails closed before any
+ * mutation while manual reseller collection is not commercially admitted.
  */
 export const POST = withAuth(async (request, session) => {
     const resellerId = session.user.id;
@@ -47,6 +47,11 @@ export const POST = withAuth(async (request, session) => {
     try {
         if (!FEATURE_FLAGS.ENABLE_RESELLER_DASHBOARD) {
             return resellerPrivateJson({ error: "Feature not available." }, { status: 404 });
+        }
+        if (!RESELLER_SYSTEM_FLAGS.OFFLINE_MODE_ACTIVE) {
+            return resellerPrivateJson({
+                error: 'Manual reseller collection is unavailable until its invoicing and remittance contract is approved.',
+            }, { status: 409 });
         }
 
         const rateLimitConfig = getRateLimitForFeature('DATA_WRITE');
@@ -235,6 +240,16 @@ export const POST = withAuth(async (request, session) => {
             ) {
                 throw new Error('Manual subscription has invalid quantity or amount state.');
             }
+            const quantityCreditUpdate = resolveMenuListStoredSubscriptionQuantityCreditUpdate({
+                currentMonthlyCredits: currentSubscription.monthlyCredits,
+                currentMonthlyCreditsAllowance: currentSubscription.monthlyCreditsAllowance,
+                fallbackAllowance: currentSubscription.monthlyCreditsAllowance,
+                onboardingSource: currentSubscription.onboardingSource,
+                planId: currentSubscription.planId,
+                quantity: nextQuantity,
+                resellerId: currentSubscription.resellerId,
+                userType: currentSubscription.userType,
+            });
             const now = admin.firestore.Timestamp.now();
             const profileId = resolveResellerMutationProfileId(
                 currentSubscription.resellerProfileId,
@@ -273,6 +288,7 @@ export const POST = withAuth(async (request, session) => {
                 manualPaymentConfirmed: true,
                 manualPaymentConfirmedAt: now,
                 quantity: nextQuantity,
+                ...quantityCreditUpdate,
                 statuses: appendBoundedBillingStatusHistory(currentSubscription.statuses, {
                         status: 'active',
                         timestamp: now,

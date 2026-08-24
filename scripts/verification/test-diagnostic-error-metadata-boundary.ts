@@ -11,7 +11,6 @@ import {
     getBoundedErrorStringField,
     getBoundedErrorStatus,
 } from '../../src/lib/monitoring/boundedLogContext';
-import { getImageProviderRequestLogContext } from '../../src/lib/imageProviderDiagnostics';
 import {
     getBoundedFunctionsErrorContext as getMenuListFunctionsErrorContext,
 } from '../../functions/src/utils/boundedErrorContext';
@@ -131,27 +130,6 @@ assert.deepEqual(getAnalyticsIdContext(1204), {
     present: true,
     length: 4,
 });
-
-let imagePageCoercionAttempted = false;
-assert.deepEqual(getImageProviderRequestLogContext({
-    operation: 'search',
-    page: {
-        valueOf: () => {
-            imagePageCoercionAttempted = true;
-            throw new Error('must not coerce image-provider page metadata');
-        },
-    },
-    provider: 'test',
-}), {
-    operation: 'search',
-    orientationLength: 0,
-    orientationPresent: false,
-    page: undefined,
-    provider: 'test',
-    queryLength: 0,
-    queryPresent: false,
-});
-assert.equal(imagePageCoercionAttempted, false);
 
 assert.equal(
     normalizeRuntimeDiagnosticUrl(

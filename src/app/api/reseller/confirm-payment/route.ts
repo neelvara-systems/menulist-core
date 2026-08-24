@@ -1,5 +1,6 @@
 export const dynamic = 'force-dynamic';
 import { FEATURE_FLAGS } from "@config/features";
+import { RESELLER_SYSTEM_FLAGS } from "@config/resellerPricing";
 import { getResellerProfile } from "@database/reseller/server";
 import { confirmManualSubscriptionPayment } from "@database/subscriptions/server";
 import { getCurrentPlatformUser } from "@lib/auth/currentPlatformUser";
@@ -23,10 +24,10 @@ import { resellerPrivateJson, withResellerPrivateHeaders } from "../readRateLimi
 const RESELLER_ACTION_MAX_BODY_BYTES = 16 * 1024;
 
 /**
- * POST /api/reseller/confirm-payment — Offline payment confirmation
- * 
- * Reseller confirms they received cash/UPI from the client.
- * Updates subscription status from pending to active.
+ * POST /api/reseller/confirm-payment — Retained manual-payment implementation
+ *
+ * The route fails closed before any mutation while manual reseller collection
+ * is not commercially admitted.
  * 
  * @see __docs__/reseller-dashboard/reseller-dashboard_impl.md §4.2
  */
@@ -37,6 +38,11 @@ export const POST = withAuth(async (request, session) => {
     try {
         if (!FEATURE_FLAGS.ENABLE_RESELLER_DASHBOARD) {
             return resellerPrivateJson({ error: "Feature not available." }, { status: 404 });
+        }
+        if (!RESELLER_SYSTEM_FLAGS.OFFLINE_MODE_ACTIVE) {
+            return resellerPrivateJson({
+                error: 'Manual reseller collection is unavailable until its invoicing and remittance contract is approved.',
+            }, { status: 409 });
         }
 
         const rateLimitConfig = getRateLimitForFeature('DATA_WRITE');

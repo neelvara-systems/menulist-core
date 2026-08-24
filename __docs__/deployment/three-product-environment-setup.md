@@ -313,9 +313,6 @@ or select the matching project in the console.
 | GitHub webhooks | https://docs.github.com/en/webhooks |
 | Shopify webhooks | https://shopify.dev/docs/apps/build/webhooks |
 | UptimeRobot | https://uptimerobot.com/ |
-| Unsplash developers | https://unsplash.com/developers |
-| Pixabay API | https://pixabay.com/api/docs/ |
-| Pexels API | https://www.pexels.com/api/ |
 
 ## Account Ownership Rule
 
@@ -1108,7 +1105,7 @@ from.
 | Payments | Root/Vercel: `MENULIST_RAZORPAY_KEY_SECRET`, `MENULIST_RAZORPAY_WEBHOOK_SECRET`, `NEXT_PUBLIC_MENULIST_RAZORPAY_KEY_ID`, `CRON_SECRET`, `INTERNAL_BILLING_EMAIL`, `GCP_BUDGET_WEBHOOK_SECRET`; Functions Secret Manager: `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET` | Razorpay plus generated internal secrets |
 | Cache and revalidation | Root/Vercel: `MENULIST_UPSTASH_REDIS_REST_URL`, `MENULIST_UPSTASH_REDIS_REST_TOKEN`, `MENULIST_REVALIDATION_SECRET`; Functions Secret Manager: `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`, `REVALIDATION_SECRET` | Upstash plus generated shared-value secrets |
 | Cloud Tasks | Root/Vercel: reuse `NEXT_PUBLIC_MENULIST_FIREBASE_PROJECT_ID`, plus `MENULIST_FIREBASE_PROJECT_LOCATION`, `MENULIST_BATCH_IMAGE_GENERATION_WORKER_URL`, `MENULIST_BATCH_IMAGE_GENERATION_QUEUE_ID`, `MENULIST_BATCH_IMAGE_GENERATION_WORKER_SECRET` | Google Cloud Tasks |
-| Analytics/media | `GA_CLIENT_EMAIL`, `GA_PRIVATE_KEY`, `GA_PROJECT_ID`, `NEXT_PUBLIC_GA_MEASUREMENT_ID`, `NEXT_PUBLIC_CLARITY_ID`, `NEXT_PUBLIC_UNSPLASH_API_CLIENTID`, `NEXT_PUBLIC_PIXABAY_API_CLIENTID`, `NEXT_PUBLIC_PEXELS_API_CLIENTID`, `NEXT_PUBLIC_GOOGLE_MAPS_EMBED_API_KEY` | GA4, Clarity, media APIs, Maps |
+| Analytics/maps | `GA_CLIENT_EMAIL`, `GA_PRIVATE_KEY`, `GA_PROJECT_ID`, `NEXT_PUBLIC_GA_MEASUREMENT_ID`, `NEXT_PUBLIC_CLARITY_ID`, `NEXT_PUBLIC_GOOGLE_MAPS_EMBED_API_KEY` | GA4, Clarity, Maps |
 | Sentry | `NEXT_PUBLIC_SENTRY_DSN`, `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, `SENTRY_PROJECT`, `SENTRY_RELEASE`, `SENTRY_ENABLED_IN_EMULATOR`; Firebase Functions use project-local `SENTRY_DSN` Secret Manager | Sentry |
 | App Check and emulators | `NEXT_PUBLIC_RECAPTCHA_SITE_KEY`, `NEXT_PUBLIC_MENULIST_FIREBASE_APPCHECK_DEBUG_TOKEN`, `NEXT_PUBLIC_USE_EMULATORS`, `FUNCTIONS_EMULATOR`, `FIRESTORE_EMULATOR_HOST`, `FIREBASE_STORAGE_EMULATOR_HOST`, `FIREBASE_AUTH_EMULATOR_HOST` | reCAPTCHA/App Check and local emulator settings |
 | Email and alerts | Root/Vercel: `MENULIST_SMTP_HOST`, `MENULIST_SMTP_PORT`, `MENULIST_SMTP_USER`, `MENULIST_SMTP_PASS`, `MENULIST_TELEGRAM_BOT_TOKEN`, `MENULIST_TELEGRAM_CHAT_ID`, plus the shared notification rows; Functions Secret Manager: `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` | SMTP provider, Telegram, Slack |
@@ -1653,16 +1650,10 @@ Checklist:
 
 Open:
 
-- Unsplash: https://unsplash.com/developers
-- Pixabay: https://pixabay.com/api/docs/
-- Pexels: https://www.pexels.com/api/
 
 Checklist:
 
 - [ ] Create keys only if these integrations are used.
-- [ ] Set `NEXT_PUBLIC_UNSPLASH_API_CLIENTID`.
-- [ ] Set `NEXT_PUBLIC_PIXABAY_API_CLIENTID`.
-- [ ] Set `NEXT_PUBLIC_PEXELS_API_CLIENTID`.
 - [ ] Leave blank when not used.
 
 ### 17. Vercel Domains API, optional

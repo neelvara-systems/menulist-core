@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { BillingProfileSchema } from './apiSchemas';
 
 // ═══════════════════════════════════════════════════════════════
 // Reseller Dashboard — Zod Validation Schemas
@@ -22,6 +23,7 @@ export const ResellerOnboardSchema = z.object({
     commitmentMonths: z.number().int().refine(v => [3, 6, 12].includes(v), 'Must be 3, 6, or 12').optional(),
     locationCount: z.number().int().min(1).max(30).optional().default(1),
     paymentMode: z.enum(['online', 'offline']),
+    billingProfile: BillingProfileSchema,
     skipMenuUpload: z.boolean().optional().default(true),
 }).strict();
 

@@ -90,9 +90,6 @@
       "@reduxSlices/*": [
         "src/redux/slices/*"
       ],
-      "@axiosClient/*": [
-        "src/lib/axios/*"
-      ],
       "@database/*": [
         "src/database/*"
       ],

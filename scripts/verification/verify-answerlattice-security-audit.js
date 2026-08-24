@@ -13,7 +13,6 @@ const ROOT_MAX_MODERATE_COUNT = 0;
 const REQUIRED_DIRECT_VERSIONS = {
   root: {
     '@sentry/nextjs': '10.66.0',
-    axios: '1.18.1',
     fabric: '7.4.0',
     'firebase-admin': '14.2.0',
     jspdf: '4.2.1',

@@ -245,6 +245,7 @@ June 11, 2026 audit corrections:
 | `src/components/templates/main-app/billing/ActiveSubscriptionCard.tsx` | Handles desktop cancel, pause, resume, and retry-payment link-open failures with bounded diagnostics and generic owner messages. |
 | `src/components/templates/main-app/billing/BillingHistory.tsx` | Handles desktop invoice link-open failures with bounded diagnostics and generic owner messages. |
 | `src/components/mobile/screens/MobileBillingScreen.tsx` | Handles mobile billing payment-action, subscription refetch, history-load, store-switch, retry-payment, pending-payment, and invoice link-open failures with bounded diagnostics and generic toast text. |
+| `src/components/mobile/screens/MobileBillingScreen.tsx` | Gives issued invoices and credit notes mobile parity with protected download, delivery status, and rate-limited manual email resend through the shared billing-document API. |
 
 Frontend diagnostics must not log raw `razorpay_payment_id`, `razorpay_subscription_id`, `razorpay_order_id`, `razorpay_signature`, `shortUrl`, `invoiceUrl`, verification responses, billing route response bodies, provider exception payloads, owner identity, or full plan/subscription objects. `npm run verify:menulist-api-tenant-safety` guards this contract.
 

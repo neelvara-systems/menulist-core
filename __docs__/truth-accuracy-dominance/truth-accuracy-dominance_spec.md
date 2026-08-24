@@ -108,7 +108,7 @@ This pillar requires reliability discipline and current evidence:
 |------|-----------|
 | Cache serves stale data beyond the public cache window | Verify cache headers, revalidation tags, and the write path that triggers public cache refresh |
 | MCE blocks valid menus (false positive) | Rules are conservative — only block clearly broken data |
-| Hours timezone calculation error | Using `date-fns` with store-specific timezone |
+| Hours timezone calculation error | Using the shared native `Intl.DateTimeFormat` store-timezone boundary |
 | External or downloaded target drifts | Require target-specific artifact/provider/device evidence before claiming freshness |
 | Docs overstate the runtime | `npm run verify:public-business-truth` rejects stale blanket freshness and correctness claims |
 

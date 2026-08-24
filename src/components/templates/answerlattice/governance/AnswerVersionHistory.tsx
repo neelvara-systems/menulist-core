@@ -133,7 +133,11 @@ export default function AnswerVersionHistory({ tId, sId }: Props) {
     const historyError = historyIsCurrent && historyState.error;
 
     if (loadingAnswers) {
-        return <Spin tip="Loading answers..." />;
+        return (
+            <Spin tip="Loading answers...">
+                <div style={{ minHeight: 120 }} />
+            </Spin>
+        );
     }
 
     if (answers.length === 0) {
@@ -174,7 +178,11 @@ export default function AnswerVersionHistory({ tId, sId }: Props) {
                 <Empty description="Select a trusted answer to view its version history" />
             )}
 
-            {selectedAnswerId && loading && <Spin tip="Loading history..." />}
+            {selectedAnswerId && loading && (
+                <Spin tip="Loading history...">
+                    <div style={{ minHeight: 120 }} />
+                </Spin>
+            )}
 
             {selectedAnswerId && !loading && historyError && (
                 <Empty description="Could not load version history" />

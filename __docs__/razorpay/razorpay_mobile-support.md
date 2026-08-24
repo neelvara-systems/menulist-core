@@ -32,7 +32,7 @@
 | Cancel subscription                     | `MobileBillingScreen` → confirmation         | ✅     |
 | Retry failed payment                    | `MobileBillingScreen` → Razorpay shortUrl    | ✅ for the signed-in store's direct recurring subscription |
 | Billing history                         | `MobileBillingScreen` → lazy-loaded list     | ✅     |
-| Invoice links                           | `MobileBillingScreen` → external link        | ✅     |
+| Invoice and credit-note access          | `MobileBillingScreen` → protected PDF download, delivery status, and manual email resend | ✅     |
 | No-subscription gate                    | `MobileShell` → `hasValidSubscriptionAccess` | ✅     |
 
 ## DAL Parity

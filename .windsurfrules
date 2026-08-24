@@ -47,7 +47,7 @@ Fabric.js (v7.4.0, bundled TypeScript types)
 Additional Features:
 PWA Support (Serwist v9.5.12 with owner/customer/MyCodex worker isolation)
 Internationalization (next-intl v4.13.4)
-Date handling (date-fns v3.6.0)
+Date handling (native Intl/Date plus dayjs v1.11.13 where needed)
 
 Mobile Support:
 Current mobile runtime: Tailwind-driven owner mobile shell/screens; no antd-mobile runtime dependency is installed.

@@ -13,6 +13,11 @@ import {
     getMenuListPlanMinimumQuantity,
     isValidMenuListPlanQuantity,
 } from '../../src/lib/billing/menulistPricingPolicy';
+import {
+    isValidMenuListStoredSubscriptionQuantity,
+    resolveMenuListStoredSubscriptionMonthlyCreditAllowance,
+    resolveMenuListStoredSubscriptionQuantityCreditUpdate,
+} from '../../src/lib/billing/menulistStoredSubscriptionPricingPolicy';
 
 const plans = getB2CPlansList();
 const expectedPlans = [
@@ -58,6 +63,31 @@ assert.equal(isValidMenuListPlanQuantity({ planId: 'premium', quantity: 2, userT
 assert.equal(isValidMenuListPlanQuantity({ planId: 'menulist_api_starter', quantity: 1, userType: 'B2B' }), true);
 assert.equal(isValidMenuListPlanQuantity({ planId: 'menulist_api_pro', quantity: 1, userType: 'B2B' }), true);
 assert.equal(isValidMenuListPlanQuantity({ planId: 'starter', quantity: 1, userType: 'B2B' }), false);
+
+const resellerSubscription = {
+    onboardingSource: 'RESELLER_ONBOARDING',
+    planId: 'reseller_founder_400',
+    resellerId: 'reseller_auth_uid',
+    userType: 'B2C' as const,
+};
+assert.equal(isValidMenuListStoredSubscriptionQuantity({ ...resellerSubscription, quantity: 1 }), true);
+assert.equal(isValidMenuListStoredSubscriptionQuantity({ ...resellerSubscription, quantity: 3 }), true);
+assert.equal(isValidMenuListStoredSubscriptionQuantity({ ...resellerSubscription, quantity: 32 }), false);
+assert.equal(isValidMenuListStoredSubscriptionQuantity({ ...resellerSubscription, resellerId: '', quantity: 1 }), false);
+assert.equal(isValidMenuListStoredSubscriptionQuantity({ ...resellerSubscription, onboardingSource: 'WEBSITE_ONBOARDING', quantity: 1 }), false);
+assert.equal(resolveMenuListStoredSubscriptionMonthlyCreditAllowance({
+    ...resellerSubscription,
+    quantity: 3,
+}), 225);
+assert.deepEqual(resolveMenuListStoredSubscriptionQuantityCreditUpdate({
+    ...resellerSubscription,
+    currentMonthlyCredits: 120,
+    currentMonthlyCreditsAllowance: 150,
+    quantity: 3,
+}), {
+    monthlyCredits: 195,
+    monthlyCreditsAllowance: 225,
+});
 
 assert.equal(resolveMenuListMonthlyCreditAllowance({ planId: 'menulist_official' }), 75);
 assert.equal(resolveMenuListMonthlyCreditAllowance({ planId: 'menulist_pro' }), 250);

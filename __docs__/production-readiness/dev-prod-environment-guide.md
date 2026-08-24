@@ -637,30 +637,9 @@ required production monitors before launch; do not defer them to post-launch.
 - **Product analytics:** public menu, Official Business Page, Customer App, Owner Dashboard, and Business Health analytics stay on the existing MenuList-owned aggregate analytics/read-model pipeline.
 - **Reference:** `__docs__/client-menu/analytics-tracking/analytics-tracking_vendor-plan.md`
 
-#### 11. Unsplash API — Background Images
+#### 11-12. Retired Background-Image Providers
 
-- **What to create:** Developer account + application
-- **Where:** https://unsplash.com/developers
-- **Steps:**
-  1. Sign up/login
-  2. Click "New Application"
-  3. Fill in app details
-  4. **Copy Access Key** (looks like `abc123def456...`)
-- **Env vars:** `NEXT_PUBLIC_UNSPLASH_API_CLIENTID`
-- **Cost:** Free tier — 50 requests/hour
-- **Note:** Optional — app works without this (background images feature)
-
-#### 12. Pixabay API — Background Images (Alternative)
-
-- **What to create:** API key
-- **Where:** https://pixabay.com/api/docs/ → Get API Key
-- **Steps:**
-  1. Sign up/login
-  2. Go to API docs → Get API Key
-  3. **Copy API key**
-- **Env vars:** `NEXT_PUBLIC_PIXABAY_API_CLIENTID`
-- **Cost:** Free
-- **Note:** Optional — alternative to Unsplash
+Unsplash, Pexels, and Pixabay search integrations are not part of the active MenuList runtime. Do not create provider accounts or configure provider API keys for them.
 
 #### 13. Microsoft Clarity — Marketing Website Analytics
 
@@ -723,8 +702,6 @@ required production monitors before launch; do not defer them to post-launch.
 | 8   | UptimeRobot          | Sign up               | Free            | P2       | N/A                          |
 | 9   | reCAPTCHA v3         | Create site           | Free            | P2       | `ENABLE_APP_CHECK`           |
 | 10  | GA4 Service Account  | Verify access         | Free            | P2       | N/A                          |
-| 11  | Unsplash             | Developer app         | Free            | P2       | N/A                          |
-| 12  | Pixabay              | API key               | Free            | P2       | N/A                          |
 | 13  | Clarity              | Verify project access | Free            | P2       | N/A                          |
 | 13B | Plausible Cloud      | Create website sites  | Paid plan       | P2       | N/A                          |
 | 14  | GCP Billing          | Budget alert          | Free            | P1       | N/A                          |
@@ -756,7 +733,6 @@ required production monitors before launch; do not defer them to post-launch.
 - [ ] Sign up UptimeRobot, add monitors
 - [ ] Create reCAPTCHA v3 site key
 - [ ] Verify GA4 service account access
-- [ ] Sign up Unsplash/Pixabay (optional)
 - [ ] Verify Clarity project access if retaining the current website analytics stack
 - [ ] Create Plausible sites for `menulist.ai` and `answerlattice.com`, set website-only Plausible env vars, and configure launch custom-event goals
 - [ ] Do not add PostHog unless `analytics-tracking_vendor-plan.md` has a separate approved internal-product-analytics task

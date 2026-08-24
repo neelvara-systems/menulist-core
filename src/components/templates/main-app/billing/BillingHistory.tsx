@@ -1,6 +1,7 @@
 'use client'
 
 import { openIsolatedBrowserUrl } from '@lib/browser/openIsolatedBrowserUrl';
+import { requestBillingDocumentEmail } from '@lib/billing/billingDocumentsClient';
 
 import { BillingHistoryItem } from '@type/razorpay';
 import { getBoundedPaymentStringContext, logPaymentFailure } from '@hook/paymentDiagnostics';
@@ -52,17 +53,8 @@ const BillingHistory = ({ billingHistory, fetchBillingHistory, diagnosticContext
         if (!record.billingDocumentId || sendingDocumentId) return;
         setSendingDocumentId(record.billingDocumentId);
         try {
-            const response = await fetch(`/api/billing-documents/${encodeURIComponent(record.billingDocumentId)}/email`, {
-                method: 'POST',
-                credentials: 'same-origin',
-                headers: { Accept: 'application/json' },
-            });
-            const payload = await response.json().catch(() => ({})) as {
-                delivery?: { status?: string };
-                error?: string;
-            };
-            if (!response.ok) throw new Error(payload.error || 'Billing document email could not be sent.');
-            switch (payload.delivery?.status) {
+            const delivery = await requestBillingDocumentEmail(record.billingDocumentId);
+            switch (delivery.status) {
                 case 'sent':
                     message.success('Billing document email sent.');
                     break;

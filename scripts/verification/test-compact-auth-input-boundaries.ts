@@ -22,6 +22,16 @@ import type { StoreRoleDataType } from '../../src/types/platform/roles';
 const operationId = '8bd23ee5-3754-4df1-a113-98f43668c741';
 
 const validOnboardInput = {
+    billingProfile: {
+        legalName: 'Boundary Cafe Private Limited',
+        email: 'billing@example.com',
+        countryCode: 'IN',
+        addressLine1: '1 Market Road',
+        city: 'Bengaluru',
+        region: 'Karnataka',
+        indianStateCode: '29',
+        postalCode: '560001',
+    },
     operationId,
     businessName: ' Boundary Cafe ',
     businessType: ' Restaurant ',

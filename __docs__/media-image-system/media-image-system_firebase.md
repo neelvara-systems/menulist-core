@@ -26,11 +26,9 @@ Admin SDK batch generation and prompt-cache destination copies use the equivalen
 
 Auto-generated project-image persistence reuses the existing `updateProjectMetadata()` summary transaction and its existing summary-document read. When transaction-current `projectImage` truth is already non-empty, the transaction omits the generated image field and returns the current owner image. This adds no Firestore read, write, collection, index, rule, or Function beyond the existing metadata operation. A generated immutable Storage object may already have been created before the concurrent owner image is observed; it is not destructively compensated because content-addressed objects can be shared by a concurrent or retried operation without an exclusive reference ledger.
 
-## External Provider Diagnostics
+## External Provider Boundary
 
-Legacy optional background-image provider helpers for Unsplash, Pexels, and Pixabay use `src/lib/imageProviderDiagnostics.ts` for bounded failure diagnostics and `src/lib/imageProviderRequests.ts` for outbound request normalization. Provider search/topic calls encode query params through `URLSearchParams`, clamp page/orientation/search-query inputs, apply a 10s timeout, and pass Pexels credentials through Axios `headers`. Failed provider calls reject with generic owner-safe text and log only provider name, operation, page, bounded query/orientation metadata, and source error name/code/status. Raw provider response bodies, API errors, search queries, image URLs, and credentials are not direct-console logged.
-
-This diagnostic/request hardening adds no Firestore reads/writes, Storage operations, Cloud Function calls, cache invalidations, additional provider calls, or provider/vendor changes.
+The dormant Unsplash, Pexels, and Pixabay background-image search helpers have been removed. The active media system does not call those providers, require their credentials, or add provider-related Firestore, Storage, Cloud Function, or cache operations.
 
 ## Deletes
 

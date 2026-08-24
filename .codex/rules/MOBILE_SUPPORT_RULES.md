@@ -74,7 +74,7 @@ Mobile uses the SAME i18n stack:
 
 - `next-intl` (v3.17.2) — same translation files, same locale detection
 - RTL support — same `isRTLDirection` from Redux
-- Date handling — same `date-fns` (v3.6.0)
+- Date handling — shared native `Intl`/`Date` utilities and `dayjs` where needed
 - Number/currency formatting — same `useFormatter()` from `next-intl`
 
 ## Rule 8: Icons — react-icons/lu Only

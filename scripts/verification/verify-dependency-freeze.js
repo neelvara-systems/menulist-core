@@ -212,11 +212,53 @@ function verifyMobileLibraryBoundary() {
 
 function verifyRetiredRuntimeDependencies() {
   const rootPackage = readJson('package.json');
-  for (const retiredDependency of ['next-pwa', '@emoji-mart/react']) {
+  const retiredDependencies = [
+    'next-pwa',
+    '@emoji-mart/react',
+    '@ant-design/plots',
+    '@radix-ui/react-alert-dialog',
+    '@radix-ui/react-avatar',
+    '@radix-ui/react-checkbox',
+    '@radix-ui/react-menubar',
+    '@radix-ui/react-popover',
+    '@radix-ui/react-progress',
+    '@radix-ui/react-radio-group',
+    '@radix-ui/react-scroll-area',
+    '@radix-ui/react-separator',
+    '@radix-ui/react-slider',
+    '@radix-ui/react-tabs',
+    '@tiptap/pm',
+    '@types/react-window',
+    '@types/ua-parser-js',
+    '@types/uuid',
+    'axios',
+    'critters',
+    'date-fns',
+    'encoding',
+    'libphonenumber-js',
+    'patch-package',
+    'react-intersection-observer',
+    'react-window',
+  ];
+  for (const retiredDependency of retiredDependencies) {
     assert(
       !rootPackage.dependencies?.[retiredDependency]
         && !rootPackage.devDependencies?.[retiredDependency],
-      `${retiredDependency} must remain removed after the Next 16 migration`,
+      `${retiredDependency} must remain removed from direct root dependencies`,
+    );
+  }
+
+  const toolingOnlyDependencies = {
+    '@svgr/webpack': '8.1.0',
+    '@types/qrcode': '1.5.6',
+    'tailwindcss-animate': '1.0.7',
+    ws: '8.21.1',
+  };
+  for (const [dependency, expectedVersion] of Object.entries(toolingOnlyDependencies)) {
+    assert(
+      !rootPackage.dependencies?.[dependency]
+        && rootPackage.devDependencies?.[dependency] === expectedVersion,
+      `${dependency} must stay tooling-only in root devDependencies at ${expectedVersion}`,
     );
   }
 }

@@ -1,8 +1,9 @@
 'use client'
 
 import ContextualStateIllustration from '@atoms/contextualStateIllustration';
-import { calculateOfflineAmount, getActiveResellerTiers, RESELLER_COMMITMENT_OPTIONS } from '@config/resellerPricing';
+import { getActiveResellerTiers, RESELLER_COMMITMENT_OPTIONS } from '@config/resellerPricing';
 import { BUSINESS_TYPES } from '@data/shared/businessTypes';
+import { INDIAN_GST_STATES } from '@data/shared/indianGstStates';
 import { DEFAULT_PHONE_COUNTRY_CODE, getDialCodeForCountry, getUniquePhoneCountries, normalizePhoneNumberForStorage } from '@lib/phone/phoneNumber';
 import {
     isResellerOnboardingResponse,
@@ -18,16 +19,23 @@ import {
 import { formatInrPaise } from '@util/formatters';
 import { theme } from 'antd';
 import { useMemo, useState } from 'react';
-import { LuCheck, LuChevronRight, LuCopy, LuShare2 } from 'react-icons/lu';
+import { LuChevronRight, LuCopy, LuShare2 } from 'react-icons/lu';
 import { Button, Card, Flex, Input, Result, Select, Tag, Text, Title, Toast } from '../antd';
 import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
 import { getBoundedMobileOwnerStringContext, logMobileOwnerFailure } from '../utils/mobileOwnerDiagnostics';
 
-type PaymentMode = 'online' | 'offline';
 type BillingInterval = 'MONTH' | 'YEAR';
 
 type OnboardDraft = {
+    billingAddressLine1: string;
+    billingAddressLine2: string;
+    billingCity: string;
+    billingEmail: string;
+    billingGstin: string;
+    billingIndianStateCode: string;
     billingInterval: BillingInterval;
+    billingLegalName: string;
+    billingPostalCode: string;
     businessName: string;
     businessType: string;
     commitmentMonths: string;
@@ -37,7 +45,6 @@ type OnboardDraft = {
     ownerEmail: string;
     ownerPassword: string;
     ownerPhone: string;
-    paymentMode: PaymentMode | '';
     pricingTier: string;
 };
 
@@ -111,7 +118,15 @@ function createMobileResellerOnboardStatusError(code: string, status?: number) {
 }
 
 const initialDraft: OnboardDraft = {
+    billingAddressLine1: '',
+    billingAddressLine2: '',
+    billingCity: '',
+    billingEmail: '',
+    billingGstin: '',
+    billingIndianStateCode: '',
     billingInterval: 'MONTH',
+    billingLegalName: '',
+    billingPostalCode: '',
     businessName: '',
     businessType: '',
     commitmentMonths: '',
@@ -121,7 +136,6 @@ const initialDraft: OnboardDraft = {
     ownerEmail: '',
     ownerPassword: '',
     ownerPhone: '',
-    paymentMode: '',
     pricingTier: '',
 };
 
@@ -152,7 +166,7 @@ export default function MobileResellerOnboardingScreen({ onBack }: { onBack: () 
         hasOwnerPhone: Boolean(normalizedOwnerPhone.phoneNumber),
         ...getBoundedMobileOwnerStringContext('businessType', draft.businessType),
         ...getBoundedMobileOwnerStringContext('pricingTier', draft.pricingTier),
-        ...getBoundedMobileOwnerStringContext('paymentMode', draft.paymentMode),
+        paymentMode: 'online',
         ...metadata,
     });
 
@@ -183,9 +197,6 @@ export default function MobileResellerOnboardingScreen({ onBack }: { onBack: () 
     const amountLabel = () => {
         if (!selectedTier) return 'Select a tier';
         const locationCount = Math.max(1, Number(draft.locationCount || 1));
-        if (draft.paymentMode === 'offline' && draft.commitmentMonths) {
-            return `${formatInrPaise(calculateOfflineAmount(selectedTier.id, Number(draft.commitmentMonths), locationCount))} one-time prepaid`;
-        }
         if (draft.billingInterval === 'YEAR') {
             return `${formatInrPaise(selectedTier.yearlyPriceINR * locationCount)}/year recurring`;
         }
@@ -200,22 +211,24 @@ export default function MobileResellerOnboardingScreen({ onBack }: { onBack: () 
                 || normalizedOwnerPhone.phoneUsername.length < 10
                 || normalizedOwnerPhone.phoneUsername.length > 15
                 || draft.ownerPassword.length < 6
+                || !draft.billingLegalName.trim()
+                || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(draft.billingEmail.trim())
+                || !draft.billingAddressLine1.trim()
+                || !draft.billingCity.trim()
+                || !draft.billingIndianStateCode
+                || !draft.billingPostalCode.trim()
             ) {
-                Toast.show({ content: 'Business name, type, phone, and password are required.', duration: 2200 });
+                Toast.show({ content: 'Complete the owner and invoice details.', duration: 2200 });
                 return false;
             }
         }
         if (step === 1) {
-            if (!draft.pricingTier || !draft.paymentMode) {
-                Toast.show({ content: 'Select a pricing tier and payment mode.', duration: 2200 });
+            if (!draft.pricingTier) {
+                Toast.show({ content: 'Select a pricing tier.', duration: 2200 });
                 return false;
             }
             if (Number(draft.locationCount || 1) < 1) {
                 Toast.show({ content: 'Enter number of locations.', duration: 2200 });
-                return false;
-            }
-            if (draft.paymentMode === 'offline' && !draft.commitmentMonths) {
-                Toast.show({ content: 'Select a duration for offline payment.', duration: 2200 });
                 return false;
             }
         }
@@ -238,10 +251,18 @@ export default function MobileResellerOnboardingScreen({ onBack }: { onBack: () 
             Math.max(1, Number(draft.locationCount || 1)),
             draft.ownerEmail.trim(),
             draft.ownerPassword,
+            draft.billingLegalName.trim(),
+            draft.billingEmail.trim(),
+            draft.billingAddressLine1.trim(),
+            draft.billingAddressLine2.trim(),
+            draft.billingCity.trim(),
+            draft.billingIndianStateCode,
+            draft.billingPostalCode.trim(),
+            draft.billingGstin.trim(),
             normalizedOwnerPhone.countryCode,
             normalizedOwnerPhone.dialCode,
             normalizedOwnerPhone.phoneNumber,
-            draft.paymentMode,
+            'online',
             draft.pricingTier,
         ]);
         const operationId = getOrCreateResellerOperationId(operationIntentKey);
@@ -262,9 +283,22 @@ export default function MobileResellerOnboardingScreen({ onBack }: { onBack: () 
                     ownerDialCode: normalizedOwnerPhone.dialCode,
                     ownerPassword: draft.ownerPassword,
                     ownerPhone: normalizedOwnerPhone.phoneNumber,
-                    paymentMode: draft.paymentMode,
+                    paymentMode: 'online',
                     pricingTier: draft.pricingTier,
                     locationCount: Math.max(1, Number(draft.locationCount || 1)),
+                    billingProfile: {
+                        legalName: draft.billingLegalName.trim(),
+                        email: draft.billingEmail.trim(),
+                        countryCode: 'IN',
+                        addressLine1: draft.billingAddressLine1.trim(),
+                        addressLine2: draft.billingAddressLine2.trim() || undefined,
+                        city: draft.billingCity.trim(),
+                        region: INDIAN_GST_STATES.find((state) => state.code === draft.billingIndianStateCode)?.name || '',
+                        indianStateCode: draft.billingIndianStateCode,
+                        postalCode: draft.billingPostalCode.trim(),
+                        taxId: draft.billingGstin.trim() || undefined,
+                        taxIdType: draft.billingGstin.trim() ? 'GSTIN' : undefined,
+                    },
                 }),
                 headers: { 'Content-Type': 'application/json' },
                 method: 'POST',
@@ -488,6 +522,15 @@ export default function MobileResellerOnboardingScreen({ onBack }: { onBack: () 
                             <Input inputMode="tel" onChange={(value) => updateDraft('ownerPhone', value)} placeholder="Owner phone" type="tel" value={draft.ownerPhone} />
                             <Input inputMode="email" onChange={(value) => updateDraft('ownerEmail', value)} placeholder="Owner email (optional)" type="email" value={draft.ownerEmail} />
                             <Input onChange={(value) => updateDraft('ownerPassword', value)} placeholder="Owner login password" type="password" value={draft.ownerPassword} />
+                            <Title level={5}>Invoice details</Title>
+                            <Input onChange={(value) => updateDraft('billingLegalName', value)} placeholder="Customer or business legal name" value={draft.billingLegalName} />
+                            <Input inputMode="email" onChange={(value) => updateDraft('billingEmail', value)} placeholder="Invoice email" type="email" value={draft.billingEmail} />
+                            <Input onChange={(value) => updateDraft('billingAddressLine1', value)} placeholder="Billing address" value={draft.billingAddressLine1} />
+                            <Input onChange={(value) => updateDraft('billingAddressLine2', value)} placeholder="Address line 2 (optional)" value={draft.billingAddressLine2} />
+                            <Input onChange={(value) => updateDraft('billingCity', value)} placeholder="City" value={draft.billingCity} />
+                            <Select onChange={(value: string) => updateDraft('billingIndianStateCode', value)} options={INDIAN_GST_STATES.map((state) => ({ label: state.name, value: state.code }))} placeholder="Billing state" value={draft.billingIndianStateCode} />
+                            <Input onChange={(value) => updateDraft('billingPostalCode', value)} placeholder="Postal code" value={draft.billingPostalCode} />
+                            <Input onChange={(value) => updateDraft('billingGstin', value.toUpperCase())} placeholder="GSTIN (optional)" value={draft.billingGstin} />
                         </Flex>
                     </Card>
                 ) : null}
@@ -517,23 +560,8 @@ export default function MobileResellerOnboardingScreen({ onBack }: { onBack: () 
                             </Flex>
                         </Card>
 
-                        <Card title="Payment mode">
-                            <Flex gap={10} vertical>
-                                {[
-                                    { label: 'Online', value: 'online', desc: 'Generate a Razorpay recurring link for the client.' },
-                                    { label: 'Offline', value: 'offline', desc: 'One-time prepaid cash or UPI collected by reseller.' },
-                                ].map((mode) => (
-                                    <Card key={mode.value} onClick={() => updateDraft('paymentMode', mode.value)} style={{ borderColor: draft.paymentMode === mode.value ? token.colorPrimary : undefined }}>
-                                        <Flex align="center" justify="space-between">
-                                            <Flex gap={2} vertical>
-                                                <Text strong>{mode.label}</Text>
-                                                <Text type="secondary">{mode.desc}</Text>
-                                            </Flex>
-                                            {draft.paymentMode === mode.value ? <LuCheck color={token.colorPrimary} size={18} /> : null}
-                                        </Flex>
-                                    </Card>
-                                ))}
-                            </Flex>
+                        <Card title="Online payment">
+                            <Text type="secondary">A Razorpay recurring link is created for the customer. Access starts after verified payment.</Text>
                         </Card>
 
                         <Card title="Locations included">
@@ -545,48 +573,33 @@ export default function MobileResellerOnboardingScreen({ onBack }: { onBack: () 
                                     type="number"
                                     value={draft.locationCount}
                                 />
-                                <Text type="secondary">The client gets this many paid location seats. Add more later from the reseller dashboard.</Text>
+                                <Text type="secondary">The recurring checkout covers this many paid business locations.</Text>
                             </Flex>
                         </Card>
 
-                        {draft.paymentMode === 'online' ? (
-                            <>
-                                <Card title="Billing interval">
-                                    <Flex gap={10}>
-                                        {(['MONTH', 'YEAR'] as BillingInterval[]).map((interval) => (
-                                            <Button key={interval} block fill={draft.billingInterval === interval ? 'solid' : 'outline'} onClick={() => updateDraft('billingInterval', interval)} style={{ minHeight: 44 }}>
-                                                {interval === 'MONTH' ? 'Monthly' : 'Yearly'}
-                                            </Button>
-                                        ))}
-                                    </Flex>
-                                </Card>
-                                <Card title="Commitment period">
-                                    <Flex gap={10} wrap="wrap">
-                                        <Button fill={!draft.commitmentMonths ? 'solid' : 'outline'} onClick={() => updateDraft('commitmentMonths', '')} style={{ minHeight: 44 }}>
-                                            Optional
-                                        </Button>
-                                        {RESELLER_COMMITMENT_OPTIONS.map((months) => (
-                                            <Button key={months} fill={draft.commitmentMonths === String(months) ? 'solid' : 'outline'} onClick={() => updateDraft('commitmentMonths', String(months))} style={{ minHeight: 44 }}>
-                                                {months} months
-                                            </Button>
-                                        ))}
-                                    </Flex>
-                                    <Text type="secondary">For online billing this is tracking only. Razorpay still charges on the selected recurring interval.</Text>
-                                </Card>
-                            </>
-                        ) : null}
+                        <Card title="Billing interval">
+                            <Flex gap={10}>
+                                {(['MONTH', 'YEAR'] as BillingInterval[]).map((interval) => (
+                                    <Button key={interval} block fill={draft.billingInterval === interval ? 'solid' : 'outline'} onClick={() => updateDraft('billingInterval', interval)} style={{ minHeight: 44 }}>
+                                        {interval === 'MONTH' ? 'Monthly' : 'Yearly'}
+                                    </Button>
+                                ))}
+                            </Flex>
+                        </Card>
+                        <Card title="Commitment period">
+                            <Flex gap={10} wrap="wrap">
+                                <Button fill={!draft.commitmentMonths ? 'solid' : 'outline'} onClick={() => updateDraft('commitmentMonths', '')} style={{ minHeight: 44 }}>
+                                    Optional
+                                </Button>
+                                {RESELLER_COMMITMENT_OPTIONS.map((months) => (
+                                    <Button key={months} fill={draft.commitmentMonths === String(months) ? 'solid' : 'outline'} onClick={() => updateDraft('commitmentMonths', String(months))} style={{ minHeight: 44 }}>
+                                        {months} months
+                                    </Button>
+                                ))}
+                            </Flex>
+                            <Text type="secondary">This is tracking only. Razorpay charges on the selected recurring interval.</Text>
+                        </Card>
 
-                        {draft.paymentMode === 'offline' ? (
-                            <Card title="One-time prepaid duration">
-                                <Flex gap={10} wrap="wrap">
-                                    {RESELLER_COMMITMENT_OPTIONS.map((months) => (
-                                        <Button key={months} fill={draft.commitmentMonths === String(months) ? 'solid' : 'outline'} onClick={() => updateDraft('commitmentMonths', String(months))} style={{ minHeight: 44 }}>
-                                            {months} months
-                                        </Button>
-                                    ))}
-                                </Flex>
-                            </Card>
-                        ) : null}
                     </Flex>
                 ) : null}
 
@@ -598,18 +611,15 @@ export default function MobileResellerOnboardingScreen({ onBack }: { onBack: () 
                             <Flex justify="space-between"><Text type="secondary">Phone</Text><Text strong>{normalizedOwnerPhone.displayNumber || draft.ownerPhone}</Text></Flex>
                             <Flex justify="space-between"><Text type="secondary">Username</Text><Text strong>{normalizedOwnerPhone.phoneUsername}</Text></Flex>
                             <Flex justify="space-between"><Text type="secondary">Tier</Text><Text strong>{selectedTier?.name || draft.pricingTier}</Text></Flex>
-                            <Flex justify="space-between"><Text type="secondary">Payment</Text><Text strong>{draft.paymentMode === 'online' ? 'Online recurring' : 'Offline prepaid'}</Text></Flex>
+                            <Flex justify="space-between"><Text type="secondary">Payment</Text><Text strong>Online recurring</Text></Flex>
                             <Flex justify="space-between"><Text type="secondary">Locations</Text><Text strong>{Math.max(1, Number(draft.locationCount || 1))}</Text></Flex>
                             {draft.commitmentMonths ? (
-                                <Flex justify="space-between"><Text type="secondary">{draft.paymentMode === 'online' ? 'Commitment' : 'Duration'}</Text><Text strong>{draft.commitmentMonths} months</Text></Flex>
+                                <Flex justify="space-between"><Text type="secondary">Commitment</Text><Text strong>{draft.commitmentMonths} months</Text></Flex>
                             ) : null}
-                            <Flex justify="space-between"><Text type="secondary">Amount</Text><Text strong>{amountLabel()}</Text></Flex>
-                            <Card style={{ background: draft.paymentMode === 'offline' ? token.colorWarningBg : token.colorPrimaryBg }}>
-                                <Text>
-                                    {draft.paymentMode === 'offline'
-                                        ? `Confirm only after collecting ${amountLabel()} from the client. Access ends after the selected prepaid duration.`
-                                        : 'A Razorpay recurring payment link will be created for the client.'}
-                                </Text>
+                            <Flex justify="space-between"><Text type="secondary">Amount</Text><Text strong>{amountLabel()} before GST</Text></Flex>
+                            <Flex justify="space-between"><Text type="secondary">Invoice email</Text><Text strong>{draft.billingEmail}</Text></Flex>
+                            <Card style={{ background: token.colorPrimaryBg }}>
+                                <Text>A Razorpay recurring payment link will be created for the customer.</Text>
                             </Card>
                         </Flex>
                     </Card>
@@ -623,7 +633,7 @@ export default function MobileResellerOnboardingScreen({ onBack }: { onBack: () 
                         </Button>
                     ) : (
                         <Button block loading={loading} onClick={submit} style={{ minHeight: 44 }}>
-                            {draft.paymentMode === 'offline' ? 'Confirm Prepaid' : 'Create Link'}
+                            Create Link
                         </Button>
                     )}
                 </Flex>

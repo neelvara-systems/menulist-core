@@ -9,7 +9,9 @@ Provide owners with private, durable tax invoices and credit notes that match se
 
 ## Admission
 
-- Product must be MenuList (`ML`), not Answerlattice or reseller billing.
+- Product must be MenuList (`ML`). This includes direct MenuList checkout and
+  online reseller-assisted subscriptions that carry the same frozen billing
+  profile, tax snapshot, provider settlement, and tenant/store scope.
 - Tax invoice: captured `subscription.charged` after local settlement, or verified `order.paid` top-up after credit settlement.
 - Credit note: `refund.processed` matched to exactly one MenuList tax invoice.
 - Source feature and runtime gates must both be enabled.
@@ -36,4 +38,6 @@ Every record stores dual product/tenant/store aliases, legal document identity, 
 
 ## Non-goals
 
-No e-invoice IRN/QR integration, reseller invoices, backfill, migration, accounting-software export, foreign VAT/GST automation, or owner-editable issued documents.
+No e-invoice IRN/QR integration, manual/offline reseller-collection invoices,
+backfill, migration, accounting-software export, foreign VAT/GST automation,
+or owner-editable issued documents.

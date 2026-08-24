@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { calculateResellerMonthlyCredits, getResellerTierById } from '../../src/config/resellerPricing';
 import {
     getMatchingResellerOnboardingProvisioningOperation,
     getResellerOnboardingOperationFingerprint,
@@ -9,6 +10,16 @@ import {
 import { isActiveResellerProfileForSession } from '../../src/lib/reseller/resellerProfileAuthority';
 
 const input = {
+    billingProfile: {
+        legalName: 'Boundary Cafe Private Limited',
+        email: 'billing@example.com',
+        countryCode: 'IN',
+        addressLine1: '1 Market Road',
+        city: 'Bengaluru',
+        region: 'Karnataka',
+        indianStateCode: '29',
+        postalCode: '560001',
+    },
     billingInterval: 'MONTH' as const,
     businessName: 'Boundary Cafe',
     businessType: 'restaurant',
@@ -17,7 +28,7 @@ const input = {
     ownerLoginEmail: 'owner@example.com',
     ownerPassword: 'owner-password',
     ownerUsername: '919999999999',
-    paymentMode: 'offline' as const,
+    paymentMode: 'online' as const,
     pricingTier: 'FOUNDER_400',
 };
 
@@ -26,6 +37,15 @@ assert.equal(fingerprint.length, 64);
 assert.equal(getResellerOnboardingOperationFingerprint({ ...input }), fingerprint);
 assert.notEqual(getResellerOnboardingOperationFingerprint({ ...input, ownerPassword: 'changed-password' }), fingerprint);
 assert.notEqual(getResellerOnboardingOperationFingerprint({ ...input, locationCount: 2 }), fingerprint);
+assert.notEqual(getResellerOnboardingOperationFingerprint({
+    ...input,
+    billingProfile: { ...input.billingProfile, indianStateCode: '27', region: 'Maharashtra' },
+}), fingerprint);
+
+const resellerTier = getResellerTierById(input.pricingTier);
+assert.ok(resellerTier);
+assert.equal(calculateResellerMonthlyCredits(resellerTier, 1), resellerTier.monthlyCredits);
+assert.equal(calculateResellerMonthlyCredits(resellerTier, 3), resellerTier.monthlyCredits * 3);
 
 const operationId = '2b167ac8-c4c1-4c90-aa8b-a2d3df7a4f18';
 const operation = {
