@@ -503,10 +503,52 @@ The disposable intake fixture was synthetic and contained no customer data. It w
 
 The hosted rules-publication fixture `QA rules lifecycle — disposable 2026-08-24` contains synthetic support context only. It was moved through every supported board state and retained in `Resolved` because resolved cards are intentional recent operational history and client deletion is denied by product rules.
 
+## 12. August 2026 Final Delta and Production-Transition Certification
+
+> **Execution date:** 2026-08-24
+> **Gate:** Final Delta and Production-Transition Certification
+> **Verdict:** `READY FOR PRODUCTION ENVIRONMENT TESTING WITH NON-BLOCKING FOLLOW-UPS`
+> **Validated application commit:** `fe625d5bbf527c1b7e537b00ab32a4f655905c35` on local/remote `main`, local/remote `staging`, and the hosted `/api/version` readback.
+> **Boundary:** no real Razorpay execution, no customer data, no customer communication, no manual Vercel deployment, no Firebase deployment, and no Git mutation were performed in this delta pass.
+
+This pass reused the complete August release-candidate inventory and retested the residual and changed risk rather than pretending prior evidence did not exist. It covered the exact current application commit, the complete maintained runtime-truth aggregate, dedicated/shared Firebase rules, hostile provider-error handling, owner-screen settling, mobile layout, support-board history, the hosted entitlement boundary, and backup tooling availability.
+
+### 12.1 Delta evidence
+
+| Surface | Status | Evidence |
+| --- | --- | --- |
+| Git and hosted application identity | `PASS_HOSTED_QA` | Local/remote `main` and `staging`, repository `HEAD`, and `https://canonica.app/api/version` all reported `fe625d5bbf527c1b7e537b00ab32a4f655905c35`. Filesystem cleanliness is reported separately and was not inferred from commit parity. |
+| Complete Answerlattice runtime truth | `PASS_EMULATOR` | `npm run verify:answerlattice-runtime-truth` completed with exit code 0. It covered public routes, lifecycle, staff access, tenant isolation, Functions scope, dedicated/shared Firestore and Storage rules, tickets, chat, analytics, billing, schedulers, integrations, summaries, onboarding, retrieval, Public API, widget, governance, support, and owner-control contracts. Expected permission denials were negative assertions. |
+| Build, type, lint, dependencies, and readiness | `PASS_STATIC` | Answerlattice typecheck, repository lint, dedicated Functions build, dependency freeze/readiness/security gates, root and Functions dependency audits, project-boundary tests, email/WhatsApp boundaries, and billing/provider accounting gates passed. |
+| AI provider-health hostile failure | `PASS_EMULATOR` | A hostile `Error` with a throwing `name` getter originally escaped the bounded diagnostic contract as `sourceErrorName: object`. The Functions helper now reads only a genuine `Error.name` inside `try/catch`, bounds it to 80 characters, and returns `null` when inaccessible. The exact emulator regression, Functions build, typecheck, and full runtime aggregate pass. |
+| Hosted owner screens | `PASS_HOSTED_QA` | Activation, Support Assistant, Weekly Digest, Known Issues, Answer Tests, Widget Management, Team Access, Settings, and Support Board settled in the signed-in `admin@neelvara.com` Chrome session. The three slower screens were given an eight-second settle window and rendered their complete main regions. |
+| Hosted mobile management surfaces | `PASS_HOSTED_QA` | Activation, Support Board, and Widget Management were retested at 390×844. Header/hamburger controls remained in one horizontal line; segmented/tab controls remained usable; cards, launch path, actions, and the sticky widget save action remained reachable. The temporary viewport override was reset. |
+| Hosted support-board lifecycle history | `PASS_HOSTED_QA` | The retained synthetic resolved card `QA rules lifecycle — disposable 2026-08-24` remained visible after refresh with no customer content. |
+| Hosted Knowledge Intake | `BLOCKED` | The current QA workspace is intentionally `Payment Pending` and has no active entitlement. The protected intake endpoint denied provider-backed creation before work began, and no job was created. The gate did not bypass billing state or execute Razorpay. Local/emulator intake, provider-failure, publication, and accounting evidence remains green. A licensed disposable QA workspace is required for a future real-provider hosted intake repetition. |
+| Backup and isolated restore | `PASS_STATIC` / `BLOCKED` | Backup/restore contract tests passed. Earlier authenticated QA and production isolated-restore rehearsals remain recorded in the deployment runbook, with recovery databases subsequently deleted and managed backups retained. Fresh read-only preflight could not run on this machine because the `gcloud` executable is absent; no restore or database mutation was attempted. |
+| WhatsApp transport | `NOT_APPLICABLE` | Provider activation remains intentionally parked. Source and fail-closed boundary verification passed; no provider delivery was attempted. |
+| Razorpay execution | `NOT_APPLICABLE` | No checkout, charge, payment webhook completion, refund, subscription mutation, or other real provider transaction was performed. The pending/entitlement boundary was inspected only. |
+
+### 12.2 Finding and release impact
+
+| Severity | Root cause | Fix | Release impact |
+| --- | --- | --- | --- |
+| P2 | The generic bounded-error helper converted an inaccessible hostile `Error.name` getter into the string `object`, weakening provider-health diagnostics. | `getSafeErrorName` now admits only real `Error` instances, reads the name inside `try/catch`, trims and bounds it, and returns `null` for inaccessible names. | Local source is validated but not deployed. Only `answerlatticeNightly` and `triggerAnswerlatticeNightly` consume this path. Their QA and production Functions revisions require a separately authorized scoped deployment and authenticated readback. This is an observability hardening follow-up, not a provider-execution or tenant-data blocker. |
+
+### 12.3 Production-transition conditions
+
+No known P0 or P1 remains. Production environment testing may begin after the validated provider-health fix is committed and the two affected Answerlattice Functions are deployed through the normal QA-first release control. The following evidence must remain explicit rather than being upgraded by assumption:
+
+1. deploy and read back `answerlatticeNightly` and `triggerAnswerlatticeNightly` in Answerlattice QA, rerun the manual/provider-health scheduler boundary, then deploy and read back the same source in production;
+2. perform one future hosted Knowledge Intake journey only in a disposable workspace with a legitimately active license, without synthesizing or bypassing payment state;
+3. install or otherwise provide authenticated `gcloud` tooling before the next backup preflight or isolated-restore rehearsal; and
+4. reserve the final production-host verdict for authenticated production runtime, scheduler, telemetry, provider, and physical-device evidence.
+
 ## Version History
 
 | Date       | Change                                                      |
 | ---------- | ----------------------------------------------------------- |
+| 2026-08-24 | Completed the final delta and production-transition certification; fixed hostile provider-health error-name handling and recorded the scoped Functions deployment requirement |
 | 2026-08-24 | Closed the pre-production gate after exact QA rules publication/readback and hosted support-board lifecycle |
 | 2026-08-24 | Began the final pre-production release-candidate certification; recorded route, runtime, emulator, fix, and blocker evidence |
 | 2026-05-12 | Added public-key lookup cost guards, fail-closed tenant validation, scoped search-cache lookup, and tenant-filtered `kb_articles` vector index coverage |

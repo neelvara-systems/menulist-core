@@ -100,13 +100,17 @@ Ingestion files use `sourceUse=knowledge_generation_only` and `uploadedVia=answe
 
 ### Cloud Functions Inventory
 
-The dedicated codebase exports 11 functions:
+The dedicated codebase exports 14 maintained cloud functions:
 
 1. `startGeneration`, `retryGeneration`, and `finalizePublish` Firestore triggers.
 2. `answerlatticeNightly` hourly scheduler and `triggerAnswerlatticeNightly` manual HTTP trigger.
 3. `processIntegrationEvent` Firestore trigger.
 4. `embedArticleWorker` task worker.
-5. `regenerateEmbedding`, `publishApprovedJobFn`, `dev_triggerStartGeneration`, and `dev_triggerFinalizePublish` authenticated callables.
+5. `regenerateEmbedding` and `publishApprovedJobFn` authenticated callables.
+6. `answerlatticeChatAnalyticsOnDelete`, `answerlatticeSupportBoardSummaryOnWrite`, and `backfillChatAnalytics` bounded maintenance/read-model functions.
+7. `answerlatticeEmailOsWebhook` and `answerlatticeWhatsAppOsWebhook` signature-authenticated provider transports. WhatsApp provider activation and public-ingress certification remain a separate deployment gate and must not be inferred from the source export.
+
+Emulator-only helpers are exercised through local scripts and direct logic imports. They are not exported from the hosted Functions entrypoint.
 
 Functions use bounded instance, timeout, memory, concurrency, and retry settings. The scheduler has task/tenant leases, per-tenant failure isolation, deterministic proposal identities, capped queries, sharded tenant discovery, and structured run logs.
 

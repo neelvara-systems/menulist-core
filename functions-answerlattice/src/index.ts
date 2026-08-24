@@ -499,29 +499,3 @@ export const publishApprovedJobFn = onCall(ANSWERLATTICE_AI_OPTIONS, async (requ
     });
     return publishApprovedJobLogic(safeJobId, finalCategories);
 });
-
-export const dev_triggerStartGeneration = onCall(ANSWERLATTICE_AI_OPTIONS, async (request) => {
-    if (process.env.FUNCTIONS_EMULATOR !== 'true') {
-        throw new HttpsError('failed-precondition', 'This callable is available only in the local emulator.');
-    }
-    await assertAnswerlatticePlatformCallable(request, 'dev_triggerStartGeneration', {
-        allowPlatformSupport: true,
-    });
-    const safeJobId = assertFirestoreDocumentId(request.data?.jobId, 'jobId');
-    return startGenerationLogic(safeJobId);
-});
-
-export const dev_triggerFinalizePublish = onCall(ANSWERLATTICE_AI_OPTIONS, async (request) => {
-    if (process.env.FUNCTIONS_EMULATOR !== 'true') {
-        throw new HttpsError('failed-precondition', 'This callable is available only in the local emulator.');
-    }
-    await assertAnswerlatticePlatformCallable(request, 'dev_triggerFinalizePublish', {
-        allowPlatformSupport: true,
-    });
-    const safeJobId = assertFirestoreDocumentId(request.data?.jobId, 'jobId');
-    const snapshot = await firestoreAdmin.collection(DB_COLLECTIONS.KB_GENERATION_JOBS).doc(safeJobId).get();
-    if (!snapshot.exists) throw new HttpsError('not-found', 'Job not found.');
-    const job = { id: snapshot.id, ...snapshot.data() } as IngestionJob;
-    await dispatchPublishingEmbeddingTasks(safeJobId, job);
-    return finalizePublishingJob(safeJobId);
-});

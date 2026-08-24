@@ -812,6 +812,49 @@ Those fields are explicitly `unknown` instead of guessed.
   unstaged path change; no pre-existing source or user work was altered.
 - Attribution confidence: exact.
 
+### GIT-20260824-223822-answerlattice-firebase-resume
+
+- Timestamp: `2026-08-24T22:38:22+05:30`
+- Record type: `PLANNED`
+- Actor/session/thread ID: current Codex Answerlattice certification task; raw thread ID unavailable
+- Registered worktrees: one primary worktree at `/Users/danny/Projects/MenuListAi/menulist-core`, checked out on `staging`
+- Starting filesystem state: Git history is aligned at `fe625d5bbf527c1b7e537b00ab32a4f655905c35`; three unrelated founder-presence documentation files are unstaged and owned by another active workflow. They will be preserved and excluded from this Firebase operation. This ledger append becomes the fourth unstaged path.
+- Authorization and operation: Danny explicitly authorized removal of the two accidentally hosted emulator-only callables and continuation of QA/production Firebase deployment. Per the annotated owner decision, WhatsApp provider readiness remains parked: do not add or claim public ingress and do not create the WhatsApp webhook in production. Remove the two `dev_*` exports, add a source regression, update the governed Functions inventory, validate, delete only `dev_triggerStartGeneration` and `dev_triggerFinalizePublish` from Answerlattice QA, deploy/read back the remaining maintained QA codebase, then deploy/read back production Firestore Rules, already-matching indexes, Storage Rules, and all maintained production Functions except the parked WhatsApp webhook. No Vercel operation is authorized.
+- Branch matrix before:
+
+  | Branch | Local full SHA | Server ref/full SHA | Tracking ref | Ahead/behind | Worktree | Staged/unstaged/untracked | Status |
+  | --- | --- | --- | --- | --- | --- | --- | --- |
+  | `main` | `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `refs/heads/main` / `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `origin/main` | `0/0` | not checked out | `N/A` | `IN_SYNC` |
+  | `staging` | `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `refs/heads/staging` / `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `origin/staging` | `0/0` | primary worktree | `0/3/0` before this append | `IN_SYNC` |
+
+- Branch matrix after: no Git mutation is authorized in this Firebase operation; refs must remain unchanged. Local source and evidence changes remain uncommitted for later owner-directed Git handling.
+- Validation: Functions build, Answerlattice typecheck, Firebase project/export regression, SecurityOS/notification boundaries, dry runs, exact rules/storage hashes, semantic index inventories, function inventories, and bounded HTTP ingress checks.
+- Firebase matrix before:
+
+  | Product | Environment/project | Component | Local source/config | Local hash/bytes or Git tree | Local validation | Server release/revision/inventory | Server hash/bytes | Readback time | Delta | Deployment state |
+  | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+  | MenuList | QA / `menulist-qa` | Firestore Rules | `firestore-menulist.rules` | `2059459e3b0263bdeca75f89ad0b490e8cebf1dee19cdef9012e0c02fbab5b89`, 132684 bytes | unchanged | not read back | none | none | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | QA / `menulist-qa` | Firestore indexes | `firestore.indexes.json` | `5629ae4d5004bc59c82528f2e7f9b7e5bb1ffbf74e0fc2e2e5e5252abf0744e0`, 78310 bytes | unchanged | not read back | none | none | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | QA / `menulist-qa` | Storage Rules | `storage.rules` | `226d2a206d7de8a442bf356a61ad048118322acb993eb89fa45744ed78ed1838`, 18176 bytes | unchanged | not read back | none | none | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | QA / `menulist-qa` | Cloud Functions | `functions/` | Git tree `a5545e490f7f13f8bce11b5e5f48164a91e76582` | unchanged | not read back | none | none | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | production / `menulist-prod` | Firestore Rules | `firestore-menulist.rules` | same as QA | unchanged | not read back | none | none | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | production / `menulist-prod` | Firestore indexes | `firestore.indexes.json` | same as QA | unchanged | not read back | none | none | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | production / `menulist-prod` | Storage Rules | `storage.rules` | same as QA | unchanged | not read back | none | none | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | production / `menulist-prod` | Cloud Functions | `functions/` | same tree as QA | unchanged | not read back | none | none | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Firestore Rules | `firestore-answerlattice.rules` | `a92cbacbf2b64d2939391449044ea5625e706ddb60e23dfab7c4ffb20d3a9e77`, 116222 bytes | passed | active ruleset `4516df7b-dace-4b0a-ad22-020867a580c5` | exact local hash, 116222 bytes | `2026-08-24T22:34:00+05:30` | `NO_INFRA_CHANGE` | `DEPLOYED_AND_READ_BACK` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Firestore indexes | `firestore-answerlattice.indexes.json` | `3f69df50df9628a0cf2ff90aeea1ad206a40418274585addc0f1907cb8735ec5`, 50143 bytes | 103/33 semantic parity passed | 103 composite / 33 overrides | normalized exact parity | `2026-08-24T22:36:00+05:30` | `NO_INFRA_CHANGE` | `SOURCE_RESTORED_TO_DEPLOYED_BYTES` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Storage Rules | `storage-answerlattice.rules` | `5fc8f980f289889da557ac69c91edd61f8e8646b066c9b0101b87141d67106cc`, 6948 bytes | passed | active ruleset `c24abda5-7c44-4bb5-889a-e400372ae4a6` | exact local hash, 6948 bytes | `2026-08-24T22:34:00+05:30` | `NO_INFRA_CHANGE` | `DEPLOYED_AND_READ_BACK` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Cloud Functions | `functions-answerlattice/` | current Git tree `16ebe54239a17e47b4198172bfcc21e8d29ca550`; cleanup pending | prior build passed | 16 active including two prohibited `dev_*`; WhatsApp intentionally parked | inventory read back | `2026-08-24T22:36:00+05:30` | `INFRA_CHANGE` | `DEPLOY_REQUIRED` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Firestore Rules | `firestore-answerlattice.rules` | same corrected artifact as QA | passed | active ruleset `5b0ccca7-fc6a-4775-aaec-40ee442db1d6` | prior hash, 115461 bytes | `2026-08-24T22:34:00+05:30` | `INFRA_CHANGE` | `DEPLOY_REQUIRED` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Firestore indexes | `firestore-answerlattice.indexes.json` | same as QA | 103/33 semantic parity passed | 103 composite / 33 overrides | normalized exact parity | `2026-08-24T22:36:00+05:30` | `NO_INFRA_CHANGE` | `SOURCE_RESTORED_TO_DEPLOYED_BYTES` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Storage Rules | `storage-answerlattice.rules` | same as QA | passed | active ruleset `593fa3bb-1ea1-44df-bd2a-4a1c26849775` | exact local hash, 6948 bytes | `2026-08-24T22:34:00+05:30` | `NO_INFRA_CHANGE` | `DEPLOYED_AND_READ_BACK` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Cloud Functions | `functions-answerlattice/` | cleanup pending | prior build passed | 12 active; `processIntegrationEvent` absent; WhatsApp intentionally parked | inventory read back | `2026-08-24T22:36:00+05:30` | `INFRA_CHANGE` | `DEPLOY_REQUIRED` |
+
+- Firebase deployment evidence or blocker: reauthenticated as `admin@neelvara.com`; exact QA/prod readbacks above succeeded. The QA WhatsApp deployment command now succeeds but the endpoint remains `403`, confirming the owner decision to leave provider ingress parked rather than representing it as ready.
+- Git server readback and divergence: direct remote readback proves all four refs remain aligned at `fe625d5bbf527c1b7e537b00ab32a4f655905c35`.
+- Final filesystem state: pending source correction, validation, scoped deletion/deployments, and readback.
+- Attribution confidence: exact.
+
 ### GIT-20260824-212731-main-fast-forward-result
 
 - Timestamp: `2026-08-24T21:27:31+05:30`
@@ -1413,3 +1456,84 @@ Those fields are explicitly `unknown` instead of guessed.
 - Git server readback and divergence: direct pre-operation readback captured exact refs above; `main...staging` is `0/6` and the promotion is a strict fast-forward.
 - Final filesystem state: pending.
 - Attribution confidence: exact.
+### GIT-20260824-225320-answerlattice-firebase-freeze-result
+
+- Timestamp: `2026-08-24T22:53:20+05:30`
+- Record type: `PERFORMED`
+- Actor/session/thread ID: current Codex Answerlattice certification task; raw thread ID unavailable
+- Completes: `GIT-20260824-223822-answerlattice-firebase-resume`
+- Registered worktrees: one primary worktree at `/Users/danny/Projects/MenuListAi/menulist-core`, checked out on `staging`
+- Operation: removed the two emulator-only exports from the maintained Answerlattice Functions entrypoint, added a source regression that prohibits hosted `dev_*` exports, updated the governed Functions inventory, and deleted only `dev_triggerStartGeneration` and `dev_triggerFinalizePublish` from Answerlattice QA. Deployed and read back the maintained non-WhatsApp QA Functions set. Published the exact corrected Answerlattice Firestore Rules artifact to production, confirmed Storage Rules were already exact, and deployed the 12 maintained non-provider Functions including the new retry-safe `processIntegrationEvent`. Firestore indexes were not recreated because authenticated inventory already proved exact 103-composite/33-override semantic parity and Firebase CLI 14.15.1 had attempted duplicate server-normalized IDs. No index deletion, Vercel operation, payment execution, WhatsApp production creation, commit, push, merge, rebase, reset, or branch movement occurred.
+- Provider boundary evidence: the QA and production EmailOS endpoints return expected unsigned/method rejection `405`. The underlying Cloud Run EmailOS service has `run.googleapis.com/invoker-iam-disabled=true`, so it is public without an `allUsers` IAM binding. Firebase CLI updated the QA runtime but returned a redundant IAM-binding failure when it attempted to add `allUsers`; authenticated permission testing proved the operator has `run.services.get`, `getIamPolicy`, `setIamPolicy`, and `update`, and fresh endpoint/runtime readback proved the service is active. WhatsApp remains deliberately parked: QA returns fail-closed `403`, production returns `404`, and no public invoker or production webhook was created.
+- Validation: `npm --prefix functions-answerlattice run build`, `npm run typecheck:answerlattice`, `npm run test:answerlattice-firebase-project-boundary`, `npm run verify:answerlattice-final-readiness`, `npm run verify:email-os`, and `npm run verify:whatsapp-os` passed before deployment. Both production Functions predeploy builds passed. A fresh authenticated `https://canonica.app/support-board` hard reload rendered the existing disposable QA card and its complete Needs Triage -> Needs Answer -> Draft Ready -> Approved / Published -> Resolved history; compact counts remained correct, and no new console error appeared after the reload.
+- Branch matrix after:
+
+  | Branch | Local full SHA | Server ref/full SHA | Tracking ref | Ahead/behind | Worktree | Staged/unstaged/untracked | Status |
+  | --- | --- | --- | --- | --- | --- | --- | --- |
+  | `main` | `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `refs/heads/main` / `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `origin/main` | `0/0` | not checked out | `N/A` | `IN_SYNC` |
+  | `staging` | `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `refs/heads/staging` / `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `origin/staging` | `0/0` | primary worktree | `0/7/0` | `IN_SYNC` |
+
+- Firebase matrix after:
+
+  | Product | Environment/project | Component | Local source/config | Local hash/bytes or Git tree | Local validation | Server release/revision/inventory | Server hash/bytes | Readback time | Delta | Deployment state |
+  | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+  | MenuList | QA / `menulist-qa` | Firestore Rules | `firestore-menulist.rules` | `2059459e3b0263bdeca75f89ad0b490e8cebf1dee19cdef9012e0c02fbab5b89`, 132684 bytes | unchanged | not read back | none | none | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | QA / `menulist-qa` | Firestore indexes | `firestore.indexes.json` | `5629ae4d5004bc59c82528f2e7f9b7e5bb1ffbf74e0fc2e2e5e5252abf0744e0`, 78310 bytes | unchanged | not read back | none | none | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | QA / `menulist-qa` | Storage Rules | `storage.rules` | `226d2a206d7de8a442bf356a61ad048118322acb993eb89fa45744ed78ed1838`, 18176 bytes | unchanged | not read back | none | none | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | QA / `menulist-qa` | Cloud Functions | `functions/` | Git tree `a5545e490f7f13f8bce11b5e5f48164a91e76582` | unchanged | not read back | none | none | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | production / `menulist-prod` | Firestore Rules | `firestore-menulist.rules` | same as QA | unchanged | not read back | none | none | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | production / `menulist-prod` | Firestore indexes | `firestore.indexes.json` | same as QA | unchanged | not read back | none | none | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | production / `menulist-prod` | Storage Rules | `storage.rules` | same as QA | unchanged | not read back | none | none | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | production / `menulist-prod` | Cloud Functions | `functions/` | same as QA | unchanged | not read back | none | none | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Firestore Rules | `firestore-answerlattice.rules` | `a92cbacbf2b64d2939391449044ea5625e706ddb60e23dfab7c4ffb20d3a9e77`, 116222 bytes | passed | active ruleset `4516df7b-dace-4b0a-ad22-020867a580c5` | exact local hash, 116222 bytes | `2026-08-24T22:53:20+05:30` | `NO_INFRA_CHANGE` | `DEPLOYED_AND_READ_BACK` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Firestore indexes | `firestore-answerlattice.indexes.json` | `3f69df50df9628a0cf2ff90aeea1ad206a40418274585addc0f1907cb8735ec5`, 50143 bytes | 103/33 semantic parity passed | 103 composite / 33 overrides | normalized exact parity | `2026-08-24T22:36:00+05:30` | `NO_INFRA_CHANGE` | `SOURCE_RESTORED_TO_DEPLOYED_BYTES` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Storage Rules | `storage-answerlattice.rules` | `5fc8f980f289889da557ac69c91edd61f8e8646b066c9b0101b87141d67106cc`, 6948 bytes | passed | active ruleset `c24abda5-7c44-4bb5-889a-e400372ae4a6` | exact local hash, 6948 bytes | `2026-08-24T22:53:20+05:30` | `NO_INFRA_CHANGE` | `DEPLOYED_AND_READ_BACK` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Cloud Functions | `functions-answerlattice/` | hosted `dev_*` exports removed; build/boundary suites passed | exact maintained inventory validated | 14 `ACTIVE`; no `dev_*`; parked WhatsApp retained only in QA | per-function revisions and hashes read back | `2026-08-24T22:53:20+05:30` | `INFRA_CHANGE` | `DEPLOYED_AND_READ_BACK` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Firestore Rules | `firestore-answerlattice.rules` | same corrected artifact as QA | passed | active ruleset `a36250c9-d7eb-4605-8218-48768832db6b` | exact local hash, 116222 bytes | `2026-08-24T22:53:20+05:30` | `INFRA_CHANGE` | `DEPLOYED_AND_READ_BACK` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Firestore indexes | `firestore-answerlattice.indexes.json` | same as QA | 103/33 semantic parity passed | 103 composite / 33 overrides | normalized exact parity | `2026-08-24T22:36:00+05:30` | `NO_INFRA_CHANGE` | `SOURCE_RESTORED_TO_DEPLOYED_BYTES` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Storage Rules | `storage-answerlattice.rules` | same as QA | passed | active ruleset `593fa3bb-1ea1-44df-bd2a-4a1c26849775` | exact local hash, 6948 bytes | `2026-08-24T22:53:20+05:30` | `NO_INFRA_CHANGE` | `DEPLOYED_AND_READ_BACK` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Cloud Functions | `functions-answerlattice/` | same maintained source as QA except parked provider export not deployed | build/boundary suites passed | 13 `ACTIVE`; `processIntegrationEvent` present; no `dev_*`; no WhatsApp | per-function revisions and hashes read back | `2026-08-24T22:53:20+05:30` | `INFRA_CHANGE` | `DEPLOYED_AND_READ_BACK` |
+
+- Firebase deployment evidence or blocker: no Answerlattice Rules, indexes, Storage Rules, or maintained non-WhatsApp Functions blocker remains. The only intentional provider exclusion is WhatsApp public ingress/production creation until the owner reopens that provider. EmailOS remains operational through the already-configured Cloud Run public-access mechanism.
+- Git server readback and divergence: direct `git ls-remote` proves local/server `main` and `staging` all remain on `fe625d5bbf527c1b7e537b00ab32a4f655905c35` with `0/0` divergence. Committed-history parity is unchanged; filesystem cleanliness is separate.
+- Final filesystem state: seven unstaged tracked paths. Three unrelated founder-presence files were preserved untouched. Four Answerlattice/Firebase paths contain this authorized source correction and ledger evidence. No staged or untracked paths exist; `git diff --check` passes.
+- Attribution confidence: exact for the source corrections, validation commands, scoped deletions/deployments, authenticated rules/storage/index/function readbacks, Cloud Run public-access annotation and permissions, HTTP statuses, hosted Support Board runtime evidence, Git refs, and current filesystem state.
+
+### GIT-20260824-232802-answerlattice-final-delta-staging-release
+
+- Timestamp: `2026-08-24T23:28:02+05:30`
+- Record type: `PLANNED`
+- Actor/session/thread ID: current Codex Answerlattice final delta certification task; raw thread ID unavailable
+- Registered worktrees: one primary worktree at `/Users/danny/Projects/MenuListAi/menulist-core`, checked out on `staging`
+- Operation: under Danny's explicit “do the needful” instruction following the certification handoff, commit the complete reviewed tracked worktree snapshot, non-force push only `staging`, and prove direct server parity. The snapshot includes the Answerlattice certification and Functions corrections, prior Firebase inventory/ledger closeout, and the already-recorded founder-presence notes in accordance with the owner's standing complete-worktree push instruction. No external social action, `main` movement, Vercel CLI operation, or Firebase mutation is part of this Git operation.
+- Branch matrix before:
+
+  | Branch | Local full SHA | Server ref/full SHA | Tracking ref | Ahead/behind | Worktree | Staged/unstaged/untracked | Status |
+  | --- | --- | --- | --- | --- | --- | --- | --- |
+  | `main` | `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `refs/heads/main` / `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `origin/main` | `0/0` | not checked out | `N/A` | `IN_SYNC` |
+  | `staging` | `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `refs/heads/staging` / `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `origin/staging` | `0/0` | primary worktree | `0/9/0` before this append | `IN_SYNC` |
+
+- Validation before mutation: complete Answerlattice runtime-truth aggregate, Answerlattice typecheck, repository lint, dedicated Functions build, provider-health emulator regression, security/readiness gates, hosted desktop/mobile regressions, and `git diff --check` passed. All nine tracked diffs were reviewed; no untracked path or secret value is included.
+- Firebase matrix before/after this Git-only operation:
+
+  | Product | Environment/project | Component | Local source/config | Local artifact | Local validation | Server evidence | Readback time | Delta | Deployment state |
+  | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+  | MenuList | QA / `menulist-qa` | Firestore Rules | `firestore-menulist.rules` | unchanged | unchanged | not refreshed | none | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | QA / `menulist-qa` | Firestore indexes | `firestore.indexes.json` | unchanged | unchanged | not refreshed | none | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | QA / `menulist-qa` | Storage Rules | `storage.rules` | unchanged | unchanged | not refreshed | none | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | QA / `menulist-qa` | Cloud Functions | `functions/` | unchanged | unchanged | not refreshed | none | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | production / `menulist-prod` | Firestore Rules | `firestore-menulist.rules` | unchanged | unchanged | not refreshed | none | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | production / `menulist-prod` | Firestore indexes | `firestore.indexes.json` | unchanged | unchanged | not refreshed | none | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | production / `menulist-prod` | Storage Rules | `storage.rules` | unchanged | unchanged | not refreshed | none | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | production / `menulist-prod` | Cloud Functions | `functions/` | unchanged | unchanged | not refreshed | none | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Firestore Rules | `firestore-answerlattice.rules` | SHA-256 `a92cbacbf2b64d2939391449044ea5625e706ddb60e23dfab7c4ffb20d3a9e77`, 116222 bytes | passed | exact prior active readback | `2026-08-24T22:53:20+05:30` | `NO_INFRA_CHANGE` | `DEPLOYED_AND_READ_BACK` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Firestore indexes | `firestore-answerlattice.indexes.json` | SHA-256 `3f69df50df9628a0cf2ff90aeea1ad206a40418274585addc0f1907cb8735ec5`, 50143 bytes | passed | 103/33 semantic parity | `2026-08-24T22:36:00+05:30` | `NO_INFRA_CHANGE` | `SOURCE_RESTORED_TO_DEPLOYED_BYTES` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Storage Rules | `storage-answerlattice.rules` | SHA-256 `5fc8f980f289889da557ac69c91edd61f8e8646b066c9b0101b87141d67106cc`, 6948 bytes | passed | exact prior active readback | `2026-08-24T22:53:20+05:30` | `NO_INFRA_CHANGE` | `DEPLOYED_AND_READ_BACK` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Cloud Functions | `functions-answerlattice/` | deterministic source digest `c282d7919e6d831cedd2cee2b1ec8faf9b3c4c0efce31a8a2ad04c2fde65f80a`, 1098093 bytes | build/emulator/aggregate passed | `answerlatticeNightly` hash `8230aeff6a1fc593d8b602002514de910c5196f0`; manual trigger hash `6a7e174c26e5c4075b9b68a2301ab233da83254d`; both `ACTIVE` | `2026-08-24T23:28:02+05:30` | `INFRA_CHANGE` | `DEPLOY_REQUIRED` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Firestore Rules | `firestore-answerlattice.rules` | same as QA | passed | exact prior active readback | `2026-08-24T22:53:20+05:30` | `NO_INFRA_CHANGE` | `DEPLOYED_AND_READ_BACK` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Firestore indexes | `firestore-answerlattice.indexes.json` | same as QA | passed | 103/33 semantic parity | `2026-08-24T22:36:00+05:30` | `NO_INFRA_CHANGE` | `SOURCE_RESTORED_TO_DEPLOYED_BYTES` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Storage Rules | `storage-answerlattice.rules` | same as QA | passed | exact prior active readback | `2026-08-24T22:53:20+05:30` | `NO_INFRA_CHANGE` | `DEPLOYED_AND_READ_BACK` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Cloud Functions | `functions-answerlattice/` | same source digest as QA | build/emulator/aggregate passed | `answerlatticeNightly` hash `933e378f5c32ceccc5ae72aaa8f1f0e4aa97eed2`; manual trigger hash `8e40a523c161321a7ad3ea52ab904ed736ba3249`; both `ACTIVE` | `2026-08-24T23:28:02+05:30` | `INFRA_CHANGE` | `DEPLOY_REQUIRED` |
+
+- Branch matrix after, commit SHA, direct server readback, and final filesystem state: pending.
+- Attribution confidence: exact for worktree inventory, reviewed file set, local/server refs, local source digest, focused deployed Functions inventory, and validation results.

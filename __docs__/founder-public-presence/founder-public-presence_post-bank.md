@@ -111,6 +111,13 @@ Support needs approved answers, provenance, review state, and a deferral rule.
 
 ### FPP-C007 — Invalidation is part of the write
 
+**Execution packet — next eligible slot:** Original X post from
+`https://x.com/proofandstate` on August 25, 2026, 12:30-12:45 PM Asia/Kolkata.
+This is the next bounded field-note slot after the Monday window was missed;
+do not back-post it on August 24.
+
+**Exact text (255 characters):**
+
 ```text
 A public write path is not complete when the database is correct but the customer still sees stale data.
 
@@ -118,6 +125,22 @@ The write and its invalidation contract belong to the same design review.
 
 “We clear the cache elsewhere” is not a contract. It is a future incident.
 ```
+
+**Why this now:** It converts a concrete production reliability boundary into a
+short, standalone lesson for AI-assisted SaaS builders. It follows the recent
+entitlement, audit-path, and RAG-authority posts without repeating them: the
+new mechanism is cache invalidation as part of write correctness.
+
+**Evidence and boundary:** Generalized from verified public-surface cache and
+invalidation work. No product name, route, tenant, customer data, cache key,
+implementation detail, measured outcome, or vulnerability is disclosed.
+
+**Native checks:** Text only; 255 characters; no link, media, hashtag, product
+name, or disclosure required. Preview the exact line breaks before posting.
+
+**Missed-window rule:** If August 25, 12:30-12:45 PM IST is missed, do not post
+impulsively later. Report `BLOCKED timing window missed`; re-slot after a fresh
+review.
 
 ### FPP-C006 — Mature automation
 
@@ -131,6 +154,13 @@ Until then, one explicit human approval step can be the more mature product deci
 
 ### FPP-C008 — Agent output contracts
 
+**Next execution packet:** Original X post from
+`https://x.com/proofandstate` on Wednesday, August 26, 2026,
+8:00-8:15 PM Asia/Kolkata. This is the next Wednesday production-pattern
+slot; it is a new mechanism, not catch-up volume.
+
+**Exact text (249 characters):**
+
 ```text
 An agent response is not a system boundary because it is JSON.
 
@@ -142,6 +172,22 @@ It becomes one when the output has:
 
 Without all three, “structured output” is still an optimistic suggestion.
 ```
+
+**Why this now:** It gives AI-assisted builders a concrete reliability test for
+agent integrations: schema, runtime validation, and an explicit failure state.
+It follows the cache-invalidation post while moving from data freshness to
+agent boundaries.
+
+**Evidence and boundary:** Generalized from verified agent workflow practice.
+No proprietary prompt, model, payload, customer data, internal route, secret,
+or performance claim is disclosed.
+
+**Native checks:** Text only; 249 characters; no link, media, hashtag, product
+name, or disclosure required. Preview the exact line breaks before posting.
+
+**Missed-window rule:** If August 26, 8:00-8:15 PM IST is missed, do not post
+later impulsively. Report `BLOCKED timing window missed`; re-slot after a fresh
+review.
 
 ### FPP-C009 — State, not timestamp
 

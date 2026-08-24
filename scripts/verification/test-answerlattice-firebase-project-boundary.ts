@@ -92,4 +92,10 @@ assert(functionsAdminSource.includes('normalizeAnswerlatticeFirebaseBoundaryMode
 assert(!functionsAdminSource.includes('FIREBASE_PROJECT_ID === process.env.ANSWERLATTICE_FIREBASE_PROJECT_ID'), 'Answerlattice Functions shared mode must not be inferred from matching project IDs');
 assert(!functionsAdminSource.includes('process.env.FIREBASE_PROJECT_ID === process.env.ANSWERLATTICE_FIREBASE_PROJECT_ID'), 'Answerlattice Functions shared mode must be explicit');
 
+const functionsEntrypointSource = fs.readFileSync(path.join(root, 'functions-answerlattice/src/index.ts'), 'utf8');
+assert(
+    !/export\s+const\s+dev_[A-Za-z0-9_]+\s*=/.test(functionsEntrypointSource),
+    'Emulator-only Answerlattice helpers must never be exported into the hosted Functions codebase',
+);
+
 console.log('Answerlattice Firebase project-boundary tests passed.');
