@@ -6,6 +6,8 @@
 
 **Initial candidate commit:** `b857a164944012d42131917e7c62215c94022c0f`
 
+**Certification source commit:** `3937a39ac78b2324622ebe9a49b7370392e9facc`
+
 **Certification date:** August 25, 2026
 
 **Canonical staging ledger:** [MenuList staging feature certification](../deployment/menulist-staging-feature-certification.md)

@@ -1808,3 +1808,35 @@ Those fields are explicitly `unknown` instead of guessed.
 - Attribution confidence: exact for current worktree, refs, direct server
   readback, scoped files, and validation; concurrent unrelated source authors
   are `unknown`.
+
+### GIT-20260825-015751-menulist-rc-certification-staging-result
+
+- Timestamp: `2026-08-25T01:57:51+05:30`
+- Record type: `PERFORMED`
+- Actor/session/thread ID: current Codex MenuList RC certification task; raw
+  thread ID unavailable
+- Completes: `GIT-20260825-015642-menulist-rc-certification-staging`
+- Operation: committed the 27-path scoped MenuList certification snapshot as
+  `3937a39ac78b2324622ebe9a49b7370392e9facc` with message
+  `Certify MenuList release candidate locally`, non-force pushed `staging`,
+  and directly read back the server ref. No `main`, Firebase, Vercel CLI,
+  payment, live Razorpay, or other provider mutation occurred.
+- Branch matrix after:
+
+  | Branch | Local full SHA | Direct server ref/full SHA | Tracking ref | Ahead/behind | Worktree | Staged/unstaged/untracked | Status |
+  | --- | --- | --- | --- | --- | --- | --- | --- |
+  | `main` | `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `refs/heads/main` / `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `origin/main` | `0/0` | not checked out | `N/A` | `IN_SYNC` |
+  | `staging` | `3937a39ac78b2324622ebe9a49b7370392e9facc` | `refs/heads/staging` / `3937a39ac78b2324622ebe9a49b7370392e9facc` | `origin/staging` | `0/0` | primary worktree | `0/5/0` | `IN_SYNC` |
+
+- Firebase matrix after: unchanged from the planned record; every MenuList QA
+  and production Rules/indexes/Storage/Functions row remains
+  `NO_INFRA_CHANGE` / `SERVER_STATE_UNKNOWN`. No Firebase deployment occurred.
+- Validation: scoped commit contains exactly 27 reviewed certification paths;
+  direct `git ls-remote` and divergence `0 0` confirm staging parity. The five
+  remaining unstaged files are concurrent Answerlattice/changelog work and
+  were excluded from the commit.
+- Final filesystem state: committed-history staging parity is exact; the
+  filesystem is intentionally not clean because five unrelated concurrent
+  paths remain. This performed ledger append is the final evidence-only local
+  modification before the optional closeout commit.
+- Attribution confidence: exact.
