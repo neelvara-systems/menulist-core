@@ -811,6 +811,55 @@ Those fields are explicitly `unknown` instead of guessed.
 - Final filesystem state: this append-only audit entry is the only new
   unstaged path change; no pre-existing source or user work was altered.
 - Attribution confidence: exact.
+
+### GIT-20260824-212731-main-fast-forward-result
+
+- Timestamp: `2026-08-24T21:27:31+05:30`
+- Record type: `PERFORMED`
+- Actor/session/thread ID: current Codex Answerlattice certification task; raw thread ID unavailable
+- Completes: `GIT-20260824-212551-main-fast-forward-freeze`
+- Registered worktrees: one primary worktree at `/Users/danny/Projects/MenuListAi/menulist-core`, checked out on `staging`
+- Operation: committed the complete stable ledger snapshot as `d15d4127e4179fedda31b3d4ddcbedbfabdbbe9d`, non-force pushed `staging`, proved `main` was an ancestor of `staging`, fast-forwarded local `main` to the exact staging commit, and non-force pushed `main`. No file was discarded, no force push occurred, and no Firebase or Vercel command ran.
+- Branch matrix before:
+
+  | Branch | Local full SHA | Server ref/full SHA | Tracking ref | Ahead/behind | Worktree | Staged/unstaged/untracked | Status |
+  | --- | --- | --- | --- | --- | --- | --- | --- |
+  | `main` | `58b8eb73d88825aa0ae44e35e5b17b7b5cc3dde1` | `refs/heads/main` / `58b8eb73d88825aa0ae44e35e5b17b7b5cc3dde1` | `origin/main` | `0/0` | not checked out | `N/A` | `IN_SYNC` |
+  | `staging` | `87922d9e19b439e99604a2cede59e5cd30eb9a84` | `refs/heads/staging` / `87922d9e19b439e99604a2cede59e5cd30eb9a84` | `origin/staging` | `0/0` | primary worktree | `0/1/0` | `IN_SYNC` |
+
+- Branch matrix after the promoted snapshot:
+
+  | Branch | Local full SHA | Server ref/full SHA | Tracking ref | Ahead/behind | Worktree | Staged/unstaged/untracked | Status |
+  | --- | --- | --- | --- | --- | --- | --- | --- |
+  | `main` | `d15d4127e4179fedda31b3d4ddcbedbfabdbbe9d` | `refs/heads/main` / `d15d4127e4179fedda31b3d4ddcbedbfabdbbe9d` | `origin/main` | `0/0` | not checked out | `N/A` | `IN_SYNC` |
+  | `staging` | `d15d4127e4179fedda31b3d4ddcbedbfabdbbe9d` | `refs/heads/staging` / `d15d4127e4179fedda31b3d4ddcbedbfabdbbe9d` | `origin/staging` | `0/0` | primary worktree | `0/0/0` before this performed append | `IN_SYNC` |
+
+- Validation: pre-commit and staged `git diff --check` passed; remote staging was re-fetched and checked against the planned SHA before push; `git merge-base --is-ancestor main staging` passed; both pushes were non-force; direct `git ls-remote` returned the exact promoted SHA for both refs; local/server divergence is `0/0` for both branches and local `main...staging` is `0/0`.
+- Firebase matrix before/after this Git-only operation:
+
+  | Product | Environment/project | Component | Local source/config | Local hash/bytes or Git tree | Local validation | Server release/revision/inventory | Server hash/bytes | Readback time | Delta | Deployment state |
+  | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+  | MenuList | QA / `menulist-qa` | Firestore Rules | `firestore-menulist.rules` | `2059459e3b0263bdeca75f89ad0b490e8cebf1dee19cdef9012e0c02fbab5b89`, 132684 bytes | unchanged | not read back | none | none | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | QA / `menulist-qa` | Firestore indexes | `firestore.indexes.json` | `5629ae4d5004bc59c82528f2e7f9b7e5bb1ffbf74e0fc2e2e5e5252abf0744e0`, 78310 bytes | unchanged | not read back | none | none | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | QA / `menulist-qa` | Storage Rules | `storage.rules` | `226d2a206d7de8a442bf356a61ad048118322acb993eb89fa45744ed78ed1838`, 18176 bytes | unchanged | not read back | none | none | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | QA / `menulist-qa` | Cloud Functions | `functions/` | Git tree `a5545e490f7f13f8bce11b5e5f48164a91e76582` | unchanged | not read back | none | none | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | production / `menulist-prod` | Firestore Rules | `firestore-menulist.rules` | same as QA | unchanged | not read back | none | none | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | production / `menulist-prod` | Firestore indexes | `firestore.indexes.json` | same as QA | unchanged | not read back | none | none | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | production / `menulist-prod` | Storage Rules | `storage.rules` | same as QA | unchanged | not read back | none | none | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | production / `menulist-prod` | Cloud Functions | `functions/` | same tree as QA | unchanged | not read back | none | none | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Firestore Rules | `firestore-answerlattice.rules` | `a92cbacbf2b64d2939391449044ea5625e706ddb60e23dfab7c4ffb20d3a9e77`, 116222 bytes | passed | refreshed exact API source readback pending reauthentication | pending | prior operation | `NO_INFRA_CHANGE` | `DEPLOYED_NOT_READ_BACK` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Firestore indexes | `firestore-answerlattice.indexes.json` | `3f69df50df9628a0cf2ff90aeea1ad206a40418274585addc0f1907cb8735ec5`, 50143 bytes | 103/33 parity passed | authenticated matching inventory | normalized exact parity | prior operation | `NO_INFRA_CHANGE` | `SOURCE_RESTORED_TO_DEPLOYED_BYTES` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Storage Rules | `storage-answerlattice.rules` | `5fc8f980f289889da557ac69c91edd61f8e8646b066c9b0101b87141d67106cc`, 6948 bytes | passed | refreshed exact API source readback pending | pending | prior operation | `NO_INFRA_CHANGE` | `DEPLOYED_NOT_READ_BACK` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Cloud Functions | `functions-answerlattice/` | Git tree `16ebe54239a17e47b4198172bfcc21e8d29ca550` | build/boundaries passed | 16 active; four invoker IAM operations failed | inventory captured | prior operation | `INFRA_CHANGE` | `DEPLOY_BLOCKED` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Firestore Rules | `firestore-answerlattice.rules` | same as QA | passed | prior artifact remains active | 115461-byte prior artifact | prior operation | `INFRA_CHANGE` | `DEPLOY_REQUIRED` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Firestore indexes | `firestore-answerlattice.indexes.json` | same as QA | 103/33 parity passed | authenticated matching inventory | normalized exact parity | prior operation | `NO_INFRA_CHANGE` | `SOURCE_RESTORED_TO_DEPLOYED_BYTES` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Storage Rules | `storage-answerlattice.rules` | same as QA | passed | not refreshed | none | none | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Cloud Functions | `functions-answerlattice/` | same as QA | build passed | production held after QA failure | none | none | `INFRA_CHANGE` | `DEPLOY_BLOCKED` |
+
+- Firebase deployment evidence or blocker: unchanged; the CLI remains logged out and this operation performed no Firebase mutation.
+- Git server readback and divergence: exact parity at `d15d4127e4179fedda31b3d4ddcbedbfabdbbe9d` before this performed-evidence closeout commit. The closeout commit is promoted to both refs immediately after creation; its final SHA is reported by the active operator with a new direct readback so the append-only ledger does not recurse indefinitely.
+- Final filesystem state: clean before this performed append; this performed evidence is the only new change and is included in the closeout commit.
+- Attribution confidence: exact.
 - Notes: this is the locked Git baseline for the Answerlattice final
   pre-production release-candidate certification. No ref movement was required.
 
