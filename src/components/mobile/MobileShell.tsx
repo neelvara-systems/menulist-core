@@ -5,7 +5,6 @@ import { emitDeploymentBadgeToggle } from '@constant/deploymentDebug';
 import { PERMISSIONS } from '@constant/permissions';
 import { MENULIST_PLATFORM_USER_ROLE, RESELLER_USER_ROLE } from '@constant/user';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
-import { setForceDesktopRoute } from '@lib/mobile/forceDesktopMode';
 import { hasStarterWorkspaceAccess, isStarterActivationStore } from '@lib/onboarding/starterActivation';
 import { hasAnyPermission } from '@lib/permissions/permissionRequirements';
 import { hasValidSubscriptionAccess } from '@util/razorpay';
@@ -306,11 +305,14 @@ export default function MobileShell() {
     const isResellerAccount = platformRole === RESELLER_USER_ROLE;
     const isPlatformMobileScreen = activeTab === 'more' && PLATFORM_MORE_SCREENS.includes(moreScreen);
     const isResellerMobileScreen = activeTab === 'more' && RESELLER_MORE_SCREENS.includes(moreScreen);
+    const isBillingRecoveryScreen = activeTab === 'more' && moreScreen === 'billing';
     const shouldEagerLoadSelectedProject = activeTab === 'today'
         || activeTab === 'menu'
         || activeTab === 'aiMenuManager'
         || (activeTab === 'more' && SELECTED_PROJECT_DATA_MORE_SCREENS.includes(moreScreen));
-    const shouldBypassSubscriptionGate = (isPlatformAdmin && (isPlatformMobileScreen || isResellerMobileScreen)) || (isResellerAccount && isResellerMobileScreen);
+    const shouldBypassSubscriptionGate = isBillingRecoveryScreen
+        || (isPlatformAdmin && (isPlatformMobileScreen || isResellerMobileScreen))
+        || (isResellerAccount && isResellerMobileScreen);
     const canUseTodayTab = hasAnyPermission(userPermissions, [
         PERMISSIONS.MANAGE_MENU_SHARING,
         PERMISSIONS.PUBLISH_MENU,
@@ -610,7 +612,9 @@ export default function MobileShell() {
                             <Button
                                 block
                                 onClick={() => {
-                                    setForceDesktopRoute('/billing');
+                                    setActiveTab('more');
+                                    setMoreScreen('billing');
+                                    setIsMoreRootScreen(false);
                                     router.push('/billing');
                                 }}
                                 size="large"

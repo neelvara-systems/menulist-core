@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict';
 import { getB2CPlansList } from '../../src/data/PlatformPlansList';
 import {
+    buildPricingPlanHandoffPath,
     normalizePurchaseIntent,
+    parsePricingPlanHandoff,
     parseStoredPurchaseIntent,
     PURCHASE_INTENT_MAX_AGE_MS,
     serializePurchaseIntent,
@@ -10,6 +12,18 @@ import {
 const now = Date.UTC(2026, 6, 22, 12, 0, 0);
 const canonicalPlan = getB2CPlansList().find((plan) => plan.planId === 'menulist_pro' && plan.billingInterval === 'YEAR');
 assert.ok(canonicalPlan);
+
+const pricingHandoffPath = buildPricingPlanHandoffPath(canonicalPlan, 'INR');
+assert.ok(pricingHandoffPath);
+assert.deepEqual(parsePricingPlanHandoff(pricingHandoffPath.split('?')[1]), {
+    currency: 'INR',
+    plan: canonicalPlan,
+    quantity: 1,
+});
+assert.equal(parsePricingPlanHandoff('checkoutPlan=menulist_pro&checkoutInterval=YEAR&checkoutCurrency=EUR&checkoutQuantity=1&checkoutType=B2C'), null);
+assert.equal(parsePricingPlanHandoff('checkoutPlan=unknown&checkoutInterval=YEAR&checkoutCurrency=INR&checkoutQuantity=1&checkoutType=B2C'), null);
+assert.equal(parsePricingPlanHandoff('checkoutPlan=menulist_pro&checkoutInterval=YEAR&checkoutCurrency=INR&checkoutQuantity=2&checkoutType=B2C'), null);
+assert.equal(parsePricingPlanHandoff('x'.repeat(2_049)), null);
 
 const input = {
     billingProfile: {

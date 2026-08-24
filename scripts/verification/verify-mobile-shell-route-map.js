@@ -153,6 +153,11 @@ function verifyMobileShellRouteMap() {
   assertIncludes(mobileShell, "return HELP_CENTER_TAB_TO_MORE_SCREEN[tab] || 'answerlatticeHelp';", 'MobileShell help-center tab fallback');
   assertIncludes(mobileShell, "buildMobileRouteHash(tab: MobileTab, todayScreen: 'main' | 'dashboard' | 'history', moreScreen: MoreSubScreen)", 'MobileShell hash builder must preserve Today dashboard/history and More sub-screen state');
   assertIncludes(mobileShell, "data-mobile-shell-scroll=\"true\"", 'MobileShell must expose the scroll container for owner-mobile QA harnesses');
+  assertIncludes(mobileShell, "const isBillingRecoveryScreen = activeTab === 'more' && moreScreen === 'billing';", 'Mobile billing recovery route must be identified before subscription gating');
+  assertIncludes(mobileShell, 'const shouldBypassSubscriptionGate = isBillingRecoveryScreen', 'Mobile billing must remain reachable without active entitlement');
+  assertIncludes(mobileShell, "setMoreScreen('billing');", 'Subscription gate View Plans action must open the mobile billing screen');
+  assertIncludes(mobileShell, "router.push('/billing');", 'Subscription gate View Plans action must preserve the canonical billing route');
+  assert(!mobileShell.includes("setForceDesktopRoute('/billing');"), 'Subscription gate must not force a desktop billing route from the mobile shell');
   assertIncludes(mobileNavigation, "aria-label={t('ariaLabel')}", 'Localized mobile navigation landmark label');
   assertIncludes(mobileNavigation, 'role="navigation"', 'Mobile navigation landmark role');
   assertIncludes(mobileNavigation, 'aria-label={title}', 'Localized mobile navigation accessible tab label');

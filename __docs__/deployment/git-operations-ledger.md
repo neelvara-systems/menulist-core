@@ -1659,3 +1659,60 @@ Those fields are explicitly `unknown` instead of guessed.
 - Git server readback and divergence: direct `git ls-remote` confirmed exact staging parity at `55d577ddd70ce02888155982cc8d332b6cd99b90`; main remains intentionally unchanged and independently `IN_SYNC`.
 - Final filesystem state: clean immediately after the closeout push. This performed entry is the final ledger-only append; its resulting audit commit and server ref are read back in the live handoff without creating an infinite recursive ledger mutation.
 - Attribution confidence: exact.
+
+### GIT-20260825-003235-auth-pricing-mobile-staging-release
+
+- Timestamp: `2026-08-25T00:32:35+05:30`
+- Record type: `PLANNED`
+- Actor/session/thread ID: Codex thread
+  `019e3e73-7d6a-7142-9c09-24bce20e1c65`; source author `unknown`
+- Registered worktrees: one worktree at
+  `/Users/danny/Projects/MenuListAi/menulist-core`, checked out on `staging`
+- Operation: commit the complete stable local snapshot and perform exactly one
+  non-force push to `staging`. The reviewed batch covers credential-login
+  normalization, authenticated pricing-plan handoff, mobile billing recovery,
+  matching verification/docs, and the expected MobileShell asset fingerprint.
+  `main`, Firebase, Vercel, Hosting, external providers, and dependency versions
+  are outside this operation.
+- Branch matrix before:
+
+  | Branch | Local full SHA | Direct server ref/full SHA | Tracking ref | Ahead/behind | Worktree | Staged/unstaged/untracked | Status |
+  | --- | --- | --- | --- | --- | --- | --- | --- |
+  | `main` | `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `refs/heads/main` / `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `origin/main` | `0/0` | not checked out | `N/A` | `IN_SYNC` |
+  | `staging` | `3485ad0baf3a737769ba63ebba63783ad7ddb9fd` | `refs/heads/staging` / `3485ad0baf3a737769ba63ebba63783ad7ddb9fd` | `origin/staging` | `0/0` | primary worktree | `0/18/1` before this append | `IN_SYNC` |
+
+- Snapshot cutoff: status SHA-256
+  `bb914af69c9a38ec60fad63251da7b339fdb1ee40e3ac2daf62ec2cc6a7ad2fe`
+  and binary diff SHA-256
+  `f6c18abfa5be1108b8d58dddbd3ae9178f1d719c1f1b5751aa7bb176681b47b2`
+  were unchanged across a 12-second active-writer check.
+- Validation boundary: `git diff --check` passed. No build, lint, typecheck,
+  test, deploy, Firebase command, or commit hook is authorized by this
+  staging-only request. A focused changed-path scan found no environment,
+  secret, credential JSON, cache, temporary, dependency, or build-output path.
+- Firebase matrix before/after this Git-only operation:
+
+  | Product | Environment/project | Component | Local source/config | Local evidence | Server evidence | Delta | Deployment state |
+  | --- | --- | --- | --- | --- | --- | --- | --- |
+  | MenuList | QA / `menulist-qa` | Firestore Rules | `firestore-menulist.rules` unchanged | no changed path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | QA / `menulist-qa` | Firestore indexes | `firestore.indexes.json` unchanged | no changed path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | QA / `menulist-qa` | Storage Rules | `storage.rules` unchanged | no changed path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | QA / `menulist-qa` | Cloud Functions | `functions/` unchanged | no changed path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | production / `menulist-prod` | Firestore Rules | `firestore-menulist.rules` unchanged | no changed path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | production / `menulist-prod` | Firestore indexes | `firestore.indexes.json` unchanged | no changed path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | production / `menulist-prod` | Storage Rules | `storage.rules` unchanged | no changed path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | production / `menulist-prod` | Cloud Functions | `functions/` unchanged | no changed path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Firestore Rules | `firestore-answerlattice.rules` unchanged | no changed path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Firestore indexes | `firestore-answerlattice.indexes.json` unchanged | no changed path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Storage Rules | `storage-answerlattice.rules` unchanged | no changed path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Cloud Functions | `functions-answerlattice/` unchanged | no changed path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Firestore Rules | `firestore-answerlattice.rules` unchanged | no changed path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Firestore indexes | `firestore-answerlattice.indexes.json` unchanged | no changed path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Storage Rules | `storage-answerlattice.rules` unchanged | no changed path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Cloud Functions | `functions-answerlattice/` unchanged | no changed path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+
+- Branch matrix after, commit SHA, direct server readback, and filesystem state:
+  pending the single commit and push.
+- Attribution confidence: exact for current worktree, stable snapshot, local
+  refs, direct server refs, and changed-path classification; source author is
+  `unknown`.

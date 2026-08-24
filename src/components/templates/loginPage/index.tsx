@@ -12,6 +12,10 @@ import { useAppSelector } from "@hook/useAppSelector";
 import { canUseAnswerlatticeManagement, resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
 import { AUTH_BROWSER_REQUEST_POLICY } from '@lib/auth/browserRequestPolicy';
 import {
+  normalizeCredentialLoginIdentifier,
+  normalizeCredentialLoginPassword,
+} from '@lib/auth/loginIdentifiers';
+import {
   clearPendingClaimToken,
   readPendingClaimToken,
   writePendingClaimToken,
@@ -746,11 +750,14 @@ function LoginPage() {
     try {
       dispatch(startLoader(requestId))
 
+      const loginIdentifier = normalizeCredentialLoginIdentifier(values?.email);
+      const password = normalizeCredentialLoginPassword(values?.password);
+
       // Step 1: Sign in with NextAuth (server-side)
       const response = await signIn("credentials", {
         redirect: false,
-        email: values.email,
-        password: values.password,
+        email: loginIdentifier,
+        password,
       });
 
       if (response?.error) {
@@ -763,8 +770,8 @@ function LoginPage() {
       // This ensures Firebase Functions can access request.auth
       try {
         const activeSession = await getSession();
-        const firebaseLoginEmail = activeSession?.user?.email || values.email;
-        const userCredential = await signInWithEmailAndPassword(firebaseAuth, firebaseLoginEmail, values.password);
+        const firebaseLoginEmail = normalizeCredentialLoginIdentifier(activeSession?.user?.email || loginIdentifier);
+        const userCredential = await signInWithEmailAndPassword(firebaseAuth, firebaseLoginEmail, password);
 
         // Step 3: Set custom claims on Firebase Auth token
         try {
@@ -1111,6 +1118,9 @@ function LoginPage() {
                       size="large"
                       prefix={<LuUser className="site-form-item-icon" />}
                       allowClear
+                      autoCapitalize="none"
+                      autoCorrect="off"
+                      spellCheck={false}
                       placeholder="Enter your credentials"
                     />
                   </Form.Item>
@@ -1180,6 +1190,9 @@ function LoginPage() {
                           size="large"
                           prefix={<LuLock className="site-form-item-icon" />}
                           allowClear
+                          autoCapitalize="none"
+                          autoCorrect="off"
+                          spellCheck={false}
                           placeholder={secretPlaceholder}
                         />
                       </Form.Item>

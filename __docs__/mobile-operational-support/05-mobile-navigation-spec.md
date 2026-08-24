@@ -341,6 +341,11 @@ to sibling routes. Browser values must be a bounded same-app absolute path;
 malformed, external-style, control-character, or unreadable state fails back to
 the mobile shell.
 
+The subscription gate does not use forced desktop mode. Its **View Plans**
+action opens the canonical `/billing` route as the MobileShell Billing screen.
+Only that recovery screen bypasses the no-entitlement gate, so an owner can
+finish a pending checkout or choose a plan without gaining menu access.
+
 ---
 
 ## Accessibility

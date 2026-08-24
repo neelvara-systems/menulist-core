@@ -2023,6 +2023,10 @@ function verifyBillingEntitlementBoundary() {
   assertNotIncludes(websitePricingWrapper, '(tenantId || tenantId === 0)', 'website pricing zero tenant scope admission');
 
   [
+    'buildPricingPlanHandoffPath',
+    'parsePricingPlanHandoff',
+    'checkoutPlan',
+    'checkoutCurrency',
     'OnboardingSubscriptionSchema.safeParse',
     'getB2BPlansList() : getB2CPlansList()',
     'candidate.planId === parsed.data.planId',
@@ -2033,6 +2037,10 @@ function verifyBillingEntitlementBoundary() {
     'return normalizePurchaseIntent(envelope.intent);',
   ].forEach((token) => assertIncludes(purchaseIntentBoundary, token, 'stored website purchase-intent runtime boundary'));
   [
+    'window.location.assign(buildWebsiteSignInPath(callbackPath));',
+    'status !== \'authenticated\'',
+    'session.user.tenantId',
+    'pricingPlanHandoff.quantity',
     'parseStoredPurchaseIntent(purchaseIntentString)',
     'serializePurchaseIntent(purchaseIntent)',
     'sessionStorage.getItem(PURCHASE_INTENT_STORAGE_KEY)',

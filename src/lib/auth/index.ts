@@ -1,7 +1,12 @@
 import { DB_COLLECTIONS } from "@constant/database";
 import { NAVIGARIONS_ROUTINGS } from "@constant/navigations";
 import { DEFAULT_PRODUCT_ID, PRODUCT_IDS, type ProductId } from "@constant/product";
-import { getDisplayEmail, normalizeLoginUsername } from "@lib/auth/loginIdentifiers";
+import {
+    getDisplayEmail,
+    normalizeCredentialLoginIdentifier,
+    normalizeCredentialLoginPassword,
+    normalizeLoginUsername,
+} from "@lib/auth/loginIdentifiers";
 import { firebaseAuth, signOutFirebaseAuth } from "@lib/firebase/firebaseClient";
 import { isPlatformEntityBlocked } from "@lib/platform/entityBlock";
 import { DANGEROUS_KEYS, removeKeys } from "@lib/security/sanitizeObject";
@@ -387,8 +392,8 @@ export const authOptions: NextAuthOptions = {
 
                 // ✅ SECURITY FIX: Normalize login identifier immediately.
                 // This may be an email or a reseller-created phone username.
-                const loginIdentifier = ((credentials as any).email || '').toLowerCase().trim();
-                const password = (credentials as any).password;
+                const loginIdentifier = normalizeCredentialLoginIdentifier((credentials as any)?.email);
+                const password = normalizeCredentialLoginPassword((credentials as any)?.password);
                 const isEmailIdentifier = loginIdentifier.includes('@');
                 let email = loginIdentifier;
                 let dbUser: any = null;

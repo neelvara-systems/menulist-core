@@ -2,7 +2,7 @@
 
 The current public brand framing is `The official customer-facing version of your business.` with the supporting line `Publish your menu, hours, links, and business information from one owner-approved source.` The implementation keeps the existing official-customer-link conversion story and owner-approved surface boundaries.
 
-**Version:** 3.6.120 (Developer Reference Discoverability)
+**Version:** 3.6.121 (Pricing Sign-In Handoff Integrity)
 **Status:** ✅ IMPLEMENTED — Canonical
 **Last Updated:** August 22, 2026
 **Workflow:** `.codex/workflows/website.md`
@@ -15,10 +15,13 @@ The current implementation is the only default MenuList marketing website.
 
 | Canonical Version | Name | Core Message | Status |
 | ----------------- | ---- | ------------ | ------ |
+| **3.6.121** | **Pricing Sign-In Handoff Integrity** | **An unauthenticated plan choice crosses to the canonical owner-app sign-in as a validated non-sensitive plan selection; business and billing details are collected only after authentication on the owner-app host.** | **ACTIVE** |
 | **3.6.120** | **Developer Reference Discoverability** | **The shared public footer links directly to the existing localized `/developers` reference so human and agent journeys can reach the implemented read-only API contract from homepage HTML.** | **ACTIVE** |
 | **3.6.119** | **Operational Proof Placement** | **Weekly Menu Review and outlet launch readiness appear as narrow proof inside existing homepage, Features, Business Health, and Multi-location stories without adding a route or homepage section.** | **ACTIVE** |
 | **3.6.118** | **Website Audit Hardening** | **Public pages load without the authenticated Firebase sign-out chain, closed menus leave the keyboard order, contact submissions have a bounded platform inbox, and dense conversion surfaces remain readable across practical viewports.** | **ACTIVE** |
 | **3.6.117** | **Homepage Private Preview Surface Polish** | **The try-first homepage preview now uses one readable, responsive product surface instead of nested card layers and low-contrast panel text.** | **ACTIVE** |
+
+Version 3.6.121 repairs the public Pricing to owner-app sign-in boundary. An unauthenticated plan click now carries only the canonical plan ID, interval, currency, type, and quantity in the same-origin callback path. Business and billing details are collected after authentication on `app.menulist.*`, so origin-scoped browser storage is never expected to cross from the public website host. Existing tenant owners continue to resolve their authoritative current or pending subscription instead of creating a second onboarding workspace. This adds no Firestore write, provider call, payment, entitlement, cookie broadening, Firebase infrastructure change, or deployment action by itself.
 
 Version 3.6.120 adds one localized `Developers` link to the shared footer Resources column. It points to the already-implemented `/developers` page and OpenAPI reference; it does not add an endpoint, credential, OAuth flow, SDK, MCP action, entitlement, Firebase operation, or deployment. The agent-readiness verifier now source-gates the visible homepage/footer route.
 

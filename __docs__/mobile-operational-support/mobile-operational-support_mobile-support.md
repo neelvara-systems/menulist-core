@@ -229,7 +229,7 @@ All mobile screens write data in **identical format** to desktop:
 - **Desktop switch:** "Switch to Desktop" in More screen (sets `localStorage.forceDesktopMode`)
 - **Return banner:** "Return to Mobile" shown when mobile user is in forced desktop mode
 - **Owner PWA launch:** `public/manifest.json` starts at `/today`, and cached `/dashboard` launches also map to the Today tab in `MobileShell`.
-- **Subscription gate:** MobileShell checks `hasValidSubscriptionAccess` — no-sub users see upgrade prompt
+- **Subscription gate:** MobileShell checks `hasValidSubscriptionAccess` — no-sub users see the upgrade prompt, and **View Plans** admits only the `/billing` mobile recovery screen so pending checkout or plan selection remains reachable without granting product entitlement.
 - **Menu upload:** `MenuUploadSheet` enables camera/gallery → optimize → upload → AI extraction from mobile
 - **Add item persistence:** `AddItemSheet` saves to Firestore via optimistic update + background sync
 - **More badge:** `getFeedbackCount` unread count shown on More tab

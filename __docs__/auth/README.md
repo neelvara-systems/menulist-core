@@ -69,6 +69,8 @@ NextAuth callback, client sign-out, active-session fetch, and development-only f
 
 Login, forgot-password, and Phone OTP auth pages render only fixed local failure copy. Do not pass API response text, NextAuth response errors, Firebase browser exceptions, fetch errors, or provider messages into owner-visible auth form state.
 
+Credentials login normalizes the email/phone/Staff ID and trims only leading and trailing whitespace from the submitted password/passcode before both the NextAuth and Firebase Auth handoffs. The server repeats the same normalization so a modified browser cannot bypass it. Internal password characters and spaces are preserved. This prevents mobile paste/autofill whitespace from turning a correct credential into a false login failure; it adds no Firestore reads/writes, Firebase infrastructure changes, or provider operations.
+
 Login-page claim setup and Google claim linking must not treat `success: true` alone as account ownership completion. The browser must receive an OK `/api/auth/claim-account` response with `success: true`, the expected claim `mode`, and tenant/store identity before it clears `pendingClaimToken`, shows success, refreshes session state, or redirects.
 
 Firebase SDK `accessToken` and `refreshToken` values must not be copied into app user objects or logs. The old unused `src/utils/usersUtils.ts` token extraction helper was removed; the auth/security verifier guards against reintroducing Firebase `stsTokenManager` token extraction.

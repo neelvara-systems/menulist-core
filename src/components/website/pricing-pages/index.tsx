@@ -6,6 +6,8 @@ import { getB2CPlansList } from '@data/PlatformPlansList';
 import { getBoundedPaymentStringContext, logPaymentFailure } from '@hook/paymentDiagnostics';
 import usePaymentHandler, { isPaymentCheckoutDismissedError } from '@hook/usePaymentHandler';
 import {
+    buildPricingPlanHandoffPath,
+    parsePricingPlanHandoff,
     parseStoredPurchaseIntent,
     PURCHASE_INTENT_STORAGE_KEY,
     serializePurchaseIntent,
@@ -17,7 +19,8 @@ import { LuCheck, LuFileText, LuSparkles } from 'react-icons/lu';
 import { useSession } from 'next-auth/react';
 import { useTranslations } from 'next-intl';
 import dynamic from 'next/dynamic';
-import React, { useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import SectionHeading from '../shared/SectionHeading';
 import SectionWrapper from '../shared/SectionWrapper';
 import WebsiteReplacementBlock from '../shared/WebsiteReplacementBlock';
@@ -32,7 +35,7 @@ import CreditPacksCtaSection from './shared/CreditPacksCtaSection';
 import EnterpriseCtaSection from './shared/EnterpriseCtaSection';
 import Loader from './shared/Loader';
 import WelcomeBackBanner from './WelcomeBackBanner';
-import { buildCurrentWebsiteSignInPath } from '@/lib/website/signInLinks';
+import { buildCurrentWebsiteSignInPath, buildWebsiteSignInPath } from '@/lib/website/signInLinks';
 
 const FeatureComparisonTable = dynamic(() => import('./FeatureComparisonTable'), { ssr: false });
 
@@ -68,6 +71,11 @@ const PricingPageRenderer: React.FC<{ welcomeTenantName?: string | null, activeS
     const t = useTranslations('Website');
     const { toast } = useToast();
     const { data: session, status } = useSession();
+    const searchParams = useSearchParams();
+    const pricingPlanHandoff = useMemo(
+        () => parsePricingPlanHandoff(searchParams?.toString() ?? ''),
+        [searchParams],
+    );
     const activeBusinessType: PlanType = 'B2C';
     const [billingInterval, setBillingInterval] = useState<BillingInterval>('YEAR');
     const [currency, setCurrency] = useState<Currency>('USD');
@@ -78,6 +86,7 @@ const PricingPageRenderer: React.FC<{ welcomeTenantName?: string | null, activeS
         paymentDetails: null,
     });
     const onboardingInProgress = useRef(false);
+    const pricingPlanHandoffHandled = useRef(false);
     const allPlansList = getB2CPlansList();
     const [isLoading, setIsLoading] = useState(false);
     const [isComparisonOpen, setIsComparisonOpen] = useState(false);
@@ -271,6 +280,15 @@ const PricingPageRenderer: React.FC<{ welcomeTenantName?: string | null, activeS
 
     const handlePaymentCardClick = (plan: Plan, billingProfile?: PurchaseIntent['billingProfile']) => {
         try {
+            if (status === 'unauthenticated' || !session?.user?.id) {
+                const callbackPath = buildPricingPlanHandoffPath(plan, currency);
+                if (!callbackPath) {
+                    showPaymentError();
+                    return;
+                }
+                window.location.assign(buildWebsiteSignInPath(callbackPath));
+                return;
+            }
             setIsLoading(true);
             const paymentPromise = onClickPaymentCard(
                 plan,
@@ -305,6 +323,35 @@ const PricingPageRenderer: React.FC<{ welcomeTenantName?: string | null, activeS
             }));
         }
     }
+
+    useEffect(() => {
+        if (
+            pricingPlanHandoffHandled.current
+            || status !== 'authenticated'
+            || !session?.user?.id
+            || session.user.tenantId
+            || !pricingPlanHandoff
+            || !isScriptLoaded
+        ) return;
+
+        pricingPlanHandoffHandled.current = true;
+        setBillingInterval(pricingPlanHandoff.plan.billingInterval === 'MONTH' ? 'MONTH' : 'YEAR');
+        setCurrency(pricingPlanHandoff.currency);
+        setIsLoading(true);
+        void onClickPaymentCard(
+            pricingPlanHandoff.plan,
+            pricingPlanHandoff.currency,
+            () => setIsOnboardingModalOpen(true),
+            pricingPlanHandoff.quantity,
+        ).catch((error) => {
+            descardPaymentFlow();
+            if (isPaymentCheckoutDismissedError(error)) return;
+            logPaymentFailure('payment_pricing_plan_handoff_failed', error, buildPricingPaymentLogContext('pricing_plan_handoff', {
+                ...getBoundedPaymentStringContext('planId', pricingPlanHandoff.plan.planId),
+            }));
+            showPaymentError();
+        });
+    }, [isScriptLoaded, pricingPlanHandoff, session?.user?.id, session?.user?.tenantId, status]);
 
     return (
         <>

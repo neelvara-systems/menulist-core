@@ -1491,6 +1491,7 @@ Right-side sticky cards:
 - Recommended plan highlighted
 - Plan-card user-facing copy must come from the `Website.Pricing` locale namespace, not hardcoded JSX strings.
 - Plan guidance must leave the choice with the owner: Official is enough for one official customer link; Pro is for presentation, AI Menu Manager, languages, enhancement credits, and owner controls; Multi-location is for location governance.
+- For an unauthenticated owner, a plan CTA must send only the validated plan ID, interval, currency, type, and quantity through the canonical owner-app sign-in callback. Collect business and billing details only after authentication on the owner-app host; do not rely on website-origin session storage crossing to `app.menulist.*`. An already-onboarded owner must see the authoritative current or pending subscription instead of starting a second workspace.
 
 ### CTA on Plan Cards
 

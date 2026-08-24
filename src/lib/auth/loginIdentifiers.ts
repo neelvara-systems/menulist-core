@@ -5,6 +5,20 @@ export type AuthLoginMethod = "email" | "staff_id" | "whatsapp_phone";
 export const STAFF_LOGIN_DISPLAY_PREFIX = "S-";
 export const LOGIN_USERNAME_PATTERN = /^[a-z0-9][a-z0-9._-]{2,49}$/;
 
+/**
+ * Normalize values only at the credentials-login boundary.
+ *
+ * Mobile password managers and copy/paste can add invisible leading or
+ * trailing whitespace. Internal password spaces remain unchanged.
+ */
+export const normalizeCredentialLoginIdentifier = (value?: string | null) => (
+    String(value || "").toLowerCase().trim()
+);
+
+export const normalizeCredentialLoginPassword = (value?: string | null) => (
+    String(value || "").trim()
+);
+
 export const normalizeLoginDigits = (value?: string | null) => String(value || "").replace(/[^0-9]/g, "");
 
 export const normalizeLoginUsername = (value?: string | null) => {
