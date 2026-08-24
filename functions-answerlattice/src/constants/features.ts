@@ -8,7 +8,7 @@
  */
 
 export const FUNCTION_FLAGS = {
-    /** Shared EmailOS contract; Resend transmission stays off until onboarding. */
+    /** Provider delivery still fails closed unless the environment binds real credentials. */
     ENABLE_ANSWERLATTICE_EMAIL_OS: true,
     ENABLE_ANSWERLATTICE_EMAIL_OS_PROVIDER_SEND: true,
     ENABLE_ANSWERLATTICE_WHATSAPP_OS: true,

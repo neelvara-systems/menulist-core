@@ -445,14 +445,18 @@ export const requestAnswerlatticeBillingDocumentDelivery = async (
         return document.delivery;
     }
     const status = 'sent' in result
-        ? result.sent > 0
-            ? 'sent'
+        ? result.status === 'partial' || (result.sent > 0 && result.failed > 0)
+            ? 'partial'
+            : result.sent > 0
+                ? 'sent'
             : result.status === 'pending' || result.status === 'processing'
                 ? 'queued'
                 : 'failed'
         : result.status === 'pending' || result.status === 'processing'
             ? 'queued'
-            : result.status === 'delivered' || result.status === 'partial'
+            : result.status === 'partial'
+                ? 'partial'
+                : result.status === 'delivered'
                 ? 'sent'
                 : 'failed';
     const attemptedDelivery: AnswerlatticeBillingDocument['delivery'] = {

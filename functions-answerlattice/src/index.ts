@@ -399,7 +399,9 @@ export const processIntegrationEvent = onDocumentCreated(
         memory: '256MiB',
         maxInstances: 5,
         retry: true,
-        secrets: ANSWERLATTICE_SECRET_GROUPS.WORKFLOW_INTEGRATIONS,
+        secrets: FUNCTION_FLAGS.ENABLE_ANSWERLATTICE_EMAIL_OS_PROVIDER_SEND
+            ? ANSWERLATTICE_SECRET_GROUPS.EMAIL_OS
+            : ANSWERLATTICE_SECRET_GROUPS.WORKFLOW_INTEGRATIONS,
     },
     async (firestoreEvent) => {
         if (!FUNCTION_FLAGS.ENABLE_ANSWERLATTICE_WORKFLOW_INTEGRATIONS) return;

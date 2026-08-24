@@ -4,7 +4,10 @@ import {
   planNotificationOsChannels,
 } from "../../src/data/shared/notificationOs";
 import { OWNER_NOTIFICATION_REGISTRY } from "../../src/data/shared/ownerNotificationRegistry";
-import { resolveMenuListCreditNotification } from "../../src/data/shared/creditNotificationPolicy";
+import {
+  resolveCreditNotificationMilestone,
+  resolveMenuListCreditNotification,
+} from "../../src/data/shared/creditNotificationPolicy";
 import { renderOwnerNotificationTemplate } from "../../src/lib/owner-notifications/templates";
 import {
   channelsForOwnerNotificationMode,
@@ -308,6 +311,25 @@ assert.deepEqual(resolveMenuListCreditNotification({ monthlyAllowance: 100, rema
 assert.deepEqual(resolveMenuListCreditNotification({ monthlyAllowance: 100, remainingCredits: 10 }), { eventType: "CREDITS_LOW", lowThreshold: 10 });
 assert.deepEqual(resolveMenuListCreditNotification({ monthlyAllowance: 20, remainingCredits: 5 }), { eventType: "CREDITS_LOW", lowThreshold: 5 });
 assert.deepEqual(resolveMenuListCreditNotification({ monthlyAllowance: 100, remainingCredits: 0 }), { eventType: "CREDITS_EXHAUSTED", lowThreshold: 10 });
+assert.deepEqual(resolveCreditNotificationMilestone({ monthlyAllowance: 100, previousRemainingCredits: 31, remainingCredits: 30 }), {
+  eventType: "CREDITS_LOW",
+  lowThreshold: 10,
+  milestone: "70_percent_used",
+  warningThreshold: 30,
+});
+assert.deepEqual(resolveCreditNotificationMilestone({ monthlyAllowance: 100, previousRemainingCredits: 11, remainingCredits: 10 }), {
+  eventType: "CREDITS_LOW",
+  lowThreshold: 10,
+  milestone: "90_percent_used",
+  warningThreshold: 30,
+});
+assert.deepEqual(resolveCreditNotificationMilestone({ monthlyAllowance: 100, previousRemainingCredits: 1, remainingCredits: 0 }), {
+  eventType: "CREDITS_EXHAUSTED",
+  lowThreshold: 10,
+  milestone: "exhausted",
+  warningThreshold: 30,
+});
+assert.equal(resolveCreditNotificationMilestone({ monthlyAllowance: 100, previousRemainingCredits: 29, remainingCredits: 20 }).eventType, null);
 
 const registryKeys = new Set<string>();
 for (const entry of OWNER_NOTIFICATION_REGISTRY) {

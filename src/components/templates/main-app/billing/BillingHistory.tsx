@@ -7,7 +7,8 @@ import { getBoundedPaymentStringContext, logPaymentFailure } from '@hook/payment
 import { formatDateTime } from '@util/dateTime';
 import { Button, Card, Empty, Flex, Space, Table, Tag, Tooltip, Typography, message, theme } from 'antd';
 import { useFormatter } from 'next-intl';
-import { LuExternalLink, LuGift, LuPackage, LuReceipt, LuZap } from 'react-icons/lu';
+import { useState } from 'react';
+import { LuExternalLink, LuGift, LuMail, LuPackage, LuReceipt, LuZap } from 'react-icons/lu';
 
 const { Text } = Typography;
 
@@ -20,6 +21,7 @@ interface BillingHistoryProps {
 const BillingHistory = ({ billingHistory, fetchBillingHistory, diagnosticContext }: BillingHistoryProps) => {
     const { token } = theme.useToken();
     const formatter = useFormatter();
+    const [sendingDocumentId, setSendingDocumentId] = useState<string | null>(null);
     // A simple currency formatter (replace with your existing useFormatCurrency hook if preferred)
     const formatCurrency = (amount: number, currency: string) => {
         return new Intl.NumberFormat(currency === 'USD' ? 'en-US' : 'en-IN', {
@@ -44,6 +46,60 @@ const BillingHistory = ({ billingHistory, fetchBillingHistory, diagnosticContext
                 ...getBoundedPaymentStringContext('invoiceStatus', record.status),
             });
             message.error('Could not open invoice.');
+        }
+    };
+    const handleEmailBillingDocument = async (record: BillingHistoryItem) => {
+        if (!record.billingDocumentId || sendingDocumentId) return;
+        setSendingDocumentId(record.billingDocumentId);
+        try {
+            const response = await fetch(`/api/billing-documents/${encodeURIComponent(record.billingDocumentId)}/email`, {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: { Accept: 'application/json' },
+            });
+            const payload = await response.json().catch(() => ({})) as {
+                delivery?: { status?: string };
+                error?: string;
+            };
+            if (!response.ok) throw new Error(payload.error || 'Billing document email could not be sent.');
+            switch (payload.delivery?.status) {
+                case 'sent':
+                    message.success('Billing document email sent.');
+                    break;
+                case 'queued':
+                    message.success('Billing document email queued.');
+                    break;
+                case 'partial':
+                    message.warning('Billing document delivery was only partially confirmed.');
+                    break;
+                case 'outcome_unknown':
+                    message.warning('Billing document email delivery is still being confirmed.');
+                    break;
+                default:
+                    throw new Error('Billing document email could not be sent.');
+            }
+            await Promise.resolve(fetchBillingHistory());
+        } catch (error) {
+            logPaymentFailure('payment_desktop_billing_document_email_failed', error, {
+                ...diagnosticContext,
+                surface: 'desktop_billing_history',
+                flow: 'billing_document_email',
+                ...getBoundedPaymentStringContext('billingDocumentId', record.billingDocumentId),
+            });
+            message.error(error instanceof Error ? error.message : 'Billing document email could not be sent.');
+        } finally {
+            setSendingDocumentId(null);
+        }
+    };
+
+    const getDeliveryLabel = (status: BillingHistoryItem['billingDocumentDeliveryStatus']) => {
+        switch (status) {
+            case 'sent': return { color: 'success', label: 'Sent' };
+            case 'partial': return { color: 'warning', label: 'Partially sent' };
+            case 'queued': return { color: 'processing', label: 'Queued' };
+            case 'failed': return { color: 'error', label: 'Send failed' };
+            case 'outcome_unknown': return { color: 'warning', label: 'Confirming' };
+            default: return { color: 'default', label: 'Not sent' };
         }
     };
 
@@ -117,15 +173,33 @@ const BillingHistory = ({ billingHistory, fetchBillingHistory, diagnosticContext
             key: 'invoice',
             render: (_: any, record: BillingHistoryItem) => {
                 if (!record.billingDocumentUrl && !record.invoiceUrl) return <Text type="secondary">N/A</Text>;
+                const delivery = getDeliveryLabel(record.billingDocumentDeliveryStatus);
                 return (
-                    <Tooltip title={record.billingDocumentUrl ? `Download ${record.billingDocumentNumber || 'billing document'}` : 'View provider receipt'}>
-                        <Button
-                            type="text"
-                            shape="circle"
-                            icon={<LuExternalLink />}
-                            onClick={() => handleOpenInvoice(record)}
-                        />
-                    </Tooltip>
+                    <Space size={4} wrap>
+                        <Tooltip title={record.billingDocumentUrl ? `Download ${record.billingDocumentNumber || 'billing document'}` : 'View provider receipt'}>
+                            <Button
+                                type="text"
+                                shape="circle"
+                                aria-label={record.billingDocumentUrl ? 'Download billing document' : 'View provider receipt'}
+                                icon={<LuExternalLink />}
+                                onClick={() => handleOpenInvoice(record)}
+                            />
+                        </Tooltip>
+                        {record.billingDocumentId ? (
+                            <Tooltip title="Email this billing document">
+                                <Button
+                                    type="text"
+                                    shape="circle"
+                                    aria-label="Email billing document"
+                                    icon={<LuMail />}
+                                    loading={sendingDocumentId === record.billingDocumentId}
+                                    disabled={Boolean(sendingDocumentId && sendingDocumentId !== record.billingDocumentId)}
+                                    onClick={() => void handleEmailBillingDocument(record)}
+                                />
+                            </Tooltip>
+                        ) : null}
+                        {record.billingDocumentId ? <Tag color={delivery.color}>{delivery.label}</Tag> : null}
+                    </Space>
                 );
             },
         }

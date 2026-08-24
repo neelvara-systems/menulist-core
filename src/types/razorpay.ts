@@ -220,6 +220,7 @@ export interface BillingHistoryItem {
   billingDocumentNumber?: string;
   billingDocumentType?: 'tax_invoice' | 'credit_note';
   billingDocumentUrl?: string;
+  billingDocumentDeliveryStatus?: 'not_requested' | 'queued' | 'partial' | 'sent' | 'failed' | 'outcome_unknown';
   billingCycle?: string;
   credits?: number;
 }

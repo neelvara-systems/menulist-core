@@ -76,8 +76,24 @@ const billingDocumentServer = read('src/lib/billing/answerlatticeBillingDocument
 includes(billingDocumentServer, 'PRODUCT_IDS.ANSWERLATTICE', 'Answerlattice billing-document identity');
 includes(billingDocumentServer, 'requestAnswerlatticeBillingDocumentDelivery(document)', 'Answerlattice billing-document delivery');
 includes(billingDocumentServer, 'OWNER_NOTIFICATION_TRIGGER_TYPES.BILLING_DOCUMENT_ISSUED', 'Answerlattice owner notification trigger');
+includes(billingDocumentServer, "result.status === 'partial'", 'Answerlattice partial billing-document delivery');
 includes(read('src/lib/billing/answerlatticeBillingDocumentPolicy.ts'), "const prefix = documentType === 'tax_invoice' ? 'AL' : 'AC'", 'Answerlattice numbering policy');
 includes(read('src/lib/owner-notifications/billingDocumentAttachment.ts'), 'renderAnswerlatticeBillingDocumentPdf', 'Answerlattice PDF attachment boundary');
+const billingHistory = read('src/components/templates/main-app/billing/BillingHistory.tsx');
+includes(billingHistory, '/email', 'Billing history document email resend');
+includes(billingHistory, "case 'partial'", 'Billing history partial-delivery state');
+includes(billingHistory, "case 'outcome_unknown'", 'Billing history ambiguous-delivery state');
+includes(read('src/app/api/billing-documents/[documentId]/email/route.ts'), 'delivery.attempts <= document.delivery.attempts', 'Billing-document email attempt evidence');
+
+const creditNotificationProducer = read('src/lib/answerlattice/creditNotifications.ts');
+for (const milestone of ['70_percent_used', '90_percent_used', 'exhausted']) {
+  includes(read('src/data/shared/creditNotificationPolicy.ts'), milestone, 'Answerlattice support-credit milestone policy');
+}
+includes(creditNotificationProducer, 'decision.milestone', 'Answerlattice support-credit event identity');
+includes(read('src/lib/answerlattice/aiAccounting.ts'), 'notifyAnswerlatticeCreditState({', 'Answerlattice AI accounting credit warning');
+const intakeUsageLedger = read('src/lib/answerlattice/intakeUsageLedger.ts');
+includes(intakeUsageLedger, 'settled-credit-state', 'Answerlattice settled intake credit warning');
+excludes(intakeUsageLedger, 'reserve-credit-state', 'Answerlattice pre-settlement intake credit warning');
 
 const verifyTopup = read('src/app/api/razorpay/verify-topup/route.ts');
 includes(verifyTopup, 'const currentRefundDebt = subscriptionData?.topUpCreditRefundDebt ?? 0', 'Product-neutral top-up refund debt');

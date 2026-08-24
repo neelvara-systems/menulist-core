@@ -8,9 +8,10 @@
 ## Purpose
 
 This ledger records Git operations that can change shared release history across
-all MenuList repository worktrees. It exists to prevent an agent from reviewing
-only the visible worktree, missing a concurrent ref move, misclassifying a
-Firebase source change, or claiming local/remote parity without direct evidence.
+all MenuList repository worktrees and the Firebase local/server state associated
+with those revisions. It exists to prevent an agent from reviewing only the
+visible worktree, missing a concurrent ref move, misclassifying a Firebase
+source change, or claiming local/remote parity without direct evidence.
 
 Git remains the source of truth for commit topology. This file is the operational
 review trail: who or what acted, from which worktree, when, what moved, what was
@@ -25,27 +26,47 @@ validated, what deployment impact was found, and how the result was read back.
 3. Record an ISO-8601 timestamp with timezone, actor plus session/thread ID,
    worktree path/ID, branch, full starting SHA, dirty/untracked state, and all
    registered worktrees before mutation.
-4. Fetch before comparing refs. Record local and remote `main`/`staging`, unique
-   commits on each side, and local branches not reachable from the intended
-   destination.
+4. Fetch before comparing refs, then use direct `git ls-remote` readback for
+   server proof. Record a separate row for local `main`, local `staging`, every
+   other local branch involved in the operation, and each corresponding server
+   ref. Include full SHAs, tracking ref, ahead/behind, owning worktree,
+   staged/unstaged/untracked counts, and status.
 5. Inspect the complete changed-path range since the last verified Firebase
    release. Do not classify deployment need from only the latest commit message
    or final diff summary.
-6. Classify infrastructure impact per product and target using exactly one value:
+6. Record separate local/server Firebase rows for Firestore Rules, Firestore
+   indexes, Storage Rules, and Cloud Functions for MenuList QA, MenuList
+   production, Answerlattice QA, and Answerlattice production. Do not collapse
+   products, environments, or components into an aggregate statement.
+7. Classify each Firebase row with two independent fields. `Delta` is exactly:
    - `NO_INFRA_CHANGE`
+   - `INFRA_CHANGE`
+   `Deployment state` is exactly one of:
+   - `SERVER_STATE_UNKNOWN`
+   - `LOCAL_NOT_VALIDATED`
    - `DEPLOY_REQUIRED`
+   - `DEPLOY_BLOCKED`
+   - `DEPLOYED_NOT_READ_BACK`
    - `SOURCE_RESTORED_TO_DEPLOYED_BYTES`
    - `DEPLOYED_AND_READ_BACK`
-7. `SOURCE_RESTORED_TO_DEPLOYED_BYTES` requires authenticated cloud source or
-   hash evidence proving the deployed QA and production copies already match.
-8. Ordinary pushes target `staging`. Move `main` only on Danny's explicit current
+   - `NOT_CONFIGURED`
+8. `SOURCE_RESTORED_TO_DEPLOYED_BYTES` and `DEPLOYED_AND_READ_BACK` require
+   authenticated cloud source, release, revision, inventory, or hash evidence.
+   A CLI success message without readback is `DEPLOYED_NOT_READ_BACK`.
+   `NO_INFRA_CHANGE` never proves server parity. Without authenticated readback
+   in the current evidence window, use `SERVER_STATE_UNKNOWN` and do not claim
+   parity.
+9. The Git operator never deploys Firebase infrastructure unless Danny gives an
+   explicit current deployment instruction. Git-only work records the delta and
+   leaves the affected rows `DEPLOY_REQUIRED` or `DEPLOY_BLOCKED`.
+10. Ordinary pushes target `staging`. Move `main` only on Danny's explicit current
    instruction; then finish with all four local/remote refs on one verified SHA.
-9. After mutation, record exact commands by class (never secret-bearing command
+11. After mutation, record exact commands by class (never secret-bearing command
    values), full before/after SHAs, check results, push output classification,
    `git ls-remote` readback, divergence, and final worktree dirtiness.
-10. If another process acts, append an `OBSERVED` entry from reflog and direct
+12. If another process acts, append an `OBSERVED` entry from reflog and direct
     remote evidence. Use actor `unknown` when the identity is unavailable.
-11. Never rewrite or delete ledger entries. Correct mistakes with a new
+13. Never rewrite or delete ledger entries. Correct mistakes with a new
     `CORRECTION` entry that names the superseded operation ID.
 
 ## Required Entry Template
@@ -55,19 +76,28 @@ validated, what deployment impact was found, and how the result was read back.
 - Timestamp:
 - Record type: PLANNED | PERFORMED | OBSERVED | CORRECTION | AUDIT
 - Actor/session/thread ID:
-- Worktree path/ID:
-- Starting state: branch, HEAD, dirty/untracked summary
+- Registered worktrees:
+- Branch matrix before:
+  | Branch | Local full SHA | Server ref/full SHA | Tracking ref | Ahead/behind | Worktree | Staged/unstaged/untracked | Status |
+- Starting filesystem state:
 - Operation: command class and source -> destination refs
-- Before SHAs:
-- After SHAs:
+- Branch matrix after:
+  | Branch | Local full SHA | Server ref/full SHA | Tracking ref | Ahead/behind | Worktree | Staged/unstaged/untracked | Status |
 - Validation:
-- Infrastructure classification: MenuList QA/prod; Answerlattice QA/prod
-- Deployment evidence or blocker:
-- Remote readback and divergence:
+- Firebase matrix before/after:
+  | Product | Environment/project | Component | Local source/config | Local hash/bytes | Local validation | Server release/revision/inventory | Server hash/bytes | Readback time | Delta | Deployment state |
+- Firebase deployment evidence or blocker:
+- Git server readback and divergence:
 - Final filesystem state:
 - Attribution confidence: exact | observed | unknown
 - Notes:
 ```
+
+The branch matrix must include `main` and `staging` even when one is untouched.
+The Firebase matrix must include Rules, indexes, Storage Rules, and Functions for
+all four active MenuList and Answerlattice QA/production projects. Use `N/A` only
+when a component genuinely has no configured source or deployed target, and
+record the evidence for that conclusion.
 
 Do not put credentials, environment values, tokens, webhook payloads, customer
 data, or private provider output in this ledger.
@@ -370,3 +400,265 @@ Those fields are explicitly `unknown` instead of guessed.
   `372be54d199592fb560a4f4a25531346adc358198e2524a49a5d576f450b6d14`.
   Deployment state is recorded only for audit continuity and does not expand
   this operation beyond Git management.
+
+### GIT-20260824-012706-branch-firebase-matrix-policy
+
+- Timestamp: `2026-08-24T01:27:06+05:30`
+- Record type: `AUDIT`
+- Actor/session/thread ID: Codex thread
+  `019e3e73-7d6a-7142-9c09-24bce20e1c65`; concurrent file writer `unknown`
+- Registered worktrees: one worktree at
+  `/Users/danny/Projects/MenuListAi/menulist-core`, checked out on `staging`
+- Operation: strengthen repository and durable-memory policy only; no commit,
+  push, branch mutation, Firebase deployment, or Vercel deployment authorized
+  or performed
+- Branch matrix before:
+
+  | Branch | Local full SHA | Direct server ref/full SHA | Tracking ref | Ahead/behind | Worktree | Staged/unstaged/untracked | Status |
+  | --- | --- | --- | --- | --- | --- | --- | --- |
+  | `main` | `d534e64822eb8aea8fc4b4ecd0f17a45090afed8` | `refs/heads/main` / `d534e64822eb8aea8fc4b4ecd0f17a45090afed8` | `origin/main` | `0/0` | not checked out | `N/A` | `IN_SYNC` |
+  | `staging` | `82cf3701d7789b098277f325b5fca71920e5605b` | `refs/heads/staging` / `82cf3701d7789b098277f325b5fca71920e5605b` | `origin/staging` | `0/0` | primary worktree | `0/4/0` | `IN_SYNC` |
+  | `cascade/users-danny-projects-menulistai-9ec3c2` | `16c40d909f6de19e214e5b6b628dbeeb76184b7c` | absent | none | `N/A` | not checked out | `N/A` | `LOCAL_ONLY` |
+  | `codex/agent-readiness-reconcile-2026-08-22` | `52faf50e7334cf6aab5e3c589db5d72e38ab1def` | absent | none | `N/A` | not checked out | `N/A` | `LOCAL_ONLY` |
+  | `codex/answerlattice-production-release` | `b6c0c31235340c407ff53f04d4653b3622e66445` | `refs/heads/codex/answerlattice-production-release` / `110f005bf6328cd486490c52592c05f6a48f0d0e` | `origin/codex/answerlattice-production-release` | `4/0` | not checked out | `N/A` | `LOCAL_AHEAD` |
+  | `codex/menulist-production-release` | `c1f53d235c5f92fc0cd5e7d57d2b855ade7a9732` | absent | none | `N/A` | not checked out | `N/A` | `LOCAL_ONLY` |
+  | `codex/portfolio-release-2026-08-22` | `9fbed00ae2ebe19cca395609b171f66614eb5685` | absent | none | `N/A` | not checked out | `N/A` | `LOCAL_ONLY` |
+  | `codex/vercel-build-memory-oom` | `6197d0d57fd51e5b44972d21dc06ddc820ac61c2` | `refs/heads/staging` / `82cf3701d7789b098277f325b5fca71920e5605b` | `origin/staging` | `0/394` | not checked out | `N/A` | `SERVER_AHEAD` |
+
+- Starting filesystem state: active `staging` worktree had four unstaged files
+  and no staged or untracked files. `AGENTS.md` and this ledger belong to this
+  policy update. Two concurrently appearing files under `functions-answerlattice/`
+  belong to an unknown writer and are preserved without staging or modification.
+- Branch matrix after: identical to the branch matrix before; no ref moved. The
+  active worktree remains dirty because this policy update and the unrelated
+  concurrent Functions edits are uncommitted.
+- Validation: direct `git ls-remote --heads origin`, local branch inventory,
+  upstream divergence, worktree inventory, and scoped filesystem status only;
+  no code check or build applies to this policy audit
+- Firebase matrix before/after:
+
+  | Product | Environment/project | Component | Local source/config | Local hash/bytes or Git tree | Local validation | Authenticated server evidence | Readback time | Delta | Deployment state |
+  | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+  | MenuList | QA / `menulist-qa` | Firestore Rules | `firestore-menulist.rules` | `2059459e3b0263bdeca75f89ad0b490e8cebf1dee19cdef9012e0c02fbab5b89`, 132684 bytes | not rerun | not read back in this operation | none | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | QA / `menulist-qa` | Firestore indexes | `firestore.indexes.json` | `5629ae4d5004bc59c82528f2e7f9b7e5bb1ffbf74e0fc2e2e5e5252abf0744e0`, 78310 bytes | not rerun | not read back in this operation | none | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | QA / `menulist-qa` | Storage Rules | `storage.rules` | `226d2a206d7de8a442bf356a61ad048118322acb993eb89fa45744ed78ed1838`, 18176 bytes | not rerun | not read back in this operation | none | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | QA / `menulist-qa` | Cloud Functions | `functions/` via `firebase.json` | Git tree `a5545e490f7f13f8bce11b5e5f48164a91e76582` at `82cf3701d7789b098277f325b5fca71920e5605b` | build passed before Git-only boundary | not read back in this operation | none | `INFRA_CHANGE` | `DEPLOY_REQUIRED` |
+  | MenuList | production / `menulist-prod` | Firestore Rules | `firestore-menulist.rules` | same local artifact as QA | not rerun | not read back in this operation | none | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | production / `menulist-prod` | Firestore indexes | `firestore.indexes.json` | same local artifact as QA | not rerun | not read back in this operation | none | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | production / `menulist-prod` | Storage Rules | `storage.rules` | same local artifact as QA | not rerun | not read back in this operation | none | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | production / `menulist-prod` | Cloud Functions | `functions/` via `firebase.json` | same Git tree as QA | build passed before Git-only boundary | not read back in this operation | none | `INFRA_CHANGE` | `DEPLOY_REQUIRED` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Firestore Rules | `firestore-answerlattice.rules` | `461bf3a20a5bf5259653f6f7e99e2fee3305ed0b1e0d774f3720ff63e358f31a`, 115461 bytes | commercial readiness passed before Git-only boundary | CLI upload succeeded before Git-only boundary, but no active-release readback | none | `INFRA_CHANGE` | `DEPLOYED_NOT_READ_BACK` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Firestore indexes | `firestore-answerlattice.indexes.json` | `3f69df50df9628a0cf2ff90aeea1ad206a40418274585addc0f1907cb8735ec5`, 50143 bytes | commercial readiness passed before Git-only boundary | not deployed or read back | none | `INFRA_CHANGE` | `DEPLOY_REQUIRED` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Storage Rules | `storage-answerlattice.rules` | `5fc8f980f289889da557ac69c91edd61f8e8646b066c9b0101b87141d67106cc`, 6948 bytes | not rerun | not read back in this operation | none | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Cloud Functions | `functions-answerlattice/` via `firebase-answerlattice.json` | committed Git tree `f9a630baff8ec62061965b19d302fb9bf2f98818`; two newer unstaged files present | committed tree build passed; newer working source not validated here | not deployed or read back | none | `INFRA_CHANGE` | `LOCAL_NOT_VALIDATED` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Firestore Rules | `firestore-answerlattice.rules` | same local artifact as QA | commercial readiness passed before Git-only boundary | not deployed or read back | none | `INFRA_CHANGE` | `DEPLOY_REQUIRED` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Firestore indexes | `firestore-answerlattice.indexes.json` | same local artifact as QA | commercial readiness passed before Git-only boundary | not deployed or read back | none | `INFRA_CHANGE` | `DEPLOY_REQUIRED` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Storage Rules | `storage-answerlattice.rules` | same local artifact as QA | not rerun | not read back in this operation | none | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Cloud Functions | `functions-answerlattice/` via `firebase-answerlattice.json` | committed Git tree `f9a630baff8ec62061965b19d302fb9bf2f98818`; two newer unstaged files present | committed tree build passed; newer working source not validated here | not deployed or read back | none | `INFRA_CHANGE` | `LOCAL_NOT_VALIDATED` |
+
+- Firebase deployment evidence or blocker: this Git operator is not authorized
+  to deploy. Server state not authenticated in this policy-only operation is
+  explicitly unknown rather than inferred. The earlier Answerlattice QA Rules
+  CLI success remains `DEPLOYED_NOT_READ_BACK` until authenticated readback.
+- Git server readback and divergence: direct server readback at this timestamp
+  confirmed `main` and `staging` each at zero divergence from their local refs;
+  all other branch states are recorded in the matrices above
+- Final filesystem state: four unstaged repository files, zero staged files,
+  zero untracked files at audit time; no unrelated file was staged or changed
+  by this operation
+- Attribution confidence: exact for direct Git evidence and policy edits;
+  `unknown` for the concurrent Functions writer and Firebase server state not
+  read back in this operation
+- Notes: this entry establishes the required branch-wise Git local/server and
+  component-wise Firebase local/server format for all future worktrees and
+  sessions. Aggregate branch or aggregate Firebase summaries are insufficient.
+### GIT-20260824-013209-answerlattice-commercial-infra-readback
+
+- Timestamp: `2026-08-24T01:32:09+05:30`
+- Record type: `OBSERVED_DEPLOYMENT_READBACK`
+- Actor/session/thread ID: current Codex task; raw thread ID unavailable
+- Worktree path/ID: `/Users/danny/Projects/MenuListAi/menulist-core`;
+  primary and only registered worktree
+- Operation: record the scoped Answerlattice commercial Firestore release and
+  authenticated readback completed in this task. No Git mutation, Cloud
+  Functions deployment, Storage deployment, or Vercel deployment was performed
+  by this operation.
+- Git state before/after: local `staging` and direct `origin/staging` readback at
+  `82cf3701d7789b098277f325b5fca71920e5605b`; local `main` and direct
+  `origin/main` readback at
+  `d534e64822eb8aea8fc4b4ecd0f17a45090afed8`. No ref moved.
+- Filesystem state: `AGENTS.md` and this append-only ledger have concurrent
+  unstaged policy/ledger changes. They were preserved; nothing was staged.
+- Validation: full `verify:answerlattice-commercial-readiness`, root TypeScript,
+  focused ESLint, Answerlattice Functions build, EmailOS verification,
+  WhatsAppOS verification, Firestore rules emulator suites, and focused billing
+  contract/taxation tests passed before publication. Final focused rerun is
+  recorded in the task handoff.
+- Answerlattice QA rules: project `neelvara-answerlattice-qa`; active ruleset
+  `projects/neelvara-answerlattice-qa/rulesets/1c3c138d-e7c2-40ba-95ff-065590a863c0`;
+  release update time `2026-08-23T19:47:06.322658Z`; local and remote source are
+  exactly `115461` bytes with SHA-256
+  `461bf3a20a5bf5259653f6f7e99e2fee3305ed0b1e0d774f3720ff63e358f31a`.
+- Answerlattice production rules: project `neelvara-answerlattice-prod`; active
+  ruleset
+  `projects/neelvara-answerlattice-prod/rulesets/5b0ccca7-fc6a-4775-aaec-40ee442db1d6`;
+  release update time `2026-08-23T19:49:33.286993Z`; local and remote source are
+  exactly `115461` bytes with the same SHA-256.
+- Answerlattice QA indexes: the three `billingDocuments` composite indexes for
+  owner listing, payment-document lookup, and invoice-credit-note lookup are
+  authenticated and `READY` as indexes `CICAgJjm4YQK`, `CICAgJiHu40K`, and
+  `CICAgNiZ1o4K`.
+- Answerlattice production indexes: the same three scoped indexes are
+  authenticated and `READY` as indexes `CICAgNjrvIMK`, `CICAgLix4JsK`, and
+  `CICAgPif34sK`.
+- Infrastructure classification: Answerlattice QA Firestore Rules
+  `DEPLOYED_AND_READ_BACK`; Answerlattice production Firestore Rules
+  `DEPLOYED_AND_READ_BACK`; the three added Answerlattice QA and production
+  billing indexes `DEPLOYED_AND_READ_BACK`; Answerlattice Storage
+  `NO_INFRA_CHANGE`; Answerlattice Cloud Functions
+  `SOURCE_RESTORED_TO_DEPLOYED_BYTES` for this billing task because the
+  temporary integration-secret edit was removed and no committed billing
+  function delta remains; Vercel source deployment remains owner-gated and was
+  not requested.
+- Provider boundary: invoice delivery is implemented in the shared Next.js
+  owner-notification pipeline. Email requires a configured Answerlattice sender
+  and recipient; WhatsApp additionally requires verified consent, provider
+  credentials, and the approved billing-document template. Missing provider
+  state fails closed and does not block PDF access in Billing.
+- Attribution confidence: exact for the authenticated Firebase readback and
+  current Git state; concurrent Git operator identity is recorded in the prior
+  ledger entries and is not inferred here.
+
+### GIT-20260824-014417-answerlattice-function-release-correction
+
+- Timestamp: `2026-08-24T01:44:17+05:30`
+- Record type: `CORRECTION`
+- Actor/session/thread ID: current Codex task; raw thread ID unavailable
+- Corrects: `GIT-20260824-013209-answerlattice-commercial-infra-readback`
+- Correction: the committed Answerlattice Functions tree at `82cf3701` does
+  contain an infrastructure delta: provider-send flags changed from disabled to
+  enabled and the Answerlattice billing-document WhatsApp template entered the
+  product-local registry. The earlier
+  `SOURCE_RESTORED_TO_DEPLOYED_BYTES` classification was incorrect and is
+  superseded by this entry.
+- Source correction: `processIntegrationEvent` now binds
+  `ANSWERLATTICE_SECRET_GROUPS.EMAIL_OS` while EmailOS provider sending is
+  enabled; `ANSWERLATTICE_RESEND_API_KEY` is an unconditional secret declaration
+  for functions that explicitly list that group; and the canonical
+  `answerlattice.com` sender domain remains a fail-closed default when a
+  non-secret override is absent.
+- Validation: Answerlattice Functions TypeScript build, focused ESLint, and the
+  EmailOS and WhatsAppOS source/contract suites passed after the correction.
+- QA deployment: only
+  `functions:answerlattice:processIntegrationEvent` was deployed to
+  `neelvara-answerlattice-qa`. The first unqualified selector matched no
+  function and made no cloud change. The codebase-qualified attempt stopped
+  before creation on Firebase's required retry-policy acknowledgement. A
+  force-acknowledged scoped create then exposed that the optional secret
+  declaration was not bound; two scoped updates corrected project dotenv
+  loading and finally the secret declaration. These attempts affected only this
+  newly created QA function.
+- QA authenticated readback: function
+  `projects/neelvara-answerlattice-qa/locations/us-central1/functions/processIntegrationEvent`
+  is `ACTIVE`, Node.js 22, entry point `processIntegrationEvent`, revision
+  `processintegrationevent-00003-yod`, update time
+  `2026-08-23T20:13:09.041530458Z`, memory `256Mi`, timeout `240s`, max instances
+  `5`, and retry policy `RETRY_POLICY_RETRY`. It binds exactly
+  `ANSWERLATTICE_RESEND_API_KEY`, uses sender domain `answerlattice.com`, and
+  listens only for creates at
+  `answerlattice_integrationEvents/{eventId}` in the default database.
+- Production blocker: `neelvara-answerlattice-prod` does not contain
+  `ANSWERLATTICE_RESEND_API_KEY`; therefore production
+  `processIntegrationEvent` was not deployed. A placeholder secret was not
+  created. Production Function state is `DEPLOY_BLOCKED` until the owner adds a
+  real domain-restricted Resend sending key.
+- WhatsApp blocker: neither Answerlattice Firebase project currently contains
+  the product-isolated WhatsApp phone-number, access-token, app-secret, or
+  verify-token secrets. The billing-document template remains
+  `pending_approval`. No WhatsApp webhook/provider release claim is made.
+- Infrastructure classification after correction: Answerlattice QA Cloud
+  Functions `DEPLOYED_AND_READ_BACK` for `processIntegrationEvent`;
+  Answerlattice production Cloud Functions `DEPLOY_BLOCKED` for that function;
+  all previously recorded Rules and billing-index classifications remain
+  `DEPLOYED_AND_READ_BACK`; Storage remains `NO_INFRA_CHANGE`; Vercel remains
+  not deployed because no Vercel release was requested.
+- Git state before/after: no Git ref moved. Local and direct remote `staging`
+  remain `82cf3701d7789b098277f325b5fca71920e5605b`; `main` remains
+  `d534e64822eb8aea8fc4b4ecd0f17a45090afed8`. Corrective source and
+  documentation files remain unstaged alongside preserved concurrent policy
+  changes.
+
+### GIT-20260824-110713-full-promotion-and-firebase-parity
+
+- Timestamp: `2026-08-24T11:07:13+05:30`
+- Record type: `PLANNED`
+- Actor/session/thread ID: Codex thread
+  `019e3e73-7d6a-7142-9c09-24bce20e1c65`; concurrent source author `unknown`
+- Registered worktrees: one worktree at
+  `/Users/danny/Projects/MenuListAi/menulist-core`, checked out on `staging`
+- Branch matrix before:
+
+  | Branch | Local full SHA | Direct server ref/full SHA | Tracking ref | Ahead/behind | Worktree | Staged/unstaged/untracked | Status |
+  | --- | --- | --- | --- | --- | --- | --- | --- |
+  | `main` | `d534e64822eb8aea8fc4b4ecd0f17a45090afed8` | `refs/heads/main` / `d534e64822eb8aea8fc4b4ecd0f17a45090afed8` | `origin/main` | `0/0` | not checked out | `N/A` | `IN_SYNC` |
+  | `staging` | `82cf3701d7789b098277f325b5fca71920e5605b` | `refs/heads/staging` / `82cf3701d7789b098277f325b5fca71920e5605b` | `origin/staging` | `0/0` | primary worktree | `0/24/1` | `IN_SYNC` |
+  | `cascade/users-danny-projects-menulistai-9ec3c2` | `16c40d909f6de19e214e5b6b628dbeeb76184b7c` | absent | none | `N/A` | not checked out | `N/A` | `LOCAL_ONLY` |
+  | `codex/agent-readiness-reconcile-2026-08-22` | `52faf50e7334cf6aab5e3c589db5d72e38ab1def` | absent | none | `N/A` | not checked out | `N/A` | `LOCAL_ONLY` |
+  | `codex/answerlattice-production-release` | `b6c0c31235340c407ff53f04d4653b3622e66445` | `refs/heads/codex/answerlattice-production-release` / `110f005bf6328cd486490c52592c05f6a48f0d0e` | `origin/codex/answerlattice-production-release` | `4/0` | not checked out | `N/A` | `LOCAL_AHEAD` |
+  | `codex/menulist-production-release` | `c1f53d235c5f92fc0cd5e7d57d2b855ade7a9732` | absent | none | `N/A` | not checked out | `N/A` | `LOCAL_ONLY` |
+  | `codex/portfolio-release-2026-08-22` | `9fbed00ae2ebe19cca395609b171f66614eb5685` | absent | none | `N/A` | not checked out | `N/A` | `LOCAL_ONLY` |
+  | `codex/vercel-build-memory-oom` | `6197d0d57fd51e5b44972d21dc06ddc820ac61c2` | `refs/heads/staging` / `82cf3701d7789b098277f325b5fca71920e5605b` | `origin/staging` | `0/394` | not checked out | `N/A` | `SERVER_AHEAD` |
+
+- Starting filesystem state: 24 unstaged tracked paths and one untracked source
+  file. The complete status and binary diff hashes remained unchanged for 105
+  seconds before this cutoff: status
+  `c7b5e763e39a519be9ad4562b1a64bb6479a58c5652794f1d802d1a8b46798dc`,
+  diff `29d87d72e920e5387089ce0815025ae0c6b8e30a3be097e01cf9f8ebe22bbd1e`.
+- Operation: validate and commit the complete stable snapshot to `staging`, push
+  `staging` without force, fast-forward local `main` to that exact commit, push
+  `main` without force, then reconcile explicitly authorized Firebase Rules,
+  indexes, Storage Rules, and Functions across MenuList QA/production and
+  Answerlattice QA/production. Vercel and Hosting are excluded.
+- Branch matrix after: pending Git commit, sequential branch pushes, and direct
+  server readback. Required final state is local/server `main` and `staging` on
+  one full SHA with zero divergence.
+- Validation: pending root TypeScript, zero-warning lint, Answerlattice
+  commercial-readiness and notification gates, both Functions builds/lint,
+  MenuList Rules generator/predeploy suite, Answerlattice Rules/emulator gates,
+  staged whitespace and focused secret-pattern checks.
+- Firebase matrix before:
+
+  | Product | Environment/project | Component | Local evidence | Authenticated server evidence | Delta | Deployment state |
+  | --- | --- | --- | --- | --- | --- | --- |
+  | MenuList | QA / `menulist-qa` | Firestore Rules | current generated artifact hash differs from last recorded deployed hash | current active release readback pending | `INFRA_CHANGE` | `DEPLOY_REQUIRED` |
+  | MenuList | QA / `menulist-qa` | Firestore indexes | no changed path since last verified release | full current inventory readback pending | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | QA / `menulist-qa` | Storage Rules | no changed path since last verified release | current release readback pending | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | QA / `menulist-qa` | Cloud Functions | committed shared notification registries changed | current deployed inventory/revisions pending | `INFRA_CHANGE` | `DEPLOY_REQUIRED` |
+  | MenuList | production / `menulist-prod` | Firestore Rules | same local artifact as QA | current active release readback pending | `INFRA_CHANGE` | `DEPLOY_REQUIRED` |
+  | MenuList | production / `menulist-prod` | Firestore indexes | no changed path since last verified release | full current inventory readback pending | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | production / `menulist-prod` | Storage Rules | no changed path since last verified release | current release readback pending | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | production / `menulist-prod` | Cloud Functions | same local source as QA | current deployed inventory/revisions pending | `INFRA_CHANGE` | `DEPLOY_REQUIRED` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Firestore Rules | 115461 bytes; SHA-256 `461bf3a20a5bf5259653f6f7e99e2fee3305ed0b1e0d774f3720ff63e358f31a` | exact active readback recorded by `GIT-20260824-013209-answerlattice-commercial-infra-readback` | `INFRA_CHANGE` | `DEPLOYED_AND_READ_BACK` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Firestore indexes | three added billing indexes in committed config | all three authenticated `READY` | `INFRA_CHANGE` | `DEPLOYED_AND_READ_BACK` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Storage Rules | no changed path since last verified release | current release readback pending | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Cloud Functions | corrective EmailOS source is local and validated in the prior operation | `processIntegrationEvent` revision `processintegrationevent-00003-yod` authenticated active | `INFRA_CHANGE` | `DEPLOYED_AND_READ_BACK` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Firestore Rules | same local artifact as QA | exact active readback recorded by the prior operation | `INFRA_CHANGE` | `DEPLOYED_AND_READ_BACK` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Firestore indexes | same three added indexes as QA | all three authenticated `READY` | `INFRA_CHANGE` | `DEPLOYED_AND_READ_BACK` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Storage Rules | no changed path since last verified release | current release readback pending | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Cloud Functions | same corrective source as QA | required real `ANSWERLATTICE_RESEND_API_KEY` absent at prior authenticated check | `INFRA_CHANGE` | `DEPLOY_BLOCKED` |
+
+- Firebase deployment evidence or blocker: Firebase deployment is explicitly
+  authorized by the user in the current instruction. Re-read every server state
+  before deployment; do not redeploy components already proven byte-identical.
+  Never create placeholder provider secrets or broaden the requested target.
+- Git server readback and divergence: direct `git ls-remote --heads origin`
+  confirmed the matrix above after fetch; `main` and `staging` each have `0/0`
+  divergence from their current server refs.
+- Final filesystem state: pending validation, commit, promotion, Firebase
+  reconciliation, final ledger evidence, and cleanup.
+- Attribution confidence: exact for current Git/ref/filesystem evidence and the
+  authenticated Firebase evidence already recorded; concurrent source author
+  remains `unknown`.
+- Notes: this planned operation supersedes no prior entry. It consumes the
+  completed concurrent source and deployment evidence without claiming another
+  task's identity or repeating deployments without a current readback need.

@@ -88,7 +88,9 @@ export async function sendAnswerlatticeEmailOs(envelopeInput: EmailOsEnvelope): 
     }
 
     const apiKey = process.env.ANSWERLATTICE_RESEND_API_KEY?.trim();
-    const allowedFromDomain = process.env.ANSWERLATTICE_EMAIL_OS_FROM_DOMAIN?.trim().toLowerCase();
+    const allowedFromDomain = (process.env.ANSWERLATTICE_EMAIL_OS_FROM_DOMAIN || 'answerlattice.com')
+        .trim()
+        .toLowerCase();
     if (!apiKey || !allowedFromDomain) return configurationRejected('EMAIL_OS_PROVIDER_CONFIG_MISSING');
 
     const envelope = assertEmailOsEnvelope(envelopeInput);

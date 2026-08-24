@@ -28,6 +28,9 @@ export const POST = withAuth(async (request, session, params) => {
         const document = documentId ? await getAnswerlatticeBillingDocument(documentId) : null;
         if (!document || document.tenantId !== answerlatticeScope.tenantId || document.storeId !== answerlatticeScope.storeId) return NextResponse.json({ error: 'Billing document not found.' }, { status: 404 });
         const delivery = await requestAnswerlatticeBillingDocumentDelivery(document, ['email']);
+        if (delivery.attempts <= document.delivery.attempts) {
+            return NextResponse.json({ error: 'Billing document email delivery is unavailable.' }, { status: 503 });
+        }
         return NextResponse.json({ delivery });
     }
     if (!(await canManageBillingMutation(session, request, '/api/billing-documents/[documentId]/email'))) {
@@ -51,5 +54,8 @@ export const POST = withAuth(async (request, session, params) => {
         return NextResponse.json({ error: 'Billing document not found.' }, { status: 404 });
     }
     const delivery = await requestMenuListBillingDocumentDelivery(document, ['email']);
+    if (delivery.attempts <= document.delivery.attempts) {
+        return NextResponse.json({ error: 'Billing document email delivery is unavailable.' }, { status: 503 });
+    }
     return NextResponse.json({ delivery });
 });

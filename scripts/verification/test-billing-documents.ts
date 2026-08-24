@@ -14,6 +14,7 @@ import {
     buildAnswerlatticeBillingDocumentId,
     formatAnswerlatticeBillingDocumentNumber,
     getAnswerlatticeFinancialYear,
+    mergeAnswerlatticeBillingDocumentDelivery,
     type AnswerlatticeBillingDocument,
 } from '../../src/lib/billing/answerlatticeBillingDocumentPolicy';
 import { renderAnswerlatticeBillingDocumentPdf } from '../../src/lib/billing/answerlatticeBillingDocumentPdf';
@@ -80,6 +81,21 @@ const reconciledDelivery = mergeMenuListBillingDocumentDelivery(
     { status: 'sent', attempts: 1, lastAttemptAtMillis: 200 },
 );
 assert.equal(reconciledDelivery.status, 'sent', 'a confirmed send must reconcile an ambiguous delivery');
+const partialAnswerlatticeDelivery = mergeAnswerlatticeBillingDocumentDelivery(
+    { status: 'partial', attempts: 1, lastAttemptAtMillis: 100 },
+    { status: 'failed', attempts: 1, lastAttemptAtMillis: 200 },
+);
+assert.equal(partialAnswerlatticeDelivery.status, 'partial', 'a failed retry must not erase a known partial delivery');
+const completedAnswerlatticeDelivery = mergeAnswerlatticeBillingDocumentDelivery(
+    partialAnswerlatticeDelivery,
+    { status: 'sent', attempts: 1, lastAttemptAtMillis: 300 },
+);
+assert.equal(completedAnswerlatticeDelivery.status, 'sent', 'a confirmed send must reconcile a partial delivery');
+const confirmedPartialAnswerlatticeDelivery = mergeAnswerlatticeBillingDocumentDelivery(
+    { status: 'outcome_unknown', attempts: 1, lastAttemptAtMillis: 100 },
+    { status: 'partial', attempts: 1, lastAttemptAtMillis: 200 },
+);
+assert.equal(confirmedPartialAnswerlatticeDelivery.status, 'partial', 'a confirmed partial result must reconcile an ambiguous delivery');
 
 const uneven = buildPartialCreditLineItem(original, 1);
 assert.equal(

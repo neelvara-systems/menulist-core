@@ -78,9 +78,11 @@ The public setup form keeps primary controls at a minimum 44px touch target, inc
 ### 3. Answerlattice Plans (`src/data/answerlattice/plans.ts`)
 
 **3 plans defined:**
-- `answerlattice_launch` — ₹999/mo or US$12/mo; ₹9,990/yr or US$120/yr
-- `answerlattice_growth` — ₹2,999/mo or US$36/mo; ₹29,990/yr or US$360/yr
-- `answerlattice_studio` — ₹6,999/mo or US$84/mo; ₹69,990/yr or US$840/yr
+- `answerlattice_launch` — ₹1,499/mo or US$29/mo; ₹14,990/yr or US$290/yr
+- `answerlattice_growth` — ₹4,999/mo or US$99/mo; ₹49,990/yr or US$990/yr
+- `answerlattice_studio` — ₹12,999/mo or US$249/mo; ₹129,990/yr or US$2,490/yr
+
+Public prices are base prices before applicable taxes. Billing country and the validated billing profile select the server-authoritative regional price book, invoice currency, and tax treatment. The checkout provider receives the frozen gross amount; the client cannot choose a cheaper currency or submit a tax total.
 
 Each plan has limits: maxEntities, maxCanonicalAnswers, maxKBArticles, maxSignalEventsPerMonth, maxWorkspaces, widgetIncluded, and apiAccessIncluded. Public plans currently keep apiAccessIncluded false; the field is retained for a future controlled API rollout.
 
@@ -112,7 +114,16 @@ Request:
   "selfReportedDiscoveryChannel": "chatgpt",
   "planId": "answerlattice_launch",
   "interval": "MONTH",
-  "currency": "INR"
+  "billingProfile": {
+    "legalName": "Acme Inc.",
+    "email": "billing@acme.test",
+    "countryCode": "IN",
+    "addressLine1": "1 Market Road",
+    "city": "Bengaluru",
+    "region": "Karnataka",
+    "indianStateCode": "29",
+    "postalCode": "560001"
+  }
 }
 ```
 
@@ -120,10 +131,10 @@ Response (success):
 ```json
 {
   "apiKey": "al_a1b2c3d4...",
-  "billing": { "amount": 99900, "currency": "INR", "interval": "MONTH" },
+  "billing": { "amount": 149900, "currency": "INR", "interval": "MONTH" },
   "recovered": false,
   "subscription": { "id": "sub_abc123", "shortUrl": "https://rzp.io/i/...", "status": "created" },
-  "plan": { "id": "answerlattice_launch", "name": "Starter", "isBeta": false },
+  "plan": { "id": "answerlattice_launch", "name": "Launch", "isBeta": false },
   "initialSurfaceCount": 3,
   "widgetKeyNeedsRotation": false,
   "workspaceCreated": true

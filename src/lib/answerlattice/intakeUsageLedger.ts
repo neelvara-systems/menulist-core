@@ -12,6 +12,7 @@ import {
     normalizeAnswerlatticeSubscriptionId,
 } from '@lib/answerlattice/billingDocumentIdBoundary';
 import { isAnswerlatticeSubscriptionInScope } from '@lib/answerlattice/billingScopeBoundary';
+import { notifyAnswerlatticeCreditState } from '@lib/answerlattice/creditNotifications';
 import {
     getAnswerlatticeSubscriptionTimestampMillis,
     projectActiveAnswerlatticeSubscriptionForRead,
@@ -268,6 +269,7 @@ export async function reserveAnswerlatticeIntakeUsage(scope: AnswerlatticeScope,
             byteSize,
             unitsReserved: unitsRequired,
             billingPeriod,
+            monthlyCreditsAllowance,
             unitsCharged: 0,
             chargedMonthlyCredits,
             chargedTopUpCredits,
@@ -322,19 +324,31 @@ export async function finalizeAnswerlatticeIntakeUsage(
     const storeScope = normalizeAnswerlatticeBillingScopeDocumentId(scope.sId);
     if (!tenantScope || !storeScope) throw new Error('Answerlattice workspace is not available.');
     const ledgerRef = db.collection(DB_COLLECTIONS.ANSWERLATTICE_INTAKE_USAGE_LEDGER).doc(normalizedLedgerId);
-    await db.runTransaction(async (transaction) => {
+    const creditNotification = await db.runTransaction(async (transaction) => {
         const ledgerSnap = await transaction.get(ledgerRef);
         if (!ledgerSnap.exists) throw new Error('Answerlattice intake usage ledger is not available.');
         const ledger = ledgerSnap.data() || {};
         if (!isAnswerlatticeIntakeLedgerInScope(ledger, { tId: tenantScope.numericId, sId: storeScope.numericId })) {
             throw new Error('Answerlattice intake usage scope does not match this workspace.');
         }
-        if (ledger.status === 'succeeded') return;
+        if (ledger.status === 'succeeded') return null;
         if (ledger.status !== 'reserved') {
             throw new Error('Answerlattice intake usage reservation is not available for settlement.');
         }
         const unitsReserved = getNonNegativeCreditInteger(ledger.unitsReserved);
-        if (unitsReserved === null) {
+        const billingPeriod = getCreditBillingPeriodKey(ledger.billingPeriod);
+        const monthlyAllowance = getNonNegativeCreditInteger(ledger.monthlyCreditsAllowance);
+        const previousRemainingCredits = getNonNegativeCreditInteger(ledger.beforeBalance?.totalCredits);
+        const remainingCredits = getNonNegativeCreditInteger(ledger.afterReserveBalance?.totalCredits);
+        const subscriptionId = normalizeAnswerlatticeSubscriptionId(ledger.subscriptionId);
+        if (
+            unitsReserved === null
+            || billingPeriod === null
+            || monthlyAllowance === null
+            || previousRemainingCredits === null
+            || remainingCredits === null
+            || !subscriptionId
+        ) {
             throw new Error('Answerlattice intake reservation credit evidence is invalid.');
         }
         const timestamp = now();
@@ -374,7 +388,21 @@ export async function finalizeAnswerlatticeIntakeUsage(
             settledOn: timestamp,
             modifiedOn: timestamp,
         }, { merge: true });
+        return {
+            billingPeriod,
+            monthlyAllowance,
+            previousRemainingCredits,
+            remainingCredits,
+            subscriptionId,
+        };
     });
+    if (creditNotification) {
+        await notifyAnswerlatticeCreditState({
+            ...creditNotification,
+            scope,
+            sourcePath: 'src/lib/answerlattice/intakeUsageLedger.ts:settled-credit-state',
+        });
+    }
 }
 
 export async function refundAnswerlatticeIntakeUsage(scope: AnswerlatticeScope, ledgerId: string, reason: string) {

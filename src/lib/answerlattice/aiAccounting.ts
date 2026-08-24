@@ -16,12 +16,12 @@ import {
     getActiveProductSubscriptionForStore,
 } from '@lib/billing/productBillingServer';
 import { getBillingPeriodKey } from '@lib/billing/billingPeriod';
+import { notifyAnswerlatticeCreditState } from '@lib/answerlattice/creditNotifications';
 import {
     getCreditBillingPeriodKey,
     getNonNegativeCreditInteger,
     getPositiveCreditInteger,
 } from '@data/shared/aiCreditScalarContract';
-import { resolveCreditNotification } from '@data/shared/creditNotificationPolicy';
 import { requireAnswerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import type { FirestoreSubscriptionDoc } from '@type/razorpay';
 import { createHash } from 'crypto';
@@ -116,53 +116,6 @@ type FinalizeAnswerlatticeAiAccountingResult = {
 
 const getAnswerlatticeAccountingDb = () => requireAnswerlatticeFirestoreAdmin();
 const ANSWERLATTICE_AI_RESERVATION_RECOVERY_MS = 10 * 60 * 1000;
-
-async function notifyAnswerlatticeCreditState(params: {
-    balance: AnswerlatticeRemainingBalance;
-    scope: AnswerlatticeAiScope;
-    subscription: FirestoreSubscriptionDoc;
-}): Promise<void> {
-    const monthlyAllowance = getNonNegativeCreditInteger(params.subscription.monthlyCreditsAllowance ?? 0) ?? 0;
-    const remainingCredits = params.balance.totalCreditsAfter
-        ?? (params.balance.monthlyCredits + params.balance.topUpCredits);
-    const decision = resolveCreditNotification({ monthlyAllowance, remainingCredits });
-    if (!decision.eventType) return;
-
-    const subscriptionId = normalizeAnswerlatticeSubscriptionId(params.subscription.id);
-    const billingPeriod = getBillingPeriodKey(params.subscription.cycleStartDate);
-    if (!subscriptionId || !billingPeriod) return;
-
-    try {
-        const { enqueueOwnerNotification } = await import('@lib/owner-notifications');
-        await enqueueOwnerNotification({
-            productId: PRODUCT_IDS.ANSWERLATTICE,
-            triggerType: decision.eventType,
-            tenantId: String(params.scope.tId),
-            storeId: String(params.scope.sId),
-            workspaceId: String(params.scope.sId),
-            referenceId: `${decision.eventType.toLowerCase()}-${subscriptionId}-${billingPeriod}`,
-            recipientHints: {
-                email: params.subscription.email,
-                name: params.subscription.name,
-            },
-            metadata: {
-                newBalance: remainingCredits,
-                lowThreshold: decision.lowThreshold,
-                planName: params.subscription.planName,
-            },
-            source: {
-                runtime: 'next',
-                path: 'src/lib/answerlattice/aiAccounting.ts:credit-state',
-            },
-        }, { processImmediately: true, processExisting: false });
-    } catch (notificationError) {
-        logAnswerlatticeFailure(
-            'answerlattice_credit_notification_failed',
-            notificationError,
-            getAnswerlatticeScopeLogContext(params.scope),
-        );
-    }
-}
 
 const getAnswerlatticeAccountingContextShape = (context?: Record<string, unknown>) => ({
     contextPresent: Boolean(context),
@@ -1159,9 +1112,18 @@ export async function finalizeAnswerlatticeAiOperationAccounting({
             });
             if (result.remainingBalance) {
                 await notifyAnswerlatticeCreditState({
-                    balance: result.remainingBalance,
+                    billingPeriod: getBillingPeriodKey(capacitySubscription.cycleStartDate),
+                    email: capacitySubscription.email,
+                    monthlyAllowance: getNonNegativeCreditInteger(capacitySubscription.monthlyCreditsAllowance ?? 0) ?? 0,
+                    name: capacitySubscription.name,
+                    planName: capacitySubscription.planName,
+                    previousRemainingCredits: result.remainingBalance.totalCreditsBefore
+                        ?? (result.remainingBalance.monthlyCredits + result.remainingBalance.topUpCredits + unitsConsumed),
+                    remainingCredits: result.remainingBalance.totalCreditsAfter
+                        ?? (result.remainingBalance.monthlyCredits + result.remainingBalance.topUpCredits),
                     scope: normalizedScope,
-                    subscription: capacitySubscription,
+                    sourcePath: 'src/lib/answerlattice/aiAccounting.ts:idempotent-credit-state',
+                    subscriptionId: normalizeAnswerlatticeSubscriptionId(capacitySubscription.id),
                 });
             }
             return result;
@@ -1236,9 +1198,18 @@ export async function finalizeAnswerlatticeAiOperationAccounting({
             }
         }
         await notifyAnswerlatticeCreditState({
-            balance: remainingBalance,
+            billingPeriod: getBillingPeriodKey(capacitySubscription.cycleStartDate),
+            email: capacitySubscription.email,
+            monthlyAllowance: getNonNegativeCreditInteger(capacitySubscription.monthlyCreditsAllowance ?? 0) ?? 0,
+            name: capacitySubscription.name,
+            planName: capacitySubscription.planName,
+            previousRemainingCredits: remainingBalance.totalCreditsBefore
+                ?? (remainingBalance.monthlyCredits + remainingBalance.topUpCredits + unitsConsumed),
+            remainingCredits: remainingBalance.totalCreditsAfter
+                ?? (remainingBalance.monthlyCredits + remainingBalance.topUpCredits),
             scope: normalizedScope,
-            subscription: capacitySubscription,
+            sourcePath: 'src/lib/answerlattice/aiAccounting.ts:credit-state',
+            subscriptionId: normalizeAnswerlatticeSubscriptionId(capacitySubscription.id),
         });
     }
 

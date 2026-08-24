@@ -179,14 +179,20 @@ export function renderAnswerlatticeOwnerNotification(
                 `Support credits added to ${productName}. New balance: ${textValue(metadata.newBalance, 'See Billing')}.`,
                 productName,
             );
-        case 'answerlattice.credits_low':
+        case 'answerlattice.credits_low': {
+            const milestone = textValue(metadata.creditMilestone, '');
+            const isEarlyWarning = milestone === '70_percent_used';
+            const heading = isEarlyWarning
+                ? 'Support credits need attention'
+                : 'Support credits are almost used up';
             return template(
                 templateKey,
-                `Support credit balance is low — ${productName}`,
-                `<h2 style="${S.h2}">Support credit balance is low</h2><p style="${S.p}">The support-credit balance for <strong>${escapeHtml(productName)}</strong> is running low.</p><div style="${S.info}"><strong>Current balance:</strong> ${escapeHtml(textValue(metadata.newBalance, 'See Billing'))}</div><p style="${S.p}">Existing approved answers remain available. Credit-consuming intake and assisted support work may need more credits soon.</p>`,
-                `Support credit balance is low for ${productName}. Current balance: ${textValue(metadata.newBalance, 'See Billing')}.`,
+                `${heading} — ${productName}`,
+                `<h2 style="${S.h2}">${heading}</h2><p style="${S.p}">The support-credit balance for <strong>${escapeHtml(productName)}</strong> ${isEarlyWarning ? 'has reached the first usage warning.' : 'is close to zero.'}</p><div style="${S.info}"><strong>Current balance:</strong> ${escapeHtml(textValue(metadata.newBalance, 'See Billing'))}</div><p style="${S.p}">Existing approved answers remain available. Credit-consuming intake and assisted support work may need more credits soon.</p>`,
+                `${heading} for ${productName}. Current balance: ${textValue(metadata.newBalance, 'See Billing')}.`,
                 productName,
             );
+        }
         case 'answerlattice.credits_exhausted':
             return template(
                 templateKey,

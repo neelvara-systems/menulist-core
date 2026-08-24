@@ -75,7 +75,7 @@ export type AnswerlatticeBillingDocument = {
     };
     contentHash: string;
     delivery: {
-        status: 'not_requested' | 'queued' | 'sent' | 'failed' | 'outcome_unknown';
+        status: 'not_requested' | 'queued' | 'partial' | 'sent' | 'failed' | 'outcome_unknown';
         attempts: number;
         lastAttemptAtMillis?: number;
         errorCode?: string;
@@ -87,7 +87,12 @@ export const mergeAnswerlatticeBillingDocumentDelivery = (
     attempted: AnswerlatticeBillingDocument['delivery'],
 ): AnswerlatticeBillingDocument['delivery'] => {
     const preserveCurrentStatus = current.status === 'sent'
-        || (current.status === 'outcome_unknown' && attempted.status !== 'sent');
+        || (current.status === 'partial' && attempted.status !== 'sent')
+        || (
+            current.status === 'outcome_unknown'
+            && attempted.status !== 'partial'
+            && attempted.status !== 'sent'
+        );
     return {
         ...(preserveCurrentStatus ? current : attempted),
         attempts: current.attempts + 1,

@@ -9,7 +9,7 @@ export type BillingDocumentSummary = {
     relatedInvoiceNumber: string | null;
     currency: string;
     totalAmount: number;
-    deliveryStatus: string;
+    deliveryStatus: 'not_requested' | 'queued' | 'partial' | 'sent' | 'failed' | 'outcome_unknown';
 };
 
 export const fetchBillingDocumentSummaries = async (): Promise<BillingDocumentSummary[]> => {
@@ -41,6 +41,7 @@ export const mergeBillingDocumentsIntoHistory = (
             billingDocumentNumber: document.documentNumber,
             billingDocumentType: document.documentType,
             billingDocumentUrl: `/api/billing-documents/${document.documentId}/pdf`,
+            billingDocumentDeliveryStatus: document.deliveryStatus,
         } : item;
     });
     const credits = documents
@@ -59,6 +60,7 @@ export const mergeBillingDocumentsIntoHistory = (
             billingDocumentNumber: document.documentNumber,
             billingDocumentType: document.documentType,
             billingDocumentUrl: `/api/billing-documents/${document.documentId}/pdf`,
+            billingDocumentDeliveryStatus: document.deliveryStatus,
         }));
     return [...merged, ...credits].sort((a, b) => b.date - a.date);
 };

@@ -163,7 +163,9 @@ export default async function AnswerlatticePricingPage() {
                                 </div>
                                 <div className="mb-1 text-4xl font-bold">{formatPrice(plan.priceINR.price)}</div>
                                 <p className="mb-1 text-sm text-[#b7b7d2]">or {formatUsdPrice(plan.priceUSD.price)} per month</p>
-                                <p className="mb-1 text-xs text-[#6b6b8a]">Checkout currency follows the billing country you provide.</p>
+                                <p className="mb-1 text-xs leading-relaxed text-[#6b6b8a]">
+                                    Checkout currency follows your billing country. Displayed prices are before applicable taxes; your billing details determine the final total before payment.
+                                </p>
                                 <p className="mb-6 text-sm text-[#808099]">{plan.priceINR.monthlyCredits} support credits / month</p>
                                 <div className="mb-5 rounded-xl border border-white/[0.06] bg-black/10 p-3 text-sm leading-relaxed text-[#d6d6ef]">
                                     {PLAN_GUIDANCE[plan.planId]}

@@ -57,3 +57,22 @@
 - Production Razorpay invoice-email configuration
 
 These inputs are configuration gates, not reasons to weaken the source contract or insert placeholder legal values.
+
+## Release evidence - August 24, 2026
+
+- The base commercial source is committed on `staging` at `82cf3701d7789b098277f325b5fca71920e5605b`. The final QA EmailOS secret-binding correction remains an unstaged working-tree change until a separate Git operation is authorized.
+- Answerlattice QA and production serve the exact reviewed Firestore Rules artifact: 115,461 bytes, SHA-256 `461bf3a20a5bf5259653f6f7e99e2fee3305ed0b1e0d774f3720ff63e358f31a`.
+- The three required `billingDocuments` indexes are `READY` in both Answerlattice Firebase projects.
+- QA `processIntegrationEvent` is active on revision `processintegrationevent-00003-yod`, uses Node.js 22, retries idempotently, binds `ANSWERLATTICE_RESEND_API_KEY`, and is restricted to the Answerlattice integration-event collection. This proves the integration-event EmailOS worker only; billing-document delivery is a separate Next.js NotificationOS path.
+- Secret Manager metadata confirms a QA `ANSWERLATTICE_RESEND_API_KEY` version and no production `ANSWERLATTICE_RESEND_API_KEY` version at this evidence timestamp. Production outbound email remains blocked until the owner confirms or creates the real production secret and a separately authorized deployment binds it. Do not create a placeholder secret.
+- WhatsApp billing-document delivery is source-complete but provider-blocked in both environments until the four product-isolated WhatsApp secrets exist and `answerlattice_billing_document_issued_v1` is approved with a document header.
+- No Vercel deployment was performed as part of this Firebase release. The website, checkout routes, Billing UI, PDF routes, and owner-notification source require a separately authorized Vercel release before they become hosted behavior.
+
+## Payment-flow reconciliation - August 24, 2026
+
+- Public pricing and onboarding now state that displayed prices are before applicable taxes. Billing-country and validated billing-profile data remain the server authority for currency, tax treatment, and the final provider amount.
+- Support-credit notifications are emitted at the first crossing of 70% used, 90% used, and exhausted. Intake warnings run only after successful usage settlement, so a failed provider operation that refunds its reservation cannot create a false low-balance alert. Event identity includes milestone, subscription, and billing period so replay does not duplicate a warning.
+- Both general AI accounting and successfully settled paid intake usage use the same Answerlattice credit-notification producer. Existing approved answers remain available at zero; only credit-consuming work pauses.
+- Billing-document delivery preserves `partial` as a distinct state. A later confirmed send can advance it to `sent`; a failed retry cannot erase known partial-delivery evidence.
+- Billing history exposes the current delivery state and an authenticated, rate-limited email resend action for seller-issued invoices and credit notes.
+- These changes are source-validated only until an explicitly authorized Vercel release and hosted checkout/Billing smoke test are completed.

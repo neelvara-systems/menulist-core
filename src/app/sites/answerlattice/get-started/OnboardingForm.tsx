@@ -677,7 +677,7 @@ function OnboardingFormInner({ basePath, initialPlanId }: Required<OnboardingFor
 
                     <fieldset style={styles.fieldset}>
                         <legend style={styles.label}>Billing details</legend>
-                        <p style={styles.fieldHint}>Your billing country sets the available regional price and invoice currency.</p>
+                        <p style={styles.fieldHint}>Your billing country sets the available regional price, invoice currency, and applicable tax treatment.</p>
                         <div style={styles.billingGrid}>
                             <div style={styles.billingFieldWide}>
                                 <label htmlFor="answerlattice-billing-name" style={styles.label}>Legal or business name *</label>
@@ -731,6 +731,7 @@ function OnboardingFormInner({ basePath, initialPlanId }: Required<OnboardingFor
                     <div style={styles.planBadge}>
                         <span style={styles.planLabel}>{selectedPlan.name} plan</span>
                         <span style={styles.planPrice}>{selectedPlanPrice} / month</span>
+                        <span style={styles.planDesc}>Displayed price is before applicable taxes. Your completed billing details determine the final amount shown before payment.</span>
                         <span style={styles.planDesc}>{selectedPlan.priceINR.monthlyCredits} support credits each month. Workspace setup creates a pending paid subscription and a one-time widget key.</span>
                     </div>
 
