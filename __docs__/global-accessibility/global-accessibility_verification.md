@@ -10,6 +10,8 @@
 - owner and website skip navigation remains wired;
 - global focus and reduced-motion styles remain active;
 - known clickable-span and undersized-mobile-control regressions do not return;
+- global access-denied recovery copy uses readable punctuation instead of
+  displaying encoded HTML entities;
 - the maintained document set exists.
 
 ## Supporting gates

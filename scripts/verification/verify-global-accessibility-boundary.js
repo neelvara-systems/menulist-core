@@ -106,6 +106,20 @@ const pricingComparison = read('src/components/website/pricing-pages/FeatureComp
   'className="flex min-h-11 items-center gap-2 cursor-help text-left"',
 ].forEach((token) => assert(pricingComparison.includes(token), `pricing comparison accessibility boundary must include ${token}`));
 
+const unauthorizedPage = read('src/app/(global-pages)/unauthorized/page.tsx');
+assert(
+  !unauthorizedPage.includes('&apos;'),
+  'global access-denied copy must not render encoded apostrophe text',
+);
+assert(
+  unauthorizedPage.includes("You don't have permission to access this page."),
+  'global access-denied primary recovery copy must remain readable',
+);
+assert(
+  unauthorizedPage.includes("Make sure you're signed in with the correct account."),
+  'global access-denied secondary recovery copy must remain readable',
+);
+
 const layoutWrapper = read('src/components/antdComponent/layoutWrapper/index.tsx');
 assert(layoutWrapper.includes('<SkipToContentLink />'), 'owner shell must expose skip navigation');
 assert(layoutWrapper.includes('id="main-content"'), 'owner shell must expose a main-content target');

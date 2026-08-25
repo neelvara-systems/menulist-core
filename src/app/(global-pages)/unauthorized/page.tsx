@@ -36,11 +36,11 @@ function UnAuthorized() {
 
     const primaryMessage = isEmailError
         ? 'This email address cannot be used to sign in.'
-        : 'You don&apos;t have permission to access this page.';
+        : "You don't have permission to access this page.";
 
     const secondaryMessage = isEmailError
         ? 'Please use a permanent email address from a standard provider (Gmail, Outlook, Yahoo, etc.)'
-        : 'Make sure you&apos;re signed in with the correct account. If you need access, contact your administrator.';
+        : "Make sure you're signed in with the correct account. If you need access, contact your administrator.";
 
     return (
         <ErrorPageThemeWrapper>
