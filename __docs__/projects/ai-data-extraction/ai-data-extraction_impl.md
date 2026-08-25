@@ -111,6 +111,8 @@ Category icons are not requested from Gemini during OCR extraction. The extracti
 
 Authenticated owner uploads from desktop and mobile use the shared `getProcessedFile.ts` job creator with `forceReview: true`. This keeps the first upload and later uploads on the existing `preview_ready` comparison/apply path without changing public-create or messaging extraction-only destinations. The worker's general auto-save capability remains available to explicitly eligible non-owner flows.
 
+The desktop first-upload drop zone has one named `Choose Files to Upload` action. Its JPG/PNG and PDF glyphs are descriptive, non-interactive hints rather than empty buttons, so keyboard and assistive-technology users do not encounter dead controls before the real file picker.
+
 The resolver:
 
 - Uses the store `businessType` carried on the job document.

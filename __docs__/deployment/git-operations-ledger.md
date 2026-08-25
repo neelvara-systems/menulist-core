@@ -4340,3 +4340,30 @@ No Firebase source/configuration changes. Firestore Rules, indexes, Storage Rule
 - Intended paths: desktop ProjectSelector, project-editor boundary verifier, data-editor implementation note, active certification report, and this ledger.
 - Final state pending: documentation validation, scoped commit, non-force staging push, direct server readback, automatic QA deployment, exact `/api/version`, and hosted keyboard/close/action discovery retest.
 - Attribution confidence: exact.
+
+### GIT-20260826-030652-mlrc064-upload-hint-semantics
+
+- Timestamp: `2026-08-26T03:06:52+05:30`
+- Record type: `PLANNED`
+- Actor/session/thread ID: Codex `/root`; thread `01a034e1-c70a-74b1-a92b-0a103a981815`.
+- Registered worktrees: one primary worktree at `/Users/danny/Projects/MenuListAi/menulist-core`, branch `staging`, HEAD `3710dc06750c29b88fc732e8a7d91330902bbae6`.
+- Authorization: autonomous exhaustive MenuList QA certification, in-scope fixes, regression coverage, and stable staging publication. This operation is `staging` only; it excludes `main`, Firebase infrastructure deployment, manual Vercel deployment, production mutation, and live Razorpay execution.
+- Hosted reproduction: exact MenuList build `c81dc4bba8460f02209aecae1150b7463325bb7f` rendered two unnamed circular Ant buttons for the JPG/PNG and PDF hints before the one named Choose Files action. The two controls had no independent handler and existed only as file-type illustrations, adding ambiguous/dead keyboard stops.
+- Correction: retain the visual glyphs and pointer Tooltip hints as decorative `aria-hidden` spans. Keep Dragger click/drop behavior, named Choose Files action, formats, validation, file preview, Storage, and extraction operations unchanged.
+- Starting filesystem state: zero staged, four tracked unstaged, zero untracked before this ledger append. Complete pre-ledger diff Git hash `20d6b9247eafac5e723ec22e338e4e84334e7aaf`; status `0/4/0`.
+- Validation: complete `verify:menu-project-editor-boundary` and all eight chained project scope/mutation/upload/time-slot suites PASS; focused zero-warning ESLint PASS; strict `tsc --noEmit --incremental false` PASS; `git diff --check` PASS.
+
+#### Pre-operation branch matrix
+
+| Branch | Local SHA | Direct server SHA | Tracking ref | Ahead/behind | Worktree | Filesystem | Status |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `staging` | `3710dc06750c29b88fc732e8a7d91330902bbae6` | `refs/heads/staging` / `3710dc06750c29b88fc732e8a7d91330902bbae6` | `origin/staging` | `0/0` | primary | `0/4/0` before ledger append | `IN_SYNC` |
+| `main` | `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `refs/heads/main` / `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `origin/main` | `0/0` | none | n/a | `IN_SYNC` |
+
+#### Firebase component matrix before Git mutation
+
+No Firebase source/configuration changes. Firestore Rules, indexes, Storage Rules, and Cloud Functions for MenuList QA `menulist-qa`, MenuList production `menulist-prod`, Answerlattice QA `neelvara-answerlattice-qa`, and Answerlattice production `neelvara-answerlattice-prod` each remain independently `NO_INFRA_CHANGE` / `SERVER_STATE_UNKNOWN`; no authenticated readback or deployment is performed.
+
+- Intended paths: desktop Projects first-upload surface, project-editor boundary verifier, active extraction implementation note, certification report, and this ledger.
+- Final state pending: documentation validation, scoped commit, non-force staging push, direct server readback, automatic QA deployment, exact `/api/version`, and hosted first-upload control-count retest.
+- Attribution confidence: exact.

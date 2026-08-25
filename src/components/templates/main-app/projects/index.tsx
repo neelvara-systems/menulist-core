@@ -3093,10 +3093,14 @@ function ProjectsPage() {
                                                 </Typography.Text>
                                                 <Flex gap={20} align='center' justify='center'>
                                                     <Tooltip title="Upload JPG or PNG images">
-                                                        <Button shape='circle' type='text' size='large' icon={<LuFileImage size={32} />} style={{ height: 56, width: 56, color: token.colorPrimaryTextActive, backgroundColor: token.colorPrimaryBg }} />
+                                                        <span aria-hidden="true" style={{ height: 56, width: 56, color: token.colorPrimaryTextActive, backgroundColor: token.colorPrimaryBg, borderRadius: '50%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                            <LuFileImage size={32} />
+                                                        </span>
                                                     </Tooltip>
                                                     <Tooltip title="Upload PDF documents">
-                                                        <Button shape='circle' type='text' size='large' icon={<LuFileText size={32} />} style={{ height: 56, width: 56, color: token.colorErrorTextActive, backgroundColor: token.colorErrorBg }} />
+                                                        <span aria-hidden="true" style={{ height: 56, width: 56, color: token.colorErrorTextActive, backgroundColor: token.colorErrorBg, borderRadius: '50%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                            <LuFileText size={32} />
+                                                        </span>
                                                     </Tooltip>
                                                 </Flex>
                                                 <Button

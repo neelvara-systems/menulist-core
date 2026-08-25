@@ -259,6 +259,9 @@ requireNamedImport(projectsPage, '@database/projects', [
   'Could not load this menu',
   'onClick={() => void mutateProject()}',
   'currentView == 2 && selectedProject && activeProject',
+  '<Tooltip title="Upload JPG or PNG images">',
+  '<Tooltip title="Upload PDF documents">',
+  '<span aria-hidden="true" style={{ height: 56, width: 56,',
   "const mutationToken = beginProjectMutation('save', operationScope);",
   "expectedScope: operationScope,",
   'syncPublicSummary: true,',
@@ -272,6 +275,8 @@ requireOrder(projectsPage, [
   'currentView == 2 && selectedProject && activeProject',
 ], 'desktop editor project-load boundary');
 forbidToken(projectsPage, 'const shouldEnableDesktopProjectsData = hasMounted;', 'desktop projects entitlement read gate');
+forbidToken(projectsPage, "<Button shape='circle' type='text' size='large' icon={<LuFileImage", 'desktop upload decorative image control');
+forbidToken(projectsPage, "<Button shape='circle' type='text' size='large' icon={<LuFileText", 'desktop upload decorative PDF control');
 forbidToken(
   projectsPage,
   'projects_page_public_content_translation_metadata_update_rejected',
