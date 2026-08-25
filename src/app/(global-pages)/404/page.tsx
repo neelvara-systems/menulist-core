@@ -26,11 +26,11 @@ function NotFound() {
                         <ContextualStateIllustration
                             color={token.colorTextQuaternary}
                             size={192}
-                            style={{ width: 'clamp(128px, 40vw, 192px)' }}
+                            style={{ width: 'clamp(112px, 36vw, 192px)' }}
                             variant="notFoundContext"
                         />
                     )}
-                    status="404"
+                    status="info"
                     title="Page Not Found"
                     subTitle={
                         <Flex vertical align="center" gap={8} style={{ maxWidth: 480 }}>

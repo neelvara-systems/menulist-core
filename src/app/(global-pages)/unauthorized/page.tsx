@@ -57,11 +57,11 @@ function UnAuthorized() {
                         <ContextualStateIllustration
                             color={token.colorTextQuaternary}
                             size={192}
-                            style={{ width: 'clamp(128px, 40vw, 192px)' }}
+                            style={{ width: 'clamp(112px, 36vw, 192px)' }}
                             variant={isEmailError ? 'warningContext' : 'accessDeniedContext'}
                         />
                     )}
-                    status={isEmailError ? 'warning' : '403'}
+                    status={isEmailError ? 'warning' : 'info'}
                     title={title}
                     subTitle={
                         <Flex vertical align="center" gap={8} style={{ maxWidth: 480 }}>

@@ -20,6 +20,9 @@
   320×568 viewport instead of being pushed below the fold by duplicate result
   padding, a fixed desktop-sized illustration, or safe padding added outside
   the dynamic viewport height;
+- access-denied and not-found results use the shared contextual recovery
+  artwork instead of Ant Design's exception statuses, which discard a supplied
+  custom icon and force a fixed 251×294 illustration;
 - the access-denied home action exits the owner-app host through the
   environment-governed public MenuList website URL instead of entering the
   protected dashboard;

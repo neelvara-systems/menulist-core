@@ -144,8 +144,12 @@ assert(
   'both global access-denied recovery actions must meet the 44px mobile touch target',
 );
 assert(
-  unauthorizedPage.includes("style={{ width: 'clamp(128px, 40vw, 192px)' }}"),
+  unauthorizedPage.includes("style={{ width: 'clamp(112px, 36vw, 192px)' }}"),
   'global access-denied illustration must yield vertical space to recovery actions on small mobile viewports',
+);
+assert(
+  unauthorizedPage.includes("status={isEmailError ? 'warning' : 'info'}"),
+  'global access-denied result must not use the Ant exception status that discards the contextual illustration',
 );
 assert(
   unauthorizedPage.includes("style={{ boxSizing: 'border-box', minHeight: '100dvh', padding: 24 }}"),
@@ -178,8 +182,12 @@ assert(
   'global not-found recovery actions must remain in the initial small-mobile viewport',
 );
 assert(
-  notFoundPage.includes("style={{ width: 'clamp(128px, 40vw, 192px)' }}"),
+  notFoundPage.includes("style={{ width: 'clamp(112px, 36vw, 192px)' }}"),
   'global not-found illustration must yield vertical space to recovery actions on small mobile viewports',
+);
+assert(
+  notFoundPage.includes('status="info"'),
+  'global not-found result must not use the Ant exception status that discards the contextual illustration',
 );
 assert(
   notFoundPage.includes("style={{ boxSizing: 'border-box', minHeight: '100dvh', padding: 24 }}"),
