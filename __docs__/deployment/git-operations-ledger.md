@@ -3413,3 +3413,21 @@ Those fields are explicitly `unknown` instead of guessed.
 - Git server readback and divergence: direct pre-operation `git ls-remote` proves local/server `main` and `staging` exact with `0/0` divergence. Post-operation evidence is pending.
 - Final filesystem state: pending evidence commit, non-force `staging` push, and direct server readback.
 - Attribution confidence: exact.
+
+#### GIT-20260825-210642-mlrc047-hosted-closeout result
+
+- Timestamp: `2026-08-25T21:09:20+05:30`
+- Record type: `PERFORMED`
+- Scoped release: evidence commit `758d5c4ace6a57f258823b38049cc2891ed8866a` (`docs(menulist): close hosted worker admission evidence`) was created from exact parent `6cae3112ef01c9155f3d472e1656415accb63b38` and pushed non-force to `origin/staging`.
+- Direct server readback: `git ls-remote` returned exact staging SHA `758d5c4ace6a57f258823b38049cc2891ed8866a`; local/tracking divergence is `0/0`. Local/server `main` remain exact and untouched at `fe625d5bbf527c1b7e537b00ab32a4f655905c35`.
+- Branch matrix after:
+
+  | Branch | Local full SHA | Direct server ref/full SHA | Tracking ref | Ahead/behind | Worktree | Staged/unstaged/untracked | Status |
+  | --- | --- | --- | --- | --- | --- | --- | --- |
+  | `main` | `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `refs/heads/main` / `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `origin/main` | `0/0` | not checked out | `N/A` | `IN_SYNC` |
+  | `staging` | `758d5c4ace6a57f258823b38049cc2891ed8866a` | `refs/heads/staging` / `758d5c4ace6a57f258823b38049cc2891ed8866a` | `origin/staging` | `0/0` | primary worktree | `0/0/0` before this result append | `IN_SYNC` |
+
+- Firebase matrix after: unchanged from the planned entry. MenuList QA/production Functions retain `INFRA_CHANGE` / `DEPLOY_REQUIRED`; the other 14 rows retain `NO_INFRA_CHANGE` / `SERVER_STATE_UNKNOWN`. No Firebase deployment/readback, production release, `main` movement, manual Vercel deployment, or live Razorpay execution occurred.
+- Hosted evidence: exact runtime-bearing parent `6cae3112ef01c9155f3d472e1656415accb63b38` passed `/api/version`, the full hosted anonymous boundary, the direct 403 worker timing probe, and the authenticated 320x568 pending-owner gate-to-Billing recovery. The evidence-only descendant does not change runtime behavior.
+- Final filesystem state: only this result append is modified; it will be committed and pushed to `staging` for ledger completeness.
+- Attribution confidence: exact.
