@@ -1349,6 +1349,10 @@ function verifyMultiLocationBoundary() {
   };
 
   assertIncludes(files.outletPolicyEditor, 'aria-label={item.label}', 'Desktop outlet policy switch accessible name');
+  assertIncludes(files.desktopLocations, "import { formatCurrency } from '@util/formatters';", 'Desktop location billing minor-unit formatter');
+  assertIncludes(files.desktopLocations, 'formatCurrency(amount, currency)', 'Desktop per-store billing minor-unit display');
+  assertIncludes(files.desktopLocations, 'formatCurrency(totalCost, currency)', 'Desktop total billing minor-unit display');
+  assertNotIncludes(files.desktopLocations, 'formatter.number(amount, { currency, style:', 'Desktop location billing raw minor-unit display');
 
   [
     'parseMasterOperationalState',

@@ -82,6 +82,7 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
     const [cancellationReasonDetail, setCancellationReasonDetail] = useState('');
     const [billingInterval, setBillingInterval] = useState<'MONTH' | 'YEAR'>('MONTH');
     const [isLoading, setIsLoading] = useState(false);
+    const [isHistoryLoading, setIsHistoryLoading] = useState(false);
     const [sendingBillingDocumentId, setSendingBillingDocumentId] = useState<string | null>(null);
 
     const noopDispatcher: Parameters<typeof usePaymentHandler>[0] = () => undefined;
@@ -106,6 +107,7 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
         : null;
     const billingScopeKeyRef = useRef<string | null>(billingScopeKey);
     const billingHistoryRequestSequenceRef = useRef(0);
+    const billingHistoryInFlightKeyRef = useRef<string | null>(null);
     const subscriptionRequestSequenceRef = useRef(0);
     billingScopeKeyRef.current = billingScopeKey;
     const canSwitchBillingStore = Boolean(userPermissions?.canSwitchStores && accessibleBillingStores.length > 1);
@@ -471,8 +473,12 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
     };
 
     const fetchHistory = async () => {
+        if (billingHistoryInFlightKeyRef.current) return;
         const requestSequence = ++billingHistoryRequestSequenceRef.current;
         const requestScopeKey = billingScopeKey;
+        const inFlightKey = `${requestScopeKey || 'unscoped'}:${requestSequence}`;
+        billingHistoryInFlightKeyRef.current = inFlightKey;
+        setIsHistoryLoading(true);
         try {
             const historyStoreId = Number(sub?.storeId || billingStoreId || session?.user?.storeId);
             const [raw, billingDocuments] = await Promise.all([
@@ -493,6 +499,11 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
             ) return;
             logPaymentFailure('payment_mobile_billing_history_load_failed', err, buildMobileBillingPaymentLogContext('history_load'));
             Toast.show({ content: t('failedToLoadHistory'), duration: 2000 });
+        } finally {
+            if (billingHistoryInFlightKeyRef.current === inFlightKey) {
+                billingHistoryInFlightKeyRef.current = null;
+                setIsHistoryLoading(false);
+            }
         }
     };
 
@@ -560,8 +571,10 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
                 if (billingScopeKeyRef.current !== initiatingScopeKey) return;
                 subscriptionRequestSequenceRef.current += 1;
                 billingHistoryRequestSequenceRef.current += 1;
+                billingHistoryInFlightKeyRef.current = null;
                 setActiveSubscription(null);
                 setBillingHistory([]);
+                setIsHistoryLoading(false);
                 setShowHistory(false);
                 setActiveStoreContext(null);
                 setShowStorePicker(false);
@@ -581,8 +594,10 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
             if (billingScopeKeyRef.current !== initiatingScopeKey) return;
             subscriptionRequestSequenceRef.current += 1;
             billingHistoryRequestSequenceRef.current += 1;
+            billingHistoryInFlightKeyRef.current = null;
             setActiveSubscription(null);
             setBillingHistory([]);
+            setIsHistoryLoading(false);
             setShowHistory(false);
             setActiveStoreContext(targetStoreId);
             setShowStorePicker(false);
@@ -953,15 +968,30 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
                     </Card>
                 ) : null}
 
-                <Card onClick={fetchHistory}>
-                    <Flex align="center" justify="space-between">
-                        <Flex align="center" gap={8}>
-                            <LuReceipt color={token.colorPrimary} size={18} />
-                            <Text strong>{t('billingHistory')}</Text>
+                <div
+                    aria-busy={isHistoryLoading}
+                    aria-label={t('billingHistory')}
+                    onClick={() => void fetchHistory()}
+                    onKeyDown={(event) => {
+                        if (event.key !== 'Enter' && event.key !== ' ') return;
+                        event.preventDefault();
+                        void fetchHistory();
+                    }}
+                    role="button"
+                    tabIndex={0}
+                >
+                    <Card>
+                        <Flex align="center" justify="space-between">
+                            <Flex align="center" gap={8}>
+                                <LuReceipt color={token.colorPrimary} size={18} />
+                                <Text strong>{t('billingHistory')}</Text>
+                            </Flex>
+                            {isHistoryLoading
+                                ? <DotLoading color="primary" />
+                                : <LuChevronRight color={token.colorTextTertiary} size={16} />}
                         </Flex>
-                        <LuChevronRight color={token.colorTextTertiary} size={16} />
-                    </Flex>
-                </Card>
+                    </Card>
+                </div>
 
                 <Card onClick={() => router.push('/dashboard#mobile/more/answerlatticeSupport')}>
                     <Flex align="center" gap={12}>

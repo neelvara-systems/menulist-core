@@ -1,18 +1,18 @@
 {
-  "generatedAt": "2026-08-24T20:05:20.625Z",
-  "repositoryHead": "b857a164944012d42131917e7c62215c94022c0f",
-  "totalDiscoveredFiles": 9409,
+  "generatedAt": "2026-08-25T05:33:51.455Z",
+  "repositoryHead": "916b5c94d82b848fef791babeb49addbd3c794b8",
+  "totalDiscoveredFiles": 9413,
   "vanishedDuringInventory": 0,
-  "inScopeFiles": 9095,
+  "inScopeFiles": 9099,
   "excludedFiles": 314,
   "byCategory": {
-    "documentation/contract": 3579,
+    "documentation/contract": 3580,
     "shared-runtime": 1208,
-    "ui-component": 1018,
-    "verifier/test": 770,
+    "ui-component": 1019,
+    "verifier/test": 773,
     "asset/public-output": 568,
     "nextjs-entrypoint": 386,
-    "runtime/support": 347,
+    "runtime/support": 346,
     "firebase-functions": 345,
     "api-route": 244,
     "constant/config/data": 161,
@@ -28,30 +28,30 @@
     "proxy/routing": 1
   },
   "byReviewStatus": {
-    "reviewed": 7091,
-    "in-progress": 1482,
-    "inventory-only": 522
+    "reviewed": 7075,
+    "in-progress": 1497,
+    "inventory-only": 527
   },
   "byCategoryAndReviewStatus": {
     "documentation/contract": {
-      "reviewed": 2740,
-      "in-progress": 551,
-      "inventory-only": 288
+      "reviewed": 2736,
+      "in-progress": 555,
+      "inventory-only": 289
     },
     "shared-runtime": {
-      "reviewed": 999,
-      "in-progress": 139,
+      "reviewed": 998,
+      "in-progress": 140,
       "inventory-only": 70
     },
     "ui-component": {
-      "reviewed": 768,
-      "in-progress": 244,
-      "inventory-only": 6
+      "reviewed": 764,
+      "in-progress": 248,
+      "inventory-only": 7
     },
     "verifier/test": {
-      "reviewed": 537,
-      "in-progress": 178,
-      "inventory-only": 55
+      "reviewed": 536,
+      "in-progress": 179,
+      "inventory-only": 58
     },
     "asset/public-output": {
       "reviewed": 539,
@@ -59,23 +59,23 @@
       "in-progress": 7
     },
     "nextjs-entrypoint": {
-      "reviewed": 320,
-      "in-progress": 55,
+      "reviewed": 318,
+      "in-progress": 57,
       "inventory-only": 11
     },
     "runtime/support": {
-      "reviewed": 276,
+      "reviewed": 275,
       "in-progress": 66,
       "inventory-only": 5
     },
     "firebase-functions": {
-      "reviewed": 276,
-      "in-progress": 43,
+      "reviewed": 274,
+      "in-progress": 45,
       "inventory-only": 26
     },
     "api-route": {
-      "reviewed": 178,
-      "in-progress": 53,
+      "reviewed": 177,
+      "in-progress": 54,
       "inventory-only": 13
     },
     "constant/config/data": {

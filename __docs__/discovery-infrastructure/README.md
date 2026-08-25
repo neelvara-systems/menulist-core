@@ -106,7 +106,7 @@ Current production contract:
 | ------------------------------------------- | ------------------------------------------ | ------------------------------------------------------------------------ |
 | Platform robots.txt (explicit AI bot rules) | `public/robots.txt:1-40`                   | ✅ OAI-SearchBot, ChatGPT-User, GPTBot, ClaudeBot, PerplexityBot, Google-Extended, Googlebot, Bingbot |
 | Per-store robots.txt                        | `src/app/client/robots.ts:12-61`           | ✅ Dynamic per-subdomain/custom-domain sitemap + explicit search/AI crawler allow rules              |
-| Platform sitemap                            | `src/lib/seo/discoveryPolicy.ts`, `src/app/sitemap.ts`, `public/sitemap.xml` | ✅ Shared active route inventory; dynamic/static sitemap omit redirect-only `/product` |
+| Platform sitemap                            | `src/lib/seo/discoveryPolicy.ts`, `public/sitemap.xml` | ✅ Static runtime sitemap follows the shared active route inventory and omits redirect-only `/product`; no duplicate App Router route owns `/sitemap.xml` |
 | Per-store sitemap (real lastModified)       | `src/app/client/sitemap.ts`        | ✅ Gated OBP + canonical menu/outlet URLs; store/outlet `modifiedOn` drives freshness |
 | Public truth indexability gate              | `src/lib/seo/publicTruthIndexing.ts`, `src/app/client/sitemap.ts`, `src/app/client/[[...slug]]/page.tsx` | ✅ Weak/incomplete tenant records, stale project slug fallback pages, and stale item/category detail pages stay reachable but receive `noindex, follow` and stay out of sitemap |
 | SSR (server-side rendering)                 | Next.js SSR                                | ✅ Full HTML on first request                                            |

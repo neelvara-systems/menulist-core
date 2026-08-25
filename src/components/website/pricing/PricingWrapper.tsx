@@ -3,12 +3,14 @@
 import PricingPageRenderer from '@/components/website/pricing-pages';
 import { getBoundedPaymentStringContext, logPaymentFailure } from '@hook/paymentDiagnostics';
 import { normalizeBillingSubscriptionScopeDocumentId } from '@lib/billing/subscriptionDocumentIdBoundary';
+import { parsePricingPlanHandoff } from '@lib/billing/purchaseIntentBoundary';
 import { getMenuListSessionProviderScopeKey } from '@lib/multiOutlet/sessionProviderScopeBoundary';
 import { Toaster } from '@shadcncomponents/toaster';
 import { Button } from '@shadcncomponents/button';
 import { FirestoreSubscriptionDoc } from '@type/razorpay';
 import { useSession } from 'next-auth/react';
 import dynamic from 'next/dynamic';
+import { useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 const SubscriptionManagementPage = dynamic(
@@ -18,6 +20,8 @@ const SubscriptionManagementPage = dynamic(
 
 export default function PricingWrapper() {
     const { data: session, status, update } = useSession();
+    const searchParams = useSearchParams();
+    const requestedPlanHandoff = parsePricingPlanHandoff(searchParams?.toString() ?? '');
     const hasAttemptedSessionRefresh = useRef(false);
     const subscriptionRequestSequenceRef = useRef(0);
     const currentScopeKey = status === 'authenticated' ? getMenuListSessionProviderScopeKey(session) : null;
@@ -124,6 +128,7 @@ export default function PricingWrapper() {
                 <SubscriptionManagementPage
                     activeSubscription={activeSubscription}
                     refetchActiveSubscription={getSubscription}
+                    requestedPlanHandoff={requestedPlanHandoff}
                 />
             ) : (
                 <PricingPageRenderer

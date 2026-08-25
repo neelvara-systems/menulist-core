@@ -133,7 +133,7 @@ Public outlet project lookup filters compact summary IDs to the requested tenant
 
 ## 17. Desktop and mobile Locations
 
-Both surfaces support active/inactive lists, active counts, billing summary, switching, create, rename, deactivate, and policy. Mobile remains inside `MobileShell`. Touch actions are at least 44px. Inactive stores remain visible but cannot be switched into or renamed. Billing-reduction failures show the explicit support action; normal derived cache pending state stays operationally logged because no owner action is required.
+Both surfaces support active/inactive lists, active counts, billing summary, switching, create, rename, deactivate, and policy. Subscription prices remain stored in currency minor units; desktop and mobile Locations use the shared minor-unit formatter before owner-visible display. Mobile remains inside `MobileShell`. Touch actions are at least 44px. Inactive stores remain visible but cannot be switched into or renamed. Billing-reduction failures show the explicit support action; normal derived cache pending state stays operationally logged because no owner action is required.
 
 ## 18. Verification and pending external evidence
 

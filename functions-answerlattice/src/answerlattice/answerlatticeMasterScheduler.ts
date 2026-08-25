@@ -428,6 +428,7 @@ async function recordTaskOutcome(params: {
     summary: AnswerlatticeSchedulerTaskSummary;
 }): Promise<void> {
     const finishedTs = Timestamp.fromDate(params.finishedAt);
+    const taskStatePath = `tasks.${params.task.name}`;
     await platformSummary().doc(STATE_DOC_ID).set({
         schedulerName: SCHEDULER_NAME,
         updatedAt: finishedTs,
@@ -446,7 +447,7 @@ async function recordTaskOutcome(params: {
                 lastActivity: params.summary.activity === true,
             },
         },
-    }, { merge: true });
+    }, { mergeFields: ['schedulerName', 'updatedAt', taskStatePath] });
 }
 
 async function runTask(

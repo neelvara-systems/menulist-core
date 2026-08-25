@@ -1,5 +1,4 @@
-import EcomsIconLogo from '@atoms/ecomsLogo';
-import EcomsHorizontalLogo from '@atoms/ecomsLogo/ecomsHorizontalLogo';
+import { MenuListHorizontalLogo, MenuListIconLogo } from '@atoms/menuListLogo';
 import { FEATURE_FLAGS } from '@config/features';
 import { NAVIGARIONS_ROUTINGS, NavItemType, SIDEBAR_DASHBOARD_LAYOUT, SUPPORT_MENU_OPTIONS } from '@constant/navigations';
 import { MENULIST_PLATFORM_USER_ROLE, RESELLER_USER_ROLE } from '@constant/user';
@@ -8,7 +7,7 @@ import { useAppDispatch } from '@hook/useAppDispatch';
 import { useAppSelector } from '@hook/useAppSelector';
 import { shouldShowGrowthOSNavigation } from '@lib/growthos/entitlements';
 import { canManageLocationSettings } from '@lib/multiOutlet/locationAccess';
-import { hasStarterWorkspaceAccess, isStarterWorkspaceRoute } from '@lib/onboarding/starterActivation';
+import { hasRecoveryOnlyWorkspaceAccess, hasStarterWorkspaceAccess, isStarterRecoveryRoute, isStarterWorkspaceRoute } from '@lib/onboarding/starterActivation';
 import { getPermissionRequirementForPath, satisfiesPermissionRequirement } from '@lib/permissions/permissionRequirements';
 import ClientOnlyProvider from '@providers/clientOnlyProvider';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
@@ -61,6 +60,7 @@ const SidebarComponent = ({ onExpandedChange }: SidebarComponentProps) => {
     });
     const hasPaidAccess = hasValidSubscriptionAccess(activeSubscription);
     const hasStarterAccess = hasStarterWorkspaceAccess(storeDetails, hasPaidAccess);
+    const hasRecoveryOnlyAccess = hasRecoveryOnlyWorkspaceAccess(storeDetails, hasPaidAccess);
 
     useEffect(() => {
         const navFeatureAllowed = (nav: NavItemType) => {
@@ -96,6 +96,9 @@ const SidebarComponent = ({ onExpandedChange }: SidebarComponentProps) => {
 
         // Filter nav items based on user context
         const filteredLayout = SIDEBAR_DASHBOARD_LAYOUT.filter(nav => {
+            if (hasRecoveryOnlyAccess && !isStarterRecoveryRoute(nav.route)) {
+                return false;
+            }
             if (hasStarterAccess && !isStarterWorkspaceRoute(nav.route)) {
                 return false;
             }
@@ -162,7 +165,7 @@ const SidebarComponent = ({ onExpandedChange }: SidebarComponentProps) => {
 
         if (currentNav) setActiveNav(currentNav);
         setSidebarMenusList(menuCopy);
-    }, [pathname, canManageLocations, hasStarterAccess, platformRole, userPermissions])
+    }, [pathname, canManageLocations, hasRecoveryOnlyAccess, hasStarterAccess, platformRole, userPermissions])
 
     const onClickNav = (navItem: NavItemType, menuLevel: number, navIndex: number, subNavIndex: number = -1) => {
         if (menuLevel === 1) {
@@ -331,8 +334,8 @@ const SidebarComponent = ({ onExpandedChange }: SidebarComponentProps) => {
             <DashboardSidebarShell
                 actionItems={actionItems}
                 isCollapsed={isCollapsed}
-                logoCollapsed={<EcomsIconLogo />}
-                logoExpanded={<EcomsHorizontalLogo color={token.colorText} />}
+                logoCollapsed={<MenuListIconLogo />}
+                logoExpanded={<MenuListHorizontalLogo color={token.colorText} />}
                 navItems={navItems}
                 onExpandedChange={onExpandedChange}
             />

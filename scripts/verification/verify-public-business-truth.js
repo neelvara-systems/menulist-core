@@ -2816,7 +2816,8 @@ function verifyDiscoveryInfrastructureDocsMatchRuntime() {
   const brandObp = read('src/app/client/obp/BrandOBPContent.tsx');
   const obpContent = read('src/app/client/obp/OBPContent.tsx');
   const tenantRobots = read('src/app/client/robots.ts');
-  const platformSitemap = read('src/app/sitemap.ts');
+  const platformSitemap = read('public/sitemap.xml');
+  const discoveryPolicy = read('src/lib/seo/discoveryPolicy.ts');
 
   const docs = {
     seoGuide: read('__docs__/client-menu/seo-implementation-guide.md'),
@@ -2888,8 +2889,9 @@ function verifyDiscoveryInfrastructureDocsMatchRuntime() {
   assertNotIncludes(tenantSitemap, '} catch {\n            return null;\n        }', 'Tenant sitemap master-store lookup must not fail silently');
   assertNotIncludes(tenantSitemap, '} catch {\n            return [];\n        }', 'Tenant sitemap summary lookups must not fail silently');
   assertIncludes(tenantRobots, 'DISCOVERY_CRAWLERS', 'Tenant robots crawler allowlist source');
-  assertIncludes(platformSitemap, 'PLATFORM_DISCOVERY_PAGES', 'Platform sitemap active discovery page registry');
-  assertNotIncludes(platformSitemap, 'lastModified: new Date()', 'Platform sitemap fabricated all-page freshness');
+  assertIncludes(discoveryPolicy, 'PLATFORM_DISCOVERY_PAGES', 'Platform sitemap active discovery page registry');
+  assertIncludes(platformSitemap, '<loc>https://menulist.ai</loc>', 'Platform sitemap canonical website root');
+  assertNotIncludes(discoveryPolicy, 'lastModified: new Date()', 'Platform sitemap registry must not fabricate all-page freshness');
 
   assertIncludes(docs.seoGuide, 'Current Source Contract', 'Client menu SEO guide source contract');
   assertIncludes(docs.seoGuide, 'Conditional Additions (Not Current Launch Scope)', 'Client menu SEO guide conditional launch boundary');

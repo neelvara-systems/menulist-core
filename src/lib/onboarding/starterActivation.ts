@@ -335,6 +335,15 @@ export function hasStarterWorkspaceAccess(
     return !isStarterActivationExpired(storeDetails, nowMs);
 }
 
+export function hasRecoveryOnlyWorkspaceAccess(
+    storeDetails: Pick<StoreDataType, 'activationDeadline' | 'onboardingSource'> | null | undefined,
+    hasPaidAccess: boolean,
+    nowMs = Date.now(),
+) {
+    if (!storeDetails || hasPaidAccess) return false;
+    return !hasStarterWorkspaceAccess(storeDetails, false, nowMs);
+}
+
 export function isStarterPublicSurfaceExpired(
     storeDetails?: Pick<StoreDataType, 'activationDeadline' | 'activePlanType' | 'onboardingSource' | 'starterActivationStatus'> | null,
     nowMs = Date.now(),

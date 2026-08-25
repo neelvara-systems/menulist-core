@@ -130,29 +130,41 @@ function BillingPage() {
     }, [activeSubscriptionLoading, sessionId, userId]);
 
     const fetchBillingHistory = async () => {
-        if (!userId || !effectiveHistoryStoreId) return;
+        if (!userId || !effectiveHistoryStoreId) return 'error' as const;
         const requestSequence = ++billingHistoryRequestSequenceRef.current;
         const requestScopeKey = billingScopeKey;
 
-        // 2. Fetch transaction logs from the unified ledger. New rows are lean v2 audit summaries.
-        const [rawHistory, billingDocuments] = await Promise.all([
-            getBillingHistoryForStore(session?.user?.tenantId, effectiveHistoryStoreId),
-            fetchMenuListBillingDocumentSummaries().catch(() => []),
-        ]);
-        if (
-            billingHistoryRequestSequenceRef.current !== requestSequence
-            || billingScopeKeyRef.current !== requestScopeKey
-        ) return;
-        // 3. Transform lean webhook audit rows and legacy raw payload rows into a clean UI model.
-        const formattedHistory = formatBillingHistoryEvents(rawHistory, {
-            formatBillingCycle: (startSeconds, endSeconds) => {
-                if (!startSeconds || !endSeconds) return undefined;
-                const startDate = formatDateTime(new Date(startSeconds * 1000), "date", formatter);
-                const endDate = formatDateTime(new Date(endSeconds * 1000), "date", formatter);
-                return `${startDate}-${endDate}`;
-            },
-        });
-        setBillingHistory(mergeMenuListBillingDocumentsIntoHistory(formattedHistory, billingDocuments));
+        try {
+            // Fetch transaction logs from the unified ledger. New rows are lean v2 audit summaries.
+            const [rawHistory, billingDocuments] = await Promise.all([
+                getBillingHistoryForStore(session?.user?.tenantId, effectiveHistoryStoreId),
+                fetchMenuListBillingDocumentSummaries().catch(() => []),
+            ]);
+            if (
+                billingHistoryRequestSequenceRef.current !== requestSequence
+                || billingScopeKeyRef.current !== requestScopeKey
+            ) return 'loaded' as const;
+            const formattedHistory = formatBillingHistoryEvents(rawHistory, {
+                formatBillingCycle: (startSeconds, endSeconds) => {
+                    if (!startSeconds || !endSeconds) return undefined;
+                    const startDate = formatDateTime(new Date(startSeconds * 1000), "date", formatter);
+                    const endDate = formatDateTime(new Date(endSeconds * 1000), "date", formatter);
+                    return `${startDate}-${endDate}`;
+                },
+            });
+            setBillingHistory(mergeMenuListBillingDocumentsIntoHistory(formattedHistory, billingDocuments));
+            return 'loaded' as const;
+        } catch (error) {
+            if (
+                billingHistoryRequestSequenceRef.current !== requestSequence
+                || billingScopeKeyRef.current !== requestScopeKey
+            ) return 'loaded' as const;
+            logPaymentFailure('payment_desktop_billing_history_fetch_failed', error, buildBillingPaymentLogContext('billing_history_fetch', {
+                historyStoreIdPresent: Boolean(effectiveHistoryStoreId),
+            }));
+            message.error('Billing history could not be loaded.');
+            return 'error' as const;
+        }
     };
 
     const refetchActiveSubscription = async () => {
@@ -486,6 +498,7 @@ function BillingPage() {
                         setIsPricingModalOpen={setIsPricingModalOpen}
                     />
                     <BillingHistory
+                        key={billingScopeKey || 'billing-history'}
                         billingHistory={billingHistory}
                         diagnosticContext={buildBillingPaymentLogContext('billing_history_invoice_open', {
                             ...getBoundedPaymentStringContext('historyStoreId', effectiveHistoryStoreId),

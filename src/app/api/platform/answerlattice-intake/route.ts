@@ -314,11 +314,21 @@ function serializeLedger(
 }
 
 function findTenantRun(data: Record<string, unknown>, selectedScope: { tId: number; sId: number } | null) {
-    if (!selectedScope || !Array.isArray(data.tenantRuns)) return null;
-    const run = data.tenantRuns.find((item: unknown) =>
-        isRecord(item) && item.tId === selectedScope.tId && item.sId === selectedScope.sId,
-    );
+    if (!selectedScope) return null;
+    const scopeKey = `${selectedScope.tId}_${selectedScope.sId}`;
+    const detailedRuns = isRecord(data.tenantRunsByScope) ? data.tenantRunsByScope : {};
+    const legacyRun = Array.isArray(data.tenantRuns)
+        ? data.tenantRuns.find((item: unknown) =>
+            isRecord(item) && item.tId === selectedScope.tId && item.sId === selectedScope.sId,
+        )
+        : null;
+    const run = isRecord(detailedRuns[scopeKey]) ? detailedRuns[scopeKey] : legacyRun;
     if (!isRecord(run)) return null;
+    const storedSequence = (value: unknown): unknown[] => Array.isArray(value)
+        ? value
+        : isRecord(value)
+            ? Object.keys(value).sort().map(key => value[key])
+            : [];
     const readWindows: Array<{
         key: string;
         task: string;
@@ -329,13 +339,14 @@ function findTenantRun(data: Record<string, unknown>, selectedScope: { tId: numb
         configuredLimit: number;
         saturated: boolean;
     }> = [];
-    const tasks = Array.isArray(run.tasks) ? run.tasks : [];
+    const tasks = storedSequence(run.tasks);
     for (const task of tasks) {
-        if (!task || typeof task !== 'object' || !Array.isArray(task.readWindows)) continue;
+        if (!isRecord(task)) continue;
         const taskName = cleanText(task.name, 80) || 'unknown';
-        for (const entry of task.readWindows) {
+        for (const entryValue of storedSequence(task.readWindows)) {
             if (readWindows.length >= SCHEDULER_READ_WINDOW_LIMIT) break;
-            if (!Array.isArray(entry) || entry.length !== 6) continue;
+            const entry = storedSequence(entryValue);
+            if (entry.length !== 6) continue;
             const source = cleanText(entry[0], 80);
             const window = cleanText(entry[1], 80);
             if (!source || !window) continue;
@@ -359,7 +370,7 @@ function findTenantRun(data: Record<string, unknown>, selectedScope: { tId: numb
         status: cleanText(run.status, 80) || 'unknown',
         durationMs: safeNumber(run.durationMs),
         taskCount: tasks.length,
-        errorCount: Array.isArray(run.errors) ? run.errors.length : 0,
+        errorCount: safeNumber(run.errorCount) || storedSequence(run.errors).length,
         driftDetected: safeNumber(run.driftDetected),
         proposalsCreated: safeNumber(run.proposalsCreated),
         coverageRate: safeNumber(run.coverageRate),

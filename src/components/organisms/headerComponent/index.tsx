@@ -1,6 +1,6 @@
 "use client"
 import TextElement from '@antdComponent/textElement';
-import EcomsIconLogo from '@atoms/ecomsLogo';
+import { MenuListIconLogo } from '@atoms/menuListLogo';
 import { APP_NAME } from '@constant/common';
 import { NAVIGARIONS_ROUTINGS } from '@constant/navigations';
 import { useAppSelector } from '@hook/useAppSelector';
@@ -36,7 +36,7 @@ const HeaderComponent = () => {
         <DashboardHeaderShell
             left={!isVerticalSidebar ? <Flex>
                 <div className={styles.logo}>
-                    <EcomsIconLogo />
+                    <MenuListIconLogo />
                 </div>
                 <AppBreadcrumb />
             </Flex> : <AppBreadcrumb />}

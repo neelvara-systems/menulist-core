@@ -8,14 +8,14 @@ import { getBoundedPaymentStringContext, logPaymentFailure } from '@hook/payment
 import { formatDateTime } from '@util/dateTime';
 import { Button, Card, Empty, Flex, Space, Table, Tag, Tooltip, Typography, message, theme } from 'antd';
 import { useFormatter } from 'next-intl';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { LuExternalLink, LuGift, LuMail, LuPackage, LuReceipt, LuZap } from 'react-icons/lu';
 
 const { Text } = Typography;
 
 interface BillingHistoryProps {
     billingHistory: BillingHistoryItem[];
-    fetchBillingHistory: () => void;
+    fetchBillingHistory: () => Promise<void | 'loaded' | 'error'>;
     diagnosticContext?: Record<string, boolean | number | string | null | undefined>;
 }
 
@@ -23,6 +23,8 @@ const BillingHistory = ({ billingHistory, fetchBillingHistory, diagnosticContext
     const { token } = theme.useToken();
     const formatter = useFormatter();
     const [sendingDocumentId, setSendingDocumentId] = useState<string | null>(null);
+    const [historyLoadState, setHistoryLoadState] = useState<'idle' | 'loading' | 'loaded' | 'error'>('idle');
+    const historyRequestInFlightRef = useRef(false);
     // A simple currency formatter (replace with your existing useFormatCurrency hook if preferred)
     const formatCurrency = (amount: number, currency: string) => {
         return new Intl.NumberFormat(currency === 'USD' ? 'en-US' : 'en-IN', {
@@ -92,6 +94,20 @@ const BillingHistory = ({ billingHistory, fetchBillingHistory, diagnosticContext
             case 'failed': return { color: 'error', label: 'Send failed' };
             case 'outcome_unknown': return { color: 'warning', label: 'Confirming' };
             default: return { color: 'default', label: 'Not sent' };
+        }
+    };
+
+    const handleFetchBillingHistory = async () => {
+        if (historyRequestInFlightRef.current) return;
+        historyRequestInFlightRef.current = true;
+        setHistoryLoadState('loading');
+        try {
+            const result = await fetchBillingHistory();
+            setHistoryLoadState(result || 'loaded');
+        } catch {
+            setHistoryLoadState('error');
+        } finally {
+            historyRequestInFlightRef.current = false;
         }
     };
 
@@ -203,11 +219,23 @@ const BillingHistory = ({ billingHistory, fetchBillingHistory, diagnosticContext
                 <Empty
                     image={Empty.PRESENTED_IMAGE_SIMPLE}
                     description={
-                        <Text type="secondary">Your past invoices and payments will appear here.</Text>
+                        <Text type={historyLoadState === 'error' ? 'danger' : 'secondary'}>
+                            {historyLoadState === 'loaded'
+                                ? 'No billing history was found for this store.'
+                                : historyLoadState === 'error'
+                                    ? 'Billing history could not be loaded. Try again.'
+                                    : 'Your past invoices and payments will appear here.'}
+                        </Text>
                     }
                 >
                     <Flex justify="center" style={{ marginTop: '24px', width: '100%' }}>
-                        <Button onClick={fetchBillingHistory} icon={<LuReceipt />}>View Billing History</Button>
+                        <Button
+                            onClick={() => void handleFetchBillingHistory()}
+                            icon={<LuReceipt />}
+                            loading={historyLoadState === 'loading'}
+                        >
+                            {historyLoadState === 'idle' ? 'View Billing History' : 'Check Billing History Again'}
+                        </Button>
                     </Flex>
                 </Empty>
             </Card>

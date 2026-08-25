@@ -11162,6 +11162,7 @@ body[data-menulist-website="true"] {
 .ws-drawer-brand {
   display: inline-flex;
   align-items: center;
+  min-height: 2.75rem;
   min-width: 0;
   color: var(--ws-text-primary);
   text-decoration: none;

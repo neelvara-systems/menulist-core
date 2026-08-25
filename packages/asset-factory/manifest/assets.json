@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updatedAt": "2026-08-20",
+  "updatedAt": "2026-08-25",
   "productBoundary": {
     "publicRuntime": false,
     "publicMarketing": false,
@@ -23,9 +23,9 @@
           "packages/asset-factory/brand/menulist.asset-context.md": "71f8f8195b97ab291d110a6c67743275e08c98dbea04f0486c3e230f29e05b09",
           "__docs__/main-website/main-website_image-assets.md": "689e24844c0fe4662d4e66e4092a12a7ff35bfe84e81b8bc3872dcc1301ba608",
           "scripts/website-assets/generate-stage6-assets.mjs": "f3deeadbb8bfe43dbcaa0806bf7f866429a302dbc052eb93de026554941fe085",
-          "src/styles/website.css": "b507a73cd5441faa7731bf072e57b34e341ffdb3539e4c85c0bafac0a090e4d5"
+          "src/styles/website.css": "8b21544793b38641d49af2dfc17553b8e3bd46719ac01e1fa8a5f489a47ce84b"
         },
-        "notes": "Locked by assets:fingerprint on 2026-08-20."
+        "notes": "Locked by assets:fingerprint on 2026-08-25."
       },
       "review": {
         "decision": "approved",
@@ -54,9 +54,9 @@
           "__docs__/main-website/main-website_image-assets.md": "689e24844c0fe4662d4e66e4092a12a7ff35bfe84e81b8bc3872dcc1301ba608",
           "src/content/websiteIndustries.ts": "3725fa80496b7b8751db6e8e61e350a1be8afb7ea8053062c5e64c0426f534f6",
           "src/components/website/industries/IndustryLandingPage.tsx": "e4afbf709d91f325e27f0e8eef13e440b4de61f88b3ee8a1b371ed0fed5b7768",
-          "src/styles/website.css": "b507a73cd5441faa7731bf072e57b34e341ffdb3539e4c85c0bafac0a090e4d5"
+          "src/styles/website.css": "8b21544793b38641d49af2dfc17553b8e3bd46719ac01e1fa8a5f489a47ce84b"
         },
-        "notes": "Locked by assets:fingerprint on 2026-08-20."
+        "notes": "Locked by assets:fingerprint on 2026-08-25."
       },
       "review": {
         "decision": "approved",
@@ -336,9 +336,9 @@
           "public/icons/icon-512x512.png": "2ef92365aadbc02eeaf609c077a17523eba7f2815eecca24f3d6c8d6a04dd380",
           "src/components/website/home/HeroSection.tsx": "3e585cc143fa55dea55aae76bcbbe7d61305f9cad283ed860a3dd9211a00ba83",
           "src/components/website/home/SurfacesSection.tsx": "d80291c94e3d90a8898291e6303c936439a65e5d94a548006edc65534ec236a9",
-          "src/styles/website.css": "b507a73cd5441faa7731bf072e57b34e341ffdb3539e4c85c0bafac0a090e4d5"
+          "src/styles/website.css": "8b21544793b38641d49af2dfc17553b8e3bd46719ac01e1fa8a5f489a47ce84b"
         },
-        "notes": "Locked by assets:fingerprint on 2026-08-20."
+        "notes": "Locked by assets:fingerprint on 2026-08-25."
       },
       "review": {
         "decision": "approved",
@@ -379,9 +379,9 @@
           "__docs__/main-website/asset-production/launch-pack-2026-07/menulist-launch-pack.md": "4eab7eaff29a8b775c94e8d8666ac2c93ac745f96dffac59648938312c392f9f",
           "scripts/website-assets/generate-product-proof-assets.mjs": "306138da98dfb37b1e997242b5e9acc1bdf1f8add70e6b1f9646f44b742d3439",
           "src/components/website/features/FeatureScreenshotProofGallery.tsx": "758fc3df406e61cf983da835e42fe889199d4cc06b5bb661e47b8c4d84ecb85f",
-          "src/components/mobile/MobileShell.tsx": "252e315e4cd80678b601aff021d18ff684c2d5c328ed5387f0a8b7e2ab391152"
+          "src/components/mobile/MobileShell.tsx": "6d490a57254b1983a2fa321e933f0abe30113e9d12359d2ad21e5b48983c6c32"
         },
-        "notes": "Locked by assets:fingerprint on 2026-08-20."
+        "notes": "Locked by assets:fingerprint on 2026-08-25."
       }
     },
     "menulist.launch.video.frame.approved-source": {

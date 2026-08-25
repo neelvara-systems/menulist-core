@@ -104,6 +104,12 @@ const HELP_CENTER_TAB_TO_MORE_SCREEN: Record<string, MoreSubScreen> = {
     ticket: 'answerlatticeSupport',
     changelog: 'answerlatticeReleaseNotes',
 };
+const HELP_CENTER_MORE_SCREENS: MoreSubScreen[] = [
+    'answerlatticeHelp',
+    'answerlatticeDocs',
+    'answerlatticeSupport',
+    'answerlatticeReleaseNotes',
+];
 const PLATFORM_MORE_SCREENS: MoreSubScreen[] = [
     'platformHub',
     'entityBlocks',
@@ -306,11 +312,13 @@ export default function MobileShell() {
     const isPlatformMobileScreen = activeTab === 'more' && PLATFORM_MORE_SCREENS.includes(moreScreen);
     const isResellerMobileScreen = activeTab === 'more' && RESELLER_MORE_SCREENS.includes(moreScreen);
     const isBillingRecoveryScreen = activeTab === 'more' && moreScreen === 'billing';
+    const isHelpRecoveryScreen = activeTab === 'more' && HELP_CENTER_MORE_SCREENS.includes(moreScreen);
     const shouldEagerLoadSelectedProject = activeTab === 'today'
         || activeTab === 'menu'
         || activeTab === 'aiMenuManager'
         || (activeTab === 'more' && SELECTED_PROJECT_DATA_MORE_SCREENS.includes(moreScreen));
     const shouldBypassSubscriptionGate = isBillingRecoveryScreen
+        || isHelpRecoveryScreen
         || (isPlatformAdmin && (isPlatformMobileScreen || isResellerMobileScreen))
         || (isResellerAccount && isResellerMobileScreen);
     const canUseTodayTab = hasAnyPermission(userPermissions, [

@@ -9,7 +9,7 @@ import { getDarkModeState, toggleDarkMode } from "@reduxSlices/clientThemeConfig
 import { Button, Form, Input } from "antd";
 import { sendPasswordResetEmail } from "firebase/auth";
 import { useSession } from "next-auth/react";
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { LuArrowLeft, LuMail, LuMoon, LuSun } from "react-icons/lu";
 import { useAppDispatch } from "src/hooks/useAppDispatch";
@@ -39,10 +39,19 @@ function ForgotPasswordPage() {
     const [isSending, setIsSending] = useState(false);
     const isDarkMode = useAppSelector(getDarkModeState)
     const router = useRouter();
+    const searchParams = useSearchParams();
     const loginPageRef = useRef<HTMLDivElement | null>(null);
     const journeyArtRef = useRef<HTMLSpanElement | null>(null);
     const journeyMotionEnabledRef = useRef(false);
     const journeyMotionFrame = useRef<number | null>(null);
+    const rawCallbackPath = searchParams?.get('callbackUrl');
+    const callbackPath = rawCallbackPath
+        && rawCallbackPath.startsWith('/')
+        && !rawCallbackPath.startsWith('//')
+        && rawCallbackPath.length <= 2_048
+        ? rawCallbackPath
+        : '/dashboard';
+    const signInPath = `${NAVIGARIONS_ROUTINGS.SIGNIN}?callbackUrl=${encodeURIComponent(callbackPath)}`;
 
     const resetJourneyMotion = useCallback(() => {
         if (typeof window !== 'undefined' && journeyMotionFrame.current !== null) {
@@ -104,9 +113,9 @@ function ForgotPasswordPage() {
 
     useEffect(() => {
         if (Boolean(session?.data?.user)) {
-            router.replace(HOME_ROUTING)
+            router.replace(callbackPath)
         }
-    }, [router, session?.data?.user])
+    }, [callbackPath, router, session?.data?.user])
 
     const forgotPassword = async ({ email }: { email: string }) => {
         setIsSending(true);
@@ -239,7 +248,7 @@ function ForgotPasswordPage() {
                                 type="text"
                                 className={styles.secondaryAuthButton}
                                 icon={<LuArrowLeft />}
-                                onClick={() => router.push(NAVIGARIONS_ROUTINGS.SIGNIN)}
+                                onClick={() => router.push(signInPath)}
                             >
                                 Return to sign in
                             </Button>

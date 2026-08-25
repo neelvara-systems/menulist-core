@@ -32,6 +32,7 @@ import { Badge, Button, Card, Empty, message, Modal, Space, Table, Tag, Typograp
 import { useFormatter } from 'next-intl';
 import { useContext, useRef, useState } from 'react';
 import { LuMapPin, LuPlusCircle, LuStar } from 'react-icons/lu';
+import { formatCurrency } from '@util/formatters';
 
 const { Title, Text } = Typography;
 
@@ -320,8 +321,8 @@ export default function LocationsPage() {
                 <Card size="small" title="Billing Summary">
                     <Space direction="vertical">
                         <Text>Active Outlets: <Text strong>{activeOutletCount}</Text></Text>
-                        <Text>Cost per Store: <Text strong>{formatter.number(amount, { currency, style: 'currency' })}/month</Text></Text>
-                        <Text>Total Chain Cost: <Text strong>{formatter.number(totalCost, { currency, style: 'currency' })}/month</Text> (Master + {activeOutletCount} active outlets)</Text>
+                        <Text>Cost per Store: <Text strong>{formatCurrency(amount, currency)}/month</Text></Text>
+                        <Text>Total Chain Cost: <Text strong>{formatCurrency(totalCost, currency)}/month</Text> (Master + {activeOutletCount} active outlets)</Text>
                         {activeSubscription?.cycleEndDate && (
                             <Text type="secondary">
                                 Next Invoice: {formatter.dateTime(activeSubscription.cycleEndDate.toDate(), 'date')}

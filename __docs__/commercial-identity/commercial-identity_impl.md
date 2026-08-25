@@ -10,6 +10,9 @@
   identity before calculating a tax snapshot.
 - Billing documents render the immutable supplier identity frozen in the tax
   snapshot; they do not read mutable public brand copy.
+- The authenticated owner header and sidebar render the MenuList mark and name
+  from `src/components/atoms/menuListLogo/index.tsx`. Legacy portfolio brand
+  artwork must not appear in the MenuList owner shell.
 
 ## Activation Gate
 

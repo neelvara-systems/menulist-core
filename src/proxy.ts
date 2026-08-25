@@ -458,12 +458,19 @@ const CONTROLLED_PRODUCT_REQUEST_HEADERS = [
     'x-product-name',
     'x-product-base-path',
     'x-answerlattice-request-path',
+    'x-menulist-owner-request-path',
 ] as const;
 
 function setAnswerlatticeRequestPathHeader(requestHeaders: Headers, request: NextRequest): void {
     const pathname = request.nextUrl.pathname;
     if (pathname !== '/answerlattice' && !pathname.startsWith('/answerlattice/')) return;
     requestHeaders.set('x-answerlattice-request-path', `${pathname}${request.nextUrl.search}`);
+}
+
+function setMenuListOwnerRequestPathHeader(requestHeaders: Headers, request: NextRequest): void {
+    const pathname = request.nextUrl.pathname;
+    if (!isMenuListOwnerAppPath(pathname)) return;
+    requestHeaders.set('x-menulist-owner-request-path', `${pathname}${request.nextUrl.search}`);
 }
 
 function getSanitizedRoutingRequestHeaders(request: NextRequest): Headers {
@@ -477,6 +484,7 @@ function getSanitizedRoutingRequestHeaders(request: NextRequest): Headers {
 function nextWithSanitizedRoutingHeaders(request: NextRequest): NextResponse {
     const requestHeaders = getSanitizedRoutingRequestHeaders(request);
     setAnswerlatticeRequestPathHeader(requestHeaders, request);
+    setMenuListOwnerRequestPathHeader(requestHeaders, request);
     return NextResponse.next({
         request: { headers: requestHeaders },
     });

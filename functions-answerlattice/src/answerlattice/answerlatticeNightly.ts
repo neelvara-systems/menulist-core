@@ -90,6 +90,7 @@ import { syncSupportBoardNightly } from './supportBoardSync';
 import { getBoundedFunctionsErrorContext } from '../utils/boundedErrorContext';
 import {
     AnswerlatticeTenantStore,
+    getAnswerlatticeTenantSummaryKey,
     readAnswerlatticeTenantSummaryRegistry,
     upsertAnswerlatticeTenantSummaryEntries,
 } from './tenantSummary';
@@ -159,6 +160,39 @@ interface AnswerlatticeTenantRun {
     coverageHits: number;
     coverageTotal: number;
     signalsArchived: number;
+}
+
+function stripUndefinedSchedulerFields<T>(value: T): T {
+    if (Array.isArray(value)) {
+        return value
+            .filter(entry => entry !== undefined)
+            .map(entry => stripUndefinedSchedulerFields(entry)) as T;
+    }
+    if (!value || typeof value !== 'object') return value;
+    const prototype = Object.getPrototypeOf(value);
+    if (prototype !== Object.prototype && prototype !== null) return value;
+    return Object.fromEntries(
+        Object.entries(value as Record<string, unknown>)
+            .filter(([, entry]) => entry !== undefined)
+            .map(([key, entry]) => [key, stripUndefinedSchedulerFields(entry)]),
+    ) as T;
+}
+
+function toFirestoreSchedulerMap(value: unknown): unknown {
+    if (Array.isArray(value)) {
+        return Object.fromEntries(value.map((entry, index) => [
+            `item_${String(index).padStart(3, '0')}`,
+            toFirestoreSchedulerMap(entry),
+        ]));
+    }
+    if (!value || typeof value !== 'object') return value;
+    const prototype = Object.getPrototypeOf(value);
+    if (prototype !== Object.prototype && prototype !== null) return value;
+    return Object.fromEntries(
+        Object.entries(value as Record<string, unknown>)
+            .filter(([, entry]) => entry !== undefined)
+            .map(([key, entry]) => [key, toFirestoreSchedulerMap(entry)]),
+    );
 }
 
 function getRecurringAiFailureSummary(tenantRun: AnswerlatticeTenantRun): {
@@ -2256,7 +2290,8 @@ export async function runAnswerlatticeNightly(options: {
 
     const writeRunLog = async (payload: Record<string, any>) => {
         try {
-            await db.collection(DB_COLLECTIONS.ANSWERLATTICE_SCHEDULER_RUN_LOGS).doc(runLogId).set({
+            const persistedTenantRuns = result.tenantRuns.slice(0, 100);
+            const runLogDocument = stripUndefinedSchedulerFields({
                 runLogId,
                 product: 'answerlattice',
                 trigger,
@@ -2306,9 +2341,17 @@ export async function runAnswerlatticeNightly(options: {
                     retentionContentFeedbackDeleted: result.retentionContentFeedbackDeleted,
                     retentionContextBundleObjectsDeleted: result.retentionContextBundleObjectsDeleted,
                 },
-                errors: result.errorDetails.slice(0, 100),
+                errors: toFirestoreSchedulerMap(result.errorDetails.slice(0, 100)),
                 errorMessages: result.errors.slice(0, 100),
-                tenantRuns: result.tenantRuns.slice(0, 100),
+                tenantRuns: persistedTenantRuns.map(({ tasks, errors, ...tenantRun }) => ({
+                    ...tenantRun,
+                    taskCount: tasks.length,
+                    errorCount: errors.length,
+                })),
+                tenantRunsByScope: Object.fromEntries(persistedTenantRuns.map(tenantRun => [
+                    getAnswerlatticeTenantSummaryKey(tenantRun.tId, tenantRun.sId),
+                    toFirestoreSchedulerMap(tenantRun),
+                ])),
                 metadata: {
                     limits: SCHEDULER_LIMITS,
                     workflowIntegrationsEnabled: FUNCTION_FLAGS.ENABLE_ANSWERLATTICE_WORKFLOW_INTEGRATIONS,
@@ -2326,11 +2369,20 @@ export async function runAnswerlatticeNightly(options: {
                 },
                 ...getAnswerlatticeRetentionFields('schedulerRunLogs', startedAt),
                 ...payload,
-            }, { merge: true });
+            });
+            await db.collection(DB_COLLECTIONS.ANSWERLATTICE_SCHEDULER_RUN_LOGS).doc(runLogId).set(
+                runLogDocument,
+                { merge: true },
+            );
         } catch (error) {
             logger.error('[Answerlattice Nightly] Failed to persist scheduler run log', {
                 runLogId,
                 failureCode: ANSWERLATTICE_SCHEDULER_RUN_LOG_WRITE_FAILED,
+                tenantRunCount: result.tenantRuns.length,
+                taskCount: result.tenantRuns.reduce((count, tenantRun) => count + tenantRun.tasks.length, 0),
+                ...(process.env.FIRESTORE_EMULATOR_HOST && error instanceof Error
+                    ? { emulatorError: error.message.slice(0, 500) }
+                    : {}),
                 ...getAnswerlatticeSchedulerSourceErrorContext(error),
             });
         }
@@ -2374,9 +2426,9 @@ export async function runAnswerlatticeNightly(options: {
                 durationMs: Date.now() - taskStart,
                 details: buildDetails(taskResult),
                 ...(readWindows.length > 0 ? { readWindows } : {}),
-                error: newErrorCount > 0
-                    ? tenantRun.errors.slice(errorCountBefore).map(diagnosticToMessage).join('; ').substring(0, 1000)
-                    : undefined,
+                ...(newErrorCount > 0 ? {
+                    error: tenantRun.errors.slice(errorCountBefore).map(diagnosticToMessage).join('; ').substring(0, 1000),
+                } : {}),
             });
 
             return taskResult;

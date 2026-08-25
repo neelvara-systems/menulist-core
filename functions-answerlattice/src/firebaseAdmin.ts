@@ -63,8 +63,22 @@ function getAnswerlatticeProjectId(): string | undefined {
 }
 
 function getAnswerlatticeStorageBucket(): string | undefined {
-    return process.env.ANSWERLATTICE_FIREBASE_STORAGE_BUCKET ||
+    const explicitBucket = process.env.ANSWERLATTICE_FIREBASE_STORAGE_BUCKET ||
         process.env.NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_STORAGE_BUCKET;
+    if (explicitBucket) return explicitBucket;
+
+    try {
+        const firebaseConfig = JSON.parse(process.env.FIREBASE_CONFIG || '{}') as { storageBucket?: unknown };
+        return typeof firebaseConfig.storageBucket === 'string'
+            && firebaseConfig.storageBucket === firebaseConfig.storageBucket.trim()
+            && firebaseConfig.storageBucket.length > 0
+            && firebaseConfig.storageBucket.length <= 253
+            && !firebaseConfig.storageBucket.includes('/')
+            ? firebaseConfig.storageBucket
+            : undefined;
+    } catch {
+        return undefined;
+    }
 }
 
 function getShouldUseSharedFirebase(): boolean {

@@ -19,6 +19,16 @@
 - Source-window telemetry adds no Firestore query or extra run-log write.
 - The platform intake monitor validates tuple shape, returns at most 80 windows, and labels values as logical observations rather than billed reads.
 - `npm run test:answerlattice-scheduler-read-telemetry` covers aggregation, saturation, invalid input, the eight-window cap, and snapshot isolation.
+- `npm run test:answerlattice-master-scheduler:emulator` runs the real master scheduler against Firestore and Storage emulators with two due tenants, one active non-due tenant, and one inactive tenant.
+- The combined gate proves one stale reservation is refunded exactly once, its pointer is deleted, its operation is marked refunded, and a repeat tick neither refunds nor reruns completed tenant dates.
+- An expired task lease is reclaimable; an active task lease skips only its own task while independent tasks continue.
+- Malformed reservation evidence yields a partial scheduler result, retains forensic evidence, mints no credits, and does not fail provider-health or governance tasks.
+- Completed nightly logs persist `status: success`, flat compatibility summaries, and detailed `tenantRunsByScope` evidence without unsupported nested arrays.
+- Owner Operations reads flat `taskCount`/`errorCount`; the platform intake monitor reads detailed scope-keyed task/read-window maps and remains compatible with legacy array logs.
+- Hosted QA proves the first scheduled execution completes 20 tasks for each of two due tenants, emits zero tenant errors, rebuilds a non-empty compiled context bundle, indexes the fixture entity, writes trust and intake summaries, rebuilds predictive cache, and refunds one valid stale reservation exactly once.
+- The active non-due and inactive controls never receive nightly state. The next untouched hourly scheduler attempt advances the master state while matching governance-run count remains one and recovery reports zero refunds.
+- Both ascending scheduler indexes must read back `READY`; both scheduler Functions must read back `ACTIVE`; the Cloud Scheduler job must read back `ENABLED` at `30 * * * *` UTC with an empty status object.
+- QA cleanup must remove every owned entity, store, subscription, reservation, operation, nightly state, registry entry, owned run log, and compiled-context Storage prefix. No production fixture is allowed.
 
 ## Settings
 

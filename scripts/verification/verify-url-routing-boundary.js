@@ -700,6 +700,8 @@ function verifyMiddlewareBoundary() {
   assertIncludes(middleware, "response.headers.set('x-tenant-type', 'subdomain');", 'middleware subdomain tenant type header');
   assertIncludes(middleware, "response.headers.set('x-tenant-type', 'custom');", 'middleware custom-domain tenant type header');
   assertIncludes(middleware, 'getSanitizedRoutingRequestHeaders(request)', 'middleware controlled routing-header sanitization');
+  assertIncludes(middleware, "'x-menulist-owner-request-path'", 'middleware controlled owner callback header');
+  assertIncludes(middleware, 'setMenuListOwnerRequestPathHeader(requestHeaders, request);', 'middleware owner callback path injection');
   assertIncludes(middleware, "CONTROLLED_TENANT_REQUEST_HEADERS.forEach((header) => requestHeaders.delete(header));", 'middleware forged tenant-header removal');
   assertIncludes(middleware, "CONTROLLED_HOSTED_HELP_REQUEST_HEADERS.forEach((header) => requestHeaders.delete(header));", 'middleware forged hosted-help header removal');
   assertIncludes(middleware, "CONTROLLED_PRODUCT_REQUEST_HEADERS.forEach((header) => requestHeaders.delete(header));", 'middleware forged product-header removal');

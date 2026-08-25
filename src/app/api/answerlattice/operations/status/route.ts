@@ -203,8 +203,12 @@ export const GET = withAuth(async (request: NextRequest, session) => {
                 completedAt: toIso(data.completedAt),
                 durationMs: normalizeAnswerlatticeOperationsMetric(data.durationMs),
                 tenantStatus: normalizeStatus(tenantRun.status),
-                taskCount: Array.isArray(tenantRun.tasks) ? tenantRun.tasks.length : 0,
-                errorCount: Array.isArray(tenantRun.errors) ? tenantRun.errors.length : 0,
+                taskCount: normalizeAnswerlatticeOperationsMetric(
+                    tenantRun.taskCount ?? (Array.isArray(tenantRun.tasks) ? tenantRun.tasks.length : 0),
+                ),
+                errorCount: normalizeAnswerlatticeOperationsMetric(
+                    tenantRun.errorCount ?? (Array.isArray(tenantRun.errors) ? tenantRun.errors.length : 0),
+                ),
                 totals: {},
             }];
         });

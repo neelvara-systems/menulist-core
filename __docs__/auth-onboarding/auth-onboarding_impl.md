@@ -35,6 +35,10 @@ The session contains both top-level shortcuts and the compact `session.user` pro
 
 The login page stores a pending claim token across OAuth. After NextAuth returns, one synchronous `claimProcessingRef` guard prevents session rerenders from starting Firebase sync or redirect while the claim request is still committing. On success it refreshes the session, syncs Firebase Auth, and hard-navigates into the refreshed scope. On failure it clears the local pending token and continues with normal login behavior.
 
+The global authentication layout revalidates the persisted current user before passing an existing session to client recovery surfaces, but it does not replace the route with `/dashboard`. The sign-in screen owns the final redirect because it validates and preserves same-origin `callbackUrl` path, query, and hash. This keeps selected pricing-plan intent intact for an already-authenticated owner. When an older, different subscription checkout is already pending, Pricing renders the current pending subscription plus an explicit conflict notice instead of implying that the newly selected plan replaced it or starting a duplicate provider checkout.
+
+The owner layout applies the same entitlement contract to direct routes as the sidebar. Once a store is resolved, an owner with neither paid nor active Starter access may use only Billing and Help Center recovery routes; direct links to Locations or other paid workspace routes are replaced with Billing. This prevents stale bookmarks or manually entered URLs from bypassing the recovery-only state while preserving no-store onboarding routing and the separate MobileShell subscription gate.
+
 ## Phone OTP
 
 Start and verify routes apply fail-closed shared rate limits before paid WhatsApp work or challenge verification. The helper stores only HMAC forms of OTP/login secrets, commits invalid-attempt and expiry state, reserves valid verification with a lease, atomically creates the one-time login token, and consumes it only after reading the exact bound user.

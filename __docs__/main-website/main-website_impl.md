@@ -449,7 +449,7 @@ src/pages/
 - `SchemaMarkup.tsx` injects Organization, WebSite, SoftwareApplication, WebPage, and BreadcrumbList schema on homepage through `JsonLdScript`
 - `WebsitePageStructuredData.tsx` injects WebPage and BreadcrumbList schema on active platform pages using the same production canonical URL source
 - `/create-menu/success` keeps post-setup query URLs out of indexable discovery with server-emitted `noindex, nofollow, nocache` metadata and a self canonical to the non-query success path
-- Sitemap: `src/app/sitemap.ts` and `public/sitemap.xml` use the shared active route inventory and omit the legacy `/product` redirect
+- Sitemap: `public/sitemap.xml` is the single runtime owner of `/sitemap.xml`, follows the shared active route inventory in `src/lib/seo/discoveryPolicy.ts`, and omits the legacy `/product` redirect. The former duplicate App Router sitemap route was removed after runtime certification reproduced Next.js' conflicting-public-file 500.
 - Robots: Full crawling enabled (index, follow, max-image-preview: large) with non-www canonical discovery links
 - Agent context: `public/llms.txt` and `public/llms-full.txt` define public business fact access, official handoff boundaries, unknown handling, and WebMCP/MCP deferral
 - Per-page canonical URLs via `alternates.canonical`

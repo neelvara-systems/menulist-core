@@ -11,7 +11,6 @@ import '@styles/app.scss'
 import type { Metadata, Viewport } from 'next'
 import { getServerSession } from 'next-auth'
 import { getLocale } from 'next-intl/server'
-import { redirect } from 'next/navigation'
 import { Suspense } from 'react'
 import ServerSidePageLoader from '../loading'
 
@@ -35,12 +34,17 @@ export default async function AuthLayout({
 }: {
     children: React.ReactNode
 }) {
-    // Check if user is already authenticated - if yes, redirect to dashboard
+    // Re-read current authority before exposing a signed session to recovery pages.
+    // The sign-in screen performs the final redirect because it can preserve the
+    // validated callbackUrl (for example, a selected pricing plan).
     const session = await getServerSession(authOptions)
+    let activeSession = session
     if (session) {
         const currentUser = await getCurrentUser(session)
         if (currentUser) {
-            redirect('/dashboard')
+            activeSession = session
+        } else {
+            activeSession = null
         }
     }
 
@@ -51,7 +55,7 @@ export default async function AuthLayout({
         <AntdRegistry>
             <LocalisationProvider locale={locale}>
                 <ReduxStoreProvider>
-                    <SessionProvider session={session}>
+                    <SessionProvider session={activeSession}>
                         <NoSSRProvider>
                             <AntdThemeProvider>
                                 <Suspense fallback={<ServerSidePageLoader page="Authentication" />}>

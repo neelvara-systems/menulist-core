@@ -8431,7 +8431,10 @@ function verifyAnswerlatticeSchedulerReadTelemetry() {
     (nightly.match(/const readWindows = readObserver\.snapshot\(\);/g) || []).length === 2,
     'Answerlattice scheduler must preserve source windows on task success and failure',
   );
-  assertIncludes(nightly, 'tenantRuns: result.tenantRuns.slice(0, 100),', 'Answerlattice scheduler existing bounded run-log persistence');
+  assertIncludes(nightly, 'const persistedTenantRuns = result.tenantRuns.slice(0, 100);', 'Answerlattice scheduler bounded run-log tenant selection');
+  assertIncludes(nightly, 'tenantRunsByScope: Object.fromEntries(persistedTenantRuns.map(tenantRun => [', 'Answerlattice scheduler Firestore-compatible detailed tenant map');
+  assertIncludes(nightly, 'taskCount: tasks.length,', 'Answerlattice scheduler flat tenant summary task count');
+  assertIncludes(nightly, 'function toFirestoreSchedulerMap', 'Answerlattice scheduler nested-array-safe persistence projection');
   assertIncludes(monitorRoute, 'const SCHEDULER_READ_WINDOW_LIMIT = 80;', 'Answerlattice platform monitor telemetry response bound');
   assertIncludes(monitorRoute, 'entry.length !== 6', 'Answerlattice platform monitor compact tuple validation');
   assertIncludes(monitorUi, 'Latest scheduler source windows', 'Answerlattice platform monitor source-window table');
@@ -9168,6 +9171,9 @@ function verifyAnswerlatticeContextBundleVersionBoundary() {
 
 function verifyAnswerlatticeAiProviderHealthDiagnostics() {
   const aiProviderHealth = read('functions-answerlattice/src/answerlattice/aiProviderHealth.ts');
+  const masterScheduler = read('functions-answerlattice/src/answerlattice/answerlatticeMasterScheduler.ts');
+  const functionsFirebaseAdmin = read('functions-answerlattice/src/firebaseAdmin.ts');
+  const dedicatedIndexes = JSON.parse(read('firestore-answerlattice.indexes.json'));
   const packageJson = JSON.parse(read('package.json'));
   const emulatorCommand = packageJson.scripts?.['test:answerlattice-ai-provider-health-state:emulator'] || '';
 
@@ -9179,6 +9185,24 @@ function verifyAnswerlatticeAiProviderHealthDiagnostics() {
   assertIncludes(aiProviderHealth, 'export async function replaceAnswerlatticeAiProviderHealthState', 'Answerlattice AI provider health exact success-state writer');
   assertIncludes(aiProviderHealth, 'await replaceAnswerlatticeAiProviderHealthState(details);', 'Answerlattice AI provider health exact success-state use');
   assertIncludes(aiProviderHealth, 'const previousCompletedMillis = timestampMillis(current.lastCompletedAt);', 'Answerlattice AI provider health single safe previous timestamp projection');
+  assertIncludes(aiProviderHealth, 'return {\n        activity: true,\n        details: {\n            latencyMs,', 'Answerlattice AI provider health completed provider call records real scheduler activity');
+  assertIncludes(masterScheduler, "const taskStatePath = `tasks.${params.task.name}`;", 'Answerlattice scheduler outcome targets one exact task-state map');
+  assertIncludes(masterScheduler, "{ mergeFields: ['schedulerName', 'updatedAt', taskStatePath] }", 'Answerlattice scheduler outcome replaces stale per-task details without overwriting sibling tasks');
+  assertIncludes(functionsFirebaseAdmin, "JSON.parse(process.env.FIREBASE_CONFIG || '{}')", 'Answerlattice Functions recover the managed runtime Storage bucket from FIREBASE_CONFIG');
+  assertIncludes(functionsFirebaseAdmin, "!firebaseConfig.storageBucket.includes('/')", 'Answerlattice Functions reject malformed managed Storage bucket names');
+  const hasAscendingIndex = (collectionGroup, terminalField) => dedicatedIndexes.indexes.some((index) => (
+    index.collectionGroup === collectionGroup
+    && index.queryScope === 'COLLECTION'
+    && JSON.stringify(index.fields) === JSON.stringify([
+      { fieldPath: 'pId', order: 'ASCENDING' },
+      { fieldPath: 'tId', order: 'ASCENDING' },
+      { fieldPath: 'sId', order: 'ASCENDING' },
+      { fieldPath: terminalField, order: 'ASCENDING' },
+    ])
+  ));
+  assert(hasAscendingIndex('answerlattice_frictionDailyStats', 'date'), 'Answerlattice scheduler friction cleanup ascending index');
+  assert(hasAscendingIndex('chatSessions', 'modifiedOn'), 'Answerlattice scheduler changed-chat cursor ascending index');
+  assert(packageJson.scripts?.['test:answerlattice-master-scheduler:emulator']?.includes('test-answerlattice-master-scheduler-emulator.ts'), 'Answerlattice master scheduler multi-tenant emulator gate');
   assertIncludes(aiProviderHealth, "new Date(lastCompletedMillis).toISOString().slice(0, 10) !== lastCompletedDayKey", 'Answerlattice AI provider health completion day/timestamp coherence');
   assertIncludes(aiProviderHealth, 'function getSafeErrorName', 'Answerlattice AI provider health nonthrowing error-name projection');
   assertIncludes(aiProviderHealth, 'failureCode: ANSWERLATTICE_AI_PROVIDER_HEALTH_FAILURE_STATE_WRITE_FAILED', 'Answerlattice AI provider health state-write diagnostic');

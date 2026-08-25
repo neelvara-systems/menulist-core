@@ -13,6 +13,7 @@ import "@styles/app.scss"
 import type { Metadata, Viewport } from 'next'
 import { getServerSession } from 'next-auth'
 import { getLocale } from 'next-intl/server'
+import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
 import SessionExpiryMonitor from '../../components/auth/SessionExpiryMonitor'
 import OwnerPermissionGuard from '../../components/auth/OwnerPermissionGuard'
@@ -42,7 +43,14 @@ export default async function MainLayout({ children }: { children: React.ReactNo
 
   const session = await getServerSession(authOptions);
   if (!session) {
-    redirect("/signin");
+    const requestPath = (await headers()).get('x-menulist-owner-request-path');
+    const callbackPath = requestPath
+      && requestPath.startsWith('/')
+      && !requestPath.startsWith('//')
+      && requestPath.length <= 2_048
+      ? requestPath
+      : '/dashboard';
+    redirect(`/signin?callbackUrl=${encodeURIComponent(callbackPath)}`);
   }
   if (session.user?.active === false || session.user?.deleted === true || session.user?.isVerified === false || isPlatformEntityBlocked(session.user)) {
     redirect("/unauthorized");

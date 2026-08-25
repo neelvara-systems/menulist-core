@@ -19,6 +19,11 @@ import { recoverAnswerlatticeAiCapacityReservations } from '../../functions-answ
 const scope = { tId: 91, sId: 901 };
 const db = requireAnswerlatticeFirestoreAdmin();
 const subscriptionId = 'al-subscription-901';
+let currentScenario = 'initialization';
+
+const scenario = (name: string): void => {
+    currentScenario = name;
+};
 
 const result = (aiProviderUsed: boolean): CoreSearchResult => ({
     craftedAnswer: aiProviderUsed ? 'Provider-backed answer.' : 'Approved answer.',
@@ -57,6 +62,8 @@ async function seedSubscription(monthlyCredits: number, pId: string = PRODUCT_ID
             tenantId: scope.tId,
             storeId: scope.sId,
             status: 'active',
+            billingMode: 'manual',
+            manualPaymentConfirmed: true,
             cycleStartDate,
             cycleEndDate: Timestamp.fromMillis(Date.now() + 86_400_000),
             monthlyCreditsAllowance: monthlyCredits,
@@ -83,6 +90,7 @@ async function operationCount(): Promise<number> {
 
 async function run(): Promise<void> {
     if (!process.env.FIRESTORE_EMULATOR_HOST) throw new Error('FIRESTORE_EMULATOR_HOST is required');
+    scenario('provider-free and settled provider request');
     await seedSubscription(2);
     const deterministic = createAccounting('deterministic_001');
     await deterministic.settle(result(false), 12);
@@ -104,6 +112,7 @@ async function run(): Promise<void> {
     assert.equal(paidStore?.['answerlatticeSubscription.monthlyCredits'], undefined, 'summary updates must not create literal dotted fields');
     assert.equal(await operationCount(), 1, 'an idempotent retry must reuse the operation row');
 
+    scenario('concurrent admission');
     await seedSubscription(1);
     const first = createAccounting('concurrent_001');
     const second = createAccounting('concurrent_002');
@@ -116,6 +125,7 @@ async function run(): Promise<void> {
     assert.equal((await db.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc(subscriptionId).get()).data()?.monthlyCredits, 0);
     assert.equal(await operationCount(), 2, 'only the pre-provider-reserved concurrent request may create an operation row');
 
+    scenario('cross-product rejection');
     await seedSubscription(1, PRODUCT_IDS.MENULIST);
     const crossProduct = createAccounting('wrong_product_001');
     await assert.rejects(
@@ -124,6 +134,7 @@ async function run(): Promise<void> {
         'a shared-project subscription from another product must fail before provider use',
     );
 
+    scenario('pending subscription rejection');
     await seedSubscription(1);
     await db.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc(subscriptionId).set({ status: 'pending' }, { merge: true });
     const pending = createAccounting('pending_state_001');
@@ -133,6 +144,7 @@ async function run(): Promise<void> {
         'a pending subscription must fail before provider use',
     );
 
+    scenario('numeric-string balance rejection');
     await seedSubscription(1);
     await db.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc(subscriptionId).set({ monthlyCredits: '1' }, { merge: true });
     const numericStringBalance = createAccounting('numeric_string_balance_001');
@@ -142,6 +154,7 @@ async function run(): Promise<void> {
         'numeric-string subscription balances must not authorize Answerlattice provider work',
     );
 
+    scenario('fractional balance rejection');
     await seedSubscription(1);
     await db.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc(subscriptionId).set({ topUpCredits: 0.5 }, { merge: true });
     const fractionalBalance = createAccounting('fractional_balance_001');
@@ -151,6 +164,7 @@ async function run(): Promise<void> {
         'fractional subscription balances must not authorize Answerlattice provider work',
     );
 
+    scenario('coercible status rejection');
     await seedSubscription(1);
     await db.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc(subscriptionId).set({ status: ' ACTIVE ' }, { merge: true });
     const coercibleStatus = createAccounting('coercible_status_001');
@@ -160,6 +174,7 @@ async function run(): Promise<void> {
         'coercible subscription states must not authorize Answerlattice provider work',
     );
 
+    scenario('stale capacity snapshot');
     await seedSubscription(1);
     const staleCapacitySnapshot = await db.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc(subscriptionId).get();
     const staleCapacitySubscription = {
@@ -187,6 +202,7 @@ async function run(): Promise<void> {
         'a stale preloaded subscription must not reset credits after current scope changed',
     );
 
+    scenario('expired capacity snapshot');
     await seedSubscription(2);
     const expiredCapacitySnapshot = await db.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc(subscriptionId).get();
     const expiredCapacitySubscription = {
@@ -209,6 +225,7 @@ async function run(): Promise<void> {
         'an expired current subscription must not reset or debit credits',
     );
 
+    scenario('expired reservation');
     await seedSubscription(2);
     const expiredReservationSnapshot = await db.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc(subscriptionId).get();
     const expiredReservationSubscription = {
@@ -236,6 +253,7 @@ async function run(): Promise<void> {
         'rejected expired reservations must not create operation rows',
     );
 
+    scenario('stale-scope reservation retry');
     await seedSubscription(2);
     const staleReservationSnapshot = await db.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc(subscriptionId).get();
     const staleReservationSubscription = {
@@ -275,6 +293,7 @@ async function run(): Promise<void> {
             .doc(String(scope.tId)).collection(String(scope.sId)).doc(staleScopeReservation.operationId).delete(),
     ]);
 
+    scenario('invalid capacity quantity');
     await seedSubscription(1);
     await assert.rejects(
         () => checkAnswerlatticeAICapacity(scope, 'answerlattice_support_search', '1' as unknown as number),
@@ -282,6 +301,7 @@ async function run(): Promise<void> {
         'numeric-string operation quantities must not be accepted as Answerlattice credit units',
     );
 
+    scenario('malformed replay evidence');
     await seedSubscription(2);
     const operationIdsBeforeReplayTest = new Set((await db.collection(DB_COLLECTIONS.ANSWERLATTICE_AI_OPERATIONS)
         .doc(String(scope.tId))
@@ -319,6 +339,7 @@ async function run(): Promise<void> {
     );
     assert.equal((await db.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc(subscriptionId).get()).data()?.monthlyCredits, 1);
 
+    scenario('provider-not-used refund');
     await seedSubscription(1);
     const providerNotUsed = createAccounting('provider_not_used_001');
     await providerNotUsed.beforeAiProviderCall();
@@ -330,6 +351,7 @@ async function run(): Promise<void> {
         'a reserved request that never uses the provider must refund its credit',
     );
 
+    scenario('failed-request refund');
     await seedSubscription(1);
     const failedRequest = createAccounting('failed_request_001');
     await failedRequest.beforeAiProviderCall();
@@ -340,6 +362,7 @@ async function run(): Promise<void> {
         'a failed request must refund its pre-provider reservation',
     );
 
+    scenario('stale reservation recovery');
     await seedSubscription(1);
     const staleReservation = createAccounting('stale_reservation_001');
     await staleReservation.beforeAiProviderCall();
@@ -359,6 +382,7 @@ async function run(): Promise<void> {
     assert.equal((await stalePointer.ref.get()).exists, false, 'successful stale recovery must delete its root pointer');
     assert.equal((await staleOperationRef.get()).data()?.accountingStatus, 'refunded');
 
+    scenario('malformed recovery evidence');
     await seedSubscription(1);
     const malformedRecovery = createAccounting('malformed_recovery_001');
     await malformedRecovery.beforeAiProviderCall();
@@ -390,6 +414,7 @@ async function run(): Promise<void> {
 }
 
 run().catch((error) => {
+    console.error(`Answerlattice support-search accounting scenario failed: ${currentScenario}`);
     console.error(error);
     process.exit(1);
 });

@@ -1840,3 +1840,224 @@ Those fields are explicitly `unknown` instead of guessed.
   paths remain. This performed ledger append is the final evidence-only local
   modification before the optional closeout commit.
 - Attribution confidence: exact.
+-
+### FIREBASE-20260825-075511-answerlattice-scheduler-activity-release
+
+- Timestamp: `2026-08-25T07:55:11+05:30`
+- Record type: `PLANNED`
+- Actor/session/thread ID: current Codex Answerlattice scheduler verification task; raw thread ID unavailable
+- Registered worktrees: one worktree at `/Users/danny/Projects/MenuListAi/menulist-core`, checked out on `staging`
+- Authorization: Danny's current `Yes proceed` response authorizes the immediately preceding exact scope: deploy the corrected Answerlattice scheduler Functions to QA, run a QA-only normal-schedule due-work verification, and only after that passes deploy and read back the identical Functions source in production.
+- Operation: deploy only `functions:answerlattice:answerlatticeNightly` and `functions:answerlattice:triggerAnswerlatticeNightly` to `neelvara-answerlattice-qa`; create one disposable QA provider-health due marker; wait for the next ordinary Cloud Scheduler tick without manual invocation; require fresh Gemini provider evidence, `activity: true`, self-cleanup, and zero scheduler errors; then deploy and read back the identical two Functions in `neelvara-answerlattice-prod`. No Rules, indexes, Storage Rules, other Functions, Hosting, Vercel, payment execution, WhatsApp activation, production data fixture, commit, push, or branch movement is part of this Firebase operation.
+- Local source artifact: SHA-256 `ad2070893177d08cdbc6a3c780e46c15e229e87fcecb2fe08febc699363639de`, 1,220,523 bytes across 102 tracked `functions-answerlattice` files excluding generated `lib`, calculated as `sha256(path + NUL + working-tree bytes)` in sorted Git path order.
+- Local validation before deploy: dedicated Functions build, Answerlattice typecheck, focused ESLint, runtime-truth assertion, scheduler settlement-state test, scheduler read-telemetry test, provider-health Firestore emulator test, and `git diff --check` passed. The broader aggregate reached a separate emulator rule suite but could not bind port 8080 because the concurrent `demo-messaging-session-concurrency` emulator owned it; that unrelated process was preserved.
+- Branch matrix before:
+
+  | Branch | Local full SHA | Direct server ref/full SHA | Tracking ref | Ahead/behind | Worktree | Staged/unstaged/untracked | Status |
+  | --- | --- | --- | --- | --- | --- | --- | --- |
+  | `main` | `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `refs/heads/main` / `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `origin/main` | `0/0` | not checked out | `N/A` | `IN_SYNC` |
+  | `staging` | `916b5c94d82b848fef791babeb49addbd3c794b8` | `refs/heads/staging` / `916b5c94d82b848fef791babeb49addbd3c794b8` | `origin/staging` | `0/0` | primary worktree | `0/5/0` before this ledger append | `IN_SYNC` |
+
+- Firebase matrix before:
+
+  | Product | Environment/project | Component | Local source/config | Local evidence | Server evidence | Delta | Deployment state |
+  | --- | --- | --- | --- | --- | --- | --- | --- |
+  | MenuList | QA / `menulist-qa` | Firestore Rules | `firestore-menulist.rules` unchanged | no changed path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | QA / `menulist-qa` | Firestore indexes | `firestore.indexes.json` unchanged | no changed path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | QA / `menulist-qa` | Storage Rules | `storage.rules` unchanged | no changed path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | QA / `menulist-qa` | Cloud Functions | `functions/` unchanged | no changed path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | production / `menulist-prod` | Firestore Rules | `firestore-menulist.rules` unchanged | no changed path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | production / `menulist-prod` | Firestore indexes | `firestore.indexes.json` unchanged | no changed path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | production / `menulist-prod` | Storage Rules | `storage.rules` unchanged | no changed path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | production / `menulist-prod` | Cloud Functions | `functions/` unchanged | no changed path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Firestore Rules | `firestore-answerlattice.rules` unchanged | no changed path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Firestore indexes | `firestore-answerlattice.indexes.json` unchanged | no changed path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Storage Rules | `storage-answerlattice.rules` unchanged | no changed path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Cloud Functions | `functions-answerlattice/` | source digest above; validation passed | nightly `1d9f8a791d75ad340207043587aecdae444da7ce`, trigger `2ea3b07b989018bca9f1e16a38fb3fe0f9dd81cf`; both `ACTIVE` | `INFRA_CHANGE` | `DEPLOY_REQUIRED` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Firestore Rules | `firestore-answerlattice.rules` unchanged | no changed path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Firestore indexes | `firestore-answerlattice.indexes.json` unchanged | no changed path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Storage Rules | `storage-answerlattice.rules` unchanged | no changed path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Cloud Functions | `functions-answerlattice/` | identical intended source | nightly `846855a2d2187aed828a749b1eb2533549b54ed7`, trigger `21721556e996282d12ca4183dd83cfcd39ef047f`; both `ACTIVE` | `INFRA_CHANGE` | `DEPLOY_REQUIRED` |
+
+- QA deployment, scheduled runtime evidence, production deployment, authenticated readback, after matrix, Git readback, and filesystem closeout: pending.
+- Attribution confidence: exact.
+
+### FIREBASE-20260825-090413-answerlattice-scheduler-activity-result
+
+- Timestamp: `2026-08-25T09:04:13+05:30`
+- Record type: `PERFORMED`
+- Actor/session/thread ID: current Codex Answerlattice scheduler verification task; raw thread ID unavailable
+- Completes: `FIREBASE-20260825-075511-answerlattice-scheduler-activity-release`
+- Operation: deployed only `answerlatticeNightly` and `triggerAnswerlatticeNightly` to Answerlattice QA, exercised a disposable QA-only provider-health due marker through ordinary Cloud Scheduler ticks, fixed both defects revealed by hosted evidence, redeployed the final candidate to QA, and promoted the identical final source to production only after QA passed. No Rules, indexes, Storage Rules, other Functions, Hosting, Vercel, payment execution, WhatsApp activation, production fixture, commit, push, or branch movement occurred.
+- Final source artifact: SHA-256 `70a6e7901e518b1f09c949681d3e9aa6f1ef21ffbc0e3ab2a9b11f796f1b513a`, 1,220,625 bytes across 102 tracked `functions-answerlattice` files excluding generated `lib`, using the planned deterministic path-and-bytes method. This supersedes the planned pre-QA digest because the first hosted run revealed stale nested task details in addition to the original false activity classification.
+- QA hosted verification: the ordinary `2026-08-25T03:30:14.553415Z` scheduler attempt created run `answerlattice_scheduler_scheduled_1787628617153_68f4b017`. Gemini completed in 857 ms with 7 provider-counted tokens; `platformSummary/answerlatticeAiProviderHealth` self-restored to day `2026-08-25` at `2026-08-25T03:30:18.704Z`; scheduler state recorded `success`, `lastActivity: true`, no error, and no stale `reason`; all three sibling task maps remained present. Cloud Logging recorded overall `success`, active task `ai_provider_health_check`, no failures, and zero ERROR entries in the bounded verification window.
+- Authenticated Functions readback: QA `answerlatticeNightly` / `triggerAnswerlatticeNightly` are `ACTIVE` at hashes `e7ef8289e0f060fde4af509c29383d4270d0b739` / `7d69367d3a3efb52eb1af201a099c712cd858194`; production Functions are `ACTIVE` at hashes `e3a48bb0144268f74aab373b240296e774d45081` / `2a0a0693cf75cdd8655dd7b626b8f495c8499402`. Environment-specific deployed hashes differ as expected; both deployments used the same final local source artifact above.
+- Boundary readback: both Cloud Scheduler jobs are `ENABLED` at `30 * * * *` UTC with empty status objects and next scheduled time `2026-08-25T04:30:01.211682Z`. Valid JSON requests without the manual-trigger secret returned HTTP 401 in QA and production, proving fail-closed admission without executing scheduler work.
+- Validation: final Functions build, Answerlattice typecheck, focused ESLint, runtime-truth assertions, scheduler settlement-state test, scheduler read-telemetry test, provider-health Firestore emulator test, `git diff --check`, QA scheduled runtime evidence, authenticated inventories, scheduler readback, bounded logs, and fail-closed endpoint checks passed.
+- Firebase matrix after:
+
+  | Product | Environment/project | Component | Local source/config | Local evidence | Server evidence | Delta | Deployment state |
+  | --- | --- | --- | --- | --- | --- | --- | --- |
+  | MenuList | QA / `menulist-qa` | Firestore Rules | `firestore-menulist.rules` unchanged | no changed path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | QA / `menulist-qa` | Firestore indexes | `firestore.indexes.json` unchanged | no changed path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | QA / `menulist-qa` | Storage Rules | `storage.rules` unchanged | no changed path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | QA / `menulist-qa` | Cloud Functions | `functions/` unchanged | no changed path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | production / `menulist-prod` | Firestore Rules | `firestore-menulist.rules` unchanged | no changed path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | production / `menulist-prod` | Firestore indexes | `firestore.indexes.json` unchanged | no changed path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | production / `menulist-prod` | Storage Rules | `storage.rules` unchanged | no changed path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | production / `menulist-prod` | Cloud Functions | `functions/` unchanged | no changed path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Firestore Rules | `firestore-answerlattice.rules` unchanged | no changed path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Firestore indexes | `firestore-answerlattice.indexes.json` unchanged | no changed path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Storage Rules | `storage-answerlattice.rules` unchanged | no changed path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Cloud Functions | `functions-answerlattice/` | final digest and validation above | nightly `e7ef8289e0f060fde4af509c29383d4270d0b739`, trigger `7d69367d3a3efb52eb1af201a099c712cd858194`; both `ACTIVE`; hosted scheduled pass | `INFRA_CHANGE` | `DEPLOYED_AND_READ_BACK` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Firestore Rules | `firestore-answerlattice.rules` unchanged | no changed path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Firestore indexes | `firestore-answerlattice.indexes.json` unchanged | no changed path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Storage Rules | `storage-answerlattice.rules` unchanged | no changed path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Cloud Functions | `functions-answerlattice/` | identical final source | nightly `e3a48bb0144268f74aab373b240296e774d45081`, trigger `2a0a0693cf75cdd8655dd7b626b8f495c8499402`; both `ACTIVE` | `INFRA_CHANGE` | `DEPLOYED_AND_READ_BACK` |
+
+- Branch matrix after:
+
+  | Branch | Local full SHA | Direct server ref/full SHA | Tracking ref | Ahead/behind | Worktree | Staged/unstaged/untracked | Status |
+  | --- | --- | --- | --- | --- | --- | --- | --- |
+  | `main` | `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `refs/heads/main` / `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `origin/main` | `0/0` | not checked out | `N/A` | `IN_SYNC` |
+  | `staging` | `916b5c94d82b848fef791babeb49addbd3c794b8` | `refs/heads/staging` / `916b5c94d82b848fef791babeb49addbd3c794b8` | `origin/staging` | `0/0` | primary worktree | `0/30/1` before this result append | `IN_SYNC` |
+
+- Final filesystem state: dirty. This task's scheduler code, regression verifier, scheduler documentation, changelog, and ledger changes coexist with unrelated concurrent MenuList certification/auth/public-surface changes. All concurrent files were preserved; no staging or snapshot absorption was performed.
+- Attribution confidence: exact for this task's source/deploy/runtime evidence and direct Git readback; unrelated concurrent changes remain attributed to `unknown` here.
+
+### FIREBASE-20260825-093903-answerlattice-scheduler-reliability-release
+
+- Timestamp: `2026-08-25T09:39:03+05:30`
+- Record type: `PLANNED`
+- Actor/session/thread ID: current Codex Answerlattice scheduler reliability task; raw thread ID unavailable
+- Registered worktrees: one worktree at `/Users/danny/Projects/MenuListAi/menulist-core`, checked out on `staging`
+- Authorization: Danny explicitly asked Codex to take ownership, generate multi-tenant scheduler cases, observe real scheduled work, harden the Functions, and complete the QA/production release.
+- Operation: deploy only `functions:answerlattice:answerlatticeNightly` and `functions:answerlattice:triggerAnswerlatticeNightly` to Answerlattice QA; create four disposable synthetic QA scopes covering two due active tenants, one active non-due tenant, one inactive tenant, and one valid stale credit reservation; observe two ordinary hourly ticks for execution plus idempotency; clean every owned fixture; then deploy and read back the identical Functions source in production. No Rules, indexes, Storage Rules, MenuList Functions, Hosting, Vercel, payment execution, production fixture, commit, push, or branch movement is authorized by this operation.
+- Local Functions source artifact: SHA-256 `680d4a61095bbfe5a1af3f319de903f1279c55f74f6496169dbbaea9292d73c8`, 1,223,019 bytes across 102 tracked `functions-answerlattice` files excluding generated `lib` and dependencies, calculated as `sha256(path + NUL + working-tree bytes)` in sorted Git path order.
+- Local validation before deploy: complete `verify:answerlattice-runtime-truth`, Functions build, Answerlattice typecheck, scheduler settlement/read telemetry, support-search accounting emulator, provider-health emulator, new Firestore-and-Storage multi-tenant master-scheduler emulator, QA fixture controller compile, and `git diff --check` passed. The reliability gate proved due/non-due/inactive isolation, expired-lock recovery, successful refund exactly once, repeat-tick idempotency, task-lease isolation, partial-failure continuation, malformed-evidence fail-safe behavior, and durable run-log completion.
+- Root cause fixed: the nightly run log attempted to persist nested arrays (`tenantRuns[].tasks[].readWindows[]`), which Firestore rejects. The runtime now stores bounded flat compatibility summaries plus a keyed Firestore-safe detail map; successful task rows also omit undefined error fields. API readers accept the new form with legacy fallback.
+- Branch matrix before:
+
+  | Branch | Local full SHA | Direct server ref/full SHA | Tracking ref | Ahead/behind | Worktree | Staged/unstaged/untracked | Status |
+  | --- | --- | --- | --- | --- | --- | --- | --- |
+  | `main` | `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `refs/heads/main` / `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `origin/main` | `0/0` | not checked out | `N/A` | `IN_SYNC` |
+  | `staging` | `916b5c94d82b848fef791babeb49addbd3c794b8` | `refs/heads/staging` / `916b5c94d82b848fef791babeb49addbd3c794b8` | `origin/staging` | `0/0` | primary worktree | `0/44/3` before this ledger append | `IN_SYNC` |
+
+- Firebase matrix before:
+
+  | Product | Environment/project | Component | Local source/config | Local evidence | Server evidence | Delta | Deployment state |
+  | --- | --- | --- | --- | --- | --- | --- | --- |
+  | MenuList | QA / `menulist-qa` | Firestore Rules | unchanged | no task delta | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | QA / `menulist-qa` | Firestore indexes | unchanged | no task delta | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | QA / `menulist-qa` | Storage Rules | unchanged | no task delta | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | QA / `menulist-qa` | Cloud Functions | unchanged | no task delta | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | production / `menulist-prod` | Firestore Rules | unchanged | no task delta | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | production / `menulist-prod` | Firestore indexes | unchanged | no task delta | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | production / `menulist-prod` | Storage Rules | unchanged | no task delta | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | production / `menulist-prod` | Cloud Functions | unchanged | no task delta | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Firestore Rules | `firestore-answerlattice.rules` unchanged | no task delta | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Firestore indexes | `firestore-answerlattice.indexes.json` unchanged | no task delta | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Storage Rules | `storage-answerlattice.rules` unchanged | no task delta | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Cloud Functions | `functions-answerlattice/` | digest and passing gates above | nightly `e7ef8289e0f060fde4af509c29383d4270d0b739`; trigger `7d69367d3a3efb52eb1af201a099c712cd858194`; both `ACTIVE` | `INFRA_CHANGE` | `DEPLOY_REQUIRED` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Firestore Rules | `firestore-answerlattice.rules` unchanged | no task delta | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Firestore indexes | `firestore-answerlattice.indexes.json` unchanged | no task delta | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Storage Rules | `storage-answerlattice.rules` unchanged | no task delta | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Cloud Functions | `functions-answerlattice/` | identical intended source | nightly `e3a48bb0144268f74aab373b240296e774d45081`; trigger `2a0a0693cf75cdd8655dd7b626b8f495c8499402`; both `ACTIVE` | `INFRA_CHANGE` | `DEPLOY_REQUIRED` |
+
+- QA deployment, two ordinary-tick observations, cleanup, production deployment, authenticated readback, and final matrices: pending.
+- Attribution confidence: exact for this task's source, validation, direct Git readback, and Firebase inventories; unrelated dirty files remain attributed to `unknown`.
+
+#### Hosted-QA scope amendment — `2026-08-25T10:05:57+05:30`
+
+- The first ordinary multi-tenant tick completed without a stuck lease and correctly recovered the reserved credit, but its tenant run was `partial`. Authenticated Firestore and Cloud Logging evidence identified three infrastructure/runtime defects: the deployed/index manifest lacked the ascending `pId+tId+sId+date` friction-retention index, lacked the ascending `pId+tId+sId+modifiedOn` chat cursor index, and the Functions Admin initializer did not recover the managed Storage bucket from `FIREBASE_CONFIG`, causing `storage/invalid-argument` during context-bundle publication.
+- Danny's authorization to harden, test, deploy, observe, and complete the scheduler covers the smallest durable correction: deploy the two added Answerlattice indexes and corrected two scheduler Functions to QA, restart the disposable evidence cycle, and only after two ordinary ticks pass deploy/read back the same indexes and Functions in production. No other deployment scope changes.
+- Updated dedicated index artifact: SHA-256 `0114bdf8ea6425b890a8e58fa03dac7915a7d3ed4372bc689ab59a8ce585ff4a`, 50,941 bytes. QA server readback before correction contained only descending variants for both affected query shapes. `Delta=INFRA_CHANGE`; `Deployment state=DEPLOY_REQUIRED` for Answerlattice QA and production Firestore indexes.
+- Updated Functions artifact will be recalculated after the hosted-QA fixes are final. Functions build, Answerlattice typecheck, runtime-truth verifier, and JSON parse passed. A repeated master-scheduler emulator invocation was blocked before test execution because an unrelated concurrent Answerlattice rules suite owns port 8080; that process was preserved, and the already-passing multi-tenant gate will be rerun when the port is released.
+
+### FIREBASE-20260825-111230-answerlattice-scheduler-reliability-result
+
+- Timestamp: `2026-08-25T11:12:30+05:30`
+- Record type: `PERFORMED`
+- Actor/session/thread ID: current Codex Answerlattice scheduler reliability task; raw thread ID unavailable
+- Completes: `FIREBASE-20260825-093903-answerlattice-scheduler-reliability-release` and its hosted-QA amendment
+- Operation: hardened the Answerlattice master/nightly scheduler, added the two query-direction indexes exposed by hosted execution, deployed/read back the two indexes and only `answerlatticeNightly` plus `triggerAnswerlatticeNightly` in QA, exercised four disposable QA scopes across two scheduler attempts, cleaned the exact fixture footprint, then deployed/read back the identical indexes and Functions in production. No Firestore Rules, Storage Rules, other Functions, Hosting, Vercel, payment execution, production fixture, commit, push, or branch movement occurred.
+- Final local Functions artifact: SHA-256 `1d2293e8fc2b6789b8d65c24c95366e734782bffecbad3684ca4a7c98399a353`, 1,227,633 bytes across 103 tracked `functions-answerlattice` files excluding generated `lib` and dependencies, calculated as `sha256(path + NUL + working-tree bytes)` in sorted Git path order. The deployed QA and production `answerlatticeNightly` source archives were downloaded from their immutable generations; both contained 888,867 bytes and their compiled `lib/` trees were byte-identical to each other and to the final local build.
+- Final index artifact: SHA-256 `0114bdf8ea6425b890a8e58fa03dac7915a7d3ed4372bc689ab59a8ce585ff4a`, 50,941 bytes. The scoped release added only `answerlattice_frictionDailyStats(pId,tId,sId,date ASC)` and `chatSessions(pId,tId,sId,modifiedOn ASC)`; no existing index or field override was deleted.
+- Hosted QA result: run `answerlattice_scheduled_1787633119686` completed `success` with two due scopes (`98100101/98100201`, `98100102/98100202`), 20 tasks and zero errors per scope. Both published a non-empty 2,869-byte compiled context, rebuilt the one-entity graph, wrote trust and knowledge-intake summaries, and rebuilt predictive cache. One valid stale reservation was refunded exactly once; the active non-due and inactive controls received no nightly state. The untouched `2026-08-25T05:30:08.407307Z` Cloud Scheduler attempt advanced scheduler state but created no second matching governance run and reported zero additional refunds. Scheduler status was empty and the next tick advanced to `06:30 UTC`.
+- QA cleanup: the controller removed and postcondition-checked every owned entity, store, subscription, reservation pointer, accounting operation, tenant nightly state, registry member, wholly-owned run log, and compiled-context Storage prefix. Production used no synthetic data and received no forced invocation.
+- Authenticated deployed readback: QA indexes `CICAgITO7YIK` and `CICAgLix4JsK` are `READY`; QA Functions are `ACTIVE` at hashes `21b0c0686b2743869adb2059654ec846fdb1f42e` and `fb86c05107c2c3803b333fea16ab3053a3cf8f9a`. Production indexes `CICAgNjrppIK` and `CICAgNiZwpcK` are `READY`; production Functions are `ACTIVE` at hashes `e1a45768f6e14206ac4c242e0a01a2ebdaa94ecd` and `346a88e3d602e562c71538c6a73f96afc7ff2060`. Both scheduler jobs are `ENABLED` at `30 * * * *` UTC with empty status objects.
+- Validation: complete Answerlattice runtime-truth aggregate passed before the hosted cycle; final combined Firestore/Storage multi-tenant scheduler emulator, Functions build, Answerlattice typecheck, runtime-truth source verifier, master-scheduler settlement-state test, scheduler read-telemetry test, hosted QA output/idempotency/cleanup gates, exact deployed-source comparison, authenticated Function/index/job readback, and `git diff --check` passed.
+- Cost/scale result: no new query, listener, task, scheduler invocation, or write was added to runtime. The indexes and managed bucket fallback let the already bounded friction, chat cursor, and bundle tasks complete instead of failing after consuming reads. Tenant discovery, per-task limits, leases, idempotency, and compact summary/read-window evidence remain bounded.
+
+- Firebase matrix after:
+
+  | Product | Environment/project | Component | Local source/config | Local evidence | Server evidence | Delta | Deployment state |
+  | --- | --- | --- | --- | --- | --- | --- | --- |
+  | MenuList | QA / `menulist-qa` | Firestore Rules | unchanged | no task delta | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | QA / `menulist-qa` | Firestore indexes | unchanged | no task delta | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | QA / `menulist-qa` | Storage Rules | unchanged | no task delta | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | QA / `menulist-qa` | Cloud Functions | unchanged | no task delta | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | production / `menulist-prod` | Firestore Rules | unchanged | no task delta | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | production / `menulist-prod` | Firestore indexes | unchanged | no task delta | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | production / `menulist-prod` | Storage Rules | unchanged | no task delta | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | production / `menulist-prod` | Cloud Functions | unchanged | no task delta | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Firestore Rules | `firestore-answerlattice.rules` unchanged | no task delta | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Firestore indexes | `firestore-answerlattice.indexes.json` | final index digest; exact two-query gate passed | target index IDs above both `READY` | `INFRA_CHANGE` | `DEPLOYED_AND_READ_BACK` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Storage Rules | `storage-answerlattice.rules` unchanged | no task delta | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Cloud Functions | `functions-answerlattice/` | final source digest; local and hosted gates passed | both hashes above `ACTIVE`; source archive read back | `INFRA_CHANGE` | `DEPLOYED_AND_READ_BACK` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Firestore Rules | `firestore-answerlattice.rules` unchanged | no task delta | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Firestore indexes | `firestore-answerlattice.indexes.json` | identical intended index definitions | target index IDs above both `READY` | `INFRA_CHANGE` | `DEPLOYED_AND_READ_BACK` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Storage Rules | `storage-answerlattice.rules` unchanged | no task delta | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Cloud Functions | `functions-answerlattice/` | byte-identical QA-validated source | both hashes above `ACTIVE`; source archive read back | `INFRA_CHANGE` | `DEPLOYED_AND_READ_BACK` |
+
+- Branch matrix after:
+
+  | Branch | Local full SHA | Direct server ref/full SHA | Tracking ref | Ahead/behind | Worktree | Staged/unstaged/untracked | Status |
+  | --- | --- | --- | --- | --- | --- | --- | --- |
+  | `main` | `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `refs/heads/main` / `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `origin/main` | `0/0` | not checked out | `N/A` | `IN_SYNC` |
+  | `staging` | `916b5c94d82b848fef791babeb49addbd3c794b8` | `refs/heads/staging` / `916b5c94d82b848fef791babeb49addbd3c794b8` | `origin/staging` | `0/0` | primary worktree | `0/58/5` before this result append | `IN_SYNC` |
+
+- Final filesystem state: dirty. This task's scheduler Functions, indexes, API compatibility readers, regression/fixture tooling, docs, changelog, and ledger changes coexist with unrelated concurrent work. All unrelated files were preserved; no moving snapshot was staged or absorbed.
+- Attribution confidence: exact for the scheduler source, fixture, deployed artifacts, runtime evidence, direct Git readback, and Firebase inventories; unrelated concurrent changes remain attributed to `unknown`.
+
+### GIT-20260825-125711-all-local-to-staging-qa
+
+- Timestamp: `2026-08-25T12:57:11+05:30`
+- Record type: `PLANNED`
+- Actor/session/thread ID: Codex `/root`; thread `01a034e1-c70a-74b1-a92b-0a103a981815`
+- Registered worktrees: one worktree at `/Users/danny/Projects/MenuListAi/menulist-core`, checked out on `staging` at `916b5c94d82b848fef791babeb49addbd3c794b8`.
+- Authorization: Danny explicitly requested every current local change from every worktree be consolidated and pushed to `staging` for QA. This authorizes staging/commit/push of the complete stable snapshot. It does not authorize moving `main`, Firebase deployment, Vercel deployment, destructive cleanup, or payment execution.
+- Intended operation: stage all 59 tracked changes and 5 untracked files in the sole registered worktree, create one non-interactive QA snapshot commit, push `staging` without force, then perform direct server readback. A separate evidence-only ledger closeout commit may follow so the performed record is also retained on `staging`.
+- Snapshot ownership: the working tree combines MenuList release-candidate inventory/auth/onboarding/billing/routing/mobile/public-surface work and Answerlattice scheduler/help/runtime work from multiple local sessions. User authorization explicitly covers the complete combined snapshot; exact per-file actor attribution is `unknown` where not already established by prior ledger entries.
+- Stability/safety evidence: status digest `b8b76cba30b1d8cf2b7346d3cc3b232e3122d7b2dbf07c1e6b0891cfa604db7d` repeated unchanged; no active Git/build/deploy writer was found; `git diff --check` passed; 64 changed/untracked paths were scanned and no high-confidence private key, live payment key, Google API key, GitHub token, AWS access key, or service-account private-key material was detected; no credential-like filename was found.
+- Validation carried with the snapshot: the current MenuList certification report and immediately preceding Answerlattice deployment record preserve the exact completed validation and known blocked/unverified gates. This Git-only operation does not reclassify certification status and does not represent a deploy.
+
+- Branch matrix before:
+
+  | Branch | Local full SHA | Direct server ref/full SHA | Tracking ref | Ahead/behind | Worktree | Staged/unstaged/untracked | Status |
+  | --- | --- | --- | --- | --- | --- | --- | --- |
+  | `main` | `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `refs/heads/main` / `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `origin/main` | `0/0` | not checked out | `N/A` | `IN_SYNC` |
+  | `staging` | `916b5c94d82b848fef791babeb49addbd3c794b8` | `refs/heads/staging` / `916b5c94d82b848fef791babeb49addbd3c794b8` | `origin/staging` | `0/0` | `/Users/danny/Projects/MenuListAi/menulist-core` | `0/59/5` | `IN_SYNC` |
+
+- Firebase matrix before (deployment is not authorized by this operation):
+
+  | Product | Environment/project | Component | Local source/config | Local validation/artifact evidence | Authenticated server evidence | Delta | Deployment state |
+  | --- | --- | --- | --- | --- | --- | --- | --- |
+  | MenuList | QA / `menulist-qa` | Firestore Rules | `firestore.rules` / generated `firestore-menulist.rules`; unchanged | no changed path in snapshot | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | QA / `menulist-qa` | Firestore indexes | `firestore.indexes.json`; unchanged | no changed path in snapshot | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | QA / `menulist-qa` | Storage Rules | `storage.rules`; unchanged | no changed path in snapshot | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | QA / `menulist-qa` | Cloud Functions | `functions/`; unchanged | no changed path in snapshot | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | production / `menulist-prod` | Firestore Rules | `firestore.rules` / generated `firestore-menulist.rules`; unchanged | no changed path in snapshot | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | production / `menulist-prod` | Firestore indexes | `firestore.indexes.json`; unchanged | no changed path in snapshot | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | production / `menulist-prod` | Storage Rules | `storage.rules`; unchanged | no changed path in snapshot | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | production / `menulist-prod` | Cloud Functions | `functions/`; unchanged | no changed path in snapshot | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Firestore Rules | `firestore-answerlattice.rules`; unchanged | no changed path in snapshot | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Firestore indexes | `firestore-answerlattice.indexes.json` | current SHA-256 `0114bdf8ea6425b890a8e58fa03dac7915a7d3ed4372bc689ab59a8ce585ff4a`; exact two-index gate passed | preceding `FIREBASE-20260825-111230-answerlattice-scheduler-reliability-result` records both target indexes `READY` | `INFRA_CHANGE` | `DEPLOYED_AND_READ_BACK` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Storage Rules | `storage-answerlattice.rules`; unchanged | no changed path in snapshot | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Cloud Functions | `functions-answerlattice/` | changed scheduler/Admin source; final local build and hosted gates recorded immediately above | preceding result records both scoped Functions `ACTIVE` with immutable source readback | `INFRA_CHANGE` | `DEPLOYED_AND_READ_BACK` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Firestore Rules | `firestore-answerlattice.rules`; unchanged | no changed path in snapshot | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Firestore indexes | `firestore-answerlattice.indexes.json` | identical current index artifact | preceding result records both target indexes `READY` | `INFRA_CHANGE` | `DEPLOYED_AND_READ_BACK` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Storage Rules | `storage-answerlattice.rules`; unchanged | no changed path in snapshot | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Cloud Functions | `functions-answerlattice/` | identical QA-validated source recorded immediately above | preceding result records both scoped Functions `ACTIVE` with byte-identical source readback | `INFRA_CHANGE` | `DEPLOYED_AND_READ_BACK` |
+
+- Post-operation branch matrix, commit SHA, direct readback, validation, and filesystem state: pending.

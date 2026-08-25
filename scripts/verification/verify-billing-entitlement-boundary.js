@@ -187,6 +187,7 @@ function verifyBillingEntitlementBoundary() {
   const paymentHook = read('src/hooks/usePaymentHandler.ts');
   const answerlatticeBilling = read('src/components/templates/answerlattice/billing/AnswerlatticeBilling.tsx');
   const desktopBilling = read('src/components/templates/main-app/billing/index.tsx');
+  const desktopBillingHistory = read('src/components/templates/main-app/billing/BillingHistory.tsx');
   const websitePricingWrapper = read('src/components/website/pricing/PricingWrapper.tsx');
   const websitePricingPage = read('src/components/website/pricing-pages/index.tsx');
   const purchaseIntentBoundary = read('src/lib/billing/purchaseIntentBoundary.ts');
@@ -454,6 +455,33 @@ function verifyBillingEntitlementBoundary() {
   assertIncludes(mobileBilling, 'getBillingHistoryForStore(session?.user?.tenantId, historyStoreId)', 'Mobile billing history must preserve raw signed scope for exact DAL admission');
   assertNotIncludes(desktopBilling, 'getBillingHistoryForStore(Number(session?.user?.tenantId)', 'Desktop billing history must not coerce nullable session scope');
   assertNotIncludes(mobileBilling, 'getBillingHistoryForStore(Number(session?.user?.tenantId)', 'Mobile billing history must not coerce nullable session scope');
+  [
+    "Promise<void | 'loaded' | 'error'>",
+    "historyLoadState === 'loading'",
+    'No billing history was found for this store.',
+    'Billing history could not be loaded. Try again.',
+    'onClick={() => void handleFetchBillingHistory()}',
+    'if (historyRequestInFlightRef.current) return;',
+    'historyRequestInFlightRef.current = true;',
+    'historyRequestInFlightRef.current = false;',
+  ].forEach((token) => assertIncludes(desktopBillingHistory, token, 'Desktop billing history visible fetch/recovery state'));
+  [
+    "payment_desktop_billing_history_fetch_failed",
+    "message.error('Billing history could not be loaded.')",
+    "return 'error' as const",
+    "key={billingScopeKey || 'billing-history'}",
+  ].forEach((token) => assertIncludes(desktopBilling, token, 'Desktop billing history bounded fetch failure'));
+  [
+    'const [isHistoryLoading, setIsHistoryLoading] = useState(false);',
+    'if (billingHistoryInFlightKeyRef.current) return;',
+    'billingHistoryInFlightKeyRef.current = inFlightKey;',
+    'if (billingHistoryInFlightKeyRef.current === inFlightKey)',
+    'aria-busy={isHistoryLoading}',
+    'onClick={() => void fetchHistory()}',
+    'role="button"',
+    'tabIndex={0}',
+    'event.key !== \'Enter\' && event.key !== \' \'',
+  ].forEach((token) => assertIncludes(mobileBilling, token, 'Mobile billing history visible loading and keyboard contract'));
   [
     "where('pId', '==', PRODUCT_IDS.ANSWERLATTICE)",
     "where('productId', '==', PRODUCT_IDS.ANSWERLATTICE)",

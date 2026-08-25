@@ -35,6 +35,22 @@ for (const [label, relativePath] of publicConsumers) {
   includes(source, 'MENULIST_OPERATOR_DISCLOSURE', label);
 }
 
+const ownerIdentityConsumers = [
+  ['MenuList owner sidebar', 'src/components/organisms/sidebar/index.tsx'],
+  ['MenuList owner header', 'src/components/organisms/headerComponent/index.tsx'],
+];
+for (const [label, relativePath] of ownerIdentityConsumers) {
+  const source = read(relativePath);
+  includes(source, 'MenuListIconLogo', label);
+  excludes(source, 'EcomsIconLogo', label);
+  excludes(source, 'EcomsHorizontalLogo', label);
+}
+
+const ownerLogo = read('src/components/atoms/menuListLogo/index.tsx');
+includes(ownerLogo, 'aria-label="MenuList"', 'MenuList owner logo');
+includes(ownerLogo, '<span>MenuList</span>', 'MenuList owner logo');
+excludes(ownerLogo, 'ecoms.ai', 'MenuList owner logo');
+
 const taxPolicy = read('src/data/shared/billingTaxPolicy.ts');
 includes(taxPolicy, 'legalIdentityVerified: boolean', 'Tax supplier contract');
 includes(taxPolicy, "`${normalizeText(supplier.productName, 80) || 'Product'} billing legal identity is not verified.`", 'Tax supplier gate');

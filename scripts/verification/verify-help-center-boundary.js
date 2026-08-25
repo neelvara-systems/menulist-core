@@ -220,8 +220,11 @@ function verifyMobileBoundary() {
   const mobileHelpScreen = read('src/components/mobile/screens/MobileHelpScreen.tsx');
 
   assertIncludes(mobileShell, 'const HELP_CENTER_TAB_TO_MORE_SCREEN', 'MobileShell Help Center route map');
+  assertIncludes(mobileShell, 'const HELP_CENTER_MORE_SCREENS: MoreSubScreen[] = [', 'MobileShell Help Center recovery screen set');
   assertIncludes(mobileShell, "return HELP_CENTER_TAB_TO_MORE_SCREEN[tab] || 'answerlatticeHelp';", 'MobileShell Help Center fallback');
   assertIncludes(mobileShell, "normalizedPathname === '/help-center' || normalizedPathname.startsWith('/help-center/')", 'MobileShell Help Center direct route detection');
+  assertIncludes(mobileShell, "const isHelpRecoveryScreen = activeTab === 'more' && HELP_CENTER_MORE_SCREENS.includes(moreScreen);", 'MobileShell Help Center recovery gate');
+  assertIncludes(mobileShell, '|| isHelpRecoveryScreen', 'MobileShell unpaid Help Center access');
   assertIncludes(mobileMoreScreen, "else if (subScreen === 'answerlatticeHelp') subScreenContent = <MobileHelpScreen", 'Mobile More Help Center entry');
   assertIncludes(mobileMoreScreen, 'initialTab="kb"', 'Mobile More Help Center docs tab');
   assertIncludes(mobileMoreScreen, 'initialTab="ticket"', 'Mobile More Help Center support tab');

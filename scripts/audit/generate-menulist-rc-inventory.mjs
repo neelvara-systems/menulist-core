@@ -6,8 +6,32 @@ const OUTPUT = path.join(
     ROOT,
     "__docs__/audits/menulist-rc-certification-inventory.csv",
 );
+const RUNTIME_EVIDENCE_PATH = path.join(
+    ROOT,
+    "__docs__/audits/menulist-rc-runtime-evidence.json",
+);
+const runtimeEvidence = fs.existsSync(RUNTIME_EVIDENCE_PATH)
+    ? JSON.parse(fs.readFileSync(RUNTIME_EVIDENCE_PATH, "utf8"))
+    : {};
+const privateRouteAccessEvidence = runtimeEvidence.privateRouteAccess ?? null;
+const privateRouteAccessRoutes = new Set(privateRouteAccessEvidence?.routes ?? []);
+const apiAnonymousBoundaryEvidence = runtimeEvidence.apiAnonymousBoundary ?? null;
+const publicWebsiteRouteRenderEvidence = runtimeEvidence.publicWebsiteRouteRender ?? null;
+const publicSitemapPath = path.join(ROOT, "public/sitemap.xml");
+const publicSitemapPaths = fs.existsSync(publicSitemapPath)
+    ? [...fs.readFileSync(publicSitemapPath, "utf8").matchAll(/<loc>([^<]+)<\/loc>/g)]
+        .map((match) => {
+            try {
+                return new URL(match[1]).pathname;
+            } catch {
+                return null;
+            }
+        })
+        .filter(Boolean)
+    : [];
 
 const SOURCE_EXTENSIONS = new Set([".ts", ".tsx", ".js", ".jsx"]);
+const SOURCE_RESOLUTION_EXTENSIONS = [".ts", ".tsx", ".js", ".jsx"];
 const APP_SPECIAL_FILE = /\/(page|layout|route|loading|error|not-found)\.(?:tsx?|jsx?)$/;
 const ROUTE_FILE = /\/route\.(?:tsx?|jsx?)$/;
 const PAGE_FILE = /\/page\.(?:tsx?|jsx?)$/;
@@ -75,7 +99,11 @@ function routeFromAppFile(file) {
 
 function classifyProduct(file, route = "") {
     const value = `${relative(file)} ${route}`.toLowerCase();
-    if (value.includes("answerlattice") || route.startsWith("/widget")) return "Answerlattice boundary";
+    if (
+        value.includes("answerlattice")
+        || route.startsWith("/widget")
+        || route.startsWith("/api/widget")
+    ) return "Answerlattice boundary";
     if (value.includes("campaigncue")) return "CampaignCue boundary";
     if (value.includes("signaldesk")) return "SignalDesk boundary";
     if (value.includes("mycodex")) return "MyCodex boundary";
@@ -99,7 +127,226 @@ function methodList(source) {
     for (const match of source.matchAll(/export\s+(?:const|async\s+function|function)\s+(GET|POST|PUT|PATCH|DELETE|OPTIONS|HEAD)\b/g)) {
         methods.add(match[1]);
     }
+    for (const match of source.matchAll(/export\s*\{([^}]+)\}/g)) {
+        for (const specifier of match[1].split(",")) {
+            const exportedName = specifier.trim().split(/\s+as\s+/i).at(-1);
+            if (/^(GET|POST|PUT|PATCH|DELETE|OPTIONS|HEAD)$/.test(exportedName)) methods.add(exportedName);
+        }
+    }
+    for (const match of source.matchAll(/export\s+const\s*\{([^}]+)\}\s*=/g)) {
+        for (const name of match[1].split(",").map((value) => value.trim())) {
+            if (/^(GET|POST|PUT|PATCH|DELETE|OPTIONS|HEAD)$/.test(name)) methods.add(name);
+        }
+    }
     return [...methods].sort().join("|") || "UNRESOLVED_METHOD";
+}
+
+const tsconfig = JSON.parse(fs.readFileSync(path.join(ROOT, "tsconfig.json"), "utf8"));
+const aliasEntries = Object.entries(tsconfig.compilerOptions?.paths ?? {})
+    .map(([pattern, targets]) => ({
+        prefix: pattern.replace(/\*$/, ""),
+        targetPrefix: String(targets[0] ?? "").replace(/\*$/, ""),
+    }))
+    .sort((left, right) => right.prefix.length - left.prefix.length);
+
+function resolveSourceImport(importer, specifier) {
+    let candidateBase = null;
+    if (specifier.startsWith(".")) {
+        candidateBase = path.resolve(path.dirname(importer), specifier);
+    } else if (specifier.startsWith("src/")) {
+        candidateBase = path.join(ROOT, specifier);
+    } else {
+        const alias = aliasEntries.find((entry) => specifier.startsWith(entry.prefix));
+        if (alias) {
+            candidateBase = path.join(ROOT, alias.targetPrefix, specifier.slice(alias.prefix.length));
+        }
+    }
+    if (!candidateBase) return null;
+
+    const candidates = [
+        candidateBase,
+        ...SOURCE_RESOLUTION_EXTENSIONS.map((extension) => `${candidateBase}${extension}`),
+        ...SOURCE_RESOLUTION_EXTENSIONS.map((extension) => path.join(candidateBase, `index${extension}`)),
+    ];
+    return candidates.find((candidate) => fs.existsSync(candidate) && fs.statSync(candidate).isFile()) ?? null;
+}
+
+function importedSourceFiles(file) {
+    const source = fs.readFileSync(file, "utf8");
+    const specifiers = new Set();
+    for (const match of source.matchAll(/\b(?:from\s*|import\s*\(\s*)["']([^"']+)["']/g)) {
+        specifiers.add(match[1]);
+    }
+    return [...specifiers]
+        .map((specifier) => resolveSourceImport(file, specifier))
+        .filter(Boolean);
+}
+
+function featureFlagState(source) {
+    const flags = [...source.matchAll(/FEATURE_FLAGS\.(ENABLE_[A-Z0-9_]+)/g)]
+        .map((match) => match[1]);
+    return [...new Set(flags)].sort().join("|") || "NO_DIRECT_FLAG_GUARD";
+}
+
+function appSurfaceProfile(file, route, itemType, product, source) {
+    const rel = relative(file);
+    const isMain = rel.startsWith("src/app/(main)/");
+    const isWebsite = rel.startsWith("src/app/(website)/");
+    const isApi = itemType === "api-route";
+
+    if (product !== "MenuList") {
+        return {
+            role: "SEPARATION_BOUNDARY_ONLY",
+            tenant_state: "PRODUCT_HOST_BOUNDARY",
+            store_state: "OUT_OF_SCOPE_EXCEPT_ISOLATION",
+            subscription_or_entitlement_state: "OUT_OF_SCOPE_EXCEPT_ISOLATION",
+            viewport: isApi ? "SERVER" : "RESPONSIVE_WHERE_RENDERED",
+        };
+    }
+
+    if (isApi) {
+        const authSignals = [];
+        if (/getServerSession|requireAuthenticated|requireApiAuth|withAuth|session\b/.test(source)) authSignals.push("AUTHENTICATED");
+        if (/requirePlatformAdmin|PLATFORM_USER_ROLE|platformRole/.test(source)) authSignals.push("PLATFORM_ADMIN");
+        if (/validatePublicApiKey|hasPublicApiCredentialScope|X-API-Key/i.test(source)) authSignals.push("PUBLIC_API_KEY");
+        if (/checkRateLimit|getRateLimitForFeature/.test(source)) authSignals.push("RATE_LIMITED");
+        if (/timingSafeEqual|hasValid\w*Secret|verify\w*Signature|validate\w*Signature/.test(source)) authSignals.push("SERVER_SECRET_OR_SIGNATURE");
+        if (/tenantId|tenantID|tenant_id|x-tenant-/.test(source)) authSignals.push("TENANT_SCOPED");
+        if (/storeId|storeID|store_id/.test(source)) authSignals.push("STORE_SCOPED");
+        if (
+            route === "/api/auth/[...nextauth]"
+            || route === "/api/auth/phone-otp/start"
+            || route === "/api/auth/phone-otp/verify"
+            || route === "/api/auth/validate-claim"
+        ) authSignals.push("PUBLIC_AUTH_ENTRY");
+        if (
+            route === "/api/csp-report"
+            || route === "/api/test/rate-limit"
+            || route === "/api/version"
+            || route === "/client/robots"
+            || route === "/developers/openapi"
+            || route === "/manifest.webmanifest"
+            || route === "/serwist/[path]"
+        ) authSignals.push("PUBLIC_PLATFORM_OR_STATIC");
+        if (route.startsWith("/api/public/")) authSignals.push("PUBLIC_CUSTOMER_OR_INTAKE");
+        if (route === "/api/razorpay/webhook") authSignals.push("PROVIDER_WEBHOOK_BOUNDARY");
+        if (route === "/api/screen/seen") authSignals.push("PUBLIC_SCREEN_TOKEN");
+        return {
+            role: authSignals.join("|") || "PUBLIC_OR_GUARD_TRACE_REQUIRED",
+            tenant_state: authSignals.includes("TENANT_SCOPED") ? "VALID_AND_INVALID_TENANT" : "NOT_ROUTE_DERIVABLE",
+            store_state: authSignals.includes("STORE_SCOPED") ? "VALID_MISSING_AND_FOREIGN_STORE" : "NOT_ROUTE_DERIVABLE",
+            subscription_or_entitlement_state: /subscription|entitlement|credit|plan/i.test(`${route} ${source}`)
+                ? "ACTIVE|UNPAID|PENDING|EXPIRED_AS_APPLICABLE"
+                : "NOT_ROUTE_DERIVABLE",
+            viewport: "SERVER",
+        };
+    }
+
+    if (isMain) {
+        const recoveryRoute = route === "/billing" || route === "/help-center" || route.startsWith("/help-center/");
+        const platformRoute = route === "/platform" || route.startsWith("/platform/") || route === "/ops" || route.startsWith("/ops/");
+        const resellerManage = route === "/reseller/manage" || route.startsWith("/reseller/manage/");
+        const resellerRoute = route === "/reseller" || route.startsWith("/reseller/");
+        const noStoreRoute = recoveryRoute || platformRoute || resellerRoute;
+        return {
+            role: platformRoute || resellerManage
+                ? "PLATFORM_ADMIN"
+                : resellerRoute
+                    ? "PLATFORM_OR_RESELLER"
+                    : "MENULIST_OWNER_OR_AUTHORIZED_STAFF",
+            tenant_state: platformRoute ? "PLATFORM_CONTEXT" : "AUTHENTICATED_MENULIST_TENANT",
+            store_state: noStoreRoute ? "STORE_OPTIONAL_OR_ROUTE_SPECIFIC" : "ACTIVE_SELECTED_STORE",
+            subscription_or_entitlement_state: platformRoute || resellerRoute
+                ? "ROLE_GATED_NOT_OWNER_PLAN_GATED"
+                : recoveryRoute
+                    ? "ACTIVE|STARTER|UNPAID|PENDING|EXPIRED"
+                    : "ACTIVE_PAID_OR_BOUNDED_STARTER_ROUTE",
+            viewport: route === "/platform/test-sentry" ? "DESKTOP_ONLY" : "DESKTOP_AND_MOBILE_SHELL",
+        };
+    }
+
+    if (isWebsite) {
+        return {
+            role: "UNAUTHENTICATED_VISITOR_AND_AUTHENTICATED_VISITOR",
+            tenant_state: "PLATFORM_WEBSITE",
+            store_state: "NOT_APPLICABLE",
+            subscription_or_entitlement_state: "PUBLIC_PRESENTATION_OR_AUTH_HANDOFF",
+            viewport: "SMALL_MOBILE|PHONE|TABLET|DESKTOP",
+        };
+    }
+
+    if (route.startsWith("/client/") || route.startsWith("/screen/") || route.startsWith("/feedback/")) {
+        return {
+            role: "PUBLIC_CUSTOMER",
+            tenant_state: "VALID|INVALID|MALFORMED_TENANT",
+            store_state: "ACTIVE|MISSING|UNPUBLISHED|ARCHIVED_OR_DISABLED",
+            subscription_or_entitlement_state: "PUBLICATION_AND_ENTITLEMENT_GATED",
+            viewport: route.startsWith("/screen/") ? "SCREEN|MOBILE|DESKTOP" : "SMALL_MOBILE|PHONE|TABLET|DESKTOP",
+        };
+    }
+
+    return {
+        role: "ROUTE_GUARD_TRACE_REQUIRED",
+        tenant_state: "ROUTE_STATE_TRACE_REQUIRED",
+        store_state: "ROUTE_STATE_TRACE_REQUIRED",
+        subscription_or_entitlement_state: "ROUTE_STATE_TRACE_REQUIRED",
+        viewport: "RESPONSIVE_WHERE_RENDERED",
+    };
+}
+
+function appRuntimeEvidence(file, route, itemType, product) {
+    if (
+        itemType === "api-route"
+        && product === "MenuList"
+        && apiAnonymousBoundaryEvidence?.result === "PASS"
+        && apiAnonymousBoundaryEvidence.handlers === 136
+        && apiAnonymousBoundaryEvidence.methodProbes === 153
+    ) {
+        return {
+            test_result: "PASS_ANONYMOUS_BOUNDARY",
+            final_verification_status: "ANONYMOUS_BOUNDARY_PASSED_FUNCTIONAL_STATE_PENDING",
+            evidence_or_notes: `Anonymous empty/invalid probe across every exported method; ${apiAnonymousBoundaryEvidence.testedAt}; no 5xx, timeout, or protected 2xx; authenticated and valid public behavior remains separately pending`,
+        };
+    }
+    if (
+        itemType === "page"
+        && product === "MenuList"
+        && relative(file).startsWith("src/app/(website)/")
+        && publicWebsiteRouteRenderEvidence?.result === "PASS"
+        && publicWebsiteRouteRenderEvidence.sitemapRouteCount === 186
+        && publicSitemapPaths.some((candidate) => routePatternMatches(route, candidate))
+    ) {
+        return {
+            test_result: "PASS_BROWSER_RENDER",
+            final_verification_status: "RENDER_PASSED_CONTROL_INTERACTION_PENDING",
+            evidence_or_notes: `${publicWebsiteRouteRenderEvidence.browser}; current sitemap concrete route rendered main and heading; ${publicWebsiteRouteRenderEvidence.testedAt}; individual controls remain separately pending`,
+        };
+    }
+    if (
+        itemType !== "page"
+        || product !== "MenuList"
+        || !relative(file).startsWith("src/app/(main)/")
+        || privateRouteAccessEvidence?.result !== "PASS"
+        || !privateRouteAccessRoutes.has(route)
+    ) return {};
+
+    const concreteRoute = privateRouteAccessEvidence.concreteRouteOverrides?.[route] ?? route;
+    const expectedCallback = privateRouteAccessEvidence.canonicalCallbackOverrides?.[route] ?? concreteRoute;
+    return {
+        test_result: "PASS_ACCESS_BOUNDARY",
+        final_verification_status: "ACCESS_PASSED_FUNCTIONAL_INTERACTION_PENDING",
+        evidence_or_notes: `${privateRouteAccessEvidence.browser}; signed-out ${concreteRoute} -> /signin callback ${expectedCallback}; ${privateRouteAccessEvidence.testedAt}; authenticated controls remain separately pending`,
+    };
+}
+
+function routePatternMatches(pattern, candidate) {
+    if (pattern === candidate) return true;
+    const escaped = pattern
+        .replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+        .replace(/\\\[\\\[\\\.\\\.\\\.[^\]]+\\\]\\\]/g, "(?:/.*)?")
+        .replace(/\\\[\\\.\\\.\\\.[^\]]+\\\]/g, ".+")
+        .replace(/\\\[[^\]]+\\\]/g, "[^/]+");
+    return new RegExp(`^${escaped}$`).test(candidate);
 }
 
 const rows = [];
@@ -132,17 +379,58 @@ for (const file of appFiles) {
     const product = classifyProduct(file, route);
     const name = path.basename(file).split(".")[0];
     const source = fs.readFileSync(file, "utf8");
+    const itemType = ROUTE_FILE.test(file) ? "api-route" : name;
+    const profile = appSurfaceProfile(file, route, itemType, product, source);
+    const recordedRuntimeEvidence = appRuntimeEvidence(file, route, itemType, product);
     add({
-        item_type: ROUTE_FILE.test(file) ? "api-route" : name,
+        item_type: itemType,
         product_area: product,
         route_or_component: route,
         screen_or_tab: rel,
+        ...profile,
+        feature_flag_state: featureFlagState(source),
         control_or_action: ROUTE_FILE.test(file) ? methodList(source) : `render:${name}`,
         expected_behavior: "Resolve current source, host, authorization, lifecycle, and failure contract",
         backing_api_dal_data_path: rel,
         test_type: ROUTE_FILE.test(file) ? "boundary-and-runtime" : "browser-and-source",
         evidence_or_notes: product === "MenuList" ? "In-scope candidate" : "Separation boundary only",
+        ...recordedRuntimeEvidence,
     });
+}
+
+const sourceFiles = walk(path.join(ROOT, "src"))
+    .filter((file) => SOURCE_EXTENSIONS.has(path.extname(file)));
+const sourceFileSet = new Set(sourceFiles);
+const importGraph = new Map(sourceFiles.map((file) => [
+    file,
+    importedSourceFiles(file).filter((dependency) => sourceFileSet.has(dependency)),
+]));
+const reachableRoutesByFile = new Map();
+for (const pageFile of appFiles.filter((file) => PAGE_FILE.test(file))) {
+    const route = routeFromAppFile(pageFile);
+    const visited = new Set();
+    const pending = [pageFile];
+    let ancestor = path.dirname(pageFile);
+    const appRoot = path.join(ROOT, "src/app");
+    while (ancestor.startsWith(appRoot)) {
+        for (const basename of ["layout", "loading", "error", "not-found", "global-error"]) {
+            for (const extension of SOURCE_RESOLUTION_EXTENSIONS) {
+                const specialFile = path.join(ancestor, `${basename}${extension}`);
+                if (sourceFileSet.has(specialFile)) pending.push(specialFile);
+            }
+        }
+        if (ancestor === appRoot) break;
+        ancestor = path.dirname(ancestor);
+    }
+    while (pending.length > 0) {
+        const current = pending.pop();
+        if (!current || visited.has(current)) continue;
+        visited.add(current);
+        const routes = reachableRoutesByFile.get(current) ?? new Set();
+        routes.add(route);
+        reachableRoutesByFile.set(current, routes);
+        for (const dependency of importGraph.get(current) ?? []) pending.push(dependency);
+    }
 }
 
 const uiRoots = ["src/components", "src/app"];
@@ -155,6 +443,17 @@ const uiFiles = uiRoots
 for (const file of uiFiles) {
     const rel = relative(file);
     const product = classifyProduct(file);
+    const reachableRoutes = [...(reachableRoutesByFile.get(file) ?? [])].sort();
+    const renderedSurface = reachableRoutes.length > 0
+        ? reachableRoutes.join("|")
+        : "UNREACHED_BY_APP_PAGE_STATIC_GRAPH";
+    const reachabilityEvidence = reachableRoutes.length > 0
+        ? {}
+        : {
+            test_type: "static-app-page-reachability",
+            test_result: "PASS_NOT_SHIPPED",
+            final_verification_status: "SOURCE_UNREACHABLE_NOT_USER_TRIGGERABLE",
+        };
     const lines = fs.readFileSync(file, "utf8").split(/\r?\n/);
     for (let index = 0; index < lines.length; index += 1) {
         const line = lines[index];
@@ -164,12 +463,13 @@ for (const file of uiFiles) {
                 item_type: "user-control-candidate",
                 product_area: product,
                 route_or_component: rel,
-                screen_or_tab: "DERIVE_FROM_RENDER_TREE",
+                screen_or_tab: renderedSurface,
                 control_or_action: `${kind}@${index + 1}`,
                 expected_behavior: "Resolve label, reachability, guard, mutation, feedback, and recovery contract",
                 backing_api_dal_data_path: "TRACE_REQUIRED",
                 test_type: "runtime-interaction-required",
-                evidence_or_notes: line.trim().replace(/\s+/g, " ").slice(0, 240),
+                evidence_or_notes: `${reachableRoutes.length > 0 ? `Reachable from ${reachableRoutes.length} page route(s). ` : "No page import path found. "}${line.trim().replace(/\s+/g, " ").slice(0, 200)}`,
+                ...reachabilityEvidence,
             });
         }
     }

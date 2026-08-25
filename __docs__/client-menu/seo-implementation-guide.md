@@ -26,7 +26,7 @@ This document tracks current public-menu and Official Business Page SEO/runtime 
 | **Dynamic Metadata**      | `src/app/client/[[...slug]]/page.tsx`      | ✅ Complete | Next.js `generateMetadata` with SEO settings priority                   |
 | **Schema.org JSON-LD**    | `src/app/client/[[...slug]]/page.tsx` + `src/lib/schema/index.ts` | ✅ Complete | Business type + food Menu or non-food OfferCatalog + hours/address/contact |
 | **SEO Settings Form**     | `src/components/templates/main-app/businessSettings/tabs/SeoTab.tsx` + `src/components/mobile/screens/MobileSeoAnalyticsScreen.tsx` | ✅ Complete | UI for tagline, meta title, description, keywords, canonical URL        |
-| **Dynamic Sitemap**       | `src/app/sitemap.ts` + `src/app/client/sitemap.ts` | ✅ Complete | Platform sitemap plus tenant sitemap generation                         |
+| **Sitemaps**       | `public/sitemap.xml` + `src/app/client/sitemap.ts` | ✅ Complete | Static platform sitemap plus dynamic tenant sitemap generation                         |
 | **robots.txt**            | `public/robots.txt` + `src/app/client/robots.ts` | ✅ Complete | Platform and tenant crawler directives with sitemap references          |
 | **Store Type SEO Fields** | `/types/platform/store.ts`                 | ✅ Complete | `metaTitle`, `metaDescription`, `keywords[]`, `canonicalUrl`, `tagline` |
 | **ShareModal Preview**    | `/b2cView/shareModal/index.tsx`            | ✅ Complete | Shows owner what shared link looks like                                 |
@@ -190,7 +190,7 @@ Based on current source behavior and general crawler requirements. External craw
 ### Implemented Basics
 
 - [x] Add `tagline` field to Business Settings form
-- [x] Generate sitemap.xml for platform and tenant pages (`src/app/sitemap.ts`, `src/app/client/sitemap.ts`)
+- [x] Generate sitemap.xml for platform and tenant pages (`public/sitemap.xml`, `src/app/client/sitemap.ts`)
 - [x] Add platform and tenant robots policies (`public/robots.txt`, `src/app/client/robots.ts`)
 
 ### Implemented Schema Enhancements

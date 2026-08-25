@@ -11,9 +11,10 @@ import { formatDateTime } from "@util/dateTime";
 import { getGracePeriodDisplayInfo, hasValidSubscriptionAccess } from "@util/razorpay";
 import { DASHBOARD_URL, OWNER_APP_URL } from "@constant/urls";
 import { hasVerifiedSubscriptionPaymentEvidence } from "@lib/billing/subscriptionPlanEntitlement";
+import type { PricingPlanHandoff } from "@lib/billing/purchaseIntentBoundary";
 import { useFormatter } from "next-intl";
 import React from "react";
-import { LuCreditCard, LuHeartCrack, LuHeartOff, LuHeartPulse, LuLayoutDashboard, LuPause, LuTimer } from 'react-icons/lu';
+import { LuCreditCard, LuHeartCrack, LuHeartOff, LuHeartPulse, LuInfo, LuLayoutDashboard, LuPause, LuTimer } from 'react-icons/lu';
 import { formatCurrencyOnPricingPage } from ".";
 import PricingFaq from "./PricingFaq";
 import './main.css';
@@ -22,13 +23,14 @@ import CreditPacksCtaSection from "./shared/CreditPacksCtaSection";
 interface SubscriptionManagementRendererProps {
     activeSubscription: FirestoreSubscriptionDoc;
     refetchActiveSubscription: () => Promise<void>;
+    requestedPlanHandoff?: PricingPlanHandoff | null;
 }
 
 const PaymentMethodIcon = ({ brand }: { brand?: string }) => {
     return <LuCreditCard className="w-4 h-4 mr-2 text-gray-400" title={brand || 'Card'} />;
 };
 
-const SubscriptionManagementRenderer: React.FC<SubscriptionManagementRendererProps> = ({ activeSubscription, refetchActiveSubscription }) => {
+const SubscriptionManagementRenderer: React.FC<SubscriptionManagementRendererProps> = ({ activeSubscription, refetchActiveSubscription, requestedPlanHandoff }) => {
     const session = useClientAuthSession()
     const formatter = useFormatter()
     const isPaymentPending = activeSubscription.status === 'pending'
@@ -44,6 +46,16 @@ const SubscriptionManagementRenderer: React.FC<SubscriptionManagementRendererPro
     const billingPeriod = isManualBilling
         ? `one-time prepaid${activeSubscription.commitmentPeriodMonths ? ` / ${activeSubscription.commitmentPeriodMonths} months` : ''}`
         : activeSubscription.planType === 'YEAR' ? 'Year' : 'Month';
+    const hasConflictingPendingPlan = Boolean(
+        isPaymentPending
+        && requestedPlanHandoff
+        && (
+            requestedPlanHandoff.plan.planId !== activeSubscription.planId
+            || requestedPlanHandoff.plan.billingInterval !== activeSubscription.planType
+            || requestedPlanHandoff.currency !== activeSubscription.currency
+            || requestedPlanHandoff.quantity !== billedQuantity
+        )
+    );
 
     const handleCompletePendingPayment = () => {
         // Pending provider state must be checked by the authenticated billing API before checkout opens.
@@ -142,6 +154,17 @@ const SubscriptionManagementRenderer: React.FC<SubscriptionManagementRendererPro
             />
 
             <div className="grid grid-cols-1 gap-6 mt-8 max-w-3xl mx-auto mb-12">
+                {hasConflictingPendingPlan && requestedPlanHandoff ? (
+                    <div role="status" style={{ padding: '16px', borderRadius: '8px', border: '1px solid var(--ws-warning)', backgroundColor: 'var(--ws-bg-warning-soft)', color: 'var(--ws-warning-text)', display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+                        <LuInfo aria-hidden="true" size={20} style={{ flexShrink: 0, marginTop: '2px' }} />
+                        <div>
+                            <strong>Your selected plan has not replaced the pending checkout.</strong>
+                            <p style={{ marginTop: '6px' }}>
+                                You selected {requestedPlanHandoff.plan.name.replace(/ \((Yearly|Monthly)\)$/, '')} ({requestedPlanHandoff.plan.billingInterval === 'YEAR' ? 'yearly' : 'monthly'}), but {activeSubscription.planName} ({activeSubscription.planType === 'YEAR' ? 'yearly' : 'monthly'}) is already waiting for payment. MenuList will not create a second checkout. Continue the pending checkout in Billing, or open Help Center to ask for it to be cancelled before choosing another plan.
+                            </p>
+                        </div>
+                    </div>
+                ) : null}
                 {/* Subscription Details Card */}
                 <Card style={{ borderRadius: '8px', border: '1px solid var(--ws-border-default)', backgroundColor: 'var(--ws-bg-surface)' }}>
                     <CardHeader className="flex flex-row justify-between items-start" style={{ padding: '24px 24px 0' }}>
@@ -236,14 +259,15 @@ const SubscriptionManagementRenderer: React.FC<SubscriptionManagementRendererPro
 interface SubscriptionManagementPageProps {
     activeSubscription: FirestoreSubscriptionDoc;
     refetchActiveSubscription: () => Promise<void>;
+    requestedPlanHandoff?: PricingPlanHandoff | null;
 }
 
-const SubscriptionManagementPage: React.FC<SubscriptionManagementPageProps> = ({ activeSubscription, refetchActiveSubscription }) => {
+const SubscriptionManagementPage: React.FC<SubscriptionManagementPageProps> = ({ activeSubscription, refetchActiveSubscription, requestedPlanHandoff }) => {
 
     return (
         <div className="ws-page" style={{ backgroundColor: 'var(--ws-bg-subtle)', minHeight: '100vh' }}>
             <main className="relative" style={{ padding: 'var(--ws-section-py) 0' }}>
-                <SubscriptionManagementRenderer activeSubscription={activeSubscription} refetchActiveSubscription={refetchActiveSubscription} />
+                <SubscriptionManagementRenderer activeSubscription={activeSubscription} refetchActiveSubscription={refetchActiveSubscription} requestedPlanHandoff={requestedPlanHandoff} />
                 <PricingFaq />
             </main>
         </div>

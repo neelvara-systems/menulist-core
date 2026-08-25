@@ -1170,7 +1170,9 @@ function LoginPage() {
                         <Button
                           type="link"
                           className={styles.inlineHelpButton}
-                          onClick={() => router.push(NAVIGARIONS_ROUTINGS.FORGOT_PASSWORD)}
+                          onClick={() => router.push(
+                            `${NAVIGARIONS_ROUTINGS.FORGOT_PASSWORD}?callbackUrl=${encodeURIComponent(getPostLoginRedirect())}`,
+                          )}
                         >
                           Forgot?
                         </Button>

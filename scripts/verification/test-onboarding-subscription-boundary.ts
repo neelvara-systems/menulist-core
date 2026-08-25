@@ -1,6 +1,7 @@
 #!/usr/bin/env ts-node
 
 import assert from 'node:assert/strict';
+import { Timestamp } from 'firebase/firestore';
 import {
     isCurrentUserAvailableForOnboarding,
 } from '../../src/lib/onboarding/createTenantStore';
@@ -12,6 +13,20 @@ import {
     isOwnedOnboardingProviderSubscriptionAttempt,
     resolveOnboardingPlanPrice,
 } from '../../src/lib/onboarding/onboardingSubscriptionBoundary';
+import { hasRecoveryOnlyWorkspaceAccess } from '../../src/lib/onboarding/starterActivation';
+
+const accessNowMs = Date.now();
+assert.equal(hasRecoveryOnlyWorkspaceAccess(null, false, accessNowMs), false, 'unresolved stores must not be forced into billing recovery');
+assert.equal(hasRecoveryOnlyWorkspaceAccess({}, false, accessNowMs), true, 'resolved unpaid regular stores must remain recovery-only');
+assert.equal(hasRecoveryOnlyWorkspaceAccess({}, true, accessNowMs), false, 'paid stores must retain workspace access');
+assert.equal(hasRecoveryOnlyWorkspaceAccess({
+    activationDeadline: Timestamp.fromMillis(accessNowMs + 60_000),
+    onboardingSource: 'PUBLIC_MENU_ENTRY',
+}, false, accessNowMs), false, 'active Starter stores must retain the bounded Starter workspace');
+assert.equal(hasRecoveryOnlyWorkspaceAccess({
+    activationDeadline: Timestamp.fromMillis(accessNowMs - 1),
+    onboardingSource: 'PUBLIC_MENU_ENTRY',
+}, false, accessNowMs), true, 'expired Starter stores must return to recovery-only access');
 
 const session = {
     authIssuedAt: 1_800_000_000,

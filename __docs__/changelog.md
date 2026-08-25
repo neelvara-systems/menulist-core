@@ -1,5 +1,11 @@
 # MenuList — Changelog
 
+## August 25, 2026 - Answerlattice Scheduler Activity Accuracy
+
+- Proved the normal QA hourly scheduler path with a disposable due-work marker: Cloud Scheduler invoked the function, Gemini returned a valid health response using 7 provider-counted tokens, and the provider-health summary self-restored to the current UTC day.
+- Corrected the provider-health task to report real activity after a completed provider request. The prior implementation persisted fresh provider evidence but returned `activity: false`, which incorrectly labelled the overall scheduler tick as skipped. Scheduler outcomes now replace their exact per-task state map, preventing an earlier no-op reason or failure detail from leaking into a later result.
+- Added runtime verification for the activity contract. No function, Firebase, Vercel, Git, or production-data mutation deployment was performed by this change.
+
 ## August 24, 2026 - Internal FinanceOS Governance
 
 - Established an internal, founder-operated FinanceOS contract for portfolio expenses, payment obligations, subscriptions, prepaid and usage-based balances, assets, evidence, forecasts, reminders, and reconciliation.
@@ -32776,3 +32782,11 @@ TEMPLATE FOR NEW ENTRIES:
 # August 23, 2026 — Billing document attachments
 
 - MenuList billing-document notifications now render the immutable PDF inside the trusted sender. EmailOS attaches one bounded PDF, while WhatsAppOS uploads the same PDF to Meta and sends it through the registered document-header utility template. Both channels retain the authenticated owner-app document link as fallback; no public invoice URL or stored PDF copy was introduced.
+
+# 2026-08-25 - Answerlattice scheduler durable-run reliability
+
+- Added a combined Firestore/Storage emulator gate for the real master scheduler across due, non-due, inactive, stale-credit, lease, idempotency, and malformed-evidence cases.
+- Fixed completed governance runs remaining durably marked `running`: Firestore cannot persist `tenantRuns[].tasks[]`, so detailed tenant evidence now uses a scope-keyed, nested-array-safe map while the compatibility array contains flat summaries only.
+- Preserved owner Operations and platform intake-monitor behavior through dual-format readers, without changing scheduler cadence, tenant isolation, governance doctrine, provider billing, or Razorpay execution.
+- Hosted QA exposed and closed two direction-specific index gaps plus missing managed Storage-bucket discovery. Two due tenants then completed all 20 tasks with non-empty compiled context, graph/trust/knowledge/predictive outputs, and one stale-credit refund; non-due/inactive controls stayed untouched and the next ordinary tick produced no duplicate run or refund.
+- The two additive indexes and byte-identical validated scheduler Functions were deployed and authenticated in QA and production. Production received no fixture or forced invocation; the hourly scheduler remains enabled at `:30 UTC`.

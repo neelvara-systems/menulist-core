@@ -1,6 +1,7 @@
 'use client'
 
 import OutletContextBanner from '@atoms/OutletContextBanner';
+import BrandedPageLoader from '@atoms/brandedPageLoader';
 import { FEATURE_FLAGS } from '@config/features';
 import { SKIP_CLIENT_APP_LAYOUT_ROUTINGS } from '@constant/navigations';
 import { useAppSelector } from '@hook/useAppSelector';
@@ -8,8 +9,8 @@ import useDeviceType from '@hook/useDeviceType';
 import { isRtlLocale } from '@lib/localization/config';
 import { clearForceDesktopMode, shouldForceDesktopForPath } from '@lib/mobile/forceDesktopMode';
 import {
+    hasRecoveryOnlyWorkspaceAccess,
     hasStarterWorkspaceAccess,
-    isStarterActivationStore,
     isStarterRecoveryRoute,
     isStarterWorkspaceRoute,
 } from '@lib/onboarding/starterActivation';
@@ -56,7 +57,7 @@ export default function AntdLayoutWrapper(props: any) {
     const pathname = usePathname() || '';
     const router = useRouter();
     const searchParams = useSearchParams();
-    const { activeSubscription, storeDetails } = useContext(PlatformGlobalDataContext);
+    const { activeSubscription, activeSubscriptionLoading, storeDetails } = useContext(PlatformGlobalDataContext);
     const isVerticalSidebar = useAppSelector(getSidebarLayoutState)
     const { isHandheld, isMobile, hasMounted } = useDeviceType();
     const [, setForceDesktopRefreshKey] = useState(0);
@@ -67,6 +68,12 @@ export default function AntdLayoutWrapper(props: any) {
     const isOpsRoute = pathname === '/ops' || pathname.startsWith('/ops/');
     const isResellerRoute = pathname === '/reseller' || pathname.startsWith('/reseller/');
     const isHelpCenterRoute = pathname === '/help-center' || pathname.startsWith('/help-center/');
+    const isBillingRoute = pathname === '/billing';
+    const isOwnerWorkspaceRoute = !isPlatformRoute
+        && !isOpsRoute
+        && !isResellerRoute
+        && !isHelpCenterRoute
+        && !isBillingRoute;
     const isLocalMobileAudit = process.env.NODE_ENV !== 'production' && Boolean(searchParams?.has('mobileAudit'));
     const routeHasMobileShell = !isDesktopOnlyRoute && (
         isLocalMobileAudit || isHandheld || (isMobile && (isPlatformRoute || isOpsRoute || isResellerRoute || isHelpCenterRoute))
@@ -80,7 +87,14 @@ export default function AntdLayoutWrapper(props: any) {
     const isHandheldDesktopRoute = hasMounted && isHandheld && isDesktopOnlyRoute && FEATURE_FLAGS.ENABLE_MOBILE_UI && !forceDesktop;
     const hasPaidAccess = hasValidSubscriptionAccess(activeSubscription);
     const hasStarterAccess = hasStarterWorkspaceAccess(storeDetails, hasPaidAccess);
-    const isStarterStore = isStarterActivationStore(storeDetails);
+    const hasRecoveryOnlyAccess = hasRecoveryOnlyWorkspaceAccess(storeDetails, hasPaidAccess);
+    const isResolvingOwnerWorkspaceAccess = !shouldRenderMobileShell
+        && isOwnerWorkspaceRoute
+        && activeSubscriptionLoading;
+    const isRedirectingOwnerWorkspace = !shouldRenderMobileShell && isOwnerWorkspaceRoute && (
+        (hasStarterAccess && !isStarterWorkspaceRoute(pathname))
+        || (hasRecoveryOnlyAccess && !isStarterRecoveryRoute(pathname))
+    );
     const [sidebarShellExpanded, setSidebarShellExpanded] = useState(false);
     const verticalSidebarOffset = isCollapsed && !sidebarShellExpanded
         ? DASHBOARD_SIDEBAR_COLLAPSED_WIDTH
@@ -94,20 +108,24 @@ export default function AntdLayoutWrapper(props: any) {
             return;
         }
 
-        if (isStarterStore && !hasStarterAccess && !isStarterRecoveryRoute(pathname)) {
+        if (hasRecoveryOnlyAccess && !isStarterRecoveryRoute(pathname)) {
             router.replace('/billing');
         }
     }, [
         hasMounted,
         hasPaidAccess,
+        hasRecoveryOnlyAccess,
         hasStarterAccess,
-        isStarterStore,
         pathname,
         router,
         shouldRenderMobileShell,
     ]);
 
     const renderContent = () => {
+
+        if (isResolvingOwnerWorkspaceAccess || isRedirectingOwnerWorkspace) {
+            return <BrandedPageLoader page="Checking Plan Access" brand="menulist" />;
+        }
 
         if (SKIP_CLIENT_APP_LAYOUT_ROUTINGS.includes(pathname)) {
             return <>{props.children}</>

@@ -243,7 +243,7 @@ export async function runAnswerlatticeAiProviderHealthCheck(params: {
 
     const previousCompletedMillis = timestampMillis(current.lastCompletedAt);
     return {
-        activity: false,
+        activity: true,
         details: {
             latencyMs,
             model: ANSWERLATTICE_TEXT_MODEL,
