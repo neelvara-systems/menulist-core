@@ -3658,6 +3658,13 @@ assert(!setClaimsRoute.includes('secureError('), 'Set-claims route must not pass
 assertIncludes(authClient, 'nextauth_signout_failed', 'Auth client must securely log NextAuth sign-out failures.');
 assertIncludes(authClient, 'firebase_signout_failed', 'Auth client must securely log Firebase sign-out failures.');
 assertIncludes(authClient, 'getBoundedAuthStringContext', 'Auth client must bound sign-out callback URL context.');
+assertIncludes(authClient, 'intentionalSignOutCallback = normalizeIntentionalSignOutCallback(callbackUrl);', 'Intentional sign-out must register a safe callback before auth teardown.');
+assertIncludes(authClient, "callbackUrl.startsWith('/') && !callbackUrl.startsWith('//')", 'Intentional sign-out callback must reject protocol-relative and external destinations.');
+assertIncludes(authClient, 'if (nextAuthResult) {', 'Failed NextAuth teardown must keep an explicit failure branch.');
+assertIncludes(authClient, 'clearIntentionalSignOutCallback();', 'Failed NextAuth teardown must clear the intentional sign-out marker.');
+assertIncludes(sessionExpiryMonitor, 'const intentionalCallback = consumeIntentionalSignOutCallback();', 'Session expiry monitor must distinguish intentional sign-out from true expiry.');
+assertIncludes(sessionExpiryMonitor, 'router.replace(intentionalCallback);', 'Intentional sign-out must redirect without the false expiry dialog.');
+assertIncludes(sessionExpiryMonitor, 'redirectOnIntentionalSignOut: false', 'Access-ended teardown must preserve its explicit modal instead of consuming the intentional logout path.');
 assertIncludes(authBrowserRequestPolicy, "cache: 'no-store'", 'Shared browser auth request policy must bypass browser cache.');
 assertIncludes(authBrowserRequestPolicy, "credentials: 'same-origin'", 'Shared browser auth request policy must keep credentials same-origin.');
 assertIncludes(authBrowserRequestPolicy, "redirect: 'manual'", 'Shared browser auth request policy must not follow auth redirects to HTML.');

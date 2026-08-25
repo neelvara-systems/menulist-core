@@ -1,5 +1,16 @@
 # MenuList — Changelog
 
+## August 25, 2026 - Intentional Sign Out Does Not Mimic Expiry
+
+- Distinguished confirmed owner logout from genuine session expiry in the
+  shared browser auth boundary. Intentional logout now carries one normalized
+  same-origin callback through NextAuth teardown and redirects without briefly
+  presenting the misleading “Session Expired” modal.
+- Failed NextAuth teardown clears the marker, and server-detected access-ended
+  logout explicitly preserves its existing recovery dialog. Added auth source
+  regression coverage and mobile/Firebase implementation parity. This adds no
+  Firebase read/write, provider call, route, cache, or entitlement change.
+
 ## August 25, 2026 - Help Centre Keyboard Navigation
 
 - Made all six primary Help Centre navigation cards keyboard reachable with

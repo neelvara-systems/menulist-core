@@ -20,6 +20,7 @@
 | Browser checkout/session handoff | `src/hooks/usePaymentHandler.ts` |
 | Pricing return/pending recovery | `src/components/website/pricing/PricingWrapper.tsx`, `src/components/website/pricing-pages/SubscriptionManagement.tsx` |
 | Active session parsing and store/product projection | `src/lib/auth/getActiveSession.ts`, `src/lib/auth/loginSessionBoundary.ts` |
+| Intentional sign-out versus session-expiry routing | `src/lib/auth/client.ts`, `src/components/auth/SessionExpiryMonitor.tsx` |
 
 ## Login and session
 
@@ -30,6 +31,14 @@ Google user creation sanitizes its allowlisted write through the canonical `src/
 The JWT callback re-reads the current user, using a bounded 15-second process-local cache only for already scoped sessions. `useSession().update()` forces a fresh read, so onboarding and store-switch changes are projected from Firestore rather than trusted from the browser update payload.
 
 The session contains both top-level shortcuts and the compact `session.user` projection. `platformRole` is account level; `role` is derived from the mapping for the active store.
+
+Intentional browser sign-out registers only a normalized same-origin callback
+before Firebase and NextAuth teardown. When NextAuth settles to unauthenticated,
+`SessionExpiryMonitor` consumes that one-time callback and redirects without
+showing the real-expiry dialog. Failed NextAuth teardown clears the marker.
+Server-detected access-ended logout opts out of this redirect marker so its
+explicit blocked/revoked/expired explanation remains visible. A later
+authenticated session also clears any stale in-memory intent.
 
 ## Google claim handoff
 
@@ -89,6 +98,7 @@ The browser signs in with the returned custom token or forces an existing Fireba
 
 ```bash
 npm run verify:auth-onboarding-flow
+npm run verify:auth-security-failure-matrix
 npm run verify:marketing-external-insights
 npm run test:phone-otp-transaction:emulator
 npm run test:claim-account-concurrency:emulator

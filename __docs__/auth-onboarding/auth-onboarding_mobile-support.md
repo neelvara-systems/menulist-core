@@ -16,6 +16,7 @@ Auth and first-business setup happen before the authenticated owner shell, so th
 - A returning owner with a pending onboarding subscription sees **Payment pending** and a large **Complete payment** or **Open Billing** action.
 - External Razorpay links use a new browser context with `noopener,noreferrer`. Invalid stored checkout URLs are never opened; Pricing routes to Billing, while Billing keeps the safe support/no-payment-action state.
 - Owner copy stays generic and does not expose Firebase, provider, token, tenant, store, or limiter details.
+- Confirmed owner Sign Out redirects directly to its safe callback without briefly showing the unrelated “Session Expired” dialog. Genuine idle/session expiry and server-detected access changes retain their existing recovery dialog.
 
 ## PWA boundary
 
@@ -31,5 +32,6 @@ Auth and first-business setup happen before the authenticated owner shell, so th
 - claim-link opening from WhatsApp and each setup mode;
 - Razorpay open, dismissal, return to Pricing, pending recovery, and Billing recovery;
 - post-payment dashboard handoff and Firebase-backed owner data access.
+- deliberate Sign Out versus genuine session-expiry presentation on a narrow viewport.
 
 These device/provider checks remain pending until run on the target environment.

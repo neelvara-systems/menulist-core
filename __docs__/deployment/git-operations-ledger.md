@@ -3503,3 +3503,26 @@ Those fields are explicitly `unknown` instead of guessed.
 - Scope: report/ledger evidence only; runtime remains the exact hosted and verified parent `4d448af6b38a4426b6967a643d4948d00dd6150a`.
 - Filesystem before this final ledger append: zero staged, zero other tracked modifications, zero untracked files.
 - Firebase, production, `main`, manual Vercel deployment, and live Razorpay state remain unchanged.
+
+### GIT-20260825-214921-mlrc049-intentional-signout
+
+- Timestamp: `2026-08-25T21:49:21+05:30`
+- Record type: `PLANNED`
+- Actor/session/thread ID: Codex `/root`; thread `01a034e1-c70a-74b1-a92b-0a103a981815`.
+- Registered worktrees: one primary worktree at `/Users/danny/Projects/MenuListAi/menulist-core`, branch `staging`, HEAD `d6e22e327fdc5a8fb9c1433bb07b75b58d741d1e`.
+- Authorization: Danny instructed Codex to continue exhaustive MenuList QA certification, implement confirmed fixes, and keep all work on QA/staging before production consideration. This operation publishes MLRC-049 plus regression/docs evidence only. It does not authorize `main`, Firebase deployment, manual Vercel deployment, production release, or live Razorpay execution.
+- Candidate: distinguish deliberate owner logout from real session expiry through a one-time safe same-origin callback in the existing browser auth boundary. Preserve genuine access-ended/expired dialogs, Firebase and NextAuth teardown, tenant-cache cleanup, route contracts, and mobile/desktop callers.
+- Starting filesystem state: zero staged, eight tracked unstaged, zero untracked. Pre-ledger diff SHA-256 `04687657bf9923bfcff03174e7c6925e7b25965441dced6d54edc46463997a01`.
+- Validation before commit: exact hosted QA reproduced the false-expiry dialog twice, including a timed 1.2-second transition; auth security matrix and all child suites PASS; account/tenant lifecycle PASS; MobileShell route map PASS; auth/onboarding aggregate PASS; focused ESLint PASS; strict TypeScript PASS; `git diff --check` PASS.
+
+- Branch matrix before:
+
+  | Branch | Local full SHA | Direct server ref/full SHA | Tracking ref | Ahead/behind | Worktree | Staged/unstaged/untracked | Status |
+  | --- | --- | --- | --- | --- | --- | --- | --- |
+  | `main` | `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `refs/heads/main` / `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `origin/main` | `0/0` | not checked out | `N/A` | `IN_SYNC` |
+  | `staging` | `d6e22e327fdc5a8fb9c1433bb07b75b58d741d1e` | `refs/heads/staging` / `d6e22e327fdc5a8fb9c1433bb07b75b58d741d1e` | `origin/staging` | `0/0` | primary worktree | `0/8/0` before this append | `IN_SYNC` |
+
+- Firebase matrix before/after: unchanged from `GIT-20260825-211840-mlrc048-help-keyboard`. MenuList QA/production Functions retain tree `3c42f5d3fca47ca69e10fa34ad63cf8c28ab8f75`, `INFRA_CHANGE` / `DEPLOY_REQUIRED`; all Rules, indexes, and Storage rows and all Answerlattice rows retain `NO_INFRA_CHANGE` / `SERVER_STATE_UNKNOWN`. No infrastructure path changed in this candidate.
+- Git server readback and divergence: direct pre-operation `git ls-remote` proves local/server `main` and `staging` exact with `0/0` divergence. Post-operation evidence is pending.
+- Final filesystem state: pending scoped commit, non-force `staging` push, automatic QA build, exact `/api/version`, timed logout retest, report closeout, and direct server readback.
+- Attribution confidence: exact.

@@ -5,7 +5,11 @@ import { NAVIGARIONS_ROUTINGS } from '@constant/navigations';
 import { useAppSelector } from '@hook/useAppSelector';
 import { logAuthFailure } from '@lib/auth/authDiagnostics';
 import { AUTH_BROWSER_REQUEST_POLICY } from '@lib/auth/browserRequestPolicy';
-import { signOutSession } from '@lib/auth/client';
+import {
+    clearIntentionalSignOutCallback,
+    consumeIntentionalSignOutCallback,
+    signOutSession,
+} from '@lib/auth/client';
 import { createLatestRequestGuard } from '@lib/runtime/latestRequestGuard';
 import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
 import { getDarkColorState, getDarkModeState, getLightColorState } from '@reduxSlices/clientThemeConfig';
@@ -251,6 +255,7 @@ export default function SessionExpiryMonitor({ loginCallbackPath }: SessionExpir
     // Track authentication state
     useEffect(() => {
         if (status === 'authenticated') {
+            clearIntentionalSignOutCallback();
             wasAuthenticated.current = true;
             hasShownModal.current = false;
             accessEndedInFlight.current = false;
@@ -283,6 +288,13 @@ export default function SessionExpiryMonitor({ loginCallbackPath }: SessionExpir
 
             // Don't show if already on signin page
             if (isOnSigninPage) {
+                clearIntentionalSignOutCallback();
+                return;
+            }
+
+            const intentionalCallback = consumeIntentionalSignOutCallback();
+            if (intentionalCallback) {
+                router.replace(intentionalCallback);
                 return;
             }
 
@@ -319,7 +331,9 @@ export default function SessionExpiryMonitor({ loginCallbackPath }: SessionExpir
         }
 
         try {
-            await signOutSession(buildSessionLoginPath('access-ended', loginCallbackPath));
+            await signOutSession(buildSessionLoginPath('access-ended', loginCallbackPath), {
+                redirectOnIntentionalSignOut: false,
+            });
         } catch {
             // The access decision already came from the server; keep the local logout flow moving.
         }

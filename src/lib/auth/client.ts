@@ -13,13 +13,37 @@ import { signOut } from "next-auth/react";
 import { getBoundedAuthStringContext, logAuthFailure } from "./authDiagnostics";
 import { clearAuthenticatedBrowserState } from "./clientSessionCleanup";
 
+let intentionalSignOutCallback: string | null = null;
+
+const normalizeIntentionalSignOutCallback = (callbackUrl: string): string => (
+    callbackUrl.startsWith('/') && !callbackUrl.startsWith('//')
+        ? callbackUrl
+        : NAVIGARIONS_ROUTINGS.SIGNIN
+);
+
+export const clearIntentionalSignOutCallback = (): void => {
+    intentionalSignOutCallback = null;
+};
+
+export const consumeIntentionalSignOutCallback = (): string | null => {
+    const callbackUrl = intentionalSignOutCallback;
+    intentionalSignOutCallback = null;
+    return callbackUrl;
+};
+
 /**
  * Sign out the current user (client-side only)
  * Safe to import in client components
  */
 export const signOutSession = async (
     callbackUrl: string = NAVIGARIONS_ROUTINGS.SIGNIN,
+    options: { redirectOnIntentionalSignOut?: boolean } = {},
 ): Promise<true> => {
+    const shouldRedirectIntentionalSignOut = options.redirectOnIntentionalSignOut !== false;
+    if (shouldRedirectIntentionalSignOut) {
+        intentionalSignOutCallback = normalizeIntentionalSignOutCallback(callbackUrl);
+    }
+
     const firebaseResult = await signOutFirebaseAuth()
         .then((): null => null)
         .catch((error: unknown) => {
@@ -45,7 +69,10 @@ export const signOutSession = async (
         clearAuthenticatedBrowserState();
     }
 
-    if (nextAuthResult) throw nextAuthResult;
+    if (nextAuthResult) {
+        if (shouldRedirectIntentionalSignOut) clearIntentionalSignOutCallback();
+        throw nextAuthResult;
+    }
     if (firebaseResult) throw firebaseResult;
     return true;
 };

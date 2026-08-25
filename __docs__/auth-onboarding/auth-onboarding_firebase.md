@@ -72,3 +72,10 @@ The Google first-user Firestore write now uses the shared canonical value saniti
 The current changes are Next.js route, UI, helper, verifier, and documentation changes. They do not trigger Firebase infrastructure auto-deploy. A Vercel deploy remains pending until explicitly requested.
 
 The access-status latest-request correction is browser-only. It adds no Firestore read/write/delete, rule, index, Firebase Auth provider call, Storage object, Cloud Function, scheduled task, queue, or cache entry. Ordinary polling cost is unchanged; stale responses are discarded locally instead of becoming current sign-out authority.
+
+The intentional-sign-out callback marker is also browser-memory only. It adds
+no Firebase Auth operation beyond the existing sign-out, no Firestore or
+Storage operation, no API route, no listener, no cache entry, and no Function.
+It changes only the unauthenticated client transition: deliberate logout uses
+its normalized local callback, while genuine expiry and access-ended states
+retain their existing security recovery behavior.
