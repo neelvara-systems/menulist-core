@@ -2061,3 +2061,44 @@ Those fields are explicitly `unknown` instead of guessed.
   | Answerlattice | production / `neelvara-answerlattice-prod` | Cloud Functions | `functions-answerlattice/` | identical QA-validated source recorded immediately above | preceding result records both scoped Functions `ACTIVE` with byte-identical source readback | `INFRA_CHANGE` | `DEPLOYED_AND_READ_BACK` |
 
 - Post-operation branch matrix, commit SHA, direct readback, validation, and filesystem state: pending.
+
+### GIT-20260825-125711-all-local-to-staging-qa-result
+
+- Timestamp: `2026-08-25T12:58:55+05:30`
+- Record type: `PERFORMED`
+- Actor/session/thread ID: Codex `/root`; thread `01a034e1-c70a-74b1-a92b-0a103a981815`
+- Completes: `GIT-20260825-125711-all-local-to-staging-qa`
+- Operation performed: staged the complete stable sole-worktree snapshot with `git add -A`, passed cached diff whitespace validation, created commit `3a34a975d52b1a3b8bec4be35c40b4930b1f9441` (`Prepare complete QA staging snapshot`), and pushed `staging` non-force from `916b5c94d82b848fef791babeb49addbd3c794b8` to `3a34a975d52b1a3b8bec4be35c40b4930b1f9441`.
+- Snapshot result: 64 paths committed, comprising 59 tracked-path modifications/deletions and 5 additions; 10,787 insertions and 8,442 deletions. No path was excluded. `main` was not moved. No Firebase or Vercel deployment and no payment execution occurred.
+- Validation: pre-stage `git diff --check` passed; staged `git diff --cached --check` passed; high-confidence changed-file secret scan reported zero findings; no active writer was present; direct `git ls-remote` readback confirmed server `staging` at the exact commit; local/tracking comparison was `0/0`; the worktree was clean immediately after the primary push.
+- Filesystem closeout: this performed entry is the only post-push evidence change. It will be committed and pushed as an evidence-only descendant so the user-requested worktree finishes clean. The primary product/code/docs snapshot remains exactly `3a34a975d52b1a3b8bec4be35c40b4930b1f9441`; final descendant SHA is reported by direct readback in the task handoff.
+
+- Branch matrix after the primary snapshot push:
+
+  | Branch | Local full SHA | Direct server ref/full SHA | Tracking ref | Ahead/behind | Worktree | Staged/unstaged/untracked | Status |
+  | --- | --- | --- | --- | --- | --- | --- | --- |
+  | `main` | `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `refs/heads/main` / `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `origin/main` | `0/0` | not checked out | `N/A` | `IN_SYNC` |
+  | `staging` | `3a34a975d52b1a3b8bec4be35c40b4930b1f9441` | `refs/heads/staging` / `3a34a975d52b1a3b8bec4be35c40b4930b1f9441` | `origin/staging` | `0/0` | `/Users/danny/Projects/MenuListAi/menulist-core` | `0/0/0` | `IN_SYNC` |
+
+- Firebase matrix after (no deployment was performed; classifications are unchanged from the planned record):
+
+  | Product | Environment/project | Component | Local source/config | Local validation/artifact evidence | Authenticated server evidence | Delta | Deployment state |
+  | --- | --- | --- | --- | --- | --- | --- | --- |
+  | MenuList | QA / `menulist-qa` | Firestore Rules | `firestore.rules` / `firestore-menulist.rules`; unchanged | no snapshot delta | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | QA / `menulist-qa` | Firestore indexes | `firestore.indexes.json`; unchanged | no snapshot delta | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | QA / `menulist-qa` | Storage Rules | `storage.rules`; unchanged | no snapshot delta | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | QA / `menulist-qa` | Cloud Functions | `functions/`; unchanged | no snapshot delta | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | production / `menulist-prod` | Firestore Rules | `firestore.rules` / `firestore-menulist.rules`; unchanged | no snapshot delta | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | production / `menulist-prod` | Firestore indexes | `firestore.indexes.json`; unchanged | no snapshot delta | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | production / `menulist-prod` | Storage Rules | `storage.rules`; unchanged | no snapshot delta | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | production / `menulist-prod` | Cloud Functions | `functions/`; unchanged | no snapshot delta | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Firestore Rules | `firestore-answerlattice.rules`; unchanged | no snapshot delta | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Firestore indexes | `firestore-answerlattice.indexes.json` | SHA-256 `0114bdf8ea6425b890a8e58fa03dac7915a7d3ed4372bc689ab59a8ce585ff4a` | preceding authenticated result records both target indexes `READY` | `INFRA_CHANGE` | `DEPLOYED_AND_READ_BACK` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Storage Rules | `storage-answerlattice.rules`; unchanged | no snapshot delta | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Cloud Functions | `functions-answerlattice/` | final local build/hosted gates recorded in preceding result | preceding authenticated result records both scoped Functions `ACTIVE` with source readback | `INFRA_CHANGE` | `DEPLOYED_AND_READ_BACK` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Firestore Rules | `firestore-answerlattice.rules`; unchanged | no snapshot delta | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Firestore indexes | `firestore-answerlattice.indexes.json` | identical index artifact | preceding authenticated result records both target indexes `READY` | `INFRA_CHANGE` | `DEPLOYED_AND_READ_BACK` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Storage Rules | `storage-answerlattice.rules`; unchanged | no snapshot delta | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Cloud Functions | `functions-answerlattice/` | identical QA-validated source recorded above | preceding authenticated result records both scoped Functions `ACTIVE` with source readback | `INFRA_CHANGE` | `DEPLOYED_AND_READ_BACK` |
+
+- Attribution confidence: exact for the complete path set, commit, push, direct Git readback, validation commands, and preserved prior Firebase evidence; per-file authorship across earlier concurrent sessions remains `unknown` where no prior ledger entry assigns it.
