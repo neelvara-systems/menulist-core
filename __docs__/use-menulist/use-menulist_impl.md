@@ -35,7 +35,7 @@ renders the shared `NoSubscriptionView`. This matches Projects and MobileShell,
 preserves starter-workspace access, and prevents an authorization failure from
 being mislabeled as a missing menu.
 
-The `PageState` type still contains `not_published`, but the current runtime does not branch on a separate unpublished state. The current readiness check is based on whether at least one non-deleted, active project exists.
+The `PageState` type still contains `not_published`, but the current runtime does not branch on a separate unpublished page state. The page can load when at least one non-deleted, active project exists; within that ready surface, header and placement readiness copy must derive from `hasPublishedMenuProject()` so an empty or draft-only project never claims it is live.
 
 ## Output Data Contract
 

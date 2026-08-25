@@ -5147,6 +5147,9 @@ function verifyUseMenuListOutputDiagnosticsAreBounded() {
   assertIncludes(desktopUseMenuList, "import { hasValidSubscriptionAccess } from '@util/razorpay';", 'Desktop Use MenuList paid-access authority');
   assertIncludes(desktopUseMenuList, 'hasStarterWorkspaceAccess,', 'Desktop Use MenuList starter-workspace authority');
   assertIncludes(desktopUseMenuList, "import NoSubscriptionView from '../billing/NoSubscriptionView';", 'Desktop Use MenuList honest no-subscription state');
+  assertIncludes(desktopUseMenuList, 'data.hasPublishedMenu', 'Desktop Use MenuList publication-aware header copy');
+  assertIncludes(desktopUseMenuList, 'Publish your ${labels.offeringLower} before sharing it with customers', 'Desktop Use MenuList unpublished recovery copy');
+  assertNotIncludes(desktopUseMenuList, '<Text type="secondary">\n                    Your {labels.offeringLower} is live and ready to share', 'Desktop Use MenuList must not claim every active project is live');
   assertIncludes(desktopUseMenuList, '|| activeSubscriptionLoading', 'Desktop Use MenuList must wait for settled entitlement before project reads');
   assertIncludes(desktopUseMenuList, '|| (!hasPaidAccess && !hasStarterAccess)', 'Desktop Use MenuList must not read project summaries without paid or starter access');
   assertIncludes(desktopUseMenuList, 'if (!hasPaidAccess && !hasStarterAccess) {', 'Desktop Use MenuList no-subscription render gate');

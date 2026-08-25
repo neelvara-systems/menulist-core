@@ -1098,7 +1098,9 @@ export default function UseMenuList({ view = 'overview' }: UseMenuListProps) {
             <Flex vertical gap={4} style={{ marginBottom: 24 }}>
                 <Title level={3} style={{ margin: 0 }}>Use MenuList</Title>
                 <Text type="secondary">
-                    Your {labels.offeringLower} is live and ready to share
+                    {data.hasPublishedMenu
+                        ? `Your ${labels.offeringLower} is live and ready to share`
+                        : `Publish your ${labels.offeringLower} before sharing it with customers`}
                 </Text>
             </Flex>
 

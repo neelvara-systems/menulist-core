@@ -3916,3 +3916,32 @@ No Firebase source/configuration path is changed by this operation. No authentic
 - Firebase matrix before/after: no Rules, indexes, Storage Rules, or Cloud Functions source changed. Answerlattice QA and production infrastructure retain `NO_INFRA_CHANGE` / `SERVER_STATE_UNKNOWN`; MenuList infrastructure retains separately recorded states. No Firebase deployment or authenticated infrastructure readback is authorized here.
 - Final filesystem state: pending complete stable snapshot commit, non-force staging push, direct server readback, automatic QA deployment, exact `/api/version`, hosted First 10 cached request, and proof that no `ops_safe_mode_check_failed` log is emitted on the corrected build.
 - Attribution confidence: exact for Answerlattice source, tests, hosted diagnosis, and Git evidence; independent MenuList snapshot retains separate attribution.
+### GIT-20260826-011324-mlrc056-unpublished-share-truth
+
+- Timestamp: `2026-08-26T01:13:24+05:30`
+- Record type: `PLANNED`
+- Actor/session/thread ID: Codex `/root`; MenuList QA release-candidate certification.
+- Registered worktrees: one primary worktree at `/Users/danny/Projects/MenuListAi/menulist-core`, branch `staging`, HEAD `0f9df0070d7d59049d149345fd6408cb5f54aaad`.
+- Authorization: Danny instructed autonomous MenuList QA certification and complete stable staging publication. This operation publishes MLRC-056 only to `origin/staging`; it does not authorize `main`, Firebase infrastructure deployment, manual Vercel deployment, production mutation, or Razorpay execution.
+- Hosted reproduction: on the isolated provider-free fixture, `/qr-code` said `Your menu is live and ready to share` while the same screen correctly said `Publish your menu first`; the public menu contained no items and had no publish timestamp.
+- Root cause and correction: the Use MenuList header used unconditional success copy despite already computing `hasPublishedMenuProject()`. The header now retains success only for published truth and gives a direct publish-before-sharing instruction otherwise. No link, QR, project, Firebase, cache, entitlement, or provider contract changes.
+- Starting filesystem state: zero staged, four tracked unstaged, zero untracked before this append. Diff SHA-256 `5f8838444f8a63ae2a257e2028fe9e8e4e92d0b314470fd9c69d2303ae1e4cfc`; status SHA-256 `72d72363235c433d97ff6a06edacd776f8777af416d90c861df77342d3ee9d26`.
+- Validation: public business-truth verifier PASS; focused zero-warning ESLint PASS; strict TypeScript PASS; production build PASS with 450/450 pages and 53 Serwist entries; `git diff --check` PASS.
+
+#### Pre-operation branch matrix
+
+| Branch | Local SHA | Direct server SHA | Tracking ref | Ahead/behind | Worktree | Filesystem | Status |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `staging` | `0f9df0070d7d59049d149345fd6408cb5f54aaad` | `refs/heads/staging` / `0f9df0070d7d59049d149345fd6408cb5f54aaad` | `origin/staging` | `0/0` | primary | `0/4/0` before ledger append | `IN_SYNC` |
+| `main` | `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `refs/heads/main` / `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `origin/main` | `0/0` | none | n/a | `IN_SYNC` |
+
+#### Firebase component matrix before Git mutation
+
+This operation changes no Firebase source or configuration. No authenticated infrastructure readback or deployment is performed, so every row is independently `NO_INFRA_CHANGE` / `SERVER_STATE_UNKNOWN`.
+
+| Target | Firestore Rules | Firestore indexes | Storage Rules | Cloud Functions |
+| --- | --- | --- | --- | --- |
+| MenuList QA `menulist-qa` | `NO_INFRA_CHANGE` / `SERVER_STATE_UNKNOWN` | `NO_INFRA_CHANGE` / `SERVER_STATE_UNKNOWN` | `NO_INFRA_CHANGE` / `SERVER_STATE_UNKNOWN` | `NO_INFRA_CHANGE` / `SERVER_STATE_UNKNOWN` |
+| MenuList production `menulist-prod` | `NO_INFRA_CHANGE` / `SERVER_STATE_UNKNOWN` | `NO_INFRA_CHANGE` / `SERVER_STATE_UNKNOWN` | `NO_INFRA_CHANGE` / `SERVER_STATE_UNKNOWN` | `NO_INFRA_CHANGE` / `SERVER_STATE_UNKNOWN` |
+| Answerlattice QA `neelvara-answerlattice-qa` | `NO_INFRA_CHANGE` / `SERVER_STATE_UNKNOWN` | `NO_INFRA_CHANGE` / `SERVER_STATE_UNKNOWN` | `NO_INFRA_CHANGE` / `SERVER_STATE_UNKNOWN` | `NO_INFRA_CHANGE` / `SERVER_STATE_UNKNOWN` |
+| Answerlattice production `neelvara-answerlattice-prod` | `NO_INFRA_CHANGE` / `SERVER_STATE_UNKNOWN` | `NO_INFRA_CHANGE` / `SERVER_STATE_UNKNOWN` | `NO_INFRA_CHANGE` / `SERVER_STATE_UNKNOWN` | `NO_INFRA_CHANGE` / `SERVER_STATE_UNKNOWN` |
