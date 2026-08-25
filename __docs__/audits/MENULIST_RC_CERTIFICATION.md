@@ -6,7 +6,7 @@
 
 **Initial candidate commit:** `b857a164944012d42131917e7c62215c94022c0f`
 
-**Current tested product commit:** `2b149b025c8c8737c8e8e7b8aa64fd4cfa12cc95`
+**Current tested product commit:** `45cae8cceaf2d016ec50efe46b0c54bb9a163a86`
 
 **MenuList product snapshot commit:** `3a34a975d52b1a3b8bec4be35c40b4930b1f9441`
 
@@ -47,7 +47,7 @@ The generated discovery inventory is retained in
 
 ## B. Inventory summary
 
-The current generator discovered 8,461 source candidates across the shared
+The current generator discovered 8,467 source candidates across the shared
 repository. These are discovery candidates, not passing test claims.
 
 | Inventory class | Discovered | Current status |
@@ -56,11 +56,11 @@ repository. These are discovery candidates, not passing test claims.
 | Route handlers | 293 | Product classification, methods, and boundary tests in progress |
 | Layouts | 19 | Source and host behavior in progress |
 | Loading/error/not-found surfaces | 9 | Runtime coverage in progress |
-| User-control candidates | 7,478 | 5,277 MenuList controls page-mapped; 155 MenuList controls explicitly classified as non-shipped source |
+| User-control candidates | 7,484 | 5,283 MenuList controls page-mapped; 155 MenuList controls explicitly classified as non-shipped source |
 | Feature flags | 333 | Product ownership and material alternate states in progress |
 | Firebase Function exports | 21 | Source/export inventory complete; runtime evidence is tracked separately |
 
-Current product classification yielded 5,943 MenuList candidates and 2,518
+Current product classification yielded 5,949 MenuList candidates and 2,518
 separation-boundary candidates. A candidate remains `DISCOVERED_UNTESTED` until
 its rendered reachability and behavior are proven; source inspection alone does
 not mark a control tested.
@@ -82,7 +82,7 @@ canonical destination. The catch-all Help Center page was exercised through
 `ACCESS_PASSED_FUNCTIONAL_INTERACTION_PENDING`, so authentication protection is
 proved without claiming their authenticated controls were exercised.
 
-Of 5,432 MenuList-classified control candidates, 5,277 map through the static
+Of 5,438 MenuList-classified control candidates, 5,283 map through the static
 import graph to one or more App Router pages. The remaining 155 controls in 45
 source files have no page import path and now carry the explicit final status
 `SOURCE_UNREACHABLE_NOT_USER_TRIGGERABLE`. They are classified as non-shipped
@@ -105,20 +105,20 @@ separately tracked and is not implied by this anonymous boundary pass.
 
 | Product area | Scope | Result | Evidence / blocker |
 | --- | --- | --- | --- |
-| Baseline identity | Worktree, branch, HEAD, and filesystem ownership | PASS (Git identity) | Complete snapshot committed at `3a34a975d52b1a3b8bec4be35c40b4930b1f9441`; exact tested product descendant `c9c08d64cd75e8e2a2f485373f5b3ebf3b784232` reached local/server `staging` at `0/0`. `main` remains unchanged. |
+| Baseline identity | Worktree, branch, HEAD, and filesystem ownership | PASS (Git identity) | Direct readback on August 25 proved local/server `staging` at exact descendant `45cae8cceaf2d016ec50efe46b0c54bb9a163a86` with `0/0` divergence. `main` remains unchanged at `fe625d5bbf527c1b7e537b00ab32a4f655905c35`. |
 | SecurityOS registry | MenuList surface/evidence registry integrity | PASS | Registry, tenant/store DAL, Rules, Storage, CSP, input/file/network, webhook, and API-scope evidence executed; the current selective planner was reviewed and `test:csp-report-boundary` reran successfully |
-| Route/control inventory | App Router, controls, flags, Functions | PASS (discovery, private-route classification/access, API classification, and static reachability) | `npm run verify:menulist-rc-inventory`; 8,461 unique rows; all 58 MenuList private pages explicitly classified and signed-out access-tested; all 136 MenuList route handlers have resolved methods/access classes; 5,277/5,432 MenuList control candidates map to page routes and 155 are explicitly classified as non-shipped source |
+| Route/control inventory | App Router, controls, flags, Functions | PASS (discovery, private-route classification/access, API classification, and static reachability) | `npm run verify:menulist-rc-inventory`; 8,467 unique rows; all 58 MenuList private pages explicitly classified and signed-out access-tested; all 136 MenuList route handlers have resolved methods/access classes; 5,283/5,438 MenuList control candidates map to page routes and 155 are explicitly classified as non-shipped source |
 | Private-route authentication | All 58 MenuList `(main)` page routes, including concrete catch-all and canonical aliases | PASS (signed-out access only) | Connected Chrome on current local source: 58/58 reached callback-aware sign-in; no private screen rendered. Authenticated functional state remains separately pending. |
 | Route-handler anonymous boundary | All 136 MenuList handlers and 153 exported HTTP methods | PASS local and exact hosted candidate | Exact hosted product commit `c9c08d64cd75e8e2a2f485373f5b3ebf3b784232` returned 200×5, 301×1, 400×15, 401×126, 403×1, and 404×5 with zero timeout/5xx; the former batch-image trace crash now rejects anonymously with 401. Live Razorpay execution remains excluded. |
 | Local aggregate | MenuList-filtered repository production-readiness gate | PASS WITH EXTERNAL BLOCKER | The current full run passed its first five checks before AssetOS correctly stopped on the owner-PWA fingerprint made stale by MLRC-022. After the unchanged proof asset and exact source delta were reviewed and the one affected slot was re-fingerprinted, the resumed run passed 155/156 remaining checks. Combined unique result: 160/161 checks passed; all executable child verifiers passed; the sole non-pass is the unavailable Upstash target credential gate. |
 | Authentication regression | Leading/trailing email and password; invalid login recovery; forgot-password validation; callback preservation | PASS (signed-out boundary) | Deterministic credential-normalization tests plus exact hosted Chrome: malformed identifier/passcode stayed on sign-in with inline validation, Forgot preserved `/dashboard`, invalid reset email produced an announced error, and Return restored the sign-in callback. No reset email, account creation, or real credential was submitted. |
 | Authentication and onboarding aggregate | Sign-up/sign-in boundaries, claims/workspace association, plan handoff, owner setup, extraction entry, retry, recovery, concurrency, and cleanup | PASS (local/emulator) | `npm run verify:auth-onboarding-flow`, `npm run test:login-credential-normalization`, and `npm run verify:menu-extraction-pipeline` completed with exit 0; expected denial/failure logs were fixture assertions rather than escaped failures |
 | Pricing handoff | Official, Pro, and Multi-location across INR/USD and monthly/yearly selection; content-pack sign-in; comparison and FAQ controls | PASS (provider boundary only) | Exact hosted Chrome exercised all 12 signed-out plan/currency/interval combinations. Each produced the expected callback-aware sign-in handoff with plan, currency, interval, B2C type, and quantity one or the Multi-location minimum of two. Content-pack sign-in, comparison expansion, all three FAQ categories, and an accordion in each category worked with zero overflow. No Razorpay provider execution occurred. |
-| Hosted QA | Exact candidate on QA owner app | PASS (deployment identity and bounded recovery interaction) | At `2026-08-25T16:50:00+05:30`, `/api/version` returned exact product commit `f0508560931d80d4f6dc9fd9c56a7638a9813994` with verified provenance. Signed-in pending-owner Billing/history/Help/recovery evidence remains valid through ancestor `801f87f…`; exact-current evidence includes corrected invalid-screen Back/Home behavior and 44px actions. The same pass kept MLRC-041 open because access-denied Home remained below the first 320×568 viewport. |
+| Hosted QA | Exact candidate on QA owner app | PASS (deployment identity and bounded authenticated recovery interaction) | `/api/version` returned exact product commit `45cae8cceaf2d016ec50efe46b0c54bb9a163a86` with verified provenance. Connected Chrome signed in through the approved Google owner identity and rendered the yearly Starter `Payment pending` Billing state. Billing History, Help recovery, blank ticket validation, and View Plans worked. Direct `/users` correctly returned this unpaid fixture to Billing once the deliberate auth-sync stress window expired. Live Razorpay checkout was not started. |
 | Hosted transport | Website/app/tenant HTTP, metadata, noindex, PWA assets, missing routes | PASS (bounded) | Website, pricing, features, resources, legal, sign-in, owner manifest, offline, service workers, and tenant menu matched QA policy; disabled sitemap/customer manifest returned honest 404; missing menu slug rendered noindex recovery |
 | Public website browser inventory | All 186 sitemap URLs, including 22 public tool routes and 62 App Router page patterns | PASS (render/recovery) | Connected Chrome reran the current sitemap manifest (`30afee75c57db88ee93dec78926ed0b389a1ff7ddde99fb2510946d897e24fe8`) and rendered a main region and route-specific heading without application/404 failure across all 186 unique URLs; individual transmitting controls remain separately pending; the 22 tools exposed 410 rendered controls |
 | Current hosted mobile website routes | Static marketing, feature, industry, legal, trust, tools, English resources, and all 112 locale-prefixed resource variants | PASS (render/responsive/accessibility attributes) | Exact `b1750e0…` QA at 320×568 rendered every static website route and every reviewed localized resource variant with a non-empty heading, no application/not-found state, and no horizontal overflow. Exact `25d58ae…` then passed all 16 Arabic hub/article routes with root `lang=ar-SA`, root/content `dir=rtl`, and zero overflow; Arabic→English switch plus Chrome back/forward restored the correct route, heading, language, and direction each time. |
-| Global signed-out recovery routes | `/403`, `/404`, `/unauthorized`, `/offline`, invalid `/invite`, `/product`, disabled `/creative-editor-smoke`, protected `/test-sentry`, invalid `/msg-preview/[sessionId]` | PASS (behavior, copy, width, destination, and 44px target) / access-denied first-viewport refinement pending hosted retest | Exact hosted `f050856…` proved generic not-found Back/Home at 44px and correct destinations. Exact `deb26d8…` retained a fixed 251×294 Ant exception image despite the responsive custom artwork: pinned Ant source confirms exception statuses discard the supplied `icon`. MLRC-041 now uses a non-exception presentation status so the reviewed responsive contextual illustration actually renders. |
+| Global signed-out recovery routes | `/403`, `/404`, `/unauthorized`, `/offline`, invalid `/invite`, `/product`, disabled `/creative-editor-smoke`, protected `/test-sentry`, invalid `/msg-preview/[sessionId]` | PASS (behavior, copy, width, destination, 44px targets, and first-viewport recovery) | Exact hosted `194f39a…` at 320×568 rendered the reviewed responsive contextual artwork on `/403`, `/unauthorized`, and invalid `/screen/[token]`; document width stayed 320px, document height stayed 568px, and both 44px recovery actions were fully visible. Invalid-screen Back/Home and access-denied destinations remained correct. |
 | Digital screen invalid-token recovery | `/screen/[token]` with deterministic invalid token; generic Back/Home recovery | PASS (truthful invalid state and recovery) / BLOCKED (active fixture) | Exact hosted `f050856…` at 320×568 rendered the noindex generic not-found boundary with zero overflow and no screen/store disclosure. Both actions measured 44px and were visible in the first viewport; Go Back restored the previous pricing route and Go Home reached `https://menulist.digital/`. Active/expired screen rendering still requires an isolated valid fixture. |
 | Public Truth Tools | All 22 tool routes plus the tools index and report reader; primary generation/check, empty/result, copy, public-link, reset, follow-up validation, and mobile width | PASS (non-transmitting browser coverage) | Connected Chrome at 320×568 rendered every route without application failure or overflow. All 18 remaining generator/check tools produced an honest empty-input report; every available Reset restored the initial state; every generated report copied and created a public report link; all 12 inline follow-up forms refused blank submission with “Enter your name.” Public Truth Check, QR Poster Maker, QR Link Health Check, valid/malformed report links, and shared source contracts were exercised separately. No valid follow-up form was transmitted. |
 | Create-menu entry | Signed-out phone/Google gate; signed-in upload/link tabs; empty and malformed link recovery | PASS (non-mutating) | Phone action remained disabled for incomplete input and enabled for a structurally valid number; empty owned-link submission showed a recoverable message and restored the form; no hosted upload/import was submitted without a proven disposable fixture |
@@ -196,7 +196,8 @@ audit-fix-retest loop.
 | MLRC-038 | Medium | Global access-denied recovery touch targets at small-mobile width | Both visually large Ant Design recovery buttons measured 40px high in exact hosted Chrome, below the repository’s 44px mobile interaction minimum. | Apply a 44px minimum height to both actions without changing their labels, destinations, wrapping, or visual hierarchy. | `verify:global-accessibility-boundary`; focused ESLint; TypeScript | Exact hosted `2b149b0…` measured both controls at 44px on `/403` and `/unauthorized` with zero horizontal overflow | CLOSED |
 | MLRC-039 | Medium | Generic not-found “Go Home” from app-hosted public routes, including invalid `/screen/[token]` | The shared action pushed relative `/`. On `app.menulist.digital`, host routing converted it to protected `/dashboard`, so a public screen viewer was routed into owner authentication instead of the MenuList public website. | Send the home action to environment-governed `PLATFORM_URL`; keep history-based Go Back as the first recovery option. | `verify:global-accessibility-boundary`; focused ESLint; TypeScript | Exact hosted `f050856…` invalid-screen click reached `https://menulist.digital/`; Go Back restored the prior pricing URL | CLOSED |
 | MLRC-040 | Medium | Generic not-found Back/Home actions at small-mobile width | Both shared recovery buttons measured 40px high at 320×568, below the repository’s 44px mobile interaction minimum. | Apply a 44px minimum height to both existing actions without changing their labels, order, or behavior. | `verify:global-accessibility-boundary`; focused ESLint; TypeScript | Exact hosted `f050856…` measured both at 44px, visible together in the first 320×568 viewport | CLOSED |
-| MLRC-041 | Medium | Access-denied and generic not-found recovery action visibility at 320×568 | Ant Design's pinned `Result` implementation unconditionally renders its fixed 251×294 exception SVG for `403`/`404` statuses and discards the supplied contextual `icon`. Result padding and the outer viewport shell compounded that fixed artwork, leaving recovery controls clipped or below the first viewport. | Use a non-exception presentation status so the reviewed responsive contextual artwork renders; remove redundant Result padding; compact the wrapped action gap; and include safe padding inside border-box `100dvh` while retaining 44px controls and recovery semantics. | `verify:global-accessibility-boundary`; pinned Ant Result source inspection; focused ESLint; TypeScript | Exact hosted `deb26d8…` still rendered the fixed Ant exception SVG and a 592px access shell; corrected contextual-artwork build pending hosted retest | CLOSED (source) |
+| MLRC-041 | Medium | Access-denied and generic not-found recovery action visibility at 320×568 | Ant Design's pinned `Result` implementation unconditionally rendered its fixed 251×294 exception SVG for `403`/`404` statuses and discarded the supplied contextual `icon`. Result padding and the outer viewport shell compounded that fixed artwork, leaving recovery controls clipped or below the first viewport. | Use a non-exception presentation status so the reviewed responsive contextual artwork renders; remove redundant Result padding; compact the wrapped action gap; and include safe padding inside border-box `100dvh` while retaining 44px controls and recovery semantics. | `verify:global-accessibility-boundary`; pinned Ant Result source inspection; focused ESLint; TypeScript | Exact hosted `194f39a…` kept `/403`, `/unauthorized`, and invalid `/screen/[token]` within 320×568 and exposed both 44px actions in the initial viewport | CLOSED |
+| MLRC-042 | Medium | Protected owner-route recovery when Firebase Auth bootstrap is rate-limited or unavailable | A deliberate hard-route stress pass exhausted the protected `/api/auth/set-claims` ceiling at 30 requests per 15 minutes. The API correctly returned 429 with `Retry-After`, but `SessionProvider` replaced the owner app with a perpetual branded loader labelled “Unable to load store access,” with no retry or safe exit. Normal Google authentication and tenant claims remained intact: 200 responses preceded the ceiling, and `/users` correctly returned the pending owner to Billing after expiry. | Keep the authentication and rate-limit boundaries unchanged; replace only the failed-loader state with a page-level recovery that offers one explicit retry and a safe NextAuth sign-out. Both controls are keyboard-labelled, use reviewed Lucide icons, meet the 44px mobile target, and do not render protected data before Firebase Auth succeeds. | `verify:global-accessibility-boundary`; `verify:contextual-state-illustrations`; focused ESLint; strict TypeScript; exact Vercel request/status evidence | Source regression gates pass; exact hosted 320×568 failure/retry/sign-out retest pending the automatic QA build | CLOSED (source) |
 
 ## E. Firebase cost audit
 
@@ -254,7 +255,7 @@ passing runtime claim.
 
 | Command | Result |
 | --- | --- |
-| `npm run verify:menulist-rc-inventory` | PASS — 8,461 rows; 21 Function exports; 58 private MenuList pages access-evidenced; 62 sitemap-backed website page patterns render-evidenced through 186 concrete URLs; all 136 MenuList route handlers have resolved methods/access classes and anonymous runtime evidence; 97.1% of MenuList control candidates statically mapped to page routes |
+| `npm run verify:menulist-rc-inventory` | PASS — 8,467 rows; 21 Function exports; 58 private MenuList pages access-evidenced; 62 sitemap-backed website page patterns render-evidenced through 186 concrete URLs; all 136 MenuList route handlers have resolved methods/access classes and anonymous runtime evidence; 97.1% of MenuList control candidates statically mapped to page routes |
 | `npm run test:menulist-api-anonymous-boundary` | PASS local and hosted — exact hosted `c9c08d6…` exercised 136 handlers / 153 methods with status counts 200×5, 301×1, 400×15, 401×126, 403×1, 404×5 and zero failures/5xx. |
 | `npm run security-os:audit -- --product menulist` | PASS — registry; mapped evidence executed separately |
 | `npm run verify:menulist-api-tenant-safety` | PASS — API scope, sensitive server store scope, Functions callable scope, and CSP report boundary |
@@ -286,6 +287,8 @@ passing runtime claim.
 | `npm run test:csp-report-boundary` | PASS — bounded CSP report admission and sensitive-data handling |
 | `npm run verify:global-accessibility-boundary` | PASS |
 | `node scripts/verification/verify-global-accessibility-boundary.js` | PASS — shared mobile X-backed sheets derive locale-aware `Close`; navigation controls retain `Back` |
+| `node scripts/verification/verify-global-accessibility-boundary.js` (store-access recovery) | PASS — failed Firebase store bootstrap exposes labelled Retry/Sign out recovery with two 44px controls; retry re-enters the existing guarded auth flow |
+| `node scripts/verification/verify-contextual-state-illustrations.js` | PASS — 74 reviewed illustrations; the new store-access recovery uses the existing plain access-denied artwork and no new asset/provider |
 | `node scripts/verification/verify-global-accessibility-boundary.js` (pricing disclosure) | PASS — comparison feature triggers retain Tooltip behavior and add a 44px tap/keyboard disclosure with `aria-expanded`/`aria-controls` |
 | `node scripts/verification/verify-menulist-shared-data-mirrors.js` | PASS — 35 mirrors remain byte-identical and all 249 country rows satisfy the flag-consistency contract or a reviewed explicit exception |
 | `npx tsc --noEmit --incremental false` | PASS — current candidate exact direct command, exit 0 |
@@ -305,7 +308,7 @@ passing runtime claim.
 
 ## I. Residual risks
 
-- The 5,277 page-reachable MenuList control candidates still require complete
+- The 5,283 page-reachable MenuList control candidates still require complete
   individual runtime interaction evidence. The other 155 candidates in 45
   files are explicitly classified as non-shipped source from the App Router
   import graph; they are not represented as runtime-tested controls.
@@ -326,12 +329,15 @@ passing runtime claim.
 - MLRC-033 is closed on exact hosted QA commit `25d58ae…`: all 16 Arabic
   resource routes and Arabic-to-English/back/forward transitions retained the
   correct document language, direction, heading, URL, and mobile width.
+- MLRC-041 is closed on exact hosted QA commit `194f39a…` at 320×568. MLRC-042
+  is source-closed but still requires exact hosted failure/retry/sign-out
+  interaction evidence after the automatic QA build.
 - The repository has no root `test:e2e` or `e2e` script. Controlled browser
   evidence and existing deterministic verifiers will be recorded separately.
 - Hosted QA exposed the exact verified tested product commit
-  `c9c08d64cd75e8e2a2f485373f5b3ebf3b784232`. A signed-in
-  pending-payment owner fixture was available on the older build, but its
-  current-candidate interaction pass is pending; a no-subscription true-handheld fixture,
+  `45cae8cceaf2d016ec50efe46b0c54bb9a163a86`. The signed-in
+  pending-payment Google owner fixture completed Billing/history/Help/View Plans
+  and recovery-gate checks; a no-subscription true-handheld fixture,
   active disposable public tenant, destructive disposable tenant/store fixtures, physical mobile/PWA,
   television-screen behavior, and hosted write-through propagation remain
   unverified in this session.

@@ -194,6 +194,34 @@ assert(
   'global not-found viewport shell must include safe padding inside the dynamic viewport height',
 );
 
+const storeAccessRecovery = read('src/components/auth/StoreAccessRecovery.tsx');
+[
+  'aria-labelledby="store-access-recovery-title"',
+  'data-recovery-source="firebase-store-access"',
+  'Try again',
+  'Sign out',
+  'style={{ minHeight: 44 }}',
+  'status="info"',
+  'variant="accessDeniedContext"',
+].forEach((token) => assert(
+  storeAccessRecovery.includes(token),
+  `store-access recovery boundary must include ${token}`,
+));
+assert(
+  (storeAccessRecovery.match(/style=\{\{ minHeight: 44 \}\}/g) || []).length === 2,
+  'store-access recovery actions must both meet the 44px mobile touch target',
+);
+const sessionProvider = read('src/providers/sessionProvider.tsx');
+[
+  '<StoreAccessRecovery',
+  'setFirebaseAuthRetryNonce((current) => current + 1)',
+  "signOut({ callbackUrl: '/signin' })",
+  'firebaseAuthRetryNonce,',
+].forEach((token) => assert(
+  sessionProvider.includes(token),
+  `session provider store-access recovery must include ${token}`,
+));
+
 const layoutWrapper = read('src/components/antdComponent/layoutWrapper/index.tsx');
 assert(layoutWrapper.includes('<SkipToContentLink />'), 'owner shell must expose skip navigation');
 assert(layoutWrapper.includes('id="main-content"'), 'owner shell must expose a main-content target');

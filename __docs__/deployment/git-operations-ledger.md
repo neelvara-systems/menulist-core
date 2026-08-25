@@ -2852,3 +2852,48 @@ Those fields are explicitly `unknown` instead of guessed.
 - Final correction: retain the conservative `clamp(112px, 36vw, 192px)` narrow-screen size and change the presentation-only Result status to `info` for access-denied/not-found while leaving email rejection as `warning`. This makes the reviewed MenuList contextual illustration the actual rendered asset; page titles, copy, route semantics, noindex behavior, destinations, callbacks, and 44px actions are unchanged.
 - Final scoped operation: stage the two recovery pages, the global-accessibility verifier, global-accessibility evidence, certification report, certification inventory, and this ledger. Scoped pre-ledger SHA-256 is `2397b8a6a522829b124a3d6ff6aaf01cd3a9b5d3f4c36f13585c3a5659279264`.
 - Final validation before commit: global accessibility boundary PASS; focused ESLint PASS; strict TypeScript PASS; `git diff --check` PASS. Current direct server evidence keeps `main` at `fe625d5bbf527c1b7e537b00ab32a4f655905c35`, `staging` at `deb26d81ae805734e2978089e956788769341395`, and staging divergence `0/0`. Firebase classifications remain unchanged from the matrix above.
+
+### GIT-20260825-174719-mlrc042-store-access-recovery
+
+- Timestamp: `2026-08-25T17:47:19+05:30`
+- Record type: `PLANNED`
+- Actor/session/thread ID: Codex `/root`; thread `01a034e1-c70a-74b1-a92b-0a103a981815`
+- Registered worktrees: one primary worktree at `/Users/danny/Projects/MenuListAi/menulist-core`, checked out on `staging` at `45cae8cceaf2d016ec50efe46b0c54bb9a163a86`.
+- Authorization: Danny required the complete MenuList QA audit/fix/retest loop to continue autonomously on staging before production. This authorizes the smallest MLRC-042 failed-auth-bootstrap recovery correction, regression/report/inventory/ledger evidence, one non-force `staging` push, automatic QA web-deployment observation, and exact hosted Chrome retest. It does not authorize `main`, manual Vercel deployment, Firebase deployment, live Razorpay execution, or unrelated changes.
+- Defect evidence: connected Chrome successfully authenticated the approved Google owner and the protected `/api/auth/set-claims` route returned 200 repeatedly during route checks. A deliberate hard-route stress then reached the configured 30-request/15-minute ceiling; Vercel readback showed 429 responses with `Retry-After`, while the owner UI stayed indefinitely on `server-loader-Unable to load store access` with no recovery. After the limiter window expired, direct `/users` correctly returned the pending owner to Billing, proving the account/tenant boundary itself remained intact.
+- Local correction: retain NextAuth, Firebase claims, tenant/store checks, and the rate limit unchanged. Replace only the failed loader with a reviewed page-level recovery exposing one explicit Retry and one safe NextAuth Sign out action. Both actions have labels, Lucide icons, 44px minimum targets, and no protected data is rendered before Firebase Auth succeeds.
+- Intended operation: stage only `src/components/auth/StoreAccessRecovery.tsx`, `src/providers/sessionProvider.tsx`, `scripts/verification/verify-global-accessibility-boundary.js`, `scripts/verification/verify-contextual-state-illustrations.js`, `__docs__/audits/MENULIST_RC_CERTIFICATION.md`, `__docs__/audits/menulist-rc-certification-inventory.csv`, and this ledger; commit on `staging`, push without force, direct-read back the server ref, wait for the automatic QA deployment, and retest the exact build in connected Chrome.
+- Validation before commit: global accessibility boundary PASS; contextual-state illustration boundary PASS with 74 reviewed renders; focused ESLint PASS; strict `npx tsc --noEmit --incremental false` PASS; regenerated 8,467-row MenuList RC inventory PASS; `git diff --check` PASS. Pre-ledger tracked diff SHA-256: `318265d4d4f7399739e81ce62d0159430049e156f9b9c541292b113412cc3afa`.
+
+- Branch matrix before:
+
+  | Branch | Local full SHA | Direct server ref/full SHA | Tracking ref | Ahead/behind | Worktree | Staged/unstaged/untracked | Status |
+  | --- | --- | --- | --- | --- | --- | --- | --- |
+  | `main` | `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `refs/heads/main` / `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `origin/main` | `0/0` | not checked out | `N/A` | `IN_SYNC` |
+  | `staging` | `45cae8cceaf2d016ec50efe46b0c54bb9a163a86` | `refs/heads/staging` / `45cae8cceaf2d016ec50efe46b0c54bb9a163a86` | `origin/staging` | `0/0` | primary worktree | `0/5/1` before this ledger append | `IN_SYNC` |
+
+- Firebase matrix before/after:
+
+  | Product | Environment/project | Component | Local source/config | Local evidence | Server evidence | Delta | Deployment state |
+  | --- | --- | --- | --- | --- | --- | --- | --- |
+  | MenuList | QA / `menulist-qa` | Firestore Rules | `firestore-menulist.rules` | no candidate path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | QA / `menulist-qa` | Firestore indexes | `firestore.indexes.json` | no candidate path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | QA / `menulist-qa` | Storage Rules | `storage.rules` | no candidate path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | QA / `menulist-qa` | Cloud Functions | `functions/` | retained MLRC-031 mirror delta; Functions build previously passed | not refreshed | `INFRA_CHANGE` | `DEPLOY_REQUIRED` |
+  | MenuList | production / `menulist-prod` | Firestore Rules | same source | no candidate path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | production / `menulist-prod` | Firestore indexes | same source | no candidate path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | production / `menulist-prod` | Storage Rules | same source | no candidate path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | production / `menulist-prod` | Cloud Functions | same shared source | retained MLRC-031 mirror delta | not refreshed | `INFRA_CHANGE` | `DEPLOY_REQUIRED` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Firestore Rules | `firestore-answerlattice.rules` | no candidate path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Firestore indexes | `firestore-answerlattice.indexes.json` | no candidate path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Storage Rules | `storage-answerlattice.rules` | no candidate path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Cloud Functions | `functions-answerlattice/` | no candidate path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Firestore Rules | same source | no candidate path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Firestore indexes | same source | no candidate path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Storage Rules | same source | no candidate path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Cloud Functions | same shared source | no candidate path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+
+- Firebase deployment evidence or blocker: MLRC-042 changes no Firebase source. MenuList QA/production Cloud Functions retain the separately tracked MLRC-031 `DEPLOY_REQUIRED` delta. No Firebase deployment or authenticated readback is authorized.
+- Git server readback and divergence: direct pre-operation evidence proves local/server `main` and `staging` in sync at the SHAs above; tracking divergence is `0/0`.
+- Final filesystem state: pending scoped commit, push, direct readback, automatic QA deployment, exact hosted retest, and result append.
+- Attribution confidence: exact.

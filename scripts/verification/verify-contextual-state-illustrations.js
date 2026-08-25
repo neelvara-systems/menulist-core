@@ -32,6 +32,7 @@ const approvedConsumers = new Map([
   ['src/app/error.tsx', { count: 1, softHaloCount: 0, variant: 'serverErrorContext' }],
   ['src/app/global-error.tsx', { count: 1, softHaloCount: 0, variant: 'serverErrorContext' }],
   ['src/components/auth/OwnerPermissionGuard.tsx', { count: 1, softHaloCount: 0, variant: 'accessDeniedContext' }],
+  ['src/components/auth/StoreAccessRecovery.tsx', { count: 1, softHaloCount: 0, variant: 'accessDeniedContext' }],
   ['src/components/mobile/ai-menu-manager/MobileAiMenuManagerScreen.tsx', { count: 2, softHaloCount: 2, variants: ['emptyWorkspace', 'serverErrorContext'] }],
   ['src/components/mobile/screens/MobileDashboardScreen.tsx', { count: 4, softHaloCount: 4, variant: 'analyticsContext' }],
   ['src/components/mobile/screens/MobileDigitalScreensScreen.tsx', { count: 1, softHaloCount: 1, variant: 'uploadContext' }],
@@ -83,6 +84,7 @@ const expectedResultRenderCounts = new Map([
   ['src/app/(global-pages)/unauthorized/page.tsx', 1],
   ['src/app/error.tsx', 1],
   ['src/components/auth/OwnerPermissionGuard.tsx', 1],
+  ['src/components/auth/StoreAccessRecovery.tsx', 1],
   ['src/components/mobile/screens/MobileMenuScreen.tsx', 2],
   ['src/components/mobile/screens/MobileResellerOnboardingScreen.tsx', 1],
   ['src/components/mobile/sheets/MenuUploadSheet.tsx', 1],
@@ -519,8 +521,8 @@ assert(
 );
 
 assert(
-  contextualIllustrationAudit.length === 73,
-  `Expected 73 reviewed contextual illustration renders, found ${contextualIllustrationAudit.length}`,
+  contextualIllustrationAudit.length === 74,
+  `Expected 74 reviewed contextual illustration renders, found ${contextualIllustrationAudit.length}`,
 );
 assert(
   contextualIllustrationAudit.filter(({ treatment }) => treatment === 'softHalo').length === 54,
@@ -541,11 +543,11 @@ assert(
     === JSON.stringify([...expectedResultRenderCounts.entries()].sort()),
   `Ant Result render inventory changed. Found:\n${[...actualResultRenderCounts.entries()].sort().map(([file, count]) => `${file}: ${count}`).join('\n')}`,
 );
-assert(resultComponentAudit.renders.length === 18, `Expected 18 rendered Ant Result states, found ${resultComponentAudit.renders.length}`);
-assert(resultComponentAudit.imports.length === 14, `Expected 14 Ant Result import locations, found ${resultComponentAudit.imports.length}`);
+assert(resultComponentAudit.renders.length === 19, `Expected 19 rendered Ant Result states, found ${resultComponentAudit.renders.length}`);
+assert(resultComponentAudit.imports.length === 15, `Expected 15 Ant Result import locations, found ${resultComponentAudit.imports.length}`);
 assert(resultComponentAudit.reExports.length === 1, `Expected one mobile Ant Result re-export, found ${resultComponentAudit.reExports.length}`);
 assert(
-  resultComponentAudit.renders.length + resultComponentAudit.imports.length + resultComponentAudit.reExports.length === 33,
+  resultComponentAudit.renders.length + resultComponentAudit.imports.length + resultComponentAudit.reExports.length === 35,
   'Expected 33 Ant Result source locations: 18 renders, 14 imports, and one mobile re-export',
 );
 
@@ -640,4 +642,4 @@ assert(
   'State illustrations must not be exposed as a public asset library',
 );
 
-console.log('Cross-product contextual state boundary verified (73 illustrations; MenuList Result, Answerlattice Empty, CampaignCue, SignalDesk, and MyCodex inventories reviewed).');
+console.log('Cross-product contextual state boundary verified (74 illustrations; MenuList Result, Answerlattice Empty, CampaignCue, SignalDesk, and MyCodex inventories reviewed).');

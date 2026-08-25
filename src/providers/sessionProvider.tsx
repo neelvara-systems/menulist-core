@@ -63,10 +63,11 @@ import { normalizeAiBalanceUpdate } from '@services/ai/balanceSync';
 import { Timestamp } from 'firebase/firestore';
 import { Session } from 'next-auth';
 import type LoginUserType from '@type/loginUser';
-import { SessionProvider as Provider } from 'next-auth/react';
+import { SessionProvider as Provider, signOut } from 'next-auth/react';
 import { usePathname } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import BrandedPageLoader from '@atoms/brandedPageLoader';
+import StoreAccessRecovery from '@/components/auth/StoreAccessRecovery';
 import PlatformGlobalDataProvider from './platformProviders/platformGlobalDataProvider';
 
 type Props = {
@@ -143,6 +144,7 @@ export default function SessionProvider({ children, session, productContext }: P
     const [clientSessionSyncError, setClientSessionSyncError] = useState<Error | null>(null)
     const [firebaseAuthReadyScopeKey, setFirebaseAuthReadyScopeKey] = useState<string | null>(null)
     const [firebaseAuthSyncError, setFirebaseAuthSyncError] = useState<Error | null>(null)
+    const [firebaseAuthRetryNonce, setFirebaseAuthRetryNonce] = useState(0)
     const activeSubscriptionScopeKeyRef = useRef<string | null>(null);
     const activeSubscriptionRequestScopeKeyRef = useRef<string | null>(null);
     const normalizedPathname = pathname === '/' ? pathname : (pathname || '').replace(/\/+$/, '');
@@ -350,6 +352,7 @@ export default function SessionProvider({ children, session, productContext }: P
         effectiveSession?.user?.storeId,
         effectiveSession?.user?.tenantId,
         firebaseAuthRequiredScopeKey,
+        firebaseAuthRetryNonce,
         requiresFirebaseAuth,
     ]);
 
@@ -984,10 +987,21 @@ export default function SessionProvider({ children, session, productContext }: P
                 setPlatformStoreSummaryLoading
             }}>
                 {(effectiveSession && effectiveSession.user?.storeId && !firebaseAuthReady && !canRenderBeforeFirebaseAuth) ? (
-                    <BrandedPageLoader
-                        page={firebaseAuthSyncError ? "Unable to load store access" : "Connecting Account"}
-                        brand={isAnswerlatticeRoute ? 'answerlattice' : 'menulist'}
-                    />
+                    firebaseAuthSyncError ? (
+                        <StoreAccessRecovery
+                            brand={isAnswerlatticeRoute ? 'answerlattice' : 'menulist'}
+                            onRetry={() => {
+                                setFirebaseAuthSyncError(null);
+                                setFirebaseAuthRetryNonce((current) => current + 1);
+                            }}
+                            onSignOut={() => void signOut({ callbackUrl: '/signin' })}
+                        />
+                    ) : (
+                        <BrandedPageLoader
+                            page="Connecting Account"
+                            brand={isAnswerlatticeRoute ? 'answerlattice' : 'menulist'}
+                        />
+                    )
                 ) : (session && !isStoreContextReadyForRender) ? (
                     <BrandedPageLoader page="Loading Store Data" brand={isAnswerlatticeRoute ? 'answerlattice' : 'menulist'} />
                 ) : children}
