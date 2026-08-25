@@ -199,6 +199,8 @@ function verifyReviewedLocaleRoutes() {
   const sitemap = read('public/sitemap.xml');
   const llms = read('public/llms.txt');
   const llmsFull = read('public/llms-full.txt');
+  const localeLayout = read('src/app/(website)/[locale]/layout.tsx');
+  const documentLocale = read('src/components/website/shared/WebsiteDocumentLocale.tsx');
   const reviewedPackLocales = WEBSITE_RESOURCE_TRANSLATION_PACKS
     .filter((pack) => pack.status === 'reviewed')
     .map((pack) => pack.locale)
@@ -210,6 +212,11 @@ function verifyReviewedLocaleRoutes() {
   assert(exists('src/app/(website)/[locale]/layout.tsx'), 'Locale resource layout route is required');
   assert(exists('src/app/(website)/[locale]/resources/page.tsx'), 'Locale resource hub route is required');
   assert(exists('src/app/(website)/[locale]/resources/[slug]/page.tsx'), 'Locale resource article route is required');
+  assertIncludes(localeLayout, '<WebsiteDocumentLocale locale={params.locale} />', 'Localized resource document language boundary');
+  assertIncludes(documentLocale, 'document.documentElement.lang = locale;', 'Localized resource document language boundary');
+  assertIncludes(documentLocale, 'document.documentElement.dir = direction;', 'Localized resource document direction boundary');
+  assertIncludes(documentLocale, 'window.requestAnimationFrame(() => {', 'Localized resource document boundary provider ordering');
+  assertIncludes(documentLocale, 'document.documentElement.lang === locale', 'Localized resource document boundary safe cleanup');
   assert(
     JSON.stringify([...WEBSITE_RESOURCE_REVIEWED_ROUTE_LOCALES].sort()) === JSON.stringify(reviewedPackLocales.sort()),
     'Reviewed route locales must match reviewed translation packs',

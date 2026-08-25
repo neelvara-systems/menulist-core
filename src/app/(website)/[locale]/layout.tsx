@@ -1,4 +1,5 @@
 import IntlClientWrapper from '@/providers/IntlClientWrapper';
+import WebsiteDocumentLocale from '@/components/website/shared/WebsiteDocumentLocale';
 import { WEBSITE_LANGUAGES } from '@/config/websiteLanguages';
 import {
     getWebsiteResourceLocaleStaticParams,
@@ -87,6 +88,7 @@ export default async function WebsiteResourceLocaleLayout(props: LocaleLayoutPro
             messages={getMessagesForLocale(params.locale)}
             timeZone={defaultTimezone}
         >
+            <WebsiteDocumentLocale locale={params.locale} />
             <div lang={params.locale} dir={language?.direction ?? 'ltr'}>
                 {children}
             </div>

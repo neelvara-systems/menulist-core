@@ -2375,3 +2375,60 @@ Those fields are explicitly `unknown` instead of guessed.
 - Git server readback and divergence: direct pre-operation `git ls-remote` proves both branches in sync at the SHAs above; tracking divergence is `0/0` for `staging`.
 - Final filesystem state: pending scoped commit, push, direct readback, automatic QA web deployment, hosted retest, and result append.
 - Attribution confidence: exact for this operation and candidate; unrelated moving paths remain `unknown`.
+
+#### GIT-20260825-152053-mlrc032-pricing-disclosure result
+
+- Timestamp: `2026-08-25T15:27:05+05:30`
+- Record type: `PERFORMED`
+- Scoped commit: `b1750e0b149adb99f822667ddde5ed5ca1af1073` (`Make pricing details work on touch`).
+- Push/readback: non-force `staging -> staging`; direct `git ls-remote` returned `b1750e0b149adb99f822667ddde5ed5ca1af1073` for `refs/heads/staging`, with local/tracking divergence `0/0`. `main` remained unchanged and in sync at `fe625d5bbf527c1b7e537b00ab32a4f655905c35`.
+- Exact hosted identity: canonical `/api/version` returned full build `b1750e0b149adb99f822667ddde5ed5ca1af1073`, verified provenance, and deployment `menulist-core-m2wi0gq52-neelvara-systems.vercel.app`.
+- Hosted retest: connected Chrome at 320x568 expanded the full comparison and tapped “Side-by-side source review.” The first tap rendered its description exactly once with expanded semantics; the second removed the description and the expanded state while preserving the pricing URL and selection state. Sanitized visual evidence: `/tmp/menulist-qa-full-2026-08-25/15-fixed-mobile-pricing-disclosure.png`.
+- Validation: global accessibility boundary PASS; focused ESLint PASS; strict TypeScript PASS; diff checks PASS; exact hosted tap/open/close interaction PASS.
+- Firebase matrix after: MLRC-032 changes no Firebase path. MenuList QA/production Cloud Functions retain MLRC-031 `INFRA_CHANGE` / `DEPLOY_REQUIRED`; the other 14 rows retain their previously recorded state. No Firebase deployment or readback occurred.
+- Result: MLRC-032 is closed on exact hosted QA. Certification remains active; production is not in scope.
+
+### GIT-20260825-154719-mlrc033-document-locale
+
+- Timestamp: `2026-08-25T15:47:19+05:30`
+- Record type: `PLANNED`
+- Actor/session/thread ID: Codex `/root`; thread `01a034e1-c70a-74b1-a92b-0a103a981815`
+- Registered worktrees: one primary worktree at `/Users/danny/Projects/MenuListAi/menulist-core`, checked out on `staging` at `b1750e0b149adb99f822667ddde5ed5ca1af1073`.
+- Authorization: Danny instructed Codex to continue the complete MenuList QA audit/fix/retest loop autonomously on staging before production. This authorizes the smallest MLRC-033 accessibility correction, regression/docs/report/ledger evidence, one non-force `staging` push, automatic QA web-deployment observation, and exact hosted Chrome retest. It does not authorize `main`, manual Vercel deployment, Firebase deployment, live Razorpay execution, or unrelated concurrent changes.
+- Intended operation: stage only `src/components/website/shared/WebsiteDocumentLocale.tsx`, `src/app/(website)/[locale]/layout.tsx`, `scripts/verification/verify-website-resource-locales.js`, `__docs__/main-website/README.md`, `__docs__/main-website/main-website_resources-validation.md`, `__docs__/audits/MENULIST_RC_CERTIFICATION.md`, and this ledger. Preserve and exclude every other moving path with actor `unknown`.
+- Defect evidence: exact hosted QA `b1750e0b149adb99f822667ddde5ed5ca1af1073` rendered all 16 direct Arabic resource routes with RTL content but retained `html[lang=en-US][dir=ltr]`. The route wrapper was visually correct; the outer cookie-locale provider overwrote the document-root accessibility contract after the nested provider mounted.
+- Local correction: apply the route-owned locale and direction to the document root on the next animation frame after provider effects, and restore the captured prior attributes only when this boundary still owns them. No copy, visual layout, public data, tenant, cache, API, Firebase, payment, provider, dependency, or route-inventory contract changes.
+- Validation before commit: `npm run verify:website-resource-locales`, focused ESLint, strict `npx tsc --noEmit --incremental false`, and `git diff --check` passed. Scoped pre-ledger diff SHA-256: `9cc6e16bb8e94906d1439bcd5ead6723c02e3b7c2b6572b53270aa7e7c7df8fd`. Hosted corrected-build retest remains pending.
+
+- Branch matrix before:
+
+  | Branch | Local full SHA | Direct server ref/full SHA | Tracking ref | Ahead/behind | Worktree | Staged/unstaged/untracked | Status |
+  | --- | --- | --- | --- | --- | --- | --- | --- |
+  | `main` | `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `refs/heads/main` / `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `origin/main` | `0/0` | not checked out | `N/A` | `IN_SYNC` |
+  | `staging` | `b1750e0b149adb99f822667ddde5ed5ca1af1073` | `refs/heads/staging` / `b1750e0b149adb99f822667ddde5ed5ca1af1073` | `origin/staging` | `0/0` | primary worktree | `0/15/1` before this ledger append | `IN_SYNC` |
+
+- Firebase matrix before/after:
+
+  | Product | Environment/project | Component | Local source/config | Local evidence | Server evidence | Delta | Deployment state |
+  | --- | --- | --- | --- | --- | --- | --- | --- |
+  | MenuList | QA / `menulist-qa` | Firestore Rules | `firestore-menulist.rules` | no candidate path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | QA / `menulist-qa` | Firestore indexes | `firestore.indexes.json` | no candidate path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | QA / `menulist-qa` | Storage Rules | `storage.rules` | no candidate path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | QA / `menulist-qa` | Cloud Functions | `functions/` | retained MLRC-031 mirror delta; Functions build previously passed | not refreshed | `INFRA_CHANGE` | `DEPLOY_REQUIRED` |
+  | MenuList | production / `menulist-prod` | Firestore Rules | same source | no candidate path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | production / `menulist-prod` | Firestore indexes | same source | no candidate path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | production / `menulist-prod` | Storage Rules | same source | no candidate path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | production / `menulist-prod` | Cloud Functions | same shared source | retained MLRC-031 mirror delta | not refreshed | `INFRA_CHANGE` | `DEPLOY_REQUIRED` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Firestore Rules | `firestore-answerlattice.rules` | no candidate path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Firestore indexes | `firestore-answerlattice.indexes.json` | no candidate path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Storage Rules | `storage-answerlattice.rules` | no candidate path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Cloud Functions | `functions-answerlattice/` | no candidate path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Firestore Rules | same source | no candidate path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Firestore indexes | same source | no candidate path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Storage Rules | same source | no candidate path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Cloud Functions | same source | no candidate path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+
+- Firebase deployment evidence or blocker: MLRC-033 changes no Firebase source. MenuList QA/production Cloud Functions retain the separately tracked MLRC-031 `DEPLOY_REQUIRED` delta; no Firebase deployment or authenticated readback is authorized by this Git operation.
+- Git server readback and divergence: direct pre-operation `git ls-remote` proves local/server `main` and `staging` in sync at the SHAs above; tracking divergence is `0/0` for both.
+- Final filesystem state: pending scoped commit, push, direct readback, automatic QA deployment, exact hosted retest, and result append.
+- Attribution confidence: exact for this operation and candidate; unrelated moving paths remain `unknown`.

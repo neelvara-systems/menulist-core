@@ -333,6 +333,19 @@ Chrome extension verification covered all public resource route variants after t
 - Chrome exposed and the implementation fixed a deterministic URL issue where the unprefixed English resource route could inherit the visitor locale cookie.
 - Chrome also exposed and the implementation fixed a footer dropdown hit-area issue where the final language option could be partially clipped when the menu opened upward.
 
+## QA document-language accessibility correction
+
+**Date:** August 25, 2026
+
+The release-candidate Chrome pass confirmed that the Arabic content wrapper
+rendered right-to-left, but the shared website provider could leave the root
+document marked as English and left-to-right on a direct locale-prefixed route.
+Locale-prefixed resource routes now apply their route locale to the document
+root after the shared provider mounts. This gives assistive technology the
+correct `lang` and `dir` values and restores the previous document locale when
+the reader leaves the localized route. The resource-locale verifier guards the
+route wiring, root attributes, provider ordering, and cleanup boundary.
+
 ---
 
 ## Deployment Status
