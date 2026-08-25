@@ -407,9 +407,14 @@ const ownerSettingsSurfaceChecks = [
     file: 'src/components/mobile/MobileShell.tsx',
     snippets: [
       "useTranslations('MobileShell')",
+      "useTranslations('Billing')",
+      "useTranslations('MobileMore')",
       "t('subscribeTitle')",
       "t('subscribeDescription')",
       "t('viewPlans')",
+      "billingT('title')",
+      "billingT('subtitle')",
+      "mobileMoreT('billing')",
     ],
   },
 ];

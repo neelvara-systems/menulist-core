@@ -58,6 +58,10 @@
 
 These inputs are configuration gates, not reasons to weaken the source contract or insert placeholder legal values.
 
+### QA-only synthetic supplier fixture
+
+Hosted subscription certification may use an unmistakably synthetic supplier profile only when `ANSWERLATTICE_BILLING_SYNTHETIC_QA_ENABLED=true`, Vercel identifies the custom target as `qa` (`VERCEL_ENV=preview`, `VERCEL_TARGET_ENV=qa`), and the configured Razorpay key starts with `rzp_test_`. The server fails closed when any boundary disagrees. The fixture must remain scoped to Vercel `qa`; billing documents and delivery stay disabled, and the values must never be copied to Production or represented as Neelvara's verified legal identity.
+
 ## Release evidence - August 24, 2026
 
 - The base commercial source is committed on `staging` at `82cf3701d7789b098277f325b5fca71920e5605b`. The final QA EmailOS secret-binding correction remains an unstaged working-tree change until a separate Git operation is authorized.

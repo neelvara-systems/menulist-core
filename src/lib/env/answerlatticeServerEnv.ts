@@ -13,6 +13,9 @@ const readConfiguredValue = (canonicalName: string, ...legacyNames: string[]): s
  * managed environment templates.
  */
 export const answerlatticeServerEnv = {
+    get billingSyntheticQaEnabled() {
+        return readConfiguredValue('ANSWERLATTICE_BILLING_SYNTHETIC_QA_ENABLED');
+    },
     get billingAuthorisedSignatoryName() {
         return readConfiguredValue('ANSWERLATTICE_BILLING_AUTHORISED_SIGNATORY_NAME');
     },

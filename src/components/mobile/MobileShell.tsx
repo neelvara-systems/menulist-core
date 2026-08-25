@@ -285,6 +285,8 @@ function buildMobileRouteHash(tab: MobileTab, todayScreen: 'main' | 'dashboard' 
 
 export default function MobileShell() {
     const t = useTranslations('MobileShell');
+    const billingT = useTranslations('Billing');
+    const mobileMoreT = useTranslations('MobileMore');
     const profileActionsT = useTranslations('ProfileActions');
     const starterT = useTranslations('StarterActivation');
     const {
@@ -309,8 +311,15 @@ export default function MobileShell() {
     const [subscriptionGateSigningOut, setSubscriptionGateSigningOut] = useState(false);
     const scrollContainerRef = useRef<HTMLDivElement | null>(null);
     const hasSubscription = hasValidSubscriptionAccess(activeSubscription);
+    const hasPendingSubscription = activeSubscription?.status === 'pending';
     const hasStarterAccess = hasStarterWorkspaceAccess(storeDetails, hasSubscription);
     const isStarterStore = isStarterActivationStore(storeDetails);
+    const subscriptionGateTitle = hasPendingSubscription
+        ? `${activeSubscription.planName} — ${billingT('title')}`
+        : isStarterStore ? starterT('endingSoonTitle') : t('subscribeTitle');
+    const subscriptionGateDescription = hasPendingSubscription
+        ? billingT('subtitle')
+        : isStarterStore ? starterT('noSubscriptionDescription') : t('subscribeDescription');
     const platformRole = (session as any)?.platformRole || (session?.user as any)?.platformRole;
     const isPlatformAdmin = platformRole === MENULIST_PLATFORM_USER_ROLE;
     const isResellerAccount = platformRole === RESELLER_USER_ROLE;
@@ -631,10 +640,10 @@ export default function MobileShell() {
                         <Flex align="center" gap={16} vertical>
                             <LuCreditCard aria-hidden="true" color={token.colorPrimary} size={48} />
                             <Title level={4} style={{ margin: 0, textAlign: 'center' }}>
-                                {isStarterStore ? starterT('endingSoonTitle') : t('subscribeTitle')}
+                                {subscriptionGateTitle}
                             </Title>
                             <Text style={{ textAlign: 'center' }}>
-                                {isStarterStore ? starterT('noSubscriptionDescription') : t('subscribeDescription')}
+                                {subscriptionGateDescription}
                             </Text>
                             <Button
                                 block
@@ -647,7 +656,7 @@ export default function MobileShell() {
                                 size="large"
                                 style={{ minHeight: 44 }}
                             >
-                                {t('viewPlans')}
+                                {hasPendingSubscription ? mobileMoreT('billing') : t('viewPlans')}
                             </Button>
                             {subscriptionGateConfirmingSignOut ? (
                                 <Flex gap={8} style={{ width: '100%' }} vertical>

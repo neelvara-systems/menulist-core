@@ -8,7 +8,10 @@ import {
     type BillingProfile,
     type BillingTaxSupplierConfig,
 } from '@data/shared/billingTaxPolicy';
-import { resolveAnswerlatticeBillingCurrency } from '@lib/billing/answerlatticeTaxServer';
+import {
+    assertAnswerlatticeSyntheticBillingQaBoundary,
+    resolveAnswerlatticeBillingCurrency,
+} from '@lib/billing/answerlatticeTaxServer';
 
 const supplier: BillingTaxSupplierConfig = {
     productName: 'Answerlattice',
@@ -36,6 +39,43 @@ const indiaProfile = (stateCode = '27'): BillingProfile => ({
 
 assert.equal(resolveAnswerlatticeBillingCurrency('IN'), 'INR');
 assert.equal(resolveAnswerlatticeBillingCurrency(' us '), 'USD');
+assert.doesNotThrow(() => assertAnswerlatticeSyntheticBillingQaBoundary({
+    syntheticQaEnabled: 'true',
+    razorpayKeyId: 'rzp_test_answerlattice',
+    vercelEnv: 'preview',
+    vercelTargetEnv: 'qa',
+}));
+assert.doesNotThrow(() => assertAnswerlatticeSyntheticBillingQaBoundary({
+    syntheticQaEnabled: 'false',
+    razorpayKeyId: 'rzp_live_answerlattice',
+    vercelEnv: 'production',
+    vercelTargetEnv: 'production',
+}));
+for (const unsafeEnvironment of [
+    {
+        syntheticQaEnabled: 'true',
+        razorpayKeyId: 'rzp_test_answerlattice',
+        vercelEnv: 'production',
+        vercelTargetEnv: 'production',
+    },
+    {
+        syntheticQaEnabled: 'true',
+        razorpayKeyId: 'rzp_live_answerlattice',
+        vercelEnv: 'preview',
+        vercelTargetEnv: 'qa',
+    },
+    {
+        syntheticQaEnabled: 'true',
+        razorpayKeyId: 'rzp_test_answerlattice',
+        vercelEnv: 'preview',
+        vercelTargetEnv: 'preview',
+    },
+]) {
+    assert.throws(
+        () => assertAnswerlatticeSyntheticBillingQaBoundary(unsafeEnvironment),
+        BillingTaxConfigurationError,
+    );
+}
 assert.throws(() => calculateBillingTaxSnapshot({
     baseUnitAmount: 149_900,
     billingProfile: indiaProfile(),

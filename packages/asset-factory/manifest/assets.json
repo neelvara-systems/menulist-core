@@ -379,7 +379,7 @@
           "__docs__/main-website/asset-production/launch-pack-2026-07/menulist-launch-pack.md": "4eab7eaff29a8b775c94e8d8666ac2c93ac745f96dffac59648938312c392f9f",
           "scripts/website-assets/generate-product-proof-assets.mjs": "306138da98dfb37b1e997242b5e9acc1bdf1f8add70e6b1f9646f44b742d3439",
           "src/components/website/features/FeatureScreenshotProofGallery.tsx": "758fc3df406e61cf983da835e42fe889199d4cc06b5bb661e47b8c4d84ecb85f",
-          "src/components/mobile/MobileShell.tsx": "4c92c3199f0fb8a04dd5299dd958d3188112fcc1b9fe8bf6b13ee4dbf0662a08"
+          "src/components/mobile/MobileShell.tsx": "f15ada87232fb058fa939b9dceec9ef8ac31ac2075ffb1ff82ffb858926ce741"
         },
         "notes": "Locked by assets:fingerprint on 2026-08-25."
       }

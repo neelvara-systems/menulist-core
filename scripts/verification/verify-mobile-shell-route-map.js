@@ -155,6 +155,9 @@ function verifyMobileShellRouteMap() {
   assertIncludes(mobileShell, "return HELP_CENTER_TAB_TO_MORE_SCREEN[tab] || 'answerlatticeHelp';", 'MobileShell help-center tab fallback');
   assertIncludes(mobileShell, "buildMobileRouteHash(tab: MobileTab, todayScreen: 'main' | 'dashboard' | 'history', moreScreen: MoreSubScreen)", 'MobileShell hash builder must preserve Today dashboard/history and More sub-screen state');
   assertIncludes(mobileShell, "data-mobile-shell-scroll=\"true\"", 'MobileShell must expose the scroll container for owner-mobile QA harnesses');
+  assertIncludes(mobileShell, "const hasPendingSubscription = activeSubscription?.status === 'pending';", 'MobileShell must distinguish payment-pending recovery from a no-subscription plan choice');
+  assertIncludes(mobileShell, "? `${activeSubscription.planName} — ${billingT('title')}`", 'Payment-pending gate must show the already-selected plan and Billing destination');
+  assertIncludes(mobileShell, "hasPendingSubscription ? mobileMoreT('billing') : t('viewPlans')", 'Payment-pending gate must open Billing instead of asking the owner to choose another plan');
   assertIncludes(mobileShell, "const isBillingRecoveryScreen = activeTab === 'more' && moreScreen === 'billing';", 'Mobile billing recovery route must be identified before subscription gating');
   assertIncludes(mobileShell, 'const shouldBypassSubscriptionGate = isBillingRecoveryScreen', 'Mobile billing must remain reachable without active entitlement');
   assertIncludes(mobileShell, "setMoreScreen('billing');", 'Subscription gate View Plans action must open the mobile billing screen');

@@ -35,6 +35,12 @@
 | Invoice and credit-note access          | `MobileBillingScreen` → protected PDF download, delivery status, and manual email resend | ✅     |
 | No-subscription gate                    | `MobileShell` → `hasValidSubscriptionAccess` | ✅     |
 
+The mobile entitlement gate distinguishes a real no-subscription state from an
+authoritative pending subscription. A pending owner sees that payment is not
+complete and is sent to Billing, where the existing server-checked **Continue
+Checkout** recovery is available. The gate does not ask that owner to select a
+second plan and does not call or modify the live provider.
+
 ## DAL Parity
 
 - Uses same `usePaymentHandler` hook as desktop (Razorpay script works on mobile browsers)
