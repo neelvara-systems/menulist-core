@@ -4163,3 +4163,44 @@ No Firebase source/configuration changes. Firestore Rules, indexes, Storage Rule
 - Intended paths: the shared desktop temporary-status card, both mobile temporary-status surfaces, the public business-truth verifier, and this ledger.
 - Final state pending: scoped commit, non-force staging push, direct server readback, automatic QA deployment, exact version readback, hosted desktop validation retest, and responsive mobile retest when the native session is available.
 - Attribution confidence: exact.
+
+#### MLRC-059 performed result — `2026-08-26T02:20:14+05:30`
+
+- Commit/push: `ac7757d24b8328227913e33bad91db419c42d819` (`fix(menulist): add Today guide close controls`) was pushed non-force to `origin/staging`; direct server readback returned the same SHA with `0/0` divergence. `main` remained untouched at `fe625d5bbf527c1b7e537b00ab32a4f655905c35`.
+- Automatic QA deployment: `/api/version` returned exact verified build `ac7757d24b8328227913e33bad91db419c42d819`, deployment `menulist-core-lx68iahuu-neelvara-systems.vercel.app`, environment `preview`. No manual Vercel deployment occurred.
+- Exact hosted result: Today rendered one visible, named `Close Today guide` control with the required touch target and activating it dismissed the drawer. `/today/history` redirected to `/today` under the active feature-flag state, so the disabled Past activity branch is covered by the maintained source regression rather than represented as hosted runtime coverage. MLRC-059 is closed at the stated evidence boundary.
+- Firebase state: no infrastructure source/configuration changed and no deployment or authenticated infrastructure readback occurred; every Firestore Rules, indexes, Storage Rules, and Cloud Functions row for all four active targets remains `NO_INFRA_CHANGE` / `SERVER_STATE_UNKNOWN`.
+
+#### MLRC-060 performed result — `2026-08-26T02:31:00+05:30`
+
+- Commit/push: `2362f794eb61c908228c0f4956cd03b19d5eb3bd` (`fix(menulist): require custom status message`) was pushed non-force to `origin/staging`; direct server readback returned the same SHA with `0/0` divergence. `main` remained untouched at `fe625d5bbf527c1b7e537b00ab32a4f655905c35`.
+- Automatic QA deployment: `/api/version` returned exact verified build `2362f794eb61c908228c0f4956cd03b19d5eb3bd`, deployment `menulist-core-qzwx1xtv4-neelvara-systems.vercel.app`, environment `preview`. No manual Vercel deployment occurred.
+- Exact hosted desktop result: an empty custom customer notice kept the owner on Today, rendered one announced `Enter a custom message` validation error, and did not open the publish confirmation. A non-empty labelled QA notice reached the truthful confirmation boundary and was cancelled; the field was cleared and no owner/public mutation occurred.
+- Mobile parity result: both mobile status surfaces use the same trimmed-copy requirement and pass the public-business-truth and owner-dashboard static regressions. Responsive hosted execution remains explicitly pending until the local native browser session is unlocked; it is not represented as runtime-tested.
+- Validation: `verify-public-business-truth`, `verify-owner-dashboard-today-boundary`, focused zero-warning ESLint, strict `tsc --noEmit --incremental false`, and `git diff --check` all passed.
+- Firebase state: no infrastructure source/configuration changed and no deployment or authenticated infrastructure readback occurred; every Firestore Rules, indexes, Storage Rules, and Cloud Functions row for all four active targets remains `NO_INFRA_CHANGE` / `SERVER_STATE_UNKNOWN`.
+
+### GIT-20260826-023522-mlrc059-060-evidence-closeout
+
+- Timestamp: `2026-08-26T02:35:22+05:30`
+- Record type: `PLANNED`
+- Actor/session/thread ID: Codex `/root`; thread `01a034e1-c70a-74b1-a92b-0a103a981815`.
+- Registered worktrees: one primary worktree at `/Users/danny/Projects/MenuListAi/menulist-core`, branch `staging`, HEAD `2362f794eb61c908228c0f4956cd03b19d5eb3bd`.
+- Authorization: autonomous MenuList QA certification, durable evidence, and stable staging publication. This operation is documentation-only and `staging` only; it excludes `main`, Firebase infrastructure deployment, manual Vercel deployment, production mutation, and live Razorpay execution.
+- Scope: record the exact automatic QA deployments and hosted evidence for MLRC-059 and MLRC-060, advance the report's current tested MenuList product commit to `2362f794eb61c908228c0f4956cd03b19d5eb3bd`, and retain `CERTIFICATION BLOCKED` while upload/item/publish and responsive mobile runtime gates remain open.
+- Starting filesystem state: zero staged, two tracked unstaged, zero untracked before this ledger append. Complete pre-ledger diff Git hash `4ae44656cb81635ae13a47c91bc9c2bfa05ad161`; status `0/2/0`.
+
+#### Pre-operation branch matrix
+
+| Branch | Local SHA | Direct server SHA | Tracking ref | Ahead/behind | Worktree | Filesystem | Status |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `staging` | `2362f794eb61c908228c0f4956cd03b19d5eb3bd` | `refs/heads/staging` / `2362f794eb61c908228c0f4956cd03b19d5eb3bd` | `origin/staging` | `0/0` | primary | `0/2/0` before ledger append | `IN_SYNC` |
+| `main` | `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `refs/heads/main` / `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `origin/main` | `0/0` | none | n/a | `IN_SYNC` |
+
+#### Firebase component matrix before Git mutation
+
+No Firebase source/configuration changes. Firestore Rules, indexes, Storage Rules, and Cloud Functions for MenuList QA `menulist-qa`, MenuList production `menulist-prod`, Answerlattice QA `neelvara-answerlattice-qa`, and Answerlattice production `neelvara-answerlattice-prod` each remain independently `NO_INFRA_CHANGE` / `SERVER_STATE_UNKNOWN`; no authenticated readback or deployment is performed.
+
+- Intended paths: `__docs__/audits/MENULIST_RC_CERTIFICATION.md` and this ledger.
+- Final state pending: documentation validation, scoped commit, non-force staging push, and direct server readback.
+- Attribution confidence: exact.
