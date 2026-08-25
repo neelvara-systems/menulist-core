@@ -82,7 +82,7 @@ import { sanitizeForFirestore } from '@lib/firestore/sanitizeForFirestore';
 import { normalizeBillingSubscriptionDocumentId } from '@lib/billing/subscriptionDocumentIdBoundary';
 import { readBoundedTextBody, rejectInvalidOrOversizedDeclaredBody } from "@lib/security/boundedRequestBody";
 import { FirestoreSubscriptionDoc } from "@type/razorpay";
-import { Timestamp } from "firebase/firestore";
+import { Timestamp } from "firebase-admin/firestore";
 import { writeLogEntry } from "logs/utils";
 import { NextRequest, NextResponse } from "next/server";
 import { createHash } from "crypto";

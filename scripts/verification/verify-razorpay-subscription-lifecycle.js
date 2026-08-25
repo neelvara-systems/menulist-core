@@ -23,6 +23,29 @@ const websiteSubscriptionManagement = read('src/components/website/pricing-pages
 const answerlatticeOnboardingForm = read('src/app/sites/answerlattice/get-started/OnboardingForm.tsx');
 const answerlatticeOnboardingRoute = read('src/app/api/answerlattice/onboard/route.ts');
 const resellerOnboardingRoute = read('src/app/api/reseller/onboard/route.ts');
+const serverTimestampRoutes = [
+  'src/app/api/onboarding/create-subscription/route.ts',
+  'src/app/api/razorpay/cancel-subscription/route.ts',
+  'src/app/api/razorpay/create-subscription/route.ts',
+  'src/app/api/razorpay/pause-subscription/route.ts',
+  'src/app/api/razorpay/resume-subscription/route.ts',
+  'src/app/api/razorpay/verify-subscription/route.ts',
+  'src/app/api/razorpay/webhook/route.ts',
+  'src/app/api/reseller/onboard/route.ts',
+  'src/app/api/reseller/renew/route.ts',
+];
+
+for (const routePath of serverTimestampRoutes) {
+  const routeSource = read(routePath);
+  assert.ok(
+    routeSource.includes('firebase-admin/firestore'),
+    `${routePath} must serialize timestamps from the Admin SDK`,
+  );
+  assert.ok(
+    !routeSource.includes('from "firebase/firestore"') && !routeSource.includes("from 'firebase/firestore'"),
+    `${routePath} must not write client-SDK timestamps through Admin Firestore`,
+  );
+}
 
 const events = [
   'subscription.authenticated',

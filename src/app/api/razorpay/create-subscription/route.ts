@@ -60,7 +60,7 @@ import {
     resolveRazorpayPendingCheckoutAction,
     resolveRazorpayProviderSubscriptionStatus,
 } from '@data/shared/razorpaySubscriptionLifecycle';
-import { Timestamp } from "firebase/firestore";
+import { Timestamp } from "firebase-admin/firestore";
 import { writeLogEntry } from "logs/utils";
 import { NextResponse } from "next/server";
 import { hashPublicRateLimitValue } from "src/middleware/publicApi";

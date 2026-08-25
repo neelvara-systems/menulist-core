@@ -32,7 +32,7 @@ import { readBoundedJsonBody } from "@lib/security/boundedRequestBody";
 import { getBoundedSecurityRouteContext } from "@lib/security/securityDiagnostics";
 import { validateAPIInput } from "@lib/security/inputValidation";
 import { ResellerRenewSchema } from "@lib/validation/resellerSchemas";
-import { Timestamp } from "firebase/firestore";
+import { Timestamp } from "firebase-admin/firestore";
 import { withAuth } from "../../../../middleware/auth";
 import { hashPublicRateLimitValue } from "../../../../middleware/publicApi";
 import { resellerPrivateJson, withResellerPrivateHeaders } from "../readRateLimit";

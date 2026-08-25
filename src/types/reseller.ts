@@ -1,4 +1,7 @@
 import { Timestamp } from "firebase/firestore";
+import type { Timestamp as AdminTimestamp } from "firebase-admin/firestore";
+
+export type ResellerTimestamp = Timestamp | AdminTimestamp;
 
 // ═══════════════════════════════════════════════════════════════
 // Reseller Dashboard Types
@@ -55,10 +58,10 @@ export interface ResellerTransaction {
     subscriptionStatus?: string;
 
     // Timestamps (offline only for validFrom/validUntil)
-    validFrom?: Timestamp | null;
-    validUntil?: Timestamp | null;
-    createdOn: Timestamp;
-    modifiedOn: Timestamp;
+    validFrom?: ResellerTimestamp | null;
+    validUntil?: ResellerTimestamp | null;
+    createdOn: ResellerTimestamp;
+    modifiedOn: ResellerTimestamp;
 }
 
 /**
@@ -77,7 +80,7 @@ export interface ResellerProfile {
     email: string;
     username: string;                          // Unique login username for reseller dashboard
     authUserId?: string;                       // Firebase Auth / users doc ID for reseller login
-    passwordSetAt?: Timestamp | null;          // Password exists in Firebase Auth only; never stored here
+    passwordSetAt?: ResellerTimestamp | null;          // Password exists in Firebase Auth only; never stored here
     addressLine?: string;
     city?: string;
     state?: string;
@@ -99,12 +102,12 @@ export interface ResellerProfile {
     // ── Status ──
     active: boolean;
     deleted?: boolean;                          // Legacy soft-delete compatibility; omitted for current profiles
-    activatedAt: Timestamp;
-    deactivatedAt?: Timestamp | null;
+    activatedAt: ResellerTimestamp;
+    deactivatedAt?: ResellerTimestamp | null;
 
     // ── Metadata ──
-    createdOn: Timestamp;
-    modifiedOn: Timestamp;
+    createdOn: ResellerTimestamp;
+    modifiedOn: ResellerTimestamp;
     createdBy: string;                         // Founder who activated this reseller
 }
 

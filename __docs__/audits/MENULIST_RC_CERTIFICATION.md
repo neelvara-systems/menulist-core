@@ -6,15 +6,16 @@
 
 **Initial candidate commit:** `b857a164944012d42131917e7c62215c94022c0f`
 
-**Current tested product commit:** `32440eca8e171212fb77983218d3a071e0db5981`
+**Current tested product commit:** `b76862dfe2a8b9f25afa5baae6459b1fb24162f0`
 
 **MenuList product snapshot commit:** `3a34a975d52b1a3b8bec4be35c40b4930b1f9441`
 
-**Candidate filesystem state:** the tested application correction was included
-in the complete concurrent staging snapshot `32440eca8e171212fb77983218d3a071e0db5981`;
-direct Git and hosted `/api/version` readback proved that exact commit on QA.
-The generated inventory and this certification evidence are the only pending
-documentation artifacts from the current pass. `main` remains untouched.
+**Candidate filesystem state:** direct Git and hosted `/api/version` readback
+proved exact staging commit `b76862dfe2a8b9f25afa5baae6459b1fb24162f0` on
+QA. The hosted MLRC-045 interaction remains attributable to its included
+runtime commit `32440eca8e171212fb77983218d3a071e0db5981`. Concurrent local
+billing-boundary edits are preserved outside this evidence update and are not
+represented as hosted or tested. `main` remains untouched.
 
 **Certification date:** August 25, 2026
 
@@ -115,7 +116,7 @@ separately tracked and is not implied by this anonymous boundary pass.
 | Authentication regression | Leading/trailing email and password; invalid login recovery; forgot-password validation; callback preservation | PASS (signed-out boundary) | Deterministic credential-normalization tests plus exact hosted Chrome: malformed identifier/passcode stayed on sign-in with inline validation, Forgot preserved `/dashboard`, invalid reset email produced an announced error, and Return restored the sign-in callback. No reset email, account creation, or real credential was submitted. |
 | Authentication and onboarding aggregate | Sign-up/sign-in boundaries, claims/workspace association, plan handoff, owner setup, extraction entry, retry, recovery, concurrency, and cleanup | PASS (local/emulator) | `npm run verify:auth-onboarding-flow`, `npm run test:login-credential-normalization`, and `npm run verify:menu-extraction-pipeline` completed with exit 0; expected denial/failure logs were fixture assertions rather than escaped failures |
 | Pricing handoff | Official, Pro, and Multi-location across INR/USD and monthly/yearly selection; content-pack sign-in; comparison and FAQ controls | PASS (provider boundary only) | Exact hosted Chrome exercised all 12 signed-out plan/currency/interval combinations. Each produced the expected callback-aware sign-in handoff with plan, currency, interval, B2C type, and quantity one or the Multi-location minimum of two. Content-pack sign-in, comparison expansion, all three FAQ categories, and an accordion in each category worked with zero overflow. No Razorpay provider execution occurred. |
-| Hosted QA | Exact candidate on QA owner app | PASS (deployment identity and bounded authenticated recovery interaction) | `/api/version` returned exact verified build `32440eca8e171212fb77983218d3a071e0db5981` (`menulist-core-47vlju4qi-neelvara-systems.vercel.app`). At 320x568, the approved pending yearly-Starter owner now sees `Starter Plan (Yearly) — Billing`, the canonical Billing summary, a 44px Billing action, and a 50px Sign Out action with 320px document/viewport width. Billing reopened the same `Payment pending` record and exposed Continue Checkout; the provider action was deliberately not pressed. Earlier exact `04a736f…` retained the approved owner across hard reloads with zero post-build `/api/auth/set-claims` requests, while exact `16a4bc2…` completed canonical gated Sign Out and reauthentication. Live Razorpay checkout was not started. |
+| Hosted QA | Exact candidate on QA owner app | PASS (deployment identity and bounded authenticated recovery interaction) | `/api/version` returned exact verified build `b76862dfe2a8b9f25afa5baae6459b1fb24162f0` (`menulist-core-34x00eri0-neelvara-systems.vercel.app`). At 320x568, the approved pending yearly-Starter owner now sees `Starter Plan (Yearly) — Billing`, the canonical Billing summary, a 44px Billing action, and a 50px Sign Out action with 320px document/viewport width. Billing reopened the same `Payment pending` record and exposed Continue Checkout; the provider action was deliberately not pressed. Earlier exact `04a736f…` retained the approved owner across hard reloads with zero post-build `/api/auth/set-claims` requests, while exact `16a4bc2…` completed canonical gated Sign Out and reauthentication. Live Razorpay checkout was not started. |
 | Hosted transport | Website/app/tenant HTTP, metadata, noindex, PWA assets, missing routes | PASS (bounded) | Website, pricing, features, resources, legal, sign-in, owner manifest, offline, service workers, and tenant menu matched QA policy; disabled sitemap/customer manifest returned honest 404; missing menu slug rendered noindex recovery |
 | Public website browser inventory | All 186 sitemap URLs, including 22 public tool routes and 62 App Router page patterns | PASS (render/recovery) | Connected Chrome reran the current sitemap manifest (`30afee75c57db88ee93dec78926ed0b389a1ff7ddde99fb2510946d897e24fe8`) and rendered a main region and route-specific heading without application/404 failure across all 186 unique URLs; individual transmitting controls remain separately pending; the 22 tools exposed 410 rendered controls |
 | Current hosted mobile website routes | Static marketing, feature, industry, legal, trust, tools, English resources, and all 112 locale-prefixed resource variants | PASS (render/responsive/accessibility attributes) | Exact `b1750e0…` QA at 320×568 rendered every static website route and every reviewed localized resource variant with a non-empty heading, no application/not-found state, and no horizontal overflow. Exact `25d58ae…` then passed all 16 Arabic hub/article routes with root `lang=ar-SA`, root/content `dir=rtl`, and zero overflow; Arabic→English switch plus Chrome back/forward restored the correct route, heading, language, and direction each time. |
@@ -127,7 +128,7 @@ separately tracked and is not implied by this anonymous boundary pass.
 | Pending owner direct-route gate | Billing recovery versus direct `/locations` access | PASS source and hosted | Exact hosted pending owner direct-linked to `/locations` and reached Billing before any location controls rendered, on desktop and at 390px. |
 | Owner mobile source boundary | MobileShell route map, Billing and Help recovery, PWA lifecycle, locale coverage | PASS source and hosted responsive browser / BLOCKED true device | Exact hosted QA at 390×844 rendered `/help-center` and `/billing` inside MobileShell with the recovery bypass intact; Help/PWA/subscription gates pass. Physical-device evidence remains pending. |
 | Mobile Billing recovery | Direct `/billing`, pending-owner summary, history, support handoff, touch targets, overflow | PASS | Exact hosted `c9c08d6…` rendered native `MobileBillingScreen` at 390×844 with zero horizontal overflow and all visible actions at least 44px. Billing History opened a truthful empty sheet. “Need billing help?” opened `/help-center/ticket#mobile/more/answerlatticeSupport`; the ticket form had zero overflow and a 44px Send Request target. No ticket or payment was submitted. |
-| Contact form | Render, blank submission, validation announcement, recovery | PASS (non-transmitting) | Connected Chrome announced name, email, message-length, and policy-consent errors; no valid enquiry was transmitted |
+| Contact form | Render, blank submission, validation announcement, valid QA submission, success recovery, and hosted request evidence | PASS | Connected Chrome announced name, email, message-length, and policy-consent errors, then submitted one clearly labelled synthetic QA enquiry. The accessible success state reported `Message received` and exposed `Send another message`. Vercel request logs independently recorded `POST /api/public/contact` on `menulist.digital` with HTTP 200 at 2026-08-25T14:43:51.428Z. No contact value was exposed in logs or this report. Owner-inbox readback remains role-blocked. |
 | Pending-owner support recovery | Billing support handoff and empty ticket validation | PASS (non-transmitting) | Connected Chrome moved from Billing to `/help-center/ticket`; blank Send Request stayed on-page and exposed subject/details errors; no ticket or file was transmitted |
 | Physical devices | Owner PWA, public menu, screen/TV where applicable | BLOCKED | No current physical-device evidence in this session |
 
@@ -354,7 +355,7 @@ passing runtime claim.
 - The repository has no root `test:e2e` or `e2e` script. Controlled browser
   evidence and existing deterministic verifiers will be recorded separately.
 - Hosted QA exposed and refreshed onto the exact verified tested product commit
-  `32440eca8e171212fb77983218d3a071e0db5981`. The signed-in
+  `b76862dfe2a8b9f25afa5baae6459b1fb24162f0`. The signed-in
   pending-payment Google owner fixture completed Billing/history/Help/pending-gate
   and recovery-gate checks; a no-subscription true-handheld fixture,
   active disposable public tenant, destructive disposable tenant/store fixtures, physical mobile/PWA,
@@ -364,8 +365,14 @@ passing runtime claim.
   Answerlattice support workspace. MenuList Help Center shell/recovery routing
   was testable, but ticket history and the remaining Answerlattice-backed
   content/data path remain externally blocked; no MenuList fallback was added.
-- Upstash target URL/token values are not present in this shell, so target
-  normal/exhausted/outage limiter behavior remains externally blocked.
+- The Vercel QA environment contains the expected named MenuList Upstash URL
+  and token variables, and one synthetic public contact request completed
+  through the normal hosted route with HTTP 200. The values were not revealed.
+  The local shell still lacks those credentials, so the maintained direct ping
+  plus target exhaustion and provider-outage behavior remain externally blocked.
+- The synthetic QA contact record is intentionally labelled and retained in
+  `landingPageEnquiries`. This session has neither a PLATFORM inbox role nor
+  Firebase project access to read back or remove that record safely.
 - The build emits existing Ant Design v5/React 19 compatibility and Sass
   `@import` deprecation warnings. They do not fail the pinned build but remain
   migration debt under the dependency-freeze contract.

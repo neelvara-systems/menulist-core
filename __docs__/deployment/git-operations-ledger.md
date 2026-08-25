@@ -3278,3 +3278,25 @@ Those fields are explicitly `unknown` instead of guessed.
 - Firebase matrix after: unchanged from the planned entry. MenuList QA/production Functions retain MLRC-031 `INFRA_CHANGE` / `DEPLOY_REQUIRED`; the other 14 target/component rows remain `NO_INFRA_CHANGE` / `SERVER_STATE_UNKNOWN`. No Firebase deployment/readback, production release, `main` movement, manual Vercel deployment, or live Razorpay execution occurred.
 - Final filesystem state: local/server staging are aligned at the evidence commit; the two unrelated concurrent Razorpay-boundary source/verifier modifications remain unstaged and preserved. This result append is the only change authored after the scoped release.
 - Attribution confidence: exact for this operation and Git/hosted evidence; concurrent writer identity `unknown`.
+
+### GIT-20260825-202145-answerlattice-admin-timestamp-boundary
+
+- Timestamp: `2026-08-25T20:21:45+05:30`
+- Record type: `PLANNED`
+- Actor/session/thread ID: Codex `/root`; current Answerlattice QA subscription certification task.
+- Registered worktrees: one primary worktree at `/Users/danny/Projects/MenuListAi/menulist-core`, branch `staging`, HEAD `b76862dfe2a8b9f25afa5baae6459b1fb24162f0`.
+- Authorization: Danny instructed Codex to create a new Test Mode Answerlattice subscription, fix/retest the blocked entitlement path, commit and push every current worktree change to `staging`, and maintain this ledger. This operation authorizes one complete-snapshot, non-force `staging` push and observation of the automatic custom-`qa` Vercel deployment. It does not authorize `main`, manual Vercel deployment, Firebase infrastructure deployment, Production environment mutation, or live Razorpay execution.
+- Root cause evidence: exact hosted build `b76862dfe2a8b9f25afa5baae6459b1fb24162f0` reached provider cancellation and then failed at `pending_local_expiry`. A bounded Firestore emulator proof rejected `Timestamp.now()` from `firebase/firestore` when passed to Firebase Admin and accepted `Timestamp.now()` from `firebase-admin/firestore`. The durable correction moves every affected billing, subscription, reseller, and webhook server route to the Admin Timestamp implementation and widens shared timestamp types only at the client/server serialization boundary.
+- Candidate paths: nine server routes, the Razorpay lifecycle verifier, shared billing/reseller timestamp types, and the Cancellation modal type boundary. The current concurrent `__docs__/audits/MENULIST_RC_CERTIFICATION.md` evidence update is preserved and included under Danny's explicit complete-snapshot instruction; its authorship remains `unknown` to this task and its claims were not rewritten here.
+- Validation before commit: strict repository TypeScript PASS; complete `verify:answerlattice-commercial-readiness` PASS, including taxation, billing contracts, entitlement boundary, Rules emulator suites, checkout concurrency, provider-plan registry, lifecycle, and webhook lease; focused ESLint PASS; `git diff --check` PASS. The exact failed hosted interaction and its downstream payment/webhook/entitlement path remain pending on the corrected automatic QA build.
+
+- Branch matrix before:
+
+  | Branch | Local full SHA | Direct server ref/full SHA | Tracking ref | Ahead/behind | Worktree | Staged/unstaged/untracked | Status |
+  | --- | --- | --- | --- | --- | --- | --- | --- |
+  | `main` | `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `refs/heads/main` / `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `origin/main` | `0/0` | not checked out | `N/A` | `IN_SYNC` |
+  | `staging` | `b76862dfe2a8b9f25afa5baae6459b1fb24162f0` | `refs/heads/staging` / `b76862dfe2a8b9f25afa5baae6459b1fb24162f0` | `origin/staging` | `0/0` | primary worktree | `0/14/0` before this append | `IN_SYNC` |
+
+- Firebase matrix before/after: no Firebase infrastructure source changed. MenuList QA/production Functions retain the separately recorded `INFRA_CHANGE` / `DEPLOY_REQUIRED` state; the other target/component rows retain `NO_INFRA_CHANGE` / `SERVER_STATE_UNKNOWN`. No Firebase deploy or authenticated readback is authorized or performed by this operation.
+- Final filesystem state: pending complete-snapshot commit, non-force `staging` push, direct server readback, automatic QA deployment, hosted Test Mode subscription retry, webhook/entitlement verification, and dependent Answerlattice journey retest.
+- Attribution confidence: exact for the Answerlattice source, test, Git, and hosted evidence; concurrent MenuList report authorship `unknown`.

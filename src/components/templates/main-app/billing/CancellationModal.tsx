@@ -5,7 +5,7 @@ import {
     type CancellationReasonCode,
 } from '@lib/billing/cancellationReasons';
 import { Button, Checkbox, Flex, Form, Input, Modal, Radio, Space, Typography, theme } from 'antd';
-import { Timestamp } from 'firebase/firestore';
+import type { BillingTimestamp } from '@type/razorpay';
 import { AnimatePresence, motion, type Variants } from 'framer-motion';
 import { useEffect, useState } from 'react';
 import { LuArrowLeft, LuArrowRight, LuBan, LuX } from 'react-icons/lu';
@@ -16,7 +16,7 @@ interface CancellationModalProps {
     isOpen: boolean;
     onClose: () => void;
     onConfirm: (reason: CancellationReasonCode, otherReason: string | undefined, consent: boolean) => void;
-    subscriptionEndDate: Timestamp; // Expects a pre-formatted date string
+    subscriptionEndDate: BillingTimestamp;
 }
 
 const stepVariants: Variants = {

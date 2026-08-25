@@ -52,7 +52,7 @@ import { readBoundedJsonBody } from "@lib/security/boundedRequestBody";
 import { validateAPIInput } from "@lib/security/inputValidation";
 import { VerifyPaymentRequestSchema } from "@lib/validation/apiSchemas";
 import { FirestoreSubscriptionDoc } from "@type/razorpay";
-import { Timestamp } from "firebase/firestore";
+import { Timestamp } from "firebase-admin/firestore";
 import { writeLogEntry } from 'logs/utils';
 import { NextResponse } from 'next/server';
 import { createHmac, timingSafeEqual } from "crypto";

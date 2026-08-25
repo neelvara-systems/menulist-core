@@ -1,4 +1,5 @@
 import { Timestamp } from "firebase/firestore";
+import type { Timestamp as AdminTimestamp } from "firebase-admin/firestore";
 import type { ProductId } from "@constant/product";
 import type { RazorpayProviderSubscriptionStatus } from "@data/shared/razorpaySubscriptionLifecycle";
 import type { BillingTaxSnapshot } from "@data/shared/billingTaxPolicy";
@@ -19,6 +20,7 @@ export type PaymentStatus =
 export type PlanInterval = "MONTH" | "YEAR"; // Match the casing from PlatformPlansList.ts
 export type UserType = "B2C" | "B2B";
 export type Currency = "INR" | "USD";
+export type BillingTimestamp = Timestamp | AdminTimestamp;
 
 // The metadata we will pass into the 'notes' field for any payment creation
 // This is the key to linking webhook events back to our database
@@ -75,7 +77,7 @@ export interface FirestoreSubscriptionDoc {
   analyticsEntitlement?: {
     activePlanType: string | null;
     status: string | null;
-    syncedAt?: Timestamp;
+    syncedAt?: BillingTimestamp;
     source?: string;
   };
   amount: number;                   // Per-unit price in the smallest currency unit; multiply by quantity for cycle total.
@@ -84,26 +86,26 @@ export interface FirestoreSubscriptionDoc {
   currency: Currency;
 
   // --- CRITICAL: Billing Cycle Dates ---
-  cycleStartDate: Timestamp | null;        // Null until the provider starts the first billing cycle.
-  cycleEndDate: Timestamp | null;          // Null until the provider supplies the current cycle end.
-  renewsOn: Timestamp | null;              // Null while a pending subscription has no next charge.
-  subscriptionStartDate: Timestamp | null; // Null until the subscription is authenticated or active.
-  subscriptionEndDate: Timestamp | null;   // Null until the provider supplies an end boundary.
-  pastDueSinceAt: Timestamp | null;        // Set only while the subscription is past due.
+  cycleStartDate: BillingTimestamp | null;        // Null until the provider starts the first billing cycle.
+  cycleEndDate: BillingTimestamp | null;          // Null until the provider supplies the current cycle end.
+  renewsOn: BillingTimestamp | null;              // Null while a pending subscription has no next charge.
+  subscriptionStartDate: BillingTimestamp | null; // Null until the subscription is authenticated or active.
+  subscriptionEndDate: BillingTimestamp | null;   // Null until the provider supplies an end boundary.
+  pastDueSinceAt: BillingTimestamp | null;        // Set only while the subscription is past due.
 
   // --- CRITICAL: Credit Management System ---
   monthlyCreditsAllowance: number;  // Effective recurring allowance for this cycle and settled plan quantity.
   monthlyCredits: number;           // Current recurring balance. Resets each billing cycle.
   topUpCredits: number;             // Purchased balance. Cycle resets do not change it.
   promotionalCredits?: number;      // Expiring referral/goodwill balance, separate from purchased value.
-  promotionalCreditsExpireAt?: Timestamp | null;
-  purchasedCreditsFrozenAt?: Timestamp | null;
-  purchasedCreditsRestoreUntil?: Timestamp | null;
+  promotionalCreditsExpireAt?: BillingTimestamp | null;
+  purchasedCreditsFrozenAt?: BillingTimestamp | null;
+  purchasedCreditsRestoreUntil?: BillingTimestamp | null;
   purchasedCreditsRecoveryId?: string | null;
   creditsLastResetMonth?: number;   // YYYYMM format (e.g., 202602). Tracks when monthlyCredits was last reset.
   carryForwardCredits?: number;      // Server-computed purchased credits moved during a replacement.
   carryForwardFromSubscriptionId?: string;
-  carryForwardAppliedAt?: Timestamp;
+  carryForwardAppliedAt?: BillingTimestamp;
   upgradeReplacementSubscriptionId?: string;
   founderMonitorReplacementForSubscriptionId?: string;
   founderMonitorReplacementMrrPaise?: number;
@@ -129,7 +131,7 @@ export interface FirestoreSubscriptionDoc {
 
   statuses: Array<{
     status: string;
-    timestamp: Timestamp;
+    timestamp: BillingTimestamp;
     amount: number;
     currency: string;
     remark: string
@@ -138,7 +140,7 @@ export interface FirestoreSubscriptionDoc {
   cancellation?: {
     reasonCode: 'no_longer_needed' | 'missing_functionality' | 'too_expensive' | 'switched_provider' | 'purchased_accidentally' | 'other';
     detail?: string;
-    requestedAt: Timestamp;
+    requestedAt: BillingTimestamp;
     source: 'owner';
   };
 
@@ -149,7 +151,7 @@ export interface FirestoreSubscriptionDoc {
   billingHistory: string[];         // Array of providerPaymentIds from successful charges.
   lastWebhook: {
     event: string;
-    timestamp: Timestamp;
+    timestamp: BillingTimestamp;
   } | null;
   /** Recent provider event keys used to make partial-failure retries idempotent. */
   webhookEventHistory?: string[];
@@ -157,14 +159,14 @@ export interface FirestoreSubscriptionDoc {
   // --- Reseller Dashboard Fields ---
   // @see __docs__/reseller-dashboard/reseller-dashboard_impl.md §2.1
   billingMode?: 'auto' | 'manual';           // 'auto' = Razorpay recurring, 'manual' = reseller offline
-  validUntil?: Timestamp | null;             // For manual billing only: when access expires
+  validUntil?: BillingTimestamp | null;             // For manual billing only: when access expires
   onboardingSource?: 'WEBSITE_ONBOARDING' | 'RESELLER_ONBOARDING' | 'MESSAGING_ONBOARDING' | 'PUBLIC_MENU_ENTRY' | 'ANSWERLATTICE_ONBOARDING';  // How this store was onboarded
   resellerId?: string | null;                // User ID of the reseller who onboarded this store
   resellerProfileId?: string | null;         // resellerProfiles doc used for caps/stats when present
   resellerPricingTier?: string | null;       // 'FOUNDER_400' | 'FOUNDER_500' | 'STANDARD'
   commitmentPeriodMonths?: number | null;    // 3 | 6 | 12 (online: tracking only, offline: duration)
   manualPaymentConfirmed?: boolean;          // For offline: reseller confirmed payment received
-  manualPaymentConfirmedAt?: Timestamp | null;
+  manualPaymentConfirmedAt?: BillingTimestamp | null;
 }
 
 export type FirestoreBillingHistoryDoc = Array<{
@@ -200,7 +202,7 @@ export interface FirestoreTopupDoc {
   sId?: number | string;
   tenantId: number | string;
   storeId: number | string;
-  paidAt?: Timestamp;
+  paidAt?: BillingTimestamp;
   packId?: string;
   packName?: string;
   type?: string;

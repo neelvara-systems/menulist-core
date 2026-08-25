@@ -47,7 +47,7 @@ import { OnboardingSubscriptionSchema } from "@lib/validation/apiSchemas";
 import { FirestoreSubscriptionDoc } from "@type/razorpay";
 import { writeLogEntry } from "logs/utils";
 import { randomUUID } from "crypto";
-import { Timestamp as ClientTimestamp } from "firebase/firestore";
+import { Timestamp as AdminTimestamp } from "firebase-admin/firestore";
 import { NextResponse } from "next/server";
 import { hashPublicRateLimitValue } from "src/middleware/publicApi";
 import { type AuthenticatedHandler, withAuth } from "../../../../middleware/auth";
@@ -764,7 +764,7 @@ export const POST = withOnboardingPrivateResponse(async (request, session) => {
             statuses: [
                 {
                     status: "pending",
-                    timestamp: ClientTimestamp.now(),
+                    timestamp: AdminTimestamp.now(),
                     amount: taxSnapshot.grossAmount,
                     currency: currency,
                     remark: "Onboarding Subscription Initiated",
