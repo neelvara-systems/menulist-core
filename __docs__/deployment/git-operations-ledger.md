@@ -4068,3 +4068,36 @@ No Firebase source/configuration changes. Firestore Rules, indexes, Storage Rule
 - Intended paths: the eight scoped MLRC-057/058 source, regression, feature-doc, and certification-report files plus this ledger.
 - Final state pending: scoped commit, non-force staging push, direct server readback, automatic QA deployment, exact version readback, one-time staff credential popup test, restricted staff sign-in/route/permission checks, force-sign-out, and isolated staff cleanup.
 - Attribution confidence: exact.
+
+#### MLRC-058 context-instance performed result — `2026-08-26T02:04:10+05:30`
+
+- Commit/push: `afa6ec90608522f5e7653839a490a3cae5d988b2` (`fix(menulist): show staff login credentials`) was pushed non-force to `origin/staging`; direct server readback returned the same SHA with `0/0` divergence. `main` remained untouched at `fe625d5bbf527c1b7e537b00ab32a4f655905c35`.
+- Automatic QA deployment: `/api/version` returned exact verified build `afa6ec90608522f5e7653839a490a3cae5d988b2`, deployment `menulist-core-penybcqtd-neelvara-systems.vercel.app`, environment `preview`. No manual Vercel deployment occurred.
+- Exact hosted result: the isolated no-email staff reset rendered the one-time Staff ID/passcode dialog. Copy Staff ID, Copy Passcode, and Copy both each matched the in-memory credential without printing or persisting it. The disposable staff signed in; its direct Users, Projects, and Billing checks settled to the owner-safe denial and exposed no owner control. The owner force-signed-out and removed it.
+- Adjacent create result: a second disposable no-email staff creation rendered the same one-time dialog on exact `afa6ec9…`; it was removed after verification. Both temporary credentials and the clipboard were cleared from browser memory. MLRC-058 is closed.
+- Firebase state: this code release changed no infrastructure source/configuration and performed no infrastructure deploy/readback; all Firestore Rules, indexes, Storage Rules, and Functions rows remain `NO_INFRA_CHANGE` / `SERVER_STATE_UNKNOWN`.
+
+### GIT-20260826-020410-mlrc057-058-evidence-closeout
+
+- Timestamp: `2026-08-26T02:04:10+05:30`
+- Record type: `PLANNED`
+- Actor/session/thread ID: Codex `/root`; thread `01a034e1-c70a-74b1-a92b-0a103a981815`.
+- Registered worktrees: one primary worktree at `/Users/danny/Projects/MenuListAi/menulist-core`, branch `staging`, HEAD `afa6ec90608522f5e7653839a490a3cae5d988b2`.
+- Authorization: autonomous MenuList QA certification, durable evidence, and stable staging publication. This operation is documentation-only and `staging` only; it excludes `main`, Firebase infrastructure deployment, manual Vercel deployment, production mutation, and live Razorpay execution.
+- Scope: record exact hosted closure of MLRC-057 and MLRC-058, correct the active fixture tenant/store identity to `4`/`4`, and keep the overall decision `CERTIFICATION BLOCKED` while menu upload/item/publish coverage remains open.
+- Starting filesystem state: zero staged, one tracked unstaged, zero untracked before this ledger append. Scoped pre-ledger diff Git hash `7ef31997a3c6fb3006d1eb2bf4a189f591536226`; status is `0/1/0`.
+
+#### Pre-operation branch matrix
+
+| Branch | Local SHA | Direct server SHA | Tracking ref | Ahead/behind | Worktree | Filesystem | Status |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `staging` | `afa6ec90608522f5e7653839a490a3cae5d988b2` | `refs/heads/staging` / `afa6ec90608522f5e7653839a490a3cae5d988b2` | `origin/staging` | `0/0` | primary | `0/1/0` before ledger append | `IN_SYNC` |
+| `main` | `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `refs/heads/main` / `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `origin/main` | `0/0` | none | n/a | `IN_SYNC` |
+
+#### Firebase component matrix before Git mutation
+
+No Firebase source/configuration changes. Firestore Rules, indexes, Storage Rules, and Cloud Functions for MenuList QA `menulist-qa`, MenuList production `menulist-prod`, Answerlattice QA `neelvara-answerlattice-qa`, and Answerlattice production `neelvara-answerlattice-prod` each remain independently `NO_INFRA_CHANGE` / `SERVER_STATE_UNKNOWN`; no authenticated readback or deployment is performed.
+
+- Intended paths: `__docs__/audits/MENULIST_RC_CERTIFICATION.md` and this ledger.
+- Final state pending: documentation validation, scoped commit, non-force staging push, and direct server readback.
+- Attribution confidence: exact.
