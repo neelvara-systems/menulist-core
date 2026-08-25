@@ -2954,3 +2954,56 @@ Those fields are explicitly `unknown` instead of guessed.
 - Firebase matrix after: all 16 component rows remain as planned. The web/client refinement changed no Firebase source; MenuList QA/production Functions retain MLRC-031 `INFRA_CHANGE` / `DEPLOY_REQUIRED`, and the other 14 rows remain `NO_INFRA_CHANGE` / `SERVER_STATE_UNKNOWN`. No Firebase deployment or authenticated readback occurred.
 - Final filesystem state before evidence closeout: only the certification report and this appended ledger result are modified. They will be committed and pushed as an evidence-only exact descendant; no source, Firebase, `main`, Razorpay, or manual Vercel operation is included.
 - Attribution confidence: exact.
+
+### GIT-20260825-181620-mlrc043-subscription-gate-signout
+
+- Timestamp: `2026-08-25T18:16:20+05:30`
+- Record type: `PLANNED`
+- Actor/session/thread ID: Codex `/root`; thread `01a034e1-c70a-74b1-a92b-0a103a981815`
+- Registered worktrees: one primary worktree at `/Users/danny/Projects/MenuListAi/menulist-core`, branch `staging`, HEAD `7a6ff4b7db22e4d9f2a4cf5c236aebf11ea72c1d`.
+- Authorization: Danny required autonomous end-to-end MenuList QA certification and in-scope fixes on staging before production. This operation adds the smallest safe account-exit recovery to the existing unpaid/pending MobileShell gate, its governed mobile docs, regression, regenerated inventory, report, and ledger. It authorizes one non-force staging push and exact automatic-QA retest; it does not authorize `main`, Firebase deployment, manual Vercel deployment, live Razorpay, payment mutation, or unrelated work.
+- Defect evidence: exact hosted QA at 320×568 returned the pending owner from Billing to the “Subscribe to Get Started” gate, which rendered only View Plans. The entitlement gate replaced the complete More/account screen, leaving no product-UI sign-out path for an unpaid owner who needs to change accounts.
+- Correction: retain the Billing/Help recovery bypass and entitlement boundary. Add a localized 50px Sign Out control to the gate using canonical `signOutSession()` cleanup, confirmation, in-flight disabling, and an announced generic error. No entitlement, payment, tenant, store, or provider state changes.
+- Candidate scope: `src/components/mobile/MobileShell.tsx`, `verify-mobile-shell-route-map.js`, two existing mobile-governance documents, regenerated 8,469-row inventory, certification report, and this ledger. Pre-ledger six-file diff SHA-256: `5e5bf0d1e9a9c36f69591261fca4505e7cc7ed8a76cb30a5254126c4f3355c0a`.
+- Validation before commit: mobile shell route-map PASS; focused ESLint PASS; strict TypeScript PASS; RC inventory PASS with 8,469 rows and 21 Function exports; `git diff --check` PASS.
+
+- Branch matrix before:
+
+  | Branch | Local full SHA | Direct server ref/full SHA | Tracking ref | Ahead/behind | Worktree | Staged/unstaged/untracked | Status |
+  | --- | --- | --- | --- | --- | --- | --- | --- |
+  | `main` | `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `refs/heads/main` / `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `origin/main` | `0/0` | not checked out | `N/A` | `IN_SYNC` |
+  | `staging` | `7a6ff4b7db22e4d9f2a4cf5c236aebf11ea72c1d` | `refs/heads/staging` / `7a6ff4b7db22e4d9f2a4cf5c236aebf11ea72c1d` | `origin/staging` | `0/0` | primary worktree | `0/6/0` before this ledger append | `IN_SYNC` |
+
+- Firebase matrix before/after:
+
+  | Product | Environment/project | Component | Local source/config | Local evidence | Server evidence | Delta | Deployment state |
+  | --- | --- | --- | --- | --- | --- | --- | --- |
+  | MenuList | QA / `menulist-qa` | Firestore Rules | `firestore-menulist.rules` | no candidate path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | QA / `menulist-qa` | Firestore indexes | `firestore.indexes.json` | no candidate path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | QA / `menulist-qa` | Storage Rules | `storage.rules` | no candidate path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | QA / `menulist-qa` | Cloud Functions | `functions/` | retained MLRC-031 mirror delta; previously built | not refreshed | `INFRA_CHANGE` | `DEPLOY_REQUIRED` |
+  | MenuList | production / `menulist-prod` | Firestore Rules | same source | no candidate path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | production / `menulist-prod` | Firestore indexes | same source | no candidate path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | production / `menulist-prod` | Storage Rules | same source | no candidate path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | production / `menulist-prod` | Cloud Functions | same shared source | retained MLRC-031 mirror delta | not refreshed | `INFRA_CHANGE` | `DEPLOY_REQUIRED` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Firestore Rules | `firestore-answerlattice.rules` | no candidate path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Firestore indexes | `firestore-answerlattice.indexes.json` | no candidate path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Storage Rules | `storage-answerlattice.rules` | no candidate path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Cloud Functions | `functions-answerlattice/` | no candidate path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Firestore Rules | same source | no candidate path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Firestore indexes | same source | no candidate path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Storage Rules | same source | no candidate path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Cloud Functions | same shared source | no candidate path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+
+- Firebase deployment evidence or blocker: MLRC-043 changes no Firebase infrastructure source. MLRC-031 remains `DEPLOY_REQUIRED` for MenuList QA/production Functions; Firebase CLI authentication is unavailable in this shell and no deployment/readback is authorized.
+- Git server readback and divergence: direct pre-operation readback proves both local/server branches exact with `0/0` divergence.
+- Final filesystem state: pending scoped staging commit/push/readback, automatic QA deployment, and exact hosted 320×568 confirmation/cancel/sign-out/redirect/re-login retest.
+- Attribution confidence: exact.
+
+#### GIT-20260825-181620 concurrent-path exclusion
+
+- Timestamp: `2026-08-25T18:18:00+05:30`
+- Record type: `PLANNED_REFINEMENT`
+- After the MLRC-043 candidate was validated, three independently moving paths appeared: `src/app/api/razorpay/create-subscription/route.ts`, `src/components/templates/answerlattice/billing/AnswerlatticeBilling.tsx`, and `src/components/templates/main-app/billing/ActiveSubscriptionCard.tsx`. Their actor/session is `unknown` and their payment-flow work is not silently absorbed into this mobile account-exit commit.
+- The seven MLRC-043 source/verifier/docs/inventory/report files plus this ledger remained stable at scoped diff SHA-256 `5e5bf0d1e9a9c36f69591261fca4505e7cc7ed8a76cb30a5254126c4f3355c0a` in two checks five seconds apart. Only those paths will be staged. The three concurrent paths remain unstaged and preserved for their owning workflow.
+- No Firebase, Vercel, branch, or product-boundary classification changes from the planned entry above.

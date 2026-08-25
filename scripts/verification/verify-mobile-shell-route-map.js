@@ -159,6 +159,12 @@ function verifyMobileShellRouteMap() {
   assertIncludes(mobileShell, 'const shouldBypassSubscriptionGate = isBillingRecoveryScreen', 'Mobile billing must remain reachable without active entitlement');
   assertIncludes(mobileShell, "setMoreScreen('billing');", 'Subscription gate View Plans action must open the mobile billing screen');
   assertIncludes(mobileShell, "router.push('/billing');", 'Subscription gate View Plans action must preserve the canonical billing route');
+  assertIncludes(mobileShell, "import { signOutSession } from '@lib/auth/client';", 'Subscription gate must reuse the canonical logout cleanup boundary');
+  assertIncludes(mobileShell, 'handleSubscriptionGateSignOut', 'Subscription gate must expose a safe owner exit');
+  assertIncludes(mobileShell, 'await signOutSession();', 'Subscription gate sign out must clear Firebase, NextAuth, and authenticated browser state');
+  assertIncludes(mobileShell, "profileActionsT('signOut')", 'Subscription gate safe exit must use governed localized copy');
+  assertIncludes(mobileShell, 'subscriptionGateSignOutError', 'Subscription gate sign-out failure must be recoverable without exposing internals');
+  assertIncludes(mobileShell, 'aria-live="assertive"', 'Subscription gate sign-out failure must be announced');
   assert(!mobileShell.includes("setForceDesktopRoute('/billing');"), 'Subscription gate must not force a desktop billing route from the mobile shell');
   assertIncludes(ownerLayout, 'const isMobileRecoveryRoute = isHelpCenterRoute || isBillingRoute;', 'Narrow viewport recovery routes must share the mobile-shell boundary');
   assertIncludes(ownerLayout, 'isPlatformRoute || isOpsRoute || isResellerRoute || isMobileRecoveryRoute', 'Billing and Help recovery routes must render in MobileShell at mobile widths');

@@ -6,6 +6,7 @@ import { PERMISSIONS } from '@constant/permissions';
 import { MENULIST_PLATFORM_USER_ROLE, RESELLER_USER_ROLE } from '@constant/user';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { hasStarterWorkspaceAccess, isStarterActivationStore } from '@lib/onboarding/starterActivation';
+import { signOutSession } from '@lib/auth/client';
 import { hasAnyPermission } from '@lib/permissions/permissionRequirements';
 import { hasValidSubscriptionAccess } from '@util/razorpay';
 import { App as AntApp, theme } from 'antd';
@@ -15,8 +16,8 @@ import { useTranslations } from 'next-intl';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import BrandedPageLoader from '@atoms/brandedPageLoader';
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { LuCreditCard } from 'react-icons/lu';
-import { Button, Card, Flex, MobileAntdAppBridge, Text, Title } from './antd';
+import { LuCreditCard, LuLogOut } from 'react-icons/lu';
+import { Button, Card, Dialog, Flex, MobileAntdAppBridge, Text, Title } from './antd';
 import MobileNavigation, { type MobileTab } from './MobileNavigation';
 import MobileProjectsProvider from './providers/MobileProjectsProvider';
 import type { MoreSubScreen } from './screens/MobileMoreScreen';
@@ -284,6 +285,7 @@ function buildMobileRouteHash(tab: MobileTab, todayScreen: 'main' | 'dashboard' 
 
 export default function MobileShell() {
     const t = useTranslations('MobileShell');
+    const profileActionsT = useTranslations('ProfileActions');
     const starterT = useTranslations('StarterActivation');
     const {
         activeSubscription,
@@ -302,6 +304,8 @@ export default function MobileShell() {
     const [todayScreen, setTodayScreen] = useState<'main' | 'dashboard' | 'history'>(initialRoute.todayScreen);
     const [moreScreen, setMoreScreen] = useState<MoreSubScreen>(initialRoute.moreScreen);
     const [isMoreRootScreen, setIsMoreRootScreen] = useState(initialRoute.moreScreen === 'main');
+    const [subscriptionGateSignOutError, setSubscriptionGateSignOutError] = useState('');
+    const [subscriptionGateSigningOut, setSubscriptionGateSigningOut] = useState(false);
     const scrollContainerRef = useRef<HTMLDivElement | null>(null);
     const hasSubscription = hasValidSubscriptionAccess(activeSubscription);
     const hasStarterAccess = hasStarterWorkspaceAccess(storeDetails, hasSubscription);
@@ -526,6 +530,26 @@ export default function MobileShell() {
         setTodayScreen('history');
     }, []);
 
+    const handleSubscriptionGateSignOut = useCallback(() => {
+        if (subscriptionGateSigningOut) return;
+
+        void Dialog.confirm({
+            confirmText: profileActionsT('logout'),
+            content: profileActionsT('logoutConfirm'),
+            onConfirm: async () => {
+                setSubscriptionGateSignOutError('');
+                setSubscriptionGateSigningOut(true);
+                try {
+                    await signOutSession();
+                } catch {
+                    setSubscriptionGateSignOutError(profileActionsT('logoutFailed'));
+                    setSubscriptionGateSigningOut(false);
+                }
+            },
+            title: profileActionsT('confirmLogout'),
+        });
+    }, [profileActionsT, subscriptionGateSigningOut]);
+
     useEffect(() => {
         if (todayScreen === 'history' && !FEATURE_FLAGS.ENABLE_PAST_ACTIVITY_HISTORY) {
             setTodayScreen('main');
@@ -630,6 +654,23 @@ export default function MobileShell() {
                             >
                                 {t('viewPlans')}
                             </Button>
+                            <Button
+                                block
+                                color="danger"
+                                disabled={subscriptionGateSigningOut}
+                                fill="outline"
+                                icon={<LuLogOut aria-hidden="true" />}
+                                loading={subscriptionGateSigningOut}
+                                onClick={handleSubscriptionGateSignOut}
+                                size="large"
+                            >
+                                {profileActionsT('signOut')}
+                            </Button>
+                            {subscriptionGateSignOutError ? (
+                                <Text aria-live="assertive" role="alert" style={{ textAlign: 'center' }} type="danger">
+                                    {subscriptionGateSignOutError}
+                                </Text>
+                            ) : null}
                         </Flex>
                     </Card>
                 </Flex>

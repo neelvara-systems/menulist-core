@@ -345,6 +345,10 @@ The subscription gate does not use forced desktop mode. Its **View Plans**
 action opens the canonical `/billing` route as the MobileShell Billing screen.
 Only that recovery screen bypasses the no-entitlement gate, so an owner can
 finish a pending checkout or choose a plan without gaining menu access.
+The gate also keeps a localized **Sign Out** action available. It uses the same
+Firebase, NextAuth, and authenticated-browser cleanup boundary as the account
+screen, so an unpaid or payment-pending owner is never trapped behind the plan
+gate and can safely change accounts without receiving product entitlement.
 
 ---
 
