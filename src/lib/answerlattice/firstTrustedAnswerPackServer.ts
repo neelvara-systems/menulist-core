@@ -67,6 +67,24 @@ const SUMMARY = DB_COLLECTIONS.PLATFORM_SUMMARY;
 const PACK_LEASE_MS = 5 * 60 * 1000;
 const PACK_REFUND_REASON = 'product_starter_pack_generation_failed';
 const PRODUCT_STARTER_PACK_REQUEST_ID_PATTERN = /^[a-zA-Z0-9_-]{8,100}$/;
+const PRODUCT_STARTER_PACK_FAILURE_CODES = {
+    PROVIDER: 'answerlattice_product_starter_pack_provider_failed',
+    RESPONSE: 'answerlattice_product_starter_pack_response_invalid',
+    SETTLEMENT: 'answerlattice_product_starter_pack_settlement_failed',
+} as const;
+
+type ProductStarterPackFailure = Error & { code?: string };
+
+const withProductStarterPackFailureCode = (
+    error: unknown,
+    code: (typeof PRODUCT_STARTER_PACK_FAILURE_CODES)[keyof typeof PRODUCT_STARTER_PACK_FAILURE_CODES],
+): ProductStarterPackFailure => {
+    const failure = (
+        error instanceof Error ? error : new Error('Product-specific starter pack operation failed.')
+    ) as ProductStarterPackFailure;
+    if (!failure.code) failure.code = code;
+    return failure;
+};
 
 const cleanText = (value: unknown, max: number) => String(value || '')
     .replace(/[\u0000-\u001f\u007f]/g, ' ')
@@ -704,26 +722,36 @@ Rules:
 SOURCE PACKET:
 ${JSON.stringify(packet)}`;
         const providerStartedAt = Date.now();
-        const providerResponse = dependencies.generateContent
-            ? await dependencies.generateContent(prompt)
-            : await (async () => {
-                const { answerlatticeGenAIClient } = await import('@lib/answerlattice/genAiClient');
-                const response = await answerlatticeGenAIClient.models.generateContent({
-                    model: ANSWERLATTICE_TEXT_MODEL,
-                    contents: [{ text: prompt }],
-                    config: {
-                        responseMimeType: 'application/json',
-                        temperature: 0,
-                        topP: 0.8,
-                        topK: 20,
-                    },
-                });
-                return {
-                    text: response?.text || '',
-                    usageMetadata: normalizeGeminiUsageMetadata(response, prompt, response?.text || ''),
-                };
-            })();
-        const candidates = normalizeCandidates(parseModelResponse(providerResponse.text), includedSources);
+        let providerResponse: PackProviderResponse;
+        try {
+            providerResponse = dependencies.generateContent
+                ? await dependencies.generateContent(prompt)
+                : await (async () => {
+                    const { answerlatticeGenAIClient } = await import('@lib/answerlattice/genAiClient');
+                    const response = await answerlatticeGenAIClient.models.generateContent({
+                        model: ANSWERLATTICE_TEXT_MODEL,
+                        contents: [{ text: prompt }],
+                        config: {
+                            responseMimeType: 'application/json',
+                            temperature: 0,
+                            topP: 0.8,
+                            topK: 20,
+                        },
+                    });
+                    return {
+                        text: response?.text || '',
+                        usageMetadata: normalizeGeminiUsageMetadata(response, prompt, response?.text || ''),
+                    };
+                })();
+        } catch (error) {
+            throw withProductStarterPackFailureCode(error, PRODUCT_STARTER_PACK_FAILURE_CODES.PROVIDER);
+        }
+        let candidates: ReturnType<typeof normalizeCandidates>;
+        try {
+            candidates = normalizeCandidates(parseModelResponse(providerResponse.text), includedSources);
+        } catch (error) {
+            throw withProductStarterPackFailureCode(error, PRODUCT_STARTER_PACK_FAILURE_CODES.RESPONSE);
+        }
         const sourcesById = new Map(includedSources.map(source => [source.id, source]));
         const reviewItems = buildReviewItems(scope, jobId, sourceHash, candidates, sourcesById);
         const completedAt = now();
@@ -762,15 +790,16 @@ ${JSON.stringify(packet)}`;
             return null;
         });
 
-        await finalizeAnswerlatticeIntakeUsage(scope, reservation.ledgerId, {
-            aiOperationId,
-            candidatesTokenCount: usageMetadata.candidatesTokenCount || 0,
-            metadata: { requestId, sourceHash, reviewItemCount: reviewItems.length },
-            promptTokenCount: usageMetadata.promptTokenCount || 0,
-            tokenCountSource: usageMetadata.tokenCountSource || 'none',
-            totalTokenCount: usageMetadata.totalTokenCount || 0,
-            unitsCharged: reservation.unitsReserved,
-        }, async (transaction, settlement) => {
+        try {
+            await finalizeAnswerlatticeIntakeUsage(scope, reservation.ledgerId, {
+                aiOperationId,
+                candidatesTokenCount: usageMetadata.candidatesTokenCount || 0,
+                metadata: { requestId, sourceHash, reviewItemCount: reviewItems.length },
+                promptTokenCount: usageMetadata.promptTokenCount || 0,
+                tokenCountSource: usageMetadata.tokenCountSource || 'none',
+                totalTokenCount: usageMetadata.totalTokenCount || 0,
+                unitsCharged: reservation.unitsReserved,
+            }, async (transaction, settlement) => {
             const currentSnapshot = await transaction.get(jobRef(jobId));
             if (!currentSnapshot.exists) throw new Error('Knowledge intake job not found.');
             const current = assertJobScope(
@@ -836,7 +865,10 @@ ${JSON.stringify(packet)}`;
                 usageUnitsConsumed: FieldValue.increment(settlement.unitsReserved),
                 lastUpdated: settlement.timestamp,
             }, { merge: true });
-        });
+            });
+        } catch (error) {
+            throw withProductStarterPackFailureCode(error, PRODUCT_STARTER_PACK_FAILURE_CODES.SETTLEMENT);
+        }
 
         return {
             jobId,

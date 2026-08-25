@@ -507,7 +507,15 @@ async function run(): Promise<void> {
                 },
             },
         ),
-        /valid source evidence/,
+        (error: Error & { code?: string }) => {
+            assert.match(error.message, /valid source evidence/);
+            assert.equal(
+                error.code,
+                'answerlattice_product_starter_pack_response_invalid',
+                'safe telemetry must distinguish provider-response rejection from provider and settlement failures',
+            );
+            return true;
+        },
     );
     const refundedSubscription = (await db.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc(subscriptionId).get()).data();
     assert.equal(refundedSubscription?.monthlyCredits, 3, 'invalid provider evidence must refund the exact reservation even if subscription status changes mid-operation');

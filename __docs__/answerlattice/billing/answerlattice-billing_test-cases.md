@@ -83,7 +83,13 @@ zero-value, time-limited, clearly labelled synthetic manual entitlement in
 `neelvara-answerlattice-qa` only. It refuses production, emulator hosts, an
 incorrect project confirmation, a missing/foreign workspace, an existing active
 subscription, duplicate preparation, and cleanup of any document that does not
-carry the exact fixture markers. It does not simulate checkout, payment,
+carry the exact fixture markers. Preparation temporarily binds the workspace's
+compact subscription summary to the lease so every paid-operation gate observes
+one consistent authority. The controller preserves the exact prior summary and
+restores it during cleanup only when the workspace still points to the fixture;
+a later real billing change is never overwritten. `repair-summary` safely upgrades
+an older active fixture, and Firebase CLI reauthentication supplies a disposable
+local ADC file without retaining another credential. It does not simulate checkout, payment,
 webhooks, invoices, refunds, or provider certification. The fixture must be
 removed after the hosted knowledge/retrieval/widget certification pass.
 

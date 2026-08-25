@@ -433,7 +433,10 @@ webhook, refund, revenue, or production-entitlement evidence.
 
 - Prepared one marked QA-only entitlement for workspace `1/1` in
   `neelvara-answerlattice-qa`; it expires automatically on 2026-08-28 and did
-  not alter the pending Razorpay subscription.
+  not alter the pending Razorpay subscription document. The controller now
+  temporarily binds the workspace's compact subscription summary to the marked
+  lease, preserves the exact previous pending summary, and restores it during
+  cleanup only if no later real billing change has replaced the fixture.
 - Imported one bounded, non-sensitive MenuList product-context source. The
   provider generated one KB-article draft, retained it in `Needs review`, and
   published it only after explicit owner acceptance.
@@ -458,3 +461,10 @@ webhook, refund, revenue, or production-entitlement evidence.
   contracts, Answerlattice typecheck, ESLint, and diff checks pass; exact hosted
   product-pack and unchanged-source credit-reuse evidence follows the staging
   deployment of this correction.
+- The first hosted product-pack retry then exposed inconsistent QA fixture state:
+  Billing correctly showed the active zero-value lease, while intake accounting
+  followed the store's older pending-subscription summary and rejected the call
+  before provider work. The guarded controller now binds and verifies the compact
+  summary, can repair the already-running fixture, and restores the prior summary
+  safely at cleanup. This changes no production entitlement doctrine or paid
+  intake hot-path read count.

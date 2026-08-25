@@ -3656,3 +3656,27 @@ Those fields are explicitly `unknown` instead of guessed.
 - Intended staged paths: `src/providers/sessionProvider.tsx`, `scripts/verification/test-session-store-context-boundary.ts`, `scripts/menulist/test-hosted-qa-certification-client.ts`, `__docs__/audits/MENULIST_RC_CERTIFICATION.md`, and this ledger only.
 - Final filesystem state: pending scoped commit, non-force staging push, direct server readback, automatic QA deployment, exact `/api/version`, and hard-load Dashboard/Projects hosted retest. Concurrent Answerlattice changes remain unstaged and preserved.
 - Attribution confidence: exact for the MenuList correction/tests/evidence and Git state; concurrent Answerlattice authorship `unknown`.
+
+### GIT-20260826-000322-answerlattice-qa-lease-authority
+
+- Timestamp: `2026-08-26T00:03:22+05:30`
+- Record type: `PLANNED`
+- Actor/session/thread ID: Codex `/root`; current Answerlattice final hosted-QA continuation.
+- Registered worktrees: one primary worktree at `/Users/danny/Projects/MenuListAi/menulist-core`, branch `staging`, HEAD `1d952f0872d5002aac5d3a1dda72277567d4d4c1`.
+- Authorization: Danny instructed Codex to continue the complete Answerlattice QA fix/retest loop and previously required every stable current worktree change to be published without loss. This operation publishes the complete stable six-file Answerlattice snapshot non-force to `origin/staging` only. It does not authorize `main`, Firebase infrastructure deployment, manual Vercel deployment, production mutation, or real Razorpay execution.
+- Root cause and correction: the bounded QA subscription fixture existed and was active, but the store compact `answerlatticeSubscription` authority still referenced the failed Razorpay attempt. Knowledge Intake correctly trusts that compact summary, so hosted First 10 failed entitlement before reaching generation. The QA controller now transactionally binds the store summary to the disposable fixture, preserves/restores the prior summary during safe cleanup, refuses to overwrite later real billing changes, and verifies the complete fixture/summary relationship. Existing fixture state was repaired through authenticated Firebase CLI application-default credentials that were created ephemerally and deleted after use.
+- Diagnostic continuation: after repair, hosted First 10 advanced beyond the prior `402`; its later `500` refunded the reserved credit and retained `148/150`. Safe stage-specific error codes now distinguish provider invocation, response validation, and credit settlement without logging prompts, content, credentials, or secrets. The next automatic QA build and bounded retry will identify and close that separate downstream failure.
+- Starting filesystem state: zero staged, six tracked unstaged, zero untracked before this append. Pre-ledger diff SHA-256 `509d045b0d8f58973eec5bb3e14255b8b05ae04c4a9df78433843f52ded5e046`; status SHA-256 `e55d42d17bb710d1f06a2d753a7f95ac05868955a5ac754bab80fe94080d1653`.
+- Validation before commit: complete `verify:answerlattice-runtime-truth` PASS; hosted-QA entitlement verifier PASS; knowledge-intake emulator including generation/cache/refund/concurrency PASS; strict repository TypeScript PASS; focused zero-warning ESLint PASS; `git diff --check` PASS.
+
+- Branch matrix before:
+
+  | Branch | Local full SHA | Direct server ref/full SHA | Tracking ref | Ahead/behind | Worktree | Staged/unstaged/untracked | Status |
+  | --- | --- | --- | --- | --- | --- | --- | --- |
+  | `main` | `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `refs/heads/main` / `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `origin/main` | `0/0` | not checked out | `N/A` | `IN_SYNC` |
+  | `staging` | `1d952f0872d5002aac5d3a1dda72277567d4d4c1` | `refs/heads/staging` / `1d952f0872d5002aac5d3a1dda72277567d4d4c1` | `origin/staging` | `0/0` | primary worktree | `0/6/0` before this append | `IN_SYNC` |
+
+- Firebase matrix before/after: no Rules, indexes, Storage Rules, or Cloud Functions source changed. Answerlattice Rules `a92cbacbf2b64d2939391449044ea5625e706ddb60e23dfab7c4ffb20d3a9e77` / 116222 bytes, indexes `0114bdf8ea6425b890a8e58fa03dac7915a7d3ed4372bc689ab59a8ce585ff4a` / 50941 bytes, Storage Rules `5fc8f980f289889da557ac69c91edd61f8e8646b066c9b0101b87141d67106cc` / 6948 bytes, and Functions tree `ae5750c6e78f96a9ecfa234b64f906e04a2fdc16` retain `NO_INFRA_CHANGE` / `SERVER_STATE_UNKNOWN` for QA and production. MenuList infrastructure state remains as separately recorded. No Firebase deployment or authenticated infrastructure readback is authorized here.
+- Git server readback and divergence: direct `git ls-remote` proves local/server `main` and `staging` exact with `0/0` divergence before the operation. Post-operation evidence is pending.
+- Final filesystem state: pending complete-snapshot commit, non-force staging push, direct server readback, automatic QA deployment, exact `/api/version`, bounded First 10 retry, stage-specific failure diagnosis, smallest durable fix, and complete product-specific draft/credit/cache regression.
+- Attribution confidence: exact.

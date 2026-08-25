@@ -23,18 +23,30 @@ function forbidToken(content, token, label) {
 
 [
     "const QA_PROJECT_ID = 'neelvara-answerlattice-qa'",
+    "const OPERATOR_EMAIL = 'admin@neelvara.com'",
     'const MAX_LEASE_HOURS = 72',
-    "command === 'prepare' || command === 'verify' || command === 'cleanup'",
+    "command === 'prepare' || command === 'repair-summary' || command === 'verify' || command === 'cleanup'",
     'confirmedProject !== QA_PROJECT_ID || configuredProject !== QA_PROJECT_ID',
     'Hosted QA certification entitlement refuses emulator hosts.',
+    'establishEphemeralFirebaseCliAdc',
+    'Run firebase login --reauth as ${OPERATOR_EMAIL}',
     'A current active subscription already exists; a QA lease is not permitted.',
     "manualPaymentEvidenceType: 'qa_certification_non_payment'",
     "purpose: 'answerlattice_hosted_release_candidate'",
     'amount: 0',
     'batch.create(subscriptionRef',
     'batch.create(markerRef',
-    'if (fixture.exists) batch.delete(subscriptionRef)',
-    'if (marker.exists) batch.delete(markerRef)',
+    'previousStoreSubscriptionSummaryPresent',
+    'previousStoreSubscriptionSummary',
+    'summaryBindingApplied: true',
+    'buildStoreSubscriptionSummary',
+    "status: 'summary-repaired'",
+    'storeSummary.id, fixtureId',
+    'storeSummary.monthlyCredits, data.monthlyCredits',
+    'storeSummary?.id === fixtureId',
+    'FieldValue.delete()',
+    'if (fixture.exists) transaction.delete(subscriptionRef)',
+    'if (marker.exists) transaction.delete(markerRef)',
 ].forEach(token => requireToken(controller, token, 'hosted QA entitlement controller'));
 
 [
@@ -49,7 +61,7 @@ requireToken(billingTests, 'It does not simulate checkout, payment,', 'billing p
 requireToken(certification, 'Hosted QA provider-outage continuation contract', 'certification evidence boundary');
 requireToken(certification, 'never counts as Razorpay, invoice,', 'certification provider exclusion');
 requireToken(subscriptionType, "manualPaymentEvidenceType?: 'qa_certification_non_payment'", 'subscription fixture discriminator');
-requireToken(subscriptionType, "projectId: 'neelvara-answerlattice-qa'", 'subscription QA project boundary');
+requireToken(subscriptionType, "'neelvara-answerlattice-qa'", 'subscription QA project boundary');
 [desktopBilling, mobileBilling, websiteBilling].forEach((surface, index) => {
     requireToken(surface, "manualPaymentEvidenceType === 'qa_certification_non_payment'", `billing surface ${index + 1} fixture recognition`);
     requireToken(surface, "qaCertification.projectId === 'neelvara-answerlattice-qa'", `billing surface ${index + 1} QA project check`);
