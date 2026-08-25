@@ -4239,3 +4239,30 @@ No Firebase source/configuration changes. Firestore Rules, indexes, Storage Rule
 - Intended paths: desktop Projects page, project-editor boundary verifier, current data-editor implementation note, active certification report, and this ledger.
 - Final state pending: scoped commit, non-force staging push, direct server readback, automatic QA deployment, exact `/api/version`, and hosted empty-project editor deep-link retest.
 - Attribution confidence: exact.
+
+### GIT-20260826-024440-mlrc062-growth-kits-select-names
+
+- Timestamp: `2026-08-26T02:44:40+05:30`
+- Record type: `PLANNED`
+- Actor/session/thread ID: Codex `/root`; thread `01a034e1-c70a-74b1-a92b-0a103a981815`.
+- Registered worktrees: one primary worktree at `/Users/danny/Projects/MenuListAi/menulist-core`, branch `staging`, HEAD `314ff97cb632f60505a8a10658c3d8c89ff5350f`.
+- Authorization: autonomous MenuList QA certification, in-scope fixes, regression coverage, and stable staging publication. This operation is `staging` only; it excludes `main`, Firebase infrastructure deployment, manual Vercel deployment, production mutation, and live Razorpay execution.
+- Hosted reproduction: exact MenuList build `2362f794eb61c908228c0f4956cd03b19d5eb3bd` rendered the Growth Kits menu and review-rating Select controls as two unnamed comboboxes. The deterministic provider-free review guard and its Copy reply control otherwise completed successfully; the clipboard was cleared afterward.
+- Correction: retain the existing Ant Select values/options and add distinct `Menu` and `Review rating` accessible names. Entitlement, Firestore reads, review preparation, rate limiting, credit behavior, and visual layout remain unchanged.
+- Starting filesystem state: zero staged, four tracked unstaged, zero untracked before this ledger append. Complete pre-ledger diff Git hash `f2896213a5a5c749bad99fd5c46190fe2c14e5a8`; status `0/4/0`.
+- Validation: `verify:growthos` PASS with 253 source/contract checks, client-contract tests, and Firestore transaction emulator tests; focused zero-warning ESLint PASS; strict `tsc --noEmit --incremental false` PASS; `git diff --check` PASS.
+
+#### Pre-operation branch matrix
+
+| Branch | Local SHA | Direct server SHA | Tracking ref | Ahead/behind | Worktree | Filesystem | Status |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `staging` | `314ff97cb632f60505a8a10658c3d8c89ff5350f` | `refs/heads/staging` / `314ff97cb632f60505a8a10658c3d8c89ff5350f` | `origin/staging` | `0/0` | primary | `0/4/0` before ledger append | `IN_SYNC` |
+| `main` | `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `refs/heads/main` / `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `origin/main` | `0/0` | none | n/a | `IN_SYNC` |
+
+#### Firebase component matrix before Git mutation
+
+No Firebase source/configuration changes. Firestore Rules, indexes, Storage Rules, and Cloud Functions for MenuList QA `menulist-qa`, MenuList production `menulist-prod`, Answerlattice QA `neelvara-answerlattice-qa`, and Answerlattice production `neelvara-answerlattice-prod` each remain independently `NO_INFRA_CHANGE` / `SERVER_STATE_UNKNOWN`; no authenticated readback or deployment is performed.
+
+- Intended paths: desktop Growth Kits page, GrowthOS verifier, active implementation note, certification report, and this ledger.
+- Final state pending: documentation validation, scoped commit, non-force staging push, direct server readback, automatic QA deployment, exact `/api/version`, and hosted accessible-name retest.
+- Attribution confidence: exact.

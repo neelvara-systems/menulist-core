@@ -463,6 +463,7 @@ const GrowthOSPage = () => {
                 </div>
                 <Space wrap>
                     <Select
+                        aria-label="Menu"
                         className={styles.projectSelect}
                         onChange={setSelectedProjectId}
                         options={selectedProjectOptions}
@@ -585,6 +586,7 @@ const GrowthOSPage = () => {
                         <Title level={3}>Review reply guard</Title>
                         <Text type="secondary">Paste a review and check the reply before posting it yourself.</Text>
                         <Select
+                            aria-label="Review rating"
                             className={styles.ratingSelect}
                             onChange={setReviewRating}
                             options={[5, 4, 3, 2, 1].map((rating) => ({ label: `${rating} stars`, value: rating }))}

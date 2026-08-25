@@ -325,6 +325,8 @@ Desktop views:
 - stale source warning
 - entitlement empty state
 
+The desktop menu and review-rating selectors expose distinct accessible names so keyboard and assistive-technology users can identify both comboboxes without relying on visual proximity or placeholder text.
+
 Today integration:
 
 - do not insert the full GrowthOS module into Today

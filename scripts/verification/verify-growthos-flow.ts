@@ -894,6 +894,8 @@ assertCheck(growthOSPage.includes('getGrowthOSBoundedStringContext("outputId", o
 assertCheck(growthOSPage.includes("outputTextLength: output?.text?.length || 0"), "Desktop Growth Kits must log only output text length");
 assertCheck(growthOSPage.includes("reviewTextLength: reviewText.trim().length"), "Desktop Growth Kits must log only review text length");
 assertCheck(growthOSPage.includes("reviewReplyTextLength: reviewResult.reply.length"), "Desktop Growth Kits must log only review reply text length");
+assertCheck(growthOSPage.includes('aria-label="Menu"'), "Desktop Growth Kits menu selector must have an accessible name");
+assertCheck(growthOSPage.includes('aria-label="Review rating"'), "Desktop Growth Kits review rating selector must have an accessible name");
 assertTextOrder(growthOSPage, 'const copied = await copyToClipboard(output.text);', 'await recordUse(output, "copy");', "Desktop Growth Kits must record copy only after copy succeeds");
 assertTextOrder(growthOSPage, 'if (!copied) throw new Error("desktop_growthos_share_fallback_copy_failed");', 'await recordUse(output, "share");', "Desktop Growth Kits must record share only after native share or fallback copy succeeds");
 assertTextOrder(growthOSPage, 'downloadText(`${output.destination}.txt`, output.text);', 'await recordUse(output, "download");', "Desktop Growth Kits must record download only after download starts");
