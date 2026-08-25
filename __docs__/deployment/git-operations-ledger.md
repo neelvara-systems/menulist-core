@@ -2338,3 +2338,40 @@ Those fields are explicitly `unknown` instead of guessed.
 - Git server readback and divergence: direct pre-operation `git ls-remote` proves local/server `main` and `staging` in sync at the SHAs above; tracking divergence is `0/0` for both.
 - Final filesystem state: pending scoped commit, push, direct readback, automatic QA web deployment, hosted UI retest, and result append.
 - Attribution confidence: exact for this operation and candidate; unrelated moving paths remain `unknown`.
+
+#### GIT-20260825-150606-mlrc031-country-flags result
+
+- Timestamp: `2026-08-25T15:14:15+05:30`
+- Record type: `PERFORMED`
+- Scoped commit: `a768232cd699c0ddc669ff271c83302256b5c7af` (`Fix shared country selector flags`).
+- Push/readback: non-force `staging -> staging`; direct `git ls-remote` returned `a768232cd699c0ddc669ff271c83302256b5c7af` for `refs/heads/staging`; local/tracking divergence is `0/0`. `main` remained unchanged and in sync at `fe625d5bbf527c1b7e537b00ab32a4f655905c35`.
+- Deployment evidence: the signed-in Vercel deployment list reported the `a768232` custom-`qa` deployment Ready at `menulist-core-lz6xr9llf-neelvara-systems.vercel.app`. Canonical `https://app.menulist.digital/api/version` independently returned the same full build id with verified provenance.
+- Hosted retest: connected Chrome at 320x568 opened canonical `/create-menu` and found exactly one each of `🇲🇭 MH +692`, `🇵🇭 PH +63`, and `🇹🇨 TC +1 649`; it found zero occurrences of the reproduced `🇲🇷 MH +692` and `🇵🇷 PH +63` mappings.
+- Validation: shared-data mirror/249-row flag contract PASS; focused ESLint PASS; strict TypeScript PASS; MenuList Functions build PASS; diff checks PASS; exact hosted UI interaction PASS.
+- Firebase matrix after: MenuList QA and production Cloud Functions remain `INFRA_CHANGE` / `DEPLOY_REQUIRED` because the byte-identical Functions shared-data mirror changed. All other 14 rows remain as recorded in the planned matrix. No Firebase deployment or authenticated Firebase readback occurred.
+- Filesystem closeout: only unrelated unstaged moving files remain plus this result/report evidence. Unrelated paths were excluded and retain actor `unknown`.
+- Result: MLRC-031 is closed for the exact hosted web UI. Firebase Functions parity remains explicitly open; certification remains active and production is not in scope.
+
+### GIT-20260825-152053-mlrc032-pricing-disclosure
+
+- Timestamp: `2026-08-25T15:20:53+05:30`
+- Record type: `PLANNED`
+- Actor/session/thread ID: Codex `/root`; thread `01a034e1-c70a-74b1-a92b-0a103a981815`
+- Registered worktrees: one primary `staging` worktree at `a768232cd699c0ddc669ff271c83302256b5c7af`.
+- Authorization: Danny explicitly required the MenuList QA audit/fix/retest loop to continue autonomously on staging before production. This authorizes the smallest MLRC-032 interaction correction, regression/report/ledger evidence, a non-force staging push, automatic QA web deployment observation, and hosted browser retest. It does not authorize `main`, manual Vercel deployment, Firebase deployment, Razorpay execution, or unrelated concurrent changes.
+- Intended operation: stage only `src/components/website/pricing-pages/FeatureComparisonTable.tsx`, `scripts/verification/verify-global-accessibility-boundary.js`, the certification report, and this ledger. The report/ledger also carry the already performed MLRC-031 hosted-evidence closeout. Preserve every other moving path as unrelated actor `unknown`.
+- Defect evidence: exact hosted QA at 320x568 expanded the plan comparison, tapped “Side-by-side source review,” waited past the Tooltip delay, and still found zero rendered copies of its description. Screenshot: `/tmp/menulist-qa-full-2026-08-25/14-mobile-pricing-comparison-inert-info.png`.
+- Local correction: desktop pointer Tooltip behavior remains; tap/keyboard activation toggles a single inline description with `aria-expanded`, `aria-controls`, and a minimum 44px trigger. No pricing, plan, auth, checkout, payment, Firebase, data, cache, dependency, or provider contract changes.
+- Validation before commit: global accessibility boundary PASS; focused ESLint PASS; strict TypeScript PASS; `git diff --check` PASS. Hosted fixed-build interaction remains pending.
+
+- Branch matrix before:
+
+  | Branch | Local full SHA | Direct server ref/full SHA | Tracking ref | Ahead/behind | Worktree | Staged/unstaged/untracked | Status |
+  | --- | --- | --- | --- | --- | --- | --- | --- |
+  | `main` | `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `refs/heads/main` / `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `origin/main` | `0/0` | not checked out | `N/A` | `IN_SYNC` |
+  | `staging` | `a768232cd699c0ddc669ff271c83302256b5c7af` | `refs/heads/staging` / `a768232cd699c0ddc669ff271c83302256b5c7af` | `origin/staging` | `0/0` | primary worktree | `0/12/0` before this ledger append | `IN_SYNC` |
+
+- Firebase matrix before/after: the MLRC-032 candidate itself changes no Firebase path. MenuList QA/production Cloud Functions retain the prior MLRC-031 `INFRA_CHANGE` / `DEPLOY_REQUIRED` classification; the other 14 product/environment/component rows remain `NO_INFRA_CHANGE` / `SERVER_STATE_UNKNOWN`. No Firebase deployment or authenticated readback is authorized.
+- Git server readback and divergence: direct pre-operation `git ls-remote` proves both branches in sync at the SHAs above; tracking divergence is `0/0` for `staging`.
+- Final filesystem state: pending scoped commit, push, direct readback, automatic QA web deployment, hosted retest, and result append.
+- Attribution confidence: exact for this operation and candidate; unrelated moving paths remain `unknown`.

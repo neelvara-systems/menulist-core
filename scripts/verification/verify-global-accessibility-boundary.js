@@ -96,6 +96,16 @@ const mobilePrimitives = read('src/components/mobile/antd.tsx');
   'aria-label={effectiveBackLabel}',
 ].forEach((token) => assert(mobilePrimitives.includes(token), `mobile primitive boundary must include ${token}`));
 
+const pricingComparison = read('src/components/website/pricing-pages/FeatureComparisonTable.tsx');
+[
+  'const [expandedFeatureId, setExpandedFeatureId] = useState<string | null>(null)',
+  'aria-controls={descriptionId}',
+  'aria-expanded={isDescriptionExpanded}',
+  'onClick={() => setExpandedFeatureId((current) => current === feature.id ? null : feature.id)}',
+  '<p id={descriptionId}',
+  'className="flex min-h-11 items-center gap-2 cursor-help text-left"',
+].forEach((token) => assert(pricingComparison.includes(token), `pricing comparison accessibility boundary must include ${token}`));
+
 const layoutWrapper = read('src/components/antdComponent/layoutWrapper/index.tsx');
 assert(layoutWrapper.includes('<SkipToContentLink />'), 'owner shell must expose skip navigation');
 assert(layoutWrapper.includes('id="main-content"'), 'owner shell must expose a main-content target');
