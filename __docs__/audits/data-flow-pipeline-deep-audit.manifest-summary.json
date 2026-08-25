@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-08-25T14:09:46.102Z",
-  "repositoryHead": "20904f2e84af748ab583dec7433a6b52623277fb",
+  "generatedAt": "2026-08-25T15:14:56.970Z",
+  "repositoryHead": "6cae3112ef01c9155f3d472e1656415accb63b38",
   "totalDiscoveredFiles": 9417,
   "vanishedDuringInventory": 0,
   "inScopeFiles": 9103,
@@ -28,14 +28,14 @@
     "proxy/routing": 1
   },
   "byReviewStatus": {
-    "reviewed": 7060,
-    "in-progress": 1512,
+    "reviewed": 7055,
+    "in-progress": 1517,
     "inventory-only": 531
   },
   "byCategoryAndReviewStatus": {
     "documentation/contract": {
-      "reviewed": 2733,
-      "in-progress": 558,
+      "reviewed": 2730,
+      "in-progress": 561,
       "inventory-only": 289
     },
     "shared-runtime": {
@@ -44,8 +44,8 @@
       "inventory-only": 72
     },
     "ui-component": {
-      "reviewed": 763,
-      "in-progress": 249,
+      "reviewed": 762,
+      "in-progress": 250,
       "inventory-only": 9
     },
     "verifier/test": {
@@ -98,8 +98,8 @@
       "inventory-only": 1
     },
     "type/schema-contract": {
-      "reviewed": 62,
-      "in-progress": 8
+      "reviewed": 61,
+      "in-progress": 9
     },
     "presentation/public-output": {
       "reviewed": 45,
