@@ -105,6 +105,16 @@ assertIncludes(
 );
 assertIncludes(
   nextConfig,
+  "'/api/image-generation/batch-trigger': [",
+  'The batch image trigger must own a narrow deployment-trace include.',
+);
+assertIncludes(
+  nextConfig,
+  "'./node_modules/@google-cloud/tasks/build/protos/protos.json'",
+  'The deployed Cloud Tasks route must include the runtime proto descriptor used by its ESM loader.',
+);
+assertIncludes(
+  nextConfig,
   "transpilePackages: ['antd-mobile', 'firebase-admin', 'pdfjs-dist']",
   'Firebase Admin must be bundled so jwks-rsa does not native-require ESM-only jose in deployed routes.',
 );

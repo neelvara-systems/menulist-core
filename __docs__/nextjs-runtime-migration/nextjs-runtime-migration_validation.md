@@ -94,6 +94,24 @@ The user-deployed staging commit `887f76ad` proved that a successful `next build
 - The corrected configuration traces the helper runtime and excludes only compiler-specific SWC packages.
 - `verify:next-deployment-bundle` now preserves traced symlinks, requires the helper trace, and loads the isolated website route after every Vercel build.
 
+## Cloud Tasks proto trace regression and closure
+
+The exact MenuList QA staging build `dee3ab5589176da136fd006a674c00c2eafc96ea`
+returned an empty 500 for anonymous `POST
+/api/image-generation/batch-trigger` before `withAuth` could return 401. Current
+Vercel runtime evidence identified module-load failure in the external
+`@google-cloud/tasks` ESM path: `json-helper.cjs` could not find
+`node_modules/@google-cloud/tasks/build/protos/protos.json` in the serverless
+bundle.
+
+The correction keeps `@google-cloud/tasks` server-externalized and adds only
+that exact descriptor to the batch-trigger route trace. The maintained source
+gate freezes the narrow include, and `verify:next-deployment-bundle` now fails
+if the route trace omits it or if the isolated route cannot load without the
+repository's complete `node_modules`. This changes deployment packaging only;
+it adds no Firestore read/write, Storage operation, Cloud Task, AI provider
+call, cache entry, dependency, Firebase deploy, or payment execution.
+
 After correction, the exact Node 22.23.1 `npm run build:vercel` passed TypeScript, zero-warning ESLint, compilation, 439/439 page generation, and the isolated 313-file deployment route at 6,728,482,816-byte peak RSS. `next start` returned 200 for `/`, `/signin`, `/privacy-policy`, and `/robots.txt` under the staging hostname contract. Chrome rendered the complete homepage with zero console errors.
 
 This was corrected-source evidence at the time. The historical observation does not assert the current deployed state of `menulist.online`.

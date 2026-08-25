@@ -6,11 +6,14 @@
 
 **Initial candidate commit:** `b857a164944012d42131917e7c62215c94022c0f`
 
-**Current baseline commit:** `916b5c94d82b848fef791babeb49addbd3c794b8`
+**Current staging commit:** `dee3ab5589176da136fd006a674c00c2eafc96ea`
 
-**Candidate filesystem state:** uncommitted MenuList certification changes are
-under test; unrelated concurrent Answerlattice and deployment-ledger changes
-are excluded and preserved.
+**MenuList product snapshot commit:** `3a34a975d52b1a3b8bec4be35c40b4930b1f9441`
+
+**Candidate filesystem state:** the complete local snapshot was committed and
+pushed to `staging`; the worktree was clean and local/server `staging` was
+`0/0` at direct readback before the resumed certification server regenerated
+the expected development-only `next-env.d.ts` paths.
 
 **Certification date:** August 25, 2026
 
@@ -102,16 +105,16 @@ separately tracked and is not implied by this anonymous boundary pass.
 
 | Product area | Scope | Result | Evidence / blocker |
 | --- | --- | --- | --- |
-| Baseline identity | Worktree, branch, HEAD, and filesystem ownership | PASS (local identity) | `staging` at `916b5c94d82b848fef791babeb49addbd3c794b8`; candidate is uncommitted; unrelated Answerlattice and deployment-ledger changes are preserved and excluded. No current direct-server parity claim is made. |
+| Baseline identity | Worktree, branch, HEAD, and filesystem ownership | PASS (Git identity) | Complete snapshot committed at `3a34a975d52b1a3b8bec4be35c40b4930b1f9441`; evidence-only ledger descendant `dee3ab5589176da136fd006a674c00c2eafc96ea` is the exact local/server `staging` ref at `0/0`. `main` remains unchanged. |
 | SecurityOS registry | MenuList surface/evidence registry integrity | PASS | Registry, tenant/store DAL, Rules, Storage, CSP, input/file/network, webhook, and API-scope evidence executed; the current selective planner was reviewed and `test:csp-report-boundary` reran successfully |
 | Route/control inventory | App Router, controls, flags, Functions | PASS (discovery, private-route classification/access, API classification, and static reachability) | `npm run verify:menulist-rc-inventory`; 8,461 unique rows; all 58 MenuList private pages explicitly classified and signed-out access-tested; all 136 MenuList route handlers have resolved methods/access classes; 5,277/5,432 MenuList control candidates map to page routes and 155 are explicitly classified as non-shipped source |
 | Private-route authentication | All 58 MenuList `(main)` page routes, including concrete catch-all and canonical aliases | PASS (signed-out access only) | Connected Chrome on current local source: 58/58 reached callback-aware sign-in; no private screen rendered. Authenticated functional state remains separately pending. |
-| Route-handler anonymous boundary | All 136 MenuList handlers and 153 exported HTTP methods | PASS (anonymous malformed/empty boundary only) | `npm run test:menulist-api-anonymous-boundary`; no 5xx/final timeout and no authenticated/admin/secret/webhook method returned anonymous 2xx; live Razorpay execution excluded |
+| Route-handler anonymous boundary | All 136 MenuList handlers and 153 exported HTTP methods | PASS local / FAIL exact hosted candidate | The exact hosted sweep produced 152 safe responses and one pre-authentication 500 from `/api/image-generation/batch-trigger`; MLRC-027 corrects its missing Cloud Tasks runtime trace. Hosted full-sweep retest is pending the corrected staging build; live Razorpay execution remains excluded. |
 | Local aggregate | MenuList-filtered repository production-readiness gate | PASS WITH EXTERNAL BLOCKER | The current full run passed its first five checks before AssetOS correctly stopped on the owner-PWA fingerprint made stale by MLRC-022. After the unchanged proof asset and exact source delta were reviewed and the one affected slot was re-fingerprinted, the resumed run passed 155/156 remaining checks. Combined unique result: 160/161 checks passed; all executable child verifiers passed; the sole non-pass is the unavailable Upstash target credential gate. |
 | Authentication regression | Leading/trailing email and password; invalid login recovery; callback preservation | PASS | Deterministic credential-normalization tests and controlled local Chrome; no real credentials recorded |
 | Authentication and onboarding aggregate | Sign-up/sign-in boundaries, claims/workspace association, plan handoff, owner setup, extraction entry, retry, recovery, concurrency, and cleanup | PASS (local/emulator) | `npm run verify:auth-onboarding-flow`, `npm run test:login-credential-normalization`, and `npm run verify:menu-extraction-pipeline` completed with exit 0; expected denial/failure logs were fixture assertions rather than escaped failures |
 | Pricing handoff | Pro, INR, yearly, quantity one, B2C callback through authentication | PASS | Controlled local Chrome reached encoded sign-in callback with all purchase-intent fields intact |
-| Hosted QA | Exact candidate on QA owner app | PASS (bounded) | `/api/version` returned exact `b857a164944012d42131917e7c62215c94022c0f`; authenticated pending-payment fixture rendered Billing truth without provider execution |
+| Hosted QA | Exact candidate on QA owner app | PASS (deployment identity) / INTERACTION RETEST PENDING | At `2026-08-25T13:08:13+05:30`, the no-store `/api/version` readback advanced to exact current staging `dee3ab5589176da136fd006a674c00c2eafc96ea` with verified provenance. Current-candidate authenticated and responsive interaction retests remain separate gates. |
 | Hosted transport | Website/app/tenant HTTP, metadata, noindex, PWA assets, missing routes | PASS (bounded) | Website, pricing, features, resources, legal, sign-in, owner manifest, offline, service workers, and tenant menu matched QA policy; disabled sitemap/customer manifest returned honest 404; missing menu slug rendered noindex recovery |
 | Public website browser inventory | All 186 sitemap URLs, including 22 public tool routes and 62 App Router page patterns | PASS (render/recovery) | Connected Chrome reran the current sitemap manifest (`30afee75c57db88ee93dec78926ed0b389a1ff7ddde99fb2510946d897e24fe8`) and rendered a main region and route-specific heading without application/404 failure across all 186 unique URLs; individual transmitting controls remain separately pending; the 22 tools exposed 410 rendered controls |
 | Public Truth Tools | Empty/result/copy/reset behavior plus all tool contracts | PASS | Public Truth Check produced 0-present empty output and 9-present completed output, copied successfully, and reset state; `npm run verify:public-truth-tools` passed all 16 truth tools and 5 asset tools |
@@ -171,6 +174,9 @@ audit-fix-retest loop.
 | MLRC-022 | High | Payment-pending owner opens Help Center on mobile | MobileShell bypassed the subscription gate only for Billing, although the shared lifecycle contract defines both Billing and Help Center as recovery routes. At 390×844, direct `/help-center` rendered the same inert subscription card reported by the owner instead of Help. | Added the four Help Center mobile sub-screens to the existing subscription-gate recovery bypass; paid workspace surfaces remain gated. | `verify:help-center-boundary`; `verify:owner-pwa-lifecycle`; `verify:onboarding-subscription-boundary`; focused ESLint | Hosted defect reproduced in current Chrome; source and adjacent lifecycle gates PASS; updated hosted build pending | CLOSED (source) |
 | MLRC-023 | Medium | Help Center data on the pending-owner QA fixture | The MenuList Help shell rendered on desktop, but its intentional Answerlattice client boundary could not admit the current fixture/workspace; ticket history failed closed and exposed a retryable error. | No cross-product fallback or MenuList Firestore read was added. A valid Answerlattice product-account fixture and hosted configuration are required to verify the supported path. | Help Center source/runtime/attachment gates PASS; current browser console recorded the bounded DAL failure | Current supported Answerlattice-backed data flow remains unavailable on this fixture | BLOCKED_EXTERNAL |
 | MLRC-024 | Low | AssetOS evidence after mobile Help recovery fix | MLRC-022 intentionally changed watched `MobileShell` source, so the approved owner-phone dashboard proof correctly failed closed as stale even though its pixels and public narrative were unchanged. | Reviewed the exact gate-only source delta and the existing fictional proof asset, then refreshed only `menulist.launch.device.owner-pwa-dashboard` through the maintained slot-scoped fingerprint workflow. | `npm run assets:fingerprint -- --slot menulist.launch.device.owner-pwa-dashboard`; `npm run certify:asset-factory-menulist` | 28 MenuList slots; zero stale assets, errors, warnings, or approval blockers; aggregate resumed successfully | CLOSED |
+| MLRC-025 | High | Credential sign-in with copied whitespace | Email and password were forwarded verbatim to both NextAuth and Firebase Auth, so a copied leading/trailing space produced a generic invalid-login failure even when the underlying credential was correct. | The initial candidate introduced shared identifier/password normalization and applies the same normalized values to both authentication boundaries; mobile autocorrect/capitalization/spellcheck are disabled for both fields. | `test:login-credential-normalization`; `verify:auth-onboarding-flow`; auth/security failure matrix | Deterministic normalization and controlled local invalid/recovery flow PASS; exact current hosted-candidate retest pending | CLOSED (source) |
+| MLRC-026 | High | Mobile subscription gate “View Plans” action | The gate forced desktop routing while remaining inside MobileShell, so the unpaid owner could stay trapped on the subscription card instead of reaching the permitted Billing recovery surface. | The initial candidate made Billing an explicit mobile recovery bypass; the action now sets the More/Billing shell state and canonical `/billing` route without forced desktop mode. | `verify:mobile-shell-route-map`; `verify:billing-entitlement-boundary`; `verify:onboarding-subscription-boundary` | Current source contract PASS; exact current hosted-candidate mobile click-through pending | CLOSED (source) |
+| MLRC-027 | High | Batch image generation API deployment | Exact hosted QA crashed during route-module loading because the external `@google-cloud/tasks` ESM path dynamically requires `build/protos/protos.json`, but the deployed serverless trace omitted that runtime descriptor. Authentication never ran, so anonymous POST returned an empty 500 and valid owners could not start a batch. | Added one route-scoped `outputFileTracingIncludes` entry for the exact 202 KB descriptor; extended both Next source compatibility and isolated deployment-bundle gates to require the file and load the traced batch route without the repository `node_modules`. | `verify:next-build-compatibility`; `verify:next-deployment-bundle`; full production build | Hosted defect reproduced on exact candidate and confirmed from bounded Vercel runtime error; corrected build/isolated-route and hosted 153-method retest pending | CLOSED (source) |
 
 ## E. Firebase cost audit
 
@@ -229,7 +235,7 @@ passing runtime claim.
 | Command | Result |
 | --- | --- |
 | `npm run verify:menulist-rc-inventory` | PASS — 8,461 rows; 21 Function exports; 58 private MenuList pages access-evidenced; 62 sitemap-backed website page patterns render-evidenced through 186 concrete URLs; all 136 MenuList route handlers have resolved methods/access classes and anonymous runtime evidence; 97.1% of MenuList control candidates statically mapped to page routes |
-| `npm run test:menulist-api-anonymous-boundary` | PASS — 136 handlers / 153 methods; status counts 200×5, 301×1, 400×15, 401×128, 403×1, 404×3; zero 5xx/final timeout/protected anonymous 2xx |
+| `npm run test:menulist-api-anonymous-boundary` | PASS local — 136 handlers / 153 methods; hosted exact-candidate run reproduced MLRC-027 with status counts 200×5, 301×1, 400×15, 401×125, 403×1, 404×5, 500×1. Corrected hosted rerun pending. |
 | `npm run security-os:audit -- --product menulist` | PASS — registry; mapped evidence executed separately |
 | `npm run verify:menulist-api-tenant-safety` | PASS — API scope, sensitive server store scope, Functions callable scope, and CSP report boundary |
 | `npm run verify:billing-entitlement-boundary` | PASS — Billing access, history feedback/recovery, duplicate-read guard, and adjacent Answerlattice read boundary |
@@ -261,6 +267,8 @@ passing runtime claim.
 | `npm run verify:global-accessibility-boundary` | PASS |
 | `npx tsc --noEmit --incremental false` | PASS — current candidate exact direct command, exit 0 |
 | `npm run lint` | PASS — current candidate, zero warnings |
+| `npm run verify:next-build-compatibility` | PASS — route-scoped Cloud Tasks proto trace contract present |
+| `npm run verify:next-deployment-bundle` | PASS — website 448, sign-in 505, auth API 389, and batch-image trigger 904 traced files; all four routes loaded from isolated traces without the repository `node_modules` |
 | `npm run certify:menulist-local` | PASS WITH EXTERNAL BLOCKER — current full run passed 5 checks then correctly stopped on the one owner-PWA AssetOS fingerprint made stale by MLRC-022; after MLRC-024, `--start-at verify:asset-factory` passed 155/156 remaining checks. Combined unique result: 160/161 checks passed; 42 sibling-product scripts explicitly excluded; only `verify:upstash-readiness` was `BLOCKED_EXTERNAL`. |
 | `npm run certify:asset-factory-menulist` | PASS — 28 MenuList slots; zero errors, warnings, stale assets, missing assets, disconnected files, or approval blockers after the one current slot-scoped fingerprint refresh |
 | `npm run docs:check-links` | PASS — 3,053 files and 5,313 internal links scanned; zero broken links. The command reported 64 non-failing filename-policy warnings, including the task-mandated `MENULIST_RC_CERTIFICATION.md` name and pre-existing uppercase video working documents. |
@@ -269,7 +277,7 @@ passing runtime claim.
 | Browser E2E | PASS (bounded manual) — connected Chrome local/hosted auth, pricing handoff, dashboard and payment-pending Billing; no root E2E harness is registered |
 | Firestore Rules tests | PASS — 42-script predeploy and focused tenant/store suite |
 | Firebase Functions tests/build | PASS — `npm run verify:functions-deploy-preflight` |
-| `npm run build` | PASS — exact current-candidate production build after the local certification server was stopped; 450 static pages and Serwist bundle completed; existing Sass deprecation and missing optional Gemini-key warnings retained |
+| `npm run build` | PASS — corrected current-source production build after the local certification server was stopped; 450 static pages and Serwist bundle completed; existing Sass deprecation and missing optional Gemini-key warnings retained |
 
 ## I. Residual risks
 
@@ -277,12 +285,16 @@ passing runtime claim.
   individual runtime interaction evidence. The other 155 candidates in 45
   files are explicitly classified as non-shipped source from the App Router
   import graph; they are not represented as runtime-tested controls.
-- The source fixes MLRC-009 through MLRC-012 and MLRC-016 through MLRC-022 are not present on the currently
-  hosted QA build and therefore cannot yet be marked as hosted/runtime closed.
+- The source fixes MLRC-009 through MLRC-012, MLRC-016 through MLRC-022, and
+  MLRC-025 through MLRC-026 are now present on exact hosted QA build
+  `dee3ab5589176da136fd006a674c00c2eafc96ea`, but their current-candidate
+  authenticated/mobile interaction retests are still pending.
 - The repository has no root `test:e2e` or `e2e` script. Controlled browser
   evidence and existing deterministic verifiers will be recorded separately.
-- Hosted QA exact build identity is confirmed. A signed-in pending-payment
-  owner fixture was available, but a no-subscription true-handheld fixture,
+- Hosted QA now exposes the exact verified
+  `dee3ab5589176da136fd006a674c00c2eafc96ea` staging candidate. A signed-in
+  pending-payment owner fixture was available on the older build, but its
+  current-candidate interaction pass is pending; a no-subscription true-handheld fixture,
   active disposable public tenant, destructive disposable tenant/store fixtures, physical mobile/PWA,
   television-screen behavior, and hosted write-through propagation remain
   unverified in this session.

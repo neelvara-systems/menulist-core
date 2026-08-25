@@ -32790,3 +32790,11 @@ TEMPLATE FOR NEW ENTRIES:
 - Preserved owner Operations and platform intake-monitor behavior through dual-format readers, without changing scheduler cadence, tenant isolation, governance doctrine, provider billing, or Razorpay execution.
 - Hosted QA exposed and closed two direction-specific index gaps plus missing managed Storage-bucket discovery. Two due tenants then completed all 20 tasks with non-empty compiled context, graph/trust/knowledge/predictive outputs, and one stale-credit refund; non-due/inactive controls stayed untouched and the next ordinary tick produced no duplicate run or refund.
 - The two additive indexes and byte-identical validated scheduler Functions were deployed and authenticated in QA and production. Production received no fixture or forced invocation; the hourly scheduler remains enabled at `:30 UTC`.
+
+# 2026-08-25 - MenuList Cloud Tasks deployment trace
+
+- Fixed the hosted batch-image trigger failing before authentication because
+  the serverless trace omitted Google Cloud Tasks' runtime proto descriptor.
+- Added one route-scoped trace include and an isolated deployment-bundle
+  regression gate; no task, provider call, Firebase operation, or dependency
+  was added.

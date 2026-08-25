@@ -2102,3 +2102,45 @@ Those fields are explicitly `unknown` instead of guessed.
   | Answerlattice | production / `neelvara-answerlattice-prod` | Cloud Functions | `functions-answerlattice/` | identical QA-validated source recorded above | preceding authenticated result records both scoped Functions `ACTIVE` with source readback | `INFRA_CHANGE` | `DEPLOYED_AND_READ_BACK` |
 
 - Attribution confidence: exact for the complete path set, commit, push, direct Git readback, validation commands, and preserved prior Firebase evidence; per-file authorship across earlier concurrent sessions remains `unknown` where no prior ledger entry assigns it.
+
+### GIT-20260825-131901-mlrc027-cloud-tasks-trace-fix
+
+- Timestamp: `2026-08-25T13:19:01+05:30`
+- Record type: `PLANNED`
+- Actor/session/thread ID: Codex `/root`; thread `01a034e1-c70a-74b1-a92b-0a103a981815`
+- Registered worktrees: one worktree at `/Users/danny/Projects/MenuListAi/menulist-core`, checked out on `staging` at `dee3ab5589176da136fd006a674c00c2eafc96ea`.
+- Authorization: Danny resumed the active MenuList release-candidate audit/fix/retest goal on hosted QA and instructed Codex to continue without waiting. This authorizes the smallest confirmed MLRC-027 Next.js deployment-trace fix, regression coverage, certification/docs evidence, commit, and non-force `staging` push so the corrected exact build can be retested. It does not authorize `main`, manual Vercel deployment, Firebase deployment, payment execution, or unrelated governance changes.
+- Intended operation: stage only the MLRC-027 fix/evidence paths plus this ledger entry: `next.config.js`, `scripts/verification/verify-next-build-compatibility.js`, `scripts/verification/verify-next-deployment-bundle.js`, `__docs__/audits/MENULIST_RC_CERTIFICATION.md`, `__docs__/audits/menulist-rc-runtime-evidence.json`, `__docs__/nextjs-runtime-migration/nextjs-runtime-migration_impl.md`, `__docs__/nextjs-runtime-migration/nextjs-runtime-migration_validation.md`, `__docs__/changelog.md`, and `__docs__/deployment/git-operations-ledger.md`. Preserve and exclude concurrent `AGENTS.md` and `IDE_PROMPTS/MASTER-EXECUTION-PROMPT.md` pricing-rule changes with actor attribution `unknown`.
+- Defect evidence: exact hosted QA build `dee3ab5589176da136fd006a674c00c2eafc96ea` returned empty HTTP 500 for anonymous `POST /api/image-generation/batch-trigger`; authenticated Vercel runtime logs showed `@google-cloud/tasks` could not load `/var/task/node_modules/@google-cloud/tasks/build/protos/protos.json` before `withAuth` executed.
+- Local correction: one route-scoped output-trace include for the exact 202 KB descriptor; static Next contract and isolated post-build route-load gate extended. No dependency, Firebase/Storage operation, Cloud Task, provider call, cache entry, or product-data mutation was added.
+- Validation before commit: targeted login/mobile/billing/onboarding regressions passed; exact hosted 136-handler/153-method anonymous sweep reproduced only MLRC-027 as a 5xx; `verify:next-build-compatibility`, `npm run build` (450 pages), `verify:next-deployment-bundle` (four isolated route traces, including 904-file batch route), full zero-warning ESLint, JSON parse, and `git diff --check` passed.
+
+- Branch matrix before:
+
+  | Branch | Local full SHA | Direct server ref/full SHA | Tracking ref | Ahead/behind | Worktree | Staged/unstaged/untracked | Status |
+  | --- | --- | --- | --- | --- | --- | --- | --- |
+  | `main` | `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `refs/heads/main` / `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `origin/main` | `0/0` | not checked out | `N/A` | `IN_SYNC` |
+  | `staging` | `dee3ab5589176da136fd006a674c00c2eafc96ea` | `refs/heads/staging` / `dee3ab5589176da136fd006a674c00c2eafc96ea` | `origin/staging` | `0/0` | primary worktree | `0/10/0` | `IN_SYNC` |
+
+- Firebase matrix before (no infrastructure deployment is authorized or required by this Next.js-only correction):
+
+  | Product | Environment/project | Component | Local source/config | Local evidence | Server evidence | Delta | Deployment state |
+  | --- | --- | --- | --- | --- | --- | --- | --- |
+  | MenuList | QA / `menulist-qa` | Firestore Rules | unchanged | no changed path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | QA / `menulist-qa` | Firestore indexes | unchanged | no changed path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | QA / `menulist-qa` | Storage Rules | unchanged | no changed path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | QA / `menulist-qa` | Cloud Functions | unchanged | no changed path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | production / `menulist-prod` | Firestore Rules | unchanged | no changed path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | production / `menulist-prod` | Firestore indexes | unchanged | no changed path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | production / `menulist-prod` | Storage Rules | unchanged | no changed path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | production / `menulist-prod` | Cloud Functions | unchanged | no changed path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Firestore Rules | unchanged | no changed path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Firestore indexes | unchanged | no changed path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Storage Rules | unchanged | no changed path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Cloud Functions | unchanged | no changed path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Firestore Rules | unchanged | no changed path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Firestore indexes | unchanged | no changed path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Storage Rules | unchanged | no changed path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Cloud Functions | unchanged | no changed path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+
+- Post-operation commit, direct readback, corrected hosted-build identity, full 153-method retest, and final matrices: pending.

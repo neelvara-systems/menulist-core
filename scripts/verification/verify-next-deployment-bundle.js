@@ -22,6 +22,13 @@ const routeContracts = [
     routeEntry: '.next/server/app/api/auth/[...nextauth]/route.js',
     rejectFirebaseAdminExternal: true,
   },
+  {
+    label: 'batch image trigger API',
+    routeEntry: '.next/server/app/api/image-generation/batch-trigger/route.js',
+    requiredTracedFiles: [
+      'node_modules/@google-cloud/tasks/build/protos/protos.json',
+    ],
+  },
 ];
 
 function fail(message) {
@@ -42,6 +49,11 @@ function verifyRoute(contract) {
     && !tracedFiles.some((file) => file.includes('node_modules/@swc/helpers/'))
   ) {
     fail('The website route trace omits @swc/helpers, which Next 16 requires in the deployed Turbopack runtime.');
+  }
+  for (const requiredFile of contract.requiredTracedFiles || []) {
+    if (!tracedFiles.some((file) => file.replaceAll('\\', '/').endsWith(requiredFile))) {
+      fail(`The ${contract.label} route trace omits required runtime file ${requiredFile}.`);
+    }
   }
 
   const routeDirectory = path.dirname(absoluteTracePath);

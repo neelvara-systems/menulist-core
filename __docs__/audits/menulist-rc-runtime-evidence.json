@@ -1,4 +1,14 @@
 {
+  "hostedCandidateIdentity": {
+    "baseUrl": "https://app.menulist.digital",
+    "requestedStagingCommit": "dee3ab5589176da136fd006a674c00c2eafc96ea",
+    "menuListProductSnapshotCommit": "3a34a975d52b1a3b8bec4be35c40b4930b1f9441",
+    "servedBuildId": "dee3ab5589176da136fd006a674c00c2eafc96ea",
+    "servedDeploymentUrl": "menulist-core-ogyx4ddc1-neelvara-systems.vercel.app",
+    "testedAt": "2026-08-25T13:08:13+05:30",
+    "result": "PASS_DEPLOYMENT_IDENTITY",
+    "evidence": "The no-store /api/version response advanced from the older baseline to the exact current staging commit with verified provenance. Authenticated, mobile, and mutation interaction evidence remains separately classified."
+  },
   "privateRouteAccess": {
     "baseUrl": "http://localhost:3000",
     "browser": "Connected Chrome",

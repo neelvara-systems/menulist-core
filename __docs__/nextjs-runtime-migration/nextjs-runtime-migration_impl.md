@@ -55,10 +55,11 @@ Next 16.3 default performance improvements are accepted without enabling its opt
 - Default `npm run build` uses Turbopack. `npm run build:webpack` is the full parity path.
 - Vercel Turbopack builds cap V8 at 4096 MiB inside the standard 8 GiB container, keep browser/server source maps disabled, and exclude runtime-only credential/MyCodex filesystem expressions from automatic Turbopack tracing. Required MyCodex Markdown remains explicitly included through `outputFileTracingIncludes`.
 - Output tracing never uses a global `node_modules/@swc/**` exclusion. Next 16's deployed Turbopack route runtime requires `@swc/helpers`; only compiler-specific SWC packages remain excluded.
+- The server-externalized `@google-cloud/tasks` ESM runtime resolves its proto descriptor dynamically. `/api/image-generation/batch-trigger` therefore carries one narrow `outputFileTracingIncludes` entry for `build/protos/protos.json`; the include is route-scoped rather than broadening every deployment trace.
 - Root `firebase-admin` stays in `transpilePackages` and out of `serverExternalPackages` and custom Webpack server externals. This bundles the Firebase Admin 14 → `jwks-rsa` 4 CommonJS → ESM-only `jose` 6 boundary instead of leaving deployed routes to native `require()`.
 - Browser builds still map Firebase Admin imports to `false`; bundling the server dependency does not make Admin SDK code available to client graphs.
 - `build:verify` runs `verify:next-build-compatibility` before TypeScript and lint. It freezes Node 22.23.1 plus Firebase Admin 14.2.0 → `jwks-rsa` 4.1.0 → nested `jose` 6.2.4, rejects dependency overrides/downgrades, and rejects every source configuration that could restore native Firebase Admin loading.
-- `build:vercel` finishes with `verify:next-deployment-bundle`, which preserves traced files and symlinks in isolated directories, rejects hashed native Firebase Admin externals in the sign-in and NextAuth API graphs, and loads website, sign-in, and NextAuth API routes without access to the repository's complete `node_modules`.
+- `build:vercel` finishes with `verify:next-deployment-bundle`, which preserves traced files and symlinks in isolated directories, rejects hashed native Firebase Admin externals in the sign-in and NextAuth API graphs, requires the Cloud Tasks proto descriptor in the batch-image route trace, and loads website, sign-in, NextAuth API, and batch-image trigger routes without access to the repository's complete `node_modules`.
 
 ### Server and browser module boundary
 

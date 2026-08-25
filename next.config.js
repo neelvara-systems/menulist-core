@@ -202,6 +202,9 @@ const nextConfig = {
         '/sites/mycodex/**/*': myCodexDocsTraceAssetExcludes,
     },
     outputFileTracingIncludes: {
+        '/api/image-generation/batch-trigger': [
+            './node_modules/@google-cloud/tasks/build/protos/protos.json',
+        ],
         '/sites/mycodex': myCodexDocsTraceIncludes,
         '/sites/mycodex/[[...slug]]': myCodexDocsTraceIncludes,
         '/sites/mycodex/api/document': myCodexDocsTraceIncludes,
