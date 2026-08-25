@@ -3826,3 +3826,45 @@ Those fields are explicitly `unknown` instead of guessed.
 - Firebase matrix before/after: no Rules, indexes, Storage Rules, or Cloud Functions source changed. Answerlattice QA and production infrastructure retain `NO_INFRA_CHANGE` / `SERVER_STATE_UNKNOWN`; MenuList infrastructure retains its separately recorded component states. No Firebase deployment or authenticated infrastructure readback is authorized here.
 - Final filesystem state: pending complete stable snapshot commit, non-force staging push, direct server readback, automatic QA deployment, exact `/api/version`, product-specific ten-draft generation, one-credit settlement, unchanged-source zero-credit cache reuse, and downstream Knowledge Intake human-review evidence.
 - Attribution confidence: exact for this Answerlattice correction and Git evidence; parent MenuList work retains independent attribution.
+### GIT-20260826-010004-mlrc054-fixture-cleanup-guard
+
+- Timestamp: `2026-08-26T01:00:04+05:30`
+- Actor/session: `/root` — MenuList QA release-candidate certification
+- Worktree: `/Users/danny/Projects/MenuListAi/menulist-core` (`primary`)
+- Status: `PLANNED`
+- Authorization: Danny instructed Codex to continue the full MenuList QA certification autonomously and publish all stable work to staging. This operation publishes the canonical-project cleanup guard, its regression, and exact hosted temporary-status evidence to `origin/staging` only. It does not authorize `main`, Firebase deployment, manual Vercel deployment, production mutation, or live Razorpay execution.
+- Intended command class: non-force commit and push of `staging` to `origin/staging`.
+- Source paths: `scripts/menulist/hosted-qa-certification-fixture.ts`, `scripts/verification/verify-menulist-hosted-qa-certification-fixture.js`, `__docs__/audits/MENULIST_RC_CERTIFICATION.md`, and this ledger entry.
+- Starting filesystem state: zero staged, three tracked unstaged, zero untracked before this ledger append. Pre-ledger diff SHA-256 `4e775fd55c44dd580a8daf0b4cd5afc6ad5cccdc693373ab634f190f4c02c600`; status SHA-256 `946198edddb3c6c8fb67b861e793aa1b4079a9b883d0a44674c870b4383ee27a`.
+- Validation before commit: hosted-QA fixture boundary PASS; focused ESLint PASS; strict TypeScript PASS; `git diff --check` PASS; exact marker-guarded cleanup probe exited 1 with `Fixture has hosted test data`, proving refusal without deleting fixture data. Hosted exact `c15d0a1…` temporary-status publish/clear propagation passed on the tenant subdomain, including warm and cache-busted removal.
+- Concurrent-work boundary: after this pre-operation snapshot, unrelated Answerlattice edits appeared in eight tracked files plus `src/lib/answerlattice/safeMode.ts`. They are owned by another operator, remain unstaged, and are explicitly excluded from this MenuList commit.
+
+#### Pre-operation branch matrix
+
+| Branch | Local SHA | Direct server SHA | Tracking ref | Ahead/behind | Worktree | Filesystem | Status |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `staging` | `48330d97d007fab12e45dfdd8fc7acb9f61c38d8` | `refs/heads/staging` / `48330d97d007fab12e45dfdd8fc7acb9f61c38d8` | `origin/staging` | `0/0` | primary | `0/3/0` before ledger append | `IN_SYNC` |
+| `main` | `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `refs/heads/main` / `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `origin/main` | `0/0` | none | n/a | `IN_SYNC` |
+
+#### Firebase component matrix before Git mutation
+
+No Firebase source/configuration path is changed by this operation. No authenticated Firebase server readback or deployment is performed in this evidence window; `NO_INFRA_CHANGE` therefore remains independent from the server deployment-state classification.
+
+| Target | Component | Local source/config | Delta | Deployment state |
+| --- | --- | --- | --- | --- |
+| MenuList QA `menulist-qa` | Firestore Rules | `firestore.rules` → generated `firestore-menulist.rules`; `firebase.json` | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| MenuList QA `menulist-qa` | Firestore indexes | `firestore.indexes.json`; `firebase.json` | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| MenuList QA `menulist-qa` | Storage Rules | `storage.rules`; `firebase.json` | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| MenuList QA `menulist-qa` | Cloud Functions | `functions/`; `firebase.json` | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| MenuList production `menulist-prod` | Firestore Rules | `firestore.rules` → generated `firestore-menulist.rules`; `firebase.json` | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| MenuList production `menulist-prod` | Firestore indexes | `firestore.indexes.json`; `firebase.json` | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| MenuList production `menulist-prod` | Storage Rules | `storage.rules`; `firebase.json` | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| MenuList production `menulist-prod` | Cloud Functions | `functions/`; `firebase.json` | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| Answerlattice QA `neelvara-answerlattice-qa` | Firestore Rules | `firestore-answerlattice.rules`; `firebase-answerlattice.json` | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| Answerlattice QA `neelvara-answerlattice-qa` | Firestore indexes | `firestore-answerlattice.indexes.json`; `firebase-answerlattice.json` | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| Answerlattice QA `neelvara-answerlattice-qa` | Storage Rules | `storage-answerlattice.rules`; `firebase-answerlattice.json` | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| Answerlattice QA `neelvara-answerlattice-qa` | Cloud Functions | `functions-answerlattice/`; `firebase-answerlattice.json` | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| Answerlattice production `neelvara-answerlattice-prod` | Firestore Rules | `firestore-answerlattice.rules`; `firebase-answerlattice.json` | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| Answerlattice production `neelvara-answerlattice-prod` | Firestore indexes | `firestore-answerlattice.indexes.json`; `firebase-answerlattice.json` | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| Answerlattice production `neelvara-answerlattice-prod` | Storage Rules | `storage-answerlattice.rules`; `firebase-answerlattice.json` | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| Answerlattice production `neelvara-answerlattice-prod` | Cloud Functions | `functions-answerlattice/`; `firebase-answerlattice.json` | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |

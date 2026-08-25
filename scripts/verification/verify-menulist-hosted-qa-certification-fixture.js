@@ -36,6 +36,8 @@ const requiredTokens = [
     "transaction.create(markerRef",
     'projectRows.empty,',
     "Fixture has hosted test data.",
+    ".doc(String(markerData.tenantId))",
+    ".collection(String(markerData.storeId))",
 ];
 
 for (const token of requiredTokens) {
@@ -46,6 +48,7 @@ assert.equal(source.includes('razorpayClient'), false, 'Fixture must not initial
 assert.equal(source.includes('createRazorpay'), false, 'Fixture must not create provider state.');
 assert.equal(source.includes('menulist-prod'), false, 'Fixture must not name production.');
 assert.equal(source.includes('console.log(password)'), false, 'Fixture must not print its password.');
+assert.equal(source.includes("db.collection('projects')\n        .where('tenantId'"), false, 'Cleanup must not inspect the legacy root project collection.');
 assert.ok(clientSource.includes("const QA_PROJECT_ID = 'menulist-qa'"));
 assert.ok(clientSource.includes("getDoc(doc(db, 'tenants'"));
 assert.ok(clientSource.includes("getDoc(doc(db, 'stores'"));

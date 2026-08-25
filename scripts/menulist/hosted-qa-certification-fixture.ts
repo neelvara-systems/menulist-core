@@ -421,7 +421,8 @@ async function cleanup(): Promise<void> {
     const fixtureId = normalizeFixtureId(readArg('fixture-id'));
     const { markerData } = await readFixture(fixtureId);
     const projectRows = await db.collection('projects')
-        .where('tenantId', '==', markerData.tenantId)
+        .doc(String(markerData.tenantId))
+        .collection(String(markerData.storeId))
         .limit(1)
         .get();
     assert.equal(
