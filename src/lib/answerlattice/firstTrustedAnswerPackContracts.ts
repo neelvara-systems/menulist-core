@@ -4,7 +4,11 @@ import {
 } from '@lib/answerlattice/answerTestContracts';
 import { AnswerlatticeIntakeReviewItemSchema } from '@lib/answerlattice/knowledgeIntakeContracts';
 import { AnswerlatticeProcedureSchema } from '@lib/answerlattice/procedureValidation';
-import type { AnswerlatticeIntakeReviewItem } from '@type/answerlattice';
+import {
+    ANSWERLATTICE_PROCEDURE_ACTIONS,
+    type AnswerlatticeIntakeReviewItem,
+} from '@type/answerlattice';
+import { Type, type Schema } from '@google/genai';
 import { z } from 'zod';
 
 export const ANSWERLATTICE_PRODUCT_STARTER_PACK_SIZE = 10;
@@ -58,6 +62,109 @@ export const AnswerlatticeProductStarterPackModelResponseSchema = z.object({
     candidates: z.array(AnswerlatticeProductStarterPackCandidateSchema)
         .length(ANSWERLATTICE_PRODUCT_STARTER_PACK_SIZE),
 }).strict();
+
+/**
+ * Provider-side structured-output contract. The local Zod schema remains the
+ * final authority; this schema prevents otherwise valid Gemini JSON from
+ * drifting into extra keys, null optional fields, or missing defaulted arrays
+ * before it reaches that boundary.
+ */
+export const ANSWERLATTICE_PRODUCT_STARTER_PACK_PROVIDER_RESPONSE_SCHEMA: Schema = {
+    type: Type.OBJECT,
+    required: ['candidates'],
+    properties: {
+        candidates: {
+            type: Type.ARRAY,
+            minItems: String(ANSWERLATTICE_PRODUCT_STARTER_PACK_SIZE),
+            maxItems: String(ANSWERLATTICE_PRODUCT_STARTER_PACK_SIZE),
+            items: {
+                type: Type.OBJECT,
+                required: [
+                    'title',
+                    'question',
+                    'proposedAnswer',
+                    'sourceIds',
+                    'entityIds',
+                    'missingEvidence',
+                    'reason',
+                    'expectedSource',
+                    'riskLevel',
+                    'requiresEscalation',
+                ],
+                properties: {
+                    title: { type: Type.STRING },
+                    question: { type: Type.STRING },
+                    proposedAnswer: { type: Type.STRING },
+                    sourceIds: {
+                        type: Type.ARRAY,
+                        minItems: '1',
+                        maxItems: String(ANSWERLATTICE_PRODUCT_STARTER_PACK_MAX_SOURCE_IDS_PER_ITEM),
+                        items: { type: Type.STRING },
+                    },
+                    entityIds: {
+                        type: Type.ARRAY,
+                        maxItems: '10',
+                        items: { type: Type.STRING },
+                    },
+                    missingEvidence: {
+                        type: Type.ARRAY,
+                        maxItems: String(ANSWERLATTICE_PRODUCT_STARTER_PACK_MAX_MISSING_EVIDENCE),
+                        items: { type: Type.STRING },
+                    },
+                    reason: { type: Type.STRING },
+                    expectedSource: {
+                        type: Type.STRING,
+                        enum: ['canonical', 'escalation', 'no_answer'],
+                    },
+                    riskLevel: {
+                        type: Type.STRING,
+                        enum: ['standard', 'critical'],
+                    },
+                    requiresEscalation: { type: Type.BOOLEAN },
+                    procedure: {
+                        type: Type.OBJECT,
+                        required: ['steps'],
+                        properties: {
+                            procedureSlug: { type: Type.STRING },
+                            steps: {
+                                type: Type.ARRAY,
+                                minItems: '1',
+                                maxItems: '12',
+                                items: {
+                                    type: Type.OBJECT,
+                                    required: ['stepOrder', 'action', 'instruction'],
+                                    properties: {
+                                        stepOrder: { type: Type.INTEGER },
+                                        action: {
+                                            type: Type.STRING,
+                                            enum: Object.values(ANSWERLATTICE_PROCEDURE_ACTIONS),
+                                        },
+                                        instruction: { type: Type.STRING },
+                                        target: { type: Type.STRING },
+                                        expectedEvent: { type: Type.STRING },
+                                        expectedResult: { type: Type.STRING },
+                                        troubleshootingHint: { type: Type.STRING },
+                                    },
+                                },
+                            },
+                        },
+                    },
+                    applicability: {
+                        type: Type.OBJECT,
+                        properties: {
+                            path: { type: Type.STRING },
+                            feature: { type: Type.STRING },
+                            workflow: { type: Type.STRING },
+                            plan: { type: Type.STRING },
+                            role: { type: Type.STRING },
+                            version: { type: Type.STRING },
+                        },
+                    },
+                },
+            },
+        },
+    },
+};
 
 export const AnswerlatticeProductStarterPackRequestSchema = z.object({
     requestId: z.string().trim().min(8).max(100).regex(/^[a-zA-Z0-9_-]+$/),

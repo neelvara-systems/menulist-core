@@ -468,3 +468,13 @@ webhook, refund, revenue, or production-entitlement evidence.
   summary, can repair the already-running fixture, and restores the prior summary
   safely at cleanup. This changes no production entitlement doctrine or paid
   intake hot-path read count.
+- After that repair, the hosted call reached `gemini-3.5-flash-lite` and the
+  reservation refund preserved the exact pre-call credit balance, but Gemini's
+  JSON failed the strict local candidate contract. The generation request now
+  supplies a bounded provider-side structured-output schema for the exact ten
+  candidates, governed source/risk vocabularies, evidence arrays, optional
+  procedures, and applicability fields. The existing strict Zod parse and
+  evidence normalization remain the final authority; no generated item can
+  bypass human review or cite an unknown source. Stage-specific bounded error
+  codes distinguish provider, response, and settlement failure without logging
+  prompts or owner content.

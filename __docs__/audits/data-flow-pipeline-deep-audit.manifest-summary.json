@@ -1,15 +1,15 @@
 {
-  "generatedAt": "2026-08-25T16:30:18.228Z",
-  "repositoryHead": "79684c60912d468d8888009b1e5f4c24823d8e6b",
-  "totalDiscoveredFiles": 9417,
+  "generatedAt": "2026-08-25T18:45:37.282Z",
+  "repositoryHead": "8688fbb20d486f98fef56fda3c154ce0ffa44a5e",
+  "totalDiscoveredFiles": 9423,
   "vanishedDuringInventory": 0,
-  "inScopeFiles": 9103,
+  "inScopeFiles": 9109,
   "excludedFiles": 314,
   "byCategory": {
-    "documentation/contract": 3580,
+    "documentation/contract": 3581,
     "shared-runtime": 1210,
     "ui-component": 1021,
-    "verifier/test": 773,
+    "verifier/test": 776,
     "asset/public-output": 568,
     "nextjs-entrypoint": 386,
     "runtime/support": 346,
@@ -21,26 +21,26 @@
     "hook/state-flow": 81,
     "type/schema-contract": 70,
     "presentation/public-output": 51,
-    "script/maintenance": 48,
+    "script/maintenance": 50,
     "security-rules": 9,
     "redux-state": 7,
     "test": 4,
     "proxy/routing": 1
   },
   "byReviewStatus": {
-    "reviewed": 7052,
-    "in-progress": 1520,
-    "inventory-only": 531
+    "reviewed": 7040,
+    "in-progress": 1532,
+    "inventory-only": 537
   },
   "byCategoryAndReviewStatus": {
     "documentation/contract": {
-      "reviewed": 2729,
-      "in-progress": 562,
-      "inventory-only": 289
+      "reviewed": 2723,
+      "in-progress": 568,
+      "inventory-only": 290
     },
     "shared-runtime": {
-      "reviewed": 997,
-      "in-progress": 141,
+      "reviewed": 995,
+      "in-progress": 143,
       "inventory-only": 72
     },
     "ui-component": {
@@ -49,9 +49,9 @@
       "inventory-only": 9
     },
     "verifier/test": {
-      "reviewed": 529,
-      "in-progress": 186,
-      "inventory-only": 58
+      "reviewed": 526,
+      "in-progress": 189,
+      "inventory-only": 61
     },
     "asset/public-output": {
       "reviewed": 539,
@@ -64,8 +64,8 @@
       "inventory-only": 11
     },
     "runtime/support": {
-      "reviewed": 275,
-      "in-progress": 66,
+      "reviewed": 274,
+      "in-progress": 67,
       "inventory-only": 5
     },
     "firebase-functions": {
@@ -109,7 +109,7 @@
     "script/maintenance": {
       "reviewed": 26,
       "in-progress": 19,
-      "inventory-only": 3
+      "inventory-only": 5
     },
     "security-rules": {
       "in-progress": 5,

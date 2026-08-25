@@ -12,6 +12,7 @@ import {
     ANSWERLATTICE_PRODUCT_STARTER_PACK_MAX_SOURCE_EXCERPT_CHARS,
     ANSWERLATTICE_PRODUCT_STARTER_PACK_SIZE,
     ANSWERLATTICE_PRODUCT_STARTER_PACK_VERSION,
+    ANSWERLATTICE_PRODUCT_STARTER_PACK_PROVIDER_RESPONSE_SCHEMA,
     AnswerlatticeProductStarterPackModelResponseSchema,
     canGenerateAnswerlatticeProductStarterPack,
     type AnswerlatticeProductStarterPackCandidate,
@@ -733,6 +734,7 @@ ${JSON.stringify(packet)}`;
                         contents: [{ text: prompt }],
                         config: {
                             responseMimeType: 'application/json',
+                            responseSchema: ANSWERLATTICE_PRODUCT_STARTER_PACK_PROVIDER_RESPONSE_SCHEMA,
                             temperature: 0,
                             topP: 0.8,
                             topK: 20,
