@@ -83,6 +83,7 @@ function extractRouteMapTargets(block) {
 function verifyMobileShellRouteMap() {
   const mobileShell = read('src/components/mobile/MobileShell.tsx');
   const ownerLayout = read('src/components/antdComponent/layoutWrapper/index.tsx');
+  const mobileBillingScreen = read('src/components/mobile/screens/MobileBillingScreen.tsx');
   const mobileNavigation = read('src/components/mobile/MobileNavigation.tsx');
   const mobileMoreScreen = read('src/components/mobile/screens/MobileMoreScreen.tsx');
   const mobileOwnerMenuVerifier = read('scripts/verification/verify-mobile-owner-menu.mjs');
@@ -161,6 +162,8 @@ function verifyMobileShellRouteMap() {
   assert(!mobileShell.includes("setForceDesktopRoute('/billing');"), 'Subscription gate must not force a desktop billing route from the mobile shell');
   assertIncludes(ownerLayout, 'const isMobileRecoveryRoute = isHelpCenterRoute || isBillingRoute;', 'Narrow viewport recovery routes must share the mobile-shell boundary');
   assertIncludes(ownerLayout, 'isPlatformRoute || isOpsRoute || isResellerRoute || isMobileRecoveryRoute', 'Billing and Help recovery routes must render in MobileShell at mobile widths');
+  assert(!mobileBillingScreen.includes("router.push('/dashboard#mobile/more/answerlatticeSupport')"), 'Mobile Billing support actions must not cross the restricted dashboard route');
+  assert((mobileBillingScreen.match(/router\.push\('\/help-center\/ticket'\)/g) || []).length >= 2, 'Mobile Billing support actions must use the permitted Help ticket recovery route');
   assertIncludes(mobileNavigation, "aria-label={t('ariaLabel')}", 'Localized mobile navigation landmark label');
   assertIncludes(mobileNavigation, 'role="navigation"', 'Mobile navigation landmark role');
   assertIncludes(mobileNavigation, 'aria-label={title}', 'Localized mobile navigation accessible tab label');

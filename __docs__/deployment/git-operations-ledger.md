@@ -2206,3 +2206,10 @@ Those fields are explicitly `unknown` instead of guessed.
   | Answerlattice | production / `neelvara-answerlattice-prod` | Cloud Functions | unchanged | no changed path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
 
 - Post-operation commit, direct readback, exact hosted build identity, corrected 390px screenshot, and final matrices: pending.
+
+#### Adjacent-flow amendment — `2026-08-25T13:47:17+05:30`
+
+- Exact hosted commit `4592516b8bb22f07da5f48b714b2493c7e0ba566` closed MLRC-028: direct `/billing` entered `MobileShell` at 390×844, had zero horizontal overflow, and all visible actions measured at least 44px. Billing History opened the truthful empty state with no console error.
+- The required adjacent click-through exposed MLRC-029: both mobile Billing support actions pushed `/dashboard#mobile/more/answerlatticeSupport`; the recovery-only entitlement guard correctly denied Dashboard and returned the owner to Billing, making the actions appear inert.
+- The same active audit/fix/retest authorization covers the smallest correction: point both actions at the already permitted `/help-center/ticket` recovery route, extend the mobile route-map regression, update the certification/mobile/changelog evidence, regenerate the inventory for the shifted source line numbers, commit, push `staging`, and retest on the exact hosted build. Add `src/components/mobile/screens/MobileBillingScreen.tsx` and `__docs__/audits/menulist-rc-certification-inventory.csv` to the intended staged paths. Preserve concurrent `AGENTS.md` and master-prompt changes.
+- Validation after the amendment: mobile shell route map, Billing entitlement, onboarding subscription boundary, Help Center boundary/runtime/attachments, strict TypeScript, zero-warning ESLint, production build (450 pages), JSON parse, and `git diff --check` passed. No Firebase, provider, payment, cache, collection, or dependency change was introduced.

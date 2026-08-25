@@ -32807,3 +32807,6 @@ TEMPLATE FOR NEW ENTRIES:
   viewport; no billing, entitlement, payment-provider, or data contract changed.
 - Extended the mobile shell route-map gate to preserve both Billing and Help as
   mobile recovery routes.
+- Routed both mobile Billing support actions directly to the permitted Help
+  ticket recovery route so unpaid and payment-pending owners are not bounced
+  back to Billing by the dashboard entitlement guard.

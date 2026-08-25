@@ -887,7 +887,7 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
                                                 </Flex>
                                             </Button>
                                         ) : (
-                                            <Button color="primary" onClick={() => router.push('/dashboard#mobile/more/answerlatticeSupport')} size="small">
+                                            <Button color="primary" onClick={() => router.push('/help-center/ticket')} size="small">
                                                 <Flex align="center" gap={6}>
                                                     <LuMessageCircle size={14} />
                                                     <Text>Contact support</Text>
@@ -993,7 +993,7 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
                     </Card>
                 </div>
 
-                <Card onClick={() => router.push('/dashboard#mobile/more/answerlatticeSupport')}>
+                <Card onClick={() => router.push('/help-center/ticket')}>
                     <Flex align="center" gap={12}>
                         <LuMessageCircle color={token.colorSuccess} size={20} />
                         <Flex gap={2} vertical>

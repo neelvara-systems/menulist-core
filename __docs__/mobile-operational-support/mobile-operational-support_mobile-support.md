@@ -64,6 +64,10 @@ Billing and Help are entitlement-recovery surfaces. Direct `/billing` and
 even when the browser uses a desktop user agent. This keeps responsive browser
 testing, small-window use, and phone use on the same mobile recovery contract;
 the desktop sidebar must never consume the narrow Billing viewport.
+Billing support actions must navigate directly to `/help-center/ticket`, which
+is permitted for recovery-only owners and maps to the existing mobile ticket
+screen. They must not cross `/dashboard`, because the entitlement guard would
+truthfully return that owner to Billing before Help could open.
 
 Mobile Locations failure boundary: `MobileLocationsScreen` must convert rejected `/api/auth/switch-store` responses into fixed owner-facing switch failures and bounded `mobile_location_store_switch_failed` diagnostics. Outlet creation must log both rejected API responses and client/network exceptions through bounded `mobile_location_create_failed` diagnostics before showing fixed retry copy.
 

@@ -1,11 +1,11 @@
 {
   "hostedCandidateIdentity": {
     "baseUrl": "https://app.menulist.digital",
-    "requestedStagingCommit": "6854cf4e7881f5a5d5fe3ef939245cd1d1b88e50",
+    "requestedStagingCommit": "4592516b8bb22f07da5f48b714b2493c7e0ba566",
     "menuListProductSnapshotCommit": "3a34a975d52b1a3b8bec4be35c40b4930b1f9441",
-    "servedBuildId": "6854cf4e7881f5a5d5fe3ef939245cd1d1b88e50",
-    "servedDeploymentUrl": "menulist-core-jgc93e96j-neelvara-systems.vercel.app",
-    "testedAt": "2026-08-25T13:27:46+05:30",
+    "servedBuildId": "4592516b8bb22f07da5f48b714b2493c7e0ba566",
+    "servedDeploymentUrl": "menulist-core-e7ouv74hb-neelvara-systems.vercel.app",
+    "testedAt": "2026-08-25T13:42:21+05:30",
     "result": "PASS_DEPLOYMENT_IDENTITY",
     "evidence": "The no-store /api/version response matched the exact current staging commit with verified provenance. The complete hosted anonymous API boundary and bounded authenticated recovery-route checks were then rerun; mutation evidence remains separately classified."
   },
@@ -127,6 +127,15 @@
     "liveRazorpayExecution": "EXCLUDED; only anonymous empty-boundary rejection was exercised",
     "result": "PASS",
     "evidence": "All 153 hosted method probes completed without timeout, 5xx, or protected anonymous 2xx. The batch-image trigger that previously crashed before authentication returned 401 after the Cloud Tasks proto trace fix."
+  },
+  "hostedMobileBillingRecovery": {
+    "baseUrl": "https://app.menulist.digital/billing",
+    "servedBuildId": "4592516b8bb22f07da5f48b714b2493c7e0ba566",
+    "browser": "Connected Chrome",
+    "viewport": "390x844",
+    "testedAt": "2026-08-25T13:43:30+05:30",
+    "result": "PASS_LAYOUT_FAIL_SUPPORT_HANDOFF",
+    "evidence": "Direct Billing entered MobileShell at #mobile/more/billing, rendered the correct pending subscription amount and state, had no horizontal overflow, and every visible interactive target measured at least 44px. Billing History opened a truthful empty sheet. Both Need billing help controls returned to Billing because their dashboard route was denied by the recovery-only entitlement guard; MLRC-029 corrects the source to /help-center/ticket."
   },
   "publicWebsiteRouteRender": {
     "baseUrl": "http://localhost:3000",
