@@ -90,6 +90,8 @@ export default function ProjectsSubHeader({
                 <Space size={4}>
                     <Tooltip title="Desktop View">
                         <Button
+                            aria-label="Desktop view"
+                            aria-pressed={activeDeviceType === DEVICE_TYPES_LIST.DESKTOP}
                             shape="circle"
                             type={activeDeviceType === DEVICE_TYPES_LIST.DESKTOP ? 'primary' : 'default'}
                             onClick={() => setActiveDeviceType(DEVICE_TYPES_LIST.DESKTOP)}
@@ -98,6 +100,8 @@ export default function ProjectsSubHeader({
                     </Tooltip>
                     <Tooltip title="Tablet View">
                         <Button
+                            aria-label="Tablet view"
+                            aria-pressed={activeDeviceType === DEVICE_TYPES_LIST.TABLET}
                             shape="circle"
                             type={activeDeviceType === DEVICE_TYPES_LIST.TABLET ? 'primary' : 'default'}
                             onClick={() => setActiveDeviceType(DEVICE_TYPES_LIST.TABLET)}
@@ -106,6 +110,8 @@ export default function ProjectsSubHeader({
                     </Tooltip>
                     <Tooltip title="Mobile View">
                         <Button
+                            aria-label="Mobile view"
+                            aria-pressed={activeDeviceType === DEVICE_TYPES_LIST.MOBILE}
                             shape="circle"
                             type={activeDeviceType === DEVICE_TYPES_LIST.MOBILE ? 'primary' : 'default'}
                             onClick={() => setActiveDeviceType(DEVICE_TYPES_LIST.MOBILE)}

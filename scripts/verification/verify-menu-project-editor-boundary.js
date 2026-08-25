@@ -74,6 +74,9 @@ const packageJson = read('package.json');
 const projectsRoute = read('src/app/(main)/projects/page.tsx');
 const projectsPage = read('src/components/templates/main-app/projects/index.tsx');
 const projectSelector = read('src/components/templates/main-app/projects/ProjectDetails/ProjectSelector.tsx');
+const previewModal = read('src/components/templates/main-app/projects/b2cView/previewModal.tsx');
+const projectsSubHeader = read('src/components/templates/main-app/projects/ProjectsSubHeader.tsx');
+const b2cViewHeader = read('src/components/templates/main-app/projects/b2cView/b2CViewHeader.tsx');
 const pdfViewer = read('src/components/templates/main-app/projects/PdfViewer.tsx');
 const projectCommonTypes = read('src/components/templates/main-app/projects/types/common.types.ts');
 const projectsDataProvider = read('src/providers/projectsDataProvider.tsx');
@@ -161,6 +164,17 @@ requireOrder(projectSelector, [
   'style={{ minHeight: 44, minWidth: 44, position:',
   'label={`Add ${labels.offeringPhrase}`}',
 ].forEach((token) => requireToken(projectSelector, token, 'desktop project selector keyboard and recovery boundary'));
+
+for (const [label, source] of [
+  ['preview modal', previewModal],
+  ['projects subheader', projectsSubHeader],
+  ['customer-view header', b2cViewHeader],
+]) {
+  for (const device of ['Desktop', 'Tablet', 'Mobile']) {
+    requireToken(source, `aria-label="${device} view"`, `${label} device selector accessibility`);
+  }
+  requireToken(source, 'aria-pressed={activeDeviceType === DEVICE_TYPES_LIST.', `${label} selected device semantics`);
+}
 
 [
   'const [pendingAction, setPendingAction] = useState<PendingProjectAction | null>(null);',

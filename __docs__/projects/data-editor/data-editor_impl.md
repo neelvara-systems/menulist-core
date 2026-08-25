@@ -561,3 +561,7 @@ setHasChanges(hasRealChanges);
 ---
 
 _Document Status: Historical data-editor implementation evidence - not current launch certification_
+
+## QA Release-Candidate Accessibility Hardening (2026-08-26)
+
+The desktop, tablet, and mobile preview selectors now expose explicit accessible names and `aria-pressed` state in the preview modal, editor subheader, and customer-view header. This keeps the selected viewport understandable to keyboard and assistive-technology users while preserving the existing preview behavior.

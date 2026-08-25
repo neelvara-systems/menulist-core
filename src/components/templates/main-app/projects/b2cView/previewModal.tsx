@@ -37,6 +37,8 @@ function PreviewModal({ projectData, storeDetails, previewModalOpen, setPreviewM
                     }}>
                     <Tooltip title="Desktop View">
                         <Button
+                            aria-label="Desktop view"
+                            aria-pressed={activeDeviceType === DEVICE_TYPES_LIST.DESKTOP}
                             type={activeDeviceType === DEVICE_TYPES_LIST.DESKTOP ? 'primary' : 'default'}
                             onClick={() => setActiveDeviceType(DEVICE_TYPES_LIST.DESKTOP)}
                             icon={<LuMonitor />}
@@ -45,6 +47,8 @@ function PreviewModal({ projectData, storeDetails, previewModalOpen, setPreviewM
                     </Tooltip>
                     <Tooltip title="Tablet View">
                         <Button
+                            aria-label="Tablet view"
+                            aria-pressed={activeDeviceType === DEVICE_TYPES_LIST.TABLET}
                             type={activeDeviceType === DEVICE_TYPES_LIST.TABLET ? 'primary' : 'default'}
                             onClick={() => setActiveDeviceType(DEVICE_TYPES_LIST.TABLET)}
                             icon={<LuTablet />}
@@ -53,6 +57,8 @@ function PreviewModal({ projectData, storeDetails, previewModalOpen, setPreviewM
                     </Tooltip>
                     <Tooltip title="Mobile View">
                         <Button
+                            aria-label="Mobile view"
+                            aria-pressed={activeDeviceType === DEVICE_TYPES_LIST.MOBILE}
                             type={activeDeviceType === DEVICE_TYPES_LIST.MOBILE ? 'primary' : 'default'}
                             onClick={() => setActiveDeviceType(DEVICE_TYPES_LIST.MOBILE)}
                             icon={<LuRectangleVertical />}

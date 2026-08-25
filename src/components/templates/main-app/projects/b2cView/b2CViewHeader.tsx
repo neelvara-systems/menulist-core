@@ -40,6 +40,8 @@ export default function B2CViewHeader({ activeDeviceType, setActiveDeviceType }:
                 }}>
                 <Tooltip title="Desktop View">
                     <Button
+                        aria-label="Desktop view"
+                        aria-pressed={activeDeviceType === DEVICE_TYPES_LIST.DESKTOP}
                         type={activeDeviceType === DEVICE_TYPES_LIST.DESKTOP ? 'primary' : 'default'}
                         onClick={() => setActiveDeviceType(DEVICE_TYPES_LIST.DESKTOP)}
                         icon={<LuMonitor />}
@@ -48,6 +50,8 @@ export default function B2CViewHeader({ activeDeviceType, setActiveDeviceType }:
                 </Tooltip>
                 <Tooltip title="Tablet View">
                     <Button
+                        aria-label="Tablet view"
+                        aria-pressed={activeDeviceType === DEVICE_TYPES_LIST.TABLET}
                         type={activeDeviceType === DEVICE_TYPES_LIST.TABLET ? 'primary' : 'default'}
                         onClick={() => setActiveDeviceType(DEVICE_TYPES_LIST.TABLET)}
                         icon={<LuTablet />}
@@ -56,6 +60,8 @@ export default function B2CViewHeader({ activeDeviceType, setActiveDeviceType }:
                 </Tooltip>
                 <Tooltip title="Mobile View">
                     <Button
+                        aria-label="Mobile view"
+                        aria-pressed={activeDeviceType === DEVICE_TYPES_LIST.MOBILE}
                         type={activeDeviceType === DEVICE_TYPES_LIST.MOBILE ? 'primary' : 'default'}
                         onClick={() => setActiveDeviceType(DEVICE_TYPES_LIST.MOBILE)}
                         icon={<LuRectangleVertical />}
