@@ -1,5 +1,14 @@
 # MenuList — Changelog
 
+## August 25, 2026 - Help Centre Keyboard Navigation
+
+- Made all six primary Help Centre navigation cards keyboard reachable with
+  button semantics, pressed-state exposure, and Enter/Space activation while
+  preserving their existing touch/click behavior and visual design.
+- Added source regression coverage plus implementation, mobile-support, and
+  test-case documentation. This changes no Help data, Answerlattice contract,
+  Firebase operation, provider behavior, route, entitlement, or product scope.
+
 ## August 25, 2026 - Batch Worker Admission Before Firebase Cost
 
 - Moved the internal batch-image worker's project-header and timing-safe secret

@@ -41,6 +41,7 @@ function verifySearchBoundary() {
   const messageBubble = read('src/components/templates/main-app/helpChat/MessageBubble.tsx');
   const heroSearchBar = read('src/components/templates/main-app/helpCenter/HeroSearchBar.tsx');
   const helpCenter = read('src/components/templates/main-app/helpCenter/index.tsx');
+  const mainSectionTabs = read('src/components/templates/main-app/helpCenter/MainSectionTabs.tsx');
   const tabsConfig = read('src/components/templates/main-app/helpCenter/tabsConfig.tsx');
   const chatInput = read('src/components/templates/main-app/helpChat/ChatInput.tsx');
   const chatPanel = read('src/components/templates/main-app/helpChat/ChatPanel.tsx');
@@ -141,6 +142,11 @@ function verifySearchBoundary() {
   assertNotIncludes(heroSearchBar, "contact: 'contact_support'", 'Help Center stale contact workflow key');
   assertIncludes(heroSearchBar, 't(currentTab.titleKey as any)', 'Help Center translated breadcrumb title');
   assertIncludes(helpCenter, 't((activeTab?.titleKey ?? DEFAULT_HOME_TAB.titleKey) as any)', 'Help Center translated tab title');
+  assertIncludes(mainSectionTabs, 'aria-pressed={activeKey === item.key}', 'Help Center primary cards expose selected state');
+  assertIncludes(mainSectionTabs, 'role="button"', 'Help Center primary cards expose button semantics');
+  assertIncludes(mainSectionTabs, 'tabIndex={0}', 'Help Center primary cards are keyboard reachable');
+  assertIncludes(mainSectionTabs, "event.key !== 'Enter' && event.key !== ' '", 'Help Center primary cards support Enter and Space');
+  assertIncludes(mainSectionTabs, 'event.preventDefault();', 'Help Center primary card Space activation prevents page scroll');
   assertNotIncludes(tabsConfig, 'description:', 'Help Center dead hardcoded tab description metadata');
   assertNotIncludes(tabsConfig, 'title:', 'Help Center dead hardcoded tab title metadata');
   assertIncludes(helpChatDrafts, 'resolveAnswerlatticeHelpChatDraftScope', 'Help Chat workspace/user draft scope');

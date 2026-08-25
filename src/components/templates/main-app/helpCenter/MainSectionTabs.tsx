@@ -18,7 +18,16 @@ function MainSectionTabs({ activeKey, onSelect }: MainSectionTabsProps) {
                 <Card
                     key={item.key}
                     hoverable
+                    aria-pressed={activeKey === item.key}
                     onClick={() => onSelect(item.key)}
+                    onKeyDown={(event) => {
+                        if (event.key !== 'Enter' && event.key !== ' ') return;
+
+                        event.preventDefault();
+                        onSelect(item.key);
+                    }}
+                    role="button"
+                    tabIndex={0}
                     style={{
                         flex: '1 1 150px',
                         maxWidth: 180,

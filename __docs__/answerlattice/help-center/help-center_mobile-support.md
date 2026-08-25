@@ -40,6 +40,7 @@ Mobile does not load a separate MenuList support database. `getActiveSession()` 
 
 - iOS Safari/PWA and Android Chrome/PWA direct and in-shell routes;
 - keyboard, screen-reader and 44 px target checks;
+- primary Help Centre navigation cards expose button/pressed semantics and activate with Enter or Space as well as touch;
 - screenshot/file selection and upload for each supported type;
 - slow/offline search and ticket fallback;
 - authenticated Answerlattice claim/Firebase Auth sync;

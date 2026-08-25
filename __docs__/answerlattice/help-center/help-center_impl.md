@@ -82,7 +82,7 @@ Both the Help Center route and Widget route are **thin auth wrappers** that call
 | `index.tsx`                  | 58    | Main Help Center container with tab routing                                           |
 | `tabsConfig.tsx`             | 88    | Tab definitions: KB, Tickets, Feedback, FAQ, Contact, Changelog. Governance tabs are intentionally excluded. |
 | `HeroSearchBar.tsx`          | —     | Search bar connecting to AI chat + tab navigation                                     |
-| `MainSectionTabs.tsx`        | —     | Tab grid navigation cards                                                             |
+| `MainSectionTabs.tsx`        | —     | Tab grid navigation cards with button semantics, keyboard reachability, Enter/Space activation and pressed-state exposure |
 | `ChangelogView.tsx`          | —     | Changelog viewer (reads from DAL)                                                     |
 | `ContactUsView.tsx`          | —     | Escalation chooser: ticket, assistant, feedback, support email, partnership email      |
 | `FaqView.tsx`                | —     | Published Answerlattice FAQ display with article links and feedback; static copy only when management is disabled, visible recovery on load failure |

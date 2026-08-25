@@ -46,6 +46,7 @@ The gate composes source assertions, runtime-contract tests and the ticket attac
 | Attachments | File exceeds count, size, type or trusted path | Admission/opening fails before exposing or uploading unsafe data |
 | Mobile | Direct Help Center article/changelog route opens on phone | MobileShell sub-screen retains tab and resource ID |
 | Mobile recovery | Unpaid or payment-pending owner opens Help home, Knowledge Base, Tickets, or Changelog on phone | Help content renders inside MobileShell; the subscription card does not replace the recovery surface |
+| Primary Help navigation keyboard contract | Owner tabs to Knowledge Base, Tickets, Feedback, FAQ, Contact, and What's New cards | Every card is reachable, exposes button and pressed state, and activates through Enter or Space without scrolling the page |
 | Auth scope | MenuList owner with a valid Answerlattice product account opens `/help-center`, then returns to a MenuList route | Help Center triggers dedicated Answerlattice Firebase Auth sync; returning restores MenuList claims; store/bootstrap data remains MenuList-scoped throughout |
 | Mobile | Customer uses back action | Returns to `/dashboard#mobile/more` |
 | Localization | Non-English locale opens tabs, breadcrumb, feedback summary and mobile header | Maintained locale keys render; no fixed English labels from the audited paths |

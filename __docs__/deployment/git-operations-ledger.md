@@ -3431,3 +3431,47 @@ Those fields are explicitly `unknown` instead of guessed.
 - Hosted evidence: exact runtime-bearing parent `6cae3112ef01c9155f3d472e1656415accb63b38` passed `/api/version`, the full hosted anonymous boundary, the direct 403 worker timing probe, and the authenticated 320x568 pending-owner gate-to-Billing recovery. The evidence-only descendant does not change runtime behavior.
 - Final filesystem state: only this result append is modified; it will be committed and pushed to `staging` for ledger completeness.
 - Attribution confidence: exact.
+
+### GIT-20260825-211840-mlrc048-help-keyboard
+
+- Timestamp: `2026-08-25T21:18:40+05:30`
+- Record type: `PLANNED`
+- Actor/session/thread ID: Codex `/root`; thread `01a034e1-c70a-74b1-a92b-0a103a981815`.
+- Registered worktrees: one primary worktree at `/Users/danny/Projects/MenuListAi/menulist-core`, branch `staging`, HEAD `90ebc61c2079d29e0e63e5acc4eb19e05cdf560c`.
+- Authorization: Danny instructed Codex to continue exhaustive MenuList QA certification, fix confirmed in-scope defects, and keep current work on QA/staging. This operation publishes MLRC-048 and its regression/docs evidence only. It does not authorize `main`, Firebase deployment, manual Vercel deployment, production release, or live Razorpay execution.
+- Candidate: preserve the six existing Help Centre navigation cards while adding button semantics, focus admission, pressed state, and Enter/Space activation. No Help data, Answerlattice scope, route, Firebase, entitlement, provider, or visual-layout contract changes.
+- Starting filesystem state: zero staged, seven tracked unstaged, zero untracked. Pre-ledger diff SHA-256 `38deba609f1ebc06a9a5010872630f3283347169949727cc67f32e7958432290`.
+- Validation before commit: exact hosted `6cae311…` reproduced the six pointer-only card controls; Help Centre Firebase-bootstrap recovery rendered and `Try again` restored the complete MobileShell without session loss; `verify:help-center-boundary` PASS including runtime and attachment suites; focused ESLint PASS; strict TypeScript PASS; `git diff --check` PASS.
+
+- Branch matrix before:
+
+  | Branch | Local full SHA | Direct server ref/full SHA | Tracking ref | Ahead/behind | Worktree | Staged/unstaged/untracked | Status |
+  | --- | --- | --- | --- | --- | --- | --- | --- |
+  | `main` | `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `refs/heads/main` / `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `origin/main` | `0/0` | not checked out | `N/A` | `IN_SYNC` |
+  | `staging` | `90ebc61c2079d29e0e63e5acc4eb19e05cdf560c` | `refs/heads/staging` / `90ebc61c2079d29e0e63e5acc4eb19e05cdf560c` | `origin/staging` | `0/0` | primary worktree | `0/7/0` before this append | `IN_SYNC` |
+
+- Firebase matrix before/after (no infrastructure source changed):
+
+  | Product | Environment/project | Component | Local hash/bytes or tree | Local validation | Server evidence/readback | Delta | Deployment state |
+  | --- | --- | --- | --- | --- | --- | --- | --- |
+  | MenuList | QA / `menulist-qa` | Firestore Rules | `2059459e3b0263bdeca75f89ad0b490e8cebf1dee19cdef9012e0c02fbab5b89` / 132684 bytes | fresh 42-suite predeploy PASS | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | QA / `menulist-qa` | Firestore indexes | `5629ae4d5004bc59c82528f2e7f9b7e5bb1ffbf74e0fc2e2e5e5252abf0744e0` / 78310 bytes | aggregate PASS | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | QA / `menulist-qa` | Storage Rules | `226d2a206d7de8a442bf356a61ad048118322acb993eb89fa45744ed78ed1838` / 18176 bytes | emulator suites PASS | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | QA / `menulist-qa` | Cloud Functions | tree `3c42f5d3fca47ca69e10fa34ad63cf8c28ab8f75` | build/preflight PASS | not refreshed | `INFRA_CHANGE` | `DEPLOY_REQUIRED` |
+  | MenuList | production / `menulist-prod` | Firestore Rules | same source/hash | same PASS | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | production / `menulist-prod` | Firestore indexes | same source/hash | same PASS | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | production / `menulist-prod` | Storage Rules | same source/hash | same PASS | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | production / `menulist-prod` | Cloud Functions | same source/tree | same PASS | not refreshed | `INFRA_CHANGE` | `DEPLOY_REQUIRED` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Firestore Rules | `a92cbacbf2b64d2939391449044ea5625e706ddb60e23dfab7c4ffb20d3a9e77` / 116222 bytes | shared-boundary PASS | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Firestore indexes | `0114bdf8ea6425b890a8e58fa03dac7915a7d3ed4372bc689ab59a8ce585ff4a` / 50941 bytes | aggregate PASS | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Storage Rules | `5fc8f980f289889da557ac69c91edd61f8e8646b066c9b0101b87141d67106cc` / 6948 bytes | shared-boundary PASS | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Cloud Functions | tree `ae5750c6e78f96a9ecfa234b64f906e04a2fdc16` | no candidate path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Firestore Rules | same source/hash | same boundary PASS | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Firestore indexes | same source/hash | same PASS | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Storage Rules | same source/hash | same boundary PASS | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Cloud Functions | same source/tree | no candidate path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+
+- Firebase deployment evidence or blocker: no infrastructure source changed. MenuList QA/production Functions retain MLRC-031 `INFRA_CHANGE` / `DEPLOY_REQUIRED`. No Firebase deploy or authenticated server readback is authorized.
+- Git server readback and divergence: direct pre-operation `git ls-remote` proves local/server `main` and `staging` exact with `0/0` divergence. Post-operation evidence is pending.
+- Final filesystem state: pending scoped commit, non-force `staging` push, automatic QA build, exact `/api/version`, and hosted keyboard retest.
+- Attribution confidence: exact.
