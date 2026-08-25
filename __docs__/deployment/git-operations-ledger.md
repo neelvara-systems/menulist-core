@@ -4101,3 +4101,38 @@ No Firebase source/configuration changes. Firestore Rules, indexes, Storage Rule
 - Intended paths: `__docs__/audits/MENULIST_RC_CERTIFICATION.md` and this ledger.
 - Final state pending: documentation validation, scoped commit, non-force staging push, and direct server readback.
 - Attribution confidence: exact.
+
+#### Evidence-closeout performed result — `2026-08-26T02:07:02+05:30`
+
+- Commit/push: `bba49d1fe447d9954cc4e656cf726d0a1f8b5a1e` (`docs(menulist): close staff credential QA`) was pushed non-force to `origin/staging`.
+- Direct server readback returned exact `refs/heads/staging` SHA `bba49d1fe447d9954cc4e656cf726d0a1f8b5a1e` with `0/0` divergence; `refs/heads/main` remained untouched at `fe625d5bbf527c1b7e537b00ab32a4f655905c35`.
+- Validation: documentation links completed with zero broken links and the existing warning-only naming inventory; documentation npm-script verification and `git diff --check` passed.
+- Decision: MLRC-057 and MLRC-058 are closed. Overall MenuList status remains `CERTIFICATION BLOCKED`; the evidence commit does not claim QA or production certification.
+- Firebase/deployment boundary: no Firebase deployment, manual Vercel deployment, production mutation, `main` movement, or live Razorpay execution occurred.
+
+### GIT-20260826-021002-mlrc059-today-guide-close-control
+
+- Timestamp: `2026-08-26T02:10:02+05:30`
+- Record type: `PLANNED`
+- Actor/session/thread ID: Codex `/root`; thread `01a034e1-c70a-74b1-a92b-0a103a981815`.
+- Registered worktrees: one primary worktree at `/Users/danny/Projects/MenuListAi/menulist-core`, branch `staging`, HEAD `bba49d1fe447d9954cc4e656cf726d0a1f8b5a1e`.
+- Authorization: autonomous MenuList QA certification, in-scope fixes, regression coverage, and stable staging publication. This operation is `staging` only; it excludes `main`, Firebase infrastructure deployment, manual Vercel deployment, production mutation, and live Razorpay execution.
+- Hosted reproduction: Today → What is this? opened a 70%-height drawer that rendered no visible or meaningfully named close action. Dismissal depended on clicking outside or knowing the Escape shortcut. The adjacent desktop Past activity guide repeated the same hidden-dismissal pattern in each state branch.
+- Correction: retain the existing mask/Escape dismissal and add a visible, named, 44px `Close` action using the approved Lucide close icon to both Today and every Past activity guide state. No campaign, analytics, Firestore, cache, or navigation behavior changes.
+- Starting filesystem state: zero staged, four tracked unstaged, zero untracked before this append. Complete pre-ledger diff Git hash `c15e5dce2afbe4f715e1f0c0ee138939531c1f2f`; status `0/4/0`. The existing ledger-only evidence-closeout result retains its independent documentation attribution.
+- Validation before commit: Owner Dashboard/Today boundary verifier PASS; focused zero-warning ESLint PASS; strict TypeScript PASS; `git diff --check` PASS.
+
+#### Pre-operation branch matrix
+
+| Branch | Local SHA | Direct server SHA | Tracking ref | Ahead/behind | Worktree | Filesystem | Status |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `staging` | `bba49d1fe447d9954cc4e656cf726d0a1f8b5a1e` | `refs/heads/staging` / `bba49d1fe447d9954cc4e656cf726d0a1f8b5a1e` | `origin/staging` | `0/0` | primary | `0/4/0` before ledger append | `IN_SYNC` |
+| `main` | `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `refs/heads/main` / `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `origin/main` | `0/0` | none | n/a | `IN_SYNC` |
+
+#### Firebase component matrix before Git mutation
+
+No Firebase source/configuration changes. Firestore Rules, indexes, Storage Rules, and Cloud Functions for MenuList QA `menulist-qa`, MenuList production `menulist-prod`, Answerlattice QA `neelvara-answerlattice-qa`, and Answerlattice production `neelvara-answerlattice-prod` each remain independently `NO_INFRA_CHANGE` / `SERVER_STATE_UNKNOWN`; no authenticated readback or deployment is performed.
+
+- Intended paths: Today and Past activity desktop components, Owner Dashboard/Today boundary verifier, and this ledger.
+- Final state pending: scoped commit, non-force staging push, direct server readback, automatic QA deployment, exact version readback, and hosted keyboard/visible-close retest.
+- Attribution confidence: exact.

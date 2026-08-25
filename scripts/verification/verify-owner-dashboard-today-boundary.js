@@ -48,6 +48,7 @@ const dashboardRoute = read('src/app/(main)/dashboard/page.tsx');
 const todayRoute = read('src/app/(main)/today/page.tsx');
 const todayHistoryRoute = read('src/app/(main)/today/history/page.tsx');
 const desktopToday = read('src/components/templates/main-app/today/index.tsx');
+const desktopPastActivity = read('src/components/templates/main-app/today/PastActivity/index.tsx');
 const campaignActions = read('src/components/templates/main-app/today/hooks/useCampaignActions.ts');
 const ownerDashboard = read('src/components/templates/main-app/dashboard/OwnerDashboard/index.tsx');
 const ownerDashboardHook = read('src/hooks/useOwnerDashboard.ts');
@@ -310,6 +311,14 @@ requireOrder(
   'OwnerActionPlanCard',
   'StaffPromptSection staffPrompt={staffPrompt}',
 ].forEach((token) => requireToken(desktopToday, token, 'desktop Today screen'));
+[
+  'aria-label="Close Today guide"',
+  'style={{ minHeight: 44 }}',
+  'onClick={() => setIsGuideOpen(false)}',
+].forEach((token) => requireToken(desktopToday, token, 'desktop Today guide close control'));
+requireToken(desktopPastActivity, 'aria-label="Close Past activity guide"', 'desktop Past activity guide close control');
+requireToken(desktopPastActivity, 'style={{ minHeight: 44 }}', 'desktop Past activity guide close target');
+forbidToken(desktopToday, 'closeIcon={<span', 'desktop Today guide non-Lucide close icon');
 forbidToken(desktopToday, 'if (result?.today)', 'desktop Today optional success acknowledgement');
 
 [

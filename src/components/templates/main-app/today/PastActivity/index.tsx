@@ -205,6 +205,17 @@ const PastActivityScreen = () => {
                     placement="bottom"
                     title={PAST_ACTIVITY_GUIDE_TITLE}
                     height="65vh"
+                    extra={(
+                        <Button
+                            aria-label="Close Past activity guide"
+                            icon={<LuX />}
+                            onClick={() => setIsGuideOpen(false)}
+                            style={{ minHeight: 44 }}
+                            type="text"
+                        >
+                            Close
+                        </Button>
+                    )}
                 >
                     <div className={styles.guideContent}>
                         {PAST_ACTIVITY_GUIDE_SECTIONS.map((section) => (
@@ -254,6 +265,17 @@ const PastActivityScreen = () => {
                     placement="bottom"
                     title={PAST_ACTIVITY_GUIDE_TITLE}
                     height="65vh"
+                    extra={(
+                        <Button
+                            aria-label="Close Past activity guide"
+                            icon={<LuX />}
+                            onClick={() => setIsGuideOpen(false)}
+                            style={{ minHeight: 44 }}
+                            type="text"
+                        >
+                            Close
+                        </Button>
+                    )}
                 >
                     <div className={styles.guideContent}>
                         {PAST_ACTIVITY_GUIDE_SECTIONS.map((section) => (
@@ -319,6 +341,17 @@ const PastActivityScreen = () => {
                 placement="bottom"
                 title={PAST_ACTIVITY_GUIDE_TITLE}
                 height="65vh"
+                extra={(
+                    <Button
+                        aria-label="Close Past activity guide"
+                        icon={<LuX />}
+                        onClick={() => setIsGuideOpen(false)}
+                        style={{ minHeight: 44 }}
+                        type="text"
+                    >
+                        Close
+                    </Button>
+                )}
             >
                 <div className={styles.guideContent}>
                     {PAST_ACTIVITY_GUIDE_SECTIONS.map((section) => (

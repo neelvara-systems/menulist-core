@@ -20,7 +20,7 @@ import { CampaignType, ExecutionSurface, ExportMethod } from "@type/campaigns";
 import { Button, Card, Divider, Drawer, Spin, Typography, notification } from "antd";
 import { useRouter } from "next/navigation";
 import { useContext, useEffect, useMemo, useState } from "react";
-import { LuCalendarOff, LuInfo } from "react-icons/lu";
+import { LuCalendarOff, LuInfo, LuX } from "react-icons/lu";
 import OBPLinkCard from "../businessSettings/OBPLinkCard";
 import TempStatusCard from "../businessSettings/TempStatusCard";
 import OwnerActionPlanCard from "../dashboard/OwnerDashboard/OwnerActionPlanCard";
@@ -312,6 +312,17 @@ const TodayScreen = () => {
             placement="bottom"
             title={TODAY_FEATURE_GUIDE_TITLE}
             height="70vh"
+            extra={(
+                <Button
+                    aria-label="Close Today guide"
+                    icon={<LuX />}
+                    onClick={() => setIsGuideOpen(false)}
+                    style={{ minHeight: 44 }}
+                    type="text"
+                >
+                    Close
+                </Button>
+            )}
         >
             <div className={styles.guideContent}>
                 {TODAY_FEATURE_GUIDE_SECTIONS.map((section) => (
