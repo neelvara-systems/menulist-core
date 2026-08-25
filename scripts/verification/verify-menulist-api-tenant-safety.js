@@ -4586,6 +4586,7 @@ function verifyAnalyticsErrorBoundary() {
     'src/app/api/image-generation/batch-generation/route.ts',
     [
       'hasValidWorkerSecret(request)',
+      'const { checkSafeMode }',
       'readBoundedJsonBody(request, BATCH_IMAGE_WORKER_MAX_BODY_BYTES',
       'validateAPIInput(BatchImageGenerationWorkerRequestSchema, rawData)',
       'const projectScope = normalizeImageBatchProjectId(requestedProjectId);',
@@ -4594,7 +4595,7 @@ function verifyAnalyticsErrorBoundary() {
       'getImageBatchProcessingJobByIdAdmin',
       'checkAICapacity(',
     ],
-    'batch image worker rate limit before job read and provider work',
+    'batch image worker admission before SAFE_MODE read and rate limit before job/provider work',
   );
   const batchWorkerRoute = read('src/app/api/image-generation/batch-generation/route.ts');
   assert(!batchWorkerRoute.includes('key: `batch-image-worker:${tId'), 'batch image worker must not store raw tenant IDs in limiter keys');

@@ -263,19 +263,6 @@ async function applyBatchImageWorkerRateLimit({
 }
 
 export async function POST(request: Request) {
-    // 🛡️ SAFE_MODE: Block expensive AI operations during system maintenance
-    try {
-        const { checkSafeMode } = await import('@lib/ops/safeMode');
-        const safeModeResponse = await checkSafeMode();
-        if (safeModeResponse) return safeModeResponse;
-    } catch (safeModeError) {
-        logRuntimeFailure('image_batch_worker_safe_mode_check_failed', safeModeError, {
-            endpoint: '/api/image-generation/batch-generation',
-            failOpen: false,
-        });
-        return NextResponse.json({ error: 'Image generation is temporarily unavailable.' }, { status: 503 });
-    }
-
     const expectedProjectId = menulistServerEnv.firebaseProjectId;
     const requestProjectId = request.headers.get('project-id');
     if (!expectedProjectId || requestProjectId !== expectedProjectId || !hasValidWorkerSecret(request)) {
@@ -288,6 +275,19 @@ export async function POST(request: Request) {
         }, 'critical');
 
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    // 🛡️ SAFE_MODE: check only after worker admission so anonymous requests do not bill a config read.
+    try {
+        const { checkSafeMode } = await import('@lib/ops/safeMode');
+        const safeModeResponse = await checkSafeMode();
+        if (safeModeResponse) return safeModeResponse;
+    } catch (safeModeError) {
+        logRuntimeFailure('image_batch_worker_safe_mode_check_failed', safeModeError, {
+            endpoint: '/api/image-generation/batch-generation',
+            failOpen: false,
+        });
+        return NextResponse.json({ error: 'Image generation is temporarily unavailable.' }, { status: 503 });
     }
 
     // Keep already-enqueued Cloud Tasks retryable while the master switch is off.

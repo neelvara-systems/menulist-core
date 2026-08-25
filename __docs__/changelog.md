@@ -1,5 +1,16 @@
 # MenuList — Changelog
 
+## August 25, 2026 - Batch Worker Admission Before Firebase Cost
+
+- Moved the internal batch-image worker's project-header and timing-safe secret
+  admission before its SAFE_MODE Firestore lookup. Anonymous or malformed
+  traffic now receives `403` without a Firebase read, body parse, limiter call,
+  job read, provider call, Storage operation, or write.
+- Added source-order regression coverage and updated the feature implementation
+  and Firebase-cost contracts. Valid Cloud Tasks still check SAFE_MODE before
+  parsing or expensive work; no provider, schema, Rules, index, Function, cache,
+  or owner-facing behavior changed.
+
 ## August 25, 2026 - Answerlattice Scheduler Activity Accuracy
 
 - Proved the normal QA hourly scheduler path with a disposable due-work marker: Cloud Scheduler invoked the function, Gemini returned a valid health response using 7 provider-counted tokens, and the provider-health summary self-restored to the current UTC day.

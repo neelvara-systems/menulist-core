@@ -2,10 +2,18 @@
 
 **Feature:** Menu Image Generation & Editing
 **Status:** Source-gate hardened; target app/Functions deployment, provider smoke, and authenticated owner QA remain pending
-**Last Updated:** July 15, 2026
+**Last Updated:** August 25, 2026
 **Audience:** Developers, Future Maintainers
 
 ---
+
+August 25 worker-admission follow-up: `/api/image-generation/batch-generation`
+now validates the Cloud Tasks project header and timing-safe shared secret
+before the SAFE_MODE helper can read `ops_config/system`. Anonymous or malformed
+worker traffic therefore returns `403` without a Firestore read, rate-limit
+request, body parse, job read, provider call, Storage operation, accounting
+write, or job mutation. Admitted worker behavior is unchanged: SAFE_MODE still
+runs before bounded body parsing and every expensive operation.
 
 July 6 follow-up: Batch image project/job ID boundary. `/api/image-generation/batch-trigger`, `/api/image-generation/batch-generation`, and `src/database/imageBatchProcessing/server.ts` now use `src/lib/ai/imageBatchIdBoundary.ts` before composing `imageBatchProcessingJobs/{tId}/{sId}/{jobId}` refs. Batch project IDs must remain simple Firestore document IDs with exact positive numeric tenant/store scope in the existing first/third segments, and batch job IDs must remain Firestore auto-ID shaped. Malformed, reserved, whitespace-mutated, path-shaped, or nonnumeric batch scope fails before trigger status writes, worker job reads, capacity/accounting work, Storage upload, or job-progress writes. Valid batch trigger, Cloud Tasks worker, prompt-cache, provider, accounting, and owner result flows remain unchanged.
 
@@ -379,6 +387,10 @@ Worker requirements:
 
 - `project-id` header must match `FIREBASE_PROJECT_ID`.
 - `x-menulist-task-secret` must match `BATCH_IMAGE_GENERATION_WORKER_SECRET`.
+- Header and secret admission run before the SAFE_MODE Firestore read, so an
+  unauthorized request incurs zero Firebase operations and returns `403`
+  immediately. Admitted requests still check SAFE_MODE before parsing the body
+  or performing job/provider work.
 - Worker request bodies are capped at 256KB after the secret/header check and before job reads or provider work.
 - Payload is validated with `BatchImageGenerationWorkerRequestSchema`.
 - Batch image worker rate-limit boundary: after secret/header admission, bounded body parsing, worker schema validation, and project/job scope normalization, the worker applies the shared `BATCH_IMAGE_WORKER` limiter with a hashed tenant/store key before reading the batch job, checking capacity, calling the provider, uploading Storage objects, writing AI accounting, or updating job progress. The 600-per-minute per-store ceiling preserves normal Cloud Tasks bursts from valid 50-item batches and retries while bounding retry storms or worker-secret abuse.

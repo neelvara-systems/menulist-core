@@ -153,12 +153,13 @@ function verifyBatchWorkerAdmission() {
     route,
     [
       'hasValidWorkerSecret(request)',
+      'const { checkSafeMode }',
       'readBoundedJsonBody(request, BATCH_IMAGE_WORKER_MAX_BODY_BYTES',
       'validateAPIInput(BatchImageGenerationWorkerRequestSchema, rawData)',
       'getImageBatchProcessingJobByIdAdmin',
       'checkAICapacity(',
     ],
-    'worker secret and bounded validation must run before job/provider work',
+    'worker secret must run before SAFE_MODE and bounded validation must run before job/provider work',
   );
 }
 

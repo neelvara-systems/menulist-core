@@ -2,8 +2,8 @@
 
 > **Feature:** Menu Image Generation & Editing
 > **Status:** Source-gate verified; target deployment, provider smoke, and authenticated owner QA remain release evidence
-> **Last Updated:** July 15, 2026
-> **Version:** 2.8
+> **Last Updated:** August 25, 2026
+> **Version:** 2.9
 
 ---
 
@@ -115,6 +115,7 @@ The flag is enforced by the single, edit, batch-trigger, and authenticated batch
 
 | Version | Date         | Changes                                                                                                                                                       |
 | ------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2.9     | Aug 25, 2026 | Moved batch-worker project/secret admission before SAFE_MODE so unauthorized traffic returns 403 with zero Firebase reads while admitted worker behavior remains unchanged |
 | 2.8     | Jul 15, 2026 | Rotated the daily retention scan across every active store, distributed prompt-cache cleanup hourly with bounded backlog evidence, and capped Cloud Task creation at eight concurrent requests without changing batch results or accounting |
 | 2.7     | Jul 14, 2026 | Enforced the master flag across every provider/UI entry, capped batch selection at 50 before request admission, corrected mobile generation routing, added project-reference-protected orphan cleanup, refreshed mobile/docs/verification truth |
 | 2.6     | Jul 9, 2026  | Removed the deprecated Imagen branch from active generation code, route accounting, verifier expectations, and model documentation                             |
