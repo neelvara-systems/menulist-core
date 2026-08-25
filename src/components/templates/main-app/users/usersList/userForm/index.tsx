@@ -132,7 +132,7 @@ function UserAddUpdateForm({ canAssignRoles = true, modalData, onCloseModal, sta
     const showStaffPasscode = (data: StaffMutationResponse, fallbackUser: StaffFormUser) => {
         if (!data?.temporaryPasscode || !data?.staffLoginId) return;
         const responseUser = data.user || fallbackUser;
-        Modal.info({
+        modal.info({
             okText: "Done",
             title: "Staff login details",
             content: (

@@ -151,7 +151,7 @@ function UsersListPage() {
 
     const showStaffPasscode = (data: StaffMutationResponse) => {
         if (!data?.temporaryPasscode || !data?.staffLoginId) return;
-        Modal.info({
+        modal.info({
             okText: "Done",
             title: "Staff login details",
             content: (

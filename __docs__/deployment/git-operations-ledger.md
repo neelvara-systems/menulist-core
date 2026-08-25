@@ -812,6 +812,40 @@ Those fields are explicitly `unknown` instead of guessed.
   unstaged path change; no pre-existing source or user work was altered.
 - Attribution confidence: exact.
 
+#### MLRC-057/058 context attempt performed result — `2026-08-26T01:49:52+05:30`
+
+- Commit/push: `370645e6d26a1fb90e747c03799500b779d47b33` (`fix(menulist): preserve owner feedback modals`) was pushed non-force to `origin/staging`; direct server readback returned the same SHA and `main` remained `fe625d5bbf527c1b7e537b00ab32a4f655905c35`.
+- Automatic QA deployment: `/api/version` returned exact build `370645e6d26a1fb90e747c03799500b779d47b33`, deployment `menulist-core-83mcecd8s-neelvara-systems.vercel.app`, environment `preview`. No manual Vercel deployment occurred.
+- MLRC-057 exact hosted result: reversible Business Settings writes and clears rendered `Business settings saved`, persisted after owner refresh, and propagated to the tenant public surface. MLRC-057 is closed.
+- MLRC-058 exact hosted result: staff reset still rendered only `Temporary staff passcode created` and no one-time credential dialog. Source review after the repeated failure found that both components instantiated and mounted `Modal.useModal()` but still invoked static `Modal.info`, so the attempted correction was incomplete. MLRC-058 remains open and this result is not represented as passing.
+- Firebase state: no infrastructure source/configuration changed and no deploy/readback occurred; every component retains `NO_INFRA_CHANGE` / `SERVER_STATE_UNKNOWN`.
+
+### GIT-20260826-014952-mlrc058-context-instance-call
+
+- Timestamp: `2026-08-26T01:49:52+05:30`
+- Record type: `PLANNED`
+- Actor/session/thread ID: Codex `/root`; thread `01a034e1-c70a-74b1-a92b-0a103a981815`.
+- Registered worktrees: one primary worktree at `/Users/danny/Projects/MenuListAi/menulist-core`, branch `staging`, HEAD `370645e6d26a1fb90e747c03799500b779d47b33`.
+- Authorization: autonomous MenuList QA certification, in-scope fixes, regression coverage, and stable staging publication. This operation is `staging` only; it excludes `main`, Firebase infrastructure deployment, manual Vercel deployment, production mutation, and live Razorpay execution.
+- Confirmed root cause: both desktop staff credential surfaces created `modal` with `Modal.useModal()` and mounted `modalContextHolder`, but mistakenly called static `Modal.info`. The correction routes each dialog through `modal.info` and strengthens the verifier to require the instance call and reject the static call.
+- Starting filesystem state: zero staged, three tracked unstaged, zero untracked before this ledger append. Scoped pre-ledger diff Git hash `26332bfb0e6e96a973d1ddc0626cb72474f37a77`; status SHA-256 `8307bb4a63235bab674220db2c026e6cb27a489371516789e58ab5f30d1faea2`.
+- Validation before commit: MenuList API tenant-safety verifier PASS; focused zero-warning ESLint PASS; strict TypeScript PASS; `git diff --check` PASS.
+
+#### Pre-operation branch matrix
+
+| Branch | Local SHA | Direct server SHA | Tracking ref | Ahead/behind | Worktree | Filesystem | Status |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `staging` | `370645e6d26a1fb90e747c03799500b779d47b33` | `refs/heads/staging` / `370645e6d26a1fb90e747c03799500b779d47b33` | `origin/staging` | `0/0` | primary | `0/3/0` before ledger append | `IN_SYNC` |
+| `main` | `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `refs/heads/main` / `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `origin/main` | `0/0` | none | n/a | `IN_SYNC` |
+
+#### Firebase component matrix before Git mutation
+
+No Firebase source/configuration changes. Firestore Rules, indexes, Storage Rules, and Cloud Functions for MenuList QA `menulist-qa`, MenuList production `menulist-prod`, Answerlattice QA `neelvara-answerlattice-qa`, and Answerlattice production `neelvara-answerlattice-prod` each remain independently `NO_INFRA_CHANGE` / `SERVER_STATE_UNKNOWN`; no authenticated readback or deployment is performed.
+
+- Intended paths: both desktop staff credential components, the MenuList API tenant-safety verifier, and this ledger.
+- Final state pending: scoped commit, non-force staging push, direct server readback, automatic QA deployment, exact version readback, hosted one-time credential dialog retest, copy controls, restricted staff session checks, force-sign-out, and fixture staff cleanup.
+- Attribution confidence: exact.
+
 ### GIT-20260825-200407-answerlattice-checkout-stage-evidence
 
 - Timestamp: `2026-08-25T20:04:07+05:30`

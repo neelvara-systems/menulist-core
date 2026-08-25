@@ -10809,8 +10809,12 @@ function verifyStaffClientDiagnostics() {
   assert(!staffForm.includes('err.message || "Something went wrong"'), 'staff user form must not expose raw staff mutation error messages');
   assert(staffForm.includes('const [modal, modalContextHolder] = Modal.useModal();'), 'staff creation must use a context-bound one-time credential modal');
   assert(staffForm.includes('{modalContextHolder}'), 'staff creation must render its credential modal context holder');
+  assert(staffForm.includes('modal.info({'), 'staff creation must open the context-bound one-time credential modal');
+  assert(!staffForm.includes('Modal.info({'), 'staff creation must not bypass the context-bound credential modal');
   assert(desktopUsers.includes('const [modal, modalContextHolder] = Modal.useModal();'), 'staff passcode reset must use a context-bound one-time credential modal');
   assert(desktopUsers.includes('{modalContextHolder}'), 'staff passcode reset must render its credential modal context holder');
+  assert(desktopUsers.includes('modal.info({'), 'staff passcode reset must open the context-bound one-time credential modal');
+  assert(!desktopUsers.includes('Modal.info({'), 'staff passcode reset must not bypass the context-bound credential modal');
 
   [
     'desktop_staff_users_load_failed',
