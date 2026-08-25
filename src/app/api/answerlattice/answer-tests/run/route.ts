@@ -119,8 +119,8 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             );
         }
         if (parsed.data.mode === 'full_runtime') {
-            const { checkSafeMode } = await import('@lib/ops/safeMode');
-            const safeModeResponse = await checkSafeMode();
+            const { checkAnswerlatticeSafeMode } = await import('@lib/answerlattice/safeMode');
+            const safeModeResponse = await checkAnswerlatticeSafeMode();
             if (safeModeResponse) return withPrivateHeaders(safeModeResponse);
         }
 

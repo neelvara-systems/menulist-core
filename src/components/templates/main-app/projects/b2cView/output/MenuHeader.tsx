@@ -70,7 +70,7 @@ function MenuHeader({
                 >
                     <LiveIndicator
                         activeLanguage={activeLanguage}
-                        modifiedOn={(projectData as any)?.modifiedOn}
+                        modifiedOn={projectData?.lastPublishedAt}
                         label={isBottomPlacement ? t('menu.published') : t('menu.live')}
                         style={{
                             maxWidth: '100%',

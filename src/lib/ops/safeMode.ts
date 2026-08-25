@@ -20,6 +20,21 @@ import { DB_COLLECTIONS } from '@constant/database';
 import { logOpsFailure } from '@lib/ops/opsDiagnostics';
 import { NextResponse } from 'next/server';
 
+type SafeModeFirestore = {
+  collection(name: string): {
+    doc(id: string): {
+      get(): Promise<{
+        exists: boolean;
+        data(): Record<string, unknown> | undefined;
+      }>;
+    };
+  };
+};
+
+type CheckSafeModeOptions = {
+  getFirestore?: () => SafeModeFirestore;
+};
+
 /**
  * Check if SAFE_MODE is active. Call at the top of expensive API routes.
  * 
@@ -31,13 +46,17 @@ import { NextResponse } from 'next/server';
  * if (safeModeResponse) return safeModeResponse;
  * ```
  */
-export async function checkSafeMode(): Promise<NextResponse | null> {
+export async function checkSafeMode(options: CheckSafeModeOptions = {}): Promise<NextResponse | null> {
   if (!FEATURE_FLAGS.ENABLE_COST_PROTECTION) return null;
 
   try {
-    // Dynamic import to avoid bundling firebase-admin on client
-    const { getFirestore } = await import('firebase-admin/firestore');
-    const db = getFirestore();
+    const db = options.getFirestore
+      ? options.getFirestore()
+      : await (async () => {
+        // Dynamic import to avoid bundling firebase-admin on client.
+        const { getFirestore } = await import('firebase-admin/firestore');
+        return getFirestore();
+      })();
 
     const doc = await db.collection(DB_COLLECTIONS.OPS_CONFIG).doc('system').get();
     if (!doc.exists) return null;

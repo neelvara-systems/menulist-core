@@ -618,6 +618,12 @@ function verifyTimedCategoriesUseStoreTruth() {
   assert(isWithinTimeSlot([{ startTime: '12:00' }], 'UTC', noonUtc) === false, 'Partial timed category slots must not crash or render visible');
 }
 
+function verifyPublicMenuPublicationIndicatorUsesPublishedTruth() {
+  const menuHeader = read('src/components/templates/main-app/projects/b2cView/output/MenuHeader.tsx');
+  assertIncludes(menuHeader, 'modifiedOn={projectData?.lastPublishedAt}', 'Public menu live/published indicator requires an actual publish timestamp');
+  assertNotIncludes(menuHeader, 'modifiedOn={(projectData as any)?.modifiedOn}', 'Public menu live/published indicator must not treat draft modification as publication');
+}
+
 function verifyDomainOwnershipComparisonIsTypeSafe() {
   const route = read('src/app/api/domain/route.ts');
   const claim = read('src/lib/routing/customDomainClaim.ts');
@@ -6510,6 +6516,7 @@ verifyProjectLifecycleMutationsRequireAcknowledgement();
 verifyPublicCreateMenuRoutePrivacy();
 verifyHoursDoNotInventOpenState();
 verifyTimedCategoriesUseStoreTruth();
+verifyPublicMenuPublicationIndicatorUsesPublishedTruth();
 verifyDomainOwnershipComparisonIsTypeSafe();
 verifyVercelDomainPathSegmentsAreEncoded();
 verifyCustomDomainDocsMatchVerificationBoundary();

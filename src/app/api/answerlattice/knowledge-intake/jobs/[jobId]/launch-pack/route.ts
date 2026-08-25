@@ -77,8 +77,8 @@ export const POST = withAuth(async (request: NextRequest, session, params: { job
                 { status: 400 },
             );
         }
-        const { checkSafeMode } = await import('@lib/ops/safeMode');
-        const safeModeResponse = await checkSafeMode();
+        const { checkAnswerlatticeSafeMode } = await import('@lib/answerlattice/safeMode');
+        const safeModeResponse = await checkAnswerlatticeSafeMode();
         if (safeModeResponse) {
             return withAnswerlatticeKnowledgeIntakePrivateHeaders(safeModeResponse);
         }

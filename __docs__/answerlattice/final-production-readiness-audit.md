@@ -482,3 +482,18 @@ webhook, refund, revenue, or production-entitlement evidence.
   an unknown source. Procedure authoring remains in the owner review flow.
   Stage-specific bounded error codes distinguish provider, response, and
   settlement failure without logging prompts or owner content.
+- Exact hosted build `48330d97d007fab12e45dfdd8fc7acb9f61c38d8`
+  then completed the product-specific First 10 path. It replaced the generic
+  starter set with ten source-backed MenuList questions, persisted ten
+  `Needs review` drafts, retained owner approval as mandatory, consumed exactly
+  one support credit (`148` to `147`), and returned the unchanged-source cached
+  pack on repeated requests with `Saved pack reused` while the balance remained
+  `147/150`. Vercel recorded HTTP 200 for the generation and cached requests.
+- The successful request also exposed a separate product-project boundary gap:
+  shared SAFE_MODE reads used the default MenuList Admin app and failed open in
+  Answerlattice with `firestore/invalid-credential`. All eight Answerlattice AI
+  routes now reuse the shared policy through an Answerlattice-scoped wrapper
+  backed by `requireAnswerlatticeFirestoreAdmin`. The Firebase project-boundary
+  regression enumerates every route and rejects any future default SAFE_MODE
+  import. This adds no reads: each protected provider call still performs the
+  same single SAFE_MODE document read, now against the correct project.

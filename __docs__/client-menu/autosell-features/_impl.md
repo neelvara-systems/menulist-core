@@ -45,7 +45,7 @@ src/types/
 // src/components/.../LiveIndicator.tsx
 
 interface LiveIndicatorProps {
-  modifiedOn: Timestamp | Date | string;
+  modifiedOn: Timestamp | Date | string; // receives project.lastPublishedAt
 }
 
 export function LiveIndicator({ modifiedOn }: LiveIndicatorProps) {
@@ -76,8 +76,11 @@ export function LiveIndicator({ modifiedOn }: LiveIndicatorProps) {
 
 ```typescript
 // In menuPageNew.tsx or MenuPageHeader.tsx
-<LiveIndicator modifiedOn={projectData.modifiedOn} />
+<LiveIndicator modifiedOn={projectData.lastPublishedAt} />
 ```
+
+Do not pass generic `modifiedOn`: a created or edited draft is not evidence
+that MenuList has published customer-facing truth.
 
 ### Styling
 

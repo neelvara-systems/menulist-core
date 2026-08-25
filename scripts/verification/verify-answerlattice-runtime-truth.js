@@ -4184,7 +4184,7 @@ function verifyProtectedAiRequestAdmission() {
     entityExtraction,
     [
       'const scope = resolveAnswerlatticeSessionScope(session)',
-      'const safeModeResponse = await checkSafeMode()',
+      'const safeModeResponse = await checkAnswerlatticeSafeMode()',
       'const rateLimit = await checkRateLimit({',
       'requireAnswerlatticePermission(request, session, ANSWERLATTICE_PERMISSION_KEYS.MANAGE_KNOWLEDGE)',
       'readBoundedJsonBody(request, ARTICLE_ENTITY_EXTRACTION_MAX_BODY_BYTES',
@@ -4265,7 +4265,7 @@ function verifyProtectedAiRequestAdmission() {
     faqGeneration,
     [
       'const sessionScope = resolveAnswerlatticeSessionScope(session)',
-      'const safeModeResponse = await checkSafeMode()',
+      'const safeModeResponse = await checkAnswerlatticeSafeMode()',
       'const rateLimitResult = await checkRateLimit({',
       'requireAnswerlatticePermission(request, session, ANSWERLATTICE_PERMISSION_KEYS.MANAGE_KNOWLEDGE)',
       'readBoundedJsonBody(request, GENERATE_FAQ_FROM_ARTICLE_MAX_BODY_BYTES',
@@ -4327,7 +4327,7 @@ function verifyProtectedAiRequestAdmission() {
     draftRegeneration,
     [
       'const scope = resolveAnswerlatticeSessionScope(session)',
-      'const safeModeResponse = await checkSafeMode()',
+      'const safeModeResponse = await checkAnswerlatticeSafeMode()',
       'const rateLimit = await checkRateLimit({',
       'requireAnswerlatticePermission(request, session, ANSWERLATTICE_PERMISSION_KEYS.MANAGE_GOVERNANCE)',
       'readBoundedJsonBody(request, DRAFT_REGENERATE_MAX_BODY_BYTES',
@@ -4463,7 +4463,7 @@ function verifyProtectedAiRequestAdmission() {
     translation,
     [
       'const sessionScope = resolveAnswerlatticeSessionScope(session)',
-      'const safeModeResponse = await checkSafeMode()',
+      'const safeModeResponse = await checkAnswerlatticeSafeMode()',
       'const rateLimitResult = await checkRateLimit({',
       'requireAnswerlatticePermission(request, session, ANSWERLATTICE_PERMISSION_KEYS.MANAGE_KNOWLEDGE)',
       'readBoundedJsonBody(request, TRANSLATE_ARTICLE_MAX_BODY_BYTES',
@@ -4517,7 +4517,7 @@ function verifyProtectedAiRequestAdmission() {
   assertOrder(
     articleEmbedding,
     [
-      'const safeModeResponse = await checkSafeMode()',
+      'const safeModeResponse = await checkAnswerlatticeSafeMode()',
       'const rateLimitResponse = await checkAIOperationLimit()',
       'const actorId = resolveCurrentSessionUserDocumentId(session)',
       'const permission = await requireAnswerlatticePermission(',
@@ -9638,8 +9638,8 @@ function verifyAnswerlatticeAnswerTestsRuntime() {
       handler,
       [
         "parsed.data.mode === 'full_runtime'",
-        "const { checkSafeMode } = await import('@lib/ops/safeMode');",
-        'const safeModeResponse = await checkSafeMode();',
+        "const { checkAnswerlatticeSafeMode } = await import('@lib/answerlattice/safeMode');",
+        'const safeModeResponse = await checkAnswerlatticeSafeMode();',
         index === 0 ? 'loadAnswerlatticeAnswerTestSummary(scope)' : 'loadAnswerlatticeAnswerTestSummary(scope)',
         'runAnswerlatticeAnswerTests({',
       ],
@@ -9704,8 +9704,8 @@ function verifyAnswerlatticeAnswerTestsRuntime() {
     launchPackRoute,
     [
       'AnswerlatticeProductStarterPackRequestSchema.safeParse(bodyResult.data)',
-      "const { checkSafeMode } = await import('@lib/ops/safeMode');",
-      'const safeModeResponse = await checkSafeMode();',
+      "const { checkAnswerlatticeSafeMode } = await import('@lib/answerlattice/safeMode');",
+      'const safeModeResponse = await checkAnswerlatticeSafeMode();',
       'generateAnswerlatticeProductStarterPack(',
     ],
     'First Trusted Answers SAFE_MODE before provider work',

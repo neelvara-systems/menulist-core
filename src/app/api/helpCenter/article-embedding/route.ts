@@ -51,8 +51,8 @@ const ArticleEmbeddingRequestSchema = z.object({
 export const POST = withAuth(async (request: NextRequest, session) => {
     let operationScope: { tId: number; sId: number } | null = null;
     try {
-        const { checkSafeMode } = await import('@lib/ops/safeMode');
-        const safeModeResponse = await checkSafeMode();
+        const { checkAnswerlatticeSafeMode } = await import('@lib/answerlattice/safeMode');
+        const safeModeResponse = await checkAnswerlatticeSafeMode();
         if (safeModeResponse) return withArticleEmbeddingPrivateHeaders(safeModeResponse);
 
         const rateLimitResponse = await checkAIOperationLimit();

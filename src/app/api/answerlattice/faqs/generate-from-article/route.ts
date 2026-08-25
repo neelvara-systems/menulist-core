@@ -215,8 +215,8 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         const tenantId = sessionScope.tenantId;
         const storeId = sessionScope.storeId;
 
-        const { checkSafeMode } = await import('@lib/ops/safeMode');
-        const safeModeResponse = await checkSafeMode();
+        const { checkAnswerlatticeSafeMode } = await import('@lib/answerlattice/safeMode');
+        const safeModeResponse = await checkAnswerlatticeSafeMode();
         if (safeModeResponse) return withPrivateHeaders(safeModeResponse);
 
         const rateLimitResult = await checkRateLimit({

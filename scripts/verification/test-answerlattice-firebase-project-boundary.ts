@@ -85,6 +85,31 @@ assert(adminSource.includes('answerlatticeFirebaseBoundary.expectedProjectId'));
 assert(adminSource.includes('isAnswerlatticeEmulatorProjectId'));
 assert(adminSource.includes('FIRESTORE_EMULATOR_HOST'));
 
+const answerlatticeSafeModeSource = fs.readFileSync(path.join(root, 'src/lib/answerlattice/safeMode.ts'), 'utf8');
+assert(answerlatticeSafeModeSource.includes('requireAnswerlatticeFirestoreAdmin'));
+assert(answerlatticeSafeModeSource.includes('checkSafeMode({'));
+const answerlatticeSafeModeRoutes = [
+    'src/app/api/answerlattice/answer-tests/release-check/route.ts',
+    'src/app/api/answerlattice/answer-tests/run/route.ts',
+    'src/app/api/answerlattice/articles/extract-entities/route.ts',
+    'src/app/api/answerlattice/faqs/generate-from-article/route.ts',
+    'src/app/api/answerlattice/knowledge-intake/jobs/[jobId]/launch-pack/route.ts',
+    'src/app/api/answerlattice/mutation-proposals/regenerate-draft/route.ts',
+    'src/app/api/answerlattice/translate/route.ts',
+    'src/app/api/helpCenter/article-embedding/route.ts',
+];
+answerlatticeSafeModeRoutes.forEach((relativePath) => {
+    const routeSource = fs.readFileSync(path.join(root, relativePath), 'utf8');
+    assert(
+        routeSource.includes("await import('@lib/answerlattice/safeMode')"),
+        `${relativePath} must use the Answerlattice-scoped SAFE_MODE reader`,
+    );
+    assert(
+        !routeSource.includes("await import('@lib/ops/safeMode')"),
+        `${relativePath} must never use the default MenuList SAFE_MODE reader`,
+    );
+});
+
 const functionsAdminSource = fs.readFileSync(path.join(root, 'functions-answerlattice/src/firebaseAdmin.ts'), 'utf8');
 assert(functionsAdminSource.includes('answerlatticeFunctionsBoundary.valid'));
 assert(functionsAdminSource.includes('answerlattice_functions_admin_env_project_mismatch'));

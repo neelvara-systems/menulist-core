@@ -589,6 +589,10 @@ const RATE_LIMIT = {
 
 **Component:** `LiveIndicator.tsx`
 
+The public `Live` / `Published` indicator is admitted only by
+`project.lastPublishedAt`. Draft creation or editing through `modifiedOn` must
+not claim that an empty or unpublished menu is live.
+
 ```typescript
 // Decay rule for timestamp display
 | Time Since Update | Display |

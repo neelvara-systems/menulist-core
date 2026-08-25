@@ -3884,3 +3884,35 @@ No Firebase source/configuration path is changed by this operation. No authentic
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `staging` | `26869205e88cb37b337b79c20e359d591f6d55e6` | `refs/heads/staging` / `26869205e88cb37b337b79c20e359d591f6d55e6` | `origin/staging` | `0/0` | primary | unrelated concurrent Answerlattice edits only | `IN_SYNC` |
 | `main` | `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `refs/heads/main` / `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `origin/main` | `0/0` | none | n/a | `IN_SYNC` |
+
+#### Result — `2026-08-26T01:04:56+05:30` for `GIT-20260826-004554-answerlattice-first10-provider-compatibility`
+
+- Record type: `PERFORMED_AND_VERIFIED`.
+- Commit `48330d97d007fab12e45dfdd8fc7acb9f61c38d8` (`fix(answerlattice): harden First 10 provider compatibility`) was pushed non-force to `staging`; direct server readback matched exactly with `0/0` divergence. `main` remained untouched at `fe625d5bbf527c1b7e537b00ab32a4f655905c35`.
+- Automatic QA deployment identity: `canonica.app/api/version` returned exact build `48330d97d007fab12e45dfdd8fc7acb9f61c38d8`, verified preview deployment `menulist-core-34taugoav-neelvara-systems.vercel.app`, created `2026-08-25T19:21:15.249Z`.
+- Hosted runtime proof: generated exactly ten source-specific MenuList launch questions and exactly ten `Needs review` Knowledge Intake drafts; generic starter tests were replaced; no draft was approved or published automatically. Billing moved once from `148/150` to `147/150`. Confirmed unchanged-source refresh showed `Saved pack reused`, returned HTTP 200, and retained `147/150`. Vercel logged HTTP 200 for the generation and cache requests.
+- Adjacent finding: successful HTTP 200 rows also contained fail-open `ops_safe_mode_check_failed` evidence with source code `firestore/invalid-credential`. The shared SAFE_MODE reader was using the default MenuList Admin app on Answerlattice provider routes. The next separately recorded operation closes that product-project boundary.
+- Firebase infrastructure remained unchanged; no Firebase deployment/readback, production mutation, `main` movement, manual Vercel deployment, or live Razorpay execution occurred.
+
+### GIT-20260826-010456-answerlattice-safe-mode-project-boundary
+
+- Timestamp: `2026-08-26T01:04:56+05:30`
+- Record type: `PLANNED`
+- Actor/session/thread ID: Codex `/root`; current Answerlattice final hosted-QA continuation.
+- Registered worktrees: one primary worktree at `/Users/danny/Projects/MenuListAi/menulist-core`, branch `staging`, HEAD `28927fac2f80d1b52b119e652dce1391d564f250`. Independently authored MenuList commits `26869205e88cb37b337b79c20e359d591f6d55e6` and `28927fac2f80d1b52b119e652dce1391d564f250` advanced the branch after the First 10 commit and retain their attribution.
+- Authorization: Danny instructed autonomous Answerlattice QA fix/retest and complete stable worktree publication to staging. This operation publishes the Answerlattice SAFE_MODE project-boundary correction plus the independently maintained stable MLRC-055 source/docs/regression snapshot. It does not authorize `main`, Firebase infrastructure deployment, manual Vercel deployment, production mutation, or real Razorpay execution.
+- Root cause and correction: eight Answerlattice provider routes reused shared SAFE_MODE policy through its zero-argument default Firebase accessor, which resolves the MenuList Admin app in the shared Next.js deployment. Use one Answerlattice wrapper backed by `requireAnswerlatticeFirestoreAdmin`, retain the shared feature flag/response/fail-open policy, and enumerate every route in the Firebase project-boundary regression. This keeps the hot path at one SAFE_MODE document read per protected provider call and moves that read to the correct product project.
+- Starting filesystem state before ledger append: zero staged, seventeen tracked unstaged, one untracked. The complete pre-ledger diff SHA-256 is `36fbf2ae1088ff9639290ad423eea1b89f526d5d7f068ea55d8d6a07a0ec6c92`; status SHA-256 is `94c2ec7ac531a20f65fc5ca250ab977e4efb9bc5b94857d08a60b816a4967049`.
+- Concurrent stable snapshot: five MLRC-055 MenuList source/docs/regression paths appeared independently while this Answerlattice operation was active. Public business-truth verification, focused ESLint, strict TypeScript, and diff checks pass; attribution remains independent/unknown and the files are included solely under Danny's complete-worktree publication instruction.
+- Validation before commit: Answerlattice runtime-truth source verifier PASS; Answerlattice Firebase project-boundary test PASS; focused zero-warning ESLint PASS; strict TypeScript PASS; public business-truth verifier PASS for the independent MenuList snapshot; `git diff --check` PASS.
+
+- Branch matrix before:
+
+  | Branch | Local full SHA | Direct server ref/full SHA | Tracking ref | Ahead/behind | Worktree | Staged/unstaged/untracked | Status |
+  | --- | --- | --- | --- | --- | --- | --- | --- |
+  | `main` | `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `refs/heads/main` / `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `origin/main` | `0/0` | not checked out | `N/A` | `IN_SYNC` |
+  | `staging` | `28927fac2f80d1b52b119e652dce1391d564f250` | `refs/heads/staging` / `28927fac2f80d1b52b119e652dce1391d564f250` | `origin/staging` | `0/0` | primary worktree | `0/17/1` before this append | `IN_SYNC` |
+
+- Firebase matrix before/after: no Rules, indexes, Storage Rules, or Cloud Functions source changed. Answerlattice QA and production infrastructure retain `NO_INFRA_CHANGE` / `SERVER_STATE_UNKNOWN`; MenuList infrastructure retains separately recorded states. No Firebase deployment or authenticated infrastructure readback is authorized here.
+- Final filesystem state: pending complete stable snapshot commit, non-force staging push, direct server readback, automatic QA deployment, exact `/api/version`, hosted First 10 cached request, and proof that no `ops_safe_mode_check_failed` log is emitted on the corrected build.
+- Attribution confidence: exact for Answerlattice source, tests, hosted diagnosis, and Git evidence; independent MenuList snapshot retains separate attribution.
