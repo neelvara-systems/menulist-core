@@ -1,11 +1,11 @@
 {
   "hostedCandidateIdentity": {
     "baseUrl": "https://app.menulist.digital",
-    "requestedStagingCommit": "4592516b8bb22f07da5f48b714b2493c7e0ba566",
+    "requestedStagingCommit": "c9c08d64cd75e8e2a2f485373f5b3ebf3b784232",
     "menuListProductSnapshotCommit": "3a34a975d52b1a3b8bec4be35c40b4930b1f9441",
-    "servedBuildId": "4592516b8bb22f07da5f48b714b2493c7e0ba566",
-    "servedDeploymentUrl": "menulist-core-e7ouv74hb-neelvara-systems.vercel.app",
-    "testedAt": "2026-08-25T13:42:21+05:30",
+    "servedBuildId": "c9c08d64cd75e8e2a2f485373f5b3ebf3b784232",
+    "servedDeploymentUrl": "menulist-core-hz0jrausb-neelvara-systems.vercel.app",
+    "testedAt": "2026-08-25T13:53:30+05:30",
     "result": "PASS_DEPLOYMENT_IDENTITY",
     "evidence": "The no-store /api/version response matched the exact current staging commit with verified provenance. The complete hosted anonymous API boundary and bounded authenticated recovery-route checks were then rerun; mutation evidence remains separately classified."
   },
@@ -110,8 +110,8 @@
   },
   "hostedApiAnonymousBoundary": {
     "baseUrl": "https://app.menulist.digital",
-    "servedBuildId": "6854cf4e7881f5a5d5fe3ef939245cd1d1b88e50",
-    "testedAt": "2026-08-25T13:28:16+05:30",
+    "servedBuildId": "c9c08d64cd75e8e2a2f485373f5b3ebf3b784232",
+    "testedAt": "2026-08-25T13:55:30+05:30",
     "handlers": 136,
     "methodProbes": 153,
     "routeManifestSha256": "1ac9365eb6d895d2360453d67aa0cb077a3a9346f2061a9aba9199615c9f9612",
@@ -130,12 +130,12 @@
   },
   "hostedMobileBillingRecovery": {
     "baseUrl": "https://app.menulist.digital/billing",
-    "servedBuildId": "4592516b8bb22f07da5f48b714b2493c7e0ba566",
+    "servedBuildId": "c9c08d64cd75e8e2a2f485373f5b3ebf3b784232",
     "browser": "Connected Chrome",
     "viewport": "390x844",
-    "testedAt": "2026-08-25T13:43:30+05:30",
-    "result": "PASS_LAYOUT_FAIL_SUPPORT_HANDOFF",
-    "evidence": "Direct Billing entered MobileShell at #mobile/more/billing, rendered the correct pending subscription amount and state, had no horizontal overflow, and every visible interactive target measured at least 44px. Billing History opened a truthful empty sheet. Both Need billing help controls returned to Billing because their dashboard route was denied by the recovery-only entitlement guard; MLRC-029 corrects the source to /help-center/ticket."
+    "testedAt": "2026-08-25T13:54:55+05:30",
+    "result": "PASS",
+    "evidence": "Direct Billing entered MobileShell at #mobile/more/billing, rendered the correct pending subscription amount and state, had no horizontal overflow, and every visible interactive target measured at least 44px. Billing History opened a truthful empty sheet. Need billing help opened /help-center/ticket#mobile/more/answerlatticeSupport; the ticket form had no horizontal overflow and its Send Request target measured 44px. No ticket, file, payment, or provider action was submitted."
   },
   "publicWebsiteRouteRender": {
     "baseUrl": "http://localhost:3000",

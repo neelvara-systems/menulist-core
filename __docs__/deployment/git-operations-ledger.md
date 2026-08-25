@@ -2213,3 +2213,25 @@ Those fields are explicitly `unknown` instead of guessed.
 - The required adjacent click-through exposed MLRC-029: both mobile Billing support actions pushed `/dashboard#mobile/more/answerlatticeSupport`; the recovery-only entitlement guard correctly denied Dashboard and returned the owner to Billing, making the actions appear inert.
 - The same active audit/fix/retest authorization covers the smallest correction: point both actions at the already permitted `/help-center/ticket` recovery route, extend the mobile route-map regression, update the certification/mobile/changelog evidence, regenerate the inventory for the shifted source line numbers, commit, push `staging`, and retest on the exact hosted build. Add `src/components/mobile/screens/MobileBillingScreen.tsx` and `__docs__/audits/menulist-rc-certification-inventory.csv` to the intended staged paths. Preserve concurrent `AGENTS.md` and master-prompt changes.
 - Validation after the amendment: mobile shell route map, Billing entitlement, onboarding subscription boundary, Help Center boundary/runtime/attachments, strict TypeScript, zero-warning ESLint, production build (450 pages), JSON parse, and `git diff --check` passed. No Firebase, provider, payment, cache, collection, or dependency change was introduced.
+
+### GIT-20260825-133639-mlrc028-mobile-billing-recovery-result
+
+- Timestamp: `2026-08-25T13:56:05+05:30`
+- Record type: `PERFORMED`
+- Actor/session/thread ID: Codex `/root`; thread `01a034e1-c70a-74b1-a92b-0a103a981815`
+- Completes: `GIT-20260825-133639-mlrc028-mobile-billing-recovery` and its MLRC-029 amendment.
+- Operation performed: committed the MLRC-028 responsive recovery correction as `4592516b8bb22f07da5f48b714b2493c7e0ba566` (`Fix mobile Billing recovery layout`), pushed it non-force to `staging`, visually closed it on exact hosted QA, then committed the adjacent MLRC-029 support-route correction as `c9c08d64cd75e8e2a2f485373f5b3ebf3b784232` (`Fix mobile Billing support recovery`) and pushed it non-force. Concurrent `AGENTS.md` and master-prompt changes remained unstaged and preserved.
+- Hosted evidence: exact verified `c9c08d64cd75e8e2a2f485373f5b3ebf3b784232` served from `menulist-core-hz0jrausb-neelvara-systems.vercel.app` at `2026-08-25T13:53:30+05:30`. At 390×844, Billing used MobileShell, had zero horizontal overflow, every visible action was ≥44px, pending state and ₹4,990 yearly amount were correct, Billing History opened its empty state, and the support control opened `/help-center/ticket#mobile/more/answerlatticeSupport` with zero overflow and no console error. No payment, ticket, upload, or provider execution occurred.
+- Adjacent API evidence: the complete exact-build anonymous sweep passed 136 handlers / 153 methods with 200×5, 301×1, 400×15, 401×126, 403×1, 404×5, zero failures, and zero 5xx; the Cloud Tasks trace fix remains intact.
+- Local validation: mobile shell route map, Billing entitlement, onboarding subscription, Help Center/runtime/attachment, owner-PWA lifecycle, SecurityOS/API tenant safety, auth/security failure matrix, strict TypeScript, zero-warning ESLint, production build (450 pages), Next compatibility/deployment bundle, inventory (8,461 rows), JSON parse, and whitespace checks passed.
+
+- Branch matrix after the product pushes:
+
+  | Branch | Local full SHA | Direct server ref/full SHA | Tracking ref | Ahead/behind | Worktree | Staged/unstaged/untracked | Status |
+  | --- | --- | --- | --- | --- | --- | --- | --- |
+  | `main` | `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `refs/heads/main` / `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `origin/main` | `0/0` | not checked out | `N/A` | `IN_SYNC` |
+  | `staging` | `c9c08d64cd75e8e2a2f485373f5b3ebf3b784232` | `refs/heads/staging` / `c9c08d64cd75e8e2a2f485373f5b3ebf3b784232` | `origin/staging` | `0/0` | primary worktree | `0/2/0` before evidence regeneration/closeout | `IN_SYNC` |
+
+- Firebase matrix after: all 16 MenuList/Answerlattice environment-component rows remain `NO_INFRA_CHANGE` / `SERVER_STATE_UNKNOWN`; no Firebase source path changed, no Firebase deployment was authorized, and no authenticated Firebase server-parity claim was made.
+- Filesystem closeout: the regenerated inventory plus this final report/runtime/ledger evidence will be committed and pushed as an evidence-only descendant. It does not change the exact tested product runtime above. Direct server readback of that descendant is required before handoff.
+- Attribution confidence: exact for both scoped product commits, validations, hosted identities, responsive measurements, click-through, complete API retest, and direct Git readbacks; concurrent unstaged governance changes remain actor `unknown`.
