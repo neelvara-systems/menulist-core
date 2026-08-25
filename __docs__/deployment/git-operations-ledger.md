@@ -3353,3 +3353,20 @@ Those fields are explicitly `unknown` instead of guessed.
 - Git server readback and divergence: direct pre-operation `git ls-remote` proves local/server `main` and `staging` exact with `0/0` divergence.
 - Final filesystem state: pending commit, non-force staging push, direct server readback, automatic QA deployment, exact `/api/version` confirmation, and hosted MLRC-047 retest.
 - Attribution confidence: exact.
+
+#### GIT-20260825-203718-mlrc047-worker-admission result
+
+- Timestamp: `2026-08-25T20:41:09+05:30`
+- Record type: `PERFORMED`
+- Scoped release: commit `090ea3a1673021f1fec1209a2d835c4c5911f840` (`fix(menulist): authenticate batch worker before Firebase read`) was created from exact parent `6c9e6eca2d8c8918b8849f196be3ae417a7b70c3` and pushed non-force to `origin/staging`.
+- Direct server readback: `git ls-remote` returned exact staging SHA `090ea3a1673021f1fec1209a2d835c4c5911f840`; local/tracking divergence is `0/0`. Local/server `main` remain exact and untouched at `fe625d5bbf527c1b7e537b00ab32a4f655905c35`.
+- Branch matrix after:
+
+  | Branch | Local full SHA | Direct server ref/full SHA | Tracking ref | Ahead/behind | Worktree | Staged/unstaged/untracked | Status |
+  | --- | --- | --- | --- | --- | --- | --- | --- |
+  | `main` | `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `refs/heads/main` / `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `origin/main` | `0/0` | not checked out | `N/A` | `IN_SYNC` |
+  | `staging` | `090ea3a1673021f1fec1209a2d835c4c5911f840` | `refs/heads/staging` / `090ea3a1673021f1fec1209a2d835c4c5911f840` | `origin/staging` | `0/0` | primary worktree | `0/0/0` before this result append | `IN_SYNC` |
+
+- Firebase matrix after: unchanged from the planned entry. MenuList QA/production Functions retain the separately tracked `INFRA_CHANGE` / `DEPLOY_REQUIRED` state; the other target/component rows retain `NO_INFRA_CHANGE` / `SERVER_STATE_UNKNOWN`. No Firebase deployment/readback, production release, `main` movement, manual Vercel deployment, or live Razorpay execution occurred.
+- Final filesystem state: only this result append is modified for the evidence closeout. It will be committed and pushed to `staging`; automatic QA deployment and exact hosted MLRC-047 retest remain pending.
+- Attribution confidence: exact.
