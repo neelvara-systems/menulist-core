@@ -194,6 +194,11 @@ OBP settings are saved as part of the existing store update flow:
 
 No new API routes needed. The existing `updateStore()` DAL function handles all OBP field updates.
 
+Desktop Business Settings shows `Business settings saved` only after the
+existing acknowledged store/create flow completes and the initiating
+tenant/store scope is still active. Validation returns and rejected writes do
+not show success. This confirmation adds no Firebase operation or cache path.
+
 Mobile owner saves use the same path and must require the shared store-write acknowledgement before the UI treats OBP changes as saved. Failed `MobileOfficialPageScreen` saves must log `mobile_official_page_save_failed` with bounded store, tenant, localized-language count, photo count, delete-queue count, cover presence, and special-note presence metadata before showing fixed owner-facing copy.
 
 ### Extraction-Derived Business Attribute Defaults

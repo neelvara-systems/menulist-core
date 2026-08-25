@@ -1697,6 +1697,9 @@ function BusinessSettingsContent({ storeDetails, setStoreDetails, tenantDetails 
                 setStoreDetails({ ...changesToUpload, ...savedDetails });
             }
         }
+        if (componentActiveRef.current && activeBusinessSettingsScopeRef.current === requestScopeKey) {
+            message.success('Business settings saved');
+        }
         } finally {
             settingsSaveInFlightRef.current = false;
             if (componentActiveRef.current && activeBusinessSettingsScopeRef.current === requestScopeKey) {

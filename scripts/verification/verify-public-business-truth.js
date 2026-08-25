@@ -5016,6 +5016,12 @@ function verifyOfficialBusinessPageOwnerDiagnosticsAreBounded() {
   const projectShareModal = read('src/components/templates/main-app/projects/b2cView/shareModal/index.tsx');
   const mobileShareScreen = read('src/components/mobile/screens/MobileShareScreen.tsx');
 
+  assertIncludes(
+    businessSettings,
+    "message.success('Business settings saved')",
+    'Desktop Business Settings successful-write acknowledgement',
+  );
+
   [
     'obp_link_card_default_project_load_failed',
     'obp_link_card_copy_failed',

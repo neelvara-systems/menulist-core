@@ -3962,3 +3962,40 @@ This operation changes no Firebase source or configuration. No authenticated inf
 - Answerlattice audit/ledger evidence commit `c36137ba7efc0e3faef99b9cf89956f8f883d58c` (`docs(answerlattice): record First 10 QA closeout`) was pushed non-force to `staging`.
 - Direct server readback returned exact `refs/heads/staging` SHA `c36137ba7efc0e3faef99b9cf89956f8f883d58c` with `0/0` divergence. `refs/heads/main` remained exact and untouched at `fe625d5bbf527c1b7e537b00ab32a4f655905c35`.
 - Scope: Answerlattice certification evidence and this ledger only. Tested runtime remains exact hosted source commit `0f9df0070d7d59049d149345fd6408cb5f54aaad`; no Firebase, production, manual Vercel, or Razorpay state changed.
+
+#### MenuList MLRC-056 performed result — `2026-08-26T01:26:27+05:30`
+
+- Status: `COMPLETE`.
+- MenuList commit: `cde47080011be4ec82c27709a8929e2f86efe375` (`fix(menulist): keep sharing status truthful`).
+- Push: non-force `staging -> origin/staging` completed; later independently attributed documentation descendants moved `staging` to `c7d1089b2d506d4ac2ade62aca6ef760ac9e0b5a` without changing the MenuList correction.
+- Direct server readback: `refs/heads/staging` = `c7d1089b2d506d4ac2ade62aca6ef760ac9e0b5a`, containing `cde47080011be4ec82c27709a8929e2f86efe375`; `refs/heads/main` remained `fe625d5bbf527c1b7e537b00ab32a4f655905c35`.
+- Automatic QA deployment: `/api/version` returned exact verified MenuList build `cde47080011be4ec82c27709a8929e2f86efe375`, deployment `menulist-core-odezrkk8k-neelvara-systems.vercel.app`, environment `preview`. No manual Vercel deployment occurred.
+- Exact hosted retest: the unpublished fixture rendered `Publish your menu before sharing it with customers` on `/qr-code` and did not render `Your menu is live and ready to share`. MLRC-056 is closed.
+- Firebase matrix after: no Rules, indexes, Storage Rules, or Cloud Functions source/configuration changed; all four active targets remain independently `NO_INFRA_CHANGE` / `SERVER_STATE_UNKNOWN`. No Firebase deployment or authenticated infrastructure readback occurred.
+
+### GIT-20260826-012627-mlrc057-business-settings-save-confirmation
+
+- Timestamp: `2026-08-26T01:26:27+05:30`
+- Record type: `PLANNED`
+- Actor/session/thread ID: Codex `/root`; thread `01a034e1-c70a-74b1-a92b-0a103a981815`.
+- Registered worktrees: one primary worktree at `/Users/danny/Projects/MenuListAi/menulist-core`, branch `staging`, HEAD `c7d1089b2d506d4ac2ade62aca6ef760ac9e0b5a`.
+- Authorization: Danny instructed autonomous exhaustive MenuList QA certification, in-scope fixes, and publication of stable current work to QA/staging. This operation publishes MLRC-057 and current MenuList certification evidence to `origin/staging` only. It does not authorize `main`, Firebase infrastructure deployment, manual Vercel deployment, production mutation, or live Razorpay execution.
+- Hosted reproduction: on exact MenuList build `cde47080011be4ec82c27709a8929e2f86efe375`, a reversible short-descriptor edit persisted and appeared on the tenant Official Business Page, but desktop Business Settings rendered no visible success acknowledgement. After browser verification, the descriptor was removed and both owner and public truth returned to their original empty value.
+- Root cause and correction: the desktop `addUpdateDetails` completion path settled state and loading but never announced an acknowledged save. Add one fixed success message only after the existing store/create path completes and only while the initiating tenant/store scope remains active. Validation returns, rejected writes, DAL behavior, cache invalidation, mobile confirmation, and Firebase operation count remain unchanged.
+- Starting filesystem state: zero staged, four tracked unstaged, zero untracked before this ledger append. Scoped pre-ledger diff Git hash `8396b5995ee012e9e33ffd9d3ae4b4fdbe0ef12e`; status is `0/4/0`.
+- Validation before commit: public business-truth verifier PASS; focused zero-warning ESLint PASS; strict TypeScript PASS; `git diff --check` PASS.
+
+#### Pre-operation branch matrix
+
+| Branch | Local SHA | Direct server SHA | Tracking ref | Ahead/behind | Worktree | Filesystem | Status |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `staging` | `c7d1089b2d506d4ac2ade62aca6ef760ac9e0b5a` | `refs/heads/staging` / `c7d1089b2d506d4ac2ade62aca6ef760ac9e0b5a` | `origin/staging` | `0/0` | primary | `0/4/0` before ledger append | `IN_SYNC` |
+| `main` | `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `refs/heads/main` / `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `origin/main` | `0/0` | none | n/a | `IN_SYNC` |
+
+#### Firebase component matrix before Git mutation
+
+No Firebase source/configuration path changes in this operation. No authenticated infrastructure readback or deployment is performed, so each component for MenuList QA `menulist-qa`, MenuList production `menulist-prod`, Answerlattice QA `neelvara-answerlattice-qa`, and Answerlattice production `neelvara-answerlattice-prod` is independently `NO_INFRA_CHANGE` / `SERVER_STATE_UNKNOWN` for Firestore Rules, Firestore indexes, Storage Rules, and Cloud Functions.
+
+- Intended paths: `src/components/templates/main-app/businessSettings/index.tsx`, `scripts/verification/verify-public-business-truth.js`, `__docs__/official-business-page/official-business-page_impl.md`, `__docs__/audits/MENULIST_RC_CERTIFICATION.md`, and this ledger.
+- Final state pending: scoped commit, non-force staging push, direct server readback, automatic QA deployment, exact `/api/version`, and hosted visible-success retest.
+- Attribution confidence: exact for MLRC-057 and MenuList certification evidence; the existing Answerlattice descendants retain their independent attribution.
