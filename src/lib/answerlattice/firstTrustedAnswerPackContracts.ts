@@ -3,7 +3,6 @@ import {
     type AnswerlatticeAnswerTestCase,
 } from '@lib/answerlattice/answerTestContracts';
 import { AnswerlatticeIntakeReviewItemSchema } from '@lib/answerlattice/knowledgeIntakeContracts';
-import { AnswerlatticeProcedureSchema } from '@lib/answerlattice/procedureValidation';
 import type { AnswerlatticeIntakeReviewItem } from '@type/answerlattice';
 import { z } from 'zod';
 
@@ -25,117 +24,54 @@ export const canGenerateAnswerlatticeProductStarterPack = (status: unknown): boo
 );
 
 const boundedOptionalText = (max: number) => z.string().trim().min(1).max(max).optional();
+const providerArray = <T extends z.ZodTypeAny>(schema: T) => z.preprocess(
+    value => Array.isArray(value) ? value : [],
+    schema,
+);
+const providerObject = <T extends z.ZodRawShape>(shape: T) => z.preprocess(
+    value => value && typeof value === 'object' && !Array.isArray(value) ? value : {},
+    z.object(shape).strip(),
+);
 
 export const AnswerlatticeProductStarterPackCandidateSchema = z.object({
     title: z.string().trim().min(3).max(120),
     question: z.string().trim().min(8).max(300),
-    proposedAnswer: z.string().trim().max(2_000).default(''),
-    sourceIds: z.array(z.string().trim().min(1).max(180))
+    proposedAnswer: z.preprocess(
+        value => typeof value === 'string' ? value : '',
+        z.string().trim().max(2_000),
+    ),
+    sourceIds: providerArray(z.array(z.string().trim().min(1).max(180))
         .min(1)
-        .max(ANSWERLATTICE_PRODUCT_STARTER_PACK_MAX_SOURCE_IDS_PER_ITEM),
-    entityIds: z.array(z.string().trim().min(1).max(180)).max(10).default([]),
-    missingEvidence: z.array(z.string().trim().min(1).max(240))
-        .max(ANSWERLATTICE_PRODUCT_STARTER_PACK_MAX_MISSING_EVIDENCE)
-        .default([]),
+        .max(ANSWERLATTICE_PRODUCT_STARTER_PACK_MAX_SOURCE_IDS_PER_ITEM)),
+    entityIds: providerArray(z.array(z.string().trim().min(1).max(180)).max(10)),
+    missingEvidence: providerArray(z.array(z.string().trim().min(1).max(240))
+        .max(ANSWERLATTICE_PRODUCT_STARTER_PACK_MAX_MISSING_EVIDENCE)),
     reason: z.string().trim().min(3).max(500),
-    expectedSource: z.enum(['canonical', 'escalation', 'no_answer']),
-    riskLevel: z.enum(['standard', 'critical']),
-    requiresEscalation: z.boolean().default(false),
-    procedure: AnswerlatticeProcedureSchema.optional(),
-    applicability: z.object({
+    expectedSource: z.preprocess(
+        value => ['canonical', 'escalation', 'no_answer'].includes(String(value)) ? value : 'no_answer',
+        z.enum(['canonical', 'escalation', 'no_answer']),
+    ),
+    riskLevel: z.preprocess(
+        value => ['standard', 'critical'].includes(String(value)) ? value : 'standard',
+        z.enum(['standard', 'critical']),
+    ),
+    requiresEscalation: z.preprocess(value => value === true, z.boolean()),
+    applicability: providerObject({
         path: boundedOptionalText(500),
         feature: boundedOptionalText(100),
         workflow: boundedOptionalText(100),
         plan: boundedOptionalText(100),
         role: boundedOptionalText(100),
         version: boundedOptionalText(100),
-    }).strict().default({}),
-}).strict();
+    }),
+}).strip();
 
 export type AnswerlatticeProductStarterPackCandidate = z.infer<typeof AnswerlatticeProductStarterPackCandidateSchema>;
 
 export const AnswerlatticeProductStarterPackModelResponseSchema = z.object({
     candidates: z.array(AnswerlatticeProductStarterPackCandidateSchema)
         .length(ANSWERLATTICE_PRODUCT_STARTER_PACK_SIZE),
-}).strict();
-
-/**
- * Provider-side structured-output contract. The local Zod schema remains the
- * final authority; this schema prevents otherwise valid Gemini JSON from
- * drifting into extra keys, null optional fields, or missing defaulted arrays
- * before it reaches that boundary.
- */
-export const ANSWERLATTICE_PRODUCT_STARTER_PACK_PROVIDER_RESPONSE_SCHEMA = {
-    type: 'object',
-    additionalProperties: false,
-    required: ['candidates'],
-    properties: {
-        candidates: {
-            type: 'array',
-            minItems: ANSWERLATTICE_PRODUCT_STARTER_PACK_SIZE,
-            maxItems: ANSWERLATTICE_PRODUCT_STARTER_PACK_SIZE,
-            items: {
-                type: 'object',
-                additionalProperties: false,
-                required: [
-                    'title',
-                    'question',
-                    'proposedAnswer',
-                    'sourceIds',
-                    'entityIds',
-                    'missingEvidence',
-                    'reason',
-                    'expectedSource',
-                    'riskLevel',
-                    'requiresEscalation',
-                ],
-                properties: {
-                    title: { type: 'string' },
-                    question: { type: 'string' },
-                    proposedAnswer: { type: 'string' },
-                    sourceIds: {
-                        type: 'array',
-                        minItems: 1,
-                        maxItems: ANSWERLATTICE_PRODUCT_STARTER_PACK_MAX_SOURCE_IDS_PER_ITEM,
-                        items: { type: 'string' },
-                    },
-                    entityIds: {
-                        type: 'array',
-                        maxItems: 10,
-                        items: { type: 'string' },
-                    },
-                    missingEvidence: {
-                        type: 'array',
-                        maxItems: ANSWERLATTICE_PRODUCT_STARTER_PACK_MAX_MISSING_EVIDENCE,
-                        items: { type: 'string' },
-                    },
-                    reason: { type: 'string' },
-                    expectedSource: {
-                        type: 'string',
-                        enum: ['canonical', 'escalation', 'no_answer'],
-                    },
-                    riskLevel: {
-                        type: 'string',
-                        enum: ['standard', 'critical'],
-                    },
-                    requiresEscalation: { type: 'boolean' },
-                    applicability: {
-                        type: 'object',
-                        additionalProperties: false,
-                        properties: {
-                            path: { type: 'string' },
-                            feature: { type: 'string' },
-                            workflow: { type: 'string' },
-                            plan: { type: 'string' },
-                            role: { type: 'string' },
-                            version: { type: 'string' },
-                        },
-                    },
-                },
-            },
-        },
-    },
-} as const;
+}).strip();
 
 export const AnswerlatticeProductStarterPackRequestSchema = z.object({
     requestId: z.string().trim().min(8).max(100).regex(/^[a-zA-Z0-9_-]+$/),

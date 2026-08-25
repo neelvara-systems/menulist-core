@@ -9,7 +9,6 @@ import {
 import { AnswerlatticeAnswerTestCaseSchema } from '../../src/lib/answerlattice/answerTestContracts';
 import {
     ANSWERLATTICE_PRODUCT_STARTER_PACK_CASE_IDS,
-    ANSWERLATTICE_PRODUCT_STARTER_PACK_PROVIDER_RESPONSE_SCHEMA,
     ANSWERLATTICE_PRODUCT_STARTER_PACK_SIZE,
     AnswerlatticeProductStarterPackModelResponseSchema,
     canGenerateAnswerlatticeProductStarterPack,
@@ -55,16 +54,22 @@ const productCandidates = {
 };
 assert.equal(AnswerlatticeProductStarterPackModelResponseSchema.safeParse(productCandidates).success, true, 'a ten-candidate product pack must satisfy the strict model contract');
 assert.equal(AnswerlatticeProductStarterPackModelResponseSchema.safeParse({ candidates: productCandidates.candidates.slice(0, 9) }).success, false, 'a partial product pack must fail closed');
-const providerCandidates = ANSWERLATTICE_PRODUCT_STARTER_PACK_PROVIDER_RESPONSE_SCHEMA.properties?.candidates;
-assert.equal(providerCandidates?.minItems, ANSWERLATTICE_PRODUCT_STARTER_PACK_SIZE, 'provider structured output must require all ten candidates');
-assert.equal(providerCandidates?.maxItems, ANSWERLATTICE_PRODUCT_STARTER_PACK_SIZE, 'provider structured output must reject oversized launch packs');
-assert.deepEqual(
-    providerCandidates?.items && 'properties' in providerCandidates.items
-        ? providerCandidates.items.properties?.expectedSource?.enum
-        : undefined,
-    ['canonical', 'escalation', 'no_answer'],
-    'provider structured output must preserve the governed answer-source vocabulary',
-);
+const providerVariation = {
+    candidates: productCandidates.candidates.map((candidate, index) => ({
+        ...candidate,
+        entityIds: index === 0 ? null : candidate.entityIds,
+        missingEvidence: index === 1 ? undefined : candidate.missingEvidence,
+        applicability: index === 2 ? null : candidate.applicability,
+        unexpectedProviderKey: 'discard me',
+    })),
+    providerMetadata: { ignored: true },
+};
+const normalizedProviderVariation = AnswerlatticeProductStarterPackModelResponseSchema.parse(providerVariation);
+assert.equal(normalizedProviderVariation.candidates.length, 10, 'provider variation must preserve the exact ten-candidate boundary');
+assert.deepEqual(normalizedProviderVariation.candidates[0].entityIds, [], 'null provider arrays must normalize to safe empty arrays');
+assert.deepEqual(normalizedProviderVariation.candidates[1].missingEvidence, [], 'missing provider arrays must normalize to safe empty arrays');
+assert.deepEqual(normalizedProviderVariation.candidates[2].applicability, {}, 'null provider applicability must normalize to safe empty context');
+assert.equal('unexpectedProviderKey' in normalizedProviderVariation.candidates[0], false, 'unrecognized provider keys must be stripped before persistence');
 assert.equal(isAnswerlatticeProductStarterPackCaseId('product_launch_11'), false, 'a prefixed case outside the exact ten slots must not impersonate the launch pack');
 assert.equal(isAnswerlatticeProductStarterPackCaseId('product_launch_custom'), false, 'a custom prefixed case must not impersonate the launch pack');
 assert.equal(canGenerateAnswerlatticeProductStarterPack('published'), true, 'published source jobs must remain reusable for the next activation step');

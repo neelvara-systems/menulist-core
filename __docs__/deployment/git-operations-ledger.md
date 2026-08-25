@@ -3803,3 +3803,26 @@ Those fields are explicitly `unknown` instead of guessed.
 - Intended staged paths: `src/components/templates/main-app/projects/index.tsx`, `scripts/verification/verify-menu-extraction-pipeline.js`, `__docs__/audits/MENULIST_RC_CERTIFICATION.md`, and this ledger only.
 - Final filesystem state: pending scoped commit, non-force staging push, direct readback, automatic QA deployment, exact `/api/version`, and hosted visible/announced recovery retest.
 - Attribution confidence: exact.
+
+### GIT-20260826-004554-answerlattice-first10-provider-compatibility
+
+- Timestamp: `2026-08-26T00:45:54+05:30`
+- Record type: `PLANNED`
+- Actor/session/thread ID: Codex `/root`; current Answerlattice final hosted-QA continuation.
+- Registered worktrees: one primary worktree at `/Users/danny/Projects/MenuListAi/menulist-core`, branch `staging`, HEAD `c15d0a1fab052d7c126565cac01cc10cbbeef40e`. The parent includes independently authored MenuList commit `c15d0a1fab052d7c126565cac01cc10cbbeef40e`, whose attribution is preserved.
+- Authorization: Danny instructed Codex to continue the Answerlattice QA fix/retest loop and previously required every stable current worktree change to be published without loss. This operation publishes the stable four-file Answerlattice correction non-force to `origin/staging` only. It does not authorize `main`, Firebase infrastructure deployment, manual Vercel deployment, production mutation, or real Razorpay execution.
+- Hosted root cause: exact verified build `91b20819426bdb3b53c553c1dd29e1796a6cfd18` reached the selected stable model, but both provider-side structured-output request variants were rejected with HTTP 400 before content generation. The reservation refund retained the pre-call credit balance. This proves the failing boundary is model/request compatibility, not entitlement, Firestore settlement, or owner review persistence.
+- Correction: request bounded JSON MIME output without the unsupported provider schema; remove unsupported sampling fields through the existing gateway contract; strip unknown provider keys; normalize only nullable optional arrays/applicability; and retain exact ten-candidate cardinality, required text, known source evidence, duplicate rejection, bounded fields, strict local Zod validation, and human-review-only persistence. Provider-authored procedures remain excluded and can only be added in the governed owner review flow.
+- Starting filesystem state: zero staged, four tracked unstaged, zero untracked before this append. Pre-ledger diff SHA-256 `7c8eaa528871d6679ccd12d0cb709558f03e66ba3d07f161c3867feb24d65714`; status SHA-256 `f456a40ea52fd4be0c4caf302724c984ead3c69e32b67675800adadeb5e0e8a1`. Before staging, the independently maintained stable MenuList RC report closeout for parent `c15d0a1fab052d7c126565cac01cc10cbbeef40e` appeared as a fifth tracked modification; it is preserved under Danny's complete-worktree publication instruction and retains independent attribution.
+- Validation before commit: First Trusted Answers contract PASS including nullable-provider normalization and unknown-key stripping; focused zero-warning ESLint PASS; strict repository TypeScript PASS; `git diff --check` PASS; fresh Knowledge Intake Firestore emulator PASS covering reservation, exact ten-draft settlement, unchanged-source cache reuse, refund, and concurrency.
+
+- Branch matrix before:
+
+  | Branch | Local full SHA | Direct server ref/full SHA | Tracking ref | Ahead/behind | Worktree | Staged/unstaged/untracked | Status |
+  | --- | --- | --- | --- | --- | --- | --- | --- |
+  | `main` | `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `refs/heads/main` / `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `origin/main` | `0/0` | not checked out | `N/A` | `IN_SYNC` |
+  | `staging` | `c15d0a1fab052d7c126565cac01cc10cbbeef40e` | `refs/heads/staging` / `c15d0a1fab052d7c126565cac01cc10cbbeef40e` | `origin/staging` | `0/0` | primary worktree | `0/4/0` before this append; `0/6/0` after the independent RC report and ledger append | `IN_SYNC` |
+
+- Firebase matrix before/after: no Rules, indexes, Storage Rules, or Cloud Functions source changed. Answerlattice QA and production infrastructure retain `NO_INFRA_CHANGE` / `SERVER_STATE_UNKNOWN`; MenuList infrastructure retains its separately recorded component states. No Firebase deployment or authenticated infrastructure readback is authorized here.
+- Final filesystem state: pending complete stable snapshot commit, non-force staging push, direct server readback, automatic QA deployment, exact `/api/version`, product-specific ten-draft generation, one-credit settlement, unchanged-source zero-credit cache reuse, and downstream Knowledge Intake human-review evidence.
+- Attribution confidence: exact for this Answerlattice correction and Git evidence; parent MenuList work retains independent attribution.

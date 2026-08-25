@@ -12,7 +12,6 @@ import {
     ANSWERLATTICE_PRODUCT_STARTER_PACK_MAX_SOURCE_EXCERPT_CHARS,
     ANSWERLATTICE_PRODUCT_STARTER_PACK_SIZE,
     ANSWERLATTICE_PRODUCT_STARTER_PACK_VERSION,
-    ANSWERLATTICE_PRODUCT_STARTER_PACK_PROVIDER_RESPONSE_SCHEMA,
     AnswerlatticeProductStarterPackModelResponseSchema,
     canGenerateAnswerlatticeProductStarterPack,
     type AnswerlatticeProductStarterPackCandidate,
@@ -209,30 +208,6 @@ const getAllowedRoutePaths = (sources: AnswerlatticeKnowledgeSource[]) => new Se
     }),
 );
 
-const SEMANTIC_ID = '[a-z0-9]+(?:[._:-][a-z0-9]+)*';
-const collectSemanticIds = (source: AnswerlatticeKnowledgeSource) => {
-    const text = String(source.contentText || source.contentExcerpt || '');
-    const targets = new Set<string>();
-    const events = new Set<string>();
-    const targetPatterns = [
-        new RegExp(`data-answerlattice-target\\s*=\\s*["'\`](${SEMANTIC_ID})["'\`]`, 'gi'),
-        new RegExp(`(?:^|\\n)\\s*target(?:Id)?\\s*[:=]\\s*["'\`]?(${SEMANTIC_ID})`, 'gim'),
-    ];
-    const eventPatterns = [
-        new RegExp(`emitWorkflowEvent\\s*\\(\\s*["'\`](${SEMANTIC_ID})["'\`]`, 'gi'),
-        new RegExp(`(?:^|\\n)\\s*expectedEvent\\s*[:=]\\s*["'\`]?(${SEMANTIC_ID})`, 'gim'),
-    ];
-    targetPatterns.forEach((pattern) => {
-        let match: RegExpExecArray | null;
-        while ((match = pattern.exec(text))) targets.add(String(match[1]).toLowerCase());
-    });
-    eventPatterns.forEach((pattern) => {
-        let match: RegExpExecArray | null;
-        while ((match = pattern.exec(text))) events.add(String(match[1]).toLowerCase());
-    });
-    return { events, targets };
-};
-
 const buildSourcePacket = (job: AnswerlatticeKnowledgeIntakeJob, sources: AnswerlatticeKnowledgeSource[]) => {
     let remaining = ANSWERLATTICE_PRODUCT_STARTER_PACK_MAX_SOURCE_CHARS;
     const packet: Array<Record<string, unknown>> = [];
@@ -300,9 +275,6 @@ const normalizeCandidates = (
     const sourceIds = new Set(sources.map(source => source.id));
     const entityIds = new Set(sources.flatMap(source => source.entityIds || []));
     const routePaths = getAllowedRoutePaths(sources);
-    const semanticContractsBySourceId = new Map(
-        sources.map(source => [source.id, collectSemanticIds(source)]),
-    );
     const seenQuestions = new Set<string>();
 
     return candidates.map((candidate) => {
@@ -320,28 +292,9 @@ const normalizeCandidates = (
 
         const validEntityIds = cleanUniqueList(candidate.entityIds, 10, 180)
             .filter(entityId => entityIds.has(entityId));
-        const allowedTargets = new Set(
-            validSourceIds.flatMap(sourceId => Array.from(semanticContractsBySourceId.get(sourceId)?.targets || [])),
-        );
-        const allowedEvents = new Set(
-            validSourceIds.flatMap(sourceId => Array.from(semanticContractsBySourceId.get(sourceId)?.events || [])),
-        );
         const rawProposedAnswer = cleanLongText(candidate.proposedAnswer, 2_000);
         const retainCanonicalDraft = candidate.expectedSource === 'canonical' && !candidate.requiresEscalation;
         const proposedAnswer = retainCanonicalDraft ? rawProposedAnswer : '';
-        const procedure = retainCanonicalDraft && proposedAnswer && candidate.procedure
-            ? {
-                ...candidate.procedure,
-                steps: candidate.procedure.steps.map((step) => {
-                    const { target, expectedEvent, ...safeStep } = step;
-                    return {
-                        ...safeStep,
-                        ...(target && allowedTargets.has(target) ? { target } : {}),
-                        ...(expectedEvent && allowedEvents.has(expectedEvent) ? { expectedEvent } : {}),
-                    };
-                }),
-            }
-            : undefined;
         const missingEvidence = cleanUniqueList([
             ...candidate.missingEvidence,
             ...(rawProposedAnswer && !retainCanonicalDraft
@@ -363,7 +316,6 @@ const normalizeCandidates = (
             title: cleanText(candidate.title, 120),
             question: cleanText(candidate.question, 300),
             proposedAnswer,
-            ...(procedure ? { procedure } : {}),
             sourceIds: validSourceIds,
             entityIds: validEntityIds,
             missingEvidence: hasGroundedDraft
@@ -418,7 +370,6 @@ const buildReviewItems = (
         question: candidate.question,
         ...(candidate.proposedAnswer ? { answer: candidate.proposedAnswer } : {}),
         ...(candidate.proposedAnswer ? { body: candidate.proposedAnswer } : {}),
-        ...(candidate.procedure ? { answerType: 'procedure' as const, procedure: candidate.procedure } : {}),
         routePath: candidate.applicability.path || null,
         versionLabel: candidate.applicability.version || null,
         tags,
@@ -732,10 +683,6 @@ ${JSON.stringify(packet)}`;
                         contents: [{ text: prompt }],
                         config: {
                             responseMimeType: 'application/json',
-                            responseJsonSchema: ANSWERLATTICE_PRODUCT_STARTER_PACK_PROVIDER_RESPONSE_SCHEMA,
-                            temperature: 0,
-                            topP: 0.8,
-                            topK: 20,
                         },
                     });
                     return {

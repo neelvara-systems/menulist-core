@@ -470,13 +470,15 @@ webhook, refund, revenue, or production-entitlement evidence.
   intake hot-path read count.
 - After that repair, the hosted call reached `gemini-3.5-flash-lite` and the
   reservation refund preserved the exact pre-call credit balance, but Gemini's
-  JSON failed the strict local candidate contract. The generation request now
-  supplies a bounded provider-side JSON structured-output schema for the exact ten
-  candidates, governed source/risk vocabularies, evidence arrays, optional
-  core candidates and applicability fields. Optional procedure authoring remains
-  in the owner review flow rather than enlarging the provider schema beyond the
-  Gemini API's accepted complexity boundary. The existing strict Zod parse and
-  evidence normalization remain the final authority; no generated item can
-  bypass human review or cite an unknown source. Stage-specific bounded error
-  codes distinguish provider, response, and settlement failure without logging
-  prompts or owner content.
+  first JSON response did not satisfy the strict local candidate contract. Two
+  subsequent provider-side structured-output variants were rejected by the
+  selected model with HTTP 400 before any content was returned. The durable
+  boundary therefore requests JSON MIME output without an unsupported provider
+  schema, strips unknown provider keys, normalizes only nullable optional arrays
+  and applicability to safe defaults, and still rejects a missing/extra
+  candidate, missing source evidence, duplicate question, unknown source ID, or
+  invalid required text. The strict local Zod parse and evidence normalization
+  remain the final authority; no generated item can bypass human review or cite
+  an unknown source. Procedure authoring remains in the owner review flow.
+  Stage-specific bounded error codes distinguish provider, response, and
+  settlement failure without logging prompts or owner content.
