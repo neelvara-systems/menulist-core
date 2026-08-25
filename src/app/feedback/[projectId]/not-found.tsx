@@ -1,6 +1,7 @@
 'use client';
 
 import PublicMenuListAttribution from '@/components/customer/PublicMenuListAttribution';
+import { PLATFORM_URL } from '@constant/urls';
 import {
     createPublicCustomerTranslator,
     getPublicCustomerLocale,
@@ -81,7 +82,7 @@ export default function GuestFeedbackNotFound() {
             </p>
 
             <a
-                href={appendPublicLanguageParam('/', activeLanguage)}
+                href={appendPublicLanguageParam(PLATFORM_URL, activeLanguage)}
                 style={{
                     display: 'inline-block',
                     minHeight: 44,

@@ -275,7 +275,9 @@ function verifyPublicPageAndForm() {
   assertIncludes(notFoundPage, "new URLSearchParams(window.location.search).get('lang')", 'Guest Feedback not-found requested language');
   assertIncludes(notFoundPage, "getPublicCustomerLocale(requestedLanguage).split('-')[0] || 'en'", 'Guest Feedback not-found supported language projection');
   assertNotIncludes(notFoundPage, 'setActiveLanguage(requestedLanguage)', 'Guest Feedback not-found must not reflect a raw language query into document attributes');
-  assertIncludes(notFoundPage, "appendPublicLanguageParam('/', activeLanguage)", 'Guest Feedback not-found localized recovery link');
+  assertIncludes(notFoundPage, "import { PLATFORM_URL } from '@constant/urls';", 'Guest Feedback not-found canonical public website URL');
+  assertIncludes(notFoundPage, 'appendPublicLanguageParam(PLATFORM_URL, activeLanguage)', 'Guest Feedback not-found localized public website recovery link');
+  assertNotIncludes(notFoundPage, "appendPublicLanguageParam('/', activeLanguage)", 'Guest Feedback not-found must not route public customers into the owner app host');
   assertIncludes(notFoundPage, '<LuMessageSquareDashed', 'Guest Feedback not-found approved icon');
   assertNotIncludes(notFoundPage, 'Page Not Found', 'Guest Feedback not-found English hardcode');
 

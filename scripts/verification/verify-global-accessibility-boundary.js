@@ -119,6 +119,26 @@ assert(
   unauthorizedPage.includes("Make sure you're signed in with the correct account."),
   'global access-denied secondary recovery copy must remain readable',
 );
+assert(
+  unauthorizedPage.includes("style={{ width: '100%', maxWidth: 560, paddingInline: 0 }}"),
+  'global access-denied result must stay within narrow mobile viewports',
+);
+assert(
+  unauthorizedPage.includes('wrap="wrap"'),
+  'global access-denied recovery actions must wrap on narrow mobile viewports',
+);
+assert(
+  unauthorizedPage.includes("import { PLATFORM_URL } from '@constant/urls';"),
+  'global access-denied recovery must use the environment-governed public website URL',
+);
+assert(
+  unauthorizedPage.includes('onClick={() => window.location.assign(PLATFORM_URL)}'),
+  'global access-denied home action must leave the owner-app host for the public website',
+);
+assert(
+  !unauthorizedPage.includes('router.push(HOME_ROUTING)'),
+  'global access-denied home action must not route into the protected owner dashboard',
+);
 
 const layoutWrapper = read('src/components/antdComponent/layoutWrapper/index.tsx');
 assert(layoutWrapper.includes('<SkipToContentLink />'), 'owner shell must expose skip navigation');

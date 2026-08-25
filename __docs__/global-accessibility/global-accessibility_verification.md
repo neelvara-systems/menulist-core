@@ -12,6 +12,11 @@
 - known clickable-span and undersized-mobile-control regressions do not return;
 - global access-denied recovery copy uses readable punctuation instead of
   displaying encoded HTML entities;
+- the global access-denied result and recovery actions fit and wrap within a
+  320px viewport;
+- the access-denied home action exits the owner-app host through the
+  environment-governed public MenuList website URL instead of entering the
+  protected dashboard;
 - the maintained document set exists.
 
 ## Supporting gates

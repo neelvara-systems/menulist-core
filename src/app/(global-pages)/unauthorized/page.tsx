@@ -1,7 +1,8 @@
 'use client'
 import ContextualStateIllustration from '@atoms/contextualStateIllustration';
 import ErrorPageThemeWrapper from '@atoms/ErrorPageThemeWrapper';
-import { HOME_ROUTING, NAVIGARIONS_ROUTINGS } from '@constant/navigations';
+import { NAVIGARIONS_ROUTINGS } from '@constant/navigations';
+import { PLATFORM_URL } from '@constant/urls';
 import { Button, Flex, Result, Typography, theme } from 'antd';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { LuHome, LuMail } from 'react-icons/lu';
@@ -46,6 +47,7 @@ function UnAuthorized() {
         <ErrorPageThemeWrapper>
             <Flex vertical justify='center' align='center' style={{ minHeight: "100vh", padding: 24 }}>
                 <Result
+                    style={{ width: '100%', maxWidth: 560, paddingInline: 0 }}
                     icon={(
                         <ContextualStateIllustration
                             color={token.colorTextQuaternary}
@@ -66,7 +68,7 @@ function UnAuthorized() {
                         </Flex>
                     }
                     extra={
-                        <Flex gap={12} justify="center" style={{ marginTop: 8 }}>
+                        <Flex gap={12} justify="center" wrap="wrap" style={{ marginTop: 8, maxWidth: '100%' }}>
                             <Button
                                 size='large'
                                 icon={<LuMail />}
@@ -78,7 +80,7 @@ function UnAuthorized() {
                                 size='large'
                                 type="primary"
                                 icon={<LuHome />}
-                                onClick={() => router.push(HOME_ROUTING)}
+                                onClick={() => window.location.assign(PLATFORM_URL)}
                             >
                                 Go Home
                             </Button>

@@ -97,7 +97,7 @@ Only `projectPublicClientStore()` output enters the client component. Owner emai
 
 The page resolves the owner-controlled public language from the admitted `?lang=` value and projected store language settings. Heading, field labels, validation, submission states, success/failure recovery, rating accessibility text, temporary-status defaults, and attribution use the shared static public-customer translator with matching `lang` and `dir`. The official-page return link preserves the active language. Custom owner temporary-status text remains verbatim.
 
-An invalid, disabled, deleted, or unavailable feedback project resolves to a lightweight route-local public recovery screen instead of the generic application 404. It reads only the existing `?lang=` query for fixed copy/direction and preserves that language on the homepage recovery link; it does not retry or disclose project/store state.
+An invalid, disabled, deleted, or unavailable feedback project resolves to a lightweight route-local public recovery screen instead of the generic application 404. It reads only the existing `?lang=` query for fixed copy/direction and preserves that language on an absolute canonical MenuList website recovery link. The recovery action must not use the current host because feedback can render on the owner-app host, where `/` resolves toward the protected dashboard. The screen does not retry or disclose project/store state.
 
 This localization reuses the existing project/store resolution and adds no Firestore read/write, API request, runtime translation provider, listener, analytics event, or public preference document.
 
