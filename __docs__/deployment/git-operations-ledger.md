@@ -3206,3 +3206,48 @@ Those fields are explicitly `unknown` instead of guessed.
 - Git server readback and divergence: direct pre-operation `git ls-remote` proves local/server `main` and `staging` exact with `0/0` divergence.
 - Final filesystem state: pending complete-snapshot validation, commit, non-force `staging` push, direct readback, automatic QA build, hosted Test Mode checkout, payment/webhook entitlement verification, and dependent Answerlattice journey retest.
 - Attribution confidence: exact for Answerlattice and Git/Vercel actions; concurrent MenuList paths are preserved and included under the owner's explicit complete-snapshot instruction, with authorship otherwise `unknown`.
+
+### GIT-20260825-200152-mlrc045-qa-evidence
+
+- Timestamp: `2026-08-25T20:01:52+05:30`
+- Record type: `PLANNED`
+- Actor/session/thread ID: Codex `/root`; thread `01a034e1-c70a-74b1-a92b-0a103a981815`.
+- Registered worktrees: one primary worktree at `/Users/danny/Projects/MenuListAi/menulist-core`, branch `staging`, HEAD `32440eca8e171212fb77983218d3a071e0db5981`.
+- Authorization: Danny instructed Codex to continue the complete MenuList QA certification autonomously and keep all current work on QA/staging. This operation publishes only the current MLRC-045 certification report, regenerated deterministic inventory, and this append-only ledger evidence to `staging`. It does not authorize `main`, Firebase deployment, manual Vercel deployment, production release, or live Razorpay execution.
+- Starting filesystem state: two tracked documentation artifacts modified, zero staged, zero untracked before this ledger append. The generated inventory changes only MobileShell source-line coordinates; the report records the current full aggregate, build, and exact hosted pending-subscription recovery evidence.
+- Operation: create one evidence-only commit on `staging`, push without force to `origin/staging`, and directly read back the server ref. Observe but do not manually initiate the automatic QA deployment.
+
+- Branch matrix before:
+
+  | Branch | Local full SHA | Direct server ref/full SHA | Tracking ref | Ahead/behind | Worktree | Staged/unstaged/untracked | Status |
+  | --- | --- | --- | --- | --- | --- | --- | --- |
+  | `main` | `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `refs/heads/main` / `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `origin/main` | `0/0` | not checked out | `N/A` | `IN_SYNC` |
+  | `staging` | `32440eca8e171212fb77983218d3a071e0db5981` | `refs/heads/staging` / `32440eca8e171212fb77983218d3a071e0db5981` | `origin/staging` | `0/0` | primary worktree | `0/2/0` before this append | `IN_SYNC` |
+
+- Validation before commit: fresh uninterrupted `npm run certify:menulist-local` completed 160/161 checks, with every executable check passing and only the absent Upstash shell credentials classified `BLOCKED_EXTERNAL`; all 42 Firestore Rules predeploy suites passed. Strict TypeScript, zero-warning lint, production `npm run build` (450 static pages; 53-entry Serwist bundle), `verify:menulist-rc-inventory` (8,501 rows), and `git diff --check` passed. Exact hosted `/api/version` returned verified build `32440eca8e171212fb77983218d3a071e0db5981`. Connected Chrome at 320x568 verified the pending yearly-Starter gate, 44px Billing action, 50px Sign Out action, zero horizontal overflow, and return to the same `Payment pending` Billing record without pressing Continue Checkout.
+
+- Firebase matrix before/after:
+
+  | Product | Environment/project | Component | Local source/config | Local hash/bytes or tree | Local validation | Server evidence/readback | Delta | Deployment state |
+  | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+  | MenuList | QA / `menulist-qa` | Firestore Rules | `firestore-menulist.rules` | `2059459e3b0263bdeca75f89ad0b490e8cebf1dee19cdef9012e0c02fbab5b89` | 42-suite predeploy PASS | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | QA / `menulist-qa` | Firestore indexes | `firestore.indexes.json` | `5629ae4d5004bc59c82528f2e7f9b7e5bb1ffbf74e0fc2e2e5e5252abf0744e0` | aggregate PASS | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | QA / `menulist-qa` | Storage Rules | `storage.rules` | `226d2a206d7de8a442bf356a61ad048118322acb993eb89fa45744ed78ed1838` | emulator suites PASS | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | QA / `menulist-qa` | Cloud Functions | `functions/` | tree `3c42f5d3fca47ca69e10fa34ad63cf8c28ab8f75` | build/preflight PASS | not refreshed | `INFRA_CHANGE` | `DEPLOY_REQUIRED` |
+  | MenuList | production / `menulist-prod` | Firestore Rules | same source | same hash | same PASS | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | production / `menulist-prod` | Firestore indexes | same source | same hash | same PASS | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | production / `menulist-prod` | Storage Rules | same source | same hash | same PASS | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | production / `menulist-prod` | Cloud Functions | same source | same tree | same PASS | not refreshed | `INFRA_CHANGE` | `DEPLOY_REQUIRED` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Firestore Rules | `firestore-answerlattice.rules` | `a92cbacbf2b64d2939391449044ea5625e706ddb60e23dfab7c4ffb20d3a9e77` | shared boundary PASS | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Firestore indexes | `firestore-answerlattice.indexes.json` | `0114bdf8ea6425b890a8e58fa03dac7915a7d3ed4372bc689ab59a8ce585ff4a` | aggregate PASS | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Storage Rules | `storage-answerlattice.rules` | `5fc8f980f289889da557ac69c91edd61f8e8646b066c9b0101b87141d67106cc` | shared boundary PASS | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Cloud Functions | `functions-answerlattice/` | tree `ae5750c6e78f96a9ecfa234b64f906e04a2fdc16` | no candidate path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Firestore Rules | same source | same hash | same boundary PASS | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Firestore indexes | same source | same hash | same PASS | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Storage Rules | same source | same hash | same boundary PASS | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Cloud Functions | same source | same tree | no candidate path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+
+- Firebase deployment evidence or blocker: this evidence operation changes no Firebase source. MenuList QA/production Functions retain the separately tracked MLRC-031 `DEPLOY_REQUIRED` delta. No Firebase deploy/readback is authorized or performed.
+- Git server readback and divergence: direct pre-operation `git ls-remote` proves local/server `main` and `staging` exact with `0/0` divergence. Post-operation evidence is pending.
+- Final filesystem state: pending commit, non-force staging push, direct readback, and automatic QA evidence deployment.
+- Attribution confidence: exact.
