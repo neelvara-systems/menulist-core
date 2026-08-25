@@ -149,6 +149,20 @@ requireOrder(projectSelector, [
 ], 'desktop project selector edit modal handoff');
 
 [
+  'aria-label={`Select ${projectName}`}',
+  'aria-pressed={isSelected}',
+  'aria-label={`Actions for ${projectName}`}',
+  'onFocus={() => setIsMenuFocused(true)}',
+  'opacity: isHovered || isMenuFocused ? 1 : 0.65',
+  'role="button"',
+  'tabIndex={0}',
+  "if (event.key !== 'Enter' && event.key !== ' ') return;",
+  'aria-label={`Close ${labels.offeringPhrase} selector`}',
+  'style={{ minHeight: 44, minWidth: 44, position:',
+  'label={`Add ${labels.offeringPhrase}`}',
+].forEach((token) => requireToken(projectSelector, token, 'desktop project selector keyboard and recovery boundary'));
+
+[
   'const [pendingAction, setPendingAction] = useState<PendingProjectAction | null>(null);',
   "setPendingAction({ type: 'duplicate', project });",
   "setPendingAction({ type: 'delete', project });",

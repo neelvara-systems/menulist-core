@@ -6,7 +6,7 @@ import { motion } from 'framer-motion';
 import { useMemo, useState, type CSSProperties } from 'react';
 // NOTE: Segmented and AnimatePresence removed - archive tabs functionality deprecated
 import { IoChevronDown } from "react-icons/io5";
-import { LuCheck, LuCopy, LuFolderOpen, LuMoreVertical, LuPen, LuPlus, LuSparkles, LuTrash2, LuXCircle } from 'react-icons/lu';
+import { LuCheck, LuCopy, LuFolderOpen, LuMoreVertical, LuPen, LuPlus, LuSparkles, LuTrash2, LuX, LuXCircle } from 'react-icons/lu';
 import { ProjectMetadata, SpecialMenuStatus } from '../types';
 
 const { Text, Title } = Typography;
@@ -120,6 +120,7 @@ const CatalogCard = ({
     baseProjectName,
 }: CatalogCardProps) => {
     const [isHovered, setIsHovered] = useState(false);
+    const [isMenuFocused, setIsMenuFocused] = useState(false);
     const primaryLanguage = getPrimaryLocalizedLanguage(project.name, 'en');
     const projectName = getLocalizedText(project.name, undefined, primaryLanguage, 'Untitled');
     const avatarColor = getAvatarColor(projectName);
@@ -153,8 +154,36 @@ const CatalogCard = ({
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: index * 0.05, duration: 0.2 }}
+            style={{ position: 'relative' }}
         >
+            <Dropdown
+                menu={{ items: menuItems }}
+                trigger={['click']}
+                placement="bottomRight"
+            >
+                <Button
+                    aria-label={`Actions for ${projectName}`}
+                    type="text"
+                    size="small"
+                    icon={<LuMoreVertical size={14} />}
+                    onBlur={() => setIsMenuFocused(false)}
+                    onClick={(e) => e.stopPropagation()}
+                    onFocus={() => setIsMenuFocused(true)}
+                    style={{
+                        position: 'absolute',
+                        top: 4,
+                        right: 4,
+                        opacity: isHovered || isMenuFocused ? 1 : 0.65,
+                        transition: 'opacity 0.2s',
+                        zIndex: 1,
+                    }}
+                />
+            </Dropdown>
             <Flex
+                aria-label={`Select ${projectName}`}
+                aria-pressed={isSelected}
+                role="button"
+                tabIndex={0}
                 vertical
                 align="center"
                 style={{
@@ -171,28 +200,12 @@ const CatalogCard = ({
                 onMouseEnter={() => setIsHovered(true)}
                 onMouseLeave={() => setIsHovered(false)}
                 onClick={onSelect}
+                onKeyDown={(event) => {
+                    if (event.key !== 'Enter' && event.key !== ' ') return;
+                    event.preventDefault();
+                    onSelect();
+                }}
             >
-                {/* 3-dot menu - top right */}
-                <Dropdown
-                    menu={{ items: menuItems }}
-                    trigger={['click']}
-                    placement="bottomRight"
-                >
-                    <Button
-                        type="text"
-                        size="small"
-                        icon={<LuMoreVertical size={14} />}
-                        onClick={(e) => e.stopPropagation()}
-                        style={{
-                            position: 'absolute',
-                            top: 4,
-                            right: 4,
-                            opacity: isHovered ? 0.8 : 0,
-                            transition: 'opacity 0.2s',
-                        }}
-                    />
-                </Dropdown>
-
                 {/* Selected checkmark */}
                 {isSelected && (
                     <div style={{
@@ -297,7 +310,7 @@ const CatalogCard = ({
 };
 
 // Add New Card
-const AddCatalogCard = ({ token, onClick, index }: { token: any; onClick: () => void; index: number }) => {
+const AddCatalogCard = ({ token, onClick, index, label }: { token: any; onClick: () => void; index: number; label: string }) => {
     const [isHovered, setIsHovered] = useState(false);
 
     return (
@@ -307,6 +320,9 @@ const AddCatalogCard = ({ token, onClick, index }: { token: any; onClick: () => 
             transition={{ delay: index * 0.05, duration: 0.2 }}
         >
             <Flex
+                aria-label={label}
+                role="button"
+                tabIndex={0}
                 vertical
                 align="center"
                 justify="center"
@@ -324,6 +340,11 @@ const AddCatalogCard = ({ token, onClick, index }: { token: any; onClick: () => 
                 onMouseEnter={() => setIsHovered(true)}
                 onMouseLeave={() => setIsHovered(false)}
                 onClick={onClick}
+                onKeyDown={(event) => {
+                    if (event.key !== 'Enter' && event.key !== ' ') return;
+                    event.preventDefault();
+                    onClick();
+                }}
             >
                 <div
                     style={{
@@ -498,10 +519,18 @@ export const ProjectSelector = ({
                     vertical
                     align="center"
                     style={{
+                        position: 'relative',
                         padding: '32px 24px 24px',
                         background: token.colorBgContainer,
                     }}
                 >
+                    <Button
+                        aria-label={`Close ${labels.offeringPhrase} selector`}
+                        icon={<LuX size={18} />}
+                        onClick={() => setModalOpen(false)}
+                        type="text"
+                        style={{ minHeight: 44, minWidth: 44, position: 'absolute', right: 12, top: 12 }}
+                    />
                     {/* Header */}
                     <Title level={4} style={{ marginBottom: 8 }}>
                         Select {offeringName}
@@ -545,6 +574,7 @@ export const ProjectSelector = ({
                         <AddCatalogCard
                             token={token}
                             index={safeProjects.length}
+                            label={`Add ${labels.offeringPhrase}`}
                             onClick={() => {
                                 onOpenModal();
                                 setModalOpen(false);

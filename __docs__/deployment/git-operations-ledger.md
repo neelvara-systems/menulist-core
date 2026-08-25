@@ -4305,3 +4305,38 @@ No Firebase source/configuration changes. Firestore Rules, indexes, Storage Rule
 - Intended paths: `__docs__/audits/MENULIST_RC_CERTIFICATION.md` and this ledger.
 - Final state pending: documentation validation, scoped commit, non-force staging push, and direct server readback.
 - Attribution confidence: exact.
+
+#### Evidence-closeout performed result — `2026-08-26T03:02:10+05:30`
+
+- Commit/push: `191b4abbeca6cfd0183cf99ce501e20360e98b1a` (`docs(menulist): close editor and Growth Kits QA`) was pushed non-force to `origin/staging`.
+- Direct server readback returned exact `refs/heads/staging` SHA `191b4abbeca6cfd0183cf99ce501e20360e98b1a` with `0/0` divergence; `refs/heads/main` remained untouched at `fe625d5bbf527c1b7e537b00ab32a4f655905c35`.
+- Validation: documentation links completed with zero broken links and the existing warning-only naming inventory; documentation npm-script verification and `git diff --check` passed.
+- Decision: MLRC-061 and MLRC-062 are closed and the headless App Check limitation is recorded without a false upload pass. Overall MenuList status remains `CERTIFICATION BLOCKED`.
+- Firebase/deployment boundary: no Firebase deployment, manual Vercel deployment, production mutation, `main` movement, or live Razorpay execution occurred.
+
+### GIT-20260826-030419-mlrc063-project-selector-accessibility
+
+- Timestamp: `2026-08-26T03:04:19+05:30`
+- Record type: `PLANNED`
+- Actor/session/thread ID: Codex `/root`; thread `01a034e1-c70a-74b1-a92b-0a103a981815`.
+- Registered worktrees: one primary worktree at `/Users/danny/Projects/MenuListAi/menulist-core`, branch `staging`, HEAD `191b4abbeca6cfd0183cf99ce501e20360e98b1a`.
+- Authorization: autonomous exhaustive MenuList QA certification, in-scope fixes, regression coverage, and stable staging publication. This operation is `staging` only; it excludes `main`, Firebase infrastructure deployment, manual Vercel deployment, production mutation, and live Razorpay execution.
+- Hosted reproduction: exact MenuList build `c81dc4bba8460f02209aecae1150b7463325bb7f` opened Select Menu with menu/Add cards represented only as generic clickable containers, one unnamed fully hover-hidden per-menu action button, and no visible/named close control because the modal explicitly removed its close icon.
+- Correction: make menu/Add cards named Enter/Space-operable controls; give each per-menu action trigger a project-specific name and nonzero resting visibility with full keyboard-focus/hover visibility; add one named, visible, 44px Lucide close action. Pointer selection and the existing controlled edit/duplicate/delete confirmations remain unchanged.
+- Starting filesystem state: zero staged, four tracked unstaged, zero untracked before this ledger append. Complete pre-ledger diff Git hash `7f2fd77318aebf4b9bb4b85f610e8edd5049eefb`; status `0/4/0`.
+- Validation: complete `verify:menu-project-editor-boundary` and all eight chained project scope/mutation/upload/time-slot suites PASS; focused zero-warning ESLint PASS; strict `tsc --noEmit --incremental false` PASS; `git diff --check` PASS.
+
+#### Pre-operation branch matrix
+
+| Branch | Local SHA | Direct server SHA | Tracking ref | Ahead/behind | Worktree | Filesystem | Status |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `staging` | `191b4abbeca6cfd0183cf99ce501e20360e98b1a` | `refs/heads/staging` / `191b4abbeca6cfd0183cf99ce501e20360e98b1a` | `origin/staging` | `0/0` | primary | `0/4/0` before ledger append | `IN_SYNC` |
+| `main` | `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `refs/heads/main` / `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `origin/main` | `0/0` | none | n/a | `IN_SYNC` |
+
+#### Firebase component matrix before Git mutation
+
+No Firebase source/configuration changes. Firestore Rules, indexes, Storage Rules, and Cloud Functions for MenuList QA `menulist-qa`, MenuList production `menulist-prod`, Answerlattice QA `neelvara-answerlattice-qa`, and Answerlattice production `neelvara-answerlattice-prod` each remain independently `NO_INFRA_CHANGE` / `SERVER_STATE_UNKNOWN`; no authenticated readback or deployment is performed.
+
+- Intended paths: desktop ProjectSelector, project-editor boundary verifier, data-editor implementation note, active certification report, and this ledger.
+- Final state pending: documentation validation, scoped commit, non-force staging push, direct server readback, automatic QA deployment, exact `/api/version`, and hosted keyboard/close/action discovery retest.
+- Attribution confidence: exact.
