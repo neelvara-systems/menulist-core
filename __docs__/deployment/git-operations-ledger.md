@@ -812,6 +812,23 @@ Those fields are explicitly `unknown` instead of guessed.
   unstaged path change; no pre-existing source or user work was altered.
 - Attribution confidence: exact.
 
+##### Result-record publication closeout
+
+- Timestamp: `2026-08-25T18:10:00+05:30`
+- The hosted-QA report and combined-operation result were committed as
+  `5fdbc94b332e90321121ad06a72e648324576264`
+  (`docs(answerlattice): record hosted QA certification`) and pushed non-force
+  to `origin/staging`.
+- Direct `git ls-remote` readback returned full server SHA
+  `5fdbc94b332e90321121ad06a72e648324576264`; local/tracking divergence is
+  `0/0`. Local/server `main` remain untouched and exact at
+  `fe625d5bbf527c1b7e537b00ab32a4f655905c35`.
+- This closeout changes documentation only. It does not change the exact hosted
+  runtime evidence recorded against `194f39a…`, authorize Firebase or manual
+  Vercel deployment, execute Razorpay, or resolve the inactive QA entitlement.
+- The final closeout commit will include only this ledger amendment; the direct
+  final server readback is retained as the terminal evidence for the operation.
+
 ### GIT-20260824-223822-answerlattice-firebase-resume
 
 - Timestamp: `2026-08-24T22:38:22+05:30`
