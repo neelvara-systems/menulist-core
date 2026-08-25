@@ -240,6 +240,11 @@ requireNamedImport(projectsPage, '@database/projects', [
   'currentView == 1 && projectsError',
   'onClick={() => void mutateProjects()}',
   'projectsData !== undefined && !projectsLoading && !projectsError && projectsList.length === 0',
+  "currentView == 2 && selectedProject && (projectLoading || (!activeProject && !projectError))",
+  'currentView == 2 && selectedProject && projectError',
+  'Could not load this menu',
+  'onClick={() => void mutateProject()}',
+  'currentView == 2 && selectedProject && activeProject',
   "const mutationToken = beginProjectMutation('save', operationScope);",
   "expectedScope: operationScope,",
   'syncPublicSummary: true,',
@@ -247,6 +252,11 @@ requireNamedImport(projectsPage, '@database/projects', [
   "throw new Error('menu_upload_project_scope_changed');",
   'logProjectPageFailure',
 ].forEach((token) => requireToken(projectsPage, token, 'desktop projects page'));
+requireOrder(projectsPage, [
+  "currentView == 2 && selectedProject && (projectLoading || (!activeProject && !projectError))",
+  'currentView == 2 && selectedProject && projectError',
+  'currentView == 2 && selectedProject && activeProject',
+], 'desktop editor project-load boundary');
 forbidToken(projectsPage, 'const shouldEnableDesktopProjectsData = hasMounted;', 'desktop projects entitlement read gate');
 forbidToken(
   projectsPage,

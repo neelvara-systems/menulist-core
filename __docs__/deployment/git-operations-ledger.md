@@ -4204,3 +4204,38 @@ No Firebase source/configuration changes. Firestore Rules, indexes, Storage Rule
 - Intended paths: `__docs__/audits/MENULIST_RC_CERTIFICATION.md` and this ledger.
 - Final state pending: documentation validation, scoped commit, non-force staging push, and direct server readback.
 - Attribution confidence: exact.
+
+#### Evidence-closeout performed result — `2026-08-26T02:36:40+05:30`
+
+- Commit/push: `a372624f1bcfa73930fe943dbfe354fc8bce8d37` (`docs(menulist): record Today QA closeout`) was pushed non-force to `origin/staging`.
+- Direct server readback returned exact `refs/heads/staging` SHA `a372624f1bcfa73930fe943dbfe354fc8bce8d37` with `0/0` divergence; `refs/heads/main` remained untouched at `fe625d5bbf527c1b7e537b00ab32a4f655905c35`.
+- Validation: documentation links completed with zero broken links and the existing warning-only naming inventory; documentation npm-script verification and `git diff --check` passed.
+- Decision: MLRC-059 and the stated desktop/source boundary of MLRC-060 are recorded. Overall status remains `CERTIFICATION BLOCKED`; no QA-complete or production-ready claim is made.
+- Firebase/deployment boundary: no Firebase deployment, manual Vercel deployment, production mutation, `main` movement, or live Razorpay execution occurred.
+
+### GIT-20260826-023958-mlrc061-editor-project-load-boundary
+
+- Timestamp: `2026-08-26T02:39:58+05:30`
+- Record type: `PLANNED`
+- Actor/session/thread ID: Codex `/root`; thread `01a034e1-c70a-74b1-a92b-0a103a981815`.
+- Registered worktrees: one primary worktree at `/Users/danny/Projects/MenuListAi/menulist-core`, branch `staging`, HEAD `a372624f1bcfa73930fe943dbfe354fc8bce8d37`.
+- Authorization: autonomous exhaustive MenuList QA certification, in-scope fixes, regression coverage, and stable staging publication. This operation is `staging` only; it excludes `main`, Firebase infrastructure deployment, manual Vercel deployment, production mutation, and live Razorpay execution.
+- Hosted reproduction: exact MenuList build `2362f794eb61c908228c0f4956cd03b19d5eb3bd` opened the supported `/projects?view=editor` deep link for the isolated valid empty project, then replaced the owner app with the global error screen. Connected Chrome recorded `Error: Menu editor requires an active project`.
+- Root cause and correction: the deep-link effect set `selectedProject` and editor view before the scoped SWR project document settled. The parent now renders a bounded loading state while that read is unresolved, provides `Try again` and `Back to menus` when it rejects, and mounts `Editor` only when `activeProject` exists. The editor invariant, query key, Firestore operations, cache behavior, and mutations remain unchanged.
+- Starting filesystem state: zero staged, four tracked unstaged, zero untracked before this ledger append. Complete pre-ledger diff Git hash `f338b400280ef19051e408a0def692ccedca87d6`; status `0/4/0`.
+- Validation: complete `verify:menu-project-editor-boundary` and all eight chained project scope/mutation/upload/time-slot suites PASS; focused zero-warning ESLint PASS; strict `tsc --noEmit --incremental false` PASS; `git diff --check` PASS.
+
+#### Pre-operation branch matrix
+
+| Branch | Local SHA | Direct server SHA | Tracking ref | Ahead/behind | Worktree | Filesystem | Status |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `staging` | `a372624f1bcfa73930fe943dbfe354fc8bce8d37` | `refs/heads/staging` / `a372624f1bcfa73930fe943dbfe354fc8bce8d37` | `origin/staging` | `0/0` | primary | `0/4/0` before ledger append | `IN_SYNC` |
+| `main` | `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `refs/heads/main` / `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `origin/main` | `0/0` | none | n/a | `IN_SYNC` |
+
+#### Firebase component matrix before Git mutation
+
+No Firebase source/configuration changes. Firestore Rules, indexes, Storage Rules, and Cloud Functions for MenuList QA `menulist-qa`, MenuList production `menulist-prod`, Answerlattice QA `neelvara-answerlattice-qa`, and Answerlattice production `neelvara-answerlattice-prod` each remain independently `NO_INFRA_CHANGE` / `SERVER_STATE_UNKNOWN`; no authenticated readback or deployment is performed.
+
+- Intended paths: desktop Projects page, project-editor boundary verifier, current data-editor implementation note, active certification report, and this ledger.
+- Final state pending: scoped commit, non-force staging push, direct server readback, automatic QA deployment, exact `/api/version`, and hosted empty-project editor deep-link retest.
+- Attribution confidence: exact.
