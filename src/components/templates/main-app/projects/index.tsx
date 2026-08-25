@@ -381,6 +381,7 @@ function ProjectsPage() {
     const [menuLinkUrl, setMenuLinkUrl] = useState('');
     const [menuLinkPermissionConfirmed, setMenuLinkPermissionConfirmed] = useState(false);
     const [menuLinkImporting, setMenuLinkImporting] = useState(false);
+    const [menuLinkImportError, setMenuLinkImportError] = useState('');
     const [menuLinkImportModalOpen, setMenuLinkImportModalOpen] = useState(false);
     const projectImageAutoGenerationAttemptRef = useRef<Set<string>>(new Set());
     const projectMutationInFlightRef = useRef<string | null>(null);
@@ -2459,6 +2460,7 @@ function ProjectsPage() {
         }
 
         try {
+            setMenuLinkImportError('');
             setMenuLinkImporting(true);
             const result = await createMenuLinkImportJob({
                 permissionConfirmed: menuLinkPermissionConfirmed,
@@ -2480,7 +2482,9 @@ function ProjectsPage() {
                 permissionConfirmed: Boolean(menuLinkPermissionConfirmed),
             });
             if (isCurrentProjectMutation(mutationToken, operationScope)) {
-                message.error('We could not read this menu link. Upload a photo/PDF or add the menu manually.');
+                const ownerMessage = 'We could not read this menu link. Upload a photo/PDF or add the menu manually.';
+                setMenuLinkImportError(ownerMessage);
+                message.error(ownerMessage);
             }
         } finally {
             setMenuLinkImporting(false);
@@ -2935,7 +2939,10 @@ function ProjectsPage() {
             ) : null}
             <Input
                 disabled={!canUseMenuExtraction || menuLinkImporting || Boolean(activeProcessingJobId) || hasPendingLocalUploadFiles}
-                onChange={(event) => setMenuLinkUrl(event.target.value)}
+                onChange={(event) => {
+                    setMenuLinkUrl(event.target.value);
+                    setMenuLinkImportError('');
+                }}
                 onPressEnter={handleMenuLinkImport}
                 placeholder="https://example.com/menu"
                 value={menuLinkUrl}
@@ -2943,10 +2950,18 @@ function ProjectsPage() {
             <Checkbox
                 checked={menuLinkPermissionConfirmed}
                 disabled={!canUseMenuExtraction || menuLinkImporting || Boolean(activeProcessingJobId) || hasPendingLocalUploadFiles}
-                onChange={(event) => setMenuLinkPermissionConfirmed(event.target.checked)}
+                onChange={(event) => {
+                    setMenuLinkPermissionConfirmed(event.target.checked);
+                    setMenuLinkImportError('');
+                }}
             >
                 I confirm this is my business menu or I have permission to import it.
             </Checkbox>
+            {menuLinkImportError ? (
+                <Typography.Text role="alert" type="danger">
+                    {menuLinkImportError}
+                </Typography.Text>
+            ) : null}
             <Flex justify="flex-end">
                 <Button
                     {...getMenuListAnswerlatticeTargetProps(MENULIST_ANSWERLATTICE_TARGETS.MENU_IMPORT_START)}

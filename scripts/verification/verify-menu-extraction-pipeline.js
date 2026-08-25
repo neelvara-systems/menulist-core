@@ -1382,9 +1382,12 @@ contains(
     'assertProjectUpdateSucceeded(',
     'menu_upload_extracted_profile_defaults_project_update_rejected',
     'projects_page_upload_create_project_update_rejected',
+    "const [menuLinkImportError, setMenuLinkImportError] = useState('');",
+    'setMenuLinkImportError(ownerMessage);',
+    '<Typography.Text role="alert" type="danger">',
     'We could not read this menu link. Upload a photo/PDF or add the menu manually.',
   ],
-  'Desktop menu upload caller uses bounded diagnostics, acknowledged business-details, business-attribute, project-default, and upload-created project writes, and fixed owner text',
+  'Desktop menu upload caller uses bounded diagnostics, acknowledged business-details, business-attribute, project-default, and upload-created project writes, plus persistent announced link-import recovery',
 );
 
 contains(

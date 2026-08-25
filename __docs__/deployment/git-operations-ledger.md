@@ -3779,3 +3779,27 @@ Those fields are explicitly `unknown` instead of guessed.
 - Firebase matrix before/after: no Rules, indexes, Storage Rules, or Cloud Functions source changed. Answerlattice QA and production infrastructure retain `NO_INFRA_CHANGE` / `SERVER_STATE_UNKNOWN`; MenuList infrastructure state remains as separately recorded. No Firebase deployment or authenticated infrastructure readback is authorized here.
 - Final filesystem state: pending complete-snapshot commit, non-force staging push, direct server readback, automatic QA deployment, exact `/api/version`, product-specific ten-draft generation, one-credit settlement, unchanged-source zero-credit cache reuse, and downstream Knowledge Intake human-review evidence.
 - Attribution confidence: exact for this task and Git evidence; preserved concurrent evidence retains independent attribution.
+
+### GIT-20260826-003612-mlrc053-link-import-recovery
+
+- Timestamp: `2026-08-26T00:36:12+05:30`
+- Record type: `PLANNED`
+- Actor/session/thread ID: Codex `/root`; thread `01a034e1-c70a-74b1-a92b-0a103a981815`.
+- Registered worktrees: one primary worktree at `/Users/danny/Projects/MenuListAi/menulist-core`, branch `staging`, HEAD `91b20819426bdb3b53c553c1dd29e1796a6cfd18`. That commit is an independently authored Answerlattice descendant of the verified MenuList correction and retains its original attribution.
+- Authorization: Danny instructed Codex to continue exhaustive MenuList QA certification, implement confirmed fixes, and publish stable work to QA/staging. This operation publishes MLRC-053 plus current certification evidence to `origin/staging` only. It does not authorize `main`, Firebase deployment, manual Vercel deployment, production mutation, or live Razorpay execution.
+- Hosted reproduction: on the isolated provider-free owner fixture, an owned but non-menu source URL was correctly rejected three times and the Import link form recovered to enabled state. Bounded browser diagnostics recorded the rejection, but no visible or accessible failure copy appeared; the owner therefore saw an apparently inert action. Mobile already retained a persistent error screen.
+- Root cause and correction: desktop Projects relied only on the transient static Ant message API for link-import failure feedback. Retain the fixed owner-safe copy in component state, render it persistently with `role="alert"`, and clear it only on a changed URL/permission or a new retry. No import, tenant, store, permission, provider, cache, Firebase, or collection contract changed.
+- Starting filesystem state: zero staged, three tracked unstaged, zero untracked before this ledger append. Status SHA-256 `78a78fc2a36576da391d041ccac4162f6d99cbae3f9e6938c269918cfb216deb`; diff SHA-256 `45ebf5c44482f36067cad906588c1b993b4ee199a8401acf090c8a875247f039`.
+- Validation before commit: extraction source gate PASS 386/386; focused zero-warning ESLint PASS; fresh complete MenuList local aggregate PASS 161/162 with all 161 executable checks passing and only Upstash `BLOCKED_EXTERNAL`; strict TypeScript and lint passed inside that aggregate; fresh production build PASS with 450/450 pages and 53 service-worker precache entries; `git diff --check` PASS. The extraction gate used its built-in second attempt after a transient emulator-port collision.
+
+- Branch matrix before:
+
+  | Branch | Local full SHA | Direct server ref/full SHA | Tracking ref | Ahead/behind | Worktree | Staged/unstaged/untracked | Status |
+  | --- | --- | --- | --- | --- | --- | --- | --- |
+  | `main` | `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `refs/heads/main` / `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `origin/main` | `0/0` | not checked out | `N/A` | `IN_SYNC` |
+  | `staging` | `91b20819426bdb3b53c553c1dd29e1796a6cfd18` | `refs/heads/staging` / `91b20819426bdb3b53c553c1dd29e1796a6cfd18` | `origin/staging` | `0/0` | primary worktree | `0/3/0` before ledger append | `IN_SYNC` |
+
+- Firebase matrix before/after: no Rules, indexes, Storage Rules, or Cloud Functions source changes are included. Existing separately recorded component states remain unchanged; no Firebase deployment or authenticated infrastructure readback is authorized here.
+- Intended staged paths: `src/components/templates/main-app/projects/index.tsx`, `scripts/verification/verify-menu-extraction-pipeline.js`, `__docs__/audits/MENULIST_RC_CERTIFICATION.md`, and this ledger only.
+- Final filesystem state: pending scoped commit, non-force staging push, direct readback, automatic QA deployment, exact `/api/version`, and hosted visible/announced recovery retest.
+- Attribution confidence: exact.
