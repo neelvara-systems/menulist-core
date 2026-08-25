@@ -34,4 +34,26 @@ assert.equal(
   'countryData.ts must remain byte-identical to the phone-input primary source',
 );
 
+const countrySource = fs.readFileSync(countryPrimary, 'utf8');
+const countryRows = [...countrySource.matchAll(/\{ code: "([A-Z]{2})"[^\n]*flag: "([^"]*)"/g)]
+  .map((match) => ({ code: match[1], flag: match[2] }));
+const explicitFlagExceptions = new Map([
+  ['UK', '🇬🇧'],
+  ['AC', ' '],
+  ['XK', ' '],
+  ['TA', ' '],
+]);
+const regionalIndicatorFlag = (code) => [...code]
+  .map((letter) => String.fromCodePoint(127397 + letter.charCodeAt(0)))
+  .join('');
+
+assert(countryRows.length >= 240, 'country flag validation must cover the complete country table');
+for (const country of countryRows) {
+  assert.equal(
+    country.flag,
+    explicitFlagExceptions.get(country.code) ?? regionalIndicatorFlag(country.code),
+    `${country.code} must use its matching country flag`,
+  );
+}
+
 console.log(`MenuList shared-data mirrors verified (${functionsFiles.length} files).`);

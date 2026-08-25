@@ -2280,3 +2280,61 @@ Those fields are explicitly `unknown` instead of guessed.
 - Git server readback and divergence: direct pre-operation `git ls-remote` proves local/server `main` and `staging` in sync at the SHAs above; tracking divergence is `0/0` for both.
 - Final filesystem state: pending scoped commit, push, direct readback, automatic QA deployment, hosted retest, and result append.
 - Attribution confidence: exact for this operation and candidate; unrelated moving paths remain `unknown`.
+
+#### GIT-20260825-143633-mlrc030-mobile-sheet-label result
+
+- Timestamp: `2026-08-25T14:47:32+05:30`
+- Record type: `PERFORMED`
+- Scoped commit: `801f87fbc940acf674b73b30a507be659e342bc0` (`Fix mobile sheet close labels`).
+- Push: non-force `staging -> staging`; direct `git ls-remote` readback returned `801f87fbc940acf674b73b30a507be659e342bc0` for `refs/heads/staging`. Local/tracking divergence is `0/0`. `main` remained unchanged and in sync at `fe625d5bbf527c1b7e537b00ab32a4f655905c35`.
+- Exact hosted identity: canonical `https://app.menulist.digital/api/version` returned build `801f87fbc940acf674b73b30a507be659e342bc0`, provenance `verified`, environment `preview`, and deployment `menulist-core-ihgyjyw9e-neelvara-systems.vercel.app`.
+- Hosted retest: connected Chrome at 320x568 opened `/billing`, waited for the pending-owner state, and opened Billing History. The rendered tree contained exactly one dialog, one page-navigation button named `Back`, and one sheet button named `Close`. Activating `Close` removed the dialog, retained the single page `Back`, and kept the canonical Billing route. Sanitized visual evidence: `/tmp/menulist-qa-full-2026-08-25/13-fixed-mobile-billing-history.png`.
+- Validation: global accessibility source boundary PASS; focused ESLint PASS; strict TypeScript PASS; `git diff --check` PASS; scoped cached diff check PASS; hosted interaction PASS.
+- Firebase matrix after: all 16 rows remain `NO_INFRA_CHANGE` / `SERVER_STATE_UNKNOWN`; no Firebase source changed and no Firebase deployment or authenticated server readback was authorized.
+- Filesystem closeout: only unrelated unstaged moving files remain (`AGENTS.md`, `IDE_PROMPTS/MASTER-EXECUTION-PROMPT.md`, two founder-presence ledgers, `next-env.d.ts`, `scripts/verification/test-answerlattice-staff-client-contracts.ts`, and `src/components/templates/answerlattice/AnswerlatticeTeamAccess.tsx`). They were excluded; actor remains `unknown`.
+- Result: MLRC-030 is closed on exact hosted QA. Certification remains active and blocked on the wider role/fixture/public-truth completion gates; production is not in scope for this operation.
+
+### GIT-20260825-150606-mlrc031-country-flags
+
+- Timestamp: `2026-08-25T15:06:06+05:30`
+- Record type: `PLANNED`
+- Actor/session/thread ID: Codex `/root`; thread `01a034e1-c70a-74b1-a92b-0a103a981815`
+- Registered worktrees: one worktree at `/Users/danny/Projects/MenuListAi/menulist-core`, checked out on `staging` at `801f87fbc940acf674b73b30a507be659e342bc0`.
+- Authorization: Danny explicitly required the full MenuList QA audit/fix/retest loop to continue on staging before production. This authorizes the smallest MLRC-031 shared-data correction, regression/report/ledger evidence, one non-force `staging` push, automatic QA web deployment observation, and hosted browser retest. It does not authorize `main`, manual Vercel deployment, Firebase deployment, Razorpay execution, or unrelated concurrent changes.
+- Intended operation: stage only `src/components/atoms/phoneNumberInput/countryData.ts`, its mandatory byte-identical `functions/src/sharedData/countryData.ts` mirror, `scripts/verification/verify-menulist-shared-data-mirrors.js`, the certification report, and this ledger; commit on local `staging`; push non-force to `origin/staging`. Preserve and exclude all other moving paths with actor `unknown`.
+- Defect evidence: exact hosted QA at 320x568 rendered Marshall Islands with the Mauritania flag, Philippines with the Puerto Rico flag, and Turks & Caicos with an invalid full-width regional-indicator sequence in the signed-out create-menu phone selector. The shared table also feeds owner settings, staff, reseller, mobile, and onboarding selectors.
+- Local correction: corrected only those three country entries in the primary/mirror data and added a complete 249-row derived flag-consistency assertion with four explicit reviewed aliases (`UK`, `AC`, `XK`, `TA`). App and Functions copies remain exactly byte-identical at SHA-256 `cfe39ea9d32dc4aeb9428b9f6883c5992d6b71bf89721daf54c3e0e8461565f0`, 36,727 bytes each.
+- Validation before commit: shared-data mirror/flag gate PASS; focused ESLint PASS; strict TypeScript PASS; MenuList Functions build PASS; `git diff --check` PASS. Exact hosted corrected-build retest remains pending.
+
+- Branch matrix before:
+
+  | Branch | Local full SHA | Direct server ref/full SHA | Tracking ref | Ahead/behind | Worktree | Staged/unstaged/untracked | Status |
+  | --- | --- | --- | --- | --- | --- | --- | --- |
+  | `main` | `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `refs/heads/main` / `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `origin/main` | `0/0` | not checked out | `N/A` | `IN_SYNC` |
+  | `staging` | `801f87fbc940acf674b73b30a507be659e342bc0` | `refs/heads/staging` / `801f87fbc940acf674b73b30a507be659e342bc0` | `origin/staging` | `0/0` | primary worktree | `0/12/0` before this ledger append | `IN_SYNC` |
+
+- Firebase matrix before/after:
+
+  | Product | Environment/project | Component | Local source/config | Local evidence | Server evidence | Delta | Deployment state |
+  | --- | --- | --- | --- | --- | --- | --- | --- |
+  | MenuList | QA / `menulist-qa` | Firestore Rules | `firestore-menulist.rules` | no changed path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | QA / `menulist-qa` | Firestore indexes | `firestore.indexes.json` | no changed path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | QA / `menulist-qa` | Storage Rules | `storage.rules` | no changed path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | QA / `menulist-qa` | Cloud Functions | `functions/src/sharedData/countryData.ts` | changed hash `cfe39ea9…`; Functions build PASS | not refreshed | `INFRA_CHANGE` | `DEPLOY_REQUIRED` |
+  | MenuList | production / `menulist-prod` | Firestore Rules | same source | no changed path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | production / `menulist-prod` | Firestore indexes | same source | no changed path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | production / `menulist-prod` | Storage Rules | same source | no changed path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | production / `menulist-prod` | Cloud Functions | same shared source | changed hash `cfe39ea9…`; Functions build PASS | not refreshed | `INFRA_CHANGE` | `DEPLOY_REQUIRED` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Firestore Rules | `firestore-answerlattice.rules` | no changed path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Firestore indexes | `firestore-answerlattice.indexes.json` | no changed path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Storage Rules | `storage-answerlattice.rules` | no changed path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Cloud Functions | `functions-answerlattice/` | no changed path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Firestore Rules | same source | no changed path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Firestore indexes | same source | no changed path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Storage Rules | same source | no changed path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Cloud Functions | same source | no changed path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+
+- Firebase deployment evidence or blocker: the byte-identical Functions mirror changed, so the MenuList Functions component is explicitly `DEPLOY_REQUIRED`. No Firebase deployment is authorized in this operation. The UI correction can be hosted-retested after the staging web deployment; Functions parity remains a separate release blocker until exact deployment authorization and authenticated readback.
+- Git server readback and divergence: direct pre-operation `git ls-remote` proves local/server `main` and `staging` in sync at the SHAs above; tracking divergence is `0/0` for both.
+- Final filesystem state: pending scoped commit, push, direct readback, automatic QA web deployment, hosted UI retest, and result append.
+- Attribution confidence: exact for this operation and candidate; unrelated moving paths remain `unknown`.
