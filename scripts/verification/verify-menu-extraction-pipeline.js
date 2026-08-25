@@ -67,6 +67,18 @@ filesEqual(
   'Shared extraction job contract is mirrored byte-for-byte',
 );
 
+contains(
+  'src/components/templates/main-app/projects/index.tsx',
+  [
+    'validateMenuLinkInput(menuLinkUrl)',
+    'setMenuLinkImportError(menuLinkInputValidation.message);',
+    'url: menuLinkInputValidation.normalizedUrl',
+    '!menuLinkInputValidation.valid',
+    '{menuLinkInputValidation.message}',
+  ],
+  'Desktop menu-link import validates the public URL before the protected request',
+);
+
 filesEqual(
   'src/data/shared/menuExtractionProjectSize.ts',
   'functions/src/sharedData/menuExtractionProjectSize.ts',

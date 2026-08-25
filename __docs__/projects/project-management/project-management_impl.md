@@ -152,6 +152,8 @@ The staff-line copy action is an icon-only control and must retain the accessibl
 
 The Share QR foreground and background color pickers use named native-button triggers rather than inaccessible generic `div` triggers. Their swatches continue to reflect the selected colors, and the existing client-only QR customization behavior remains unchanged.
 
+Desktop menu-link import performs a pure client preflight before the protected acquisition request. Empty, malformed, overlong, credential-bearing, and non-HTTP(S) inputs remain disabled and render an inline alert; valid links are normalized and have their fragment removed. The server-side DNS, redirect, address-range, content-type, size, tenant, store, project, and permission boundaries remain authoritative.
+
 The B2B `ShareModal.tsx` external endpoint POST is intentionally owner-entered and external, so it must not use same-origin credentials. It must normalize the endpoint first, admit only public HTTPS URLs without embedded credentials or local/private hosts, strip fragments, then post to the normalized URL with `SHARE_ENDPOINT_REQUEST_POLICY`: no-store cache, `credentials: 'omit'`, manual redirect handling, and `referrerPolicy: 'no-referrer'`. Failed posts log `project_share_endpoint_post_failed` with bounded endpoint/project/category/item metadata only.
 
 ## Public Cache Contract

@@ -29,6 +29,7 @@ import { applyLocalizedProjectDraftMap, getLocalizedProjectValue, getProjectMana
 import { getCanonicalProjectSourceLanguage, normalizeProjectLanguages } from '@lib/localization/languagePolicy';
 import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
 import { createMenuLinkImportJob } from '@lib/menu-link-import/client';
+import { validateMenuLinkInput } from '@lib/menu-link-import/menuLinkInput';
 import {
     getProjectOwnerScopeFromProjectId,
     getProjectOwnerScopeKey as getProjectPageScopeKey,
@@ -382,6 +383,7 @@ function ProjectsPage() {
     const [menuLinkPermissionConfirmed, setMenuLinkPermissionConfirmed] = useState(false);
     const [menuLinkImporting, setMenuLinkImporting] = useState(false);
     const [menuLinkImportError, setMenuLinkImportError] = useState('');
+    const menuLinkInputValidation = useMemo(() => validateMenuLinkInput(menuLinkUrl), [menuLinkUrl]);
     const [menuLinkImportModalOpen, setMenuLinkImportModalOpen] = useState(false);
     const projectImageAutoGenerationAttemptRef = useRef<Set<string>>(new Set());
     const projectMutationInFlightRef = useRef<string | null>(null);
@@ -2436,8 +2438,8 @@ function ProjectsPage() {
             message.info('Create a menu before importing from a link.');
             return;
         }
-        if (!menuLinkUrl.trim()) {
-            message.error('Paste a public menu link.');
+        if (!menuLinkInputValidation.valid) {
+            setMenuLinkImportError(menuLinkInputValidation.message);
             return;
         }
         if (!menuLinkPermissionConfirmed) {
@@ -2465,7 +2467,7 @@ function ProjectsPage() {
             const result = await createMenuLinkImportJob({
                 permissionConfirmed: menuLinkPermissionConfirmed,
                 projectId: selectedProject.projectId,
-                url: menuLinkUrl.trim(),
+                url: menuLinkInputValidation.normalizedUrl,
             });
 
             if (!isCurrentProjectMutation(mutationToken, operationScope)) return;
@@ -2490,7 +2492,7 @@ function ProjectsPage() {
             setMenuLinkImporting(false);
             endProjectMutation(mutationToken);
         }
-    }, [activeProcessingJobId, beginProjectMutation, canUseMenuExtraction, endProjectMutation, hasPendingLocalUploadFiles, isCurrentProjectMutation, labels.offeringPhrase, menuLinkPermissionConfirmed, menuLinkUrl, selectedProject, setActiveProcessingJobId]);
+    }, [activeProcessingJobId, beginProjectMutation, canUseMenuExtraction, endProjectMutation, hasPendingLocalUploadFiles, isCurrentProjectMutation, labels.offeringPhrase, menuLinkInputValidation, menuLinkPermissionConfirmed, menuLinkUrl, selectedProject, setActiveProcessingJobId]);
 
     /**
      * Handle "Continue" button click
@@ -2957,7 +2959,11 @@ function ProjectsPage() {
             >
                 I confirm this is my business menu or I have permission to import it.
             </Checkbox>
-            {menuLinkImportError ? (
+            {menuLinkUrl.trim() && !menuLinkInputValidation.valid ? (
+                <Typography.Text role="alert" type="danger">
+                    {menuLinkInputValidation.message}
+                </Typography.Text>
+            ) : menuLinkImportError ? (
                 <Typography.Text role="alert" type="danger">
                     {menuLinkImportError}
                 </Typography.Text>
@@ -2965,7 +2971,7 @@ function ProjectsPage() {
             <Flex justify="flex-end">
                 <Button
                     {...getMenuListAnswerlatticeTargetProps(MENULIST_ANSWERLATTICE_TARGETS.MENU_IMPORT_START)}
-                    disabled={!canUseMenuExtraction || !selectedProject?.projectId || !menuLinkUrl.trim() || !menuLinkPermissionConfirmed || Boolean(activeProcessingJobId) || hasPendingLocalUploadFiles}
+                    disabled={!canUseMenuExtraction || !selectedProject?.projectId || !menuLinkInputValidation.valid || !menuLinkPermissionConfirmed || Boolean(activeProcessingJobId) || hasPendingLocalUploadFiles}
                     icon={<LuGlobe2 size={18} />}
                     loading={menuLinkImporting}
                     onClick={handleMenuLinkImport}

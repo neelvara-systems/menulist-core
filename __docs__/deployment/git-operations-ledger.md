@@ -4469,3 +4469,39 @@ No Firebase source/configuration changes. Firestore Rules, indexes, Storage Rule
 - Intended paths: Project Share modal, communication-kit verifier, project-management implementation note, active certification report, and this ledger.
 - Final state pending: scoped commit, non-force staging push, direct server readback, automatic QA deployment, exact `/api/version`, and hosted keyboard/color-dialog retest.
 - Attribution confidence: exact.
+
+#### MLRC-066 performed result — `2026-08-26T03:29:50+05:30`
+
+- Commit/push: `d0709a18b96abed91d6f99a8e1706bf5c000eff4` (`fix(menulist): label staff line copy`) was pushed non-force to `origin/staging`; direct server readback returned the same SHA with `0/0` divergence. `main` remained untouched at `fe625d5bbf527c1b7e537b00ab32a4f655905c35`.
+- Automatic QA deployment: `/api/version` returned exact verified build `d0709a18b96abed91d6f99a8e1706bf5c000eff4`, deployment `menulist-core-1zvx61gd4-neelvara-systems.vercel.app`, environment `preview`. No manual Vercel deployment occurred.
+- Exact hosted result: Share rendered one named `Copy staff line` control, its acknowledged clipboard path copied the exact displayed owner staff script, and the clipboard was cleared immediately after verification. The client-only Show logo toggle also disabled and restored correctly; Copy share message and Copy URL produced the expected tenant-scoped public destination and the clipboard was cleared. MLRC-066 is closed.
+- Adjacent Projects controls: Space opened Create New Menu and Close dismissed it without mutation; Edit opened the existing form and Close dismissed it; Duplicate and Delete rendered explicit confirmation dialogs and Cancel preserved the default menu. No project mutation was performed.
+- Firebase state: no infrastructure source/configuration changed and no deployment or authenticated infrastructure readback occurred; every Firestore Rules, indexes, Storage Rules, and Cloud Functions row for all four active targets remains `NO_INFRA_CHANGE` / `SERVER_STATE_UNKNOWN`.
+
+### GIT-20260826-033329-mlrc068-menu-link-client-preflight
+
+- Timestamp: `2026-08-26T03:33:29+05:30`
+- Record type: `PLANNED`
+- Actor/session/thread ID: Codex `/root`; thread `01a034e1-c70a-74b1-a92b-0a103a981815`.
+- Registered worktrees: one primary worktree at `/Users/danny/Projects/MenuListAi/menulist-core`, branch `staging`, HEAD `8a51727f11d37f3388567bf316405193584485c6`.
+- Authorization: autonomous exhaustive MenuList QA certification, in-scope fixes, regression coverage, durable report evidence, Firebase cost review, and stable staging publication. This operation is `staging` only; it excludes `main`, Firebase infrastructure deployment, manual Vercel deployment, production mutation, and live Razorpay execution.
+- Hosted reproduction: exact MenuList build `d0709a18b96abed91d6f99a8e1706bf5c000eff4` enabled Import link for `javascript:alert(1)`, submitted one protected request/rate-limit attempt, then recovered with the generic acquisition failure. The protected server correctly rejected the unsafe protocol and no navigation or script execution occurred, but the missing UI preflight created needless latency and cost.
+- Correction: add a pure client boundary for non-empty/max-length/syntax/HTTP(S)/hostname/no-credentials validation; strip fragments and submit only the normalized admitted URL. Invalid input keeps Import link disabled and exposes its specific inline alert. The existing server DNS, IP, redirect, body, content, tenant/store/project, permission, rate-limit, and artifact boundaries remain authoritative.
+- Starting filesystem state: zero staged, five tracked unstaged, one untracked before this ledger append. Complete pre-ledger diff Git hash `cd354c39b676c7b251ec5d2439657b5ed5701068`; status `0/5/1`.
+- Cost change: confirmed invalid syntactic/non-web/credential-bearing input goes from one protected `/api/menu-link-imports` invocation and one rate-limit attempt to zero backend operations. Valid input operation count is unchanged.
+- Validation: `test:menu-link-import-url-boundary` PASS including client preflight cases; static menu-extraction pipeline verifier PASS with 387/387 checks; focused zero-warning ESLint PASS; strict `tsc --noEmit --incremental false` PASS; `git diff --check` PASS.
+
+#### Pre-operation branch matrix
+
+| Branch | Local SHA | Direct server SHA | Tracking ref | Ahead/behind | Worktree | Filesystem | Status |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `staging` | `8a51727f11d37f3388567bf316405193584485c6` | `refs/heads/staging` / `8a51727f11d37f3388567bf316405193584485c6` | `origin/staging` | `0/0` | primary | `0/5/1` before ledger append | `IN_SYNC` |
+| `main` | `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `refs/heads/main` / `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `origin/main` | `0/0` | none | n/a | `IN_SYNC` |
+
+#### Firebase component matrix before Git mutation
+
+No Firebase source/configuration changes. Firestore Rules, indexes, Storage Rules, and Cloud Functions for MenuList QA `menulist-qa`, MenuList production `menulist-prod`, Answerlattice QA `neelvara-answerlattice-qa`, and Answerlattice production `neelvara-answerlattice-prod` each remain independently `NO_INFRA_CHANGE` / `SERVER_STATE_UNKNOWN`; no authenticated readback or deployment is performed.
+
+- Intended paths: desktop Projects import panel/handler, pure menu-link input boundary, URL-boundary test, extraction verifier, project-management implementation note, active certification report, and this ledger.
+- Final state pending: scoped commit, non-force staging push, direct server readback, automatic QA deployment, exact `/api/version`, and hosted invalid/valid input state retest proving zero invalid request.
+- Attribution confidence: exact.
