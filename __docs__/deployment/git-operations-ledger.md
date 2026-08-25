@@ -3476,7 +3476,7 @@ Those fields are explicitly `unknown` instead of guessed.
 - Final filesystem state: pending scoped commit, non-force `staging` push, automatic QA build, exact `/api/version`, and hosted keyboard retest.
 - Attribution confidence: exact.
 
-#### Result — `2026-08-25T21:45:00+05:30`
+#### Result — `2026-08-25T21:34:12+05:30`
 
 - Record type: `PERFORMED_AND_VERIFIED`.
 - Scoped source/docs/regression commit: `4d448af6b38a4426b6967a643d4948d00dd6150a` (`fix(menulist): make help cards keyboard accessible`).
@@ -3495,3 +3495,11 @@ Those fields are explicitly `unknown` instead of guessed.
 - Firebase matrix after: unchanged from the planned entry. MenuList QA/production Functions retain `INFRA_CHANGE` / `DEPLOY_REQUIRED`; the other 14 rows retain `NO_INFRA_CHANGE` / `SERVER_STATE_UNKNOWN`. No Firebase deployment/readback, production release, `main` movement, manual Vercel deployment, or live Razorpay execution occurred.
 - Final filesystem state: this result append and the hosted-retest evidence in `MENULIST_RC_CERTIFICATION.md` are modified; they will be committed and pushed to `staging` as evidence-only closeout.
 - Attribution confidence: exact.
+
+#### Evidence-closeout readback — `2026-08-25T21:34:12+05:30`
+
+- Evidence commit: `9198025e58e3bfaa12371c5d469b6615de7363a2` (`docs(menulist): close help accessibility retest`).
+- Direct server readback: `refs/heads/staging` is exact `9198025e58e3bfaa12371c5d469b6615de7363a2` with `0/0` divergence; `refs/heads/main` remains exact `fe625d5bbf527c1b7e537b00ab32a4f655905c35`.
+- Scope: report/ledger evidence only; runtime remains the exact hosted and verified parent `4d448af6b38a4426b6967a643d4948d00dd6150a`.
+- Filesystem before this final ledger append: zero staged, zero other tracked modifications, zero untracked files.
+- Firebase, production, `main`, manual Vercel deployment, and live Razorpay state remain unchanged.
