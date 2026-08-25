@@ -363,3 +363,57 @@ was executed.
   performed in this round.
 - Rehearse a hosted backup restore, provider failure/timeout behavior, and the
   supported physical-device/browser matrix before the final production verdict.
+
+## 24. Hosted QA release-candidate update — 2026-08-25
+
+### Verdict
+
+**NOT READY FOR PRODUCTION ENVIRONMENT TESTING.** The exact release candidate is
+deployed and the reachable hosted owner regressions below pass, but the QA
+workspace has no active Answerlattice subscription. The product correctly
+blocks hosted Knowledge Intake and provider-backed First 10 execution. Because
+real Razorpay execution is explicitly excluded, this audit did not bypass the
+entitlement, manufacture a subscription record, or claim provider certification
+from static evidence.
+
+### Exact hosted identity
+
+- Canonical host: `https://canonica.app`.
+- Verified build: `194f39a66e7af50d30a86cb38425a04638b1b873`.
+- Vercel deployment: `menulist-core-h7nsx8d5g-neelvara-systems.vercel.app`.
+- `/api/version` returned the exact full build with `buildProvenance: verified`.
+- The deployed widget script contains the release-candidate viewport bounds
+  `maxWidth: calc(100vw - 24px)` and `maxHeight: calc(100vh - 120px)`.
+
+### Hosted scenarios executed
+
+- Authenticated as `admin@neelvara.com` in the existing MenuList QA Client
+  workspace; fresh Team, First 10, Product Pages & Flows, and Workflow
+  Notifications loads produced no browser console errors or warnings.
+- Team & Access: the active owner rendered correctly. The New Role modal kept a
+  bounded scrollable body (`587px` visible of `1313px`) while Save Role remained
+  reachable in a `1512x807` viewport.
+- Knowledge Intake: a synthetic, non-sensitive MenuList import attempt was
+  rejected with “An active Answerlattice subscription is required before
+  importing sources.” No intake job, source, or credit consumption was created.
+- First 10 Answers: the product-specific set remained unavailable without an
+  intake. A general ten-question starter set ran through the deterministic
+  canonical check and honestly reported `0%` pass, ten needing review, and
+  three critical failures because the workspace has no governed answers. The
+  system did not fabricate success or serve drafts as authority.
+- Product Pages & Flows: all five existing surfaces loaded and Refresh Support
+  Context completed with “Context summary rebuilt.”
+- Workflow Notifications: Slack and email remain disabled and Send Test remains
+  unavailable. No configuration was changed and no email or external message
+  was sent.
+
+### Remaining hosted evidence
+
+- Activate the QA workspace through the supported billing/provider path, or
+  provide a product-owned non-payment QA entitlement mechanism. Then repeat a
+  bounded Knowledge Intake import, product-specific First 10 provider run,
+  publish/retrieval/widget journey, and credit/refund accounting proof.
+- Notification delivery requires an enabled QA integration and a separately
+  confirmed test recipient at the moment of sending.
+- Real Razorpay checkout, charging, payment-webhook completion, refund, and live
+  payment operations remain intentionally excluded.
