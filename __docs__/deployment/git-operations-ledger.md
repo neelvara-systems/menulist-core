@@ -2897,3 +2897,48 @@ Those fields are explicitly `unknown` instead of guessed.
 - Git server readback and divergence: direct pre-operation evidence proves local/server `main` and `staging` in sync at the SHAs above; tracking divergence is `0/0`.
 - Final filesystem state: pending scoped commit, push, direct readback, automatic QA deployment, exact hosted retest, and result append.
 - Attribution confidence: exact.
+
+#### GIT-20260825-175655-mlrc042-persisted-auth-cost
+
+- Timestamp: `2026-08-25T17:56:55+05:30`
+- Record type: `PLANNED_REFINEMENT`
+- Actor/session/thread ID: Codex `/root`; thread `01a034e1-c70a-74b1-a92b-0a103a981815`
+- Completes: adjacent correctness and Firebase-cost refinement for `GIT-20260825-174719-mlrc042-store-access-recovery`.
+- Registered worktrees: one primary worktree at `/Users/danny/Projects/MenuListAi/menulist-core`, branch `staging`, HEAD `74ea027f17f8d50ab8863fda03aa74337a1a126d`.
+- Root cause: the client inspected `firebaseAuth.currentUser` before the pinned Firebase SDK restored persisted browser state. Valid hard reloads therefore entered `/api/auth/set-claims`, causing one protected invocation, a product-user query returning up to two documents, one canonical-store read, and Firebase Admin token work. The exact hosted stress evidence reached 30 successful requests before the intended 30-per-15-minute 429 boundary.
+- Correction: await `firebaseAuth.authStateReady()` before inspecting the actor. A matching persisted tenant/store session now skips set-claims; fresh OAuth, missing actor, store change, claim mismatch, tenant checks, and the rate limiter remain unchanged. Initial-state failure uses the generic coded recovery added by MLRC-042.
+- Candidate scope: `src/lib/auth/firebaseAuthSync.ts`, both existing auth/API regression verifiers, `__docs__/auth/firebase-auth-sync.md`, the certification report, and this ledger. Regenerated inventory remains unchanged and clean at 8,467 rows. Pre-ledger five-file diff SHA-256: `4cfd4585c491e86967a7768261169b2cd4bbd14436571fa26b100e7a44f74a00`.
+- Validation before commit: `verify:auth-security-failure-matrix` PASS; `verify:menulist-api-tenant-safety` PASS; global accessibility PASS; contextual illustrations PASS; focused ESLint PASS; strict TypeScript PASS; RC inventory PASS; `git diff --check` PASS.
+
+- Branch matrix before:
+
+  | Branch | Local full SHA | Direct server ref/full SHA | Tracking ref | Ahead/behind | Worktree | Staged/unstaged/untracked | Status |
+  | --- | --- | --- | --- | --- | --- | --- | --- |
+  | `main` | `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `refs/heads/main` / `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `origin/main` | `0/0` | not checked out | `N/A` | `IN_SYNC` |
+  | `staging` | `74ea027f17f8d50ab8863fda03aa74337a1a126d` | `refs/heads/staging` / `74ea027f17f8d50ab8863fda03aa74337a1a126d` | `origin/staging` | `0/0` | primary worktree | `0/5/0` before this ledger append | `IN_SYNC` |
+
+- Firebase matrix before/after:
+
+  | Product | Environment/project | Component | Local source/config | Local evidence | Server evidence | Delta | Deployment state |
+  | --- | --- | --- | --- | --- | --- | --- | --- |
+  | MenuList | QA / `menulist-qa` | Firestore Rules | `firestore-menulist.rules` | no candidate path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | QA / `menulist-qa` | Firestore indexes | `firestore.indexes.json` | no candidate path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | QA / `menulist-qa` | Storage Rules | `storage.rules` | no candidate path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | QA / `menulist-qa` | Cloud Functions | `functions/` | retained MLRC-031 mirror delta; previously built | not refreshed | `INFRA_CHANGE` | `DEPLOY_REQUIRED` |
+  | MenuList | production / `menulist-prod` | Firestore Rules | same source | no candidate path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | production / `menulist-prod` | Firestore indexes | same source | no candidate path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | production / `menulist-prod` | Storage Rules | same source | no candidate path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | production / `menulist-prod` | Cloud Functions | same shared source | retained MLRC-031 mirror delta | not refreshed | `INFRA_CHANGE` | `DEPLOY_REQUIRED` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Firestore Rules | `firestore-answerlattice.rules` | no candidate path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Firestore indexes | `firestore-answerlattice.indexes.json` | no candidate path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Storage Rules | `storage-answerlattice.rules` | no candidate path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Cloud Functions | `functions-answerlattice/` | no candidate path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Firestore Rules | same source | no candidate path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Firestore indexes | same source | no candidate path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Storage Rules | same source | no candidate path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Cloud Functions | same shared source | no candidate path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+
+- Firebase deployment evidence or blocker: this refinement changes no Firebase infrastructure source. MLRC-031 remains `DEPLOY_REQUIRED` for MenuList QA and production Functions; no Firebase or manual Vercel deployment is authorized.
+- Git server readback and divergence: direct pre-operation readback proves both local/server branches at the exact SHAs above with `0/0` divergence.
+- Final filesystem state: pending scoped commit, non-force staging push, direct readback, automatic QA deployment, and exact hosted operation-count retest.
+- Attribution confidence: exact.

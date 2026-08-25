@@ -182,6 +182,23 @@ async function runFirebaseAuthSync(session: any): Promise<FirebaseAuthSyncResult
     }
     const { tenantId, storeId } = sessionScope;
 
+    // Firebase restores its persisted browser actor asynchronously. Inspecting
+    // currentUser before that first state settles makes every hard reload look
+    // like a fresh OAuth handoff and needlessly calls /api/auth/set-claims.
+    // Wait for the SDK's existing persistence state before deciding whether a
+    // custom token is actually required.
+    try {
+        await firebaseAuth.authStateReady();
+    } catch (error) {
+        logFirebaseBootstrapFailure('firebase_auth_initial_state_failed', error, {
+            sessionScopePresent: true,
+        });
+        throw createFirebaseBootstrapError(
+            'Firebase Auth sync failed',
+            'firebase_auth_initial_state_failed',
+        );
+    }
+
     const currentUser = firebaseAuth.currentUser;
     let canRefreshCurrentUser = false;
     if (currentUser) {

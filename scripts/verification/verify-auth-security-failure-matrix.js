@@ -3412,6 +3412,12 @@ assert(!firebaseAuthSyncHook.includes('const [isSynced, setIsSynced] = useState(
 assertIncludes(firebaseAuthSyncHelper, 'getFirebaseAuthSessionScopeKey', 'Firebase Auth sync helper must expose its effective scoped-session identity key.');
 assertIncludes(firebaseAuthSyncHelper, 'resolveFirebaseAuthSessionScopeState', 'Firebase Auth sync helper must use exact session identity.');
 assertIncludes(firebaseAuthSyncHelper, 'firebase_auth_sync_invalid_session_scope', 'Firebase Auth sync helper must fail closed on contradictory session identity.');
+assertIncludes(firebaseAuthSyncHelper, 'await firebaseAuth.authStateReady()', 'Firebase Auth sync must await persisted browser state before deciding to call set-claims.');
+assertIncludes(firebaseAuthSyncHelper, 'firebase_auth_initial_state_failed', 'Firebase Auth initial-state failures must use a bounded generic bootstrap code.');
+assert(
+  firebaseAuthSyncHelper.indexOf('await firebaseAuth.authStateReady()') < firebaseAuthSyncHelper.indexOf('const currentUser = firebaseAuth.currentUser'),
+  'Firebase Auth sync must settle persistence before inspecting currentUser.',
+);
 assert(!firebaseAuthSyncHelper.includes('session?.user?.tenantId ?? session?.tId'), 'Firebase Auth sync helper must not select one tenant alias.');
 assert(!firebaseAuthSyncHelper.includes('session?.user?.storeId ?? session?.sId'), 'Firebase Auth sync helper must not select one store alias.');
 assertIncludes(firebaseAuthSessionScope, 'resolveStorePermissionSessionScope(source)', 'Firebase Auth session scope must reuse the exact shared projector.');

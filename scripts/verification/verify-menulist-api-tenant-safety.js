@@ -10638,6 +10638,8 @@ function verifyAuthAccountClientResponseDiagnostics() {
   assert(firebaseAuthSyncHelper.includes('resolveFirebaseAuthSessionScopeState'), 'Firebase auth sync must use exact session scope state');
   assert(firebaseAuthSyncHelper.includes("sessionScope.status === 'invalid'"), 'Firebase auth sync must distinguish conflicting scope from absent onboarding');
   assert(firebaseAuthSyncHelper.includes('firebase_auth_sync_invalid_session_scope'), 'Firebase auth sync must code contradictory session scope');
+  assert(firebaseAuthSyncHelper.includes('await firebaseAuth.authStateReady()'), 'Firebase auth sync must await persisted browser state before deciding to call set-claims');
+  assert(firebaseAuthSyncHelper.indexOf('await firebaseAuth.authStateReady()') < firebaseAuthSyncHelper.indexOf('const currentUser = firebaseAuth.currentUser'), 'Firebase auth sync must settle persistence before inspecting currentUser');
   assert(!firebaseAuthSyncHelper.includes('session?.user?.tenantId ?? session?.tId'), 'Firebase auth sync must not select one tenant alias');
   assert(!firebaseAuthSyncHelper.includes('session?.user?.storeId ?? session?.sId'), 'Firebase auth sync must not select one store alias');
   [
