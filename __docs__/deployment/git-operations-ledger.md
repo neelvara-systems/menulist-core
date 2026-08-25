@@ -812,6 +812,10 @@ Those fields are explicitly `unknown` instead of guessed.
   unstaged path change; no pre-existing source or user work was altered.
 - Attribution confidence: exact.
 
+#### Pre-commit correction for `GIT-20260826-051553-mlrc071-import-stage-diagnostics`
+
+- The planned-operation sentence saying “seven scoped files plus this ledger” miscounted the candidate. The exact candidate is six non-ledger files plus this ledger, seven tracked files total. Scope and authorization are unchanged.
+
 #### MLRC-057/058 context attempt performed result — `2026-08-26T01:49:52+05:30`
 
 - Commit/push: `370645e6d26a1fb90e747c03799500b779d47b33` (`fix(menulist): preserve owner feedback modals`) was pushed non-force to `origin/staging`; direct server readback returned the same SHA and `main` remained `fe625d5bbf527c1b7e537b00ab32a4f655905c35`.
@@ -4610,3 +4614,52 @@ No Firebase source/configuration changes. Firestore Rules, indexes, Storage Rule
 - Automatic QA identity: six cache-busted `/api/version` reads immediately after the push continued to return verified evidence build `d4f9866ee5f4cdf93c2fac05c8dcf035d8b22367`, whose included MenuList product code remains exact tested commit `1ec71b402e697324a8db5ba6f0d552325ace062f`. The verifier/report-only commit introduced no hosted application behavior change; no manual deployment was performed or inferred.
 - Firebase state: all 16 component/target rows remain `NO_INFRA_CHANGE` / `SERVER_STATE_UNKNOWN`. No Firebase deployment or authenticated infrastructure readback occurred.
 - Decision: MLRC-069 is closed. Overall MenuList status remains `CERTIFICATION BLOCKED` pending the hosted upload/item/publish journey and other explicitly listed runtime gates.
+
+### GIT-20260826-051553-mlrc071-import-stage-diagnostics
+
+- Timestamp: `2026-08-26T05:15:53+05:30`
+- Record type: `PLANNED`
+- Actor/session/thread ID: Codex `/root`; thread `01a034e1-c70a-74b1-a92b-0a103a981815`.
+- Registered worktrees: one primary worktree at `/Users/danny/Projects/MenuListAi/menulist-core`, branch `staging`, HEAD `8976bcbf46e2af2bde1feb0af46b6f28cce72a05`.
+- Authorization: autonomous exhaustive MenuList QA certification, in-scope fixes, regression coverage, durable evidence, Firebase cost review, and stable staging publication. This operation is `staging` only; it excludes `main`, Firebase infrastructure deployment, manual Vercel deployment, production mutation, and live Razorpay execution.
+- Hosted reproduction: exact custom-`qa` build `8976bcbf46e2af2bde1feb0af46b6f28cce72a05` failed one permission-confirmed, MenuList-owned WebP menu-link import before job persistence. Existing bounded diagnostics could not distinguish project lookup, active-job lookup, acquisition, or Storage save; a separate operation-log write reported `firestore/invalid-credential` but did not prove the import failure stage.
+- Correction: record one fixed `failureStage` at the five existing route boundaries through the existing bounded diagnostic helper. No URL, host, content, Storage path, project/job/artifact ID, tenant/store/user ID, provider response, raw exception, read, write, retry, provider call, or owner-visible technical copy is added.
+- Starting filesystem state: zero staged, six tracked unstaged, zero untracked before this ledger append; candidate paths are the protected import route, its existing extraction verifier, active implementation/Firebase-cost/changelog/certification documents, and this ledger.
+- Validation: `verify:menu-extraction-pipeline` PASS with 387/387 source checks plus every chained result, bounded-response, integrity, job-start, listener, dismissal, retention, rules/emulator, messaging lifecycle/concurrency/cleanup/lease/adapter, Storage, response, and upload-content suite; focused ESLint PASS; strict `tsc --noEmit --incremental false --pretty false` PASS; `git diff --check` PASS.
+
+#### Pre-operation branch matrix
+
+| Branch | Local full SHA | Server ref/full SHA | Tracking ref | Ahead/behind | Worktree | Staged/unstaged/untracked | Status |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `staging` | `8976bcbf46e2af2bde1feb0af46b6f28cce72a05` | `refs/heads/staging` / `8976bcbf46e2af2bde1feb0af46b6f28cce72a05` | `origin/staging` | `0/0` | primary | `0/6/0` before ledger append | `IN_SYNC` |
+| `main` | `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `refs/heads/main` / `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `origin/main` | `0/0` | none | n/a | `IN_SYNC` |
+
+#### Firebase component matrix before Git mutation
+
+| Product | Environment/project | Component | Local source/config | Local hash/bytes | Local validation | Server release/revision/inventory | Server hash/bytes | Readback time | Delta | Deployment state |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| MenuList | QA / `menulist-qa` | Firestore Rules | `firestore-menulist.rules` | SHA-256 `2059459e3b0263bdeca75f89ad0b490e8cebf1dee19cdef9012e0c02fbab5b89`; 132684 bytes | unchanged; prior aggregate PASS | not read back in this operation | unknown | `2026-08-26T05:15:53+05:30` | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| MenuList | QA / `menulist-qa` | Firestore indexes | `firestore.indexes.json` | SHA-256 `5629ae4d5004bc59c82528f2e7f9b7e5bb1ffbf74e0fc2e2e5e5252abf0744e0`; 78310 bytes | unchanged; prior aggregate PASS | not read back in this operation | unknown | `2026-08-26T05:15:53+05:30` | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| MenuList | QA / `menulist-qa` | Storage Rules | `storage.rules` | SHA-256 `226d2a206d7de8a442bf356a61ad048118322acb993eb89fa45744ed78ed1838`; 18176 bytes | unchanged; prior aggregate PASS | not read back in this operation | unknown | `2026-08-26T05:15:53+05:30` | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| MenuList | QA / `menulist-qa` | Cloud Functions | `functions/` | Git tree `3c42f5d3fca47ca69e10fa34ad63cf8c28ab8f75` | unchanged; prior aggregate PASS | not read back in this operation | unknown | `2026-08-26T05:15:53+05:30` | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| MenuList | production / `menulist-prod` | Firestore Rules | `firestore-menulist.rules` | same local SHA/bytes as QA row | unchanged; prior aggregate PASS | not read back in this operation | unknown | `2026-08-26T05:15:53+05:30` | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| MenuList | production / `menulist-prod` | Firestore indexes | `firestore.indexes.json` | same local SHA/bytes as QA row | unchanged; prior aggregate PASS | not read back in this operation | unknown | `2026-08-26T05:15:53+05:30` | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| MenuList | production / `menulist-prod` | Storage Rules | `storage.rules` | same local SHA/bytes as QA row | unchanged; prior aggregate PASS | not read back in this operation | unknown | `2026-08-26T05:15:53+05:30` | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| MenuList | production / `menulist-prod` | Cloud Functions | `functions/` | Git tree `3c42f5d3fca47ca69e10fa34ad63cf8c28ab8f75` | unchanged; prior aggregate PASS | not read back in this operation | unknown | `2026-08-26T05:15:53+05:30` | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| Answerlattice | QA / `neelvara-answerlattice-qa` | Firestore Rules | `firestore-answerlattice.rules` | SHA-256 `a92cbacbf2b64d2939391449044ea5625e706ddb60e23dfab7c4ffb20d3a9e77`; 116222 bytes | unchanged; prior aggregate PASS | not read back in this operation | unknown | `2026-08-26T05:15:53+05:30` | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| Answerlattice | QA / `neelvara-answerlattice-qa` | Firestore indexes | `firestore-answerlattice.indexes.json` | SHA-256 `0114bdf8ea6425b890a8e58fa03dac7915a7d3ed4372bc689ab59a8ce585ff4a`; 50941 bytes | unchanged; prior aggregate PASS | not read back in this operation | unknown | `2026-08-26T05:15:53+05:30` | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| Answerlattice | QA / `neelvara-answerlattice-qa` | Storage Rules | `storage-answerlattice.rules` | SHA-256 `5fc8f980f289889da557ac69c91edd61f8e8646b066c9b0101b87141d67106cc`; 6948 bytes | unchanged; prior aggregate PASS | not read back in this operation | unknown | `2026-08-26T05:15:53+05:30` | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| Answerlattice | QA / `neelvara-answerlattice-qa` | Cloud Functions | `functions-answerlattice/` | Git tree `ae5750c6e78f96a9ecfa234b64f906e04a2fdc16` | unchanged; prior aggregate PASS | not read back in this operation | unknown | `2026-08-26T05:15:53+05:30` | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| Answerlattice | production / `neelvara-answerlattice-prod` | Firestore Rules | `firestore-answerlattice.rules` | same local SHA/bytes as QA row | unchanged; prior aggregate PASS | not read back in this operation | unknown | `2026-08-26T05:15:53+05:30` | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| Answerlattice | production / `neelvara-answerlattice-prod` | Firestore indexes | `firestore-answerlattice.indexes.json` | same local SHA/bytes as QA row | unchanged; prior aggregate PASS | not read back in this operation | unknown | `2026-08-26T05:15:53+05:30` | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| Answerlattice | production / `neelvara-answerlattice-prod` | Storage Rules | `storage-answerlattice.rules` | same local SHA/bytes as QA row | unchanged; prior aggregate PASS | not read back in this operation | unknown | `2026-08-26T05:15:53+05:30` | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| Answerlattice | production / `neelvara-answerlattice-prod` | Cloud Functions | `functions-answerlattice/` | Git tree `ae5750c6e78f96a9ecfa234b64f906e04a2fdc16` | unchanged; prior aggregate PASS | not read back in this operation | unknown | `2026-08-26T05:15:53+05:30` | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+
+- Firebase deployment evidence or blocker: no infrastructure source changed; no Firebase deployment is authorized or required by this app-route diagnostic change. Authenticated server readback is unavailable until Google re-verification, so server parity is not claimed.
+- Planned Git operation: stage the seven scoped files plus this ledger, commit once on local `staging`, then non-force push `staging` to `origin/staging`. Leave `main` untouched.
+- Final state pending: staged diff review, scoped commit/push, direct server readback, automatic custom-`qa` build identity, and one admitted hosted import retry to capture the fixed stage.
+- Attribution confidence: exact.
+
+#### Chronological correction pointer for `GIT-20260826-051553-mlrc071-import-stage-diagnostics`
+
+- A correction paragraph was appended earlier at line 815 because the patch matched an older repeated attribution anchor. Its content is authoritative: the exact candidate is six non-ledger files plus this ledger, seven tracked files total. This chronological pointer preserves the append-only record and does not alter scope or authorization.

@@ -201,6 +201,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
     let artifactData: Record<string, unknown> | null = null;
     let jobRef: DocumentReference | null = null;
     let persistenceAttempted = false;
+    let failureStage = 'project_lookup';
 
     try {
         const projectRef = firestoreAdmin
@@ -214,6 +215,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             return NextResponse.json({ success: false, error: 'Menu not found.' }, { status: 404 });
         }
 
+        failureStage = 'active_job_lookup';
         const existingJobId = await findExistingActiveJob(projectId, ids.uId);
         if (existingJobId) {
             return NextResponse.json({
@@ -228,6 +230,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         const targetLanguages = resolveTargetLanguages(projectData);
         const businessCategory = projectData.businessCategory || projectData.category || null;
         const businessType = projectData.businessType || projectData.type || null;
+        failureStage = 'source_acquisition';
         const acquisition = await acquireMenuLinkSource(url, { businessCategory, businessType });
         jobRef = firestoreAdmin.collection(DB_COLLECTIONS.MENU_IMAGE_PROCESSING_JOBS).doc();
         artifactRef = firestoreAdmin.collection(DB_COLLECTIONS.MENU_LINK_IMPORT_ARTIFACTS).doc();
@@ -236,6 +239,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         const storagePath = `menuLinkImports/${ids.tId}/${ids.sId}/${projectId}/${jobRef.id}/source.${acquisition.artifactExtension}`;
         const downloadToken = crypto.randomUUID();
 
+        failureStage = 'storage_write';
         await bucket.file(storagePath).save(acquisition.artifactBuffer, {
             metadata: {
                 cacheControl: STORAGE_CACHE_CONTROL.immutablePrivate,
@@ -311,6 +315,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             uId: ids.uId,
             updatedAt: now,
         };
+        failureStage = 'job_persistence';
         persistenceAttempted = true;
         const jobCreation = await createOrReuseActiveMenuExtractionJob({
             additionalCreates: [{ data: artifactData, ref: artifactRef }],
@@ -361,6 +366,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             logMenuProcessingDiagnostic('menu_link_import_source_rejected', {
                 ...getMenuProcessingProjectLogContext(projectId),
                 ...getBoundedMenuProcessingStringContext('sourceErrorCode', error.code),
+                ...getBoundedMenuProcessingStringContext('failureStage', failureStage),
                 sourceStatusCode: error.status,
             });
             return NextResponse.json(
@@ -432,6 +438,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
 
         logMenuProcessingFailure('menu_link_import_route_failed', error, {
             ...getMenuProcessingProjectLogContext(projectId),
+            ...getBoundedMenuProcessingStringContext('failureStage', failureStage),
             cleanupDeferred,
             persistenceAttempted,
             storagePathCount: createdStoragePaths.length,

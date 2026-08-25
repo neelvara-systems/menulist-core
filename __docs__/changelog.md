@@ -1,5 +1,16 @@
 # MenuList — Changelog
 
+## August 26, 2026 - Menu-Link Import Failure-Stage Diagnostics
+
+- Added one fixed bounded stage label to the existing authenticated menu-link
+  import failure diagnostic so hosted QA can distinguish project lookup,
+  active-job lookup, public-source acquisition, private Storage save, and
+  atomic job/artifact persistence failures.
+- Owner copy, authentication, tenant/store permission checks, URL validation,
+  rate limiting, Firestore/Storage operations, cleanup, extraction, and retry
+  behavior are unchanged. The diagnostic excludes URLs, paths, identifiers,
+  acquired content, provider responses, and raw exception text.
+
 ## August 25, 2026 - Intentional Sign Out Does Not Mimic Expiry
 
 - Distinguished confirmed owner logout from genuine session expiry in the
