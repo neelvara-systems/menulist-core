@@ -2235,3 +2235,48 @@ Those fields are explicitly `unknown` instead of guessed.
 - Firebase matrix after: all 16 MenuList/Answerlattice environment-component rows remain `NO_INFRA_CHANGE` / `SERVER_STATE_UNKNOWN`; no Firebase source path changed, no Firebase deployment was authorized, and no authenticated Firebase server-parity claim was made.
 - Filesystem closeout: the regenerated inventory plus this final report/runtime/ledger evidence will be committed and pushed as an evidence-only descendant. It does not change the exact tested product runtime above. Direct server readback of that descendant is required before handoff.
 - Attribution confidence: exact for both scoped product commits, validations, hosted identities, responsive measurements, click-through, complete API retest, and direct Git readbacks; concurrent unstaged governance changes remain actor `unknown`.
+
+### GIT-20260825-143633-mlrc030-mobile-sheet-label
+
+- Timestamp: `2026-08-25T14:36:33+05:30`
+- Record type: `PLANNED`
+- Actor/session/thread ID: Codex `/root`; thread `01a034e1-c70a-74b1-a92b-0a103a981815`
+- Registered worktrees: one worktree at `/Users/danny/Projects/MenuListAi/menulist-core`, checked out on `staging` at `3dae0e8818bbc3444c0352ec2efe1b120b2c1b56`.
+- Authorization: Danny explicitly resumed the full MenuList QA audit/fix/hosted-retest loop and required every safe correction to reach staging before production is considered. This authorizes the smallest MLRC-030 accessibility correction, regression/report/ledger evidence, one non-force `staging` push, automatic QA deployment observation, and exact hosted retest. It does not authorize `main`, manual Vercel deployment, Firebase deployment, Razorpay execution, or unrelated concurrent changes.
+- Intended operation: stage only `src/components/mobile/antd.tsx`, `scripts/verification/verify-global-accessibility-boundary.js`, `__docs__/audits/MENULIST_RC_CERTIFICATION.md`, and this ledger; commit on local `staging`; push non-force to `origin/staging`. Preserve and exclude concurrent `AGENTS.md`, `IDE_PROMPTS/MASTER-EXECUTION-PROMPT.md`, founder-presence documents, `next-env.d.ts`, and `src/components/templates/answerlattice/AnswerlatticeTeamAccess.tsx`; attribution for those moving paths is `unknown`.
+- Defect evidence: exact hosted QA at 320×568 opened Billing History as one dialog but exposed two controls named `Back`: the page back action and the sheet's X action. The visible sheet close action was therefore indistinguishable to keyboard and assistive-technology users.
+- Local correction: the shared mobile `NavBar` derives the default label from its semantic icon. `LuX` uses existing locale-aware `close` copy, ordinary navigation retains `Back`, and an explicit caller label still wins. No layout, route, DAL, cache, subscription, payment, Firebase, collection, dependency, or provider behavior changes.
+- Validation before commit: `node scripts/verification/verify-global-accessibility-boundary.js`, focused ESLint, strict `npx tsc --noEmit --incremental false`, and the current hosted reproduction passed. Exact hosted fixed-build browser retest remains pending.
+
+- Branch matrix before:
+
+  | Branch | Local full SHA | Direct server ref/full SHA | Tracking ref | Ahead/behind | Worktree | Staged/unstaged/untracked | Status |
+  | --- | --- | --- | --- | --- | --- | --- | --- |
+  | `main` | `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `refs/heads/main` / `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `origin/main` | `0/0` | not checked out | `N/A` | `IN_SYNC` |
+  | `staging` | `3dae0e8818bbc3444c0352ec2efe1b120b2c1b56` | `refs/heads/staging` / `3dae0e8818bbc3444c0352ec2efe1b120b2c1b56` | `origin/staging` | `0/0` | primary worktree | `0/9/0` before this ledger append | `IN_SYNC` |
+
+- Firebase matrix before/after:
+
+  | Product | Environment/project | Component | Local source/config | Local evidence | Server evidence | Delta | Deployment state |
+  | --- | --- | --- | --- | --- | --- | --- | --- |
+  | MenuList | QA / `menulist-qa` | Firestore Rules | `firestore-menulist.rules` | unchanged hash `2059459e…` | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | QA / `menulist-qa` | Firestore indexes | `firestore.indexes.json` | unchanged hash `5629ae4d…` | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | QA / `menulist-qa` | Storage Rules | `storage.rules` | unchanged hash `226d2a20…` | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | QA / `menulist-qa` | Cloud Functions | `functions/` | unchanged tree `a5545e49…` | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | production / `menulist-prod` | Firestore Rules | same source | no changed path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | production / `menulist-prod` | Firestore indexes | same source | no changed path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | production / `menulist-prod` | Storage Rules | same source | no changed path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | production / `menulist-prod` | Cloud Functions | same source | no changed path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Firestore Rules | `firestore-answerlattice.rules` | no candidate path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Firestore indexes | `firestore-answerlattice.indexes.json` | no candidate path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Storage Rules | `storage-answerlattice.rules` | no candidate path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Cloud Functions | `functions-answerlattice/` | no candidate path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Firestore Rules | same source | no candidate path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Firestore indexes | same source | no candidate path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Storage Rules | same source | no candidate path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Cloud Functions | same source | no candidate path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+
+- Firebase deployment evidence or blocker: no Firebase infrastructure source is in the candidate. No Firebase readback or deployment is authorized; server parity remains unknown.
+- Git server readback and divergence: direct pre-operation `git ls-remote` proves local/server `main` and `staging` in sync at the SHAs above; tracking divergence is `0/0` for both.
+- Final filesystem state: pending scoped commit, push, direct readback, automatic QA deployment, hosted retest, and result append.
+- Attribution confidence: exact for this operation and candidate; unrelated moving paths remain `unknown`.

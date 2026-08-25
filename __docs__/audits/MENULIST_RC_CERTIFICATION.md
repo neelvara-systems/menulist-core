@@ -182,6 +182,7 @@ audit-fix-retest loop.
 | MLRC-027 | High | Batch image generation API deployment | Exact hosted QA crashed during route-module loading because the external `@google-cloud/tasks` ESM path dynamically requires `build/protos/protos.json`, but the deployed serverless trace omitted that runtime descriptor. Authentication never ran, so anonymous POST returned an empty 500 and valid owners could not start a batch. | Added one route-scoped `outputFileTracingIncludes` entry for the exact 202 KB descriptor; extended both Next source compatibility and isolated deployment-bundle gates to require the file and load the traced batch route without the repository `node_modules`. | `verify:next-build-compatibility`; `verify:next-deployment-bundle`; full production build; hosted anonymous API boundary | Exact hosted `c9c08d6…` retained 401 for the batch trigger and zero 5xx across all 153 methods | CLOSED |
 | MLRC-028 | High | Pending/unpaid owner opens Billing at a 390px viewport | `MobileShell` supported `/billing`, but the shared layout admitted narrow desktop-user-agent viewports only for Help/internal routes. Billing therefore rendered the desktop sidebar and left roughly half the viewport for highly wrapped content. | Added Billing to the existing narrow-viewport recovery-route boundary so both Billing and Help render through `MobileShell`; no entitlement or payment behavior changed. | `verify:mobile-shell-route-map`; `verify:billing-entitlement-boundary`; `verify:onboarding-subscription-boundary`; hosted responsive measurement | Exact hosted `4592516…` rendered native mobile Billing at 390×844, zero overflow, all visible actions ≥44px, truthful pending state, and working empty history sheet | CLOSED |
 | MLRC-029 | Medium | Mobile Billing “Need billing help?” actions | Both actions pushed `/dashboard#mobile/more/answerlatticeSupport`; recovery-only entitlement correctly denied Dashboard and redirected straight back to Billing, so the controls appeared inert. | Route both actions directly to `/help-center/ticket`, the existing permitted recovery route mapped to the mobile ticket screen. | `verify:mobile-shell-route-map`; `verify:help-center-boundary`; `verify:onboarding-subscription-boundary`; hosted mobile click-through | Exact hosted `c9c08d6…` opened the mobile ticket form at the permitted route with zero overflow and no console error | CLOSED |
+| MLRC-030 | Medium | Mobile bottom-sheet close controls | The shared mobile `NavBar` always exposed its leading action as `Back`, even when callers supplied an `LuX` close icon. Billing History therefore opened a real dialog with two separate controls named `Back`, leaving keyboard and assistive-technology users unable to distinguish page navigation from closing the sheet. | Derive the default accessible label from the rendered semantic icon: `LuX` uses the existing locale-aware `close` copy, while arrow/navigation controls retain `Back`; an explicit caller label still wins. The shared primitive repairs every existing X-backed mobile sheet without changing its visual layout or sheet behavior. | `verify:global-accessibility-boundary`; focused ESLint; TypeScript | Hosted 320×568 Billing History reproduction found one dialog and two `Back` buttons before the fix; exact hosted fixed-build retest pending | CLOSED (source) |
 
 ## E. Firebase cost audit
 
@@ -270,6 +271,7 @@ passing runtime claim.
 | `npm run verify:help-center-boundary` | PASS — Help routing, scoped Answerlattice boundary, mobile recovery bypass, runtime contracts, and ticket attachment boundary |
 | `npm run test:csp-report-boundary` | PASS — bounded CSP report admission and sensitive-data handling |
 | `npm run verify:global-accessibility-boundary` | PASS |
+| `node scripts/verification/verify-global-accessibility-boundary.js` | PASS — shared mobile X-backed sheets derive locale-aware `Close`; navigation controls retain `Back` |
 | `npx tsc --noEmit --incremental false` | PASS — current candidate exact direct command, exit 0 |
 | `npm run lint` | PASS — current candidate, zero warnings |
 | `npm run verify:next-build-compatibility` | PASS — route-scoped Cloud Tasks proto trace contract present |
@@ -296,6 +298,8 @@ passing runtime claim.
   evidence covers the pending-owner Billing, Help, direct-route, history, and
   support recovery subset; it does not imply every authenticated control was exercised.
 - MLRC-028 and MLRC-029 are closed on exact hosted QA.
+- MLRC-030 is closed in current source and awaits the exact staging-build
+  browser retest before its hosted status can be closed.
 - The repository has no root `test:e2e` or `e2e` script. Controlled browser
   evidence and existing deterministic verifiers will be recorded separately.
 - Hosted QA exposed the exact verified tested product commit

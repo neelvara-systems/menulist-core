@@ -91,7 +91,9 @@ const mobilePrimitives = read('src/components/mobile/antd.tsx');
   'tabIndex={onClick ? 0 : undefined}',
   "event.key !== 'Enter' && event.key !== ' '",
   'aria-label={ariaLabel}',
-  "backLabel = 'Back'",
+  'const isCloseIcon = isValidElement(backIcon) && backIcon.type === LuX',
+  "const effectiveBackLabel = backLabel ?? (isCloseIcon ? localeText.close : 'Back')",
+  'aria-label={effectiveBackLabel}',
 ].forEach((token) => assert(mobilePrimitives.includes(token), `mobile primitive boundary must include ${token}`));
 
 const layoutWrapper = read('src/components/antdComponent/layoutWrapper/index.tsx');

@@ -1020,7 +1020,7 @@ export function Tag({ children, className, color, onClick, style }: { children?:
 
 export function NavBar({
     backIcon,
-    backLabel = 'Back',
+    backLabel,
     children,
     className,
     onBack,
@@ -1038,7 +1038,11 @@ export function NavBar({
     titleAlign?: 'center' | 'left';
 }) {
     const { token } = theme.useToken();
+    const locale = useLocale();
+    const localeText = getMobileUiLocaleText(locale);
     const sheetContext = useContext(MobileSheetContext);
+    const isCloseIcon = isValidElement(backIcon) && backIcon.type === LuX;
+    const effectiveBackLabel = backLabel ?? (isCloseIcon ? localeText.close : 'Back');
     const navHeight = 52;
     const hasTitle = Children.count(children) > 0;
     const showBackButton = Boolean(onBack) || backIcon !== undefined;
@@ -1068,7 +1072,7 @@ export function NavBar({
             }}
         >
             {showBackButton ? (
-                <Button aria-label={backLabel} fill="none" onClick={onBack} style={{ minHeight: 44, minWidth: 44, paddingInline: 0 }}>
+                <Button aria-label={effectiveBackLabel} fill="none" onClick={onBack} style={{ minHeight: 44, minWidth: 44, paddingInline: 0 }}>
                     {backIcon ?? <LuArrowLeft size={18} />}
                 </Button>
             ) : reserveLeadingSpace ? (
