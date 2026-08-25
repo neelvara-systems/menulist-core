@@ -148,6 +148,10 @@ assert(
   'global access-denied illustration must yield vertical space to recovery actions on small mobile viewports',
 );
 assert(
+  unauthorizedPage.includes("style={{ boxSizing: 'border-box', minHeight: '100dvh', padding: 24 }}"),
+  'global access-denied viewport shell must include safe padding inside the dynamic viewport height',
+);
+assert(
   unauthorizedPage.includes('<Flex gap={8} justify="center" wrap="wrap"'),
   'global access-denied recovery actions must use the compact mobile-safe gap',
 );
@@ -176,6 +180,10 @@ assert(
 assert(
   notFoundPage.includes("style={{ width: 'clamp(128px, 40vw, 192px)' }}"),
   'global not-found illustration must yield vertical space to recovery actions on small mobile viewports',
+);
+assert(
+  notFoundPage.includes("style={{ boxSizing: 'border-box', minHeight: '100dvh', padding: 24 }}"),
+  'global not-found viewport shell must include safe padding inside the dynamic viewport height',
 );
 
 const layoutWrapper = read('src/components/antdComponent/layoutWrapper/index.tsx');

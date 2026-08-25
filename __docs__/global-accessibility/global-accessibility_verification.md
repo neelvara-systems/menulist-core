@@ -18,7 +18,8 @@
   minimum;
 - access-denied and not-found recovery actions remain visible in the initial
   320×568 viewport instead of being pushed below the fold by duplicate result
-  padding or a fixed desktop-sized illustration;
+  padding, a fixed desktop-sized illustration, or safe padding added outside
+  the dynamic viewport height;
 - the access-denied home action exits the owner-app host through the
   environment-governed public MenuList website URL instead of entering the
   protected dashboard;

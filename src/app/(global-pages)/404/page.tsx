@@ -14,7 +14,12 @@ function NotFound() {
 
     return (
         <ErrorPageThemeWrapper>
-            <Flex vertical justify='center' align='center' style={{ minHeight: "100vh", padding: 24 }}>
+            <Flex
+                vertical
+                justify='center'
+                align='center'
+                style={{ boxSizing: 'border-box', minHeight: '100dvh', padding: 24 }}
+            >
                 <Result
                     style={{ width: '100%', maxWidth: 560, padding: 0 }}
                     icon={(
