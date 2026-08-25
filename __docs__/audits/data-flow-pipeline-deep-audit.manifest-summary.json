@@ -1,14 +1,14 @@
 {
-  "generatedAt": "2026-08-25T05:33:51.455Z",
-  "repositoryHead": "916b5c94d82b848fef791babeb49addbd3c794b8",
-  "totalDiscoveredFiles": 9413,
+  "generatedAt": "2026-08-25T13:21:28.115Z",
+  "repositoryHead": "3e5e4969be2488cc596cd1f86dea20ed1c0302d0",
+  "totalDiscoveredFiles": 9417,
   "vanishedDuringInventory": 0,
-  "inScopeFiles": 9099,
+  "inScopeFiles": 9103,
   "excludedFiles": 314,
   "byCategory": {
     "documentation/contract": 3580,
-    "shared-runtime": 1208,
-    "ui-component": 1019,
+    "shared-runtime": 1210,
+    "ui-component": 1021,
     "verifier/test": 773,
     "asset/public-output": 568,
     "nextjs-entrypoint": 386,
@@ -28,29 +28,29 @@
     "proxy/routing": 1
   },
   "byReviewStatus": {
-    "reviewed": 7075,
-    "in-progress": 1497,
-    "inventory-only": 527
+    "reviewed": 7060,
+    "in-progress": 1512,
+    "inventory-only": 531
   },
   "byCategoryAndReviewStatus": {
     "documentation/contract": {
-      "reviewed": 2736,
-      "in-progress": 555,
+      "reviewed": 2733,
+      "in-progress": 558,
       "inventory-only": 289
     },
     "shared-runtime": {
       "reviewed": 998,
       "in-progress": 140,
-      "inventory-only": 70
+      "inventory-only": 72
     },
     "ui-component": {
-      "reviewed": 764,
-      "in-progress": 248,
-      "inventory-only": 7
+      "reviewed": 763,
+      "in-progress": 249,
+      "inventory-only": 9
     },
     "verifier/test": {
-      "reviewed": 536,
-      "in-progress": 179,
+      "reviewed": 529,
+      "in-progress": 186,
       "inventory-only": 58
     },
     "asset/public-output": {
@@ -59,8 +59,8 @@
       "in-progress": 7
     },
     "nextjs-entrypoint": {
-      "reviewed": 318,
-      "in-progress": 57,
+      "reviewed": 316,
+      "in-progress": 59,
       "inventory-only": 11
     },
     "runtime/support": {
@@ -69,13 +69,13 @@
       "inventory-only": 5
     },
     "firebase-functions": {
-      "reviewed": 274,
-      "in-progress": 45,
+      "reviewed": 273,
+      "in-progress": 46,
       "inventory-only": 26
     },
     "api-route": {
-      "reviewed": 177,
-      "in-progress": 54,
+      "reviewed": 176,
+      "in-progress": 55,
       "inventory-only": 13
     },
     "constant/config/data": {
