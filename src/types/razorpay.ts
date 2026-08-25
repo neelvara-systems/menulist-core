@@ -171,8 +171,8 @@ export interface FirestoreSubscriptionDoc {
   manualPaymentEvidenceType?: 'qa_certification_non_payment';
   qaCertification?: {
     fixture: true;
-    projectId: 'neelvara-answerlattice-qa';
-    purpose: 'answerlattice_hosted_release_candidate';
+    projectId: 'menulist-qa' | 'neelvara-answerlattice-qa';
+    purpose: 'menulist_hosted_release_candidate' | 'answerlattice_hosted_release_candidate';
     operationId: string;
     issuedAt: BillingTimestamp;
     expiresAt: BillingTimestamp;

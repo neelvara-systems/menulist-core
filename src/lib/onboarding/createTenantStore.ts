@@ -29,6 +29,10 @@ import { admin } from '@lib/firebase/firebaseAdmin';
 import { isCurrentUserRecordEligible } from '@lib/auth/currentPlatformUser';
 import { resolveBusinessDayEndTime } from '@lib/analytics/businessDay';
 import { CANONICAL_SOURCE_LANGUAGE } from '@lib/localization/languagePolicy';
+import {
+    resolvePublicMenuCurrencyCode,
+    resolvePublicMenuCurrencySymbol,
+} from '@lib/pricing/publicCurrency';
 import { requireOnboardingUserId } from './onboardingUserId';
 import {
     readSubdomainReservationInTransaction,
@@ -318,6 +322,8 @@ export async function createTenantStoreInTransaction(
     const defaultRoles = createDefaultRoles(newStoreId, email || 'system');
     const resolvedBusinessDayEndTime = resolveBusinessDayEndTime(businessType, businessDayEndTime, businessCategory);
     const schedulerHour = computeSchedulerHour(timeZone, resolvedBusinessDayEndTime);
+    const currencyCode = resolvePublicMenuCurrencyCode(storeExtra.currencyCode);
+    const currencySymbol = resolvePublicMenuCurrencySymbol(storeExtra.currencySymbol, currencyCode);
 
     // 3. Resolve and transactionally reserve subdomain (if requested)
     let autoSubdomain: string | undefined;
@@ -355,6 +361,7 @@ export async function createTenantStoreInTransaction(
     // 5. Build storesList entry
     const storesListEntry: Record<string, any> = {
         storeId: newStoreId,
+        storeKey,
         name: storeName,
         tenantName: businessName,
         isMaster: true,
@@ -370,6 +377,7 @@ export async function createTenantStoreInTransaction(
         businessIndustry,
         email,
         active: true,
+        deleted: false,
         verified: false,
         storesList: [storesListEntry],
         tenantId: newTenantId,
@@ -390,6 +398,7 @@ export async function createTenantStoreInTransaction(
         businessIndustry,
         email,
         active: true,
+        deleted: false,
         verified: false,
         tenantId: newTenantId,
         storeId: newStoreId,
@@ -399,6 +408,15 @@ export async function createTenantStoreInTransaction(
         schedulerHour,
         ...(autoSubdomain ? { subdomain: autoSubdomain } : {}),
         ...(timeSlotPresets ? { timeSlotPresets } : {}),
+        phoneNumber: '',
+        logo: '',
+        city: '',
+        state: '',
+        currencyCode,
+        currencySymbol,
+        contactPersonName: '',
+        contactPersonEmail: email,
+        contactPersonNumber: '',
         activeLanguages: [CANONICAL_SOURCE_LANGUAGE],
         defaultLanguage: CANONICAL_SOURCE_LANGUAGE,
         roles: defaultRoles,

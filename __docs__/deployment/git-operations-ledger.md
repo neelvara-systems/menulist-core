@@ -3504,6 +3504,39 @@ Those fields are explicitly `unknown` instead of guessed.
 - Filesystem before this final ledger append: zero staged, zero other tracked modifications, zero untracked files.
 - Firebase, production, `main`, manual Vercel deployment, and live Razorpay state remain unchanged.
 
+#### Result — `2026-08-25T23:27:00+05:30` for `GIT-20260825-231109-answerlattice-hosted-qa`
+
+- Record type: `PERFORMED_AND_VERIFIED`.
+- Complete stable snapshot commit: `0a84f849cf03b3e50586b1c5d744213ba23eaebd` (`fix(answerlattice): complete hosted QA continuation`), pushed non-force to `staging` only. Direct `git ls-remote` readback returned the exact same staging SHA; local/server `main` remained untouched at `fe625d5bbf527c1b7e537b00ab32a4f655905c35`.
+- Automatic QA deployment identity: `/api/version` returned exact `0a84f849cf03b3e50586b1c5d744213ba23eaebd`, `buildProvenance=verified`, `env=preview`; deployment `menulist-core-illuqk30s-neelvara-systems.vercel.app`.
+- Hosted billing retest rendered `Launch — QA Certification`, `₹0.00 / QA certification lease`, `No payment — QA only`, the explicit Razorpay non-certification warning, and `148 of 150` credits with two used. No browser console error or warning occurred.
+- Activation reported product knowledge `3/3` and correctly advanced to First 10. First 10 then exposed a separate P1: the published intake was absent from the selector because both client and server rejected `published` status. That defect is handled by the following operation rather than being hidden in this result.
+- Firebase state remained unchanged from the planned entry; no Firebase deploy/readback, production mutation, `main` movement, manual Vercel deployment, or live Razorpay execution occurred.
+
+### GIT-20260825-232700-answerlattice-first10-published-intake
+
+- Timestamp: `2026-08-25T23:27:00+05:30`
+- Record type: `PLANNED`
+- Actor/session/thread ID: Codex `/root`; current Answerlattice hosted-QA continuation.
+- Registered worktrees: one primary worktree at `/Users/danny/Projects/MenuListAi/menulist-core`, branch `staging`, HEAD `0a84f849cf03b3e50586b1c5d744213ba23eaebd`.
+- Authorization: Danny instructed Codex to continue the Answerlattice QA fix/retest loop and to publish every stable local worktree change without losing concurrent work. This operation publishes the complete stable snapshot to `origin/staging` only. It does not authorize `main`, Firebase deployment, manual Vercel deployment, production mutation, or real Razorpay execution.
+- Candidate and attribution: the Answerlattice First 10 published-intake correction, focused regression, and audit evidence are exact to this task. Concurrent MenuList onboarding-shape, disposable hosted-fixture, billing-label, source-verifier, emulator-regression, and report changes were already present, remained stable during review, passed their maintained gates, and retain actor attribution `unknown` to this task.
+- Root cause: the activation flow correctly required product knowledge to be reviewed/published before First 10, but duplicated client/server status filters treated `published` as terminal. Existing finalization already returns the intake to `reviewing` and creates human-review drafts, so the filter—not the lifecycle—was wrong. The smallest durable fix centralizes the eligibility contract, admits `published` and `reviewing`, and fails closed for `publishing`, `cancelled`, or missing status.
+- Starting filesystem state before this ledger append: zero staged, 13 tracked unstaged, one untracked. Stable status SHA-256 `e0299f5839800bb17b3809f3446a1fa76e34f0bdf21a3bd3c5a88d39d99cbf4e`; stable diff SHA-256 `1f459e50cdb90d2bf551f144abf8b29480253bbbc52397dc8c970799ff935182`.
+- Validation before commit: First Trusted Answers contract PASS; activation contracts PASS; Answerlattice typecheck PASS; MenuList hosted-fixture boundary PASS; billing entitlement boundary PASS; mobile route-map PASS; auth/onboarding aggregate PASS; stores-summary Firestore emulator PASS; full repository TypeScript PASS; focused ESLint PASS; `git diff --check` PASS.
+
+- Branch matrix before:
+
+  | Branch | Local full SHA | Direct server ref/full SHA | Tracking ref | Ahead/behind | Worktree | Staged/unstaged/untracked | Status |
+  | --- | --- | --- | --- | --- | --- | --- | --- |
+  | `main` | `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `refs/heads/main` / `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `origin/main` | `0/0` | not checked out | `N/A` | `IN_SYNC` |
+  | `staging` | `0a84f849cf03b3e50586b1c5d744213ba23eaebd` | `refs/heads/staging` / `0a84f849cf03b3e50586b1c5d744213ba23eaebd` | `origin/staging` | `0/0` | primary worktree | `0/13/1` before this append | `IN_SYNC` |
+
+- Firebase matrix before/after: no Rules, indexes, Storage Rules, or Cloud Functions source changed in this candidate. Answerlattice QA and production and MenuList Rules/indexes/Storage retain `NO_INFRA_CHANGE` / `SERVER_STATE_UNKNOWN`; the separately recorded MenuList Functions delta remains `INFRA_CHANGE` / `DEPLOY_REQUIRED`. No Firebase deployment or authenticated infrastructure readback is authorized here.
+- Git server readback and divergence: `git fetch --prune`, direct `git ls-remote`, and local divergence counts prove local/server `main` and `staging` exact with `0/0` divergence before the operation. Post-operation evidence is pending.
+- Final filesystem state: pending complete-snapshot commit, non-force staging push, direct server readback, automatic QA deployment, exact `/api/version`, product-specific First 10 run, unchanged-source credit-reuse proof, and downstream human-review regression.
+- Attribution confidence: exact for this task and Git evidence; concurrent preserved-path authorship `unknown`.
+
 ### GIT-20260825-231109-answerlattice-hosted-qa
 
 - Timestamp: `2026-08-25T23:11:09+05:30`

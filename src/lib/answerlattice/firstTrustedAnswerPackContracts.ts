@@ -19,6 +19,11 @@ export const ANSWERLATTICE_PRODUCT_STARTER_PACK_MAX_SOURCE_EXCERPT_CHARS = 1_800
 export const ANSWERLATTICE_PRODUCT_STARTER_PACK_MAX_SOURCE_IDS_PER_ITEM = 5;
 export const ANSWERLATTICE_PRODUCT_STARTER_PACK_MAX_MISSING_EVIDENCE = 5;
 
+export const canGenerateAnswerlatticeProductStarterPack = (status: unknown): boolean => (
+    typeof status === 'string'
+    && !['publishing', 'cancelled'].includes(status)
+);
+
 const boundedOptionalText = (max: number) => z.string().trim().min(1).max(max).optional();
 
 export const AnswerlatticeProductStarterPackCandidateSchema = z.object({

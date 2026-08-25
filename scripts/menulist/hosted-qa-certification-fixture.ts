@@ -17,7 +17,7 @@ const OPERATOR_EMAIL = 'admin@neelvara.com';
 const FIXTURE_PREFIX = 'ml-hosted-qa-certification';
 const MAX_LEASE_HOURS = 72;
 
-type Command = 'prepare' | 'verify' | 'cleanup';
+type Command = 'prepare' | 'repair-shape' | 'verify' | 'cleanup';
 
 type FirebaseCliAccount = {
     tokens: { refresh_token?: string };
@@ -41,9 +41,9 @@ function readArg(name: string): string | null {
 
 function readCommand(): Command {
     const command = process.argv[2];
-    if (command === 'prepare' || command === 'verify' || command === 'cleanup') return command;
+    if (command === 'prepare' || command === 'repair-shape' || command === 'verify' || command === 'cleanup') return command;
     throw new Error(
-        `Usage: hosted-qa-certification-fixture.ts <prepare|verify|cleanup> --confirm-project=${QA_PROJECT_ID}`
+        `Usage: hosted-qa-certification-fixture.ts <prepare|repair-shape|verify|cleanup> --confirm-project=${QA_PROJECT_ID}`
         + ' [--fixture-id=<id>] [--credential-output=/absolute/path]',
     );
 }
@@ -351,6 +351,11 @@ async function verify(): Promise<void> {
     assert.equal(authUser.disabled, false);
     assert.equal(authUser.email, markerData.email);
     assert.equal(authUser.emailVerified, true);
+    assert.equal(authUser.customClaims?.platformRole, 'OWNER');
+    assert.equal(authUser.customClaims?.role, user.data()?.role);
+    assert.equal(authUser.customClaims?.tenantId, String(markerData.tenantId));
+    assert.equal(authUser.customClaims?.storeId, String(markerData.storeId));
+    assert.equal(authUser.customClaims?.uId, markerData.authUid);
     assert.equal(tenant.exists, true);
     assert.equal(store.exists, true);
     assert.equal(user.exists, true);
@@ -365,6 +370,50 @@ async function verify(): Promise<void> {
         projectId: QA_PROJECT_ID,
         scope: { storeId: markerData.storeId, tenantId: markerData.tenantId },
         status: 'verified',
+    }, null, 2) + '\n');
+}
+
+async function repairShape(): Promise<void> {
+    const fixtureId = normalizeFixtureId(readArg('fixture-id'));
+    const { markerData } = await readFixture(fixtureId);
+    const tenantRef = db.collection('tenants').doc(String(markerData.tenantId));
+    const storeRef = db.collection('stores').doc(String(markerData.storeId));
+    await db.runTransaction(async transaction => {
+        const [tenant, store] = await Promise.all([
+            transaction.get(tenantRef),
+            transaction.get(storeRef),
+        ]);
+        assert.equal(tenant.exists, true);
+        assert.equal(store.exists, true);
+        assert.equal(tenant.data()?.qaCertificationFixture, fixtureId);
+        assert.equal(store.data()?.qaCertificationFixture, fixtureId);
+        const storeKey = String(store.data()?.storeKey || 'main_store');
+        const storesList = Array.isArray(tenant.data()?.storesList)
+            ? tenant.data()!.storesList.map((entry: Record<string, unknown>) => (
+                String(entry.storeId) === String(markerData.storeId)
+                    ? { ...entry, storeKey }
+                    : entry
+            ))
+            : [];
+        transaction.update(tenantRef, { deleted: false, storesList });
+        transaction.update(storeRef, {
+            city: '',
+            contactPersonEmail: markerData.email,
+            contactPersonName: '',
+            contactPersonNumber: '',
+            currencyCode: 'INR',
+            currencySymbol: '₹',
+            deleted: false,
+            logo: '',
+            phoneNumber: '',
+            state: '',
+        });
+    });
+    process.stdout.write(JSON.stringify({
+        fixtureId,
+        projectId: QA_PROJECT_ID,
+        scope: { storeId: markerData.storeId, tenantId: markerData.tenantId },
+        status: 'shape-repaired',
     }, null, 2) + '\n');
 }
 
@@ -398,6 +447,7 @@ async function cleanup(): Promise<void> {
 async function main(): Promise<void> {
     await initializeServices();
     if (command === 'prepare') await prepare();
+    else if (command === 'repair-shape') await repairShape();
     else if (command === 'verify') await verify();
     else await cleanup();
 }

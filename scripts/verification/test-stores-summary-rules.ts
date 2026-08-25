@@ -482,6 +482,29 @@ async function run(): Promise<void> {
             );
             assert(createdTenantDocs.every((snapshot) => snapshot.exists), 'Allocated tenant IDs must be committed atomically');
             assert(createdStoreDocs.every((snapshot) => snapshot.exists), 'Allocated store IDs must be committed atomically');
+            for (const tenantSnapshot of createdTenantDocs) {
+                const tenant = tenantSnapshot.data() || {};
+                assert(tenant.deleted === false, 'Canonical onboarding tenants must be readable by the owner DAL');
+                assert(
+                    Array.isArray(tenant.storesList)
+                    && tenant.storesList.every((entry: Record<string, unknown>) => typeof entry.storeKey === 'string'),
+                    'Canonical tenant store-list entries must include the owner-DAL store key',
+                );
+            }
+            for (const storeSnapshot of createdStoreDocs) {
+                const store = storeSnapshot.data() || {};
+                assert(store.deleted === false, 'Canonical onboarding stores must be readable by the owner DAL');
+                assert(store.phoneNumber === '', 'Canonical onboarding stores must initialize phone state');
+                assert(store.logo === '', 'Canonical onboarding stores must initialize logo state');
+                assert(store.city === '' && store.state === '', 'Canonical onboarding stores must initialize location state');
+                assert(store.currencyCode === 'INR' && store.currencySymbol === '₹', 'Canonical onboarding stores must initialize currency state');
+                assert(
+                    store.contactPersonName === ''
+                    && typeof store.contactPersonEmail === 'string'
+                    && store.contactPersonNumber === '',
+                    'Canonical onboarding stores must initialize owner contact state',
+                );
+            }
             const requestedSubdomainStores = await adminDb.collection('stores')
                 .where('subdomain', '==', 'shared-audit-name')
                 .get();

@@ -99,10 +99,18 @@ function ActiveSubscriptionCard({
     const monthlyCreditUsage = monthlyCreditsAllowance > 0 ? (monthlyCredits / monthlyCreditsAllowance) * 100 : 0;
     const monthlyCreditsUsed = Math.max(0, monthlyCreditsAllowance - monthlyCredits);
     const isManualBilling = activeSubscription.billingMode === 'manual';
-    const isQaCertificationEntitlement = activeSubscription.pId === PRODUCT_IDS.ANSWERLATTICE
-        && activeSubscription.manualPaymentEvidenceType === 'qa_certification_non_payment'
+    const isQaCertificationEntitlement = activeSubscription.manualPaymentEvidenceType === 'qa_certification_non_payment'
         && activeSubscription.qaCertification?.fixture === true
-        && activeSubscription.qaCertification.projectId === 'neelvara-answerlattice-qa';
+        && (
+            (
+                activeSubscription.pId === PRODUCT_IDS.ANSWERLATTICE
+                && activeSubscription.qaCertification.projectId === 'neelvara-answerlattice-qa'
+            )
+            || (
+                activeSubscription.pId === PRODUCT_IDS.MENULIST
+                && activeSubscription.qaCertification.projectId === 'menulist-qa'
+            )
+        );
     const isPaymentPending = activeSubscription.status === 'pending';
     const pendingCheckoutPlanIsCurrent = isPaymentPending && getBillingPlansForProduct(
         productId,

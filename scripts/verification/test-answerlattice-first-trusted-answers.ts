@@ -11,6 +11,7 @@ import {
     ANSWERLATTICE_PRODUCT_STARTER_PACK_CASE_IDS,
     ANSWERLATTICE_PRODUCT_STARTER_PACK_SIZE,
     AnswerlatticeProductStarterPackModelResponseSchema,
+    canGenerateAnswerlatticeProductStarterPack,
     isAnswerlatticeProductStarterPackCaseId,
 } from '../../src/lib/answerlattice/firstTrustedAnswerPackContracts';
 import { calculateConfirmedResolutionMetrics } from '../../functions-answerlattice/src/answerlattice/confirmedResolution';
@@ -55,6 +56,11 @@ assert.equal(AnswerlatticeProductStarterPackModelResponseSchema.safeParse(produc
 assert.equal(AnswerlatticeProductStarterPackModelResponseSchema.safeParse({ candidates: productCandidates.candidates.slice(0, 9) }).success, false, 'a partial product pack must fail closed');
 assert.equal(isAnswerlatticeProductStarterPackCaseId('product_launch_11'), false, 'a prefixed case outside the exact ten slots must not impersonate the launch pack');
 assert.equal(isAnswerlatticeProductStarterPackCaseId('product_launch_custom'), false, 'a custom prefixed case must not impersonate the launch pack');
+assert.equal(canGenerateAnswerlatticeProductStarterPack('published'), true, 'published source jobs must remain reusable for the next activation step');
+assert.equal(canGenerateAnswerlatticeProductStarterPack('reviewing'), true, 'reviewing source jobs must remain available');
+assert.equal(canGenerateAnswerlatticeProductStarterPack('publishing'), false, 'an active publish must block concurrent pack generation');
+assert.equal(canGenerateAnswerlatticeProductStarterPack('cancelled'), false, 'cancelled source jobs must fail closed');
+assert.equal(canGenerateAnswerlatticeProductStarterPack(undefined), false, 'missing job status must fail closed');
 
 const productCases = starters.map((testCase, index) => ({
     ...testCase,

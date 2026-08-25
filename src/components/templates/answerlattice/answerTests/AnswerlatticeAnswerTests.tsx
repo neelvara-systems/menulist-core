@@ -33,6 +33,7 @@ import {
 } from '@lib/answerlattice/answerTestStarterPack';
 import {
     AnswerlatticeProductStarterPackResponseSchema,
+    canGenerateAnswerlatticeProductStarterPack,
     isAnswerlatticeProductStarterPackCaseId,
 } from '@lib/answerlattice/firstTrustedAnswerPackContracts';
 import { AnswerlatticeKnowledgeIntakeJobSchema } from '@lib/answerlattice/knowledgeIntakeContracts';
@@ -421,12 +422,12 @@ export default function AnswerlatticeAnswerTests({ entryMode = 'suite' }: Answer
                 current && jobs.some(job => (
                     job.id === current
                     && Number(job.readySourceCount || 0) > 0
-                    && !['publishing', 'published', 'cancelled'].includes(job.status)
+                    && canGenerateAnswerlatticeProductStarterPack(job.status)
                 ))
                     ? current
                     : jobs.find(job => (
                         Number(job.readySourceCount || 0) > 0
-                        && !['publishing', 'published', 'cancelled'].includes(job.status)
+                        && canGenerateAnswerlatticeProductStarterPack(job.status)
                     ))?.id
             ));
         } catch (error) {
@@ -1193,7 +1194,7 @@ export default function AnswerlatticeAnswerTests({ entryMode = 'suite' }: Answer
                                                 value: job.id,
                                                 label: `${job.title} (${Number(job.readySourceCount || 0)} ready source${Number(job.readySourceCount || 0) === 1 ? '' : 's'})`,
                                                 disabled: Number(job.readySourceCount || 0) === 0
-                                                    || ['publishing', 'published', 'cancelled'].includes(job.status),
+                                                    || !canGenerateAnswerlatticeProductStarterPack(job.status),
                                             }))}
                                         />
                                         <Button
@@ -1204,7 +1205,7 @@ export default function AnswerlatticeAnswerTests({ entryMode = 'suite' }: Answer
                                             disabled={
                                                 !selectedIntakeJobId
                                                 || Number(selectedIntakeJob?.readySourceCount || 0) === 0
-                                                || ['publishing', 'published', 'cancelled'].includes(String(selectedIntakeJob?.status || ''))
+                                                || !canGenerateAnswerlatticeProductStarterPack(selectedIntakeJob?.status)
                                             }
                                             style={ACTION_BUTTON_STYLE}
                                         >

@@ -13,6 +13,7 @@ import {
     ANSWERLATTICE_PRODUCT_STARTER_PACK_SIZE,
     ANSWERLATTICE_PRODUCT_STARTER_PACK_VERSION,
     AnswerlatticeProductStarterPackModelResponseSchema,
+    canGenerateAnswerlatticeProductStarterPack,
     type AnswerlatticeProductStarterPackCandidate,
     type AnswerlatticeProductStarterPackResult,
 } from '@lib/answerlattice/firstTrustedAnswerPackContracts';
@@ -148,11 +149,7 @@ const assertReviewItemScope = (item: AnswerlatticeIntakeReviewItem, scope: PackS
 };
 
 const assertJobCanGeneratePack = (job: AnswerlatticeKnowledgeIntakeJob) => {
-    if ([
-        ANSWERLATTICE_KNOWLEDGE_INTAKE_STATUS.PUBLISHING,
-        ANSWERLATTICE_KNOWLEDGE_INTAKE_STATUS.PUBLISHED,
-        ANSWERLATTICE_KNOWLEDGE_INTAKE_STATUS.CANCELLED,
-    ].includes(job.status as never)) {
+    if (!canGenerateAnswerlatticeProductStarterPack(job.status)) {
         throw new Error('This intake job can no longer generate a product-specific starter pack.');
     }
 };

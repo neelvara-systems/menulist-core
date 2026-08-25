@@ -136,10 +136,18 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
     const sub = activeSubscription;
     const subscriptionCheckoutUrl = normalizeRazorpaySubscriptionCheckoutUrl(sub?.shortUrl);
     const isManualBilling = sub?.billingMode === 'manual';
-    const isQaCertificationEntitlement = sub?.pId === PRODUCT_IDS.ANSWERLATTICE
-        && sub.manualPaymentEvidenceType === 'qa_certification_non_payment'
+    const isQaCertificationEntitlement = sub?.manualPaymentEvidenceType === 'qa_certification_non_payment'
         && sub.qaCertification?.fixture === true
-        && sub.qaCertification.projectId === 'neelvara-answerlattice-qa';
+        && (
+            (
+                sub.pId === PRODUCT_IDS.ANSWERLATTICE
+                && sub.qaCertification.projectId === 'neelvara-answerlattice-qa'
+            )
+            || (
+                sub.pId === PRODUCT_IDS.MENULIST
+                && sub.qaCertification.projectId === 'menulist-qa'
+            )
+        );
     const isPaymentPending = sub?.status === 'pending'
         || Boolean(
             sub?.status === 'active'

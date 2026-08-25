@@ -7,6 +7,15 @@ const path = require('node:path');
 const root = path.resolve(__dirname, '..', '..');
 const fixturePath = path.join(root, 'scripts', 'menulist', 'hosted-qa-certification-fixture.ts');
 const source = fs.readFileSync(fixturePath, 'utf8');
+const clientTestPath = path.join(root, 'scripts', 'menulist', 'test-hosted-qa-certification-client.ts');
+const clientSource = fs.readFileSync(clientTestPath, 'utf8');
+const subscriptionTypePath = path.join(root, 'src', 'types', 'razorpay.ts');
+const subscriptionTypeSource = fs.readFileSync(subscriptionTypePath, 'utf8');
+const billingSurfacePaths = [
+    path.join(root, 'src', 'components', 'mobile', 'screens', 'MobileBillingScreen.tsx'),
+    path.join(root, 'src', 'components', 'templates', 'main-app', 'billing', 'ActiveSubscriptionCard.tsx'),
+    path.join(root, 'src', 'components', 'website', 'pricing-pages', 'SubscriptionManagement.tsx'),
+];
 
 const requiredTokens = [
     "const QA_PROJECT_ID = 'menulist-qa'",
@@ -20,6 +29,8 @@ const requiredTokens = [
     "onboardingSource: 'RESELLER_ONBOARDING'",
     "manualPaymentEvidenceType: 'qa_certification_non_payment'",
     "purpose: 'menulist_hosted_release_candidate'",
+    "tenant.data()?.qaCertificationFixture, fixtureId",
+    "store.data()?.qaCertificationFixture, fixtureId",
     "amount: 0",
     "planId: 'menulist_pro'",
     "transaction.create(markerRef",
@@ -35,5 +46,19 @@ assert.equal(source.includes('razorpayClient'), false, 'Fixture must not initial
 assert.equal(source.includes('createRazorpay'), false, 'Fixture must not create provider state.');
 assert.equal(source.includes('menulist-prod'), false, 'Fixture must not name production.');
 assert.equal(source.includes('console.log(password)'), false, 'Fixture must not print its password.');
+assert.ok(clientSource.includes("const QA_PROJECT_ID = 'menulist-qa'"));
+assert.ok(clientSource.includes("getDoc(doc(db, 'tenants'"));
+assert.ok(clientSource.includes("getDoc(doc(db, 'stores'"));
+assert.ok(clientSource.includes("token.claims.platformRole, 'OWNER'"));
+assert.equal(clientSource.includes('credentials.password as string,'), true);
+assert.equal(clientSource.includes('process.stdout.write(credentials'), false);
+assert.ok(subscriptionTypeSource.includes("projectId: 'menulist-qa' | 'neelvara-answerlattice-qa'"));
+assert.ok(subscriptionTypeSource.includes("purpose: 'menulist_hosted_release_candidate' | 'answerlattice_hosted_release_candidate'"));
+for (const surfacePath of billingSurfacePaths) {
+    const surfaceSource = fs.readFileSync(surfacePath, 'utf8');
+    assert.ok(surfaceSource.includes("sub.qaCertification.projectId === 'menulist-qa'")
+        || surfaceSource.includes("activeSubscription.qaCertification.projectId === 'menulist-qa'"));
+    assert.ok(surfaceSource.includes('PRODUCT_IDS.MENULIST'));
+}
 
 process.stdout.write('MenuList hosted QA certification fixture boundary verified.\n');

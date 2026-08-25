@@ -448,3 +448,13 @@ webhook, refund, revenue, or production-entitlement evidence.
 - The full `verify:answerlattice-runtime-truth`, commercial source gate, strict
   TypeScript, focused zero-warning ESLint, and hosted-entitlement boundary gate
   passed. Razorpay checkout/payment/webhook success remains unclaimed.
+- The next activation step exposed a release blocker in the exact hosted build:
+  the successful intake had status `published`, while both the First 10 client
+  selector and server guard rejected every published intake. This contradicted
+  the guided order, which requires reviewed content to be published before the
+  owner reaches First 10. The shared generation contract now permits published
+  and reviewing intakes, blocks publishing/cancelled/missing states, and keeps
+  final generated answers in human review. Focused First 10 tests, activation
+  contracts, Answerlattice typecheck, ESLint, and diff checks pass; exact hosted
+  product-pack and unchanged-source credit-reuse evidence follows the staging
+  deployment of this correction.
