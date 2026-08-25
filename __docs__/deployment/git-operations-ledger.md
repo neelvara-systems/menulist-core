@@ -3053,3 +3053,27 @@ Those fields are explicitly `unknown` instead of guessed.
 - Git server readback and divergence: direct pre-operation `git ls-remote` proves both server refs match their local branches and both divergence counts are `0/0`.
 - Final filesystem state: pending complete-snapshot commit, non-force staging push, direct readback, automatic QA deployment, hosted Test Mode subscription checkout, and downstream Answerlattice knowledge/widget retest.
 - Attribution confidence: exact for this operation; exact server/reflog evidence for the concurrent descendant.
+
+#### GIT-20260825-182832-mlrc043-inline-confirmation
+
+- Timestamp: `2026-08-25T18:28:32+05:30`
+- Record type: `PLANNED_REFINEMENT`
+- Actor/session/thread ID: Codex `/root`; thread `01a034e1-c70a-74b1-a92b-0a103a981815`
+- Completes: adjacent hosted correction for `GIT-20260825-181620-mlrc043-subscription-gate-signout`.
+- Concurrent movement audit: the separately active Answerlattice checkout task committed and pushed exact descendant `9768d56898b8ec703e66087e2e5af4770856d76b` (`Fix stale Answerlattice checkout recovery`). Direct `git ls-remote` and local tracking show `0/0` divergence. Its twelve payment/docs/verifier/ledger paths were not authored or staged by this MenuList operation; no conflict or history loss occurred. Local/server `main` remain untouched at `fe625d5bbf527c1b7e537b00ab32a4f655905c35`.
+- Exact hosted evidence: verified QA build `06fe2ecb00d3ecd4c4c78d77c9777a3a9df484cd` rendered View Plans at 44px and the new Sign Out at 50px inside a 320×568, zero-overflow gate. Clicking Sign Out did not render the portal-based confirmation because the entitlement gate returns outside the normal Ant app boundary. No sign-out occurred and the owner session remained intact.
+- Refined correction: replace the portal confirmation with an in-card, localized and reversible confirmation. The first Sign Out action reveals the governed confirmation copy plus 50px Cancel and Sign Out controls. Cancel restores the original gate; confirm alone calls canonical `signOutSession()`. In-flight disabling and the announced generic retry error remain.
+- Candidate scope: `MobileShell.tsx`, its route-map regression, mobile navigation spec, regenerated 8,475-row inventory, certification report, and this ledger. Pre-ledger five-file diff SHA-256: `fbb9d045926260e8538eddeb35c629d21200025c0c478393f7d41e015fb8185f`.
+- Validation before commit: exact hosted first-version measurement/interaction complete; route-map regression PASS; focused ESLint PASS; strict TypeScript PASS; regenerated RC inventory PASS with 8,475 rows and 21 Function exports; `git diff --check` PASS.
+
+- Branch matrix before:
+
+  | Branch | Local full SHA | Direct server ref/full SHA | Tracking ref | Ahead/behind | Worktree | Staged/unstaged/untracked | Status |
+  | --- | --- | --- | --- | --- | --- | --- | --- |
+  | `main` | `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `refs/heads/main` / `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `origin/main` | `0/0` | not checked out | `N/A` | `IN_SYNC` |
+  | `staging` | `9768d56898b8ec703e66087e2e5af4770856d76b` | `refs/heads/staging` / `9768d56898b8ec703e66087e2e5af4770856d76b` | `origin/staging` | `0/0` | primary worktree | `0/5/0` before this ledger append | `IN_SYNC` |
+
+- Firebase matrix before/after: all 16 rows remain exactly as recorded for MLRC-043. MenuList QA/production Functions retain MLRC-031 `INFRA_CHANGE` / `DEPLOY_REQUIRED`; the other 14 component rows remain `NO_INFRA_CHANGE` / `SERVER_STATE_UNKNOWN`. This web/mobile refinement changes no Firebase source, and no Firebase or manual Vercel deployment/readback is authorized.
+- Git server readback and divergence: local/server `staging` exact at `9768d56898b8ec703e66087e2e5af4770856d76b`; local/server `main` exact at `fe625d5bbf527c1b7e537b00ab32a4f655905c35`; both `0/0`.
+- Final filesystem state: pending scoped commit/push/readback, automatic QA build, exact 320×568 confirmation/cancel/sign-out/redirect/re-login retest, and result append.
+- Attribution confidence: exact for MLRC-043 and the ref evidence; concurrent task authorship is identified only from its ledger entry and commit.

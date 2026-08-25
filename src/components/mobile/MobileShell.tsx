@@ -17,7 +17,7 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import BrandedPageLoader from '@atoms/brandedPageLoader';
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { LuCreditCard, LuLogOut } from 'react-icons/lu';
-import { Button, Card, Dialog, Flex, MobileAntdAppBridge, Text, Title } from './antd';
+import { Button, Card, Flex, MobileAntdAppBridge, Text, Title } from './antd';
 import MobileNavigation, { type MobileTab } from './MobileNavigation';
 import MobileProjectsProvider from './providers/MobileProjectsProvider';
 import type { MoreSubScreen } from './screens/MobileMoreScreen';
@@ -304,6 +304,7 @@ export default function MobileShell() {
     const [todayScreen, setTodayScreen] = useState<'main' | 'dashboard' | 'history'>(initialRoute.todayScreen);
     const [moreScreen, setMoreScreen] = useState<MoreSubScreen>(initialRoute.moreScreen);
     const [isMoreRootScreen, setIsMoreRootScreen] = useState(initialRoute.moreScreen === 'main');
+    const [subscriptionGateConfirmingSignOut, setSubscriptionGateConfirmingSignOut] = useState(false);
     const [subscriptionGateSignOutError, setSubscriptionGateSignOutError] = useState('');
     const [subscriptionGateSigningOut, setSubscriptionGateSigningOut] = useState(false);
     const scrollContainerRef = useRef<HTMLDivElement | null>(null);
@@ -530,24 +531,17 @@ export default function MobileShell() {
         setTodayScreen('history');
     }, []);
 
-    const handleSubscriptionGateSignOut = useCallback(() => {
+    const handleSubscriptionGateSignOut = useCallback(async () => {
         if (subscriptionGateSigningOut) return;
 
-        void Dialog.confirm({
-            confirmText: profileActionsT('logout'),
-            content: profileActionsT('logoutConfirm'),
-            onConfirm: async () => {
-                setSubscriptionGateSignOutError('');
-                setSubscriptionGateSigningOut(true);
-                try {
-                    await signOutSession();
-                } catch {
-                    setSubscriptionGateSignOutError(profileActionsT('logoutFailed'));
-                    setSubscriptionGateSigningOut(false);
-                }
-            },
-            title: profileActionsT('confirmLogout'),
-        });
+        setSubscriptionGateSignOutError('');
+        setSubscriptionGateSigningOut(true);
+        try {
+            await signOutSession();
+        } catch {
+            setSubscriptionGateSignOutError(profileActionsT('logoutFailed'));
+            setSubscriptionGateSigningOut(false);
+        }
     }, [profileActionsT, subscriptionGateSigningOut]);
 
     useEffect(() => {
@@ -654,18 +648,49 @@ export default function MobileShell() {
                             >
                                 {t('viewPlans')}
                             </Button>
-                            <Button
-                                block
-                                color="danger"
-                                disabled={subscriptionGateSigningOut}
-                                fill="outline"
-                                icon={<LuLogOut aria-hidden="true" />}
-                                loading={subscriptionGateSigningOut}
-                                onClick={handleSubscriptionGateSignOut}
-                                size="large"
-                            >
-                                {profileActionsT('signOut')}
-                            </Button>
+                            {subscriptionGateConfirmingSignOut ? (
+                                <Flex gap={8} style={{ width: '100%' }} vertical>
+                                    <Text style={{ textAlign: 'center' }}>
+                                        {profileActionsT('logoutConfirm')}
+                                    </Text>
+                                    <Flex gap={8}>
+                                        <Button
+                                            block
+                                            disabled={subscriptionGateSigningOut}
+                                            fill="outline"
+                                            onClick={() => setSubscriptionGateConfirmingSignOut(false)}
+                                            size="large"
+                                        >
+                                            {profileActionsT('cancel')}
+                                        </Button>
+                                        <Button
+                                            block
+                                            color="danger"
+                                            disabled={subscriptionGateSigningOut}
+                                            icon={<LuLogOut aria-hidden="true" />}
+                                            loading={subscriptionGateSigningOut}
+                                            onClick={() => void handleSubscriptionGateSignOut()}
+                                            size="large"
+                                        >
+                                            {profileActionsT('signOut')}
+                                        </Button>
+                                    </Flex>
+                                </Flex>
+                            ) : (
+                                <Button
+                                    block
+                                    color="danger"
+                                    fill="outline"
+                                    icon={<LuLogOut aria-hidden="true" />}
+                                    onClick={() => {
+                                        setSubscriptionGateSignOutError('');
+                                        setSubscriptionGateConfirmingSignOut(true);
+                                    }}
+                                    size="large"
+                                >
+                                    {profileActionsT('signOut')}
+                                </Button>
+                            )}
                             {subscriptionGateSignOutError ? (
                                 <Text aria-live="assertive" role="alert" style={{ textAlign: 'center' }} type="danger">
                                     {subscriptionGateSignOutError}
