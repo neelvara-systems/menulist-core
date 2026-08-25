@@ -6,14 +6,14 @@
 
 **Initial candidate commit:** `b857a164944012d42131917e7c62215c94022c0f`
 
-**Current tested product commit:** `3e5e4969be2488cc596cd1f86dea20ed1c0302d0`
+**Current tested product commit:** `00ebd9525903f7b1e1facb29c9c09dc1ab909143`
 
 **MenuList product snapshot commit:** `3a34a975d52b1a3b8bec4be35c40b4930b1f9441`
 
-**Candidate filesystem state:** the complete local snapshot was committed and
-pushed to `staging`; the worktree was clean and local/server `staging` was
-`0/0` at direct readback before the resumed certification server regenerated
-the expected development-only `next-env.d.ts` paths.
+**Candidate filesystem state:** the deterministic certification snapshot was
+committed and pushed to `staging` as `00ebd9525903f7b1e1facb29c9c09dc1ab909143`;
+direct readback proved local/server `staging` at `0/0` and the worktree clean
+before the final readback append. `main` remains untouched.
 
 **Certification date:** August 25, 2026
 
@@ -114,7 +114,7 @@ separately tracked and is not implied by this anonymous boundary pass.
 | Authentication regression | Leading/trailing email and password; invalid login recovery; forgot-password validation; callback preservation | PASS (signed-out boundary) | Deterministic credential-normalization tests plus exact hosted Chrome: malformed identifier/passcode stayed on sign-in with inline validation, Forgot preserved `/dashboard`, invalid reset email produced an announced error, and Return restored the sign-in callback. No reset email, account creation, or real credential was submitted. |
 | Authentication and onboarding aggregate | Sign-up/sign-in boundaries, claims/workspace association, plan handoff, owner setup, extraction entry, retry, recovery, concurrency, and cleanup | PASS (local/emulator) | `npm run verify:auth-onboarding-flow`, `npm run test:login-credential-normalization`, and `npm run verify:menu-extraction-pipeline` completed with exit 0; expected denial/failure logs were fixture assertions rather than escaped failures |
 | Pricing handoff | Official, Pro, and Multi-location across INR/USD and monthly/yearly selection; content-pack sign-in; comparison and FAQ controls | PASS (provider boundary only) | Exact hosted Chrome exercised all 12 signed-out plan/currency/interval combinations. Each produced the expected callback-aware sign-in handoff with plan, currency, interval, B2C type, and quantity one or the Multi-location minimum of two. Content-pack sign-in, comparison expansion, all three FAQ categories, and an accordion in each category worked with zero overflow. No Razorpay provider execution occurred. |
-| Hosted QA | Exact candidate on QA owner app | PASS (deployment identity and bounded authenticated recovery interaction) | `/api/version` returned exact verified MenuList product build `3e5e4969be2488cc596cd1f86dea20ed1c0302d0` (`menulist-core-ncefwd1ri-neelvara-systems.vercel.app`). Earlier exact `04a736f…` retained the approved Google owner and yearly Starter `Payment pending` Billing state across three hard reloads plus direct `/users`, with zero post-build `/api/auth/set-claims` requests. Exact `16a4bc2…` completed the gated Sign Out confirmation, canonical `/signin` replacement without a false expiry dialog, approved Google reauthentication, and return to the same scoped Billing fixture. After refreshing onto exact `3e5e496…`, Billing About rendered its explanatory tooltip, the billing-support card reached `/help-center/ticket#mobile/more/answerlatticeSupport`, and blank Send Request produced subject/details validation without a ticket or attachment write. Live Razorpay checkout was not started. |
+| Hosted QA | Exact candidate on QA owner app | PASS (deployment identity and bounded authenticated recovery interaction) | `/api/version` returned exact verified MenuList product build `00ebd9525903f7b1e1facb29c9c09dc1ab909143` (`menulist-core-g45aqjrwb-neelvara-systems.vercel.app`), and connected Chrome refreshed the approved owner session onto its mobile Help ticket screen without route/session loss. Earlier exact `04a736f…` retained the approved Google owner and yearly Starter `Payment pending` Billing state across three hard reloads plus direct `/users`, with zero post-build `/api/auth/set-claims` requests. Exact `16a4bc2…` completed the gated Sign Out confirmation, canonical `/signin` replacement without a false expiry dialog, approved Google reauthentication, and return to the same scoped Billing fixture. On the exact descendant flow, Billing About rendered its explanatory tooltip, the billing-support card reached `/help-center/ticket#mobile/more/answerlatticeSupport`, and blank Send Request produced subject/details validation without a ticket or attachment write. Live Razorpay checkout was not started. |
 | Hosted transport | Website/app/tenant HTTP, metadata, noindex, PWA assets, missing routes | PASS (bounded) | Website, pricing, features, resources, legal, sign-in, owner manifest, offline, service workers, and tenant menu matched QA policy; disabled sitemap/customer manifest returned honest 404; missing menu slug rendered noindex recovery |
 | Public website browser inventory | All 186 sitemap URLs, including 22 public tool routes and 62 App Router page patterns | PASS (render/recovery) | Connected Chrome reran the current sitemap manifest (`30afee75c57db88ee93dec78926ed0b389a1ff7ddde99fb2510946d897e24fe8`) and rendered a main region and route-specific heading without application/404 failure across all 186 unique URLs; individual transmitting controls remain separately pending; the 22 tools exposed 410 rendered controls |
 | Current hosted mobile website routes | Static marketing, feature, industry, legal, trust, tools, English resources, and all 112 locale-prefixed resource variants | PASS (render/responsive/accessibility attributes) | Exact `b1750e0…` QA at 320×568 rendered every static website route and every reviewed localized resource variant with a non-empty heading, no application/not-found state, and no horizontal overflow. Exact `25d58ae…` then passed all 16 Arabic hub/article routes with root `lang=ar-SA`, root/content `dir=rtl`, and zero overflow; Arabic→English switch plus Chrome back/forward restored the correct route, heading, language, and direction each time. |
@@ -349,7 +349,7 @@ passing runtime claim.
 - The repository has no root `test:e2e` or `e2e` script. Controlled browser
   evidence and existing deterministic verifiers will be recorded separately.
 - Hosted QA exposed and refreshed onto the exact verified tested product commit
-  `3e5e4969be2488cc596cd1f86dea20ed1c0302d0`. The signed-in
+  `00ebd9525903f7b1e1facb29c9c09dc1ab909143`. The signed-in
   pending-payment Google owner fixture completed Billing/history/Help/View Plans
   and recovery-gate checks; a no-subscription true-handheld fixture,
   active disposable public tenant, destructive disposable tenant/store fixtures, physical mobile/PWA,

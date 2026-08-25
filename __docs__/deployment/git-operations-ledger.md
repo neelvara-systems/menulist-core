@@ -3164,3 +3164,21 @@ Those fields are explicitly `unknown` instead of guessed.
 - Git server readback and divergence: direct pre-operation `git ls-remote` proves exact local/server branch SHAs and `0/0` divergence. Post-operation evidence is pending.
 - Final filesystem state: pending commit, non-force staging push, direct readback, and evidence append.
 - Attribution confidence: exact.
+
+#### GIT-20260825-191413-mlrc044-certification-evidence result
+
+- Timestamp: `2026-08-25T19:21:28+05:30`
+- Record type: `PERFORMED`
+- Scoped release: commit `00ebd9525903f7b1e1facb29c9c09dc1ab909143` (`Record MenuList QA certification gate`) was created from exact parent `3e5e4969be2488cc596cd1f86dea20ed1c0302d0` and pushed non-force to `origin/staging`. Direct `git ls-remote` returned `00ebd9525903f7b1e1facb29c9c09dc1ab909143`; local/tracking divergence was `0/0`. Local/server `main` remained exact and untouched at `fe625d5bbf527c1b7e537b00ab32a4f655905c35`.
+- Automatic QA deployment: Vercel custom `qa` deployment `menulist-core-g45aqjrwb-neelvara-systems.vercel.app` reached `Ready` after 5m28s without a manual deploy. Canonical `https://app.menulist.digital/api/version` returned full verified build `00ebd9525903f7b1e1facb29c9c09dc1ab909143`, environment `preview`, and that exact deployment URL.
+- Exact hosted smoke: connected Chrome refreshed the approved signed-in owner on `/help-center/ticket#mobile/more/answerlatticeSupport`; the MobileShell, Help heading/search/breadcrumb, labelled ticket fields, optional attachment control, Send Request action, and primary mobile navigation all restored without session loss or application error. No ticket, upload, live provider request, or other data mutation was performed in this readback.
+- Branch matrix after the scoped release:
+
+  | Branch | Local full SHA | Direct server ref/full SHA | Tracking ref | Ahead/behind | Worktree | Staged/unstaged/untracked | Status |
+  | --- | --- | --- | --- | --- | --- | --- | --- |
+  | `main` | `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `refs/heads/main` / `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `origin/main` | `0/0` | not checked out | `N/A` | `IN_SYNC` |
+  | `staging` | `00ebd9525903f7b1e1facb29c9c09dc1ab909143` | `refs/heads/staging` / `00ebd9525903f7b1e1facb29c9c09dc1ab909143` | `origin/staging` | `0/0` | primary worktree | `0/0/0` before this result append | `IN_SYNC` |
+
+- Firebase matrix after: unchanged from the planned entry. MenuList QA/production Functions retain MLRC-031 `INFRA_CHANGE` / `DEPLOY_REQUIRED`; the other 14 target/component rows remain `NO_INFRA_CHANGE` / `SERVER_STATE_UNKNOWN`. No Firebase deploy/readback, production release, `main` movement, manual Vercel deployment, or live Razorpay execution occurred.
+- Final filesystem state: only this deployment/readback result and the matching certification-report build identity are modified for the evidence-only closeout descendant. They will be committed and pushed to `staging`; no runtime source is changed.
+- Attribution confidence: exact.
