@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-08-25T15:14:56.970Z",
-  "repositoryHead": "6cae3112ef01c9155f3d472e1656415accb63b38",
+  "generatedAt": "2026-08-25T16:30:18.228Z",
+  "repositoryHead": "79684c60912d468d8888009b1e5f4c24823d8e6b",
   "totalDiscoveredFiles": 9417,
   "vanishedDuringInventory": 0,
   "inScopeFiles": 9103,
@@ -28,24 +28,24 @@
     "proxy/routing": 1
   },
   "byReviewStatus": {
-    "reviewed": 7055,
-    "in-progress": 1517,
+    "reviewed": 7052,
+    "in-progress": 1520,
     "inventory-only": 531
   },
   "byCategoryAndReviewStatus": {
     "documentation/contract": {
-      "reviewed": 2730,
-      "in-progress": 561,
+      "reviewed": 2729,
+      "in-progress": 562,
       "inventory-only": 289
     },
     "shared-runtime": {
-      "reviewed": 998,
-      "in-progress": 140,
+      "reviewed": 997,
+      "in-progress": 141,
       "inventory-only": 72
     },
     "ui-component": {
-      "reviewed": 762,
-      "in-progress": 250,
+      "reviewed": 761,
+      "in-progress": 251,
       "inventory-only": 9
     },
     "verifier/test": {

@@ -3526,3 +3526,23 @@ Those fields are explicitly `unknown` instead of guessed.
 - Git server readback and divergence: direct pre-operation `git ls-remote` proves local/server `main` and `staging` exact with `0/0` divergence. Post-operation evidence is pending.
 - Final filesystem state: pending scoped commit, non-force `staging` push, automatic QA build, exact `/api/version`, timed logout retest, report closeout, and direct server readback.
 - Attribution confidence: exact.
+
+#### Result — `2026-08-25T22:22:00+05:30`
+
+- Record type: `PERFORMED_AND_VERIFIED`.
+- Scoped source/docs/regression commit: `79684c60912d468d8888009b1e5f4c24823d8e6b` (`fix(menulist): separate logout from session expiry`).
+- Git operation: non-force push of `staging` only. Direct server readback returned exact `79684c60912d468d8888009b1e5f4c24823d8e6b`; `main` remained untouched at `fe625d5bbf527c1b7e537b00ab32a4f655905c35`.
+- Automatic QA deployment identity: `/api/version` returned `buildId=79684c60912d468d8888009b1e5f4c24823d8e6b`, `buildProvenance=verified`, `env=preview`, deployment `menulist-core-1lnpthbgg-neelvara-systems.vercel.app`, created `2026-08-25T16:24:28.259Z`.
+- Hosted retest at 320x568: deliberate Sign Out showed no false session-expiry dialog at 120, 350, 700, or 1,200 milliseconds and reached canonical `https://app.menulist.digital/signin` after teardown. The real expired/access-ended recovery paths remain covered by the auth security regression matrix.
+- Fresh full validation after shared-auth deployment: `npm run certify:menulist-local` completed 160/161; every executable check passed, including 42 Rules emulator suites, Functions preflight/build, strict TypeScript, zero-warning lint, documentation links, cache/public-truth, Firebase cost, MobileShell, auth/onboarding, and `git diff --check`. Only `verify:upstash-readiness` was `BLOCKED_EXTERNAL` because secrets are absent from the shell; connected QA-console and hosted rate-limit evidence independently proved the target.
+
+- Branch matrix after source push and hosted/full-regression verification:
+
+  | Branch | Local full SHA | Direct server ref/full SHA | Tracking ref | Ahead/behind | Worktree | Staged/unstaged/untracked | Status |
+  | --- | --- | --- | --- | --- | --- | --- | --- |
+  | `main` | `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `refs/heads/main` / `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `origin/main` | `0/0` | not checked out | `N/A` | `IN_SYNC` |
+  | `staging` | `79684c60912d468d8888009b1e5f4c24823d8e6b` | `refs/heads/staging` / `79684c60912d468d8888009b1e5f4c24823d8e6b` | `origin/staging` | `0/0` | primary worktree | generated inventory/report/ledger evidence pending closeout commit | `IN_SYNC` |
+
+- Firebase matrix after: unchanged from the planned entry. MenuList QA/production Functions retain `INFRA_CHANGE` / `DEPLOY_REQUIRED`; the other 14 rows retain `NO_INFRA_CHANGE` / `SERVER_STATE_UNKNOWN`. No Firebase deployment/readback, production release, `main` movement, manual Vercel deployment, or live Razorpay execution occurred.
+- Final filesystem state: refreshed deterministic inventory/data-flow outputs, this result append, and the hosted/full-regression evidence in `MENULIST_RC_CERTIFICATION.md` are modified; they will be committed and pushed to `staging` as evidence-only closeout.
+- Attribution confidence: exact.
