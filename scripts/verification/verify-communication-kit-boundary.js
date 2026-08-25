@@ -194,6 +194,7 @@ const menuKitSection = read('src/components/templates/main-app/projects/b2cView/
 [
   'copyExportTextToClipboard(msg)',
   'copyExportTextToClipboard(labels.staffScript)',
+  'aria-label="Copy staff line"',
   'project_share_menu_kit_generation_failed',
   'project_share_menu_kit_asset_generation_failed',
   'project_share_menu_kit_message_copy_failed',

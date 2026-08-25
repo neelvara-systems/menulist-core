@@ -281,6 +281,7 @@ export default function MenuKitSection({
                         </Text>
                     </Flex>
                     <Button
+                        aria-label="Copy staff line"
                         size="small"
                         type="text"
                         icon={<LuCopy size={14} />}
