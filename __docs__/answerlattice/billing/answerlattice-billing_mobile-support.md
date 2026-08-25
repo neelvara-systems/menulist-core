@@ -21,6 +21,7 @@ Answerlattice billing is rendered inside `AnswerlatticeDashboardLayout`, which a
 - Support-credit usage starts with 12 rows and loads additional rows through the same cursor boundary as desktop. A failed usage request does not erase successfully loaded billing history, and a failed billing-history request does not erase successfully loaded usage.
 - Mobile copy remains owner-facing: provider and diagnostic details stay out of alerts and toasts.
 - Mobile checkout uses the same strict minimal subscription/order response and exact hosted-provider URL boundary as desktop.
+- A retired-plan pending checkout shows the current-plan chooser at narrow widths instead of a broken resume action. The shared server reconciliation and duplicate-payment protections remain identical to desktop.
 - Unsafe invoice URLs are omitted rather than rendered as mobile links.
 - If current billing state cannot be loaded, mobile shows the same blocking retry alert as desktop and disables plan mutation; it does not render an empty-subscription checkout state.
 - Billing country and legal billing details are collected during onboarding, not through a mobile-only currency picker.

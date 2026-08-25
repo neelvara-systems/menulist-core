@@ -3007,3 +3007,49 @@ Those fields are explicitly `unknown` instead of guessed.
 - After the MLRC-043 candidate was validated, three independently moving paths appeared: `src/app/api/razorpay/create-subscription/route.ts`, `src/components/templates/answerlattice/billing/AnswerlatticeBilling.tsx`, and `src/components/templates/main-app/billing/ActiveSubscriptionCard.tsx`. Their actor/session is `unknown` and their payment-flow work is not silently absorbed into this mobile account-exit commit.
 - The seven MLRC-043 source/verifier/docs/inventory/report files plus this ledger remained stable at scoped diff SHA-256 `5e5bf0d1e9a9c36f69591261fca4505e7cc7ed8a76cb30a5254126c4f3355c0a` in two checks five seconds apart. Only those paths will be staged. The three concurrent paths remain unstaged and preserved for their owning workflow.
 - No Firebase, Vercel, branch, or product-boundary classification changes from the planned entry above.
+
+### GIT-20260825-182007-answerlattice-stale-pending-checkout
+
+- Timestamp: `2026-08-25T18:20:07+05:30`
+- Record type: `PLANNED`
+- Actor/session/thread ID: Codex `/root`; current Answerlattice certification task
+- Registered worktrees: one primary worktree at `/Users/danny/Projects/MenuListAi/menulist-core`, branch `staging`, HEAD `06fe2ecb00d3ecd4c4c78d77c9777a3a9df484cd`.
+- Authorization: Danny instructed Codex to create a new QA Answerlattice subscription, test it, make necessary fixes, and keep all local repository changes committed/pushed with the Git ledger maintained. This operation authorizes one non-force `staging` push and observation of its automatic QA deployment. It does not authorize `main`, Firebase deployment, manual Vercel deployment, production/live Razorpay execution, or direct entitlement edits.
+- Concurrent movement audit: during local validation, the existing MenuList certification task advanced local/server `staging` from `7a6ff4b7db22e4d9f2a4cf5c236aebf11ea72c1d` to exact descendant `06fe2ecb00d3ecd4c4c78d77c9777a3a9df484cd`. Reflog attributes the commit message `Keep sign out available behind plan gate`; direct server readback and `0/0` divergence prove no history was lost. That task explicitly excluded and preserved this operation's three initially moving payment paths.
+- Defect evidence: hosted Answerlattice QA has one legacy `Starter` subscription in `pending`. The retired plan is absent from the current Launch/Growth/Studio catalogue, so Continue Checkout fails locally before an API request. Selecting Launch incorrectly enters the paid-upgrade path and `/api/razorpay/create-subscription` returns `409` because a pending subscription is not an eligible paid replacement.
+- Correction: show `Choose Current Plan` for a pending plan absent from the current product catalogue; route that selection through new checkout rather than paid carry-forward. The server still reuses identical pending intent, blocks a different intent while provider confirmation is processing, and only cancels/terminally confirms a safely replaceable unpaid provider checkout before transactionally expiring the exact unchanged old pending row. No entitlement is granted by this reconciliation.
+- Candidate scope: three runtime paths, two existing source verifiers, six Answerlattice billing documents, and this ledger. Pre-ledger tracked diff SHA-256: `d9581f534e4cfc100dc0148cccb40d67b8fb86b0825cf48484244c0c36c61349`.
+- Validation before commit: Answerlattice billing contracts PASS; billing entitlement boundary PASS; subscription read boundary PASS; Razorpay lifecycle source/contract/emulator PASS; focused ESLint PASS; Answerlattice typecheck PASS; strict TypeScript PASS; complete Answerlattice commercial source aggregate PASS; `git diff --check` PASS.
+
+- Branch matrix before:
+
+  | Branch | Local full SHA | Direct server ref/full SHA | Tracking ref | Ahead/behind | Worktree | Staged/unstaged/untracked | Status |
+  | --- | --- | --- | --- | --- | --- | --- | --- |
+  | `main` | `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `refs/heads/main` / `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `origin/main` | `0/0` | not checked out | `N/A` | `IN_SYNC` |
+  | `staging` | `06fe2ecb00d3ecd4c4c78d77c9777a3a9df484cd` | `refs/heads/staging` / `06fe2ecb00d3ecd4c4c78d77c9777a3a9df484cd` | `origin/staging` | `0/0` | primary worktree | `0/11/0` before this ledger append | `IN_SYNC` |
+
+- Firebase matrix before/after:
+
+  | Product | Environment/project | Component | Local source/config | Local evidence | Server evidence | Delta | Deployment state |
+  | --- | --- | --- | --- | --- | --- | --- | --- |
+  | MenuList | QA / `menulist-qa` | Firestore Rules | `firestore-menulist.rules` | no candidate path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | QA / `menulist-qa` | Firestore indexes | `firestore.indexes.json` | no candidate path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | QA / `menulist-qa` | Storage Rules | `storage.rules` | no candidate path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | QA / `menulist-qa` | Cloud Functions | `functions/` | no candidate path; retained MLRC-031 mirror delta outside this operation | not refreshed | `INFRA_CHANGE` | `DEPLOY_REQUIRED` |
+  | MenuList | production / `menulist-prod` | Firestore Rules | same source | no candidate path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | production / `menulist-prod` | Firestore indexes | same source | no candidate path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | production / `menulist-prod` | Storage Rules | same source | no candidate path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | production / `menulist-prod` | Cloud Functions | same shared source | retained MLRC-031 mirror delta outside this operation | not refreshed | `INFRA_CHANGE` | `DEPLOY_REQUIRED` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Firestore Rules | `firestore-answerlattice.rules` | no candidate path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Firestore indexes | `firestore-answerlattice.indexes.json` | no candidate path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Storage Rules | `storage-answerlattice.rules` | no candidate path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Cloud Functions | `functions-answerlattice/` | no candidate path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Firestore Rules | same source | no candidate path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Firestore indexes | same source | no candidate path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Storage Rules | same source | no candidate path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Cloud Functions | same shared source | no candidate path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+
+- Firebase deployment evidence or blocker: this operation changes no Firebase infrastructure source. No Firebase deployment or authenticated component readback is authorized.
+- Git server readback and divergence: direct pre-operation `git ls-remote` proves both server refs match their local branches and both divergence counts are `0/0`.
+- Final filesystem state: pending complete-snapshot commit, non-force staging push, direct readback, automatic QA deployment, hosted Test Mode subscription checkout, and downstream Answerlattice knowledge/widget retest.
+- Attribution confidence: exact for this operation; exact server/reflog evidence for the concurrent descendant.

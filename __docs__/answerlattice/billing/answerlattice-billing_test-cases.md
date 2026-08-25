@@ -43,6 +43,8 @@
 18. Billing-document counters and documents remain denied to direct browser reads and writes; authorized summaries and PDFs use the protected API.
 19. Email delivery resolves billing email before owner/support fallback. WhatsApp delivery requires a verified number, consent, enabled provider sending, and an approved template.
 20. Refund replay cannot duplicate a credit reversal, refund debt, credit note, notification, or provider-facing document delivery.
+21. A pending checkout whose plan is no longer in the current catalogue offers **Choose Current Plan** rather than a broken resume action.
+22. Selecting a different plan reuses no paid-upgrade carry-forward: a provider-created old checkout is cancelled and the exact unchanged pending row is expired before the new checkout; provider processing blocks the replacement; identical intent still reuses the existing checkout.
 
 ## Rule Cases
 

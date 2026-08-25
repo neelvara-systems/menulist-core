@@ -1961,6 +1961,12 @@ function verifyBillingEntitlementBoundary() {
     'currentScope?.storeId !== Number(storeId)',
     "return 'changed' as const;",
     "if (cleanupResult === 'changed')",
+    "pendingCheckoutAction === 'checkout' && sameIntent",
+    "if (!sameIntent)",
+    'current.planId !== pending.planId',
+    'current.planType !== pending.planType',
+    'current.currency !== pending.currency',
+    'currentQuantity !== pendingQuantity',
   ].forEach((token) => assertIncludes(createSubscription, token, 'pending checkout transaction-current terminal cleanup boundary'));
   assertNotIncludes(
     createSubscription,

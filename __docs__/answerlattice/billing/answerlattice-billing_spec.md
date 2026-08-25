@@ -48,7 +48,7 @@ plan or pack selection
 
 | State | Customer meaning | Allowed behavior |
 | --- | --- | --- |
-| `pending` | Checkout exists but payment is not confirmed | Resume the exact safe checkout or verify payment |
+| `pending` | Checkout exists but payment is not confirmed | Resume the exact safe current-plan checkout. If its plan is retired, choose a current plan; the server must terminally reconcile the unpaid provider checkout before creating another. |
 | `active` | Paid entitlement is current | Use plan and purchased support credits |
 | `past_due` | Provider retry or grace handling is in progress | Explain recovery; do not invent a successful renewal |
 | `paused` | Recurring collection is paused | Preserve governed history and explicit resume path |

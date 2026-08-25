@@ -167,9 +167,10 @@ export default function AnswerlatticeBilling() {
     };
 
     const handleConfirmUpgrade = async (newPlan: Plan, currency: Currency) => {
+        const isReplacingPendingCheckout = activeSubscription?.status === 'pending';
         try {
             dispatch(startLoader('Processing Answerlattice payment'));
-            const paymentResponse = activeSubscription
+            const paymentResponse = activeSubscription && !isReplacingPendingCheckout
                 ? await onUpgradePlan(activeSubscription, newPlan, currency)
                 : await onClickPaymentCard(newPlan, currency, () => { });
             if (paymentResponse?.activationStatus === 'processing') {
@@ -184,7 +185,9 @@ export default function AnswerlatticeBilling() {
             logPaymentFailure(
                 'answerlattice_billing_payment_flow_failed',
                 error,
-                getBillingFailureContext(activeSubscription ? 'change_plan' : 'choose_plan'),
+                getBillingFailureContext(
+                    activeSubscription && !isReplacingPendingCheckout ? 'change_plan' : 'choose_plan',
+                ),
             );
             message.error('Payment failed. Please try again.');
         } finally {

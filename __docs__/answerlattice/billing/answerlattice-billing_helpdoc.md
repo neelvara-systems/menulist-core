@@ -22,6 +22,8 @@ Your billing country determines the checkout currency. India uses INR. Eligible 
 
 Return to **Billing**. Answerlattice can reuse the exact pending checkout when it is still valid. If the provider outcome is uncertain, do not create repeated payments; follow the recovery message or contact support with the workspace and approximate attempt time.
 
+If the pending checkout belongs to a plan that is no longer offered, Billing shows **Choose Current Plan**. Select a current plan once. Answerlattice will replace only an unpaid checkout whose provider state can be confirmed safely; it will wait rather than create a second subscription while payment confirmation is in progress.
+
 ## Support Credits
 
 Support-credit packs add purchased credits to the current Answerlattice subscription. Credits are applied only after successful verification or signed provider recovery. Replaying the same payment must not add credits twice.

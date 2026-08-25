@@ -11,6 +11,7 @@ import { getBoundedPaymentStringContext, logPaymentFailure } from '@hook/payment
 import { useAppDispatch } from '@hook/useAppDispatch';
 import usePaymentHandler, { isPaymentCheckoutDismissedError } from '@hook/usePaymentHandler';
 import type { CancellationReasonCode } from '@lib/billing/cancellationReasons';
+import { getBillingPlansForProduct } from '@lib/billing/productBillingPlans';
 import { hasVerifiedSubscriptionPaymentEvidence } from '@lib/billing/subscriptionPlanEntitlement';
 import { normalizeRazorpaySubscriptionCheckoutUrl } from '@lib/razorpay/checkoutUrl';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
@@ -99,6 +100,13 @@ function ActiveSubscriptionCard({
     const monthlyCreditsUsed = Math.max(0, monthlyCreditsAllowance - monthlyCredits);
     const isManualBilling = activeSubscription.billingMode === 'manual';
     const isPaymentPending = activeSubscription.status === 'pending';
+    const pendingCheckoutPlanIsCurrent = isPaymentPending && getBillingPlansForProduct(
+        productId,
+        activeSubscription.userType,
+    ).some((plan) => (
+        plan.planId === activeSubscription.planId
+        && plan.billingInterval === activeSubscription.planType
+    ));
     const isPaymentVerificationMissing = activeSubscription.status === 'active'
         && !hasVerifiedSubscriptionPaymentEvidence(activeSubscription);
     const isAccessUnverified = isPaymentPending || isPaymentVerificationMissing;
@@ -232,6 +240,17 @@ function ActiveSubscriptionCard({
         }
 
         if (isPaymentPending) {
+            if (!pendingCheckoutPlanIsCurrent) {
+                return (
+                    <Button
+                        type="primary"
+                        icon={<LuCreditCard />}
+                        onClick={() => setIsPricingModalOpen({ action: "new", active: true })}
+                    >
+                        Choose Current Plan
+                    </Button>
+                );
+            }
             return (
                 <Button
                     type="primary"

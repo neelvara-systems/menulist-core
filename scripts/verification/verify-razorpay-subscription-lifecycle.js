@@ -113,12 +113,19 @@ assert.ok(appLifecycle.includes('resolveRazorpayPendingCheckoutAction'));
 assert.ok(createSubscription.includes('resolveRazorpayPendingCheckoutAction(providerPendingSubscription)'));
 assert.ok(createSubscription.includes("status: 'processing'"));
 assert.ok(createSubscription.includes('razorpayClient.subscriptions.cancel(pendingProviderId)'));
+assert.ok(createSubscription.includes("pendingCheckoutAction === 'checkout' && sameIntent"));
+assert.ok(createSubscription.includes("pendingCheckoutAction === 'processing'"));
+assert.ok(createSubscription.includes('if (!sameIntent)'));
+assert.ok(createSubscription.includes('current.planId !== pending.planId'));
+assert.ok(createSubscription.includes('currentQuantity !== pendingQuantity'));
 assert.ok(createSubscription.includes('providerStatus: cleanupProviderStatus'));
 const pendingDesktopActions = activeSubscriptionCard.slice(
   activeSubscriptionCard.indexOf('if (isPaymentPending)'),
   activeSubscriptionCard.indexOf('if (isManualBilling)'),
 );
 assert.ok(pendingDesktopActions.includes('handleContinuePendingCheckout'));
+assert.ok(pendingDesktopActions.includes('Choose Current Plan'));
+assert.ok(pendingDesktopActions.includes('pendingCheckoutPlanIsCurrent'));
 assert.ok(!pendingDesktopActions.includes('handleOpenPaymentLink'));
 const desktopNewCheckoutHandler = desktopBilling.slice(
   desktopBilling.indexOf('const handleConfirmUpgrade'),
@@ -127,6 +134,10 @@ const desktopNewCheckoutHandler = desktopBilling.slice(
 const desktopPendingCheckoutHandler = activeSubscriptionCard.slice(
   activeSubscriptionCard.indexOf('const handleContinuePendingCheckout'),
   activeSubscriptionCard.indexOf('const openCancellationModal'),
+);
+const answerlatticeNewCheckoutHandler = answerlatticeBilling.slice(
+  answerlatticeBilling.indexOf('const handleConfirmUpgrade'),
+  answerlatticeBilling.indexOf('const handleCreditsPurchase'),
 );
 const mobileNewCheckoutHandler = mobileBilling.slice(
   mobileBilling.indexOf('const handleUpgrade'),
@@ -137,6 +148,8 @@ const mobilePendingCheckoutHandler = mobileBilling.slice(
   mobileBilling.indexOf('const handleBuyCredits'),
 );
 assert.ok(desktopNewCheckoutHandler.includes('await refetchActiveSubscription()'));
+assert.ok(answerlatticeNewCheckoutHandler.includes("activeSubscription?.status === 'pending'"));
+assert.ok(answerlatticeNewCheckoutHandler.includes('await onClickPaymentCard(newPlan, currency'));
 assert.ok(desktopPendingCheckoutHandler.includes('await refetchActiveSubscription()'));
 assert.ok(mobileNewCheckoutHandler.includes('await refetchSubscription()'));
 assert.ok(mobilePendingCheckoutHandler.includes('await refetchSubscription()'));

@@ -441,9 +441,9 @@ export const POST = withAuth(async (request, session) => {
                 && pendingQuantity === quantity
                 && sameReplacementIntent
             );
-            if (!sameIntent) {
+            if (pendingReplacementEvidence.outcome === 'invalid') {
                 return NextResponse.json(
-                    { error: 'Another subscription checkout is already pending. Complete or cancel it before starting a new one.' },
+                    { error: 'The pending subscription requires billing support.' },
                     { status: 409 },
                 );
             }
@@ -457,7 +457,7 @@ export const POST = withAuth(async (request, session) => {
             }
             const providerPendingSubscription = await razorpayClient.subscriptions.fetch(pendingProviderId);
             const pendingCheckoutAction = resolveRazorpayPendingCheckoutAction(providerPendingSubscription);
-            if (pendingCheckoutAction === 'checkout') {
+            if (pendingCheckoutAction === 'checkout' && sameIntent) {
                 const responsePayload = projectRazorpaySubscriptionCheckoutResponse(
                     providerPendingSubscription,
                     true,
@@ -470,6 +470,12 @@ export const POST = withAuth(async (request, session) => {
                 return response;
             }
             if (pendingCheckoutAction === 'processing') {
+                if (!sameIntent) {
+                    return NextResponse.json(
+                        { error: 'The current checkout is still being confirmed. Wait for confirmation before choosing another plan.' },
+                        { status: 409 },
+                    );
+                }
                 const response = NextResponse.json({
                     success: true,
                     status: 'processing',
@@ -529,20 +535,20 @@ export const POST = withAuth(async (request, session) => {
                 const currentReplacementEvidence = resolveSubscriptionReplacementEvidence(current);
                 const currentProviderId = getRazorpayManagedSubscriptionId(current);
                 const currentQuantity = current.quantity == null ? 1 : current.quantity;
-                const currentReplacementIntentMatches = replacementForSubscriptionId
+                const currentReplacementIntentMatches = pendingReplacementEvidence.outcome === 'replacement'
                     ? currentReplacementEvidence.outcome === 'replacement'
-                        && currentReplacementEvidence.subscriptionId === replacementForSubscriptionId
-                        && currentReplacementEvidence.previousMrrPaise === expectedReplacementMrrPaise
+                        && currentReplacementEvidence.subscriptionId === pendingReplacementEvidence.subscriptionId
+                        && currentReplacementEvidence.previousMrrPaise === pendingReplacementEvidence.previousMrrPaise
                     : currentReplacementEvidence.outcome === 'none';
                 if (
                     current.status !== 'pending'
                     || currentProviderId !== pendingProviderId
                     || currentScope?.tenantId !== Number(tenantId)
                     || currentScope?.storeId !== Number(storeId)
-                    || current.planId !== planId
-                    || current.planType !== interval
-                    || current.currency !== currency
-                    || currentQuantity !== quantity
+                    || current.planId !== pending.planId
+                    || current.planType !== pending.planType
+                    || current.currency !== pending.currency
+                    || currentQuantity !== pendingQuantity
                     || !currentReplacementIntentMatches
                 ) {
                     return 'changed' as const;
