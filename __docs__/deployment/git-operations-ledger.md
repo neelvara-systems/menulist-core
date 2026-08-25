@@ -3475,3 +3475,23 @@ Those fields are explicitly `unknown` instead of guessed.
 - Git server readback and divergence: direct pre-operation `git ls-remote` proves local/server `main` and `staging` exact with `0/0` divergence. Post-operation evidence is pending.
 - Final filesystem state: pending scoped commit, non-force `staging` push, automatic QA build, exact `/api/version`, and hosted keyboard retest.
 - Attribution confidence: exact.
+
+#### Result — `2026-08-25T21:45:00+05:30`
+
+- Record type: `PERFORMED_AND_VERIFIED`.
+- Scoped source/docs/regression commit: `4d448af6b38a4426b6967a643d4948d00dd6150a` (`fix(menulist): make help cards keyboard accessible`).
+- Git operation: non-force push of `staging` only. Direct server readback now returns exact `4d448af6b38a4426b6967a643d4948d00dd6150a`; `main` remains untouched at `fe625d5bbf527c1b7e537b00ab32a4f655905c35`.
+- Automatic QA deployment identity: `/api/version` returned `buildId=4d448af6b38a4426b6967a643d4948d00dd6150a`, `buildProvenance=verified`, `env=preview`, deployment `menulist-core-ahy2jwpy6-neelvara-systems.vercel.app`, created `2026-08-25T15:55:48.498Z`.
+- Hosted retest at 320x568: Knowledge Base, Submit a Ticket, Share Feedback, Read FAQ, Contact Us, and What's New all rendered with button semantics and initial `aria-pressed="false"`. Enter activated Knowledge Base, Share Feedback, and Contact Us; Space activated Submit a Ticket, Read FAQ, and What's New. Every action reached the intended Help route without an application error or data mutation.
+- Validation after deployment: `verify:help-center-boundary` PASS including runtime/attachment suites; focused ESLint PASS; strict TypeScript PASS; `git diff --check` PASS.
+
+- Branch matrix after source push and hosted verification:
+
+  | Branch | Local full SHA | Direct server ref/full SHA | Tracking ref | Ahead/behind | Worktree | Staged/unstaged/untracked | Status |
+  | --- | --- | --- | --- | --- | --- | --- | --- |
+  | `main` | `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `refs/heads/main` / `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `origin/main` | `0/0` | not checked out | `N/A` | `IN_SYNC` |
+  | `staging` | `4d448af6b38a4426b6967a643d4948d00dd6150a` | `refs/heads/staging` / `4d448af6b38a4426b6967a643d4948d00dd6150a` | `origin/staging` | `0/0` | primary worktree | `0/1/0` before this result append | `IN_SYNC` |
+
+- Firebase matrix after: unchanged from the planned entry. MenuList QA/production Functions retain `INFRA_CHANGE` / `DEPLOY_REQUIRED`; the other 14 rows retain `NO_INFRA_CHANGE` / `SERVER_STATE_UNKNOWN`. No Firebase deployment/readback, production release, `main` movement, manual Vercel deployment, or live Razorpay execution occurred.
+- Final filesystem state: this result append and the hosted-retest evidence in `MENULIST_RC_CERTIFICATION.md` are modified; they will be committed and pushed to `staging` as evidence-only closeout.
+- Attribution confidence: exact.
