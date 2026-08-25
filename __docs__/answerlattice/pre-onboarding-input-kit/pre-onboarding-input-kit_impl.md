@@ -146,9 +146,12 @@ Pre-onboarding must stay visible at the start of the Answerlattice buyer journey
 - homepage first-scroll section after the hero;
 - resources rollout path;
 - get-started pre-signup context;
+- the first incomplete **Add product knowledge** group in the authenticated Activation Command Center;
 - footer resources column.
 
 The `/pre-onboarding/guide`, `/pre-onboarding.md`, `/pre-onboarding/owner-guide.md`, and `/pre-onboarding/agent-guide.md` routes remain supporting routes for deep reading and AI-agent access. They should not fragment the main owner journey away from `/pre-onboarding`.
+
+The authenticated activation entry reuses `AnswerlatticePreOnboardingPromptModal`; it does not copy or fork the prompt. The modal reads the existing internal Markdown route while showing the canonical public agent URL. The owner sees one ordered path: copy the prompt, prepare the package in an approved AI tool, review it, and then use the existing Knowledge Intake action. No upload, entitlement, or activation occurs from opening or copying the prompt.
 
 ## Deployment Notes
 

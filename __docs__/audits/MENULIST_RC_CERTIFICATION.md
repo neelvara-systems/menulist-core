@@ -388,13 +388,20 @@ passing runtime claim.
   active disposable public tenant, destructive disposable tenant/store fixtures, physical mobile/PWA,
   television-screen behavior, and hosted write-through propagation remain
   unverified in this session.
-- A second legitimate entitled QA owner could not be created through the
-  current normal product paths: new-user creation requires Google OAuth, phone
-  OTP, or a messaging claim token; the sole authorized human Google identity is
-  already bound to the retained pending store. Firebase CLI and gcloud are not
-  authenticated, and the connected Firebase Console identity does not have
-  access to `menulist-qa`. Certification therefore did not fabricate an
-  entitlement, subscription event, tenant, store, or provider success.
+- Firebase project-level access is now verified for `admin@neelvara.com` in
+  both Firebase Console and Firebase CLI. The CLI directly listed
+  `menulist-qa`, its `(default)` Firestore database, and the deployed MenuList
+  Functions inventory. The Console Firestore document pane still returned
+  `Error loading documents`, and Authentication returned `Failed to load
+  configuration for Firebase Authentication`; those failed panes are not
+  represented as successful data-plane reads. Local `gcloud`/ADC was also
+  unavailable because the `gcloud` binary is not installed. A guarded QA-only
+  fixture harness now uses the already authenticated Firebase CLI session
+  without printing or persisting its OAuth token, refuses every project except
+  `menulist-qa`, creates canonical owner/tenant/store data through the shared
+  onboarding transaction, and attaches only a labelled 72-hour zero-value
+  provider-free certification entitlement. Hosted prepare/verify evidence is
+  recorded below once executed; live Razorpay remains excluded.
 - The current pending-owner QA fixture does not provide a valid admitted
   Answerlattice support workspace. MenuList Help Center shell/recovery routing
   was testable, but ticket history and the remaining Answerlattice-backed

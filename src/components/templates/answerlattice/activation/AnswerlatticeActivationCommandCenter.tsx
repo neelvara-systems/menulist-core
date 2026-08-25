@@ -13,6 +13,7 @@ import type { AnswerlatticeActivationStep, AnswerlatticeActivationStepStatus, An
 import { useAnswerlatticeCacheScope } from '@hook/answerlattice/useAnswerlatticeCacheScope';
 import AnswerlatticeCustomerFlowChecklist from '@template/answerlattice/content/AnswerlatticeCustomerFlowChecklist';
 import AnswerlatticeContentWorkbench from '@template/answerlattice/content/AnswerlatticeContentWorkbench';
+import AnswerlatticePreOnboardingPromptModal from '@/app/sites/answerlattice/pre-onboarding/PromptModal';
 import AnswerlatticeOperationsPanel from './AnswerlatticeOperationsPanel';
 import {
     Alert,
@@ -45,6 +46,7 @@ import {
     LuCode,
     LuDatabase,
     LuExternalLink,
+    LuFileInput,
     LuLayers,
     LuListChecks,
     LuMail,
@@ -67,6 +69,12 @@ const ANSWERLATTICE_SUPPORT_LOOP = [
     'Test as a customer',
     'Install support',
     'Return when attention is needed',
+] as const;
+const ANSWERLATTICE_INPUT_PREPARATION_STEPS = [
+    'Copy prompt',
+    'Paste into your AI tool',
+    'Review the package',
+    'Upload selected sources',
 ] as const;
 
 const STATUS_META = {
@@ -755,6 +763,90 @@ export default function AnswerlatticeActivationCommandCenter() {
                                 children: (
                                     <Flex vertical gap={14}>
                                         <Text type="secondary">{group.description}</Text>
+                                        {group.key === 'product-knowledge' && group.status !== 'complete' ? (
+                                            <section
+                                                aria-labelledby="answerlattice-input-preparation-title"
+                                                style={{
+                                                    padding: isMobile ? 14 : 16,
+                                                    border: `1px solid ${token.colorPrimaryBorder}`,
+                                                    borderRadius: token.borderRadiusLG,
+                                                    background: token.colorPrimaryBg,
+                                                }}
+                                            >
+                                                <Flex vertical gap={14}>
+                                                    <Flex align="flex-start" gap={12}>
+                                                        <Flex
+                                                            align="center"
+                                                            justify="center"
+                                                            style={{
+                                                                width: 40,
+                                                                height: 40,
+                                                                flex: '0 0 40px',
+                                                                borderRadius: token.borderRadiusLG,
+                                                                background: token.colorBgContainer,
+                                                                color: token.colorPrimaryText,
+                                                            }}
+                                                        >
+                                                            <LuFileInput aria-hidden size={20} />
+                                                        </Flex>
+                                                        <Flex vertical gap={3} style={{ minWidth: 0 }}>
+                                                            <Text id="answerlattice-input-preparation-title" strong>
+                                                                Prepare your product inputs with one prompt
+                                                            </Text>
+                                                            <Text type="secondary">
+                                                                Give the prompt to Codex, Cursor, Claude Code, or another capable AI tool. It prepares a review-ready Answerlattice input package from the sources you allow it to inspect.
+                                                            </Text>
+                                                        </Flex>
+                                                    </Flex>
+                                                    <Flex gap={8} vertical={isMobile} wrap={!isMobile ? 'wrap' : undefined}>
+                                                        {ANSWERLATTICE_INPUT_PREPARATION_STEPS.map((step, stepIndex) => (
+                                                            <Flex
+                                                                key={step}
+                                                                align="center"
+                                                                gap={8}
+                                                                style={{ flex: isMobile ? undefined : '1 1 150px', minWidth: 0 }}
+                                                            >
+                                                                <Flex
+                                                                    align="center"
+                                                                    justify="center"
+                                                                    style={{
+                                                                        width: 24,
+                                                                        height: 24,
+                                                                        flex: '0 0 24px',
+                                                                        borderRadius: '50%',
+                                                                        background: token.colorBgContainer,
+                                                                        color: token.colorPrimaryText,
+                                                                        fontSize: 12,
+                                                                        fontWeight: 600,
+                                                                    }}
+                                                                >
+                                                                    {stepIndex + 1}
+                                                                </Flex>
+                                                                <Text style={{ fontSize: 13 }}>{step}</Text>
+                                                            </Flex>
+                                                        ))}
+                                                    </Flex>
+                                                    <Flex align={isMobile ? 'stretch' : 'center'} justify="space-between" gap={10} vertical={isMobile}>
+                                                        <Text type="secondary" style={{ fontSize: 12 }}>
+                                                            Review privacy, accuracy, and product boundaries before using the Knowledge Intake action below.
+                                                        </Text>
+                                                        <AnswerlatticePreOnboardingPromptModal
+                                                            directPromptUrl="https://answerlattice.com/pre-onboarding.md"
+                                                            promptUrl="/sites/answerlattice/pre-onboarding.md"
+                                                            trigger={(openPrompt) => (
+                                                                <Button
+                                                                    icon={<LuFileInput />}
+                                                                    onClick={openPrompt}
+                                                                    style={{ minHeight: 44, width: isMobile ? '100%' : undefined }}
+                                                                >
+                                                                    Copy preparation prompt
+                                                                </Button>
+                                                            )}
+                                                        />
+                                                    </Flex>
+                                                </Flex>
+                                            </section>
+                                        ) : null}
                                         <List
                                             split={false}
                                             dataSource={group.checks}

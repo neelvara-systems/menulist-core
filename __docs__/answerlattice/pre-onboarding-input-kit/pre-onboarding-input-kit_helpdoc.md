@@ -34,6 +34,8 @@ You need:
 11. Review the drafts Answerlattice creates.
 12. Enable live support only after the test questions pass.
 
+If your workspace already exists, open **Get Live** and expand **Add product knowledge**. Use **Copy preparation prompt**, prepare and review the package, then continue with the existing Knowledge Intake action. Copying the prompt does not upload sources or activate support.
+
 ## What The Prompt Should Create
 
 - A product context summary.

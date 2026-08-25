@@ -99,6 +99,10 @@ function ActiveSubscriptionCard({
     const monthlyCreditUsage = monthlyCreditsAllowance > 0 ? (monthlyCredits / monthlyCreditsAllowance) * 100 : 0;
     const monthlyCreditsUsed = Math.max(0, monthlyCreditsAllowance - monthlyCredits);
     const isManualBilling = activeSubscription.billingMode === 'manual';
+    const isQaCertificationEntitlement = activeSubscription.pId === PRODUCT_IDS.ANSWERLATTICE
+        && activeSubscription.manualPaymentEvidenceType === 'qa_certification_non_payment'
+        && activeSubscription.qaCertification?.fixture === true
+        && activeSubscription.qaCertification.projectId === 'neelvara-answerlattice-qa';
     const isPaymentPending = activeSubscription.status === 'pending';
     const pendingCheckoutPlanIsCurrent = isPaymentPending && getBillingPlansForProduct(
         productId,
@@ -117,7 +121,9 @@ function ActiveSubscriptionCard({
         && Math.abs(renewsOnSeconds - subscriptionEndSeconds) <= 86400;
     const subscriptionCheckoutUrl = normalizeRazorpaySubscriptionCheckoutUrl(activeSubscription.shortUrl);
     const intervalLabel = activeSubscription.planType === 'YEAR' ? 'Year' : 'Month';
-    const amountSuffix = isManualBilling
+    const amountSuffix = isQaCertificationEntitlement
+        ? 'QA certification lease'
+        : isManualBilling
         ? `one-time prepaid${activeSubscription.commitmentPeriodMonths ? ` / ${activeSubscription.commitmentPeriodMonths} months` : ''}`
         : intervalLabel;
     const displayAmount = isManualBilling
@@ -432,7 +438,11 @@ function ActiveSubscriptionCard({
                                             {activeSubscription.quantity} stores × {formatCurrency(activeSubscription.amount, activeSubscription.currency)} each
                                         </Text>
                                     )}
-                                    {isManualBilling && (
+                                    {isQaCertificationEntitlement ? (
+                                        <Text type="secondary" style={{ fontSize: 12 }}>
+                                            Synthetic QA-only access. No payment was processed. This lease expires automatically and cannot certify Razorpay.
+                                        </Text>
+                                    ) : isManualBilling && (
                                         <Text type="secondary" style={{ fontSize: 12 }}>
                                             Offline payment confirmed by reseller for {activeSubscription.quantity || 1} location{(activeSubscription.quantity || 1) > 1 ? 's' : ''}. This is prepaid access, not lifetime access.
                                         </Text>
@@ -447,7 +457,7 @@ function ActiveSubscriptionCard({
                                 <Col xs={24} sm={8}>
                                     <Statistic
                                         valueStyle={{ fontSize: 14 }}
-                                        title={isManualBilling ? "Prepaid Period" : "Current Billing Cycle"}
+                                        title={isQaCertificationEntitlement ? "Certification Window" : isManualBilling ? "Prepaid Period" : "Current Billing Cycle"}
                                         value={isAccessUnverified ? "Starts after verification" : `${formatBillingDate(activeSubscription.cycleStartDate)} - ${formatBillingDate(activeSubscription.cycleEndDate)}`}
                                     />
                                 </Col>
@@ -457,7 +467,7 @@ function ActiveSubscriptionCard({
                                 <Col xs={24} sm={8}>
                                     <Statistic
                                         valueStyle={{ fontSize: 14 }}
-                                        title={isManualBilling ? "Access End Date" : "Subscription End Date"}
+                                        title={isQaCertificationEntitlement ? "Lease End Date" : isManualBilling ? "Access End Date" : "Subscription End Date"}
                                         value={formatBillingDate(activeSubscription.subscriptionEndDate, isAccessUnverified ? "Starts after verification" : "N/A")}
                                     />
                                 </Col>
@@ -498,7 +508,9 @@ function ActiveSubscriptionCard({
                                 <Col>
                                     <Space align="center" style={{ display: 'flex' }}>
                                         Payment Method:
-                                        {isManualBilling && <Tag color="processing">Offline one-time prepaid</Tag>}
+                                        {isQaCertificationEntitlement
+                                            ? <Tag color="warning">No payment — QA only</Tag>
+                                            : isManualBilling && <Tag color="processing">Offline one-time prepaid</Tag>}
                                         {isPaymentPending && <Tag color="processing">Razorpay checkout pending</Tag>}
                                         {isPaymentVerificationMissing && <Tag color="warning">Verification required</Tag>}
                                         {!isManualBilling && !isAccessUnverified && activeSubscription.paymentMethod?.type == 'card' && <>

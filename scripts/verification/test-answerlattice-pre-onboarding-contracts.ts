@@ -25,6 +25,10 @@ const publicGuideSource = fs.readFileSync(
     path.resolve(process.cwd(), 'src/app/sites/answerlattice/pre-onboarding/guide/page.tsx'),
     'utf8',
 );
+const activationCommandCenterSource = fs.readFileSync(
+    path.resolve(process.cwd(), 'src/components/templates/answerlattice/activation/AnswerlatticeActivationCommandCenter.tsx'),
+    'utf8',
+);
 
 const sourceModes = [
     'repo_and_website',
@@ -96,6 +100,31 @@ assert.equal(publicGuideSource.includes('treat them as signals, not approved tru
 assert.equal(publicGuideSource.includes('must not be exposed through public citations'), true);
 assert.equal(publicPageSource.includes('No private-source processing without permission'), true);
 assert.equal(publicPageSource.includes('No ticket, chat, macro, or repeated reply becomes approved truth without review.'), true);
+assert.equal(
+    activationCommandCenterSource.includes("group.key === 'product-knowledge' && group.status !== 'complete'"),
+    true,
+    'activation prompt entry must remain limited to incomplete product knowledge',
+);
+assert.equal(
+    activationCommandCenterSource.includes('Prepare your product inputs with one prompt'),
+    true,
+    'activation must explain the single-prompt preparation path',
+);
+assert.equal(
+    activationCommandCenterSource.includes('promptUrl="/sites/answerlattice/pre-onboarding.md"'),
+    true,
+    'activation must reuse the existing same-origin prompt route',
+);
+assert.equal(
+    activationCommandCenterSource.includes('directPromptUrl="https://answerlattice.com/pre-onboarding.md"'),
+    true,
+    'activation must display the canonical public prompt URL',
+);
+assert.equal(
+    activationCommandCenterSource.includes('Review privacy, accuracy, and product boundaries before using the Knowledge Intake action below.'),
+    true,
+    'activation must preserve owner review before Knowledge Intake',
+);
 
 assert.deepEqual(ANSWERLATTICE_PRE_ONBOARDING_MARKDOWN_RESPONSE_HEADERS, {
     'Content-Type': 'text/markdown; charset=utf-8',

@@ -77,6 +77,16 @@ These are not replaced by source tests:
 8. Confirm provider Dashboard, local subscription, store summary, and compact payment history agree.
 9. Start Transactions reads in workspace A, switch to workspace B before either response settles, and confirm no A billing/support-credit row, cursor, selection, loading state, or error replaces B state.
 
+When Razorpay Test Mode is unavailable, hosted product QA may use the repository-owned
+`answerlattice:hosted-qa-entitlement` controller. The controller creates one
+zero-value, time-limited, clearly labelled synthetic manual entitlement in
+`neelvara-answerlattice-qa` only. It refuses production, emulator hosts, an
+incorrect project confirmation, a missing/foreign workspace, an existing active
+subscription, duplicate preparation, and cleanup of any document that does not
+carry the exact fixture markers. It does not simulate checkout, payment,
+webhooks, invoices, refunds, or provider certification. The fixture must be
+removed after the hosted knowledge/retrieval/widget certification pass.
+
 Official provider references checked on 2026-07-19:
 
 - [Fetch an Invoice With ID](https://razorpay.com/docs/api/payments/invoices/fetch-with-id/) documents `short_url` as the customer payment link and shows the `https://rzp.io/i/...` shape.

@@ -24,6 +24,8 @@
 | POI-WEB-013 | Inspect desktop and mobile navigation. | Desktop header and mobile drawer include a direct Pre-Onboarding link. |
 | POI-WEB-014 | Visit `/get-started`. | Page offers pre-onboarding before workspace creation for owners with source material. |
 | POI-WEB-015 | Visit `/resources`. | Pre-Onboarding Kit is highlighted before rollout planning links. |
+| POI-WEB-016 | Open the first incomplete Add product knowledge group in the authenticated Activation Command Center. | A compact four-step preparation path opens the same master prompt, shows the canonical public prompt URL, retains 44px touch actions, and leaves Knowledge Intake as the explicit next action. |
+| POI-WEB-017 | Complete the Add product knowledge group. | The preparation callout is no longer shown; retained source and activation truth remains authoritative. |
 
 ## Prompt Output
 

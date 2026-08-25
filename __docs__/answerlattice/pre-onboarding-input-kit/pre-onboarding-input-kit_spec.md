@@ -41,6 +41,7 @@ As a SaaS founder, I want to run one master prompt in my AI IDE so it inspects t
 | POI-17 | Require source authority, approval status, access scope, citation eligibility, applicability, and conflict metadata. | P0 |
 | POI-18 | Treat tickets, chats, macros, repeated replies, and support exports as signals until an authoritative source or owner review confirms the facts. | P0 |
 | POI-19 | Require owner permission before private sources are processed in an external AI tool and prohibit public citation of private source URLs or text. | P0 |
+| POI-20 | Reuse the same master prompt from the authenticated Activation Command Center before an owner starts the first Knowledge Intake upload. | P0 |
 
 ## Required Output Folder
 

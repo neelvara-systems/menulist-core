@@ -167,6 +167,17 @@ export interface FirestoreSubscriptionDoc {
   commitmentPeriodMonths?: number | null;    // 3 | 6 | 12 (online: tracking only, offline: duration)
   manualPaymentConfirmed?: boolean;          // For offline: reseller confirmed payment received
   manualPaymentConfirmedAt?: BillingTimestamp | null;
+  /** Guarded zero-value hosted-QA lease; never represents provider payment evidence. */
+  manualPaymentEvidenceType?: 'qa_certification_non_payment';
+  qaCertification?: {
+    fixture: true;
+    projectId: 'neelvara-answerlattice-qa';
+    purpose: 'answerlattice_hosted_release_candidate';
+    operationId: string;
+    issuedAt: BillingTimestamp;
+    expiresAt: BillingTimestamp;
+    maxLeaseHours: 72;
+  };
 }
 
 export type FirestoreBillingHistoryDoc = Array<{

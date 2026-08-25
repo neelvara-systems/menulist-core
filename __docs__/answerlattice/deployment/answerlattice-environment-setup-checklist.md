@@ -185,6 +185,13 @@ Stop before any mutation when one of these is true:
     paid Knowledge Intake entitlement. No test entitlement or provider outcome
     was fabricated. Independent scheduler/task and Storage recovery paths pass;
     keep this item open for the licensed hosted data-path proof.
+  - August 25 provider-outage continuation: the repository now owns a guarded
+    `answerlattice:hosted-qa-entitlement` controller for one zero-value,
+    maximum-72-hour synthetic certification lease. It is restricted to
+    `neelvara-answerlattice-qa`, requires exact project and workspace
+    confirmation, refuses an existing active subscription, and deletes only
+    exact marked fixture documents. This lease permits hosted product-flow QA;
+    it does not close Razorpay checkout/webhook/payment evidence.
 
 ### Secrets And Providers
 

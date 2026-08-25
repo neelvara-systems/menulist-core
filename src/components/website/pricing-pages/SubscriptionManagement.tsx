@@ -10,6 +10,7 @@ import { FirestoreSubscriptionDoc } from "@type/razorpay";
 import { formatDateTime } from "@util/dateTime";
 import { getGracePeriodDisplayInfo, hasValidSubscriptionAccess } from "@util/razorpay";
 import { DASHBOARD_URL, OWNER_APP_URL } from "@constant/urls";
+import { PRODUCT_IDS } from '@constant/product';
 import { hasVerifiedSubscriptionPaymentEvidence } from "@lib/billing/subscriptionPlanEntitlement";
 import type { PricingPlanHandoff } from "@lib/billing/purchaseIntentBoundary";
 import { useFormatter } from "next-intl";
@@ -39,11 +40,17 @@ const SubscriptionManagementRenderer: React.FC<SubscriptionManagementRendererPro
             && !hasVerifiedSubscriptionPaymentEvidence(activeSubscription)
         );
     const isManualBilling = activeSubscription.billingMode === 'manual';
+    const isQaCertificationEntitlement = activeSubscription.pId === PRODUCT_IDS.ANSWERLATTICE
+        && activeSubscription.manualPaymentEvidenceType === 'qa_certification_non_payment'
+        && activeSubscription.qaCertification?.fixture === true
+        && activeSubscription.qaCertification.projectId === 'neelvara-answerlattice-qa';
     const billedQuantity = activeSubscription.quantity || 1;
     const displayedAmount = isManualBilling
         ? activeSubscription.amount
         : activeSubscription.amount * billedQuantity;
-    const billingPeriod = isManualBilling
+    const billingPeriod = isQaCertificationEntitlement
+        ? 'QA certification lease'
+        : isManualBilling
         ? `one-time prepaid${activeSubscription.commitmentPeriodMonths ? ` / ${activeSubscription.commitmentPeriodMonths} months` : ''}`
         : activeSubscription.planType === 'YEAR' ? 'Year' : 'Month';
     const hasConflictingPendingPlan = Boolean(

@@ -99,6 +99,7 @@ Because pre-onboarding is the easiest path into Answerlattice, public placement 
 - homepage hero includes a secondary pre-onboarding source-preparation link;
 - resources page highlights pre-onboarding before rollout planning links;
 - get-started page offers pre-onboarding before workspace creation;
+- the authenticated Activation Command Center offers the same master prompt inside the first incomplete Add product knowledge group before the existing Knowledge Intake action;
 - footer links to the kit and guide.
 
 The markdown prompt and guide routes remain direct-access utilities for AI agents, downloads, and deep linking. They should not replace `/pre-onboarding` as the primary public entry.

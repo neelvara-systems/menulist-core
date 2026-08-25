@@ -417,3 +417,34 @@ from static evidence.
   confirmed test recipient at the moment of sending.
 - Real Razorpay checkout, charging, payment-webhook completion, refund, and live
   payment operations remain intentionally excluded.
+
+### Hosted QA provider-outage continuation contract
+
+Razorpay ticket `#20526582` remains the authority for the reproduced Test Mode
+mandate failure. Product certification does not reinterpret that failure as a
+successful payment. During the provider outage, the guarded
+`answerlattice:hosted-qa-entitlement` controller may issue one 72-hour,
+zero-value synthetic entitlement for the exact disposable QA workspace. This
+lease is QA-only, auditable, non-renewing, and removable; it proves
+Answerlattice product behavior only and never counts as Razorpay, invoice,
+webhook, refund, revenue, or production-entitlement evidence.
+
+#### Hosted continuation evidence — 2026-08-25
+
+- Prepared one marked QA-only entitlement for workspace `1/1` in
+  `neelvara-answerlattice-qa`; it expires automatically on 2026-08-28 and did
+  not alter the pending Razorpay subscription.
+- Imported one bounded, non-sensitive MenuList product-context source. The
+  provider generated one KB-article draft, retained it in `Needs review`, and
+  published it only after explicit owner acceptance.
+- The end-user widget answered a supported product question accurately, cited
+  `MenuList Product Context`, and recorded positive feedback. An unsupported
+  SLA question returned a no-knowledge response instead of inventing a claim.
+- The unresolved path created ticket `WE-20XW7QTG`; the owner queue preserved
+  requester/context data, accepted a reply, and moved the ticket to Resolved.
+- A disposable widget key and temporary `https://canonica.app` allowlist entry
+  were removed after the test. A subsequent request through the revoked key
+  failed closed.
+- The full `verify:answerlattice-runtime-truth`, commercial source gate, strict
+  TypeScript, focused zero-warning ESLint, and hosted-entitlement boundary gate
+  passed. Razorpay checkout/payment/webhook success remains unclaimed.

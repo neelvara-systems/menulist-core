@@ -2,6 +2,7 @@
 
 import { AIEnhancementPack, Currency, Plan } from '@data/common';
 import { MENULIST_B2C_PLAN_IDS } from '@constant/menulistPlans';
+import { PRODUCT_IDS } from '@constant/product';
 import { isFeatureEnabled } from '@config/features';
 import { aiEnhancementPacksList, getB2BPlansList, getB2CPlansList } from '@data/PlatformPlansList';
 import {
@@ -135,6 +136,10 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
     const sub = activeSubscription;
     const subscriptionCheckoutUrl = normalizeRazorpaySubscriptionCheckoutUrl(sub?.shortUrl);
     const isManualBilling = sub?.billingMode === 'manual';
+    const isQaCertificationEntitlement = sub?.pId === PRODUCT_IDS.ANSWERLATTICE
+        && sub.manualPaymentEvidenceType === 'qa_certification_non_payment'
+        && sub.qaCertification?.fixture === true
+        && sub.qaCertification.projectId === 'neelvara-answerlattice-qa';
     const isPaymentPending = sub?.status === 'pending'
         || Boolean(
             sub?.status === 'active'
@@ -635,7 +640,9 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
 
     const plans = (sub?.userType === 'B2B' ? getB2BPlansList() : getB2CPlansList()).filter((plan) => plan.billingInterval === billingInterval);
     const amountLabel = sub
-        ? isManualBilling
+        ? isQaCertificationEntitlement
+            ? `${formatCurrency(sub.amount, sub.currency)} / QA certification lease`
+            : isManualBilling
             ? `${formatCurrency(sub.amount, sub.currency)} / one-time prepaid${sub.commitmentPeriodMonths ? ` (${sub.commitmentPeriodMonths} months)` : ''}`
             : `${formatCurrency(sub.amount * (sub.quantity || 1), sub.currency)} / ${sub.planType === 'YEAR' ? 'year' : 'month'}`
         : '';
@@ -727,16 +734,16 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
                             <Card size="small">
                                 <List>
                                     <List.Item
-                                        title={<Text>{isManualBilling ? 'Prepaid period' : t('billingCycle')}</Text>}
+                                        title={<Text>{isQaCertificationEntitlement ? 'Certification window' : isManualBilling ? 'Prepaid period' : t('billingCycle')}</Text>}
                                         extra={<Text>{isPaymentPending ? 'Starts after payment' : `${formatDate(sub.cycleStartDate)} - ${formatDate(sub.cycleEndDate)}`}</Text>}
                                     />
                                     <List.Item
-                                        title={<Text>{isManualBilling ? 'Prepaid until' : sub.status === 'active' ? t('renews') : t('expires')}</Text>}
+                                        title={<Text>{isQaCertificationEntitlement ? 'Lease ends' : isManualBilling ? 'Prepaid until' : sub.status === 'active' ? t('renews') : t('expires')}</Text>}
                                         extra={<Text>{isPaymentPending ? 'After payment' : formatDate(isManualBilling ? (sub.validUntil || sub.cycleEndDate) : (sub.renewsOn || sub.cycleEndDate))}</Text>}
                                     />
                                     <List.Item
                                         title={<Text>Payment type</Text>}
-                                        extra={<Tag color={isManualBilling ? undefined : 'processing'} style={isManualBilling ? manualBillingTagStyle : undefined}>{isManualBilling ? 'Offline one-time prepaid' : isPaymentPending ? 'Razorpay pending' : 'Razorpay recurring'}</Tag>}
+                                        extra={<Tag color={isQaCertificationEntitlement ? 'warning' : isManualBilling ? undefined : 'processing'} style={isManualBilling && !isQaCertificationEntitlement ? manualBillingTagStyle : undefined}>{isQaCertificationEntitlement ? 'No payment — QA only' : isManualBilling ? 'Offline one-time prepaid' : isPaymentPending ? 'Razorpay pending' : 'Razorpay recurring'}</Tag>}
                                     />
                                     <List.Item
                                         title={<Text>Paid locations</Text>}

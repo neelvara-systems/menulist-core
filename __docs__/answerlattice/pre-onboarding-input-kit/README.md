@@ -111,6 +111,7 @@ Primary human route: `/pre-onboarding`
 | `/pre-onboarding/owner-guide.md` | Machine-readable owner checklist. |
 | `/pre-onboarding/agent-guide.md` | Machine-readable agent operating guide. |
 | `/resources` | Links to pre-onboarding as part of rollout planning. |
+| Authenticated **Get Live** | The first incomplete Add product knowledge group reuses the prompt modal before the existing Knowledge Intake action. |
 
 The main website should send owners to `/pre-onboarding` first. Tool wrappers change only the starting instructions; every wrapper embeds the same master safety, source-boundary, validation, and owner-review contract. The guide and markdown routes stay available for deep reading, direct AI-agent access, and downloadable instructions.
 
@@ -126,6 +127,7 @@ The main website should send owners to `/pre-onboarding` first. Tool wrappers ch
 | `pre-onboarding-input-kit_agent-guide.md` | AI agent operating guide. |
 | `pre-onboarding-input-kit_marketing.md` | Positioning and enablement. |
 | `pre-onboarding-input-kit_firebase.md` | Cost and data-impact note. |
+| `pre-onboarding-input-kit_mobile-support.md` | Responsive prompt-modal and authenticated activation-entry contract. |
 | `pre-onboarding-input-kit_test-cases.md` | Validation matrix. |
 | `pre-onboarding-input-kit_market-research.md` | Official-source research behind repo, URL, API, support-export, and demo/walkthrough handling. |
 | `pre-onboarding-master-prompt.md` | Human-readable prompt source for review. |
@@ -172,3 +174,4 @@ Expected flow:
 | 2026-07-19 | Aligned generated payloads with the strict Knowledge Intake API, added source authority/conflict and private-source permission contracts, and hardened Markdown responses plus dialog focus behavior. |
 | 2026-07-20 | Reconciled the MenuList reference package with the current 26-source contract, strict add-source API, canonical host, feature inventory, legal/billing truth, and live-support coverage verifier. |
 | 2026-07-26 | Linked the existing source-evidence map to the controlled Source Governance review and documented the canonical evidence gate. |
+| 2026-08-25 | Reused the same master prompt inside the first incomplete authenticated Add product knowledge activation group. |

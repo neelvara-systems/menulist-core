@@ -1,7 +1,7 @@
 'use client';
 
 import { isResponseBodyTooLargeError, readResponseUint8ArrayWithLimit } from '@lib/security/boundedResponseBody';
-import { useCallback, useEffect, useId, useRef, useState } from 'react';
+import { type ReactNode, useCallback, useEffect, useId, useRef, useState } from 'react';
 import {
     LuCheck,
     LuClipboard,
@@ -15,6 +15,9 @@ type PromptModalProps = {
     basePath?: string;
     buttonClassName?: string;
     buttonLabel?: string;
+    directPromptUrl?: string;
+    promptUrl?: string;
+    trigger?: (openPrompt: () => void) => ReactNode;
 };
 
 const PROMPT_FILE_NAME = 'answerlattice-pre-onboarding-master-prompt.md';
@@ -101,17 +104,22 @@ export default function AnswerlatticePreOnboardingPromptModal({
     basePath = '',
     buttonClassName = '',
     buttonLabel = 'Open the agent prompt',
+    directPromptUrl,
+    promptUrl: promptUrlOverride,
+    trigger,
 }: PromptModalProps) {
     const [open, setOpen] = useState(false);
     const [promptText, setPromptText] = useState('');
     const [status, setStatus] = useState<'idle' | 'loading' | 'copied' | 'downloaded' | 'error'>('idle');
     const [errorMessage, setErrorMessage] = useState(PRE_ONBOARDING_PROMPT_LOAD_FAILED_MESSAGE);
     const dialogTitleId = useId();
+    const activeTriggerRef = useRef<HTMLElement | null>(null);
     const closeButtonRef = useRef<HTMLButtonElement | null>(null);
     const dialogRef = useRef<HTMLElement | null>(null);
     const triggerButtonRef = useRef<HTMLButtonElement | null>(null);
 
-    const promptUrl = `${basePath}/pre-onboarding.md`;
+    const promptUrl = promptUrlOverride || `${basePath}/pre-onboarding.md`;
+    const displayedPromptUrl = directPromptUrl || promptUrl;
 
     const loadPrompt = useCallback(async () => {
         if (promptText || status === 'loading') return;
@@ -133,6 +141,9 @@ export default function AnswerlatticePreOnboardingPromptModal({
     }, [promptText, promptUrl, status]);
 
     const openModal = () => {
+        activeTriggerRef.current = document.activeElement instanceof HTMLElement
+            ? document.activeElement
+            : null;
         setOpen(true);
         void loadPrompt();
     };
@@ -204,17 +215,20 @@ export default function AnswerlatticePreOnboardingPromptModal({
             document.body.style.overflow = originalOverflow;
             window.removeEventListener('keydown', handleKeyDown);
             triggerButtonRef.current?.focus();
+            if (!triggerButtonRef.current) activeTriggerRef.current?.focus();
         };
     }, [closeModal, open]);
 
     return (
         <>
-            <button className={buttonClassName} onClick={openModal} ref={triggerButtonRef} type="button">
-                <span className="inline-flex items-center justify-center gap-2">
-                    <LuFileText aria-hidden size={16} />
-                    {buttonLabel}
-                </span>
-            </button>
+            {trigger ? trigger(openModal) : (
+                <button className={buttonClassName} onClick={openModal} ref={triggerButtonRef} type="button">
+                    <span className="inline-flex items-center justify-center gap-2">
+                        <LuFileText aria-hidden size={16} />
+                        {buttonLabel}
+                    </span>
+                </button>
+            )}
 
             {open ? (
                 <div className="fixed inset-0 z-[120] flex items-end justify-center bg-black/70 px-3 py-4 backdrop-blur-md sm:items-center sm:px-6" role="presentation">
@@ -302,7 +316,7 @@ export default function AnswerlatticePreOnboardingPromptModal({
                                     </p>
                                 ) : null}
                                 <p className="mt-2 text-xs leading-relaxed text-[#8585a3]">
-                                    Direct agent access remains available at <span className="break-all font-mono text-[#d6d6ef]">{promptUrl}</span>. Review the generated package before upload.
+                                    Direct agent access remains available at <span className="break-all font-mono text-[#d6d6ef]">{displayedPromptUrl}</span>. Review the generated package before upload.
                                 </p>
                             </aside>
                         </div>
