@@ -14,6 +14,8 @@
   displaying encoded HTML entities;
 - the global access-denied result and recovery actions fit and wrap within a
   320px viewport;
+- both access-denied recovery actions retain the 44px mobile touch-target
+  minimum;
 - the access-denied home action exits the owner-app host through the
   environment-governed public MenuList website URL instead of entering the
   protected dashboard;

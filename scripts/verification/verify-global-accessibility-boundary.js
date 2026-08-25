@@ -139,6 +139,10 @@ assert(
   !unauthorizedPage.includes('router.push(HOME_ROUTING)'),
   'global access-denied home action must not route into the protected owner dashboard',
 );
+assert(
+  (unauthorizedPage.match(/style=\{\{ minHeight: 44 \}\}/g) || []).length === 2,
+  'both global access-denied recovery actions must meet the 44px mobile touch target',
+);
 
 const layoutWrapper = read('src/components/antdComponent/layoutWrapper/index.tsx');
 assert(layoutWrapper.includes('<SkipToContentLink />'), 'owner shell must expose skip navigation');

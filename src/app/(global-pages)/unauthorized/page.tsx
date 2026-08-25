@@ -72,6 +72,7 @@ function UnAuthorized() {
                             <Button
                                 size='large'
                                 icon={<LuMail />}
+                                style={{ minHeight: 44 }}
                                 onClick={() => router.push(signInPath)}
                             >
                                 {isEmailError ? 'Try Another Email' : 'Sign In Again'}
@@ -80,6 +81,7 @@ function UnAuthorized() {
                                 size='large'
                                 type="primary"
                                 icon={<LuHome />}
+                                style={{ minHeight: 44 }}
                                 onClick={() => window.location.assign(PLATFORM_URL)}
                             >
                                 Go Home
