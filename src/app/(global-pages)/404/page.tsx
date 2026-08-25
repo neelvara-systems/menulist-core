@@ -1,7 +1,7 @@
 'use client'
 import ContextualStateIllustration from '@atoms/contextualStateIllustration';
 import ErrorPageThemeWrapper from '@atoms/ErrorPageThemeWrapper';
-import { HOME_ROUTING } from '@constant/navigations';
+import { PLATFORM_URL } from '@constant/urls';
 import { Button, Flex, Result, Typography, theme } from 'antd';
 import { useRouter } from 'next/navigation';
 import { LuArrowLeft, LuHome } from 'react-icons/lu';
@@ -16,6 +16,7 @@ function NotFound() {
         <ErrorPageThemeWrapper>
             <Flex vertical justify='center' align='center' style={{ minHeight: "100vh", padding: 24 }}>
                 <Result
+                    style={{ width: '100%', maxWidth: 560, padding: 0 }}
                     icon={(
                         <ContextualStateIllustration
                             color={token.colorTextQuaternary}
@@ -40,6 +41,7 @@ function NotFound() {
                             <Button
                                 size='large'
                                 icon={<LuArrowLeft />}
+                                style={{ minHeight: 44 }}
                                 onClick={() => router.back()}
                             >
                                 Go Back
@@ -48,7 +50,8 @@ function NotFound() {
                                 size='large'
                                 type="primary"
                                 icon={<LuHome />}
-                                onClick={() => router.push(HOME_ROUTING)}
+                                style={{ minHeight: 44 }}
+                                onClick={() => window.location.assign(PLATFORM_URL)}
                             >
                                 Go Home
                             </Button>

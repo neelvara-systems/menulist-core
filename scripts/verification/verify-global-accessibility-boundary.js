@@ -120,7 +120,7 @@ assert(
   'global access-denied secondary recovery copy must remain readable',
 );
 assert(
-  unauthorizedPage.includes("style={{ width: '100%', maxWidth: 560, paddingInline: 0 }}"),
+  unauthorizedPage.includes("style={{ width: '100%', maxWidth: 560, padding: 0 }}"),
   'global access-denied result must stay within narrow mobile viewports',
 );
 assert(
@@ -142,6 +142,28 @@ assert(
 assert(
   (unauthorizedPage.match(/style=\{\{ minHeight: 44 \}\}/g) || []).length === 2,
   'both global access-denied recovery actions must meet the 44px mobile touch target',
+);
+
+const notFoundPage = read('src/app/(global-pages)/404/page.tsx');
+assert(
+  notFoundPage.includes("import { PLATFORM_URL } from '@constant/urls';"),
+  'global not-found recovery must use the environment-governed public website URL',
+);
+assert(
+  notFoundPage.includes('onClick={() => window.location.assign(PLATFORM_URL)}'),
+  'global not-found home action must not route public surfaces into the protected owner dashboard',
+);
+assert(
+  !notFoundPage.includes('router.push(HOME_ROUTING)'),
+  'global not-found home action must not retain the owner-app-relative root',
+);
+assert(
+  (notFoundPage.match(/style=\{\{ minHeight: 44 \}\}/g) || []).length === 2,
+  'both global not-found recovery actions must meet the 44px mobile touch target',
+);
+assert(
+  notFoundPage.includes("style={{ width: '100%', maxWidth: 560, padding: 0 }}"),
+  'global not-found recovery actions must remain in the initial small-mobile viewport',
 );
 
 const layoutWrapper = read('src/components/antdComponent/layoutWrapper/index.tsx');

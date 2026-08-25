@@ -2610,3 +2610,62 @@ Those fields are explicitly `unknown` instead of guessed.
 - Git server readback and divergence: direct pre-operation evidence proves local/server `main` and `staging` in sync at the SHAs above; tracking divergence is `0/0`.
 - Final filesystem state: pending scoped commit, push, direct readback, automatic QA deployment, exact hosted retest, and result append.
 - Attribution confidence: exact for this operation and candidate; unrelated moving paths remain `unknown`.
+
+#### GIT-20260825-163244-mlrc038-access-touch-targets result
+
+- Timestamp: `2026-08-25T16:44:01+05:30`
+- Record type: `PERFORMED`
+- Completes: `GIT-20260825-163244-mlrc038-access-touch-targets`
+- Scoped commit: `2b149b025c8c8737c8e8e7b8aa64fd4cfa12cc95` (`Fix access recovery touch targets`).
+- Push/readback: non-force `staging -> staging`; direct `git ls-remote` returned `2b149b025c8c8737c8e8e7b8aa64fd4cfa12cc95` for `refs/heads/staging`, with local/tracking divergence `0/0`. `main` remained unchanged and in sync at `fe625d5bbf527c1b7e537b00ab32a4f655905c35`.
+- Exact hosted identity: canonical `/api/version` returned full build `2b149b025c8c8737c8e8e7b8aa64fd4cfa12cc95`, verified provenance, and deployment `menulist-core-j4gq35i2p-neelvara-systems.vercel.app`; the read-only deployment list reported the custom-`qa` deployment Ready.
+- Hosted retest: connected Chrome at 320×568 measured both recovery controls at 44px on `/403` and `/unauthorized`; both routes remained exactly 320px wide and retained the verified destinations. Sanitized visual evidence: `/tmp/menulist-qa-full-2026-08-25/23-access-touch-targets-after.png`.
+- Adjacent finding: both access-denied routes place recovery actions below the initial 568px viewport. This separate first-viewport recovery issue is MLRC-041 and is not hidden inside the touch-target closeout.
+- Validation: global accessibility boundary PASS; focused ESLint PASS; strict TypeScript PASS; diff checks PASS; exact hosted touch-target measurement PASS.
+- Firebase matrix after: MLRC-038 changed no Firebase source. MenuList QA/production Cloud Functions retain MLRC-031 `INFRA_CHANGE` / `DEPLOY_REQUIRED`; the other 14 rows retain their planned state. No Firebase deployment or authenticated readback occurred.
+- Result: MLRC-038 is closed on exact hosted QA. Certification remains active; production remains out of scope.
+
+### GIT-20260825-164401-mlrc039-041-not-found-recovery
+
+- Timestamp: `2026-08-25T16:44:01+05:30`
+- Record type: `PLANNED`
+- Actor/session/thread ID: Codex `/root`; thread `01a034e1-c70a-74b1-a92b-0a103a981815`
+- Registered worktrees: one primary worktree at `/Users/danny/Projects/MenuListAi/menulist-core`, checked out on `staging` at `2b149b025c8c8737c8e8e7b8aa64fd4cfa12cc95`.
+- Authorization: Danny required the complete MenuList QA audit/fix/retest loop to continue autonomously on staging before production. This authorizes the smallest MLRC-039 through MLRC-041 recovery corrections, regression/docs/inventory/report/ledger evidence, one non-force `staging` push, automatic QA web-deployment observation, and exact hosted Chrome retest. It does not authorize `main`, manual Vercel deployment, Firebase deployment, live Razorpay execution, or unrelated concurrent changes.
+- Intended operation: stage only `src/app/(global-pages)/404/page.tsx`, `src/app/(global-pages)/unauthorized/page.tsx`, `scripts/verification/verify-global-accessibility-boundary.js`, `__docs__/global-accessibility/global-accessibility_verification.md`, `__docs__/audits/MENULIST_RC_CERTIFICATION.md`, `__docs__/audits/menulist-rc-certification-inventory.csv`, and this ledger. Preserve and exclude every other moving path with actor `unknown`.
+- Defect evidence: exact hosted QA showed generic 404 “Go Home” entering protected `/dashboard`; both generic 404 actions measured 40px; and access-denied plus invalid-screen recovery actions began below the initial 320×568 viewport.
+- Local correction: route generic 404 home recovery to environment-governed `PLATFORM_URL`, apply the 44px mobile minimum to both 404 actions, remove excess `Result` padding, and bound the 404 result width. Existing history-based back behavior, safe noindex metadata, not-found truthfulness, illustrations, authentication, tenant, data, Firebase, payment, dependency, and product-separation contracts remain unchanged.
+- Validation before commit: global accessibility boundary PASS; focused ESLint PASS; strict `npx tsc --noEmit --incremental false` PASS; `git diff --check` PASS. Scoped pre-ledger diff SHA-256: `cd241e7fd44b096137b8961fc54a2e1633d45b4993a9c7cf019f4bf1cddc5b7f`. Hosted fixed-build retest remains pending.
+
+- Branch matrix before:
+
+  | Branch | Local full SHA | Direct server ref/full SHA | Tracking ref | Ahead/behind | Worktree | Staged/unstaged/untracked | Status |
+  | --- | --- | --- | --- | --- | --- | --- | --- |
+  | `main` | `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `refs/heads/main` / `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `origin/main` | `0/0` | not checked out | `N/A` | `IN_SYNC` |
+  | `staging` | `2b149b025c8c8737c8e8e7b8aa64fd4cfa12cc95` | `refs/heads/staging` / `2b149b025c8c8737c8e8e7b8aa64fd4cfa12cc95` | `origin/staging` | `0/0` | primary worktree | `0/16/2` before this ledger append | `IN_SYNC` |
+
+- Firebase matrix before/after:
+
+  | Product | Environment/project | Component | Local source/config | Local evidence | Server evidence | Delta | Deployment state |
+  | --- | --- | --- | --- | --- | --- | --- | --- |
+  | MenuList | QA / `menulist-qa` | Firestore Rules | `firestore-menulist.rules` | no candidate path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | QA / `menulist-qa` | Firestore indexes | `firestore.indexes.json` | no candidate path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | QA / `menulist-qa` | Storage Rules | `storage.rules` | no candidate path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | QA / `menulist-qa` | Cloud Functions | `functions/` | retained MLRC-031 mirror delta; Functions build previously passed | not refreshed | `INFRA_CHANGE` | `DEPLOY_REQUIRED` |
+  | MenuList | production / `menulist-prod` | Firestore Rules | same source | no candidate path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | production / `menulist-prod` | Firestore indexes | same source | no candidate path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | production / `menulist-prod` | Storage Rules | same source | no candidate path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | production / `menulist-prod` | Cloud Functions | same shared source | retained MLRC-031 mirror delta | not refreshed | `INFRA_CHANGE` | `DEPLOY_REQUIRED` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Firestore Rules | `firestore-answerlattice.rules` | no candidate path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Firestore indexes | `firestore-answerlattice.indexes.json` | no candidate path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Storage Rules | `storage-answerlattice.rules` | no candidate path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Cloud Functions | `functions-answerlattice/` | no candidate path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Firestore Rules | same source | no candidate path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Firestore indexes | same source | no candidate path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Storage Rules | same source | no candidate path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Cloud Functions | same shared source | no candidate path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+
+- Firebase deployment evidence or blocker: MLRC-039 through MLRC-041 change no Firebase source. MenuList QA/production Cloud Functions retain the separately tracked MLRC-031 `DEPLOY_REQUIRED` delta; no Firebase deployment or authenticated readback is authorized.
+- Git server readback and divergence: direct pre-operation evidence proves local/server `main` and `staging` in sync at the SHAs above; tracking divergence is `0/0`.
+- Final filesystem state: pending scoped commit, push, direct readback, automatic QA deployment, exact hosted retest, and result append.
+- Attribution confidence: exact for this operation and candidate; unrelated moving paths remain `unknown`.

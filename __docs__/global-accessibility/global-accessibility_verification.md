@@ -16,9 +16,15 @@
   320px viewport;
 - both access-denied recovery actions retain the 44px mobile touch-target
   minimum;
+- access-denied and not-found recovery actions remain visible in the initial
+  320×568 viewport instead of being pushed below the fold by duplicate result
+  padding;
 - the access-denied home action exits the owner-app host through the
   environment-governed public MenuList website URL instead of entering the
   protected dashboard;
+- global not-found Back/Home actions retain the 44px mobile touch minimum, and
+  Home exits app-hosted public routes through the environment-governed public
+  MenuList website URL;
 - the maintained document set exists.
 
 ## Supporting gates
