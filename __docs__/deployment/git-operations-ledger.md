@@ -3885,6 +3885,17 @@ No Firebase source/configuration path is changed by this operation. No authentic
 | `staging` | `26869205e88cb37b337b79c20e359d591f6d55e6` | `refs/heads/staging` / `26869205e88cb37b337b79c20e359d591f6d55e6` | `origin/staging` | `0/0` | primary | unrelated concurrent Answerlattice edits only | `IN_SYNC` |
 | `main` | `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `refs/heads/main` / `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `origin/main` | `0/0` | none | n/a | `IN_SYNC` |
 
+#### Result — `2026-08-26T01:17:03+05:30` for `GIT-20260826-010456-answerlattice-safe-mode-project-boundary`
+
+- Record type: `PERFORMED_AND_VERIFIED`.
+- Commit `0f9df0070d7d59049d149345fd6408cb5f54aaad` (`fix(answerlattice): scope safe mode to product project`) was pushed non-force to `staging`; direct server readback matched exactly with `0/0` divergence. It included the independently validated stable MLRC-055 snapshot under Danny's complete-worktree publication instruction. Later independent MenuList commit `cde47080011be4ec82c27709a8929e2f86efe375` advanced local/server staging and retains separate attribution.
+- Automatic QA deployment identity: `canonica.app/api/version` returned exact build `0f9df0070d7d59049d149345fd6408cb5f54aaad`, verified preview deployment `menulist-core-7vkkfanxs-neelvara-systems.vercel.app`, created `2026-08-25T19:41:04.204Z`.
+- Hosted retest: confirmed unchanged-source First 10 refresh showed `Saved pack reused`; Vercel recorded `Aug 26 01:13:44.01 POST 200` for the launch-pack route with no attached `ops_safe_mode_check_failed`, `firestore/invalid-credential`, or other console failure. Billing remained exact `147/150`, proving zero-credit cache reuse after the scoped SAFE_MODE read.
+- Validation evidence: Answerlattice runtime-truth source verifier PASS; Answerlattice Firebase project-boundary test PASS; focused zero-warning ESLint PASS; strict TypeScript PASS; public business-truth verifier PASS; `git diff --check` PASS.
+- Branch state at result append: local/server `staging` exact `cde47080011be4ec82c27709a8929e2f86efe375` with `0/0` divergence; local/server `main` exact and untouched at `fe625d5bbf527c1b7e537b00ab32a4f655905c35`; one audit file and this ledger result are pending an evidence-only closeout commit.
+- Firebase infrastructure state remains unchanged: no Rules, indexes, Storage Rules, or Functions source changed or deployed; component deployment states remain separately recorded and no parity claim is made without authenticated readback.
+- Attribution confidence: exact for Answerlattice source, tests, hosted build/request/credit evidence, and Git readback; later MenuList movement retains independent attribution.
+
 #### Result — `2026-08-26T01:04:56+05:30` for `GIT-20260826-004554-answerlattice-first10-provider-compatibility`
 
 - Record type: `PERFORMED_AND_VERIFIED`.

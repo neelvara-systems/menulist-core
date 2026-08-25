@@ -496,4 +496,8 @@ webhook, refund, revenue, or production-entitlement evidence.
   backed by `requireAnswerlatticeFirestoreAdmin`. The Firebase project-boundary
   regression enumerates every route and rejects any future default SAFE_MODE
   import. This adds no reads: each protected provider call still performs the
-  same single SAFE_MODE document read, now against the correct project.
+  same single SAFE_MODE document read, now against the correct project. Exact
+  hosted build `0f9df0070d7d59049d149345fd6408cb5f54aaad`
+  returned the cached First 10 pack with HTTP 200 and no attached
+  `ops_safe_mode_check_failed` or credential error; the balance remained
+  `147/150`.
