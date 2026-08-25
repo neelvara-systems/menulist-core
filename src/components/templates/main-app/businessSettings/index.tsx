@@ -454,6 +454,7 @@ function BusinessSettingsContent({ storeDetails, setStoreDetails, tenantDetails 
     const format = useFormatter();
     const now = getUTCDate().newDate;
     const [form] = Form.useForm();
+    const [messageApi, messageContextHolder] = message.useMessage();
     const timezone = useTimeZone();
     const dispatch = useAppDispatch();
     const [availableDateFormats, setAvailableDateFormats] =
@@ -522,7 +523,7 @@ function BusinessSettingsContent({ storeDetails, setStoreDetails, tenantDetails 
                 ...getBoundedBusinessSettingsStringContext('storeId', storeDetails?.storeId),
                 ...getBoundedBusinessSettingsStringContext('fileName', file.name),
             });
-            message.error('Could not prepare logo.');
+            messageApi.error('Could not prepare logo.');
         }
     };
 
@@ -646,7 +647,7 @@ function BusinessSettingsContent({ storeDetails, setStoreDetails, tenantDetails 
                                     ...getBoundedBusinessSettingsStringContext('subdomain', storeDetails?.subdomain),
                                     ...getBoundedBusinessSettingsStringContext('customDomain', storeDetails?.customDomain),
                                 });
-                                message.error('Could not save');
+                                messageApi.error('Could not save');
                             }
                         }}
                         onGoogleLinkDismiss={() => {
@@ -1295,7 +1296,7 @@ function BusinessSettingsContent({ storeDetails, setStoreDetails, tenantDetails 
             ? normalizeGuestFeedbackReviewUrl(trimmedReviewUrl, 'business_settings_review_url')
             : null;
         if (reviewUrlChanged && trimmedReviewUrl && !normalizedReviewUrl) {
-            message.error('Enter a valid HTTPS Google review link before saving.');
+            messageApi.error('Enter a valid HTTPS Google review link before saving.');
             return;
         }
 
@@ -1332,7 +1333,7 @@ function BusinessSettingsContent({ storeDetails, setStoreDetails, tenantDetails 
 
         const normalizedSocialMedia = normalizeOwnerSocialMediaLinks(socialMedia);
         if (normalizedSocialMedia.invalidKeys.length > 0) {
-            message.error('Enter valid public social profile links before saving.');
+            messageApi.error('Enter valid public social profile links before saving.');
             return;
         }
         changesToUpload.socialMedia = normalizedSocialMedia.socialMedia;
@@ -1351,7 +1352,7 @@ function BusinessSettingsContent({ storeDetails, setStoreDetails, tenantDetails 
         if (latitudeInput !== undefined || longitudeInput !== undefined) {
             const normalizedGeo = normalizeGeoCoordinateDraft(latitudeInput, longitudeInput);
             if (!normalizedGeo.ok) {
-                message.error('Enter both latitude and longitude using valid map coordinates.');
+                messageApi.error('Enter both latitude and longitude using valid map coordinates.');
                 return;
             }
             if (normalizedGeo.geo || storeDetails?.geo) {
@@ -1404,7 +1405,7 @@ function BusinessSettingsContent({ storeDetails, setStoreDetails, tenantDetails 
             };
             const normalizedLinks = normalizeOwnerPublicPresenceLinks(changesToUpload.publicPresence);
             if (normalizedLinks.invalidKeys.length > 0) {
-                message.error('Enter valid HTTPS public-page links before saving.');
+                messageApi.error('Enter valid HTTPS public-page links before saving.');
                 return;
             }
             changesToUpload.publicPresence = normalizedLinks.presence;
@@ -1429,7 +1430,7 @@ function BusinessSettingsContent({ storeDetails, setStoreDetails, tenantDetails 
         if (changesToUpload.canonicalUrl !== undefined) {
             const normalizedCanonicalUrl = normalizePublicCanonicalUrl(changesToUpload.canonicalUrl);
             if (!normalizedCanonicalUrl) {
-                message.error('Enter a valid HTTPS canonical URL.');
+                messageApi.error('Enter a valid HTTPS canonical URL.');
                 return;
             }
             changesToUpload.canonicalUrl = normalizedCanonicalUrl;
@@ -1698,7 +1699,7 @@ function BusinessSettingsContent({ storeDetails, setStoreDetails, tenantDetails 
             }
         }
         if (componentActiveRef.current && activeBusinessSettingsScopeRef.current === requestScopeKey) {
-            message.success('Business settings saved');
+            messageApi.success('Business settings saved');
         }
         } finally {
             settingsSaveInFlightRef.current = false;
@@ -1714,6 +1715,7 @@ function BusinessSettingsContent({ storeDetails, setStoreDetails, tenantDetails 
             animate={{ opacity: 1 }}
             transition={{ duration: 0.5 }}
         >
+            {messageContextHolder}
             <Card title={t('title')}>
                 <Flex
                     gap={16}

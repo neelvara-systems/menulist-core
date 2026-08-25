@@ -10807,6 +10807,10 @@ function verifyStaffClientDiagnostics() {
   assert(staffForm.includes('"Could not update staff member"'), 'staff update fallback must use a generic owner-facing error');
   assert(!staffForm.includes('Staff creation error:'), 'staff user form must remove raw staff creation console diagnostics');
   assert(!staffForm.includes('err.message || "Something went wrong"'), 'staff user form must not expose raw staff mutation error messages');
+  assert(staffForm.includes('const [modal, modalContextHolder] = Modal.useModal();'), 'staff creation must use a context-bound one-time credential modal');
+  assert(staffForm.includes('{modalContextHolder}'), 'staff creation must render its credential modal context holder');
+  assert(desktopUsers.includes('const [modal, modalContextHolder] = Modal.useModal();'), 'staff passcode reset must use a context-bound one-time credential modal');
+  assert(desktopUsers.includes('{modalContextHolder}'), 'staff passcode reset must render its credential modal context holder');
 
   [
     'desktop_staff_users_load_failed',

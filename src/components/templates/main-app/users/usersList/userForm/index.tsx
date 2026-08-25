@@ -60,6 +60,7 @@ const isPhoneInputValue = (value: unknown): value is {
  */
 function UserAddUpdateForm({ canAssignRoles = true, modalData, onCloseModal, staffStores = [] }: UserModalDataType) {
 
+    const [modal, modalContextHolder] = Modal.useModal();
     const [userDetails, setUserDetails] = useState<StaffFormUser | null>(null)
     const [isSaving, setIsSaving] = useState(false)
     const { storeDetails, tenantDetails } = useContext(PlatformGlobalDataContext)
@@ -343,6 +344,8 @@ function UserAddUpdateForm({ canAssignRoles = true, modalData, onCloseModal, sta
     }, [userDetails, activeTab, canAssignRoles, staffStores, tenantDetails?.storesList?.length])
 
     return (
+        <>
+        {modalContextHolder}
         <DrawerElement
             title={Boolean(modalData.data) ? 'Edit User' : 'Add User'}
             open={Boolean(modalData.active)}
@@ -396,6 +399,7 @@ function UserAddUpdateForm({ canAssignRoles = true, modalData, onCloseModal, sta
                 </Flex>
             </>
         </DrawerElement>
+        </>
     )
 }
 

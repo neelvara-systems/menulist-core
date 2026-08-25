@@ -5018,8 +5018,18 @@ function verifyOfficialBusinessPageOwnerDiagnosticsAreBounded() {
 
   assertIncludes(
     businessSettings,
-    "message.success('Business settings saved')",
+    "messageApi.success('Business settings saved')",
     'Desktop Business Settings successful-write acknowledgement',
+  );
+  assertIncludes(
+    businessSettings,
+    'const [messageApi, messageContextHolder] = message.useMessage();',
+    'Desktop Business Settings context-bound feedback API',
+  );
+  assertIncludes(
+    businessSettings,
+    '{messageContextHolder}',
+    'Desktop Business Settings feedback context holder',
   );
 
   [

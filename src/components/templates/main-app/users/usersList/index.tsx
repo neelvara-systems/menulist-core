@@ -67,6 +67,7 @@ const getDesktopStaffLogContext = (
 
 function UsersListPage() {
 
+    const [modal, modalContextHolder] = Modal.useModal();
     const [searchQuery, setSearchQuery] = useState('')
     const [filteredUsersList, setFilterdUsersList] = useState<StaffUserSummary[]>([]);
     const [isLoadingUsers, setIsLoadingUsers] = useState(false);
@@ -283,6 +284,8 @@ function UsersListPage() {
     }
 
     return (
+        <>
+        {modalContextHolder}
         <Flex vertical gap={30}>
 
             <Space direction="vertical" size={2}>
@@ -365,6 +368,7 @@ function UsersListPage() {
                 staffStores={staffStores}
             />
         </Flex>
+        </>
     )
 }
 

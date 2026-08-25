@@ -3999,3 +3999,38 @@ No Firebase source/configuration path changes in this operation. No authenticate
 - Intended paths: `src/components/templates/main-app/businessSettings/index.tsx`, `scripts/verification/verify-public-business-truth.js`, `__docs__/official-business-page/official-business-page_impl.md`, `__docs__/audits/MENULIST_RC_CERTIFICATION.md`, and this ledger.
 - Final state pending: scoped commit, non-force staging push, direct server readback, automatic QA deployment, exact `/api/version`, and hosted visible-success retest.
 - Attribution confidence: exact for MLRC-057 and MenuList certification evidence; the existing Answerlattice descendants retain their independent attribution.
+
+#### MLRC-057 first-attempt performed result — `2026-08-26T01:38:00+05:30`
+
+- Commit/push: `fbaf108404d3e4d50b25b44a180b2e08f7b6baac` (`fix(menulist): confirm business settings saves`) was pushed non-force to `origin/staging`; direct server readback returned the same SHA and `main` remained `fe625d5bbf527c1b7e537b00ab32a4f655905c35`.
+- Automatic QA deployment: `/api/version` returned exact verified build `fbaf108404d3e4d50b25b44a180b2e08f7b6baac`, deployment `menulist-core-iw634fy9y-neelvara-systems.vercel.app`, environment `preview`.
+- Exact hosted result: the reversible descriptor write persisted and appeared on the tenant Official Business Page, but the static Ant success message still did not render. The descriptor was restored to empty in both owner and public truth. MLRC-057 remains open; this attempt is not represented as a passing correction.
+- Firebase state: no infrastructure source/configuration changed and no deploy/readback occurred; all component rows retain `NO_INFRA_CHANGE` / `SERVER_STATE_UNKNOWN`.
+
+### GIT-20260826-013800-mlrc057-058-context-bound-feedback
+
+- Timestamp: `2026-08-26T01:38:00+05:30`
+- Record type: `PLANNED`
+- Actor/session/thread ID: Codex `/root`; thread `01a034e1-c70a-74b1-a92b-0a103a981815`.
+- Registered worktrees: one primary worktree at `/Users/danny/Projects/MenuListAi/menulist-core`, branch `staging`, HEAD `fbaf108404d3e4d50b25b44a180b2e08f7b6baac`.
+- Authorization: autonomous MenuList QA certification, in-scope fixes, regression coverage, and stable staging publication. This operation is `staging` only; it excludes `main`, Firebase infrastructure deployment, manual Vercel deployment, production mutation, and live Razorpay execution.
+- MLRC-057 root cause: static Ant message calls are dropped under the mounted themed application context. Business Settings now renders one component-bound `message.useMessage()` holder and routes its existing validation plus post-acknowledgement success feedback through that API. No write, validation, cache, or operation-count behavior changes.
+- MLRC-058 hosted reproduction: an isolated no-email staff creation succeeded and added the canonical staff row. Two confirmed passcode resets returned the success notice, but neither the create nor reset path rendered the one-time Staff ID/passcode popup. The passcode is intentionally never persisted, so the owner could not retrieve the only credential after the Auth mutation.
+- MLRC-058 correction: replace both desktop static `Modal.info` calls with component-bound `Modal.useModal()` APIs and render their holders. The server response, one-time secret boundary, Auth/Firestore operations, role scope, copy/share controls, mobile implementation, and logging remain unchanged.
+- Starting filesystem state: zero staged, eight tracked unstaged, zero untracked before ledger append. Scoped pre-ledger diff Git hash `0c61a61a3487ecce9754eb9d45737a42b7c10e1c`; status `0/8/0`.
+- Validation: public business-truth verifier PASS; MenuList API tenant-safety verifier PASS; Staff/Roles route parity verifier PASS; focused zero-warning ESLint PASS; strict TypeScript PASS; `git diff --check` PASS.
+
+#### Pre-operation branch matrix
+
+| Branch | Local SHA | Direct server SHA | Tracking ref | Ahead/behind | Worktree | Filesystem | Status |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `staging` | `fbaf108404d3e4d50b25b44a180b2e08f7b6baac` | `refs/heads/staging` / `fbaf108404d3e4d50b25b44a180b2e08f7b6baac` | `origin/staging` | `0/0` | primary | `0/8/0` before ledger append | `IN_SYNC` |
+| `main` | `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `refs/heads/main` / `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `origin/main` | `0/0` | none | n/a | `IN_SYNC` |
+
+#### Firebase component matrix before Git mutation
+
+No Firebase source/configuration changes. Firestore Rules, indexes, Storage Rules, and Cloud Functions for MenuList QA `menulist-qa`, MenuList production `menulist-prod`, Answerlattice QA `neelvara-answerlattice-qa`, and Answerlattice production `neelvara-answerlattice-prod` each remain independently `NO_INFRA_CHANGE` / `SERVER_STATE_UNKNOWN`; no authenticated readback or deployment is performed.
+
+- Intended paths: the eight scoped MLRC-057/058 source, regression, feature-doc, and certification-report files plus this ledger.
+- Final state pending: scoped commit, non-force staging push, direct server readback, automatic QA deployment, exact version readback, one-time staff credential popup test, restricted staff sign-in/route/permission checks, force-sign-out, and isolated staff cleanup.
+- Attribution confidence: exact.
