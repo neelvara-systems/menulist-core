@@ -3546,3 +3546,11 @@ Those fields are explicitly `unknown` instead of guessed.
 - Firebase matrix after: unchanged from the planned entry. MenuList QA/production Functions retain `INFRA_CHANGE` / `DEPLOY_REQUIRED`; the other 14 rows retain `NO_INFRA_CHANGE` / `SERVER_STATE_UNKNOWN`. No Firebase deployment/readback, production release, `main` movement, manual Vercel deployment, or live Razorpay execution occurred.
 - Final filesystem state: refreshed deterministic inventory/data-flow outputs, this result append, and the hosted/full-regression evidence in `MENULIST_RC_CERTIFICATION.md` are modified; they will be committed and pushed to `staging` as evidence-only closeout.
 - Attribution confidence: exact.
+
+#### Evidence-closeout readback — `2026-08-25T22:26:00+05:30`
+
+- Evidence commit: `fa9ac0d503fd6536f9bfe50fe28fded0cc913bed` (`docs(menulist): record qa auth regression closeout`).
+- Direct server readback: `refs/heads/staging` is exact `fa9ac0d503fd6536f9bfe50fe28fded0cc913bed` with `0/0` divergence; `refs/heads/main` remains exact `fe625d5bbf527c1b7e537b00ab32a4f655905c35`.
+- Scope: certification report, deterministic inventory/data-flow outputs, and ledger evidence only; tested runtime remains exact hosted parent `79684c60912d468d8888009b1e5f4c24823d8e6b`.
+- Filesystem before this final ledger append: zero staged, zero other tracked modifications, zero untracked files.
+- Firebase, production, `main`, manual Vercel deployment, and live Razorpay state remain unchanged.
