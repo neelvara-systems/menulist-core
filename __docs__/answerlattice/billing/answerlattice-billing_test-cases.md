@@ -45,6 +45,7 @@
 20. Refund replay cannot duplicate a credit reversal, refund debt, credit note, notification, or provider-facing document delivery.
 21. A pending checkout whose plan is no longer in the current catalogue offers **Choose Current Plan** rather than a broken resume action.
 22. Selecting a different plan reuses no paid-upgrade carry-forward: a provider-created old checkout is cancelled and the exact unchanged pending row is expired before the new checkout; provider processing blocks the replacement; identical intent still reuses the existing checkout.
+23. Retired-plan recovery is presented as a new purchase and does not promise transferable value or label the confirmation as an upgrade.
 
 ## Rule Cases
 

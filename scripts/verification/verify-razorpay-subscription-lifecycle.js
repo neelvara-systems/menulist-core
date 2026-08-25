@@ -18,6 +18,7 @@ const mobileBilling = read('src/components/mobile/screens/MobileBillingScreen.ts
 const answerlatticeBilling = read('src/components/templates/answerlattice/billing/AnswerlatticeBilling.tsx');
 const websiteSuccessModal = read('src/components/website/pricing-pages/SubscriptionPayementSuccessModal.tsx');
 const activeSubscriptionCard = read('src/components/templates/main-app/billing/ActiveSubscriptionCard.tsx');
+const pricingPlansModal = read('src/components/templates/main-app/billing/PricingPlansModal.tsx');
 const websiteSubscriptionManagement = read('src/components/website/pricing-pages/SubscriptionManagement.tsx');
 const answerlatticeOnboardingForm = read('src/app/sites/answerlattice/get-started/OnboardingForm.tsx');
 const answerlatticeOnboardingRoute = read('src/app/api/answerlattice/onboard/route.ts');
@@ -150,6 +151,8 @@ const mobilePendingCheckoutHandler = mobileBilling.slice(
 assert.ok(desktopNewCheckoutHandler.includes('await refetchActiveSubscription()'));
 assert.ok(answerlatticeNewCheckoutHandler.includes("activeSubscription?.status === 'pending'"));
 assert.ok(answerlatticeNewCheckoutHandler.includes('await onClickPaymentCard(newPlan, currency'));
+assert.ok(pricingPlansModal.includes('action === "upgrade" && activeSubscription'));
+assert.ok(pricingPlansModal.includes('activeSubscription={action === "upgrade" ? activeSubscription : null}'));
 assert.ok(desktopPendingCheckoutHandler.includes('await refetchActiveSubscription()'));
 assert.ok(mobileNewCheckoutHandler.includes('await refetchSubscription()'));
 assert.ok(mobilePendingCheckoutHandler.includes('await refetchSubscription()'));

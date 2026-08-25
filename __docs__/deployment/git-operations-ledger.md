@@ -3054,6 +3054,15 @@ Those fields are explicitly `unknown` instead of guessed.
 - Final filesystem state: pending complete-snapshot commit, non-force staging push, direct readback, automatic QA deployment, hosted Test Mode subscription checkout, and downstream Answerlattice knowledge/widget retest.
 - Attribution confidence: exact for this operation; exact server/reflog evidence for the concurrent descendant.
 
+#### GIT-20260825-182007 pre-payment copy refinement
+
+- Timestamp: `2026-08-25T18:29:27+05:30`
+- Record type: `PLANNED_REFINEMENT`
+- Exact first release: commit `9768d56898b8ec703e66087e2e5af4770856d76b` was pushed non-force to `origin/staging`; direct readback returned the same SHA with `0/0` divergence. Vercel reported the matching custom-`qa` deployment Ready, and three public `/api/version` readbacks returned that exact verified build.
+- Hosted finding: the new `Choose Current Plan` recovery action rendered correctly for the legacy pending Starter checkout, but the shared plan modal still received the unpaid subscription as paid upgrade context. It incorrectly promised transferable remaining value and labelled confirmation as an upgrade.
+- Refinement: when plan-modal action is `new`, omit the active subscription from both RemainingCreditNote and UpgradeConfirmationModal. Paid `upgrade` behavior remains unchanged. The retired-plan recovery now uses purchase wording and makes no transferable-value claim.
+- Added candidate paths: `PricingPlansModal.tsx`, the existing Razorpay lifecycle verifier, Answerlattice billing test cases, and this ledger. No Firebase source or deployment classification changes. The follow-up remains a non-force staging-only push and automatic QA deployment; `main`, Firebase, manual Vercel, and live Razorpay remain out of scope.
+
 #### GIT-20260825-182832-mlrc043-inline-confirmation
 
 - Timestamp: `2026-08-25T18:28:32+05:30`

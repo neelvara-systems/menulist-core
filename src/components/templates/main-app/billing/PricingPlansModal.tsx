@@ -307,7 +307,9 @@ function PricingPlansModal({
                     <Text strong style={{ fontSize: token.fontSizeHeading4 }}>
                         {modalTitle || (action === "upgrade" ? "Upgrade Your Plan" : "Choose Your New Plan")}
                     </Text>
-                    {activeSubscription ? <RemainingCreditNote activeSubscription={activeSubscription} /> : null}
+                    {action === "upgrade" && activeSubscription
+                        ? <RemainingCreditNote activeSubscription={activeSubscription} />
+                        : null}
                 </Flex>
             </>}
             open={isOpen}
@@ -364,7 +366,7 @@ function PricingPlansModal({
                     setIsUpgradeModalOpen({ active: false, plan: null });
                 }}
                 newPlan={isUpgradeModalOpen.plan}
-                activeSubscription={activeSubscription}
+                activeSubscription={action === "upgrade" ? activeSubscription : null}
                 currency={currency}
             />
         </Modal>
