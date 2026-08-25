@@ -337,7 +337,7 @@ function verifyPublicPageAndForm() {
   assertNotIncludes(settingsTab, "host.includes('google.com')", 'Guest Feedback settings lookalike Google host admission');
   assertIncludes(settingsTab, 'href={normalizedReviewUrl}', 'Guest Feedback settings safe preview link');
   assertIncludes(businessSettings, "normalizeGuestFeedbackReviewUrl(trimmedReviewUrl, 'business_settings_review_url')", 'Guest Feedback settings save-time URL guard');
-  assertIncludes(businessSettings, "message.error('Enter a valid HTTPS Google review link before saving.')", 'Guest Feedback settings invalid URL refusal');
+  assertIncludes(businessSettings, "messageApi.error('Enter a valid HTTPS Google review link before saving.')", 'Guest Feedback settings scoped invalid URL refusal');
   assertIncludes(businessSettings, 'function getFeedbackSettingsDraft(storeDetails: any)', 'Guest Feedback settings canonical draft resolver');
   assertIncludes(businessSettings, 'setFeedbackEnabled(feedbackDraft.feedbackEnabled);', 'Guest Feedback settings Reset restores enablement');
   assertIncludes(businessSettings, 'setFeedbackDefaults(feedbackDraft.feedbackDefaults);', 'Guest Feedback settings Reset restores contact-field defaults');

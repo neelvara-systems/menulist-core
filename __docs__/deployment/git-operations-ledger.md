@@ -4102,6 +4102,56 @@ No Firebase source/configuration changes. Firestore Rules, indexes, Storage Rule
 - Final state pending: documentation validation, scoped commit, non-force staging push, and direct server readback.
 - Attribution confidence: exact.
 
+#### MLRC-066–068 evidence closeout performed result — `2026-08-26T03:48:30+05:30`
+
+- Commit/push: `d4f9866ee5f4cdf93c2fac05c8dcf035d8b22367` (`docs(menulist): close Projects QA controls`) was pushed non-force to `origin/staging`.
+- Direct server readback returned exact `refs/heads/staging` SHA `d4f9866ee5f4cdf93c2fac05c8dcf035d8b22367` with `0/0` divergence; `refs/heads/main` remained untouched at `fe625d5bbf527c1b7e537b00ab32a4f655905c35`.
+- Validation: `npm run docs:check-links` completed with zero broken links and 64 existing warning-only naming findings; `npm run docs:generate` preserved the active curated index; `git diff --check` passed.
+- Firebase/deployment boundary: documentation only; no Firebase source/configuration, Firebase deployment, manual Vercel deployment, production mutation, `main` movement, or live Razorpay execution occurred.
+
+### GIT-20260826-044214-mlrc069-verifier-evidence
+
+- Timestamp: `2026-08-26T04:42:14+05:30`
+- Record type: `PLANNED`
+- Actor/session/thread ID: Codex `/root`; thread `01a034e1-c70a-74b1-a92b-0a103a981815`.
+- Registered worktrees: one primary worktree at `/Users/danny/Projects/MenuListAi/menulist-core`, branch `staging`, HEAD `d4f9866ee5f4cdf93c2fac05c8dcf035d8b22367`.
+- Authorization: autonomous exhaustive MenuList QA certification, in-scope verifier corrections, regenerated certification evidence, and stable staging publication. This operation is `staging` only; it excludes `main`, Firebase infrastructure deployment, manual Vercel deployment, production mutation, and live Razorpay execution.
+- Scope: close MLRC-069 by aligning the Guest Feedback and Official Business Page source assertions with the already-active scoped Ant `messageApi`; retain exact validation copy and guards; regenerate the maintained 8,517-row RC inventory and data-flow evidence; record the fresh 161/162 aggregate and exact Upstash shell-secret blocker.
+- Starting filesystem state: zero staged, seven tracked unstaged, zero untracked before this ledger append. Complete pre-ledger diff Git hash `bc0db10eaa5ad3a6ad1403ddf2cc3095f0838ff4`; status `0/7/0`.
+- Validation: both focused boundary suites PASS; focused ESLint PASS; fresh `npm run certify:menulist-local` completed 161/162 with exit 0 and only `verify:upstash-readiness` classified `BLOCKED_EXTERNAL`; all 42 Firebase Rules predeploy suites, strict TypeScript, lint, documentation links, and `git diff --check` passed; exact `npm run build` passed on the current worktree.
+
+#### Pre-operation branch matrix
+
+| Branch | Local SHA | Direct server SHA | Tracking ref | Ahead/behind | Worktree | Filesystem | Status |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `staging` | `d4f9866ee5f4cdf93c2fac05c8dcf035d8b22367` | `refs/heads/staging` / `d4f9866ee5f4cdf93c2fac05c8dcf035d8b22367` | `origin/staging` | `0/0` | primary | `0/7/0` before ledger append | `IN_SYNC` |
+| `main` | `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `refs/heads/main` / `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `origin/main` | `0/0` | none | n/a | `IN_SYNC` |
+
+#### Firebase component matrix before Git mutation
+
+| Target | Component | Local evidence | Delta | Deployment state |
+| --- | --- | --- | --- | --- |
+| MenuList QA `menulist-qa` | Firestore Rules | `firestore.rules` SHA-256 `5c1a9f7b…`, 198,762 bytes; 42-suite predeploy PASS | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| MenuList QA `menulist-qa` | Firestore indexes | `firestore.indexes.json` SHA-256 `5629ae4d…`, 78,310 bytes | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| MenuList QA `menulist-qa` | Storage Rules | `storage.rules` SHA-256 `226d2a20…`, 18,176 bytes; media Storage emulator PASS | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| MenuList QA `menulist-qa` | Cloud Functions | `functions/src/index.ts` SHA-256 `7b9627c0…`, 7,019 bytes; Functions builds/preflight PASS | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| MenuList production `menulist-prod` | Firestore Rules | same unchanged MenuList source; no authenticated readback | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| MenuList production `menulist-prod` | Firestore indexes | same unchanged MenuList source; no authenticated readback | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| MenuList production `menulist-prod` | Storage Rules | same unchanged MenuList source; no authenticated readback | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| MenuList production `menulist-prod` | Cloud Functions | same unchanged MenuList source; no authenticated readback | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| Answerlattice QA `neelvara-answerlattice-qa` | Firestore Rules | no Answerlattice infrastructure source changed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| Answerlattice QA `neelvara-answerlattice-qa` | Firestore indexes | no Answerlattice infrastructure source changed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| Answerlattice QA `neelvara-answerlattice-qa` | Storage Rules | no Answerlattice infrastructure source changed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| Answerlattice QA `neelvara-answerlattice-qa` | Cloud Functions | no Answerlattice infrastructure source changed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| Answerlattice production `neelvara-answerlattice-prod` | Firestore Rules | no Answerlattice infrastructure source changed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| Answerlattice production `neelvara-answerlattice-prod` | Firestore indexes | no Answerlattice infrastructure source changed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| Answerlattice production `neelvara-answerlattice-prod` | Storage Rules | no Answerlattice infrastructure source changed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| Answerlattice production `neelvara-answerlattice-prod` | Cloud Functions | no Answerlattice infrastructure source changed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+
+- Intended paths: two source verifiers, active certification report, regenerated RC inventory/data-flow evidence, and this ledger.
+- Final state pending: scoped commit, non-force staging push, direct server readback, automatic QA deployment, and exact `/api/version` identity.
+- Attribution confidence: exact.
+
 #### Evidence-closeout performed result — `2026-08-26T02:07:02+05:30`
 
 - Commit/push: `bba49d1fe447d9954cc4e656cf726d0a1f8b5a1e` (`docs(menulist): close staff credential QA`) was pushed non-force to `origin/staging`.
@@ -4545,3 +4595,9 @@ No Firebase source/configuration changes. Firestore Rules, indexes, Storage Rule
 - Intended paths: active certification report and this ledger.
 - Final state pending: documentation validation, scoped commit, non-force staging push, and direct server readback.
 - Attribution confidence: exact.
+
+#### Chronological continuation for `GIT-20260826-044214-mlrc069-verifier-evidence` — `2026-08-26T04:42:14+05:30`
+
+- The full planned record and its 16-row Firebase component matrix appear earlier in this ledger because the append patch matched an earlier repeated closeout anchor. This tail continuation is the chronological control-plane pointer; it does not replace, delete, or rewrite that append-only evidence.
+- Current operation remains `PLANNED` at local/server `staging` SHA `d4f9866ee5f4cdf93c2fac05c8dcf035d8b22367`, `0/0` divergence, with `main` untouched at `fe625d5bbf527c1b7e537b00ab32a4f655905c35`.
+- No Git commit/push, Firebase deployment/readback, manual Vercel deployment, production mutation, or live Razorpay execution occurred between the planned record and this chronological pointer.

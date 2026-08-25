@@ -11,8 +11,11 @@
 **MenuList product snapshot commit:** `3a34a975d52b1a3b8bec4be35c40b4930b1f9441`
 
 **Candidate filesystem state:** direct Git, server-ref, and hosted `/api/version`
-readback proved exact MenuList product commit `c81dc4bba8460f02209aecae1150b7463325bb7f`
-on QA. The hosted MLRC-045 interaction remains attributable to its included
+readback proved exact MenuList product commit `1ec71b402e697324a8db5ba6f0d552325ace062f`
+on QA. The staging documentation/evidence head is
+`d4f9866ee5f4cdf93c2fac05c8dcf035d8b22367`; the two scoped-message verifier
+corrections and regenerated evidence are tracked as MLRC-069. The hosted
+MLRC-045 interaction remains attributable to its included
 runtime commit `32440eca8e171212fb77983218d3a071e0db5981`; shared Admin Timestamp
 corrections from `320bd3b0b59ea83f89dbfe460bbc14262743f4b2` and the batch-worker
 admission correction from `090ea3a1673021f1fec1209a2d835c4c5911f840`, and
@@ -71,7 +74,7 @@ The generated discovery inventory is retained in
 
 ## B. Inventory summary
 
-The current generator discovered 8,503 source candidates across the shared
+The current generator discovered 8,517 source candidates across the shared
 repository. These are discovery candidates, not passing test claims.
 
 | Inventory class | Discovered | Current status |
@@ -80,11 +83,11 @@ repository. These are discovery candidates, not passing test claims.
 | Route handlers | 293 | Product classification, methods, and boundary tests in progress |
 | Layouts | 19 | Source and host behavior in progress |
 | Loading/error/not-found surfaces | 9 | Runtime coverage in progress |
-| User-control candidates | 7,520 | 5,291 MenuList controls page-mapped; 155 MenuList controls explicitly classified as non-shipped source |
+| User-control candidates | 7,534 | 5,305 MenuList controls page-mapped; 155 MenuList controls explicitly classified as non-shipped source |
 | Feature flags | 333 | Product ownership and material alternate states in progress |
 | Firebase Function exports | 21 | Source/export inventory complete; runtime evidence is tracked separately |
 
-Current product classification yielded 5,957 MenuList candidates and 2,544
+Current product classification yielded 5,971 MenuList candidates and 2,546
 separation-boundary candidates. A candidate remains `DISCOVERED_UNTESTED` until
 its rendered reachability and behavior are proven; source inspection alone does
 not mark a control tested.
@@ -106,7 +109,7 @@ canonical destination. The catch-all Help Center page was exercised through
 `ACCESS_PASSED_FUNCTIONAL_INTERACTION_PENDING`, so authentication protection is
 proved without claiming their authenticated controls were exercised.
 
-Of 5,446 MenuList-classified control candidates, 5,291 map through the static
+Of 5,460 MenuList-classified control candidates, 5,305 map through the static
 import graph to one or more App Router pages. The remaining 155 controls in 45
 source files have no page import path and now carry the explicit final status
 `SOURCE_UNREACHABLE_NOT_USER_TRIGGERABLE`. They are classified as non-shipped
@@ -131,10 +134,10 @@ separately tracked and is not implied by this anonymous boundary pass.
 | --- | --- | --- | --- |
 | Baseline identity | Worktree, branch, HEAD, and filesystem ownership | PASS (Git identity) | Direct readback on August 25 proved local/server `staging` at exact descendant `45cae8cceaf2d016ec50efe46b0c54bb9a163a86` with `0/0` divergence. `main` remains unchanged at `fe625d5bbf527c1b7e537b00ab32a4f655905c35`. |
 | SecurityOS registry | MenuList surface/evidence registry integrity | PASS | Registry, tenant/store DAL, Rules, Storage, CSP, input/file/network, webhook, and API-scope evidence executed; the current selective planner was reviewed and `test:csp-report-boundary` reran successfully |
-| Route/control inventory | App Router, controls, flags, Functions | PASS (discovery, private-route classification/access, API classification, and static reachability) | `npm run verify:menulist-rc-inventory`; 8,503 unique rows; all 58 MenuList private pages explicitly classified and signed-out access-tested; all 136 MenuList route handlers have resolved methods/access classes; 5,291/5,446 MenuList control candidates map to page routes and 155 are explicitly classified as non-shipped source |
+| Route/control inventory | App Router, controls, flags, Functions | PASS (discovery, private-route classification/access, API classification, and static reachability) | `npm run verify:menulist-rc-inventory`; 8,517 unique rows; all 58 MenuList private pages explicitly classified and signed-out access-tested; all 136 MenuList route handlers have resolved methods/access classes; 5,305/5,460 MenuList control candidates map to page routes and 155 are explicitly classified as non-shipped source |
 | Private-route authentication | All 58 MenuList `(main)` page routes, including concrete catch-all and canonical aliases | PASS (signed-out access only) | Connected Chrome on current local source: 58/58 reached callback-aware sign-in; no private screen rendered. Authenticated functional state remains separately pending. |
 | Route-handler anonymous boundary | All 136 MenuList handlers and 153 exported HTTP methods | PASS local and exact hosted candidate | Exact hosted product commit `6cae3112ef01c9155f3d472e1656415accb63b38` returned 200×5, 301×1, 400×15, 401×126, 403×1, and 404×5 with zero timeout/5xx. The authenticated internal batch worker rejects a request without its worker credentials with 403 before any Firebase read. Live Razorpay execution remains excluded. |
-| Local aggregate | MenuList-filtered repository production-readiness gate | PASS WITH EXTERNAL BLOCKER | A fresh `npm run certify:menulist-local` pass on the current candidate completed 161/162 checks. All 161 executable checks passed, including all 42 Firestore Rules predeploy suites, strict TypeScript, lint, documentation links, MobileShell regression coverage, cache/public-truth boundaries, Functions build/preflight, and AssetOS. The menu-extraction gate recovered on its built-in second attempt after a transient emulator-port collision. The sole non-pass is the unavailable Upstash target credential gate. |
+| Local aggregate | MenuList-filtered repository production-readiness gate | PASS WITH EXTERNAL BLOCKER | A fresh `npm run certify:menulist-local` replay after MLRC-069 completed 161/162 checks with exit 0. All 161 executable checks passed, including all 42 Firestore Rules predeploy suites, strict TypeScript, lint, documentation links, MobileShell regression coverage, cache/public-truth boundaries, Functions build/preflight, and AssetOS. The sole non-pass is the correctly classified unavailable-shell-secret Upstash target gate. |
 | Authentication regression | Leading/trailing email and password; invalid login recovery; forgot-password validation; callback preservation | PASS (signed-out boundary) | Deterministic credential-normalization tests plus exact hosted Chrome: malformed identifier/passcode stayed on sign-in with inline validation, Forgot preserved `/dashboard`, invalid reset email produced an announced error, and Return restored the sign-in callback. No reset email, account creation, or real credential was submitted. |
 | Authentication and onboarding aggregate | Sign-up/sign-in boundaries, claims/workspace association, plan handoff, owner setup, extraction entry, retry, recovery, concurrency, and cleanup | PASS (local/emulator) | `npm run verify:auth-onboarding-flow`, `npm run test:login-credential-normalization`, and `npm run verify:menu-extraction-pipeline` completed with exit 0; expected denial/failure logs were fixture assertions rather than escaped failures |
 | Pricing handoff | Official, Pro, and Multi-location across INR/USD and monthly/yearly selection; content-pack sign-in; comparison and FAQ controls | PASS (provider boundary only) | Exact hosted Chrome exercised all 12 signed-out plan/currency/interval combinations. Each produced the expected callback-aware sign-in handoff with plan, currency, interval, B2C type, and quantity one or the Multi-location minimum of two. Content-pack sign-in, comparison expansion, all three FAQ categories, and an accordion in each category worked with zero overflow. No Razorpay provider execution occurred. |
@@ -249,6 +252,7 @@ audit-fix-retest loop.
 | MLRC-066 | Medium | Project Share Menu Kit staff-line copy | The icon-only copy action beside the staff line was visible and functional but had no accessible name, so its purpose was not available to keyboard and assistive-technology owners. | Give the existing action the explicit name `Copy staff line`; preserve its acknowledged clipboard fallback, copy text, diagnostics, and zero-Firebase-operation behavior. | `verify-communication-kit-boundary`; focused ESLint; strict TypeScript; exact hosted Share dialog retest | Exact `372cc4f…` reproduced one visible unnamed icon-only button beside `Staff line`. Exact `d0709a1…` rendered the named `Copy staff line` control, copied the exact owner-facing staff script, and left the clipboard cleared after verification. | CLOSED |
 | MLRC-067 | Medium | Project Share QR color controls | The foreground and background Ant ColorPicker triggers rendered as visible generic `div` elements with no role, accessible name, or keyboard focus. Pointer owners could customize QR colors, but keyboard and assistive-technology owners could not discover or operate either control. | Supply named native-button triggers with live color swatches to both existing ColorPickers. Preserve values, QR rendering, callbacks, layout, and zero Firebase operation count. | `verify-communication-kit-boundary`; focused ESLint; strict TypeScript; exact hosted keyboard/color-dialog retest | Exact `372cc4f…` reproduced two visible `.ant-color-picker-trigger` divs with no role, name, or tab stop. Exact `8a51727…` exposed two named buttons, no visible generic triggers, and Enter opened each foreground/background color panel; toggling the active trigger closed its panel while retaining Share. | CLOSED |
 | MLRC-068 | Medium | Desktop menu-link import URL preflight | The form enabled Import link for `javascript:` and other syntactically invalid/non-web URLs, sent them to the protected API, then displayed the generic acquisition failure after a needless request. The server rejected the unsafe protocol, but the UI did not provide expected validation and spent one protected invocation/rate-limit attempt. | Add a pure client input boundary for length, syntax, HTTP(S), hostname, and embedded credentials; normalize admitted URLs and remove fragments. Keep server DNS/IP/redirect/content validation authoritative. | `test:menu-link-import-url-boundary`; extraction source verifier 387/387; focused ESLint; strict TypeScript; exact hosted invalid/valid-state retest | Exact `d0709a1…` enabled and submitted `javascript:alert(1)`, then recovered with the generic alert. Exact `1ec71b4…` kept unsafe and credential-bearing inputs disabled with specific inline alerts, admitted a valid owned HTTPS link, and returned to disabled after clearing. Source order proves invalid input returns before the protected client request; the server boundary remains unchanged. | CLOSED |
+| MLRC-069 | Medium | Guest Feedback and Official Business Page certification verifiers | The runtime had correctly migrated Business Settings feedback to the mounted Ant `messageApi`, but two source verifiers still required the retired static `message.error` call. Each stale assertion stopped the 162-check certification before later gates despite the guarded owner behavior remaining intact. | Update the two exact source assertions to require `messageApi.error` with the unchanged owner-safe validation copy. Preserve the validation boundary and do not weaken or skip either verifier. | `verify:guest-feedback-boundary`; `verify:official-business-page-boundary`; focused ESLint; complete `certify:menulist-local` replay | Both focused suites passed, including OBP projection/freshness tests. The fresh full replay completed 161/162 with all executable checks passing; only the separately classified missing-shell-secret Upstash gate remained externally blocked. | CLOSED |
 
 ## E. Firebase cost audit
 
@@ -339,7 +343,7 @@ passing runtime claims.
 
 | Command | Result |
 | --- | --- |
-| `npm run verify:menulist-rc-inventory` | PASS — 8,503 rows; 21 Function exports; 58 private MenuList pages access-evidenced; 62 sitemap-backed website page patterns render-evidenced through 186 concrete URLs; all 136 MenuList route handlers have resolved methods/access classes and anonymous runtime evidence; 97.2% of MenuList control candidates statically mapped to page routes |
+| `npm run verify:menulist-rc-inventory` | PASS — 8,517 rows; 21 Function exports; 58 private MenuList pages access-evidenced; 62 sitemap-backed website page patterns render-evidenced through 186 concrete URLs; all 136 MenuList route handlers have resolved methods/access classes and anonymous runtime evidence; 97.2% of MenuList control candidates statically mapped to page routes |
 | `node scripts/verification/verify-mobile-shell-route-map.js` | PASS — pending/unpaid subscription gate retains canonical Billing recovery and now exposes localized canonical sign-out cleanup with announced retry failure |
 | `npm run test:menulist-api-anonymous-boundary` | PASS local and hosted — exact hosted `6c9e6ec…` exercised 136 handlers / 153 methods with status counts 200×5, 301×1, 400×15, 401×126, 403×1, 404×5 and zero failures/5xx; every shared Admin Timestamp route module loaded. |
 | `npm run test:menulist-api-anonymous-boundary` (MLRC-047 retest) | PASS local and hosted — local: 136 handlers / 153 methods; 200×5, 301×1, 400×15, 401×128, 403×1, 404×3. Exact hosted `6cae311…`: 200×5, 301×1, 400×15, 401×126, 403×1, 404×5. Both have zero timeout/failure; the direct corrected worker probe returns 403 in 0.029 seconds locally and 0.649 seconds on QA. |
@@ -384,7 +388,8 @@ passing runtime claims.
 | `npm run lint` | PASS — current candidate, zero warnings |
 | `npm run verify:next-build-compatibility` | PASS — route-scoped Cloud Tasks proto trace contract present |
 | `npm run verify:next-deployment-bundle` | PASS — website 447, sign-in 504, auth API 389, and batch-image trigger 904 traced files; all four routes loaded from isolated traces without the repository `node_modules` |
-| `npm run certify:menulist-local` | PASS WITH EXTERNAL BLOCKER — fresh current-candidate run completed 161/162 checks; all 161 executable checks passed, 43 sibling-product scripts were explicitly excluded, and only `verify:upstash-readiness` was `BLOCKED_EXTERNAL`. The menu-extraction gate passed on its built-in retry after a transient emulator-port collision. The external target was separately proven through the connected QA console and hosted contact limiter without exposing its secret URL/token. |
+| `npm run certify:menulist-local` | PASS WITH EXTERNAL BLOCKER — fresh current-worktree run after MLRC-069 completed 161/162 checks with exit 0; all 161 executable checks passed, 43 sibling-product scripts were explicitly excluded, and only `verify:upstash-readiness` was `BLOCKED_EXTERNAL`. TypeScript, lint, documentation links, all 42 Firebase Rules predeploy suites, and `git diff --check` passed inside the aggregate. The external target was separately proven through the connected QA console and hosted contact limiter without exposing its secret URL/token. |
+| `npm run verify:upstash-readiness` | BLOCKED_EXTERNAL — exit 2 with exact result `required URL/token are not available in this shell`; no secret was requested, printed, or added to the repository. |
 | `npm run certify:asset-factory-menulist` | PASS — 28 MenuList slots; zero errors, warnings, stale assets, missing assets, disconnected files, or approval blockers after the one current slot-scoped fingerprint refresh |
 | `npm run docs:check-links` | PASS — 3,053 files and 5,339 internal links scanned; zero broken links. The command reported 64 non-failing filename-policy warnings, including the task-mandated `MENULIST_RC_CERTIFICATION.md` name and pre-existing uppercase video working documents. |
 | Unit/contract suites | PASS — all curated MenuList verification suites reached by the 157-script release gate; no single root `test` command exists |
@@ -396,7 +401,7 @@ passing runtime claims.
 
 ## I. Residual risks
 
-- The 5,291 page-reachable MenuList control candidates still require complete
+- The 5,305 page-reachable MenuList control candidates still require complete
   individual runtime interaction evidence. The other 155 candidates in 45
   files are explicitly classified as non-shipped source from the App Router
   import graph; they are not represented as runtime-tested controls.
@@ -445,7 +450,7 @@ passing runtime claims.
   required custom-status copy, empty-project editor recovery, and labelled
   Growth Kits selectors, keyboard-operable menu selection, one unambiguous
   upload action, named stateful preview/share controls, and rejected invalid
-  menu links before protected requests. MLRC-052 through MLRC-068 are closed at
+  menu links before protected requests. MLRC-052 through MLRC-069 are closed at
   their stated evidence levels. Successful menu-item creation/edit/
   publish propagation, multi-location creation, installed PWA, physical-device,
   custom-domain, and populated television-screen journeys remain unverified.
@@ -459,10 +464,13 @@ passing runtime claims.
   remains the required admitted path; its native file picker cannot be operated
   until the currently locked Mac session is unlocked. No production data or
   payment provider was touched.
-- Firebase project-level access is verified for `admin@neelvara.com` in both
-  Firebase Console and Firebase CLI. The earlier statement that this identity
+- Firebase project-level access is verified for `admin@neelvara.com` in
+  Firebase Console. The earlier statement that this identity
   lacked access was incorrect: unavailable local credentials had been confused
-  with account authorization. Because `gcloud` is not installed, the guarded
+  with account authorization. The Firebase CLI credential was revoked after a
+  diagnostic command exposed token material in tool output; a fresh official
+  CLI reauthentication is currently pending and no exposed token is being
+  reused. Because `gcloud` is not installed, the guarded
   QA-only fixture harness establishes a mode-0600 temporary authorized-user ADC
   from the authenticated Firebase CLI session without logging its token. It
   refuses every project except `menulist-qa`, creates canonical owner/tenant/

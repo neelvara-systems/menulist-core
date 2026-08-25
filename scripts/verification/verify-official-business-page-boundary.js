@@ -232,7 +232,7 @@ function verifyOwnerMutationBoundary() {
   assertIncludes(businessSettings, 'normalizeGeoCoordinateDraft(latitudeInput, longitudeInput)', 'desktop shared geo boundary');
   assertIncludes(businessSettings, 'normalizeOwnerPublicPresenceLinks(changesToUpload.publicPresence)', 'desktop owner public-link boundary');
   assertIncludes(businessSettings, 'normalizeOwnerSocialMediaLinks(socialMedia)', 'desktop owner social-link boundary');
-  assertIncludes(businessSettings, "message.error('Enter valid public social profile links before saving.')", 'desktop owner social-link rejection');
+  assertIncludes(businessSettings, "messageApi.error('Enter valid public social profile links before saving.')", 'desktop scoped owner social-link rejection');
   assertIncludes(socialMediaTab, 'aria-label={placeholder}', 'desktop named default social inputs');
   assertIncludes(socialMediaTab, 'aria-label={`Clear ${placeholder}`}', 'desktop named default social clear actions');
   assertIncludes(socialMediaTab, 'aria-label={`Remove ${key}`}', 'desktop named custom social removal');

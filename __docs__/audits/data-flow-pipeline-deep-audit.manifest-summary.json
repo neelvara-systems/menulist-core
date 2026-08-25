@@ -1,13 +1,13 @@
 {
-  "generatedAt": "2026-08-25T18:45:37.282Z",
-  "repositoryHead": "8688fbb20d486f98fef56fda3c154ce0ffa44a5e",
-  "totalDiscoveredFiles": 9423,
+  "generatedAt": "2026-08-25T23:14:15.203Z",
+  "repositoryHead": "d4f9866ee5f4cdf93c2fac05c8dcf035d8b22367",
+  "totalDiscoveredFiles": 9425,
   "vanishedDuringInventory": 0,
-  "inScopeFiles": 9109,
+  "inScopeFiles": 9111,
   "excludedFiles": 314,
   "byCategory": {
     "documentation/contract": 3581,
-    "shared-runtime": 1210,
+    "shared-runtime": 1212,
     "ui-component": 1021,
     "verifier/test": 776,
     "asset/public-output": 568,
@@ -28,29 +28,29 @@
     "proxy/routing": 1
   },
   "byReviewStatus": {
-    "reviewed": 7040,
-    "in-progress": 1532,
-    "inventory-only": 537
+    "reviewed": 7014,
+    "in-progress": 1558,
+    "inventory-only": 539
   },
   "byCategoryAndReviewStatus": {
     "documentation/contract": {
-      "reviewed": 2723,
-      "in-progress": 568,
+      "reviewed": 2718,
+      "in-progress": 573,
       "inventory-only": 290
     },
     "shared-runtime": {
-      "reviewed": 995,
-      "in-progress": 143,
-      "inventory-only": 72
+      "reviewed": 994,
+      "in-progress": 144,
+      "inventory-only": 74
     },
     "ui-component": {
-      "reviewed": 761,
-      "in-progress": 251,
+      "reviewed": 749,
+      "in-progress": 263,
       "inventory-only": 9
     },
     "verifier/test": {
-      "reviewed": 526,
-      "in-progress": 189,
+      "reviewed": 524,
+      "in-progress": 191,
       "inventory-only": 61
     },
     "asset/public-output": {
@@ -74,8 +74,8 @@
       "inventory-only": 26
     },
     "api-route": {
-      "reviewed": 176,
-      "in-progress": 55,
+      "reviewed": 170,
+      "in-progress": 61,
       "inventory-only": 13
     },
     "constant/config/data": {
