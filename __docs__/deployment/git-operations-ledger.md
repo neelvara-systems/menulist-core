@@ -812,6 +812,22 @@ Those fields are explicitly `unknown` instead of guessed.
   unstaged path change; no pre-existing source or user work was altered.
 - Attribution confidence: exact.
 
+### GIT-20260825-200407-answerlattice-checkout-stage-evidence
+
+- Timestamp: `2026-08-25T20:04:07+05:30`
+- Record type: `PLANNED`
+- Actor/session/thread ID: Codex `/root`; current Answerlattice QA subscription certification task.
+- Registered worktrees: one primary worktree at `/Users/danny/Projects/MenuListAi/menulist-core`, branch `staging`, HEAD `57a6b7f903c71e48c9ca6377ce9c09a91d3989ed`.
+- Authorization: Danny authorized synthetic QA billing identity data, creation of a Test Mode Answerlattice subscription, fix/retest work, and non-force publication of every current worktree change to `staging`. This operation does not authorize `main`, Firebase deployment, a manual Vercel deployment, production billing configuration, or live Razorpay execution.
+- Runtime evidence before mutation: verified custom-`qa` build `32440eca8e171212fb77983218d3a071e0db5981` admitted the normalized synthetic billing profile and reached `/api/razorpay/create-subscription`. Two safe retries both returned `500` before a replacement checkout opened. Vercel trace evidence proves the route used the Answerlattice QA WIF service account, fetched legacy Test Mode provider subscription `sub_TT8Jv9NCZ1bVIo`, and called its cancel endpoint; no replacement provider create call occurred. Existing secure logs identify the bounded failure family but not the internal stage.
+- Candidate: add a non-sensitive internal checkout-stage field to the existing bounded Razorpay failure context around unresolved-subscription query, provider fetch, provider cancel, and local-expiry transaction. No customer data, provider response body, secret, raw ID, email, tax profile, or message is logged. Extend the maintained lifecycle verifier accordingly. This evidence enables a precise smallest fix on the next hosted retry rather than weakening or bypassing the stale-checkout boundary.
+- Concurrent movement audit: the independent MLRC-045 operator advanced local/server `staging` from `32440eca8e171212fb77983218d3a071e0db5981` to exact descendant `57a6b7f903c71e48c9ca6377ce9c09a91d3989ed` and left the two Answerlattice candidate paths untouched and unstaged. Its 11-line performed ledger result is preserved in this complete-snapshot commit. Local/server `main` remain untouched at `fe625d5bbf527c1b7e537b00ab32a4f655905c35`.
+- Branch matrix before: local/server `staging` exact `57a6b7f903c71e48c9ca6377ce9c09a91d3989ed`, local/server `main` exact `fe625d5bbf527c1b7e537b00ab32a4f655905c35`; direct `git ls-remote` and tracking divergence prove `0/0` for both. Primary worktree state before this append: `0/3/0`, comprising the preserved MLRC-045 result plus the two Answerlattice candidate paths.
+- Validation before commit: `npm run verify:razorpay-subscription-lifecycle` PASS, including 10/10 source contract events, 10/10 lifecycle events, and the Firestore emulator suite; focused ESLint PASS; strict TypeScript PASS; `git diff --check` PASS.
+- Firebase matrix before/after: unchanged from `GIT-20260825-193844-answerlattice-qa-synthetic-billing`. MenuList QA/production Functions retain `INFRA_CHANGE` / `DEPLOY_REQUIRED`; the other 14 target/component rows remain `NO_INFRA_CHANGE` / `SERVER_STATE_UNKNOWN`. No Firebase source, deployment, or authenticated component readback is part of this operation.
+- Final filesystem state: pending complete-snapshot commit, non-force `staging` push, direct readback, automatic QA deployment, hosted retry, root-cause fix if required, subscription activation, and entitlement-dependent Answerlattice retest.
+- Attribution confidence: exact for this operation and Git/provider evidence; the concurrent MLRC-045 result is attributed only from its own ledger evidence.
+
 ##### Result-record publication closeout
 
 - Timestamp: `2026-08-25T18:10:00+05:30`
@@ -3251,3 +3267,14 @@ Those fields are explicitly `unknown` instead of guessed.
 - Git server readback and divergence: direct pre-operation `git ls-remote` proves local/server `main` and `staging` exact with `0/0` divergence. Post-operation evidence is pending.
 - Final filesystem state: pending commit, non-force staging push, direct readback, and automatic QA evidence deployment.
 - Attribution confidence: exact.
+
+#### GIT-20260825-200152-mlrc045-qa-evidence result
+
+- Timestamp: `2026-08-25T20:03:11+05:30`
+- Record type: `PERFORMED`
+- Scoped release: evidence-only commit `57a6b7f903c71e48c9ca6377ce9c09a91d3989ed` (`Record pending subscription QA recovery`) was created from exact parent `32440eca8e171212fb77983218d3a071e0db5981` and pushed non-force to `origin/staging`. Direct `git ls-remote` returned exact server SHA `57a6b7f903c71e48c9ca6377ce9c09a91d3989ed`; local/tracking divergence is `0/0`. Local/server `main` remain exact and untouched at `fe625d5bbf527c1b7e537b00ab32a4f655905c35`.
+- Concurrent filesystem movement: after the planned entry and before staging, an independent writer modified `scripts/verification/verify-razorpay-subscription-lifecycle.js` and `src/app/api/razorpay/create-subscription/route.ts`. Both paths were left unstaged, uncommitted, and unmodified by this operation; their actor/session attribution is `unknown`. The evidence commit contains only the certification report, regenerated inventory, and planned ledger entry.
+- Hosted evidence: the exact runtime-bearing parent `32440eca8e171212fb77983218d3a071e0db5981` was already Ready on custom QA and `/api/version` matched it before this evidence-only commit. The automatic deployment of `57a6b7f…` may proceed, but no runtime source differs from the tested parent and no manual Vercel action is authorized.
+- Firebase matrix after: unchanged from the planned entry. MenuList QA/production Functions retain MLRC-031 `INFRA_CHANGE` / `DEPLOY_REQUIRED`; the other 14 target/component rows remain `NO_INFRA_CHANGE` / `SERVER_STATE_UNKNOWN`. No Firebase deployment/readback, production release, `main` movement, manual Vercel deployment, or live Razorpay execution occurred.
+- Final filesystem state: local/server staging are aligned at the evidence commit; the two unrelated concurrent Razorpay-boundary source/verifier modifications remain unstaged and preserved. This result append is the only change authored after the scoped release.
+- Attribution confidence: exact for this operation and Git/hosted evidence; concurrent writer identity `unknown`.
