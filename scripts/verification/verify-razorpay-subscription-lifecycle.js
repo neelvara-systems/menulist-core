@@ -137,7 +137,7 @@ const desktopPendingCheckoutHandler = activeSubscriptionCard.slice(
   activeSubscriptionCard.indexOf('const openCancellationModal'),
 );
 const answerlatticeNewCheckoutHandler = answerlatticeBilling.slice(
-  answerlatticeBilling.indexOf('const handleConfirmUpgrade'),
+  answerlatticeBilling.indexOf('const runPlanCheckout'),
   answerlatticeBilling.indexOf('const handleCreditsPurchase'),
 );
 const mobileNewCheckoutHandler = mobileBilling.slice(
@@ -150,7 +150,10 @@ const mobilePendingCheckoutHandler = mobileBilling.slice(
 );
 assert.ok(desktopNewCheckoutHandler.includes('await refetchActiveSubscription()'));
 assert.ok(answerlatticeNewCheckoutHandler.includes("activeSubscription?.status === 'pending'"));
-assert.ok(answerlatticeNewCheckoutHandler.includes('await onClickPaymentCard(newPlan, currency'));
+assert.ok(answerlatticeNewCheckoutHandler.includes('await onClickPaymentCard('));
+assert.ok(answerlatticeBilling.includes('normalizeBillingProfile(values)'));
+assert.ok(answerlatticeBilling.includes('billingProfile ? { billingProfile, requireBillingProfile: true } : {}'));
+assert.ok(answerlatticeBilling.includes('Continue to secure checkout'));
 assert.ok(pricingPlansModal.includes('action === "upgrade" && activeSubscription'));
 assert.ok(pricingPlansModal.includes('activeSubscription={action === "upgrade" ? activeSubscription : null}'));
 assert.ok(desktopPendingCheckoutHandler.includes('await refetchActiveSubscription()'));

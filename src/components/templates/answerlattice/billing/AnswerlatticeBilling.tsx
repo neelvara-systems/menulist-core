@@ -1,6 +1,8 @@
 'use client';
 
 import { PRODUCT_IDS } from '@constant/product';
+import { normalizeBillingProfile, type BillingProfile } from '@data/shared/billingTaxPolicy';
+import { INDIAN_GST_STATES } from '@data/shared/indianGstStates';
 import { ANSWERLATTICE_PLAN_TIER_ORDER, getBillingPlansForProduct, getCreditPacksForProduct } from '@lib/billing/productBillingPlans';
 import { ANSWERLATTICE_ROUTES, toAnswerlatticeDashboardRoute } from '@constant/answerlattice/navigations';
 import { getAnswerlatticeActiveSubscriptionForStore, getAnswerlatticeBillingHistoryForStore } from '@database/answerlattice/billing';
@@ -13,7 +15,7 @@ import { fetchAnswerlatticeBillingDocumentSummaries, mergeAnswerlatticeBillingDo
 import { startLoader, stopLoader } from '@reduxSlices/loader';
 import type { Plan } from '@data/common';
 import type { BillingHistoryItem, Currency, FirestoreSubscriptionDoc } from '@type/razorpay';
-import { Alert, Button, Card, Empty, Flex, Grid, List, Space, Spin, Typography, message, theme } from 'antd';
+import { Alert, Button, Card, Empty, Flex, Form, Grid, Input, List, Modal, Select, Space, Spin, Typography, message, theme } from 'antd';
 import { useSession } from 'next-auth/react';
 import { useFormatter } from 'next-intl';
 import { useRouter } from 'next/navigation';
@@ -46,6 +48,8 @@ export default function AnswerlatticeBilling() {
     const [hasBillingLoadError, setHasBillingLoadError] = useState(false);
     const [isPricingModalOpen, setIsPricingModalOpen] = useState<{ action: 'upgrade' | 'new'; active: boolean }>({ action: 'upgrade', active: false });
     const [isCreditsModalOpen, setIsCreditsModalOpen] = useState(false);
+    const [pendingCheckoutSelection, setPendingCheckoutSelection] = useState<{ plan: Plan; currency: Currency } | null>(null);
+    const [billingProfileForm] = Form.useForm<BillingProfile>();
     const subscriptionRequestSequenceRef = useRef(0);
     const billingHistoryRequestSequenceRef = useRef(0);
     const billingScopeKeyRef = useRef<string | null>(billingScopeKey);
@@ -166,13 +170,19 @@ export default function AnswerlatticeBilling() {
         }
     };
 
-    const handleConfirmUpgrade = async (newPlan: Plan, currency: Currency) => {
+    const runPlanCheckout = async (newPlan: Plan, currency: Currency, billingProfile?: BillingProfile) => {
         const isReplacingPendingCheckout = activeSubscription?.status === 'pending';
         try {
             dispatch(startLoader('Processing Answerlattice payment'));
             const paymentResponse = activeSubscription && !isReplacingPendingCheckout
                 ? await onUpgradePlan(activeSubscription, newPlan, currency)
-                : await onClickPaymentCard(newPlan, currency, () => { });
+                : await onClickPaymentCard(
+                    newPlan,
+                    currency,
+                    () => { },
+                    undefined,
+                    billingProfile ? { billingProfile, requireBillingProfile: true } : {},
+                );
             if (paymentResponse?.activationStatus === 'processing') {
                 message.info('Payment received. Subscription activation is being confirmed.');
             } else {
@@ -193,6 +203,40 @@ export default function AnswerlatticeBilling() {
         } finally {
             setIsPricingModalOpen({ action: 'upgrade', active: false });
             dispatch(stopLoader('Processing Answerlattice payment'));
+        }
+    };
+
+    const handleConfirmUpgrade = async (newPlan: Plan, currency: Currency) => {
+        const isNewCheckout = !activeSubscription || activeSubscription.status === 'pending';
+        if (isNewCheckout && !activeSubscription?.taxSnapshot) {
+            billingProfileForm.setFieldsValue({
+                legalName: session?.user?.name || '',
+                email: session?.user?.email || '',
+                countryCode: currency === 'INR' ? 'IN' : 'US',
+                addressLine1: '',
+                city: '',
+                region: '',
+                indianStateCode: undefined,
+                postalCode: '',
+                taxId: undefined,
+                taxIdType: undefined,
+            });
+            setPendingCheckoutSelection({ plan: newPlan, currency });
+            setIsPricingModalOpen({ action: 'new', active: false });
+            return;
+        }
+        return runPlanCheckout(newPlan, currency);
+    };
+
+    const handleBillingProfileSubmit = async (values: BillingProfile) => {
+        if (!pendingCheckoutSelection) return;
+        try {
+            const billingProfile = normalizeBillingProfile(values);
+            const selection = pendingCheckoutSelection;
+            setPendingCheckoutSelection(null);
+            await runPlanCheckout(selection.plan, selection.currency, billingProfile);
+        } catch (error) {
+            message.error(error instanceof Error ? error.message : 'Check the billing details and try again.');
         }
     };
 
@@ -357,6 +401,71 @@ export default function AnswerlatticeBilling() {
                     </>
                 )}
             />
+
+            <Modal
+                title="Complete billing details"
+                open={Boolean(pendingCheckoutSelection)}
+                footer={null}
+                onCancel={() => setPendingCheckoutSelection(null)}
+                destroyOnHidden
+            >
+                <Text type="secondary">
+                    These details determine the checkout currency and applicable tax. They are stored with the pending subscription.
+                </Text>
+                <Form
+                    form={billingProfileForm}
+                    layout="vertical"
+                    onFinish={(values) => void handleBillingProfileSubmit(values)}
+                    style={{ marginTop: 20 }}
+                >
+                    <Form.Item name="countryCode" hidden><Input /></Form.Item>
+                    <Form.Item label="Billing country">
+                        <Input disabled value={pendingCheckoutSelection?.currency === 'INR' ? 'India' : 'United States'} />
+                    </Form.Item>
+                    <Form.Item name="legalName" label="Legal or business name" rules={[{ required: true }]}>
+                        <Input autoComplete="organization" />
+                    </Form.Item>
+                    <Form.Item name="email" label="Billing email" rules={[{ required: true, type: 'email' }]}>
+                        <Input autoComplete="email" />
+                    </Form.Item>
+                    <Form.Item name="addressLine1" label="Billing address" rules={[{ required: true }]}>
+                        <Input autoComplete="address-line1" />
+                    </Form.Item>
+                    <Form.Item name="city" label="City" rules={[{ required: true }]}>
+                        <Input autoComplete="address-level2" />
+                    </Form.Item>
+                    {pendingCheckoutSelection?.currency === 'INR' ? (
+                        <>
+                            <Form.Item name="region" hidden><Input /></Form.Item>
+                            <Form.Item name="indianStateCode" label="State" rules={[{ required: true }]}>
+                                <Select
+                                    showSearch
+                                    optionFilterProp="label"
+                                    options={INDIAN_GST_STATES.map((state) => ({ label: state.name, value: state.code }))}
+                                    onChange={(code) => billingProfileForm.setFieldValue(
+                                        'region',
+                                        INDIAN_GST_STATES.find((state) => state.code === code)?.name || '',
+                                    )}
+                                />
+                            </Form.Item>
+                        </>
+                    ) : (
+                        <Form.Item name="region" label="State or region" rules={[{ required: true }]}>
+                            <Input autoComplete="address-level1" />
+                        </Form.Item>
+                    )}
+                    <Form.Item name="postalCode" label="Postal code" rules={[{ required: true }]}>
+                        <Input autoComplete="postal-code" />
+                    </Form.Item>
+                    <Form.Item name="taxId" label={pendingCheckoutSelection?.currency === 'INR' ? 'GSTIN (optional)' : 'Tax ID (optional)'}>
+                        <Input />
+                    </Form.Item>
+                    <Flex justify="end" gap={8}>
+                        <Button onClick={() => setPendingCheckoutSelection(null)}>Cancel</Button>
+                        <Button type="primary" htmlType="submit">Continue to secure checkout</Button>
+                    </Flex>
+                </Form>
+            </Modal>
 
             <CreditsPackModal
                 isOpen={isCreditsModalOpen}

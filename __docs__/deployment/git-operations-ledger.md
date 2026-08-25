@@ -3063,6 +3063,15 @@ Those fields are explicitly `unknown` instead of guessed.
 - Refinement: when plan-modal action is `new`, omit the active subscription from both RemainingCreditNote and UpgradeConfirmationModal. Paid `upgrade` behavior remains unchanged. The retired-plan recovery now uses purchase wording and makes no transferable-value claim.
 - Added candidate paths: `PricingPlansModal.tsx`, the existing Razorpay lifecycle verifier, Answerlattice billing test cases, and this ledger. No Firebase source or deployment classification changes. The follow-up remains a non-force staging-only push and automatic QA deployment; `main`, Firebase, manual Vercel, and live Razorpay remain out of scope.
 
+#### GIT-20260825-182007 billing-profile admission refinement
+
+- Timestamp: `2026-08-25T18:42:17+05:30`
+- Record type: `PLANNED_REFINEMENT`
+- Exact second release: concurrent MenuList commit `116da81139ff3c530b0f400ec30aaa523f13655a` was preserved as the parent of `a234d990558329fbce7eb0b1d2a3bb67f637b697`; the latter was pushed non-force, directly read back with `0/0` divergence, reported Ready by Vercel, and returned by canonical `/api/version` with verified provenance.
+- Hosted finding: monthly Launch confirmation now uses correct purchase wording. Its POST returned `400` before any Razorpay call because the legacy pending fixture has no current tax snapshot and the authenticated Billing screen had no billing-profile recovery form. The server correctly refused to infer or bypass legal billing details.
+- Refinement: collect the required billing profile on new/retired-plan checkout when no frozen tax snapshot exists, normalize it with the canonical billing-tax policy, and pass it through the existing checkout hook/API contract. Cancel performs no mutation; the server remains the only persistence and tax authority. Hosted QA will use an explicitly synthetic non-GST billing profile for this disposable fixture.
+- Added candidate paths: Answerlattice Billing UI, existing lifecycle verifier, four maintained billing documents, and this ledger. Firebase matrix and deployment boundaries remain unchanged; no Firebase source is modified.
+
 #### GIT-20260825-182832-mlrc043-inline-confirmation
 
 - Timestamp: `2026-08-25T18:28:32+05:30`

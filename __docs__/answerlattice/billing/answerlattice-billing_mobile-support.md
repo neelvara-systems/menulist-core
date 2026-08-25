@@ -22,6 +22,7 @@ Answerlattice billing is rendered inside `AnswerlatticeDashboardLayout`, which a
 - Mobile copy remains owner-facing: provider and diagnostic details stay out of alerts and toasts.
 - Mobile checkout uses the same strict minimal subscription/order response and exact hosted-provider URL boundary as desktop.
 - A retired-plan pending checkout shows the current-plan chooser at narrow widths instead of a broken resume action. The shared server reconciliation and duplicate-payment protections remain identical to desktop.
+- The required billing-profile modal uses the same responsive Ant Design form at narrow widths; it keeps tax/profile admission identical to desktop and does not introduce a mobile-only stored state.
 - Unsafe invoice URLs are omitted rather than rendered as mobile links.
 - If current billing state cannot be loaded, mobile shows the same blocking retry alert as desktop and disables plan mutation; it does not render an empty-subscription checkout state.
 - Billing country and legal billing details are collected during onboarding, not through a mobile-only currency picker.
