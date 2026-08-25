@@ -32798,3 +32798,12 @@ TEMPLATE FOR NEW ENTRIES:
 - Added one route-scoped trace include and an isolated deployment-bundle
   regression gate; no task, provider call, Firebase operation, or dependency
   was added.
+
+# 2026-08-25 - MenuList mobile Billing recovery layout
+
+- Kept direct Billing recovery inside the existing `MobileShell` at narrow
+  viewport widths, including desktop-user-agent responsive testing.
+- Prevented the desktop owner sidebar from consuming most of the 390px Billing
+  viewport; no billing, entitlement, payment-provider, or data contract changed.
+- Extended the mobile shell route-map gate to preserve both Billing and Help as
+  mobile recovery routes.

@@ -2144,3 +2144,65 @@ Those fields are explicitly `unknown` instead of guessed.
   | Answerlattice | production / `neelvara-answerlattice-prod` | Cloud Functions | unchanged | no changed path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
 
 - Post-operation commit, direct readback, corrected hosted-build identity, full 153-method retest, and final matrices: pending.
+
+### GIT-20260825-131901-mlrc027-cloud-tasks-trace-fix-result
+
+- Timestamp: `2026-08-25T13:36:39+05:30`
+- Record type: `PERFORMED`
+- Actor/session/thread ID: Codex `/root`; thread `01a034e1-c70a-74b1-a92b-0a103a981815`
+- Completes: `GIT-20260825-131901-mlrc027-cloud-tasks-trace-fix`
+- Operation performed: staged only the nine planned MLRC-027 source/evidence paths, committed `6854cf4e7881f5a5d5fe3ef939245cd1d1b88e50` (`Fix Cloud Tasks deployment trace`), and pushed `staging` non-force. Concurrent `AGENTS.md` and `IDE_PROMPTS/MASTER-EXECUTION-PROMPT.md` changes remained unstaged and preserved.
+- Hosted readback: `/api/version` returned exact verified build `6854cf4e7881f5a5d5fe3ef939245cd1d1b88e50`, deployment `menulist-core-jgc93e96j-neelvara-systems.vercel.app`, at `2026-08-25T13:27:46+05:30`. The complete hosted anonymous boundary then passed all 136 handlers / 153 methods with 200×5, 301×1, 400×15, 401×126, 403×1, 404×5, zero timeout, and zero 5xx. `/api/image-generation/batch-trigger` returned the intended anonymous 401.
+- Validation: `verify:next-build-compatibility`, production build (450 pages), `verify:next-deployment-bundle`, ESLint, JSON parse, `git diff --check`, exact build identity, and hosted full API boundary passed. No manual Vercel deployment, Firebase deployment, payment execution, Cloud Task, or provider call occurred.
+
+- Branch matrix after:
+
+  | Branch | Local full SHA | Direct server ref/full SHA | Tracking ref | Ahead/behind | Worktree | Staged/unstaged/untracked | Status |
+  | --- | --- | --- | --- | --- | --- | --- | --- |
+  | `main` | `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `refs/heads/main` / `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `origin/main` | `0/0` | not checked out | `N/A` | `IN_SYNC` |
+  | `staging` | `6854cf4e7881f5a5d5fe3ef939245cd1d1b88e50` | `refs/heads/staging` / `6854cf4e7881f5a5d5fe3ef939245cd1d1b88e50` | `origin/staging` | `0/0` | primary worktree | `0/2/0` immediately before resumed MLRC-028 work | `IN_SYNC` |
+
+- Firebase matrix after: every MenuList and Answerlattice row from the planned record remains `NO_INFRA_CHANGE` / `SERVER_STATE_UNKNOWN`; no Firebase source path changed and no authenticated Firebase readback or deployment was performed.
+- Attribution confidence: exact for the scoped commit, push, direct server readback, hosted deployment identity, API result, and preserved concurrent files.
+
+### GIT-20260825-133639-mlrc028-mobile-billing-recovery
+
+- Timestamp: `2026-08-25T13:36:39+05:30`
+- Record type: `PLANNED`
+- Actor/session/thread ID: Codex `/root`; thread `01a034e1-c70a-74b1-a92b-0a103a981815`
+- Registered worktrees: one worktree at `/Users/danny/Projects/MenuListAi/menulist-core`, checked out on `staging` at `6854cf4e7881f5a5d5fe3ef939245cd1d1b88e50`.
+- Authorization: Danny instructed Codex to continue the complete MenuList audit/fix/retest loop autonomously on staging QA. This authorizes the smallest confirmed MLRC-028 owner-mobile correction, regression/docs evidence, commit, and non-force `staging` push. It does not authorize `main`, manual Vercel deployment, Firebase deployment, provider payment execution, or unrelated governance changes.
+- Intended operation: stage only `src/components/antdComponent/layoutWrapper/index.tsx`, `scripts/verification/verify-mobile-shell-route-map.js`, `__docs__/mobile-operational-support/mobile-operational-support_mobile-support.md`, `__docs__/audits/MENULIST_RC_CERTIFICATION.md`, `__docs__/audits/menulist-rc-runtime-evidence.json`, `__docs__/changelog.md`, and this ledger. Preserve and exclude concurrent `AGENTS.md` and `IDE_PROMPTS/MASTER-EXECUTION-PROMPT.md` changes, actor `unknown`.
+- Defect evidence: exact hosted QA at 390×844 rendered `/billing` through the desktop sidebar, consuming roughly half the viewport and forcing severe word wrapping. `MobileBillingScreen` and the canonical `/billing` mobile route already existed; the shared layout's narrow-width exception admitted Help but omitted Billing.
+- Local correction: grouped Billing and Help as `isMobileRecoveryRoute` and admitted that existing recovery boundary to `MobileShell` at mobile widths. Added a static regression requirement. No DAL, API, subscription, entitlement, Razorpay, Firebase, cache, or collection contract changed.
+- Validation before commit: mobile shell route map, Billing entitlement, onboarding subscription boundary, strict TypeScript, zero-warning ESLint, production build (450 pages), Next build compatibility, isolated deployment bundle, JSON parse, and `git diff --check` passed. Corrected hosted 390px visual retest remains pending the exact staging build.
+
+- Branch matrix before:
+
+  | Branch | Local full SHA | Direct server ref/full SHA | Tracking ref | Ahead/behind | Worktree | Staged/unstaged/untracked | Status |
+  | --- | --- | --- | --- | --- | --- | --- | --- |
+  | `main` | `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `refs/heads/main` / `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `origin/main` | `0/0` | not checked out | `N/A` | `IN_SYNC` |
+  | `staging` | `6854cf4e7881f5a5d5fe3ef939245cd1d1b88e50` | `refs/heads/staging` / `6854cf4e7881f5a5d5fe3ef939245cd1d1b88e50` | `origin/staging` | `0/0` | primary worktree | `0/8/0` before this ledger append | `IN_SYNC` |
+
+- Firebase matrix before (no infrastructure deployment is authorized or required):
+
+  | Product | Environment/project | Component | Local source/config | Local evidence | Server evidence | Delta | Deployment state |
+  | --- | --- | --- | --- | --- | --- | --- | --- |
+  | MenuList | QA / `menulist-qa` | Firestore Rules | unchanged | no changed path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | QA / `menulist-qa` | Firestore indexes | unchanged | no changed path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | QA / `menulist-qa` | Storage Rules | unchanged | no changed path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | QA / `menulist-qa` | Cloud Functions | unchanged | no changed path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | production / `menulist-prod` | Firestore Rules | unchanged | no changed path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | production / `menulist-prod` | Firestore indexes | unchanged | no changed path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | production / `menulist-prod` | Storage Rules | unchanged | no changed path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | production / `menulist-prod` | Cloud Functions | unchanged | no changed path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Firestore Rules | unchanged | no changed path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Firestore indexes | unchanged | no changed path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Storage Rules | unchanged | no changed path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Cloud Functions | unchanged | no changed path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Firestore Rules | unchanged | no changed path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Firestore indexes | unchanged | no changed path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Storage Rules | unchanged | no changed path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Cloud Functions | unchanged | no changed path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+
+- Post-operation commit, direct readback, exact hosted build identity, corrected 390px screenshot, and final matrices: pending.

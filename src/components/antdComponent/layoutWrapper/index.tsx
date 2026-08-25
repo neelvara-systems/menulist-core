@@ -69,6 +69,7 @@ export default function AntdLayoutWrapper(props: any) {
     const isResellerRoute = pathname === '/reseller' || pathname.startsWith('/reseller/');
     const isHelpCenterRoute = pathname === '/help-center' || pathname.startsWith('/help-center/');
     const isBillingRoute = pathname === '/billing';
+    const isMobileRecoveryRoute = isHelpCenterRoute || isBillingRoute;
     const isOwnerWorkspaceRoute = !isPlatformRoute
         && !isOpsRoute
         && !isResellerRoute
@@ -76,14 +77,14 @@ export default function AntdLayoutWrapper(props: any) {
         && !isBillingRoute;
     const isLocalMobileAudit = process.env.NODE_ENV !== 'production' && Boolean(searchParams?.has('mobileAudit'));
     const routeHasMobileShell = !isDesktopOnlyRoute && (
-        isLocalMobileAudit || isHandheld || (isMobile && (isPlatformRoute || isOpsRoute || isResellerRoute || isHelpCenterRoute))
+        isLocalMobileAudit || isHandheld || (isMobile && (isPlatformRoute || isOpsRoute || isResellerRoute || isMobileRecoveryRoute))
     );
     const forceDesktop = hasMounted && !routeHasMobileShell && shouldForceDesktopForPath(pathname, isDesktopOnlyRoute);
     const shouldRenderMobileShell = hasMounted
         && FEATURE_FLAGS.ENABLE_MOBILE_UI
         && !forceDesktop
         && !isDesktopOnlyRoute
-        && (isLocalMobileAudit || isHandheld || (isMobile && (isPlatformRoute || isOpsRoute || isResellerRoute || isHelpCenterRoute)));
+        && (isLocalMobileAudit || isHandheld || (isMobile && (isPlatformRoute || isOpsRoute || isResellerRoute || isMobileRecoveryRoute)));
     const isHandheldDesktopRoute = hasMounted && isHandheld && isDesktopOnlyRoute && FEATURE_FLAGS.ENABLE_MOBILE_UI && !forceDesktop;
     const hasPaidAccess = hasValidSubscriptionAccess(activeSubscription);
     const hasStarterAccess = hasStarterWorkspaceAccess(storeDetails, hasPaidAccess);

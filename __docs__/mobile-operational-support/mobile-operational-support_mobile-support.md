@@ -1,7 +1,7 @@
 # Mobile Operational Support — Mobile Support
 
 **Created:** February 15, 2026  
-**Last Updated:** June 29, 2026 (v21 - Mobile Official Page link diagnostics added)
+**Last Updated:** August 25, 2026 (v22 - Billing recovery narrow-viewport routing)
 **Status:** ✅ PWA END-TO-END — Full mobile-only operation supported  
 **Feature Flag:** `ENABLE_MOBILE_UI`
 
@@ -58,6 +58,12 @@
 | `MobilePosSyncScreen`          | More > POS Sync     | `updateStore`, `/api/pos-sync/test`                                               | `PosSyncTab`                           |
 | `MobileSpecialMenuScreen`      | More > Special Menus | `useSpecialMenus`, `getProjectDataWithoutLoader`, `updateProjectWithoutLoader`, `updateProjectMetadata` | `SpecialMenuCard` + `CreateSpecialMenuModal` |
 | `MobilePresenceMonitorScreen`  | More > Presence     | `updateMenuPresence`                                                              | `UseMenuList > PresenceMonitor`        |
+
+Billing and Help are entitlement-recovery surfaces. Direct `/billing` and
+`/help-center/*` requests at mobile viewport widths must enter `MobileShell`
+even when the browser uses a desktop user agent. This keeps responsive browser
+testing, small-window use, and phone use on the same mobile recovery contract;
+the desktop sidebar must never consume the narrow Billing viewport.
 
 Mobile Locations failure boundary: `MobileLocationsScreen` must convert rejected `/api/auth/switch-store` responses into fixed owner-facing switch failures and bounded `mobile_location_store_switch_failed` diagnostics. Outlet creation must log both rejected API responses and client/network exceptions through bounded `mobile_location_create_failed` diagnostics before showing fixed retry copy.
 

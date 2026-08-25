@@ -1,13 +1,13 @@
 {
   "hostedCandidateIdentity": {
     "baseUrl": "https://app.menulist.digital",
-    "requestedStagingCommit": "dee3ab5589176da136fd006a674c00c2eafc96ea",
+    "requestedStagingCommit": "6854cf4e7881f5a5d5fe3ef939245cd1d1b88e50",
     "menuListProductSnapshotCommit": "3a34a975d52b1a3b8bec4be35c40b4930b1f9441",
-    "servedBuildId": "dee3ab5589176da136fd006a674c00c2eafc96ea",
-    "servedDeploymentUrl": "menulist-core-ogyx4ddc1-neelvara-systems.vercel.app",
-    "testedAt": "2026-08-25T13:08:13+05:30",
+    "servedBuildId": "6854cf4e7881f5a5d5fe3ef939245cd1d1b88e50",
+    "servedDeploymentUrl": "menulist-core-jgc93e96j-neelvara-systems.vercel.app",
+    "testedAt": "2026-08-25T13:27:46+05:30",
     "result": "PASS_DEPLOYMENT_IDENTITY",
-    "evidence": "The no-store /api/version response advanced from the older baseline to the exact current staging commit with verified provenance. Authenticated, mobile, and mutation interaction evidence remains separately classified."
+    "evidence": "The no-store /api/version response matched the exact current staging commit with verified provenance. The complete hosted anonymous API boundary and bounded authenticated recovery-route checks were then rerun; mutation evidence remains separately classified."
   },
   "privateRouteAccess": {
     "baseUrl": "http://localhost:3000",
@@ -107,6 +107,26 @@
     "liveRazorpayExecution": "EXCLUDED; only anonymous empty-boundary rejection was exercised",
     "result": "PASS",
     "evidence": "All exported methods across all 136 MenuList route handlers responded without 5xx or timeout after bounded retry. Authenticated, platform-admin, server-secret/signature, and provider-webhook methods did not return anonymous 2xx responses. Public/static 2xx responses remained limited to their classified boundary. No valid mutation payload or credential was supplied."
+  },
+  "hostedApiAnonymousBoundary": {
+    "baseUrl": "https://app.menulist.digital",
+    "servedBuildId": "6854cf4e7881f5a5d5fe3ef939245cd1d1b88e50",
+    "testedAt": "2026-08-25T13:28:16+05:30",
+    "handlers": 136,
+    "methodProbes": 153,
+    "routeManifestSha256": "1ac9365eb6d895d2360453d67aa0cb077a3a9346f2061a9aba9199615c9f9612",
+    "requestState": "anonymous; credentials omitted; empty JSON for body methods; invalid deterministic dynamic-route identifiers",
+    "statusCounts": {
+      "200": 5,
+      "301": 1,
+      "400": 15,
+      "401": 126,
+      "403": 1,
+      "404": 5
+    },
+    "liveRazorpayExecution": "EXCLUDED; only anonymous empty-boundary rejection was exercised",
+    "result": "PASS",
+    "evidence": "All 153 hosted method probes completed without timeout, 5xx, or protected anonymous 2xx. The batch-image trigger that previously crashed before authentication returned 401 after the Cloud Tasks proto trace fix."
   },
   "publicWebsiteRouteRender": {
     "baseUrl": "http://localhost:3000",

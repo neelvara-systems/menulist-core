@@ -82,6 +82,7 @@ function extractRouteMapTargets(block) {
 
 function verifyMobileShellRouteMap() {
   const mobileShell = read('src/components/mobile/MobileShell.tsx');
+  const ownerLayout = read('src/components/antdComponent/layoutWrapper/index.tsx');
   const mobileNavigation = read('src/components/mobile/MobileNavigation.tsx');
   const mobileMoreScreen = read('src/components/mobile/screens/MobileMoreScreen.tsx');
   const mobileOwnerMenuVerifier = read('scripts/verification/verify-mobile-owner-menu.mjs');
@@ -158,6 +159,8 @@ function verifyMobileShellRouteMap() {
   assertIncludes(mobileShell, "setMoreScreen('billing');", 'Subscription gate View Plans action must open the mobile billing screen');
   assertIncludes(mobileShell, "router.push('/billing');", 'Subscription gate View Plans action must preserve the canonical billing route');
   assert(!mobileShell.includes("setForceDesktopRoute('/billing');"), 'Subscription gate must not force a desktop billing route from the mobile shell');
+  assertIncludes(ownerLayout, 'const isMobileRecoveryRoute = isHelpCenterRoute || isBillingRoute;', 'Narrow viewport recovery routes must share the mobile-shell boundary');
+  assertIncludes(ownerLayout, 'isPlatformRoute || isOpsRoute || isResellerRoute || isMobileRecoveryRoute', 'Billing and Help recovery routes must render in MobileShell at mobile widths');
   assertIncludes(mobileNavigation, "aria-label={t('ariaLabel')}", 'Localized mobile navigation landmark label');
   assertIncludes(mobileNavigation, 'role="navigation"', 'Mobile navigation landmark role');
   assertIncludes(mobileNavigation, 'aria-label={title}', 'Localized mobile navigation accessible tab label');
