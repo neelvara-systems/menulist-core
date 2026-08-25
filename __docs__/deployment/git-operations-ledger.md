@@ -4266,3 +4266,42 @@ No Firebase source/configuration changes. Firestore Rules, indexes, Storage Rule
 - Intended paths: desktop Growth Kits page, GrowthOS verifier, active implementation note, certification report, and this ledger.
 - Final state pending: documentation validation, scoped commit, non-force staging push, direct server readback, automatic QA deployment, exact `/api/version`, and hosted accessible-name retest.
 - Attribution confidence: exact.
+
+#### MLRC-061 performed result — `2026-08-26T02:50:10+05:30`
+
+- Commit/push: `314ff97cb632f60505a8a10658c3d8c89ff5350f` (`fix(menulist): wait for menu editor project`) was pushed non-force to `origin/staging`; direct server readback returned the same SHA with `0/0` divergence. `main` remained untouched at `fe625d5bbf527c1b7e537b00ab32a4f655905c35`.
+- Automatic QA deployment: `/api/version` returned exact verified build `314ff97cb632f60505a8a10658c3d8c89ff5350f`, deployment `menulist-core-fhl99nok8-neelvara-systems.vercel.app`, environment `preview`. No manual Vercel deployment occurred.
+- Exact hosted result: `/projects?view=editor` rendered the complete owner shell, allowed the scoped project document to settle, and returned the valid empty project to its required upload state. No new `Menu editor requires an active project` error was recorded; the only matching log entry retained the earlier exact reproduction timestamp. The ordinary Projects upload route remained intact. MLRC-061 is closed.
+- Firebase state: no infrastructure source/configuration changed and no deployment or authenticated infrastructure readback occurred; every Firestore Rules, indexes, Storage Rules, and Cloud Functions row for all four active targets remains `NO_INFRA_CHANGE` / `SERVER_STATE_UNKNOWN`.
+
+#### MLRC-062 performed result — `2026-08-26T02:51:30+05:30`
+
+- Commit/push: `c81dc4bba8460f02209aecae1150b7463325bb7f` (`fix(menulist): label Growth Kits selectors`) was pushed non-force to `origin/staging`; direct server readback returned the same SHA with `0/0` divergence. `main` remained untouched at `fe625d5bbf527c1b7e537b00ab32a4f655905c35`.
+- Automatic QA deployment: `/api/version` returned exact verified build `c81dc4bba8460f02209aecae1150b7463325bb7f`, deployment `menulist-core-4318x2gch-neelvara-systems.vercel.app`, environment `preview`. No manual Vercel deployment occurred.
+- Exact hosted result: Growth Kits exposed one `Menu` combobox and one `Review rating` combobox with zero unnamed comboboxes. The truthful empty-kit state remained unchanged. The earlier deterministic provider-free review guard and Copy reply action had passed, and the clipboard was cleared afterward. MLRC-062 is closed.
+- Firebase state: no infrastructure source/configuration changed and no deployment or authenticated infrastructure readback occurred; every Firestore Rules, indexes, Storage Rules, and Cloud Functions row for all four active targets remains `NO_INFRA_CHANGE` / `SERVER_STATE_UNKNOWN`.
+
+### GIT-20260826-030106-mlrc061-062-evidence-closeout
+
+- Timestamp: `2026-08-26T03:01:06+05:30`
+- Record type: `PLANNED`
+- Actor/session/thread ID: Codex `/root`; thread `01a034e1-c70a-74b1-a92b-0a103a981815`.
+- Registered worktrees: one primary worktree at `/Users/danny/Projects/MenuListAi/menulist-core`, branch `staging`, HEAD `c81dc4bba8460f02209aecae1150b7463325bb7f`.
+- Authorization: autonomous MenuList QA certification, durable evidence, and stable staging publication. This operation is documentation-only and `staging` only; it excludes `main`, Firebase infrastructure deployment, manual Vercel deployment, production mutation, and live Razorpay execution.
+- Scope: record exact hosted closure of MLRC-061 and MLRC-062; advance the tested product commit to `c81dc4bba8460f02209aecae1150b7463325bb7f`; record the bounded headless file-selection/App Check limitation without representing upload as passed; retain `CERTIFICATION BLOCKED` while successful upload/item/publish propagation and other completion gates remain open.
+- Starting filesystem state: zero staged, two tracked unstaged, zero untracked before this ledger append. Complete pre-ledger diff Git hash `f854ad731f9fe2c15110960132a6e269d25df3a3`; status `0/2/0`.
+
+#### Pre-operation branch matrix
+
+| Branch | Local SHA | Direct server SHA | Tracking ref | Ahead/behind | Worktree | Filesystem | Status |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `staging` | `c81dc4bba8460f02209aecae1150b7463325bb7f` | `refs/heads/staging` / `c81dc4bba8460f02209aecae1150b7463325bb7f` | `origin/staging` | `0/0` | primary | `0/2/0` before ledger append | `IN_SYNC` |
+| `main` | `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `refs/heads/main` / `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `origin/main` | `0/0` | none | n/a | `IN_SYNC` |
+
+#### Firebase component matrix before Git mutation
+
+No Firebase source/configuration changes. Firestore Rules, indexes, Storage Rules, and Cloud Functions for MenuList QA `menulist-qa`, MenuList production `menulist-prod`, Answerlattice QA `neelvara-answerlattice-qa`, and Answerlattice production `neelvara-answerlattice-prod` each remain independently `NO_INFRA_CHANGE` / `SERVER_STATE_UNKNOWN`; no authenticated readback or deployment is performed.
+
+- Intended paths: `__docs__/audits/MENULIST_RC_CERTIFICATION.md` and this ledger.
+- Final state pending: documentation validation, scoped commit, non-force staging push, and direct server readback.
+- Attribution confidence: exact.
