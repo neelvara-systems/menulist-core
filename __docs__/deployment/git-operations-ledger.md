@@ -3108,3 +3108,14 @@ Those fields are explicitly `unknown` instead of guessed.
 - Firebase matrix before/after: unchanged from MLRC-043. MenuList QA/production Functions retain MLRC-031 `INFRA_CHANGE` / `DEPLOY_REQUIRED`; the other 14 rows remain `NO_INFRA_CHANGE` / `SERVER_STATE_UNKNOWN`. No Firebase source, deployment, or readback is included or authorized.
 - Final filesystem state: pending scoped commit/push/readback, automatic QA build, exact intentional sign-out redirect, signed-out callback guard, and approved Google reauthentication retest.
 - Attribution confidence: exact.
+
+###### GIT-20260825-183727-mlrc043-signin-replacement result
+
+- Timestamp: `2026-08-25T18:45:04+05:30`
+- Record type: `PERFORMED`
+- Scoped release: `16a4bc258d4e102fba43430417275d4e3d216c5e` (`Complete plan gate sign out`) was committed and pushed non-force to `origin/staging`; direct readback proved exact server parity and `0/0` divergence. The automatic custom-`qa` deployment reported Ready, and canonical no-store `/api/version` returned the same verified full build from `menulist-core-ipq579ngd-neelvara-systems.vercel.app`.
+- Exact hosted result at 320×568: the gate and both confirmation states had zero horizontal/vertical overflow; initial Sign Out was 50px; Cancel and confirmation Sign Out were each 50px; Cancel restored the gate; confirm cleared Firebase/NextAuth/browser session state and reached canonical `/signin` without the false “Session Expired” dialog. Selecting the approved Google owner restored the exact pending-payment tenant/store Billing state. MLRC-043 is closed.
+- Concurrent movement audit: the separately active Answerlattice billing-profile task advanced local/server staging to exact descendant `191bb97f00306ceceb06a671fed1eb3aed2026d9` (`Collect billing details before checkout`) with `0/0` divergence. Its seven Answerlattice paths and ledger entry remain attributed to that task. It does not alter the exact MenuList sign-out evidence or Firebase classifications.
+- Firebase matrix after: unchanged. MenuList QA/production Functions retain MLRC-031 `INFRA_CHANGE` / `DEPLOY_REQUIRED`; the other 14 rows remain `NO_INFRA_CHANGE` / `SERVER_STATE_UNKNOWN`. No Firebase deployment/readback, `main`, manual Vercel deployment, or Razorpay execution occurred in MLRC-043.
+- Final filesystem state before evidence closeout: only the MenuList certification report and this result append are modified. They will be committed/pushed as an evidence-only descendant while production remains untouched.
+- Attribution confidence: exact.
