@@ -706,7 +706,6 @@ Each candidate must include:
 - expectedSource: canonical, escalation, or no_answer;
 - riskLevel: standard or critical;
 - requiresEscalation: boolean;
-- procedure: optional structured procedure with procedureSlug and 1-12 ordered steps. Each step may include action, instruction, target, expectedEvent, expectedResult, and troubleshootingHint;
 - applicability: optional path, feature, workflow, plan, role, and version strings.
 
 Rules:
@@ -716,7 +715,6 @@ Rules:
 - A historical reply, ticket, note, screenshot, or transcript is evidence to review, not automatically approved truth.
 - If evidence is missing or conflicts, leave proposedAnswer empty, describe the gap, and choose no_answer or escalation.
 - Use canonical only when the packet contains a defensible proposed answer. It is still a draft that requires human approval.
-- Include a procedure only for a supported how-to workflow. Use target and expectedEvent identifiers only when those exact semantic identifiers appear in the cited source excerpts. Never invent selectors, target IDs, workflow events, or executable actions.
 - Mark billing, cancellation, data deletion, security, permissions, and irreversible behavior critical when applicable.
 - Questions must be unique and useful to a solo founder preparing for launch.
 
@@ -734,7 +732,7 @@ ${JSON.stringify(packet)}`;
                         contents: [{ text: prompt }],
                         config: {
                             responseMimeType: 'application/json',
-                            responseSchema: ANSWERLATTICE_PRODUCT_STARTER_PACK_PROVIDER_RESPONSE_SCHEMA,
+                            responseJsonSchema: ANSWERLATTICE_PRODUCT_STARTER_PACK_PROVIDER_RESPONSE_SCHEMA,
                             temperature: 0,
                             topP: 0.8,
                             topK: 20,

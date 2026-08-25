@@ -4,11 +4,7 @@ import {
 } from '@lib/answerlattice/answerTestContracts';
 import { AnswerlatticeIntakeReviewItemSchema } from '@lib/answerlattice/knowledgeIntakeContracts';
 import { AnswerlatticeProcedureSchema } from '@lib/answerlattice/procedureValidation';
-import {
-    ANSWERLATTICE_PROCEDURE_ACTIONS,
-    type AnswerlatticeIntakeReviewItem,
-} from '@type/answerlattice';
-import { Type, type Schema } from '@google/genai';
+import type { AnswerlatticeIntakeReviewItem } from '@type/answerlattice';
 import { z } from 'zod';
 
 export const ANSWERLATTICE_PRODUCT_STARTER_PACK_SIZE = 10;
@@ -69,16 +65,18 @@ export const AnswerlatticeProductStarterPackModelResponseSchema = z.object({
  * drifting into extra keys, null optional fields, or missing defaulted arrays
  * before it reaches that boundary.
  */
-export const ANSWERLATTICE_PRODUCT_STARTER_PACK_PROVIDER_RESPONSE_SCHEMA: Schema = {
-    type: Type.OBJECT,
+export const ANSWERLATTICE_PRODUCT_STARTER_PACK_PROVIDER_RESPONSE_SCHEMA = {
+    type: 'object',
+    additionalProperties: false,
     required: ['candidates'],
     properties: {
         candidates: {
-            type: Type.ARRAY,
-            minItems: String(ANSWERLATTICE_PRODUCT_STARTER_PACK_SIZE),
-            maxItems: String(ANSWERLATTICE_PRODUCT_STARTER_PACK_SIZE),
+            type: 'array',
+            minItems: ANSWERLATTICE_PRODUCT_STARTER_PACK_SIZE,
+            maxItems: ANSWERLATTICE_PRODUCT_STARTER_PACK_SIZE,
             items: {
-                type: Type.OBJECT,
+                type: 'object',
+                additionalProperties: false,
                 required: [
                     'title',
                     'question',
@@ -92,79 +90,52 @@ export const ANSWERLATTICE_PRODUCT_STARTER_PACK_PROVIDER_RESPONSE_SCHEMA: Schema
                     'requiresEscalation',
                 ],
                 properties: {
-                    title: { type: Type.STRING },
-                    question: { type: Type.STRING },
-                    proposedAnswer: { type: Type.STRING },
+                    title: { type: 'string' },
+                    question: { type: 'string' },
+                    proposedAnswer: { type: 'string' },
                     sourceIds: {
-                        type: Type.ARRAY,
-                        minItems: '1',
-                        maxItems: String(ANSWERLATTICE_PRODUCT_STARTER_PACK_MAX_SOURCE_IDS_PER_ITEM),
-                        items: { type: Type.STRING },
+                        type: 'array',
+                        minItems: 1,
+                        maxItems: ANSWERLATTICE_PRODUCT_STARTER_PACK_MAX_SOURCE_IDS_PER_ITEM,
+                        items: { type: 'string' },
                     },
                     entityIds: {
-                        type: Type.ARRAY,
-                        maxItems: '10',
-                        items: { type: Type.STRING },
+                        type: 'array',
+                        maxItems: 10,
+                        items: { type: 'string' },
                     },
                     missingEvidence: {
-                        type: Type.ARRAY,
-                        maxItems: String(ANSWERLATTICE_PRODUCT_STARTER_PACK_MAX_MISSING_EVIDENCE),
-                        items: { type: Type.STRING },
+                        type: 'array',
+                        maxItems: ANSWERLATTICE_PRODUCT_STARTER_PACK_MAX_MISSING_EVIDENCE,
+                        items: { type: 'string' },
                     },
-                    reason: { type: Type.STRING },
+                    reason: { type: 'string' },
                     expectedSource: {
-                        type: Type.STRING,
+                        type: 'string',
                         enum: ['canonical', 'escalation', 'no_answer'],
                     },
                     riskLevel: {
-                        type: Type.STRING,
+                        type: 'string',
                         enum: ['standard', 'critical'],
                     },
-                    requiresEscalation: { type: Type.BOOLEAN },
-                    procedure: {
-                        type: Type.OBJECT,
-                        required: ['steps'],
-                        properties: {
-                            procedureSlug: { type: Type.STRING },
-                            steps: {
-                                type: Type.ARRAY,
-                                minItems: '1',
-                                maxItems: '12',
-                                items: {
-                                    type: Type.OBJECT,
-                                    required: ['stepOrder', 'action', 'instruction'],
-                                    properties: {
-                                        stepOrder: { type: Type.INTEGER },
-                                        action: {
-                                            type: Type.STRING,
-                                            enum: Object.values(ANSWERLATTICE_PROCEDURE_ACTIONS),
-                                        },
-                                        instruction: { type: Type.STRING },
-                                        target: { type: Type.STRING },
-                                        expectedEvent: { type: Type.STRING },
-                                        expectedResult: { type: Type.STRING },
-                                        troubleshootingHint: { type: Type.STRING },
-                                    },
-                                },
-                            },
-                        },
-                    },
+                    requiresEscalation: { type: 'boolean' },
                     applicability: {
-                        type: Type.OBJECT,
+                        type: 'object',
+                        additionalProperties: false,
                         properties: {
-                            path: { type: Type.STRING },
-                            feature: { type: Type.STRING },
-                            workflow: { type: Type.STRING },
-                            plan: { type: Type.STRING },
-                            role: { type: Type.STRING },
-                            version: { type: Type.STRING },
+                            path: { type: 'string' },
+                            feature: { type: 'string' },
+                            workflow: { type: 'string' },
+                            plan: { type: 'string' },
+                            role: { type: 'string' },
+                            version: { type: 'string' },
                         },
                     },
                 },
             },
         },
     },
-};
+} as const;
 
 export const AnswerlatticeProductStarterPackRequestSchema = z.object({
     requestId: z.string().trim().min(8).max(100).regex(/^[a-zA-Z0-9_-]+$/),

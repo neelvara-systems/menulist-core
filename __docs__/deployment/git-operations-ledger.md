@@ -3738,3 +3738,44 @@ Those fields are explicitly `unknown` instead of guessed.
 - Intended staged paths: `src/providers/sessionProvider.tsx`, `scripts/verification/test-session-store-context-boundary.ts`, `__docs__/audits/MENULIST_RC_CERTIFICATION.md`, and this ledger only.
 - Final filesystem state: pending scoped commit, non-force staging push, direct server readback, automatic QA deployment, exact `/api/version`, direct hard-load Dashboard/Projects retest, and recovery-path evidence if the entitlement query fails.
 - Attribution confidence: exact.
+
+#### Result — `2026-08-26T00:24:36+05:30` for `GIT-20260826-000739-mlrc052-scope-settlement`
+
+- Scoped commit: `8688fbb20d486f98fef56fda3c154ce0ffa44a5e` (`fix(menulist): settle entitlement scope before render`), pushed non-force to `staging` only. The independently authored Answerlattice-only descendants `1383fb84c28511941f7c396aaefa0ca810e2e5e4` and `7736c569ec426257347f62a6ead968b4858366c1` subsequently advanced local/server `staging` without changing the MenuList runtime correction. Direct readback at closeout returned exact `staging` SHA `7736c569ec426257347f62a6ead968b4858366c1` with `0/0` divergence; `main` remained exact `fe625d5bbf527c1b7e537b00ab32a4f655905c35`.
+- Automatic QA deployment: `/api/version` returned exact verified MenuList build `8688fbb20d486f98fef56fda3c154ce0ffa44a5e`, deployment `menulist-core-lhm3tjrln-neelvara-systems.vercel.app`, environment `preview`. No manual Vercel or Firebase deployment occurred.
+- Exact hosted result: after ten-second independent direct hard loads, `/dashboard` remained on Dashboard and rendered the entitled owner controls; `/projects` remained on Projects and rendered Preview, Share, the deterministic first-use upload control, and owned-link import form. Neither route rendered nor redirected to Billing. MLRC-052 is closed.
+- Adjacent state: the disposable provider-free fixture remains isolated to MenuList QA and is now the active harness for menu upload/edit/publish/public-propagation certification. Live Razorpay execution remains excluded.
+
+- Branch matrix after:
+
+  | Branch | Local full SHA | Direct server ref/full SHA | Tracking ref | Ahead/behind | Worktree | Staged/unstaged/untracked | Status |
+  | --- | --- | --- | --- | --- | --- | --- | --- |
+  | `main` | `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `refs/heads/main` / `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `origin/main` | `0/0` | not checked out | `N/A` | `IN_SYNC` |
+  | `staging` | `7736c569ec426257347f62a6ead968b4858366c1` | `refs/heads/staging` / `7736c569ec426257347f62a6ead968b4858366c1` | `origin/staging` | `0/0` | primary worktree | `0/2/0` after this result append | `IN_SYNC` |
+
+- Firebase matrix after: no Rules, indexes, Storage Rules, or Cloud Functions source changed in this operation. Existing component-specific deployment states remain unchanged; no infrastructure parity claim is made without a separate authorized readback.
+- Attribution confidence: exact for the MenuList commit, automatic hosted build, browser evidence, and direct Git readback; the two named Answerlattice descendants retain their independent attribution.
+
+### GIT-20260826-002703-answerlattice-first10-json-schema-subset
+
+- Timestamp: `2026-08-26T00:27:03+05:30`
+- Record type: `PLANNED`
+- Actor/session/thread ID: Codex `/root`; current Answerlattice final hosted-QA continuation.
+- Registered worktrees: one primary worktree at `/Users/danny/Projects/MenuListAi/menulist-core`, branch `staging`, HEAD `7736c569ec426257347f62a6ead968b4858366c1`.
+- Authorization: Danny instructed Codex to continue the complete Answerlattice QA fix/retest loop and required every stable current worktree change to be published without loss. This operation publishes the complete stable snapshot non-force to `origin/staging` only. It does not authorize `main`, Firebase infrastructure deployment, manual Vercel deployment, production mutation, or real Razorpay execution.
+- Hosted finding: exact verified QA build `7736c569ec426257347f62a6ead968b4858366c1` changed the prior response-validation failure into a provider-side HTTP 400, proving the OpenAPI `responseSchema` itself exceeded the Gemini API's accepted schema subset/complexity. The request failed before model output and its reserved credit was refunded.
+- Correction: follow the current official Gemini guidance by using `responseJsonSchema`, enforce exact candidate cardinality/core fields/enums with standard JSON Schema, and remove the deeply nested optional procedure shape from the provider hint. The strict local Zod contract and semantic source normalization remain unchanged as final authority; optional procedure authoring remains available during owner review rather than enlarging the provider request.
+- Starting filesystem state: zero staged, six tracked unstaged, zero untracked before this append. Pre-ledger diff SHA-256 `76dee0f62a29523f9b9f3da7bab0a1d5e4c5422b913184bd170de63bba680960`; status SHA-256 `502cd969d08b14ee6b3d2eab79a41a4b0e680515f30f023b75450996861dcc15`.
+- Candidate attribution: Answerlattice runtime, contract, and audit changes are exact to this task. Concurrent `MENULIST_RC_CERTIFICATION.md` and prior ledger result evidence are stable, validated by their owning workflow, preserved under the complete-snapshot instruction, and retain independent attribution.
+- Validation before commit: First Trusted Answers contract PASS; provider JSON-schema cardinality/vocabulary assertions PASS; strict repository TypeScript PASS; focused zero-warning ESLint PASS; `git diff --check` PASS. The immediately preceding full Knowledge Intake emulator run passed reservation, ten-draft settlement, unchanged-source cache reuse, failure refund, and concurrency; later rerun attempts were blocked only by concurrent maintained emulator suites owning the fixed shared port.
+
+- Branch matrix before:
+
+  | Branch | Local full SHA | Direct server ref/full SHA | Tracking ref | Ahead/behind | Worktree | Staged/unstaged/untracked | Status |
+  | --- | --- | --- | --- | --- | --- | --- | --- |
+  | `main` | `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `refs/heads/main` / `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `origin/main` | `0/0` | not checked out | `N/A` | `IN_SYNC` |
+  | `staging` | `7736c569ec426257347f62a6ead968b4858366c1` | `refs/heads/staging` / `7736c569ec426257347f62a6ead968b4858366c1` | `origin/staging` | `0/0` | primary worktree | `0/6/0` before this append | `IN_SYNC` |
+
+- Firebase matrix before/after: no Rules, indexes, Storage Rules, or Cloud Functions source changed. Answerlattice QA and production infrastructure retain `NO_INFRA_CHANGE` / `SERVER_STATE_UNKNOWN`; MenuList infrastructure state remains as separately recorded. No Firebase deployment or authenticated infrastructure readback is authorized here.
+- Final filesystem state: pending complete-snapshot commit, non-force staging push, direct server readback, automatic QA deployment, exact `/api/version`, product-specific ten-draft generation, one-credit settlement, unchanged-source zero-credit cache reuse, and downstream Knowledge Intake human-review evidence.
+- Attribution confidence: exact for this task and Git evidence; preserved concurrent evidence retains independent attribution.

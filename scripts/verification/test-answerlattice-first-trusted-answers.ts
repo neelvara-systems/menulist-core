@@ -56,8 +56,8 @@ const productCandidates = {
 assert.equal(AnswerlatticeProductStarterPackModelResponseSchema.safeParse(productCandidates).success, true, 'a ten-candidate product pack must satisfy the strict model contract');
 assert.equal(AnswerlatticeProductStarterPackModelResponseSchema.safeParse({ candidates: productCandidates.candidates.slice(0, 9) }).success, false, 'a partial product pack must fail closed');
 const providerCandidates = ANSWERLATTICE_PRODUCT_STARTER_PACK_PROVIDER_RESPONSE_SCHEMA.properties?.candidates;
-assert.equal(providerCandidates?.minItems, String(ANSWERLATTICE_PRODUCT_STARTER_PACK_SIZE), 'provider structured output must require all ten candidates');
-assert.equal(providerCandidates?.maxItems, String(ANSWERLATTICE_PRODUCT_STARTER_PACK_SIZE), 'provider structured output must reject oversized launch packs');
+assert.equal(providerCandidates?.minItems, ANSWERLATTICE_PRODUCT_STARTER_PACK_SIZE, 'provider structured output must require all ten candidates');
+assert.equal(providerCandidates?.maxItems, ANSWERLATTICE_PRODUCT_STARTER_PACK_SIZE, 'provider structured output must reject oversized launch packs');
 assert.deepEqual(
     providerCandidates?.items && 'properties' in providerCandidates.items
         ? providerCandidates.items.properties?.expectedSource?.enum
