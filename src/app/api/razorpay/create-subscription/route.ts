@@ -143,6 +143,7 @@ export const POST = withAuth(async (request, session) => {
     let checkoutLeaseIdentity: Parameters<typeof claimBillingCheckoutLease>[0] | null = null;
     let checkoutAttemptId: string | null = null;
     let checkoutAttemptStartedAtMillis: number | null = null;
+    let checkoutFailureStage = 'request_admission';
 
     try {
         const bodyResult = await readBoundedJsonBody(request, RAZORPAY_PAYMENT_ACTION_MAX_BODY_BYTES, {
@@ -398,6 +399,7 @@ export const POST = withAuth(async (request, session) => {
         const providerTotalAmount = taxSnapshot?.grossAmount ?? unitAmount * quantity;
 
         const billingDb = getBillingFirestoreAdminForProduct(productId);
+        checkoutFailureStage = 'pending_subscription_query';
         const unresolvedSubscriptions = await billingDb.collection(DB_COLLECTIONS.SUBSCRIPTIONS)
             .where('pId', '==', productId)
             .where('productId', '==', productId)
@@ -455,6 +457,7 @@ export const POST = withAuth(async (request, session) => {
                     { status: 409 },
                 );
             }
+            checkoutFailureStage = 'pending_provider_fetch';
             const providerPendingSubscription = await razorpayClient.subscriptions.fetch(pendingProviderId);
             const pendingCheckoutAction = resolveRazorpayPendingCheckoutAction(providerPendingSubscription);
             if (pendingCheckoutAction === 'checkout' && sameIntent) {
@@ -494,6 +497,7 @@ export const POST = withAuth(async (request, session) => {
             );
             if (cleanupProviderStatus === 'created') {
                 try {
+                    checkoutFailureStage = 'pending_provider_cancel';
                     const cancelledSubscription = await razorpayClient.subscriptions.cancel(pendingProviderId);
                     cleanupProviderStatus = resolveRazorpayProviderSubscriptionStatus(
                         cancelledSubscription.status,
@@ -524,6 +528,7 @@ export const POST = withAuth(async (request, session) => {
                 throw new Error('razorpay_pending_subscription_not_terminal');
             }
 
+            checkoutFailureStage = 'pending_local_expiry';
             const cleanupResult = await billingDb.runTransaction(async (transaction) => {
                 const currentSnapshot = await transaction.get(pendingDoc.ref);
                 if (!currentSnapshot.exists) return 'missing' as const;
@@ -948,6 +953,7 @@ export const POST = withAuth(async (request, session) => {
             }).catch(() => false);
         }
         const failureData = getRazorpayFailureLogData('razorpay_create_subscription_failed', error, {
+            failureStage: checkoutFailureStage,
             ...getRazorpaySubscriptionMutationLogContext(subscriptionForLog),
             ...getBoundedRazorpayStringContext('userId', userId),
             ...getBoundedRazorpayStringContext('tenantId', session.user.tenantId),

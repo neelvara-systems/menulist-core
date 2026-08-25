@@ -120,6 +120,11 @@ assert.ok(createSubscription.includes('if (!sameIntent)'));
 assert.ok(createSubscription.includes('current.planId !== pending.planId'));
 assert.ok(createSubscription.includes('currentQuantity !== pendingQuantity'));
 assert.ok(createSubscription.includes('providerStatus: cleanupProviderStatus'));
+assert.ok(createSubscription.includes("checkoutFailureStage = 'pending_subscription_query'"));
+assert.ok(createSubscription.includes("checkoutFailureStage = 'pending_provider_fetch'"));
+assert.ok(createSubscription.includes("checkoutFailureStage = 'pending_provider_cancel'"));
+assert.ok(createSubscription.includes("checkoutFailureStage = 'pending_local_expiry'"));
+assert.ok(createSubscription.includes('failureStage: checkoutFailureStage'));
 const pendingDesktopActions = activeSubscriptionCard.slice(
   activeSubscriptionCard.indexOf('if (isPaymentPending)'),
   activeSubscriptionCard.indexOf('if (isManualBilling)'),
