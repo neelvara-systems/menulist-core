@@ -112,6 +112,8 @@ export default function SessionProvider({ children, session, productContext }: P
 
     const [activeSubscription, setActiveSubscription] = useState<FirestoreSubscriptionDoc | null>(null)
     const [activeSubscriptionLoading, setActiveSubscriptionLoading] = useState(Boolean(session?.user?.storeId))
+    const [activeSubscriptionSyncError, setActiveSubscriptionSyncError] = useState<Error | null>(null)
+    const [activeSubscriptionRetryNonce, setActiveSubscriptionRetryNonce] = useState(0)
 
     // Multi-Outlet Session Context (Feature #4C — T20/T21)
     // Persisted to localStorage so store context survives page refresh
@@ -209,6 +211,7 @@ export default function SessionProvider({ children, session, productContext }: P
         activeSubscriptionScopeKeyRef.current = null;
         activeSubscriptionRequestScopeKeyRef.current = null;
         setActiveSubscription(null);
+        setActiveSubscriptionSyncError(null);
         setActiveSubscriptionLoading(false);
         clearUserContext();
     }, []);
@@ -231,6 +234,7 @@ export default function SessionProvider({ children, session, productContext }: P
         if (activeSubscriptionScopeKeyRef.current !== requestScopeKey) {
             setActiveSubscription(null);
         }
+        setActiveSubscriptionSyncError(null);
         setActiveSubscriptionLoading(true);
 
         try {
@@ -246,6 +250,14 @@ export default function SessionProvider({ children, session, productContext }: P
             }
 
             return subscriptionData;
+        } catch (error) {
+            if (activeSubscriptionRequestScopeKeyRef.current === requestScopeKey) {
+                activeSubscriptionScopeKeyRef.current = null;
+                setActiveSubscriptionSyncError(
+                    error instanceof Error ? error : new Error('Subscription access could not be loaded'),
+                );
+            }
+            throw error;
         } finally {
             if (activeSubscriptionRequestScopeKeyRef.current === requestScopeKey) {
                 activeSubscriptionRequestScopeKeyRef.current = null;
@@ -582,6 +594,7 @@ export default function SessionProvider({ children, session, productContext }: P
         isAnswerlatticeRoute,
         resetScopedProviderState,
         session,
+        activeSubscriptionRetryNonce,
     ]) // Re-run the effect when the session changes
 
     useEffect(() => {
@@ -725,6 +738,7 @@ export default function SessionProvider({ children, session, productContext }: P
         fetchActiveSubscriptionForStore,
         storeDetails?.storeId,
         tenantDetails,
+        activeSubscriptionRetryNonce,
     ]);
 
     useEffect(() => {
@@ -941,6 +955,20 @@ export default function SessionProvider({ children, session, productContext }: P
     const renderedProviderScopeKey = getSessionProviderScopeKey(effectiveSession);
     const providerStateMatchesCurrentSession = providerSessionScopeKeyRef.current === undefined
         || providerSessionScopeKeyRef.current === renderedProviderScopeKey;
+    const expectedSubscriptionScopeKeyForRender = getSubscriptionLoadScopeKey(
+        effectiveSession?.user?.tenantId,
+        expectedStoreIdForRender,
+    );
+    const activeSubscriptionScopeReadyForRender = !expectedSubscriptionScopeKeyForRender
+        || activeSubscriptionScopeKeyRef.current === expectedSubscriptionScopeKeyForRender;
+    const isResolvingOwnerSubscription = Boolean(
+        expectedSubscriptionScopeKeyForRender
+        && (
+            !providerStateMatchesCurrentSession
+            || !activeSubscriptionScopeReadyForRender
+            || activeSubscriptionLoading
+        )
+    );
 
     if (session && !clientProviderSession && !clientSessionSyncError) {
         return <BrandedPageLoader page="Validating Account" brand={isAnswerlatticeRoute ? 'answerlattice' : 'menulist'} />;
@@ -971,9 +999,7 @@ export default function SessionProvider({ children, session, productContext }: P
                 setAssetsList,
                 activeSubscription: providerStateMatchesCurrentSession ? activeSubscription : null,
                 setActiveSubscription,
-                activeSubscriptionLoading: providerStateMatchesCurrentSession
-                    ? activeSubscriptionLoading
-                    : Boolean(renderedProviderScopeKey),
+                activeSubscriptionLoading: isResolvingOwnerSubscription,
                 setActiveSubscriptionLoading,
                 isMasterUser: loginStoreIsMaster,
                 activeStoreContext,
@@ -1011,6 +1037,20 @@ export default function SessionProvider({ children, session, productContext }: P
                     )
                 ) : (session && !isStoreContextReadyForRender) ? (
                     <BrandedPageLoader page="Loading Store Data" brand={isAnswerlatticeRoute ? 'answerlattice' : 'menulist'} />
+                ) : (activeSubscriptionSyncError && expectedSubscriptionScopeKeyForRender) ? (
+                    <StoreAccessRecovery
+                        brand="menulist"
+                        onRetry={() => {
+                            activeSubscriptionScopeKeyRef.current = null;
+                            activeSubscriptionRequestScopeKeyRef.current = null;
+                            setActiveSubscriptionSyncError(null);
+                            setActiveSubscriptionLoading(true);
+                            setActiveSubscriptionRetryNonce((current) => current + 1);
+                        }}
+                        onSignOut={() => void signOut({ callbackUrl: '/signin' })}
+                    />
+                ) : (isResolvingOwnerSubscription && !canRenderBeforeStoreData) ? (
+                    <BrandedPageLoader page="Checking Plan Access" brand="menulist" />
                 ) : children}
             </PlatformGlobalDataProvider>
         </Provider>

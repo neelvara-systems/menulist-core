@@ -202,6 +202,16 @@ assert.match(
     /resetScopedProviderState\(\);[\s\S]*setActiveSubscriptionLoading\(Boolean\([\s\S]*effectiveSession\?\.user\?\.storeId && !isAnswerlatticeRoute/,
     'a fresh owner scope must keep subscription gates loading until its entitlement read settles',
 );
+assert.match(
+    providerSource,
+    /activeSubscriptionScopeReadyForRender[\s\S]*activeSubscriptionScopeKeyRef\.current === expectedSubscriptionScopeKeyForRender/,
+    'owner children must not render until the settled entitlement belongs to the current tenant/store scope',
+);
+assert.match(
+    providerSource,
+    /activeSubscriptionSyncError && expectedSubscriptionScopeKeyForRender[\s\S]*<StoreAccessRecovery[\s\S]*setActiveSubscriptionRetryNonce/,
+    'a failed entitlement read must expose retry recovery instead of an unpaid redirect',
+);
 assert.match(providerSource, /activeSubscriptionRequestScopeKeyRef\.current === requestScopeKey/);
 assert.match(providerSource, /activeSubscriptionScopeKeyRef\.current !== requestScopeKey/);
 assert.match(providerSource, /providerStateMatchesCurrentSession \? activeSubscription : null/);

@@ -3680,3 +3680,36 @@ Those fields are explicitly `unknown` instead of guessed.
 - Git server readback and divergence: direct `git ls-remote` proves local/server `main` and `staging` exact with `0/0` divergence before the operation. Post-operation evidence is pending.
 - Final filesystem state: pending complete-snapshot commit, non-force staging push, direct server readback, automatic QA deployment, exact `/api/version`, bounded First 10 retry, stage-specific failure diagnosis, smallest durable fix, and complete product-specific draft/credit/cache regression.
 - Attribution confidence: exact.
+
+#### Result — `2026-08-26T00:07:39+05:30` for `GIT-20260825-234905-mlrc052-entitlement-bootstrap`
+
+- Record type: `PERFORMED_AND_VERIFIED` for Git/deployment; hosted defect retest `FAILED` and remains open.
+- Scoped commit: `1d952f0872d5002aac5d3a1dda72277567d4d4c1` (`fix(menulist): hold entitlement gate during bootstrap`), pushed non-force to `staging` only. Direct readback returned the exact same staging SHA and `0/0` divergence; `main` remained exact `fe625d5bbf527c1b7e537b00ab32a4f655905c35`.
+- Automatic QA deployment: `/api/version` returned exact verified build `1d952f0872d5002aac5d3a1dda72277567d4d4c1`, deployment `menulist-core-58whq5q8e-neelvara-systems.vercel.app`, environment `preview`, created `2026-08-25T18:29:23.934Z`.
+- Exact hosted result: the fresh provider-free owner retained truthful QA Billing and valid entitlement data, but direct hard loads of both `/dashboard` and `/projects` still redirected to `/billing`. The initial loading-flag correction was therefore insufficient and MLRC-052 was not closed.
+- Adjacent finding: route children depended on a mutable loading boolean without proof that the settled subscription scope matched the rendered tenant/store. The next operation adds scope-settlement gating and a retry/sign-out recovery path for query failure instead of mapping infrastructure failure to unpaid state.
+- Firebase state remained unchanged; no Firebase deploy/readback, production mutation, `main` movement, manual Vercel deployment, or live Razorpay execution occurred.
+
+### GIT-20260826-000739-mlrc052-scope-settlement
+
+- Timestamp: `2026-08-26T00:07:39+05:30`
+- Record type: `PLANNED`
+- Actor/session/thread ID: Codex `/root`; thread `01a034e1-c70a-74b1-a92b-0a103a981815`.
+- Registered worktrees: one primary worktree at `/Users/danny/Projects/MenuListAi/menulist-core`, branch `staging`, HEAD `1383fb84c28511941f7c396aaefa0ca810e2e5e4` after the independently performed Answerlattice QA-lease commit. Its source is committed history and this operation does not alter its attribution.
+- Authorization: Danny instructed Codex to continue exhaustive MenuList QA certification and publish stable QA corrections to staging. This operation publishes the MLRC-052 scope-settlement/recovery follow-up and evidence to `origin/staging` only. It does not authorize `main`, Firebase deployment, manual Vercel deployment, production mutation, or live Razorpay execution.
+- Root cause and correction: owner route children could render when the loading boolean was false even though no entitlement result had settled for the current tenant/store. Require the active subscription scope reference to equal the rendered tenant/store scope before exposing owner children. On query failure, retain the scoped error and show existing retry/sign-out recovery; retry clears only subscription request state and re-runs the existing scoped DAL flow.
+- Starting filesystem state: zero staged, three tracked unstaged, zero untracked before this ledger append. Status SHA-256 `d5138d452f001d1c7aa5ef80cdf31193d60f3c93dbf003c744ca5929b2612581`; diff SHA-256 `48d308d9dd2e814bc2bf8b264f5eb28bc8cd30f979770f4bccf1952a3d481984`.
+- Validation before commit: session store-context boundary PASS; complete auth/onboarding aggregate PASS; focused zero-warning ESLint PASS; strict TypeScript PASS; production build PASS with 450/450 static pages and 53 service-worker precache entries; `git diff --check` PASS. Existing Sass and absent optional Gemini-key warnings remain non-failing.
+
+- Branch matrix before:
+
+  | Branch | Local full SHA | Direct server ref/full SHA | Tracking ref | Ahead/behind | Worktree | Staged/unstaged/untracked | Status |
+  | --- | --- | --- | --- | --- | --- | --- | --- |
+  | `main` | `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `refs/heads/main` / `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `origin/main` | `0/0` | not checked out | `N/A` | `IN_SYNC` |
+  | `staging` | `1383fb84c28511941f7c396aaefa0ca810e2e5e4` | `refs/heads/staging` / `1383fb84c28511941f7c396aaefa0ca810e2e5e4` | `origin/staging` | `0/0` | primary worktree | `0/3/0` before ledger append | `IN_SYNC` |
+
+- Firebase matrix before/after: no Rules, indexes, Storage Rules, or Cloud Functions source changes are included. MenuList QA/production Functions retain the separately recorded `INFRA_CHANGE` / `DEPLOY_REQUIRED`; MenuList Rules/indexes/Storage and all Answerlattice components retain their separately recorded states. No Firebase deployment or authenticated infrastructure readback is authorized here.
+- Git server readback and divergence: `git fetch --prune`, direct `git ls-remote`, and local divergence counts prove local/server `main` and `staging` exact with `0/0` divergence before the operation. Post-operation evidence is pending.
+- Intended staged paths: `src/providers/sessionProvider.tsx`, `scripts/verification/test-session-store-context-boundary.ts`, `__docs__/audits/MENULIST_RC_CERTIFICATION.md`, and this ledger only.
+- Final filesystem state: pending scoped commit, non-force staging push, direct server readback, automatic QA deployment, exact `/api/version`, direct hard-load Dashboard/Projects retest, and recovery-path evidence if the entitlement query fails.
+- Attribution confidence: exact.
