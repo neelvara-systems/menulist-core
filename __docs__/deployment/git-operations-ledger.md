@@ -4136,3 +4136,30 @@ No Firebase source/configuration changes. Firestore Rules, indexes, Storage Rule
 - Intended paths: Today and Past activity desktop components, Owner Dashboard/Today boundary verifier, and this ledger.
 - Final state pending: scoped commit, non-force staging push, direct server readback, automatic QA deployment, exact version readback, and hosted keyboard/visible-close retest.
 - Attribution confidence: exact.
+
+### GIT-20260826-022014-mlrc060-required-custom-status-copy
+
+- Timestamp: `2026-08-26T02:20:14+05:30`
+- Record type: `PLANNED`
+- Actor/session/thread ID: Codex `/root`; thread `01a034e1-c70a-74b1-a92b-0a103a981815`.
+- Registered worktrees: one primary worktree at `/Users/danny/Projects/MenuListAi/menulist-core`, branch `staging`, HEAD `ac7757d24b8328227913e33bad91db419c42d819`.
+- Authorization: autonomous MenuList QA certification, in-scope fixes, mobile parity, regression coverage, and stable staging publication. This operation is `staging` only; it excludes `main`, Firebase infrastructure deployment, manual Vercel deployment, production mutation, and live Razorpay execution.
+- Hosted reproduction: Today → Temporary Status → Custom Message accepted an empty message, previewed `Temporary notice`, and opened a publish confirmation. The owner could therefore publish generic customer-facing text after explicitly choosing a custom notice. The confirmation was cancelled; no public mutation occurred.
+- Correction: require non-empty trimmed custom copy before confirmation on desktop Today/Business Settings, mobile Today, and the dedicated mobile status screen. Replace the misleading empty preview, announce the desktop validation through `role=alert`, and retain existing scope, duplicate-action, API, optimistic-update, cache, and public-refresh behavior.
+- Starting filesystem state: zero staged, four tracked unstaged, zero untracked before this append. Complete pre-ledger diff Git hash `a08ebf6e07ab4f6f06744b708206e115bb156f04`; status `0/4/0`.
+- Validation before commit: public business-truth verifier PASS; Owner Dashboard/Today boundary verifier PASS; focused zero-warning ESLint PASS; strict TypeScript PASS; `git diff --check` PASS.
+
+#### Pre-operation branch matrix
+
+| Branch | Local SHA | Direct server SHA | Tracking ref | Ahead/behind | Worktree | Filesystem | Status |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `staging` | `ac7757d24b8328227913e33bad91db419c42d819` | `refs/heads/staging` / `ac7757d24b8328227913e33bad91db419c42d819` | `origin/staging` | `0/0` | primary | `0/4/0` before ledger append | `IN_SYNC` |
+| `main` | `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `refs/heads/main` / `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `origin/main` | `0/0` | none | n/a | `IN_SYNC` |
+
+#### Firebase component matrix before Git mutation
+
+No Firebase source/configuration changes. Firestore Rules, indexes, Storage Rules, and Cloud Functions for MenuList QA `menulist-qa`, MenuList production `menulist-prod`, Answerlattice QA `neelvara-answerlattice-qa`, and Answerlattice production `neelvara-answerlattice-prod` each remain independently `NO_INFRA_CHANGE` / `SERVER_STATE_UNKNOWN`; no authenticated readback or deployment is performed.
+
+- Intended paths: the shared desktop temporary-status card, both mobile temporary-status surfaces, the public business-truth verifier, and this ledger.
+- Final state pending: scoped commit, non-force staging push, direct server readback, automatic QA deployment, exact version readback, hosted desktop validation retest, and responsive mobile retest when the native session is available.
+- Attribution confidence: exact.

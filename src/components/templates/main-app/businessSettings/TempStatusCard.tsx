@@ -98,6 +98,10 @@ export default function TempStatusCard({ storeDetails, setStoreDetails }: TempSt
     const handleSet = useCallback(() => {
         const expectedTenantId = storeDetails.tenantId;
         const expectedStoreId = storeDetails.storeId;
+        if (statusType === 'custom' && !customMessage.trim()) {
+            setError('Enter a custom message');
+            return;
+        }
         if (!expiresAt) {
             setError('Please set an expiry time');
             return;
@@ -113,7 +117,7 @@ export default function TempStatusCard({ storeDetails, setStoreDetails }: TempSt
 
         const selectedOption = STATUS_OPTIONS.find(o => o.value === statusType);
         const message = statusType === 'custom'
-            ? (customMessage.trim() || 'Temporary notice')
+            ? customMessage.trim()
             : (selectedOption?.defaultMsg || statusType);
         const newStatus = {
             type: statusType,
@@ -268,7 +272,7 @@ export default function TempStatusCard({ storeDetails, setStoreDetails }: TempSt
 
     const selectedOption = STATUS_OPTIONS.find(o => o.value === statusType);
     const previewMessage = statusType === 'custom'
-        ? (customMessage.trim() || 'Temporary notice')
+        ? (customMessage.trim() || 'Enter a custom message')
         : (selectedOption?.defaultMsg || statusType);
     const previewExpiryInstant = resolveExpiryInstant(expiresAt);
     const previewExpiry = previewExpiryInstant
@@ -335,7 +339,10 @@ export default function TempStatusCard({ storeDetails, setStoreDetails }: TempSt
                             <Button
                                 key={opt.value}
                                 aria-pressed={statusType === opt.value}
-                                onClick={() => setStatusType(opt.value)}
+                                onClick={() => {
+                                    setStatusType(opt.value);
+                                    setError(null);
+                                }}
                                 type={statusType === opt.value ? 'primary' : 'default'}
                                 style={{
                                     background: statusType === opt.value ? token.colorWarning : token.colorBgContainer,
@@ -354,7 +361,10 @@ export default function TempStatusCard({ storeDetails, setStoreDetails }: TempSt
                     {statusType === 'custom' && (
                         <Input
                             value={customMessage}
-                            onChange={(e) => setCustomMessage(e.target.value)}
+                            onChange={(e) => {
+                                setCustomMessage(e.target.value);
+                                setError(null);
+                            }}
                             placeholder="e.g., Private event tonight"
                             maxLength={100}
                             showCount
@@ -390,7 +400,7 @@ export default function TempStatusCard({ storeDetails, setStoreDetails }: TempSt
                     </div>
 
                     {error && (
-                        <Text type="danger" style={{ fontSize: 13 }}>{error}</Text>
+                        <Text role="alert" type="danger" style={{ fontSize: 13 }}>{error}</Text>
                     )}
 
                     <Button

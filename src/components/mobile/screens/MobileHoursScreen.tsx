@@ -652,11 +652,15 @@ function MobileHoursScreenContent({ onOpenDashboard, onOpenHistory, onOpenMenuTa
     };
 
     const tempStatusPreviewMessage = tempStatusType === 'custom'
-        ? (customTempStatusMessage.trim() || 'Temporary notice')
+        ? (customTempStatusMessage.trim() || 'Enter a custom message')
         : (MOBILE_TEMP_STATUS_OPTIONS.find((option) => option.value === tempStatusType)?.defaultMsg || tempStatusType);
 
     const handleSetTempStatus = async () => {
         if (!storeDetails?.storeId || !storeDetails?.tenantId) return;
+        if (tempStatusType === 'custom' && !customTempStatusMessage.trim()) {
+            Toast.show({ content: 'Enter a custom message.', duration: 2000 });
+            return;
+        }
         const expectedStoreId = storeDetails.storeId;
         const expectedTenantId = storeDetails.tenantId;
         const expiresAt = fromNativeDateTimeInputValue(exactTempStatusExpiryAt);

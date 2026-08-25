@@ -5833,6 +5833,10 @@ function verifyBusinessSettingsDiagnosticsAreBounded() {
   assertOccurrenceAtLeast(tempStatusCard, 'expectedTenantId: String(expectedTenantId)', 2, 'Desktop temporary status initiating-tenant corroboration');
   assertIncludes(tempStatusCard, 'actionInFlightRef.current', 'Desktop temporary status immediate duplicate-action guard');
   assertIncludes(tempStatusCard, 'isExpectedScope(expectedTenantId, expectedStoreId)', 'Desktop temporary status exact-scope async settlement');
+  assertIncludes(tempStatusCard, "statusType === 'custom' && !customMessage.trim()", 'Desktop temporary status requires explicit custom customer copy');
+  assertIncludes(tempStatusCard, "setError('Enter a custom message')", 'Desktop temporary status exposes bounded custom-copy validation');
+  assertIncludes(tempStatusCard, '<Text role="alert" type="danger"', 'Desktop temporary status announces validation and mutation errors');
+  assertNotIncludes(tempStatusCard, "customMessage.trim() || 'Temporary notice'", 'Desktop temporary status must not silently publish generic custom copy');
   assertNotIncludes(tempStatusCard, "fetch('/api/store/temp-status', {\n                cache: 'no-store'", 'Desktop temporary status inline request policy');
   [
     'mobile_temp_status_set_failed',
@@ -5850,6 +5854,8 @@ function verifyBusinessSettingsDiagnosticsAreBounded() {
   assertNotIncludes(mobileTempStatus, "fetch('/api/store/temp-status', {\n                cache: 'no-store'", 'Mobile temporary status inline request policy');
   assertIncludes(mobileTempStatus, 'return <MobileTempStatusScreenContent key={scopeKey} {...props} />;', 'Mobile temporary status exact tenant/store keyed mount');
   assertIncludes(mobileTempStatus, 'tempStatusActionInFlightRef.current', 'Mobile temporary status immediate duplicate-action guard');
+  assertIncludes(mobileTempStatus, "statusType === 'custom' && !customMessage.trim()", 'Mobile temporary-status screen requires explicit custom customer copy');
+  assertIncludes(mobileTempStatus, "Toast.show({ content: 'Enter a custom message.'", 'Mobile temporary-status screen announces empty custom copy');
   assertIncludes(mobileTempStatus, 'isExpectedStoreScope(expectedTenantId, expectedStoreId)', 'Mobile temporary status exact-scope async settlement');
   assertOccurrenceAtLeast(mobileTempStatus, 'prev === optimisticStoreDetails', 2, 'Mobile temporary status attempt-owned rollback');
   assertIncludes(mobileHours, 'AUTH_BROWSER_REQUEST_POLICY', 'Mobile Today temporary status shared authenticated browser request policy');
@@ -5858,6 +5864,8 @@ function verifyBusinessSettingsDiagnosticsAreBounded() {
   assertOccurrenceAtLeast(mobileHours, 'expectedStoreId: String(expectedStoreId)', 3, 'Mobile Today temporary status initiating-store corroboration');
   assertOccurrenceAtLeast(mobileHours, 'expectedTenantId: String(expectedTenantId)', 3, 'Mobile Today temporary status initiating-tenant corroboration');
   assertIncludes(mobileHours, 'tempStatusActionInFlightRef.current', 'Mobile Today temporary status immediate duplicate-action guard');
+  assertIncludes(mobileHours, "tempStatusType === 'custom' && !customTempStatusMessage.trim()", 'Mobile Today requires explicit custom customer copy');
+  assertIncludes(mobileHours, "Toast.show({ content: 'Enter a custom message.'", 'Mobile Today announces empty custom copy');
   assertIncludes(mobileHours, 'isExpectedTempStatusScope(expectedTenantId, expectedStoreId)', 'Mobile Today temporary status exact-scope async settlement');
   assertNotIncludes(mobileHours, "fetch('/api/store/temp-status', {\n                cache: 'no-store'", 'Mobile Today temporary status inline request policy');
   assertIncludes(mobileTempStatus, 'logMobileOwnerFailure', 'Mobile temporary status bounded failure logger');

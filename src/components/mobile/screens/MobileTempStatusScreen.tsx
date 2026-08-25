@@ -104,7 +104,7 @@ function MobileTempStatusScreenContent({ onBack }: MobileTempStatusScreenProps) 
     }, []);
 
     const previewMessage = statusType === 'custom'
-        ? (customMessage.trim() || 'Temporary notice')
+        ? (customMessage.trim() || 'Enter a custom message')
         : (MOBILE_TEMP_STATUS_OPTIONS.find((option) => option.value === statusType)?.defaultMsg || statusType);
 
     const handleSet = useCallback(async () => {
@@ -113,6 +113,10 @@ function MobileTempStatusScreenContent({ onBack }: MobileTempStatusScreenProps) 
             || !storeDetails?.storeId
             || tempStatusActionInFlightRef.current
         ) return;
+        if (statusType === 'custom' && !customMessage.trim()) {
+            Toast.show({ content: 'Enter a custom message.', duration: 2000 });
+            return;
+        }
         const sourceStoreDetails = storeDetails;
         const expectedTenantId = sourceStoreDetails.tenantId;
         const expectedStoreId = sourceStoreDetails.storeId;
@@ -125,7 +129,7 @@ function MobileTempStatusScreenContent({ onBack }: MobileTempStatusScreenProps) 
 
         const selectedOption = MOBILE_TEMP_STATUS_OPTIONS.find((option) => option.value === statusType);
         const message = statusType === 'custom'
-            ? (customMessage.trim() || 'Temporary notice')
+            ? customMessage.trim()
             : (selectedOption?.defaultMsg || statusType);
 
         const confirmed = await Dialog.confirm({
