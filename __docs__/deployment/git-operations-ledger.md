@@ -2942,3 +2942,15 @@ Those fields are explicitly `unknown` instead of guessed.
 - Git server readback and divergence: direct pre-operation readback proves both local/server branches at the exact SHAs above with `0/0` divergence.
 - Final filesystem state: pending scoped commit, non-force staging push, direct readback, automatic QA deployment, and exact hosted operation-count retest.
 - Attribution confidence: exact.
+
+##### GIT-20260825-175655-mlrc042-persisted-auth-cost result
+
+- Timestamp: `2026-08-25T18:07:01+05:30`
+- Record type: `PERFORMED`
+- Scoped commit and push: `04a736fed09a888af91635150fb4942caf85799a` (`Avoid repeated auth claim sync`) was pushed non-force from local `staging` to `origin/staging`. Direct `git ls-remote` returned the same full SHA and divergence is `0/0`; local/server `main` remain untouched and exact at `fe625d5bbf527c1b7e537b00ab32a4f655905c35`.
+- Exact deployment identity: public no-store `/api/version` returned verified build `04a736fed09a888af91635150fb4942caf85799a`, preview environment, and deployment `menulist-core-j6674jjy9-neelvara-systems.vercel.app`; the signed-in Vercel deployment page reported the matching custom-`qa` build Ready.
+- Hosted retest: connected Chrome retained the approved Google owner on the yearly Starter `Payment pending` Billing screen across three hard reloads. A direct `/users` navigation again returned to Billing. Vercel's filtered `/api/auth/set-claims` request log contained no post-build request; the latest app-host entry remained the pre-fix 17:40:21 request, so the four exact hosted bootstrap paths added zero set-claims invocations and zero associated user-query/store-read operations.
+- Recovery qualification: the failed-state component and its 44px Retry/Sign out controls pass deterministic source regression, accessibility, illustration, TypeScript, and lint gates. The failure UI was not deliberately re-induced after the cost correction because doing so would require another artificial authentication-rate-limit exhaustion; this limitation is retained explicitly in the certification report.
+- Firebase matrix after: all 16 component rows remain as planned. The web/client refinement changed no Firebase source; MenuList QA/production Functions retain MLRC-031 `INFRA_CHANGE` / `DEPLOY_REQUIRED`, and the other 14 rows remain `NO_INFRA_CHANGE` / `SERVER_STATE_UNKNOWN`. No Firebase deployment or authenticated readback occurred.
+- Final filesystem state before evidence closeout: only the certification report and this appended ledger result are modified. They will be committed and pushed as an evidence-only exact descendant; no source, Firebase, `main`, Razorpay, or manual Vercel operation is included.
+- Attribution confidence: exact.
