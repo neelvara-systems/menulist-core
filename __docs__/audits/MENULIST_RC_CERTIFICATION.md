@@ -12,8 +12,8 @@
 
 **Candidate filesystem state:** direct Git, server-ref, and hosted `/api/version`
 readback proved exact MenuList product commit `1ec71b402e697324a8db5ba6f0d552325ace062f`
-on QA. The staging documentation/evidence head is
-`d4f9866ee5f4cdf93c2fac05c8dcf035d8b22367`; the two scoped-message verifier
+on QA. The staging verifier/evidence head is
+`d21a0aab356b8d966aa30c3d7b790b45f1aa7d08`; the two scoped-message verifier
 corrections and regenerated evidence are tracked as MLRC-069. The hosted
 MLRC-045 interaction remains attributable to its included
 runtime commit `32440eca8e171212fb77983218d3a071e0db5981`; shared Admin Timestamp

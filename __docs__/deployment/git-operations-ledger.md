@@ -4601,3 +4601,12 @@ No Firebase source/configuration changes. Firestore Rules, indexes, Storage Rule
 - The full planned record and its 16-row Firebase component matrix appear earlier in this ledger because the append patch matched an earlier repeated closeout anchor. This tail continuation is the chronological control-plane pointer; it does not replace, delete, or rewrite that append-only evidence.
 - Current operation remains `PLANNED` at local/server `staging` SHA `d4f9866ee5f4cdf93c2fac05c8dcf035d8b22367`, `0/0` divergence, with `main` untouched at `fe625d5bbf527c1b7e537b00ab32a4f655905c35`.
 - No Git commit/push, Firebase deployment/readback, manual Vercel deployment, production mutation, or live Razorpay execution occurred between the planned record and this chronological pointer.
+
+#### MLRC-069 performed result — `2026-08-26T04:46:40+05:30`
+
+- Commit/push: `d21a0aab356b8d966aa30c3d7b790b45f1aa7d08` (`test(menulist): align scoped message verifiers`) was pushed non-force to `origin/staging`.
+- Direct server readback returned exact `refs/heads/staging` SHA `d21a0aab356b8d966aa30c3d7b790b45f1aa7d08` with `0/0` divergence; `refs/heads/main` remained untouched at `fe625d5bbf527c1b7e537b00ab32a4f655905c35` with `0/0` divergence.
+- Validation: both focused boundary suites, focused ESLint, the regenerated 8,517-row inventory, data-flow audit tooling, documentation links, `git diff --check`, and exact `npm run build` passed. The complete MenuList aggregate completed 161/162 with exit 0; only the unavailable-shell-secret Upstash gate was `BLOCKED_EXTERNAL`.
+- Automatic QA identity: six cache-busted `/api/version` reads immediately after the push continued to return verified evidence build `d4f9866ee5f4cdf93c2fac05c8dcf035d8b22367`, whose included MenuList product code remains exact tested commit `1ec71b402e697324a8db5ba6f0d552325ace062f`. The verifier/report-only commit introduced no hosted application behavior change; no manual deployment was performed or inferred.
+- Firebase state: all 16 component/target rows remain `NO_INFRA_CHANGE` / `SERVER_STATE_UNKNOWN`. No Firebase deployment or authenticated infrastructure readback occurred.
+- Decision: MLRC-069 is closed. Overall MenuList status remains `CERTIFICATION BLOCKED` pending the hosted upload/item/publish journey and other explicitly listed runtime gates.
