@@ -3300,3 +3300,14 @@ Those fields are explicitly `unknown` instead of guessed.
 - Firebase matrix before/after: no Firebase infrastructure source changed. MenuList QA/production Functions retain the separately recorded `INFRA_CHANGE` / `DEPLOY_REQUIRED` state; the other target/component rows retain `NO_INFRA_CHANGE` / `SERVER_STATE_UNKNOWN`. No Firebase deploy or authenticated readback is authorized or performed by this operation.
 - Final filesystem state: pending complete-snapshot commit, non-force `staging` push, direct server readback, automatic QA deployment, hosted Test Mode subscription retry, webhook/entitlement verification, and dependent Answerlattice journey retest.
 - Attribution confidence: exact for the Answerlattice source, test, Git, and hosted evidence; concurrent MenuList report authorship `unknown`.
+
+#### GIT-20260825-202145-answerlattice-admin-timestamp-boundary result
+
+- Timestamp: `2026-08-25T20:22:25+05:30`
+- Record type: `PERFORMED`
+- Scoped release: complete-snapshot commit `320bd3b0b59ea83f89dbfe460bbc14262743f4b2` (`fix(billing): use Admin Firestore timestamps`) was created from exact parent `b76862dfe2a8b9f25afa5baae6459b1fb24162f0` and pushed non-force to `origin/staging`.
+- Direct server readback: `git ls-remote` returned exact staging SHA `320bd3b0b59ea83f89dbfe460bbc14262743f4b2`; local/tracking divergence is `0/0`. Local/server `main` remain exact and untouched at `fe625d5bbf527c1b7e537b00ab32a4f655905c35`.
+- Included snapshot: all 15 then-current tracked modifications were committed, including the preserved concurrent MenuList certification-report update and this planned ledger evidence. No untracked path existed.
+- Firebase matrix after: unchanged from the planned entry. No Firebase infrastructure source, deployment, authenticated readback, production release, `main` movement, manual Vercel deployment, or live Razorpay operation occurred.
+- Remaining runtime evidence: automatic custom-`qa` Vercel deployment, exact `/api/version` readback, hosted stale-subscription replacement, Test Mode checkout/authorization, webhook activation, entitlement unlock, and dependent Answerlattice flows.
+- Attribution confidence: exact.
