@@ -191,6 +191,7 @@ const mobileShare = read('src/components/mobile/screens/MobileShareScreen.tsx');
 ].forEach((token) => forbidToken(mobileShare, token, 'mobile share screen'));
 
 const menuKitSection = read('src/components/templates/main-app/projects/b2cView/shareModal/MenuKitSection.tsx');
+const projectShareModal = read('src/components/templates/main-app/projects/b2cView/shareModal/index.tsx');
 [
   'copyExportTextToClipboard(msg)',
   'copyExportTextToClipboard(labels.staffScript)',
@@ -209,6 +210,13 @@ const menuKitSection = read('src/components/templates/main-app/projects/b2cView/
 ].forEach((token) => requireToken(menuKitSection, token, 'Menu Kit share modal section'));
 forbidToken(menuKitSection, 'console.error', 'Menu Kit share modal section');
 forbidToken(menuKitSection, '(ts as any)?.seconds', 'Menu Kit share modal timestamp boundary');
+
+[
+  'aria-label="QR foreground color"',
+  'aria-label="QR background color"',
+  'background: qrColor',
+  'background: qrBgColor',
+].forEach((token) => requireToken(projectShareModal, token, 'Project Share QR color controls'));
 
 const exportDiagnostics = read('src/lib/export/exportDiagnostics.ts');
 [

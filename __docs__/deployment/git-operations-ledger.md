@@ -4442,3 +4442,30 @@ No Firebase source/configuration changes. Firestore Rules, indexes, Storage Rule
 - Intended paths: the Project Share Menu Kit component, communication-kit verifier, project-management implementation note, active certification report, and this ledger.
 - Final state pending: scoped commit, non-force staging push, direct server readback, automatic QA deployment, exact `/api/version`, and hosted copy-control name/action retest.
 - Attribution confidence: exact.
+
+### GIT-20260826-032528-mlrc067-share-color-keyboard-controls
+
+- Timestamp: `2026-08-26T03:25:28+05:30`
+- Record type: `PLANNED`
+- Actor/session/thread ID: Codex `/root`; thread `01a034e1-c70a-74b1-a92b-0a103a981815`.
+- Registered worktrees: one primary worktree at `/Users/danny/Projects/MenuListAi/menulist-core`, branch `staging`, HEAD `d0709a18b96abed91d6f99a8e1706bf5c000eff4`.
+- Authorization: autonomous exhaustive MenuList QA certification, in-scope fixes, regression coverage, durable report evidence, and stable staging publication. This operation is `staging` only; it excludes `main`, Firebase infrastructure deployment, manual Vercel deployment, production mutation, and live Razorpay execution.
+- Hosted reproduction: exact MenuList build `372cc4ff686dbbc9ee3b3378e8241805d89bf8e0` rendered the QR foreground/background ColorPicker triggers as two visible generic `div` elements with no role, accessible name, or keyboard tab stop. Pointer owners could reach them, but keyboard and assistive-technology owners could not discover or operate them.
+- Correction: retain the existing two ColorPickers and callbacks but provide named native-button triggers containing live foreground/background color swatches. QR payload, values, rendering, layout, exports, and Firebase operation count remain unchanged.
+- Starting filesystem state: zero staged, four tracked unstaged, zero untracked before this ledger append. Complete pre-ledger diff Git hash `a45917a48cb7cb906e9c489af34dd5858147f78b`; status `0/4/0`.
+- Validation: `verify-communication-kit-boundary` PASS; focused zero-warning ESLint PASS; strict `tsc --noEmit --incremental false` PASS; `git diff --check` PASS.
+
+#### Pre-operation branch matrix
+
+| Branch | Local SHA | Direct server SHA | Tracking ref | Ahead/behind | Worktree | Filesystem | Status |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `staging` | `d0709a18b96abed91d6f99a8e1706bf5c000eff4` | `refs/heads/staging` / `d0709a18b96abed91d6f99a8e1706bf5c000eff4` | `origin/staging` | `0/0` | primary | `0/4/0` before ledger append | `IN_SYNC` |
+| `main` | `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `refs/heads/main` / `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `origin/main` | `0/0` | none | n/a | `IN_SYNC` |
+
+#### Firebase component matrix before Git mutation
+
+No Firebase source/configuration changes. Firestore Rules, indexes, Storage Rules, and Cloud Functions for MenuList QA `menulist-qa`, MenuList production `menulist-prod`, Answerlattice QA `neelvara-answerlattice-qa`, and Answerlattice production `neelvara-answerlattice-prod` each remain independently `NO_INFRA_CHANGE` / `SERVER_STATE_UNKNOWN`; no authenticated readback or deployment is performed.
+
+- Intended paths: Project Share modal, communication-kit verifier, project-management implementation note, active certification report, and this ledger.
+- Final state pending: scoped commit, non-force staging push, direct server readback, automatic QA deployment, exact `/api/version`, and hosted keyboard/color-dialog retest.
+- Attribution confidence: exact.

@@ -150,6 +150,8 @@ Project publish uploads must pass `validateProjectUploadDataUrl()` before `uploa
 
 The staff-line copy action is an icon-only control and must retain the accessible name `Copy staff line`. Its visual treatment and acknowledged clipboard/fallback behavior remain unchanged.
 
+The Share QR foreground and background color pickers use named native-button triggers rather than inaccessible generic `div` triggers. Their swatches continue to reflect the selected colors, and the existing client-only QR customization behavior remains unchanged.
+
 The B2B `ShareModal.tsx` external endpoint POST is intentionally owner-entered and external, so it must not use same-origin credentials. It must normalize the endpoint first, admit only public HTTPS URLs without embedded credentials or local/private hosts, strip fragments, then post to the normalized URL with `SHARE_ENDPOINT_REQUEST_POLICY`: no-store cache, `credentials: 'omit'`, manual redirect handling, and `referrerPolicy: 'no-referrer'`. Failed posts log `project_share_endpoint_post_failed` with bounded endpoint/project/category/item metadata only.
 
 ## Public Cache Contract

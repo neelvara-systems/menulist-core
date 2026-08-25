@@ -478,11 +478,23 @@ function ShareModal({
                             <Flex gap={16} justify="space-between" align="center" style={{ borderTop: `1px solid ${token.colorBorderSecondary}`, paddingTop: 12 }}>
                                 <Flex align="center" gap={8}>
                                     <Text type="secondary" style={{ fontSize: 12 }}>Color:</Text>
-                                    <ColorPicker size="small" value={qrColor} onChange={(c) => setQrColor(c.toHexString())} />
+                                    <ColorPicker size="small" value={qrColor} onChange={(c) => setQrColor(c.toHexString())}>
+                                        <Button
+                                            aria-label="QR foreground color"
+                                            size="small"
+                                            icon={<span aria-hidden style={{ background: qrColor, border: `1px solid ${token.colorBorder}`, borderRadius: 4, display: 'block', height: 16, width: 16 }} />}
+                                        />
+                                    </ColorPicker>
                                 </Flex>
                                 <Flex align="center" gap={8}>
                                     <Text type="secondary" style={{ fontSize: 12 }}>Background:</Text>
-                                    <ColorPicker size="small" value={qrBgColor} onChange={(c) => setQrBgColor(c.toHexString())} />
+                                    <ColorPicker size="small" value={qrBgColor} onChange={(c) => setQrBgColor(c.toHexString())}>
+                                        <Button
+                                            aria-label="QR background color"
+                                            size="small"
+                                            icon={<span aria-hidden style={{ background: qrBgColor, border: `1px solid ${token.colorBorder}`, borderRadius: 4, display: 'block', height: 16, width: 16 }} />}
+                                        />
+                                    </ColorPicker>
                                 </Flex>
                                 <Flex align="center" gap={8}>
                                     <Checkbox checked={showLogo} onChange={(e) => setShowLogo(e.target.checked)}>
