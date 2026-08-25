@@ -4505,3 +4505,43 @@ No Firebase source/configuration changes. Firestore Rules, indexes, Storage Rule
 - Intended paths: desktop Projects import panel/handler, pure menu-link input boundary, URL-boundary test, extraction verifier, project-management implementation note, active certification report, and this ledger.
 - Final state pending: scoped commit, non-force staging push, direct server readback, automatic QA deployment, exact `/api/version`, and hosted invalid/valid input state retest proving zero invalid request.
 - Attribution confidence: exact.
+
+#### MLRC-067 performed result — `2026-08-26T03:39:10+05:30`
+
+- Commit/push: `8a51727f11d37f3388567bf316405193584485c6` (`fix(menulist): make share colors keyboard accessible`) was pushed non-force to `origin/staging`; direct server readback returned the same SHA with `0/0` divergence. `main` remained untouched at `fe625d5bbf527c1b7e537b00ab32a4f655905c35`.
+- Automatic QA deployment: `/api/version` returned exact verified build `8a51727f11d37f3388567bf316405193584485c6`, deployment `menulist-core-5e4vxol9l-neelvara-systems.vercel.app`, environment `preview`. No manual Vercel deployment occurred.
+- Exact hosted result: Share rendered two named `QR foreground color` and `QR background color` buttons and zero visible generic ColorPicker triggers. Enter opened each color panel; activating the open background trigger closed the panel while retaining Share. MLRC-067 is closed.
+- Public regression: the tenant Official Business Page remained scoped to the fixture, View Menu resolved to the exact tenant menu, the empty menu rendered `No items yet` with no false publication claim, and no owner-only navigation appeared.
+- Firebase state: no infrastructure source/configuration changed and no deployment or authenticated infrastructure readback occurred; every Firestore Rules, indexes, Storage Rules, and Cloud Functions row for all four active targets remains `NO_INFRA_CHANGE` / `SERVER_STATE_UNKNOWN`.
+
+#### MLRC-068 performed result — `2026-08-26T03:43:40+05:30`
+
+- Commit/push: `1ec71b402e697324a8db5ba6f0d552325ace062f` (`fix(menulist): validate menu links before import`) was pushed non-force to `origin/staging`; direct server readback returned the same SHA with `0/0` divergence. `main` remained untouched at `fe625d5bbf527c1b7e537b00ab32a4f655905c35`.
+- Automatic QA deployment: cache-busted `/api/version` returned exact verified build `1ec71b402e697324a8db5ba6f0d552325ace062f`, deployment `menulist-core-8zvrpbppc-neelvara-systems.vercel.app`, environment `preview`. No manual Vercel deployment occurred.
+- Exact hosted result: `javascript:alert(1)` remained disabled and rendered `Enter a valid public http or https menu link`; an embedded-credential URL remained disabled and rendered `Use a public menu link without login details`; a valid owned HTTPS link enabled Import; clearing returned to disabled. Source regression proves invalid input returns before `createMenuLinkImportJob`, so the invalid path has zero protected invocations/rate-limit attempts versus one before the fix. No external menu fetch or project mutation was performed in the closure retest. MLRC-068 is closed.
+- Firebase state: no infrastructure source/configuration changed and no deployment or authenticated infrastructure readback occurred; every Firestore Rules, indexes, Storage Rules, and Cloud Functions row for all four active targets remains `NO_INFRA_CHANGE` / `SERVER_STATE_UNKNOWN`.
+
+### GIT-20260826-034438-mlrc066-068-evidence-closeout
+
+- Timestamp: `2026-08-26T03:44:38+05:30`
+- Record type: `PLANNED`
+- Actor/session/thread ID: Codex `/root`; thread `01a034e1-c70a-74b1-a92b-0a103a981815`.
+- Registered worktrees: one primary worktree at `/Users/danny/Projects/MenuListAi/menulist-core`, branch `staging`, HEAD `1ec71b402e697324a8db5ba6f0d552325ace062f`.
+- Authorization: autonomous MenuList QA certification, durable evidence, and stable staging publication. This operation is documentation-only and `staging` only; it excludes `main`, Firebase infrastructure deployment, manual Vercel deployment, production mutation, and live Razorpay execution.
+- Scope: record exact hosted closure for MLRC-066 through MLRC-068, advance the report's tested product commit to exact `1ec71b402e697324a8db5ba6f0d552325ace062f`, record the public tenant regression, and retain `CERTIFICATION BLOCKED` while successful upload/item/publish propagation and environment-dependent gates remain open.
+- Starting filesystem state: zero staged, one tracked unstaged, zero untracked before this ledger append. Complete pre-ledger diff Git hash `48e2ea8164f1514de58eca5f59f0fe0dc6177cc2`; status `0/1/0`.
+
+#### Pre-operation branch matrix
+
+| Branch | Local SHA | Direct server SHA | Tracking ref | Ahead/behind | Worktree | Filesystem | Status |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `staging` | `1ec71b402e697324a8db5ba6f0d552325ace062f` | `refs/heads/staging` / `1ec71b402e697324a8db5ba6f0d552325ace062f` | `origin/staging` | `0/0` | primary | `0/1/0` before ledger append | `IN_SYNC` |
+| `main` | `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `refs/heads/main` / `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `origin/main` | `0/0` | none | n/a | `IN_SYNC` |
+
+#### Firebase component matrix before Git mutation
+
+No Firebase source/configuration changes. Firestore Rules, indexes, Storage Rules, and Cloud Functions for MenuList QA `menulist-qa`, MenuList production `menulist-prod`, Answerlattice QA `neelvara-answerlattice-qa`, and Answerlattice production `neelvara-answerlattice-prod` each remain independently `NO_INFRA_CHANGE` / `SERVER_STATE_UNKNOWN`; no authenticated readback or deployment is performed.
+
+- Intended paths: active certification report and this ledger.
+- Final state pending: documentation validation, scoped commit, non-force staging push, and direct server readback.
+- Attribution confidence: exact.
