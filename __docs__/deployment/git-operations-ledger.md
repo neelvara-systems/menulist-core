@@ -3632,3 +3632,27 @@ Those fields are explicitly `unknown` instead of guessed.
 - Scope: certification report, deterministic inventory/data-flow outputs, and ledger evidence only; tested runtime remains exact hosted parent `79684c60912d468d8888009b1e5f4c24823d8e6b`.
 - Filesystem before this final ledger append: zero staged, zero other tracked modifications, zero untracked files.
 - Firebase, production, `main`, manual Vercel deployment, and live Razorpay state remain unchanged.
+
+### GIT-20260825-234905-mlrc052-entitlement-bootstrap
+
+- Timestamp: `2026-08-25T23:49:05+05:30`
+- Record type: `PLANNED`
+- Actor/session/thread ID: Codex `/root`; thread `01a034e1-c70a-74b1-a92b-0a103a981815`.
+- Registered worktrees: one primary worktree at `/Users/danny/Projects/MenuListAi/menulist-core`, branch `staging`, HEAD `2d4d370c4baf0dd04a2d34be63dc3f5f10672c00`.
+- Authorization: Danny instructed Codex to complete exhaustive MenuList QA certification, implement confirmed fixes, create a provider-free QA owner fixture, and keep stable work on QA/staging before production. This operation publishes MLRC-052, its regressions, and certification evidence to `origin/staging` only. It does not authorize `main`, Firebase deployment, manual Vercel deployment, production mutation, or live Razorpay execution.
+- Root cause and correction: resetting a fresh signed-in MenuList provider scope exposed `activeSubscriptionLoading=false` before the new scope entitlement read began, so direct Dashboard/Projects loads could redirect a valid entitled owner to Billing. Keep the owner subscription gate loading immediately after scope reset and let the existing scoped request lifecycle settle it. Answerlattice routing and stale-request guards remain unchanged.
+- Starting filesystem state: zero staged, eight tracked unstaged, zero untracked before this ledger append. Four concurrent Answerlattice paths are unrelated, retain actor attribution `unknown`, and are explicitly excluded from this operation. Pre-ledger complete-worktree status SHA-256 `f204c94128677aa28939fff741f9f8abc13414b927d5e40151f36f9a976ed102`; complete-worktree diff SHA-256 `7e01cec7f1027e660178a8eee99be2cb76541cd1a96eaeff23045071f4ee9057`.
+- Validation before commit: session store-context regression PASS; complete auth/onboarding aggregate PASS; exact `menulist-qa` Firebase Web client claims, full tenant/store shape, production subscription query, and shared entitlement predicate PASS; strict TypeScript PASS; zero-warning lint PASS; production build PASS with 450/450 static pages and 53 service-worker precache entries; `git diff --check` PASS. Existing Sass and absent optional Gemini-key warnings remain non-failing.
+
+- Branch matrix before:
+
+  | Branch | Local full SHA | Direct server ref/full SHA | Tracking ref | Ahead/behind | Worktree | Staged/unstaged/untracked | Status |
+  | --- | --- | --- | --- | --- | --- | --- | --- |
+  | `main` | `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `refs/heads/main` / `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `origin/main` | `0/0` | not checked out | `N/A` | `IN_SYNC` |
+  | `staging` | `2d4d370c4baf0dd04a2d34be63dc3f5f10672c00` | `refs/heads/staging` / `2d4d370c4baf0dd04a2d34be63dc3f5f10672c00` | `origin/staging` | `0/0` | primary worktree | `0/8/0` before ledger append | `IN_SYNC` |
+
+- Firebase matrix before/after: no Rules, indexes, Storage Rules, or Cloud Functions source changes are included. MenuList QA/production Functions retain the separately recorded `INFRA_CHANGE` / `DEPLOY_REQUIRED`; MenuList Rules/indexes/Storage and all Answerlattice components retain `NO_INFRA_CHANGE` / `SERVER_STATE_UNKNOWN`. No Firebase deployment or authenticated infrastructure readback is authorized here.
+- Git server readback and divergence: `git fetch --prune`, direct `git ls-remote`, and local divergence counts prove local/server `main` and `staging` exact with `0/0` divergence before the operation. Post-operation evidence is pending.
+- Intended staged paths: `src/providers/sessionProvider.tsx`, `scripts/verification/test-session-store-context-boundary.ts`, `scripts/menulist/test-hosted-qa-certification-client.ts`, `__docs__/audits/MENULIST_RC_CERTIFICATION.md`, and this ledger only.
+- Final filesystem state: pending scoped commit, non-force staging push, direct server readback, automatic QA deployment, exact `/api/version`, and hard-load Dashboard/Projects hosted retest. Concurrent Answerlattice changes remain unstaged and preserved.
+- Attribution confidence: exact for the MenuList correction/tests/evidence and Git state; concurrent Answerlattice authorship `unknown`.

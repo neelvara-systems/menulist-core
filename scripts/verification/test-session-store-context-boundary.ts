@@ -197,6 +197,11 @@ const providerSource = fs.readFileSync(path.resolve(process.cwd(), 'src/provider
 assert.match(providerSource, /getActiveTenantStoreSummaryId\(store\) === requestedStoreContextId/);
 assert.match(providerSource, /isActiveStoreRecordInTenantScope\(targetStore,/);
 assert.match(providerSource, /hasSessionProviderScopeChanged\(providerSessionScopeKeyRef\.current, currentProviderScopeKey\)/);
+assert.match(
+    providerSource,
+    /resetScopedProviderState\(\);[\s\S]*setActiveSubscriptionLoading\(Boolean\([\s\S]*effectiveSession\?\.user\?\.storeId && !isAnswerlatticeRoute/,
+    'a fresh owner scope must keep subscription gates loading until its entitlement read settles',
+);
 assert.match(providerSource, /activeSubscriptionRequestScopeKeyRef\.current === requestScopeKey/);
 assert.match(providerSource, /activeSubscriptionScopeKeyRef\.current !== requestScopeKey/);
 assert.match(providerSource, /providerStateMatchesCurrentSession \? activeSubscription : null/);

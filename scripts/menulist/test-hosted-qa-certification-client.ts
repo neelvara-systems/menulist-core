@@ -5,7 +5,8 @@ import { execFileSync } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
 import { deleteApp, initializeApp, type FirebaseOptions } from 'firebase/app';
 import { getAuth, getIdTokenResult, signInWithEmailAndPassword, signOut } from 'firebase/auth';
-import { doc, getDoc, getFirestore } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, getFirestore, limit, orderBy, query, Timestamp, where } from 'firebase/firestore';
+import { hasValidSubscriptionAccess } from '../../src/utils/razorpay';
 
 const QA_PROJECT_ID = 'menulist-qa';
 const QA_WEB_APP_ID = '1:113909530649:web:c5b19ac268c2387c302a88';
@@ -37,6 +38,10 @@ async function main(): Promise<void> {
     }
     const tenantId = requirePositiveInteger('tenant-id');
     const storeId = requirePositiveInteger('store-id');
+    const fixtureId = readArg('fixture-id');
+    if (!fixtureId || !/^ml-hosted-qa-certification-[a-z0-9]{10}$/.test(fixtureId)) {
+        throw new Error('Pass --fixture-id=ml-hosted-qa-certification-<10 lowercase letters or digits>.');
+    }
     const credentials = JSON.parse(await readFile(credentialPath, 'utf8')) as {
         email?: unknown;
         password?: unknown;
@@ -70,9 +75,10 @@ async function main(): Promise<void> {
         assert.equal(token.claims.tenantId, String(tenantId));
         assert.equal(token.claims.storeId, String(storeId));
         const db = getFirestore(app);
-        const [tenant, store] = await Promise.all([
+        const [tenant, store, subscription] = await Promise.all([
             getDoc(doc(db, 'tenants', String(tenantId))),
             getDoc(doc(db, 'stores', String(storeId))),
+            getDoc(doc(db, 'subscriptions', fixtureId)),
         ]);
         assert.equal(tenant.exists(), true);
         assert.equal(store.exists(), true);
@@ -95,6 +101,30 @@ async function main(): Promise<void> {
         assert.equal(store.data()?.currencySymbol, '₹');
         assert.equal(store.data()?.contactPersonName, '');
         assert.equal(store.data()?.contactPersonNumber, '');
+        assert.equal(subscription.exists(), true);
+        assert.equal(hasValidSubscriptionAccess({
+            ...subscription.data(),
+            id: subscription.id,
+        } as never), true, 'The hosted QA lease must pass the shared owner-workspace gate.');
+        const activeSubscriptionQuery = query(
+            collection(db, 'subscriptions'),
+            where('pId', '==', 'ML'),
+            where('productId', '==', 'ML'),
+            where('status', 'in', ['active', 'past_due', 'cancelled', 'paused']),
+            where('cycleEndDate', '>=', Timestamp.now()),
+            where('tenantId', '==', tenantId),
+            where('tId', '==', tenantId),
+            where('storeId', '==', storeId),
+            where('sId', '==', storeId),
+            orderBy('cycleEndDate', 'desc'),
+            limit(1),
+        );
+        const activeSubscriptions = await getDocs(activeSubscriptionQuery);
+        assert.equal(activeSubscriptions.size, 1, 'The owner subscription DAL query must find the QA lease.');
+        assert.equal(hasValidSubscriptionAccess({
+            ...activeSubscriptions.docs[0].data(),
+            id: activeSubscriptions.docs[0].id,
+        } as never), true, 'The owner subscription DAL result must pass the shared workspace gate.');
         process.stdout.write(JSON.stringify({
             claims: 'verified',
             projectId: QA_PROJECT_ID,

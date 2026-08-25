@@ -398,6 +398,13 @@ export default function SessionProvider({ children, session, productContext }: P
             providerSessionScopeKeyRef.current = currentProviderScopeKey;
             prevSessionKeyRef.current = undefined;
             resetScopedProviderState();
+            // Keep owner route gates waiting while the new signed-in scope is
+            // bootstrapped. Exposing a transient `loading=false` here lets
+            // Dashboard/Projects misclassify a paid owner as unpaid and route
+            // them back to Billing before the subscription read can settle.
+            setActiveSubscriptionLoading(Boolean(
+                effectiveSession?.user?.storeId && !isAnswerlatticeRoute,
+            ));
             return;
         }
         providerSessionScopeKeyRef.current = currentProviderScopeKey;
