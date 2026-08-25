@@ -41,6 +41,10 @@ import {
     normalizeAnswerlatticeKnowledgeIntakeSourceId,
 } from '@lib/answerlattice/knowledgeIntakeIdBoundary';
 import {
+    extractAnswerlatticeFaqPairs,
+    parseAnswerlatticeStructuredFaqCsv,
+} from '@lib/answerlattice/knowledgeIntakeStructuredText';
+import {
     finalizeAnswerlatticeIntakeUsage,
     refundAnswerlatticeIntakeUsage,
     reserveAnswerlatticeIntakeUsage,
@@ -2857,6 +2861,31 @@ function buildReviewItemsFromSource(
         publishedOn: unpublishedOn,
     };
 
+    if (source.type === ANSWERLATTICE_KNOWLEDGE_SOURCE_TYPE.CSV) {
+        const structuredCsv = parseAnswerlatticeStructuredFaqCsv(source.contentText || source.contentExcerpt || '');
+        if (structuredCsv.recognized) {
+            return structuredCsv.rows.map((row, index) => ({
+                ...base,
+                id: '',
+                target: row.target,
+                title: row.question,
+                question: row.question,
+                answer: row.answer,
+                body: row.answer,
+                tags: cleanList([...(source.tags || []), ...row.tags], ANSWERLATTICE_KNOWLEDGE_INTAKE_CONSTRAINTS.MAX_TAGS),
+                sortOrder: sourceIndex * 10 + index,
+                confidenceScore: row.target === ANSWERLATTICE_INTAKE_REVIEW_TARGET.CANONICAL_PROPOSAL && !source.entityIds?.length
+                    ? 0.55
+                    : row.riskLevel === 'high'
+                        ? 0.68
+                        : row.riskLevel === 'medium'
+                            ? 0.78
+                            : 0.86,
+                reason: row.sourceNote || 'Structured FAQ row prepared for owner review.',
+            }));
+        }
+    }
+
     if (source.type === ANSWERLATTICE_KNOWLEDGE_SOURCE_TYPE.REPEATED_REPLY) {
         const pair = extractRepeatedReplyPair(source, text);
         if (!pair) return [];
@@ -2905,7 +2934,7 @@ function buildReviewItemsFromSource(
         sortOrder: sourceIndex * 10,
     });
 
-    const faqPairs = extractFaqPairs(text).slice(0, 8);
+    const faqPairs = extractAnswerlatticeFaqPairs(text).slice(0, 8);
     faqPairs.forEach((pair, index) => {
         items.push({
             ...base,
@@ -2968,7 +2997,7 @@ function extractRepeatedReplyPair(source: AnswerlatticeKnowledgeSource, text: st
 }
 
 function extractRepeatedReplyTextPair(text: string, preferredQuestion?: unknown, fallbackQuestion?: unknown) {
-    const [pair] = extractFaqPairs(text);
+    const [pair] = extractAnswerlatticeFaqPairs(text);
     const question = cleanText(preferredQuestion || pair?.question || fallbackQuestion, 240);
     const answer = cleanLongText(pair?.answer || '', 2000);
     if (!question || answer.length < 20) return null;
@@ -3027,30 +3056,6 @@ function titleFromText(fallbackTitle: string, text: string) {
         .map(line => line.replace(/^#+\s*/, '').trim())
         .find(line => line.length >= 8 && line.length <= 120);
     return cleanText(heading || fallbackTitle || 'Imported support article', 160);
-}
-
-function extractFaqPairs(text: string) {
-    const pairs: Array<{ question: string; answer: string }> = [];
-    const qaRegex = /(?:^|\n)\s*(?:q(?:uestion)?[:.)-]\s*)([^\n?]{8,220}\??)\s*(?:\n|\r\n)+\s*(?:a(?:nswer)?[:.)-]\s*)([\s\S]*?)(?=\n\s*(?:q(?:uestion)?[:.)-]\s*)|$)/gi;
-    let match: RegExpExecArray | null;
-    while ((match = qaRegex.exec(text))) {
-        const question = cleanText(match[1], 240);
-        const answer = cleanLongText(match[2], 2000);
-        if (question && answer) pairs.push({ question: question.endsWith('?') ? question : `${question}?`, answer });
-    }
-    if (pairs.length) return pairs;
-
-    const questionLines = text
-        .split('\n')
-        .map(line => cleanText(line, 260))
-        .filter(line => line.endsWith('?') && line.length >= 12)
-        .slice(0, 5);
-    questionLines.forEach((question) => {
-        const index = text.indexOf(question);
-        const answer = cleanLongText(text.slice(index + question.length, index + question.length + 1200), 1200);
-        if (answer.length >= 80) pairs.push({ question, answer });
-    });
-    return pairs;
 }
 
 function sanitizeReviewItemPatch(input: UpdateReviewItemInput) {

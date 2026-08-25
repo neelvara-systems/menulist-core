@@ -369,6 +369,7 @@ These rules apply at EVERY stage:
 
 ### Firebase Cost Discipline (CRITICAL — Impacts Revenue)
 
+- **Paid-cost estimation rule:** Whenever Danny asks for approximate pricing, approximate cost, a cost estimate, or a cost breakdown, use current paid/list rates for all estimated usage. Do not subtract or assume free quotas, free tiers, trials, promotional credits, grants, coupons, or provider credits unless he explicitly requests a separate free-allowance scenario. Present the canonical total in INR, state the exchange-rate and tax/exclusion assumptions, and verify current provider pricing from primary sources when it may have changed.
 - **Every Firestore read/write is money.** Treat reads like API calls — minimize, cache, reuse.
 - **Never re-fetch data you already have:**
   - If data was fetched during page render (e.g., in a hook or server component) → pass it to update functions, don't re-fetch.

@@ -90,6 +90,7 @@ const assertPublicWidgetFetchHasNoReferrerPolicy = (endpoint: string) => {
 assert.ok(loader.includes("iframe.src = widgetHost + '/widget/embed';"));
 assert.ok(!loader.includes("'/widget/' + encodeURIComponent(apiKey)"));
 assert.ok(loader.includes("iframe.setAttribute('referrerpolicy', 'no-referrer');"));
+assert.ok(loader.includes("maxWidth: 'calc(100vw - 24px)'"));
 assert.ok(loader.includes("type: 'answerlattice-widget-bootstrap', apiKey: apiKey"));
 assert.ok(loader.includes('runtimeDenied'));
 assert.ok(loader.includes("url.searchParams.set('path', runtimePath)"));

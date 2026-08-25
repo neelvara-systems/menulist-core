@@ -2281,6 +2281,50 @@ Those fields are explicitly `unknown` instead of guessed.
 - Final filesystem state: pending scoped commit, push, direct readback, automatic QA deployment, hosted retest, and result append.
 - Attribution confidence: exact for this operation and candidate; unrelated moving paths remain `unknown`.
 
+### GIT-20260825-165622-answerlattice-rc-combined-staging
+
+- Timestamp: `2026-08-25T16:56:22+05:30`
+- Record type: `PLANNED`
+- Actor/session/thread ID: Codex `/root`; current desktop task ID unavailable (`unknown`).
+- Registered worktrees: one primary worktree at `/Users/danny/Projects/MenuListAi/menulist-core`, checked out on `staging` at `f0508560931d80d4f6dc9fd9c56a7638a9813994`; no other registered worktree exists.
+- Authorization: Danny said “Proceed” after the recommended ledgered staging commit/push and hosted-Answerlattice QA pass, and previously required every local change in this worktree to be included when pushing. This authorizes one non-force `staging` push containing the complete stable 19-modified/2-untracked snapshot, automatic QA web-deployment observation, and hosted QA verification. It does not authorize `main`, a manual Vercel deployment, Firebase deployment, live Razorpay execution, or CampaignCue work.
+- Intended operation: commit the complete stable worktree snapshot, including Answerlattice knowledge-intake response projection and structured-text parsing, Team modal and widget responsive fixes, their contract tests, the retained MLRC-041 recovery refinement and certification evidence, the paid-cost estimation rule, founder-owned publication completion records, and this ledger. No file in the stable snapshot is excluded.
+- Snapshot stability: the complete pre-ledger working snapshot produced SHA-256 `583ace81bcd6f52cfd85ecd0500186373ba48b12fc0d31baf48dfdc07886785d` twice in separate checks. `git diff --check` passed, and a bounded secret-pattern scan found no credential/private-key material.
+- Local validation already completed for the Answerlattice candidate: `npm run typecheck:answerlattice`, focused ESLint, knowledge-intake contracts, staff-client contracts, widget-config contracts, workspace-profile emulator coverage, runtime-truth verification, and local fresh-system/browser regression passed. The retained MLRC-041 refinement previously passed its global-accessibility verifier, focused ESLint, strict TypeScript, and diff checks. Combined pre-commit validation will be refreshed before push.
+
+- Branch matrix before:
+
+  | Branch | Local full SHA | Direct server ref/full SHA | Tracking ref | Ahead/behind | Worktree | Staged/unstaged/untracked | Status |
+  | --- | --- | --- | --- | --- | --- | --- | --- |
+  | `main` | `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `refs/heads/main` / `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `origin/main` | `0/0` | not checked out | `N/A` | `IN_SYNC` |
+  | `staging` | `f0508560931d80d4f6dc9fd9c56a7638a9813994` | `refs/heads/staging` / `f0508560931d80d4f6dc9fd9c56a7638a9813994` | `origin/staging` | `0/0` | primary worktree | `0/19/2` before this ledger append | `IN_SYNC` |
+
+- Firebase matrix before/after:
+
+  | Product | Environment/project | Component | Local source/config | Local evidence | Server evidence | Delta | Deployment state |
+  | --- | --- | --- | --- | --- | --- | --- | --- |
+  | MenuList | QA / `menulist-qa` | Firestore Rules | `firestore-menulist.rules` | no candidate path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | QA / `menulist-qa` | Firestore indexes | `firestore.indexes.json` | no candidate path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | QA / `menulist-qa` | Storage Rules | `storage.rules` | no candidate path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | QA / `menulist-qa` | Cloud Functions | `functions/` | retained MLRC-031 shared-data mirror delta | not refreshed | `INFRA_CHANGE` | `DEPLOY_REQUIRED` |
+  | MenuList | production / `menulist-prod` | Firestore Rules | same source | no candidate path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | production / `menulist-prod` | Firestore indexes | same source | no candidate path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | production / `menulist-prod` | Storage Rules | same source | no candidate path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | MenuList | production / `menulist-prod` | Cloud Functions | same shared source | retained MLRC-031 shared-data mirror delta | not refreshed | `INFRA_CHANGE` | `DEPLOY_REQUIRED` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Firestore Rules | `firestore-answerlattice.rules` | no candidate path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Firestore indexes | `firestore-answerlattice.indexes.json` | no candidate path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Storage Rules | `storage-answerlattice.rules` | no candidate path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | QA / `neelvara-answerlattice-qa` | Cloud Functions | `functions-answerlattice/` | no candidate path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Firestore Rules | same source | no candidate path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Firestore indexes | same source | no candidate path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Storage Rules | same source | no candidate path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+  | Answerlattice | production / `neelvara-answerlattice-prod` | Cloud Functions | same shared source | no candidate path | not refreshed | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+
+- Firebase deployment evidence or blocker: this combined candidate changes no Firebase Rules, indexes, Storage Rules, or Functions path. No Firebase deployment or authenticated readback is authorized in this operation. The earlier MenuList shared Functions mirror delta remains separately `DEPLOY_REQUIRED` and is not silently treated as deployed.
+- Git server readback and divergence: after authenticated fetch, direct `git ls-remote` proved local/server `main` and `staging` in sync at the SHAs above; local/tracking divergence is `0/0` for both branches.
+- Final filesystem state: pending combined validation, complete-snapshot commit, non-force staging push, direct readback, automatic QA deployment, hosted provider-backed Answerlattice regression, and result append.
+- Attribution confidence: exact for the Answerlattice certification changes and the current operation; retained owner/rule/presence and MenuList certification edits are evidence-preserving changes from prior current-day tasks whose current task ID is unavailable, and their inclusion is explicitly authorized by Danny's all-local-changes instruction.
+
 
 #### GIT-20260825-143633-mlrc030-mobile-sheet-label result
 

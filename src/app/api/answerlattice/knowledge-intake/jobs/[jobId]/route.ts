@@ -12,6 +12,7 @@ import {
     getAnswerlatticeKnowledgeIntakeErrorStatus,
     requireAnswerlatticeKnowledgeIntakeContext,
 } from '@lib/answerlattice/knowledgeIntakeApi';
+import { projectKnowledgeIntakeBundleForClient } from '@lib/answerlattice/knowledgeIntakeClientProjection';
 import { NextRequest } from 'next/server';
 import { withAuth } from '@/middleware/auth';
 import { applyAnswerlatticeDashboardReadRateLimit } from '../../../readRateLimit';
@@ -29,7 +30,9 @@ export const GET = withAuth(async (request: NextRequest, session, params: { jobI
 
     try {
         const bundle = await getKnowledgeIntakeBundle(access.context.scope, jobId);
-        return answerlatticeKnowledgeIntakeJson({ bundle: serializeIntakeValue(bundle) });
+        return answerlatticeKnowledgeIntakeJson({
+            bundle: serializeIntakeValue(projectKnowledgeIntakeBundleForClient(bundle)),
+        });
     } catch (error) {
         const status = getAnswerlatticeKnowledgeIntakeErrorStatus(error);
         if (status >= 500) {

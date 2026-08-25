@@ -1048,6 +1048,7 @@
         Object.assign(container.style, {
             position: 'fixed',
             width: w,
+            maxWidth: 'calc(100vw - 24px)',
             height: h,
             maxHeight: 'calc(100vh - 120px)',
             borderRadius: '16px',

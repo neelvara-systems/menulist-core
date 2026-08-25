@@ -1,6 +1,7 @@
 #!/usr/bin/env ts-node
 
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { PRODUCT_IDS } from '@constant/product';
 import {
     createAnswerlatticeStaffUser,
@@ -49,6 +50,13 @@ const user = {
 
 const main = async () => {
     try {
+        const teamAccessSource = readFileSync(
+            'src/components/templates/answerlattice/AnswerlatticeTeamAccess.tsx',
+            'utf8',
+        );
+        assert.match(teamAccessSource, /maxHeight: 'calc\(100dvh - 220px\)'/);
+        assert.match(teamAccessSource, /overflowY: 'auto'/);
+
         respondWith({
             roles: [role],
             store: { name: 'Workspace', storeId: 20, tenantId: 10 },

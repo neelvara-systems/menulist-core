@@ -21,6 +21,7 @@ function NotFound() {
                         <ContextualStateIllustration
                             color={token.colorTextQuaternary}
                             size={192}
+                            style={{ width: 'clamp(128px, 40vw, 192px)' }}
                             variant="notFoundContext"
                         />
                     )}

@@ -794,6 +794,13 @@ export default function AnswerlatticeTeamAccess({ initialTab }: AnswerlatticeTea
                 }}
                 onOk={handleSaveRole}
                 open={roleModalOpen}
+                styles={{
+                    body: {
+                        maxHeight: 'calc(100dvh - 220px)',
+                        overflowY: 'auto',
+                        overscrollBehavior: 'contain',
+                    },
+                }}
                 title={editingRole?.id ? 'Edit Role' : 'New Role'}
                 width={720}
             >

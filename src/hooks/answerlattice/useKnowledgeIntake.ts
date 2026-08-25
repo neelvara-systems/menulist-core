@@ -48,7 +48,10 @@ const ANSWERLATTICE_INTAKE_ENTITIES_SEARCH_FAILED = 'Could not search product en
 const ANSWERLATTICE_INTAKE_REVIEW_DRAFTS_GENERATE_FAILED = 'Could not generate review drafts.';
 const ANSWERLATTICE_INTAKE_REVIEW_ITEM_UPDATE_FAILED = 'Could not update review item.';
 const ANSWERLATTICE_INTAKE_ITEMS_PUBLISH_FAILED = 'Could not publish intake items.';
-const ANSWERLATTICE_KNOWLEDGE_INTAKE_RESPONSE_JSON_MAX_BYTES = 64 * 1024;
+// A valid job can contain 120 review items with bodies up to 12,000 Unicode
+// characters. Keep the response bounded, but size the byte guard for that
+// documented worst-case contract rather than an ordinary small import.
+const ANSWERLATTICE_KNOWLEDGE_INTAKE_RESPONSE_JSON_MAX_BYTES = 8 * 1024 * 1024;
 const ANSWERLATTICE_KNOWLEDGE_INTAKE_ERROR_MESSAGE_MAX_LENGTH = 240;
 const ANSWERLATTICE_KNOWLEDGE_INTAKE_REQUEST_TIMEOUT_MS = 30_000;
 const ANSWERLATTICE_SOURCE_GOVERNANCE_MAX_PENDING_ATTEMPTS = 20;

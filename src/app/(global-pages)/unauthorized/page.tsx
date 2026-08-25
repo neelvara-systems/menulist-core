@@ -52,6 +52,7 @@ function UnAuthorized() {
                         <ContextualStateIllustration
                             color={token.colorTextQuaternary}
                             size={192}
+                            style={{ width: 'clamp(128px, 40vw, 192px)' }}
                             variant={isEmailError ? 'warningContext' : 'accessDeniedContext'}
                         />
                     )}
@@ -68,7 +69,7 @@ function UnAuthorized() {
                         </Flex>
                     }
                     extra={
-                        <Flex gap={12} justify="center" wrap="wrap" style={{ marginTop: 8, maxWidth: '100%' }}>
+                        <Flex gap={8} justify="center" wrap="wrap" style={{ marginTop: 8, maxWidth: '100%' }}>
                             <Button
                                 size='large'
                                 icon={<LuMail />}

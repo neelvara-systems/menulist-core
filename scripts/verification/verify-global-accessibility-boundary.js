@@ -143,6 +143,14 @@ assert(
   (unauthorizedPage.match(/style=\{\{ minHeight: 44 \}\}/g) || []).length === 2,
   'both global access-denied recovery actions must meet the 44px mobile touch target',
 );
+assert(
+  unauthorizedPage.includes("style={{ width: 'clamp(128px, 40vw, 192px)' }}"),
+  'global access-denied illustration must yield vertical space to recovery actions on small mobile viewports',
+);
+assert(
+  unauthorizedPage.includes('<Flex gap={8} justify="center" wrap="wrap"'),
+  'global access-denied recovery actions must use the compact mobile-safe gap',
+);
 
 const notFoundPage = read('src/app/(global-pages)/404/page.tsx');
 assert(
@@ -164,6 +172,10 @@ assert(
 assert(
   notFoundPage.includes("style={{ width: '100%', maxWidth: 560, padding: 0 }}"),
   'global not-found recovery actions must remain in the initial small-mobile viewport',
+);
+assert(
+  notFoundPage.includes("style={{ width: 'clamp(128px, 40vw, 192px)' }}"),
+  'global not-found illustration must yield vertical space to recovery actions on small mobile viewports',
 );
 
 const layoutWrapper = read('src/components/antdComponent/layoutWrapper/index.tsx');

@@ -507,6 +507,7 @@ Do not casually modify these files. If a task requires changes here, read the se
 - **Write Operations**: Batch when possible
 - **Delete Operations**: Document cleanup costs
 - **Auth Operations**: Session management overhead
+- **Paid-Cost Baseline**: When Danny asks for approximate pricing, approximate cost, a cost estimate, or a cost breakdown, calculate the main estimate and totals from current paid/list rates for every unit consumed. Never subtract, offset, or assume free quotas, free tiers, trials, promotional credits, coupons, grants, or provider credits unless Danny explicitly asks for a separate free-quota comparison. State pricing date, currency conversion assumption, taxes/exclusions, and usage assumptions; verify temporally unstable provider pricing from current primary sources before calculating.
 
 ### Development Cost Discipline
 
@@ -612,6 +613,7 @@ Do not casually modify these files. If a task requires changes here, read the se
 - **Constitutional Language**: Use approved phrases
 - **No Automatic Agreement**: Do not agree with the user's implementation direction as-is. First state whether it makes sense for a non-technical SMB owner, then proceed, revise, or reject based on that validation.
 - **Pricing Currency**: Always present pricing and cost estimates in INR rupees for the user. If a vendor publishes USD pricing, convert it to INR and state the exchange-rate assumption.
+- **Pricing Basis**: Approximate pricing and cost answers use gross paid/list-rate cost as the canonical total. Free allowance must not reduce the estimate unless the user explicitly requests that alternative scenario.
 
 ---
 

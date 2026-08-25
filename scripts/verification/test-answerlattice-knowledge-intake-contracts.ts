@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { Timestamp } from 'firebase/firestore';
 import { PRODUCT_IDS } from '../../src/constants/product';
 import {
     AnswerlatticeIntakeReviewItemSchema,
@@ -14,6 +15,15 @@ import {
 } from '../../src/lib/answerlattice/knowledgeIntakeContracts';
 import { sanitizeAnswerlatticeIntakeMetadata } from '../../src/lib/answerlattice/knowledgeIntakePrivacy';
 import { getAnswerlatticeKnowledgeIntakeLogContext } from '../../src/lib/answerlattice/knowledgeIntakeDiagnostics';
+import { projectKnowledgeIntakeBundleForClient } from '../../src/lib/answerlattice/knowledgeIntakeClientProjection';
+import {
+    extractAnswerlatticeFaqPairs,
+    parseAnswerlatticeStructuredFaqCsv,
+} from '../../src/lib/answerlattice/knowledgeIntakeStructuredText';
+import type {
+    AnswerlatticeKnowledgeIntakeJob,
+    AnswerlatticeKnowledgeSource,
+} from '../../src/types/answerlattice';
 
 const intakeHookSource = readFileSync(resolve('src/hooks/answerlattice/useKnowledgeIntake.ts'), 'utf8');
 assert.match(
@@ -26,9 +36,15 @@ assert.match(
     /message\.error\(error instanceof Error \? error\.message : ANSWERLATTICE_INTAKE_JOB_CREATE_FAILED\)/,
     'job creation must surface the bounded actionable API error',
 );
+assert.match(
+    intakeHookSource,
+    /ANSWERLATTICE_KNOWLEDGE_INTAKE_RESPONSE_JSON_MAX_BYTES = 8 \* 1024 \* 1024/,
+    'the bounded response guard must accommodate the documented 120-item review contract',
+);
 
 const timestamp = '2026-07-11T00:00:00.000Z';
-const job = {
+const firestoreTimestamp = Timestamp.fromDate(new Date(timestamp));
+const job: AnswerlatticeKnowledgeIntakeJob = {
     id: 'ABCDEFGHIJKLMNOPQRST',
     pId: PRODUCT_IDS.ANSWERLATTICE,
     tId: 1,
@@ -39,8 +55,8 @@ const job = {
     reviewItemCount: 0,
     acceptedItemCount: 0,
     publishedItemCount: 0,
-    createdOn: timestamp,
-    modifiedOn: timestamp,
+    createdOn: firestoreTimestamp,
+    modifiedOn: firestoreTimestamp,
 };
 
 assert.equal(AnswerlatticeKnowledgeIntakeJobSchema.safeParse(job).success, true);
@@ -125,7 +141,7 @@ assert.throws(
     'stored IDs must agree with the Firestore document ID',
 );
 
-const processingSource = {
+const processingSource: AnswerlatticeKnowledgeSource = {
     id: `kis_${'a'.repeat(28)}`,
     pId: PRODUCT_IDS.ANSWERLATTICE,
     tId: 1,
@@ -140,8 +156,8 @@ const processingSource = {
     processingRun: {
         id: 'media_123',
         status: 'processing',
-        startedAt: timestamp,
-        leaseExpiresAt: '2026-07-11T00:10:00.000Z',
+        startedAt: firestoreTimestamp,
+        leaseExpiresAt: Timestamp.fromDate(new Date('2026-07-11T00:10:00.000Z')),
         completedAt: null,
     },
 };
@@ -149,6 +165,53 @@ assert.equal(AnswerlatticeKnowledgeSourceSchema.safeParse(processingSource).succ
 assert.equal(
     AnswerlatticeKnowledgeSourceSchema.safeParse({ ...processingSource, contentHash: 'not-a-hash' }).success,
     false,
+);
+const projectedBundle = projectKnowledgeIntakeBundleForClient({
+    job,
+    sources: [{
+        ...processingSource,
+        contentText: 'Full imported source text must remain server-side.',
+        contentExcerpt: 'Bounded owner evidence.',
+    }],
+    reviewItems: [],
+});
+assert.equal(
+    'contentText' in projectedBundle.sources[0],
+    false,
+    'job bundle responses must not resend full imported source bodies',
+);
+assert.equal(
+    projectedBundle.sources[0].contentExcerpt,
+    'Bounded owner evidence.',
+    'job bundle responses must retain the bounded evidence excerpt used by the UI',
+);
+const structuredCsv = parseAnswerlatticeStructuredFaqCsv([
+    'question,answer,target,risk_level,tags,source_note',
+    '"Can I upload a menu photo?","Yes, upload a current photo or PDF, then review the prepared menu.","faq","low","intake|upload","Owner-reviewed intake."',
+    '"Can MenuList import any marketplace?","No. Import only public menu sources you control or have permission to use.","canonical_proposal","high","boundary|import","Security boundary."',
+].join('\n'));
+assert.equal(structuredCsv.recognized, true);
+assert.equal(structuredCsv.rows.length, 2);
+assert.deepEqual(structuredCsv.rows[0], {
+    question: 'Can I upload a menu photo?',
+    answer: 'Yes, upload a current photo or PDF, then review the prepared menu.',
+    target: 'faq',
+    riskLevel: 'low',
+    tags: ['intake', 'upload'],
+    sourceNote: 'Owner-reviewed intake.',
+});
+assert.equal(structuredCsv.rows[1].target, 'canonical_proposal');
+assert.deepEqual(
+    extractAnswerlatticeFaqPairs('- Can I upload a menu?\n- Does it publish automatically?\n- Who reviews it?'),
+    [],
+    'a list of unanswered questions must not be converted into question-as-answer drafts',
+);
+assert.deepEqual(
+    extractAnswerlatticeFaqPairs('Question: Can I upload a menu?\nAnswer: Yes. Upload a current menu and review the prepared result before publishing.'),
+    [{
+        question: 'Can I upload a menu?',
+        answer: 'Yes. Upload a current menu and review the prepared result before publishing.',
+    }],
 );
 const governanceInput = {
     requestId: '8b85d4cb-1578-4bca-9bf3-2c0a31cb6246',

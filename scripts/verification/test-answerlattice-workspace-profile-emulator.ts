@@ -11,9 +11,9 @@ import {
     getAnswerlatticeTenantSummaryShardId,
 } from '../../src/lib/answerlattice/tenantSummaryAdmin';
 import { saveAnswerlatticeWorkspaceProfileAdmin } from '../../src/lib/answerlattice/workspaceProfileServer';
-import { answerlatticeFirestoreAdmin } from '../../src/lib/firebase/answerlatticeFirebaseAdmin';
+import { requireAnswerlatticeFirestoreAdmin } from '../../src/lib/firebase/answerlatticeFirebaseAdmin';
 
-const db = answerlatticeFirestoreAdmin;
+const db = requireAnswerlatticeFirestoreAdmin();
 const tenantId = 29001;
 const storeId = 29002;
 const storeRef = db.collection(DB_COLLECTIONS.STORES).doc(String(storeId));
