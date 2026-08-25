@@ -3086,3 +3086,16 @@ Those fields are explicitly `unknown` instead of guessed.
 - Git server readback and divergence: local/server `staging` exact at `9768d56898b8ec703e66087e2e5af4770856d76b`; local/server `main` exact at `fe625d5bbf527c1b7e537b00ab32a4f655905c35`; both `0/0`.
 - Final filesystem state: pending scoped commit/push/readback, automatic QA build, exact 320×568 confirmation/cancel/sign-out/redirect/re-login retest, and result append.
 - Attribution confidence: exact for MLRC-043 and the ref evidence; concurrent task authorship is identified only from its ledger entry and commit.
+
+##### GIT-20260825-183727-mlrc043-signin-replacement
+
+- Timestamp: `2026-08-25T18:37:27+05:30`
+- Record type: `PLANNED_REFINEMENT`
+- Exact hosted evidence on verified `116da81139ff3c530b0f400ec30aaa523f13655a`: the in-card confirmation rendered without overflow; Cancel and Sign Out both measured 50px; Cancel restored the original gate; confirmed Sign Out cleared the session. Because canonical `signOutSession()` intentionally performs cleanup with NextAuth redirect disabled, the gated component stayed mounted behind the generic “Session Expired” recovery instead of completing the intentional logout navigation.
+- Final correction: after `signOutSession()` resolves, replace the protected route with canonical `/signin`. Failed cleanup still keeps the owner on the gate with the bounded announced retry error. No auth, cache-cleanup, tenant, entitlement, payment, or provider boundary is weakened.
+- Concurrent movement audit: the Answerlattice task's separately recorded purchase-copy refinement advanced local/server staging to exact descendant `a234d990558329fbce7eb0b1d2a3bb67f637b697` with `0/0` divergence. This MLRC-043 refinement remains four scoped files plus this ledger; the regenerated 8,475-row inventory is unchanged because no additional control was added.
+- Validation: exact hosted confirmation/cancel/session-clear evidence; mobile route-map PASS; focused ESLint PASS; strict TypeScript PASS; `git diff --check` PASS. Pre-ledger four-file diff SHA-256: `0e729bf17f1ab2e21c3dd15289cd27c4819ab8fd8cfcd5329076af046554076a`.
+- Branch matrix before: local/server `main` exact `fe625d5bbf527c1b7e537b00ab32a4f655905c35`, local/server `staging` exact `a234d990558329fbce7eb0b1d2a3bb67f637b697`, both `0/0`; one primary worktree with `0/4/0` before this append.
+- Firebase matrix before/after: unchanged from MLRC-043. MenuList QA/production Functions retain MLRC-031 `INFRA_CHANGE` / `DEPLOY_REQUIRED`; the other 14 rows remain `NO_INFRA_CHANGE` / `SERVER_STATE_UNKNOWN`. No Firebase source, deployment, or readback is included or authorized.
+- Final filesystem state: pending scoped commit/push/readback, automatic QA build, exact intentional sign-out redirect, signed-out callback guard, and approved Google reauthentication retest.
+- Attribution confidence: exact.

@@ -162,6 +162,7 @@ function verifyMobileShellRouteMap() {
   assertIncludes(mobileShell, "import { signOutSession } from '@lib/auth/client';", 'Subscription gate must reuse the canonical logout cleanup boundary');
   assertIncludes(mobileShell, 'handleSubscriptionGateSignOut', 'Subscription gate must expose a safe owner exit');
   assertIncludes(mobileShell, 'await signOutSession();', 'Subscription gate sign out must clear Firebase, NextAuth, and authenticated browser state');
+  assertIncludes(mobileShell, "router.replace('/signin');", 'Subscription gate must leave the protected shell after canonical cleanup');
   assertIncludes(mobileShell, 'subscriptionGateConfirmingSignOut', 'Subscription gate sign out must require an in-card confirmation that survives the gated shell boundary');
   assertIncludes(mobileShell, "profileActionsT('logoutConfirm')", 'Subscription gate must explain the pending sign-out action');
   assertIncludes(mobileShell, "profileActionsT('cancel')", 'Subscription gate sign-out confirmation must be reversible');

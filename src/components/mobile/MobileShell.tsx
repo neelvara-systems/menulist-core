@@ -538,11 +538,12 @@ export default function MobileShell() {
         setSubscriptionGateSigningOut(true);
         try {
             await signOutSession();
+            router.replace('/signin');
         } catch {
             setSubscriptionGateSignOutError(profileActionsT('logoutFailed'));
             setSubscriptionGateSigningOut(false);
         }
-    }, [profileActionsT, subscriptionGateSigningOut]);
+    }, [profileActionsT, router, subscriptionGateSigningOut]);
 
     useEffect(() => {
         if (todayScreen === 'history' && !FEATURE_FLAGS.ENABLE_PAST_ACTIVITY_HISTORY) {

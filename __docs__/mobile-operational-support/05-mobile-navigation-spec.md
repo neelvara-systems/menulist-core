@@ -348,8 +348,9 @@ finish a pending checkout or choose a plan without gaining menu access.
 The gate also keeps a localized **Sign Out** action available with an inline,
 reversible confirmation that remains inside the gated card. It uses the same
 Firebase, NextAuth, and authenticated-browser cleanup boundary as the account
-screen, so an unpaid or payment-pending owner is never trapped behind the plan
-gate and can safely change accounts without receiving product entitlement.
+screen, then replaces the protected route with canonical sign-in. An unpaid or
+payment-pending owner is never trapped behind the plan gate and can safely
+change accounts without receiving product entitlement.
 
 ---
 
