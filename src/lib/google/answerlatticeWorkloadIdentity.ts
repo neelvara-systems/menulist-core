@@ -49,6 +49,10 @@ export const createAnswerlatticeWorkloadIdentityAuthClient = (
     getSubjectToken: OidcTokenSupplier,
 ): BaseExternalAccountClient => createWorkloadIdentityAuthClient(config, getSubjectToken);
 
+export const createAnswerlatticeWorkloadIdentitySubjectTokenSupplier = (
+    config: AnswerlatticeWorkloadIdentityConfig,
+): OidcTokenSupplier => createProviderAudienceTokenSupplier(config, getVercelOidcToken);
+
 let workloadIdentityAuthClient: BaseExternalAccountClient | null = null;
 
 export const getAnswerlatticeWorkloadIdentityAuthClient = (): BaseExternalAccountClient => {
@@ -56,7 +60,7 @@ export const getAnswerlatticeWorkloadIdentityAuthClient = (): BaseExternalAccoun
     const config = readAnswerlatticeWorkloadIdentityConfig();
     workloadIdentityAuthClient = createAnswerlatticeWorkloadIdentityAuthClient(
         config,
-        createProviderAudienceTokenSupplier(config, getVercelOidcToken),
+        createAnswerlatticeWorkloadIdentitySubjectTokenSupplier(config),
     );
     return workloadIdentityAuthClient;
 };

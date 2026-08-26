@@ -132,13 +132,26 @@ export const attachWorkloadIdentityAccessTokenFailureDiagnostic = (
     return client;
 };
 
-const FIREBASE_ADMIN_SCOPES = [
+export const WORKLOAD_IDENTITY_FIREBASE_ADMIN_SCOPES = [
     'https://www.googleapis.com/auth/cloud-platform',
     'https://www.googleapis.com/auth/firebase.database',
     'https://www.googleapis.com/auth/firebase.messaging',
     'https://www.googleapis.com/auth/identitytoolkit',
     'https://www.googleapis.com/auth/userinfo.email',
 ] as const;
+
+export const createWorkloadIdentityExternalAccountCredentials = (
+    config: WorkloadIdentityConfig,
+    getSubjectToken: OidcTokenSupplier,
+) => ({
+    type: 'external_account' as const,
+    audience: config.audience,
+    subject_token_type: 'urn:ietf:params:oauth:token-type:jwt',
+    token_url: 'https://sts.googleapis.com/v1/token',
+    service_account_impersonation_url: config.serviceAccountImpersonationUrl,
+    subject_token_supplier: { getSubjectToken },
+    scopes: [...WORKLOAD_IDENTITY_FIREBASE_ADMIN_SCOPES],
+});
 
 const SUPPORTED_MODES = new Set<GoogleCredentialMode>([
     'adc',
@@ -266,15 +279,9 @@ export const createWorkloadIdentityAuthClient = (
     config: WorkloadIdentityConfig,
     getSubjectToken: OidcTokenSupplier,
 ): BaseExternalAccountClient => {
-    const client = ExternalAccountClient.fromJSON({
-        type: 'external_account',
-        audience: config.audience,
-        subject_token_type: 'urn:ietf:params:oauth:token-type:jwt',
-        token_url: 'https://sts.googleapis.com/v1/token',
-        service_account_impersonation_url: config.serviceAccountImpersonationUrl,
-        subject_token_supplier: { getSubjectToken },
-        scopes: [...FIREBASE_ADMIN_SCOPES],
-    });
+    const client = ExternalAccountClient.fromJSON(
+        createWorkloadIdentityExternalAccountCredentials(config, getSubjectToken),
+    );
     if (!client) throw new Error('Failed to initialize Google Workload Identity credentials.');
     return client;
 };
@@ -285,7 +292,7 @@ export const createWorkloadIdentityGoogleAuth = (
 ): GoogleAuth => new GoogleAuth({
     authClient: client,
     projectId: config.projectId,
-    scopes: [...FIREBASE_ADMIN_SCOPES],
+    scopes: [...WORKLOAD_IDENTITY_FIREBASE_ADMIN_SCOPES],
 });
 
 const toFirebaseAccessToken = async (

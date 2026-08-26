@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import type { App } from 'firebase-admin/app';
-import type { AuthClient, BaseExternalAccountClient } from 'google-auth-library';
+import type { BaseExternalAccountClient } from 'google-auth-library';
 import {
     admin as firebaseAdminCompat,
     registerFirebaseFirestoreCompatInstance,
@@ -299,44 +299,27 @@ assert.equal(firebaseAdminCompat.firestore(), workloadIdentityFirestore);
 
 const workloadIdentityStorage = createWorkloadIdentityStorageAdmin({
     app: firebaseApp,
-    authClient: menulistClient,
+    config: menulistConfig,
     defaultBucket: 'menulist-prod.firebasestorage.app',
-    projectId: menulistConfig.projectId,
+    getSubjectToken: async () => 'storage-scoped-vercel-oidc-token',
 });
 assert.equal(workloadIdentityStorage.app, firebaseApp);
 assert.equal(workloadIdentityStorage.bucket().name, 'menulist-prod.firebasestorage.app');
 assert.equal(workloadIdentityStorage.bucket('explicit-bucket').name, 'explicit-bucket');
 const storageAuth = (workloadIdentityStorage.bucket() as unknown as {
     storage: { authClient: {
-        authorizeRequest: (options: { headers?: Record<string, string>; url: string }) => Promise<{
-            headers?: Record<string, string>;
-        }>;
-        getClient: () => Promise<AuthClient>;
-    } };
-}).storage.authClient;
-assert.notEqual(await storageAuth.getClient(), menulistClient);
-
-const headerCompatibilityStorage = createWorkloadIdentityStorageAdmin({
-    app: firebaseApp,
-    authClient: {
-        getRequestHeaders: async () => new Headers({ authorization: 'Bearer short-lived-test-token' }),
-    } as unknown as AuthClient,
-    defaultBucket: 'menulist-prod.firebasestorage.app',
-    projectId: menulistConfig.projectId,
-});
-const headerCompatibilityAuth = (headerCompatibilityStorage.bucket() as unknown as {
-    storage: { authClient: {
-        authorizeRequest: (options: { headers?: Record<string, string>; url: string }) => Promise<{
-            headers?: Record<string, string>;
+        getClient: () => Promise<{
+            subjectTokenSupplier?: { getSubjectToken: () => Promise<string> };
         }>;
     } };
 }).storage.authClient;
-const authorizedStorageRequest = await headerCompatibilityAuth.authorizeRequest({
-    headers: { 'x-test-header': 'retained' },
-    url: 'https://storage.googleapis.com/upload/storage/v1/b/test/o',
-});
-assert.equal(authorizedStorageRequest.headers?.authorization, 'Bearer short-lived-test-token');
-assert.equal(authorizedStorageRequest.headers?.['x-test-header'], 'retained');
+const nativeStorageClient = await storageAuth.getClient();
+assert.notEqual(nativeStorageClient, menulistClient);
+assert.equal(nativeStorageClient.constructor.name, 'IdentityPoolClient');
+assert.equal(
+    await nativeStorageClient.subjectTokenSupplier?.getSubjectToken(),
+    'storage-scoped-vercel-oidc-token',
+);
 
 expectThrows(
     () => readAnswerlatticeWorkloadIdentityConfig({}),

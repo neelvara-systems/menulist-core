@@ -32878,13 +32878,14 @@ TEMPLATE FOR NEW ENTRIES:
   ticket recovery route so unpaid and payment-pending owners are not bounced
   back to Billing by the dashboard entitlement guard.
 
-# 2026-08-26 - MenuList keyless Storage header compatibility
+# 2026-08-26 - MenuList keyless Storage auth-generation compatibility
 
 - Preserved MenuList and Answerlattice's separate keyless WIF clients while
-  adapting the root google-auth-library v10 WHATWG header result to the plain
-  header map expected by `@google-cloud/storage`'s nested v9 auth runtime.
-- Added a regression through Storage's actual authorization method proving the
-  short-lived Authorization header is present and existing request headers are
-  retained.
+  letting `@google-cloud/storage` construct its own native nested-v9 external-
+  account client from the same validated provider contract and product-scoped
+  Vercel OIDC supplier. Firestore and Firebase Auth remain on root v10.
+- Added a regression proving Storage resolves a native `IdentityPoolClient`
+  with the exact product-scoped subject-token supplier instead of either
+  incompatible root-v10 wrapper.
 - Kept Firestore, Firebase Auth, IAM, tenant/store paths, retries, operation
   counts, static-key prohibition, and provider boundaries unchanged.

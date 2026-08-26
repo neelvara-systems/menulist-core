@@ -3,6 +3,7 @@ import { FieldValue } from 'firebase-admin/firestore';
 import { logFirebaseAdminDiagnostic } from './firebaseAdminDiagnostics';
 import { menulistServerEnv } from '@lib/env/menulistServerEnv';
 import {
+    createMenulistWorkloadIdentitySubjectTokenSupplier,
     createMenulistFirebaseWorkloadIdentityCredential,
     getMenulistWorkloadIdentityAuthClient,
     readMenulistWorkloadIdentityConfig,
@@ -88,9 +89,9 @@ registerFirebaseFirestoreCompatInstance(firebaseAdminApp, firestoreAdmin);
 const storageAdmin = workloadIdentity && workloadIdentityAuthClient
     ? createWorkloadIdentityStorageAdmin({
         app: firebaseAdminApp,
-        authClient: workloadIdentityAuthClient,
+        config: workloadIdentity,
         defaultBucket: menulistServerEnv.firebaseStorageBucket,
-        projectId: workloadIdentity.projectId,
+        getSubjectToken: createMenulistWorkloadIdentitySubjectTokenSupplier(workloadIdentity),
     })
     : admin.storage(firebaseAdminApp);
 const authAdmin = admin.auth(firebaseAdminApp);

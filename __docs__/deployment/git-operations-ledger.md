@@ -812,6 +812,53 @@ Those fields are explicitly `unknown` instead of guessed.
   unstaged path change; no pre-existing source or user work was altered.
 - Attribution confidence: exact.
 
+#### Chronological pointer for `GIT-20260826-062411-mlrc074-storage-header-bridge`
+
+- The performed-result block is preserved above at line 4741 after an older repeated anchor matched. It records exact commit `d442473ac026b8306d7655efdc519cf754453837`, direct server readback, validation, and the automatically started QA build. This pointer preserves chronological discoverability without rewriting append-only history.
+
+### GIT-20260826-064013-mlrc075-native-storage-wif
+
+- Timestamp: `2026-08-26T06:40:13+05:30`
+- Record type: `PLANNED`
+- Actor/session/thread ID: Codex `/root`; thread `01a034e1-c70a-74b1-a92b-0a103a981815`
+- Registered worktrees: one worktree, `/Users/danny/Projects/MenuListAi/menulist-core`, branch `staging`, HEAD `d442473ac026b8306d7655efdc519cf754453837`.
+- Branch matrix before:
+
+| Branch | Local full SHA | Server ref/full SHA | Tracking ref | Ahead/behind | Worktree | Staged/unstaged/untracked | Status |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `staging` | `d442473ac026b8306d7655efdc519cf754453837` | `refs/heads/staging` / `d442473ac026b8306d7655efdc519cf754453837` | `origin/staging` | `0/0` | primary | `0/10/0` | `IN_SYNC` |
+| `main` | `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `refs/heads/main` / `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `origin/main` | `0/0` | none | n/a | `IN_SYNC` |
+
+- Starting filesystem state: ten tracked modified files, all attributable to the prior MLRC-074 performed-result ledger record or current MLRC-075 native Storage WIF implementation, regression, changelog, and certification evidence; no staged or untracked file.
+- Operation: commit the ten exact tracked files and push local `staging` to `origin/staging` non-force. `main` remains untouched. The branch-tracked custom-`qa` pipeline may deploy automatically; no manual Vercel or Firebase deployment is authorized or planned.
+- Validation already completed: WIF/Storage regression PASS; MenuList agent-readiness PASS; focused ESLint PASS; strict TypeScript PASS; SecurityOS-selected auth/failure matrix and all chained suites PASS; configuration safety PASS; combined managed MenuList/Answerlattice environment contract PASS; and `git diff --check` PASS.
+- Hosted/root-cause evidence: exact build `d442473ac026b8306d7655efdc519cf754453837` still failed at `storage_write`, proving two cross-major object adapters were insufficient. Current Google auth documentation and pinned source support constructing Storage with a same-generation auth client. MLRC-075 supplies the validated external-account contract to Storage's native nested-v9 GoogleAuth while Firestore/Auth retain root v10. No dependency, static key, IAM, Firebase operation, retry, tenant/store path, or product boundary changed.
+- Firebase matrix before/after (no Firebase source/config path changed; no infrastructure deployment/readback in this application-source operation):
+
+| Product | Environment/project | Component | Local source/config | Local hash/bytes | Local validation | Server evidence | Readback | Delta | Deployment state |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| MenuList | QA / `menulist-qa` | Firestore Rules | `firestore-menulist.rules` | `2059459e3b0263bdeca75f89ad0b490e8cebf1dee19cdef9012e0c02fbab5b89` / 132684 | unchanged | not read back | `2026-08-26T06:40:13+05:30` | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| MenuList | QA / `menulist-qa` | indexes | `firestore.indexes.json` | `5629ae4d5004bc59c82528f2e7f9b7e5bb1ffbf74e0fc2e2e5e5252abf0744e0` / 78310 | unchanged | not read back | same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| MenuList | QA / `menulist-qa` | Storage Rules | `storage.rules` | `226d2a206d7de8a442bf356a61ad048118322acb993eb89fa45744ed78ed1838` / 18176 | unchanged | not read back | same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| MenuList | QA / `menulist-qa` | Functions | `functions/` | tree `3c42f5d3fca47ca69e10fa34ad63cf8c28ab8f75` | unchanged | not read back | same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| MenuList | production / `menulist-prod` | Firestore Rules | same as QA | same | unchanged | not read back | same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| MenuList | production / `menulist-prod` | indexes | same as QA | same | unchanged | not read back | same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| MenuList | production / `menulist-prod` | Storage Rules | same as QA | same | unchanged | not read back | same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| MenuList | production / `menulist-prod` | Functions | same as QA | same | unchanged | not read back | same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| Answerlattice | QA / `neelvara-answerlattice-qa` | Firestore Rules | `firestore-answerlattice.rules` | `a92cbacbf2b64d2939391449044ea5625e706ddb60e23dfab7c4ffb20d3a9e77` / 116222 | unchanged | not read back | same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| Answerlattice | QA / `neelvara-answerlattice-qa` | indexes | `firestore-answerlattice.indexes.json` | `0114bdf8ea6425b890a8e58fa03dac7915a7d3ed4372bc689ab59a8ce585ff4a` / 50941 | unchanged | not read back | same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| Answerlattice | QA / `neelvara-answerlattice-qa` | Storage Rules | `storage-answerlattice.rules` | `5fc8f980f289889da557ac69c91edd61f8e8646b066c9b0101b87141d67106cc` / 6948 | unchanged | not read back | same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| Answerlattice | QA / `neelvara-answerlattice-qa` | Functions | `functions-answerlattice/` | tree `ae5750c6e78f96a9ecfa234b64f906e04a2fdc16` | unchanged | not read back | same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| Answerlattice | production / `neelvara-answerlattice-prod` | Firestore Rules | same as QA | same | unchanged | not read back | same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| Answerlattice | production / `neelvara-answerlattice-prod` | indexes | same as QA | same | unchanged | not read back | same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| Answerlattice | production / `neelvara-answerlattice-prod` | Storage Rules | same as QA | same | unchanged | not read back | same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| Answerlattice | production / `neelvara-answerlattice-prod` | Functions | same as QA | same | unchanged | not read back | same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+
+- Firebase deployment evidence or blocker: no deployable Firebase source changed; no Firebase deploy is required or authorized.
+- Git server readback and divergence: pre-operation direct `git ls-remote` confirms both refs; post-push readback pending.
+- Final filesystem state: pending commit/push.
+- Attribution confidence: exact.
+
 #### MLRC-073 performed result — `2026-08-26T06:09:18+05:30`
 
 - Commit/push: `71eb12baa5afeee4e1797d6366cc7ced8bfdf06d` (`fix(menulist): restore keyless storage writes`) was pushed non-force from local `staging` to `origin/staging`.
@@ -4738,6 +4785,26 @@ No Firebase source/configuration changes. Firestore Rules, indexes, Storage Rule
 - Final filesystem state: pending commit/push.
 - Attribution confidence: exact.
 
+#### Final chronological pointer for `GIT-20260826-064013-mlrc075-native-storage-wif`
+
+- The complete planned operation and 16-row Firebase matrix are preserved at line 819 because an older repeated attribution anchor matched. This final pointer makes the chronological tail resolve to that record without rewriting append-only history.
+
+#### MLRC-074 performed result — `2026-08-26T06:26:10+05:30`
+
+- Commit/push: `d442473ac026b8306d7655efdc519cf754453837` (`fix(menulist): preserve keyless storage authorization`) was pushed non-force from local `staging` to `origin/staging`.
+- Direct server readback returned exact `refs/heads/staging` SHA `d442473ac026b8306d7655efdc519cf754453837` with `0/0` divergence. Local and remote `main` remained untouched at `fe625d5bbf527c1b7e537b00ab32a4f655905c35` with `0/0` divergence.
+- Post-operation branch matrix:
+
+| Branch | Local full SHA | Server ref/full SHA | Tracking ref | Ahead/behind | Worktree | Staged/unstaged/untracked | Status |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `staging` | `d442473ac026b8306d7655efdc519cf754453837` | `refs/heads/staging` / `d442473ac026b8306d7655efdc519cf754453837` | `origin/staging` | `0/0` | primary | `0/0/0` before performed-result append | `IN_SYNC` |
+| `main` | `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `refs/heads/main` / `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `origin/main` | `0/0` | none | n/a | `IN_SYNC` |
+
+- Validation: WIF/Storage authorization regression, focused ESLint, strict TypeScript, documentation links, staged diff check, and `git diff --check` passed. Documentation links reported zero broken links and the same 64 pre-existing filename warnings.
+- Firebase state after Git mutation: all 16 component/target rows in the planned matrix remain independently `NO_INFRA_CHANGE` / `SERVER_STATE_UNKNOWN`; no Firebase source/configuration path changed and no Firebase deploy occurred.
+- Manual deployment state: no Firebase or Vercel deployment command was run. The branch-tracked custom-`qa` application build started automatically as `menulist-core-ey5jg7w9j-neelvara-systems.vercel.app`; exact hosted identity and downstream import retest remain pending.
+- Final filesystem state before this performed-result append: clean. Attribution confidence: exact.
+
 #### Chronological correction pointer for `GIT-20260826-060646-mlrc073-storage-auth-bridge`
 
 - The performed-result block was appended earlier at line 815 because the patch matched an older repeated attribution anchor. Its exact commit, direct server readback, validation, Firebase state, and clean pre-append filesystem evidence are authoritative. This pointer preserves append-only history and chronological discoverability without rewriting that earlier record.
@@ -4848,3 +4915,7 @@ No Firebase source/configuration changes. Firestore Rules, indexes, Storage Rule
 - Git server readback and divergence: pre-operation direct `git ls-remote` confirms both branch refs shown above; post-push readback pending.
 - Final filesystem state: pending commit/push.
 - Attribution confidence: exact.
+
+#### Chronological tail correction for `GIT-20260826-064013-mlrc075-native-storage-wif`
+
+- The complete planned record remains preserved at line 819 and the first pointer at line 4788. This tail correction follows the final row of the later MLRC-074 matrix and makes the current append-only end resolve to MLRC-075 without deleting or moving prior text.

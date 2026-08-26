@@ -17,6 +17,7 @@ import { getBoundedFirebaseAdminStringContext, logFirebaseAdminFailure, } from '
 import { answerlatticeServerEnv } from '@lib/env/answerlatticeServerEnv';
 import { menulistServerEnv } from '@lib/env/menulistServerEnv';
 import {
+    createAnswerlatticeWorkloadIdentitySubjectTokenSupplier,
     getAnswerlatticeFirebaseWorkloadIdentityCredential,
     getAnswerlatticeWorkloadIdentityAuthClient,
     readAnswerlatticeWorkloadIdentityConfig,
@@ -275,9 +276,11 @@ const answerlatticeStorageAdmin = answerlatticeAdminApp
     ? (answerlatticeWorkloadIdentity && answerlatticeWorkloadIdentityAuthClient
         ? createWorkloadIdentityStorageAdmin({
             app: answerlatticeAdminApp,
-            authClient: answerlatticeWorkloadIdentityAuthClient,
+            config: answerlatticeWorkloadIdentity,
             defaultBucket: getAnswerlatticeStorageBucket(),
-            projectId: answerlatticeWorkloadIdentity.projectId,
+            getSubjectToken: createAnswerlatticeWorkloadIdentitySubjectTokenSupplier(
+                answerlatticeWorkloadIdentity,
+            ),
         })
         : admin.storage(answerlatticeAdminApp))
     : null;

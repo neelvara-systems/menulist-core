@@ -53,6 +53,10 @@ export const createMenulistWorkloadIdentityAuthClient = (
     getSubjectToken: OidcTokenSupplier,
 ): BaseExternalAccountClient => createWorkloadIdentityAuthClient(config, getSubjectToken);
 
+export const createMenulistWorkloadIdentitySubjectTokenSupplier = (
+    config: MenulistWorkloadIdentityConfig,
+): OidcTokenSupplier => createProviderAudienceTokenSupplier(config, getVercelOidcToken);
+
 let workloadIdentityAuthClient: BaseExternalAccountClient | null = null;
 
 export const getMenulistWorkloadIdentityAuthClient = (): BaseExternalAccountClient => {
