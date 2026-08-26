@@ -146,6 +146,7 @@ const IntegrationsTab: React.FC<IntegrationsTabProps> = ({
 }) => {
     const { token } = theme.useToken();
     const [modal, modalContextHolder] = Modal.useModal();
+    const [messageApi, messageContextHolder] = message.useMessage();
     const publicApiEnabled = FEATURE_FLAGS.ENABLE_PUBLIC_API;
     const gbpEnabled = FEATURE_FLAGS.ENABLE_GBP_SYNC;
     const gbp = storeDetails?.gbp;
@@ -219,7 +220,7 @@ const IntegrationsTab: React.FC<IntegrationsTabProps> = ({
                     }
                     : previous
             ));
-            message.success('Public API key generated');
+            messageApi.success('Public API key generated');
         } catch (error) {
             logBusinessSettingsFailure(
                 'business_settings_public_api_key_generate_failed',
@@ -227,7 +228,7 @@ const IntegrationsTab: React.FC<IntegrationsTabProps> = ({
                 getPublicApiKeyLogContext(action),
             );
             if (componentActiveRef.current && activeIntegrationScopeRef.current === requestScopeKey) {
-                message.error('Failed to generate API key');
+                messageApi.error('Failed to generate API key');
             }
         } finally {
             publicApiActionInFlightRef.current = false;
@@ -235,7 +236,7 @@ const IntegrationsTab: React.FC<IntegrationsTabProps> = ({
                 setPublicApiLoadingAction(null);
             }
         }
-    }, [getPublicApiKeyLogContext, setStoreDetails, storeDetails?.storeId, storeDetails?.tenantId]);
+    }, [getPublicApiKeyLogContext, messageApi, setStoreDetails, storeDetails?.storeId, storeDetails?.tenantId]);
 
     const handleRevokePublicApiKey = useCallback(async () => {
         const action: PublicApiKeyAction = 'revoke';
@@ -274,7 +275,7 @@ const IntegrationsTab: React.FC<IntegrationsTabProps> = ({
                 const { publicApi, ...rest } = previous || {};
                 return rest;
             });
-            message.success('Public API key revoked');
+            messageApi.success('Public API key revoked');
         } catch (error) {
             logBusinessSettingsFailure(
                 'business_settings_public_api_key_revoke_failed',
@@ -282,7 +283,7 @@ const IntegrationsTab: React.FC<IntegrationsTabProps> = ({
                 getPublicApiKeyLogContext(action),
             );
             if (componentActiveRef.current && activeIntegrationScopeRef.current === requestScopeKey) {
-                message.error('Failed to revoke API key');
+                messageApi.error('Failed to revoke API key');
             }
         } finally {
             publicApiActionInFlightRef.current = false;
@@ -290,7 +291,7 @@ const IntegrationsTab: React.FC<IntegrationsTabProps> = ({
                 setPublicApiLoadingAction(null);
             }
         }
-    }, [getPublicApiKeyLogContext, setStoreDetails, storeDetails?.storeId, storeDetails?.tenantId]);
+    }, [getPublicApiKeyLogContext, messageApi, setStoreDetails, storeDetails?.storeId, storeDetails?.tenantId]);
 
     const confirmRevokePublicApiKey = useCallback(() => {
         modal.confirm({
@@ -312,7 +313,7 @@ const IntegrationsTab: React.FC<IntegrationsTabProps> = ({
             }
 
             await navigator.clipboard.writeText(generatedApiKey);
-            message.success('API key copied');
+            messageApi.success('API key copied');
         } catch (error) {
             logBusinessSettingsFailure(
                 'business_settings_public_api_key_copy_failed',
@@ -322,9 +323,9 @@ const IntegrationsTab: React.FC<IntegrationsTabProps> = ({
                     hasClipboard: typeof navigator !== 'undefined' && typeof navigator.clipboard?.writeText === 'function',
                 },
             );
-            message.error('Copy failed');
+            messageApi.error('Copy failed');
         }
-    }, [generatedApiKey, getPublicApiKeyLogContext]);
+    }, [generatedApiKey, getPublicApiKeyLogContext, messageApi]);
 
     if (!publicApiEnabled && !gbpEnabled) {
         return null;
@@ -333,6 +334,7 @@ const IntegrationsTab: React.FC<IntegrationsTabProps> = ({
     return (
         <Flex vertical gap={16} ref={scrollRef}>
             {modalContextHolder}
+            {messageContextHolder}
             {publicApiEnabled ? (
                 <Card size="small">
                     <Flex align="center" gap={8}>

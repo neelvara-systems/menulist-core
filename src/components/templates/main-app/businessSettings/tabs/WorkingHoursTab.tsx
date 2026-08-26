@@ -23,6 +23,7 @@ interface WorkingHoursTabProps {
 const WorkingHoursTab: React.FC<WorkingHoursTabProps> = ({ scrollRef, workingHours, setWorkingHours, form }) => {
     const t = useTranslations('BusinessSettings');
     const [modal, modalContextHolder] = Modal.useModal();
+    const [messageApi, messageContextHolder] = message.useMessage();
     const timePickerFormat = getClockTimeInputFormat();
     const persistWorkingHours = (nextHours: WorkingHourSlot[]) => {
         const invalid = nextHours.some((slot) => (
@@ -31,7 +32,7 @@ const WorkingHoursTab: React.FC<WorkingHoursTabProps> = ({ scrollRef, workingHou
             && !isValidClockRange(slot.start.format('HH:mm'), slot.end.format('HH:mm'))
         ));
         if (invalid) {
-            message.error('Opening and closing times must be different.');
+            messageApi.error('Opening and closing times must be different.');
             return;
         }
         setWorkingHours(nextHours);
@@ -77,6 +78,7 @@ const WorkingHoursTab: React.FC<WorkingHoursTabProps> = ({ scrollRef, workingHou
     return (
         <Card size='small' ref={scrollRef}>
             {modalContextHolder}
+            {messageContextHolder}
             <Title level={5} style={{ margin: "unset" }}>Regular weekly hours</Title>
             <Space style={{ float: 'right', marginTop: '-28px' }}>
                 <Button

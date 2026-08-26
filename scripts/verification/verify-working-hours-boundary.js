@@ -163,6 +163,12 @@ function verifyDesktopSettings(businessSettings, workingHoursTab, integrationsTa
     "title: 'Clear regular weekly hours?'",
   ].forEach((token) => assertIncludes(workingHoursTab, token, 'Desktop working-hours confirmation context'));
   assertNotIncludes(workingHoursTab, 'Modal.confirm({', 'Desktop working-hours confirmation must not use detached static rendering');
+  [
+    'const [messageApi, messageContextHolder] = message.useMessage();',
+    '{messageContextHolder}',
+    "messageApi.error('Opening and closing times must be different.');",
+  ].forEach((token) => assertIncludes(workingHoursTab, token, 'Desktop working-hours feedback context'));
+  assertNotIncludes(workingHoursTab, 'message.error(', 'Desktop working-hours feedback must not use detached static rendering');
 
   [
     'const [modal, modalContextHolder] = Modal.useModal();',
@@ -171,6 +177,26 @@ function verifyDesktopSettings(businessSettings, workingHoursTab, integrationsTa
     "title: 'Revoke public API key?'",
   ].forEach((token) => assertIncludes(integrationsTab, token, 'Desktop public API key confirmation context'));
   assertNotIncludes(integrationsTab, 'Modal.confirm({', 'Desktop public API key confirmation must not use detached static rendering');
+  [
+    'const [messageApi, messageContextHolder] = message.useMessage();',
+    '{messageContextHolder}',
+    "messageApi.success('Public API key generated');",
+    "messageApi.success('Public API key revoked');",
+    "messageApi.error('Failed to generate API key');",
+  ].forEach((token) => assertIncludes(integrationsTab, token, 'Desktop public API key feedback context'));
+  assertNotIncludes(integrationsTab, 'message.success(', 'Desktop public API key success feedback must not use detached static rendering');
+  assertNotIncludes(integrationsTab, 'message.error(', 'Desktop public API key failure feedback must not use detached static rendering');
+
+  [
+    'const [messageApi, messageContextHolder] = message.useMessage();',
+    '{messageContextHolder}',
+    "messageApi.error(t('enterLabel'));",
+    "messageApi.error(t('duplicatePreset'));",
+    'messageApi.success(successMessage);',
+    "messageApi.success(t('timeSlotDeleted'));",
+  ].forEach((token) => assertIncludes(timeSlotPresetsTab, token, 'Desktop time-slot preset feedback context'));
+  assertNotIncludes(timeSlotPresetsTab, 'message.success(', 'Desktop time-slot preset success feedback must not use detached static rendering');
+  assertNotIncludes(timeSlotPresetsTab, 'message.error(', 'Desktop time-slot preset failure feedback must not use detached static rendering');
 
   [
     'const writeResult = await updateTimeSlotPresets(storeId, updatedPresets, cascadeMutation);',

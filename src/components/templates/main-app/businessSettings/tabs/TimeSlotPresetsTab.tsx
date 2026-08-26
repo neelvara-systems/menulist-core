@@ -34,6 +34,7 @@ const TimeSlotPresetsTab: React.FC<TimeSlotPresetsTabProps> = ({
 }) => {
     const t = useTranslations('BusinessSettings');
     const { token } = theme.useToken();
+    const [messageApi, messageContextHolder] = message.useMessage();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingPreset, setEditingPreset] = useState<TimeSlotPreset | null>(null);
     const [formData, setFormData] = useState({
@@ -117,7 +118,7 @@ const TimeSlotPresetsTab: React.FC<TimeSlotPresetsTabProps> = ({
 
     const handleSave = async () => {
         if (!formData.label.trim()) {
-            message.error(t('enterLabel'));
+            messageApi.error(t('enterLabel'));
             return;
         }
 
@@ -127,12 +128,12 @@ const TimeSlotPresetsTab: React.FC<TimeSlotPresetsTabProps> = ({
             p.id !== editingPreset?.id
         );
         if (isDuplicate) {
-            message.error(t('duplicatePreset'));
+            messageApi.error(t('duplicatePreset'));
             return;
         }
 
         if (!isValidClockRange(formData.startTime, formData.endTime)) {
-            message.error(t('endAfterStart'));
+            messageApi.error(t('endAfterStart'));
             return;
         }
 
@@ -192,7 +193,7 @@ const TimeSlotPresetsTab: React.FC<TimeSlotPresetsTabProps> = ({
 
             setIsModalOpen(false);
             resetForm();
-            message.success(successMessage);
+            messageApi.success(successMessage);
         } catch (error) {
             logBusinessSettingsFailure('business_settings_time_slot_preset_save_failed', error, {
                 ...getBoundedBusinessSettingsStringContext('tenantId', tenantId),
@@ -205,7 +206,7 @@ const TimeSlotPresetsTab: React.FC<TimeSlotPresetsTabProps> = ({
                 presetCount: presets.length,
             });
             if (componentActiveRef.current && activeScopeRef.current === requestScopeKey) {
-                message.error(t('failedToSaveTimeSlot'));
+                messageApi.error(t('failedToSaveTimeSlot'));
             }
         } finally {
             actionInFlightRef.current = false;
@@ -239,7 +240,7 @@ const TimeSlotPresetsTab: React.FC<TimeSlotPresetsTabProps> = ({
 
             if (!componentActiveRef.current || activeScopeRef.current !== requestScopeKey) return;
             onPresetsChange(updatedPresets);
-            message.success(t('timeSlotDeleted'));
+            messageApi.success(t('timeSlotDeleted'));
         } catch (error) {
             logBusinessSettingsFailure('business_settings_time_slot_preset_delete_failed', error, {
                 ...getBoundedBusinessSettingsStringContext('tenantId', tenantId),
@@ -248,7 +249,7 @@ const TimeSlotPresetsTab: React.FC<TimeSlotPresetsTabProps> = ({
                 presetCount: presets.length,
             });
             if (componentActiveRef.current && activeScopeRef.current === requestScopeKey) {
-                message.error(t('failedToDeleteTimeSlot'));
+                messageApi.error(t('failedToDeleteTimeSlot'));
             }
         } finally {
             actionInFlightRef.current = false;
@@ -260,6 +261,7 @@ const TimeSlotPresetsTab: React.FC<TimeSlotPresetsTabProps> = ({
 
     return (
         <Card size='small' ref={scrollRef}>
+            {messageContextHolder}
             <Flex justify="space-between" align="center">
                 <Title level={5} style={{ margin: "unset" }}>{t('timeSlotPresets')}</Title>
                 <Button
