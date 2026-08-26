@@ -5153,3 +5153,22 @@ No Firebase source/configuration changes. Firestore Rules, indexes, Storage Rule
 - Git server readback and divergence: pre-operation direct `git ls-remote` confirms both branch refs shown above; post-push readback pending.
 - Final filesystem state: pending implementation, validation, commit, and push.
 - Attribution confidence: exact.
+
+#### Final chronological pointer and performed result for `GIT-20260826-074524-alrc079-scrollable-intake-review`
+
+- The complete planned record and 16-row Firebase matrix are preserved earlier in this append-only ledger. This pointer makes the current tail resolve to ALRC-079 without moving or deleting prior evidence.
+- Commit/push: `e00f96fbde5660d3e81c4d17afd5c499bfb95efb` (`fix(answerlattice): keep intake review reachable`) was pushed non-force from local `staging` to `origin/staging`.
+- Direct server readback returned exact `refs/heads/staging` SHA `e00f96fbde5660d3e81c4d17afd5c499bfb95efb` with `0/0` divergence. Local and remote `main` remained untouched at `fe625d5bbf527c1b7e537b00ab32a4f655905c35` with `0/0` divergence.
+- The commit preserves all four previously modified tracked files: the Answerlattice viewport fix and regression, plus the already attributed MLRC-078 certification and ledger evidence. No local work was discarded.
+- Validation: First Trusted Answers contract regression, Answerlattice TypeScript, focused ESLint, staged diff validation, and `git diff --check` passed.
+- Firebase state: all 16 planned component/target rows remain independently `NO_INFRA_CHANGE` / `SERVER_STATE_UNKNOWN`; no Firebase infrastructure source/configuration path changed and no deployment or authenticated readback occurred.
+- Manual deployment state: no Vercel or Firebase deployment command was run. At readback time, `canonica.app` still served exact predecessor build `529c3564d2d2f6314e0496aaa15bcd1899fd3835`; the branch-tracked automatic QA build and exact UI retest remain pending.
+- Post-operation branch matrix before this ledger-only closeout:
+
+| Branch | Local full SHA | Server ref/full SHA | Tracking ref | Ahead/behind | Worktree | Staged/unstaged/untracked | Status |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `staging` | `e00f96fbde5660d3e81c4d17afd5c499bfb95efb` | `refs/heads/staging` / `e00f96fbde5660d3e81c4d17afd5c499bfb95efb` | `origin/staging` | `0/0` | primary | `0/0/0` before this append | `IN_SYNC` |
+| `main` | `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `refs/heads/main` / `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `origin/main` | `0/0` | none | n/a | `IN_SYNC` |
+
+- Closeout operation: commit this ledger-only performed result and push `staging` non-force; `main` remains untouched.
+- Attribution confidence: exact.
