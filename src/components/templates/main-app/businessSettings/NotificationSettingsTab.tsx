@@ -30,6 +30,7 @@ const resolveAvailableMode = (mode: NotificationOsOwnerMode | undefined): Notifi
 
 export default function NotificationSettingsTab({ onSaved, storeDetails }: Props) {
     const { data: session } = useSession();
+    const [messageApi, messageContextHolder] = message.useMessage();
     const initial = normalizeOwnerNotificationSettings(storeDetails.notificationSettings);
     const [mode, setMode] = useState<NotificationOsOwnerMode>(resolveAvailableMode(initial.channelMode));
     const [preferredChannel, setPreferredChannel] = useState<'email' | 'whatsapp'>(initial.preferredChannels?.[0] || 'email');
@@ -77,9 +78,9 @@ export default function NotificationSettingsTab({ onSaved, storeDetails }: Props
             setPersistedMode(resolveAvailableMode(settings.channelMode));
             setPersistedPreferredChannel(settings.preferredChannels?.[0] || 'email');
             onSaved(settings as NonNullable<StoreDataType['notificationSettings']>);
-            message.success('Notification settings saved');
-        } catch (error) {
-            message.error(error instanceof Error ? error.message : 'Could not save notification settings.');
+            messageApi.success('Notification settings saved');
+        } catch {
+            messageApi.error('Could not save notification settings.');
         } finally {
             setSaving(false);
         }
@@ -87,6 +88,7 @@ export default function NotificationSettingsTab({ onSaved, storeDetails }: Props
 
     return (
         <Flex vertical gap={16}>
+            {messageContextHolder}
             <Card size="small">
                 <Typography.Title level={5} style={{ marginTop: 0 }}>Notifications</Typography.Title>
                 <Typography.Paragraph type="secondary">

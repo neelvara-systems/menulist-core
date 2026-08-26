@@ -282,6 +282,19 @@ assert(
   desktopSettings.includes("disabled={!hasChanges || !selectionReady}"),
   "Desktop settings must avoid unchanged or invalid writes",
 );
+assert(
+  desktopSettings.includes("const [messageApi, messageContextHolder] = message.useMessage();") &&
+    desktopSettings.includes("{messageContextHolder}") &&
+    desktopSettings.includes("messageApi.success('Notification settings saved')") &&
+    desktopSettings.includes("messageApi.error('Could not save notification settings.')"),
+  "Desktop settings must render scoped success and bounded failure feedback",
+);
+assert(
+  !desktopSettings.includes("message.success(") &&
+    !desktopSettings.includes("message.error(") &&
+    !desktopSettings.includes("error.message"),
+  "Desktop settings must not use detached feedback or expose raw errors",
+);
 const mobileSettings = read(
   "src/components/mobile/screens/MobileNotificationSettingsScreen.tsx",
 );
@@ -292,6 +305,11 @@ assert(
 assert(
   mobileSettings.includes("disabled={!hasChanges || !selectionReady}"),
   "Mobile settings must avoid unchanged or invalid writes",
+);
+assert(
+  mobileSettings.includes("Toast.show({ content: 'Could not save notification settings.'") &&
+    !mobileSettings.includes("error.message"),
+  "Mobile settings must retain bounded failure feedback without raw errors",
 );
 const desktopBusinessSettings = read(
   "src/components/templates/main-app/businessSettings/index.tsx",

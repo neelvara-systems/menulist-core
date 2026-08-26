@@ -82,8 +82,8 @@ export default function MobileNotificationSettingsScreen({ onBack }: Props) {
             setPersistedPreferredChannel(settings.preferredChannels?.[0] || 'email');
             setStoreDetails((current) => current ? { ...current, notificationSettings: settings } : current);
             Toast.show({ content: 'Notification settings saved', duration: 1500 });
-        } catch (error) {
-            Toast.show({ content: error instanceof Error ? error.message : 'Could not save notification settings.', duration: 2200 });
+        } catch {
+            Toast.show({ content: 'Could not save notification settings.', duration: 2200 });
         } finally {
             setSaving(false);
         }
