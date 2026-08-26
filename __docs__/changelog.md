@@ -1,5 +1,17 @@
 # MenuList — Changelog
 
+## August 26, 2026 - Keyless Storage Credential Compatibility
+
+- Corrected the shared keyless Storage bridge to pass the actual product-scoped
+  Workload Identity auth client into `@google-cloud/storage`. Firestore retains
+  its existing GoogleAuth wrapper.
+- This avoids a cross-major google-auth-library runtime mismatch where Storage's
+  nested v9 wrapper treated the repository's v10 GoogleAuth wrapper as an auth
+  client. MenuList and Answerlattice remain on separate project-scoped clients;
+  IAM, scopes, bucket paths, retries, errors, and operation counts are unchanged.
+- Added a regression proving Storage resolves the original external-account
+  client instead of the incompatible wrapper.
+
 ## August 26, 2026 - Failure-Only Hosted Workload Identity Diagnostics
 
 - Added a bounded MenuList-only diagnostic at the keyless Google access-token

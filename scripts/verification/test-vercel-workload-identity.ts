@@ -299,13 +299,17 @@ assert.equal(firebaseAdminCompat.firestore(), workloadIdentityFirestore);
 
 const workloadIdentityStorage = createWorkloadIdentityStorageAdmin({
     app: firebaseApp,
-    auth: menulistGoogleAuth,
+    authClient: menulistClient,
     defaultBucket: 'menulist-prod.firebasestorage.app',
     projectId: menulistConfig.projectId,
 });
 assert.equal(workloadIdentityStorage.app, firebaseApp);
 assert.equal(workloadIdentityStorage.bucket().name, 'menulist-prod.firebasestorage.app');
 assert.equal(workloadIdentityStorage.bucket('explicit-bucket').name, 'explicit-bucket');
+const storageAuth = (workloadIdentityStorage.bucket() as unknown as {
+    storage: { authClient: { getClient: () => Promise<unknown> } };
+}).storage.authClient;
+assert.equal(await storageAuth.getClient(), menulistClient);
 
 expectThrows(
     () => readAnswerlatticeWorkloadIdentityConfig({}),

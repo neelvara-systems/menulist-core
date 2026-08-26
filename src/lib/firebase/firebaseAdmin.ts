@@ -85,10 +85,10 @@ const firestoreAdmin = workloadIdentity && workloadIdentityGoogleAuth
     })
     : admin.firestore(firebaseAdminApp);
 registerFirebaseFirestoreCompatInstance(firebaseAdminApp, firestoreAdmin);
-const storageAdmin = workloadIdentity && workloadIdentityGoogleAuth
+const storageAdmin = workloadIdentity && workloadIdentityAuthClient
     ? createWorkloadIdentityStorageAdmin({
         app: firebaseAdminApp,
-        auth: workloadIdentityGoogleAuth,
+        authClient: workloadIdentityAuthClient,
         defaultBucket: menulistServerEnv.firebaseStorageBucket,
         projectId: workloadIdentity.projectId,
     })

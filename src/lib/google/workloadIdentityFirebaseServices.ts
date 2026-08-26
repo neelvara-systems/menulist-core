@@ -2,7 +2,7 @@ import { Storage as GoogleCloudStorage } from '@google-cloud/storage';
 import type { App } from 'firebase-admin/app';
 import { Firestore, type Settings as FirestoreSettings } from 'firebase-admin/firestore';
 import type { Storage as FirebaseAdminStorage } from 'firebase-admin/storage';
-import type { GoogleAuth } from 'google-auth-library';
+import type { AuthClient, GoogleAuth } from 'google-auth-library';
 
 type FirestoreSettingsWithAuth = FirestoreSettings & {
     auth: GoogleAuth;
@@ -28,12 +28,12 @@ export const createWorkloadIdentityFirestore = ({
 
 export const createWorkloadIdentityStorageAdmin = ({
     app,
-    auth,
+    authClient,
     defaultBucket,
     projectId,
 }: {
     app: App;
-    auth: GoogleAuth;
+    authClient: AuthClient;
     defaultBucket: string | undefined;
     projectId: string;
 }): FirebaseAdminStorageSurface => {
@@ -44,8 +44,10 @@ export const createWorkloadIdentityStorageAdmin = ({
 
     const storage = new GoogleCloudStorage({
         // Storage currently carries google-auth-library v9 types, while the
-        // root WIF client is v10; both expose the same runtime GoogleAuth API.
-        authClient: auth as unknown as StorageAuthClient,
+        // root WIF client is v10. Pass the actual AuthClient so Storage's v9
+        // GoogleAuth wrapper does not mistake a v10 GoogleAuth instance for an
+        // AuthClient and attempt to use the wrapper itself as a credential.
+        authClient: authClient as unknown as StorageAuthClient,
         projectId,
     });
 

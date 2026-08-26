@@ -272,10 +272,10 @@ if (answerlatticeAdminApp && answerlatticeFirestoreAdmin) {
     registerFirebaseFirestoreCompatInstance(answerlatticeAdminApp, answerlatticeFirestoreAdmin);
 }
 const answerlatticeStorageAdmin = answerlatticeAdminApp
-    ? (answerlatticeWorkloadIdentity && answerlatticeWorkloadIdentityGoogleAuth
+    ? (answerlatticeWorkloadIdentity && answerlatticeWorkloadIdentityAuthClient
         ? createWorkloadIdentityStorageAdmin({
             app: answerlatticeAdminApp,
-            auth: answerlatticeWorkloadIdentityGoogleAuth,
+            authClient: answerlatticeWorkloadIdentityAuthClient,
             defaultBucket: getAnswerlatticeStorageBucket(),
             projectId: answerlatticeWorkloadIdentity.projectId,
         })
