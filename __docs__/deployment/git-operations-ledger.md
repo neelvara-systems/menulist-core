@@ -812,6 +812,23 @@ Those fields are explicitly `unknown` instead of guessed.
   unstaged path change; no pre-existing source or user work was altered.
 - Attribution confidence: exact.
 
+#### MLRC-086 canonical-master recovery performed result — `2026-08-26T11:03:33+05:30`
+
+- Commit/push: `0dcaa21075ea37705d15c745ce4120b361b3e41c` (`fix(menulist): recover canonical outlet entitlement`) was pushed non-force from local `staging` to `origin/staging`.
+- Direct server readback returned exact `refs/heads/staging` SHA `0dcaa21075ea37705d15c745ce4120b361b3e41c` with `0/0` divergence. Local and remote `main` remain untouched at `fe625d5bbf527c1b7e537b00ab32a4f655905c35` with `0/0` divergence.
+- Validation: billing-entitlement boundary, Answerlattice subscription-read boundary, session/store-context boundary, focused ESLint, strict TypeScript, full zero-warning lint, production build with 450/450 static pages and 53 service-worker precache entries, and `git diff --check` passed.
+- Firebase state: all 16 planned component/target rows remain independently `NO_INFRA_CHANGE` / `SERVER_STATE_UNKNOWN`; no Firebase infrastructure source/configuration changed, deployed, or received authenticated server readback.
+- Manual deployment state: no Firebase or Vercel deployment command was run. The branch-tracked QA build may deploy automatically.
+- Post-operation branch matrix before this ledger-only closeout:
+
+| Branch | Local full SHA | Server ref/full SHA | Tracking ref | Ahead/behind | Worktree | Staged/unstaged/untracked | Status |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `staging` | `0dcaa21075ea37705d15c745ce4120b361b3e41c` | `refs/heads/staging` / `0dcaa21075ea37705d15c745ce4120b361b3e41c` | `origin/staging` | `0/0` | primary | `2/0/0` before this append; both staged paths are concurrent Answerlattice work and are excluded | `IN_SYNC` |
+| `main` | `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `refs/heads/main` / `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `origin/main` | `0/0` | none | n/a | `IN_SYNC` |
+
+- Closeout operation: commit only this ledger result with explicit-path isolation and push `staging` non-force, leaving both concurrent Answerlattice paths staged; then wait for exact automatic QA promotion and rerun outlet/HQ/adjacent flows.
+- Attribution confidence: exact.
+
 ### GIT-20260826-110202-alrc088-provider-refusal-empty-result
 
 - Timestamp: `2026-08-26T11:02:02+05:30`
@@ -852,6 +869,12 @@ Those fields are explicitly `unknown` instead of guessed.
 - Firebase deployment evidence or blocker: no Firebase infrastructure delta exists; no deployment is required or authorized.
 - Final filesystem state: pending explicit-path staging, staged-diff validation, commit, non-force `staging` push, direct server readback, automatic QA build, and exact hosted unsupported-question/escalation lifecycle retest.
 - Attribution confidence: exact.
+
+#### ALRC-088 pre-commit concurrent-ref observation — `2026-08-26T11:04:00+05:30`
+
+- Before the Answerlattice commit, another operator committed and pushed `0dcaa21075ea37705d15c745ce4120b361b3e41c` (`fix(menulist): recover canonical outlet entitlement`) from the same worktree. Direct `git ls-remote` readback confirmed `origin/staging` at that exact SHA.
+- That commit preserved the four previously excluded MenuList paths and also captured the already-written ALRC-088 planned ledger entry. It did not include either staged Answerlattice source/test path. Actor attribution for the MenuList operation remains its own recorded ledger identity; this Answerlattice operation merely observed and preserved the ref movement.
+- The ALRC-088 source commit will therefore use `0dcaa21075ea37705d15c745ce4120b361b3e41c` as its parent. The two staged Answerlattice paths remain byte-for-byte identical to their validated diff; no force operation or history rewrite is permitted.
 
 ### GIT-20260826-083900-mlrc082-growth-kits-hours-truth
 

@@ -70,6 +70,11 @@ assert(!searchCore.includes('buildSearchHistoryContextFields'), 'transient page 
 assert(!escalationServer.includes('history.contextKey'), 'legacy page context must not be copied from search history into a ticket');
 assert(!escalationServer.includes('history.surfacePage'), 'legacy surface page context must remain outside durable escalation state');
 assert(!escalationServer.includes('contextKeys: [contextKey]'), 'transient context keys must not classify durable support tickets');
+assert(searchCore.includes("logType: 'ANSWER_KNOWLEDGE_REFUSAL'"), 'provider knowledge refusals must be observable as a distinct empty-result path');
+assert(
+    searchCore.includes('if (isKnowledgeBaseRefusal(craftedAnswer))'),
+    'provider knowledge refusals must not be returned as ordinary RAG answers',
+);
 
 assert(widgetClient.includes('The screenshot could not be used. This answer is based on your text only.'), 'widget must disclose image-processing fallback');
 assert(widgetClient.includes("fetch('/api/widget/escalation'"), 'widget must submit an explicit support request');

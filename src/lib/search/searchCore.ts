@@ -1821,7 +1821,25 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
             });
         }
 
-        if (!resolvedReferences.length && !isKnowledgeBaseRefusal(craftedAnswer)) {
+        if (isKnowledgeBaseRefusal(craftedAnswer)) {
+            await writeSearchPerfLogEntry({
+                logFileName: PERF_LOG,
+                userId: uId,
+                logType: 'ANSWER_KNOWLEDGE_REFUSAL',
+                data: {
+                    ...getSearchTextLogContext(searchQuery),
+                    promptDocumentCount: documentsForPrompt.length,
+                    mountContext,
+                },
+            });
+            return saveWithCanonicalMissContext({
+                ...EMPTY_RESULT,
+                escalation: await buildEmptyEscalation(),
+                imageProcessed,
+            });
+        }
+
+        if (!resolvedReferences.length) {
             await writeSearchPerfLogEntry({
                 logFileName: PERF_LOG,
                 userId: uId,
