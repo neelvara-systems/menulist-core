@@ -1,13 +1,13 @@
 {
   "hostedCandidateIdentity": {
     "baseUrl": "https://app.menulist.digital",
-    "requestedStagingCommit": "c9c08d64cd75e8e2a2f485373f5b3ebf3b784232",
+    "requestedStagingCommit": "c22dd233b79afd3acb3c03924f7f3111112ee438",
     "menuListProductSnapshotCommit": "3a34a975d52b1a3b8bec4be35c40b4930b1f9441",
-    "servedBuildId": "c9c08d64cd75e8e2a2f485373f5b3ebf3b784232",
-    "servedDeploymentUrl": "menulist-core-hz0jrausb-neelvara-systems.vercel.app",
-    "testedAt": "2026-08-25T13:53:30+05:30",
+    "servedBuildId": "c22dd233b79afd3acb3c03924f7f3111112ee438",
+    "servedDeploymentUrl": "menulist-core-qbotpx8sn-neelvara-systems.vercel.app",
+    "testedAt": "2026-08-26T08:24:00+05:30",
     "result": "PASS_DEPLOYMENT_IDENTITY",
-    "evidence": "The no-store /api/version response matched the exact current staging commit with verified provenance. The complete hosted anonymous API boundary and bounded authenticated recovery-route checks were then rerun; mutation evidence remains separately classified."
+    "evidence": "The no-store /api/version response matched exact MenuList staging commit c22dd233 with verified provenance after Vercel TypeScript, lint, 450-page production build, and deployment-bundle checks passed. The owner dashboard and tenant public menu then hard-loaded successfully; mutation evidence remains separately classified."
   },
   "privateRouteAccess": {
     "baseUrl": "http://localhost:3000",
@@ -88,33 +88,33 @@
     "evidence": "All 58 MenuList private page routes redirected a signed-out browser to /signin with the exact intended callback. No private screen rendered. Alias routes canonicalized before callback preservation."
   },
   "apiAnonymousBoundary": {
-    "baseUrl": "http://localhost:3000",
-    "candidateFilesystem": "uncommitted",
-    "sourceBaselineCommit": "916b5c94d82b848fef791babeb49addbd3c794b8",
-    "testedAt": "2026-08-25T10:08:29+05:30",
-    "handlers": 136,
-    "methodProbes": 153,
-    "routeManifestSha256": "1ac9365eb6d895d2360453d67aa0cb077a3a9346f2061a9aba9199615c9f9612",
+    "baseUrl": "https://app.menulist.digital",
+    "candidateFilesystem": "staging classification correction; hosted route implementations from exact served build",
+    "sourceBaselineCommit": "c22dd233b79afd3acb3c03924f7f3111112ee438",
+    "testedAt": "2026-08-26T08:27:00+05:30",
+    "handlers": 140,
+    "methodProbes": 157,
+    "routeManifestSha256": "96b3d155f7777e64aca4e1d245743120dafe65ddeffa1d029511b5ef4112a428",
     "requestState": "anonymous; credentials omitted; empty JSON for body methods; invalid deterministic dynamic-route identifiers",
     "statusCounts": {
       "200": 5,
       "301": 1,
       "400": 15,
-      "401": 128,
+      "401": 130,
       "403": 1,
-      "404": 3
+      "404": 5
     },
     "liveRazorpayExecution": "EXCLUDED; only anonymous empty-boundary rejection was exercised",
     "result": "PASS",
-    "evidence": "All exported methods across all 136 MenuList route handlers responded without 5xx or timeout after bounded retry. Authenticated, platform-admin, server-secret/signature, and provider-webhook methods did not return anonymous 2xx responses. Public/static 2xx responses remained limited to their classified boundary. No valid mutation payload or credential was supplied."
+    "evidence": "All exported methods across all 140 MenuList route handlers, including the four Growth Kits add-on APIs previously misclassified as a separate-product boundary, responded without 5xx or timeout. Authenticated, platform-admin, server-secret/signature, and provider-webhook methods did not return anonymous 2xx responses. Public/static 2xx responses remained limited to their classified boundary. No valid mutation payload or credential was supplied."
   },
   "hostedApiAnonymousBoundary": {
     "baseUrl": "https://app.menulist.digital",
-    "servedBuildId": "c9c08d64cd75e8e2a2f485373f5b3ebf3b784232",
-    "testedAt": "2026-08-25T13:55:30+05:30",
-    "handlers": 136,
-    "methodProbes": 153,
-    "routeManifestSha256": "1ac9365eb6d895d2360453d67aa0cb077a3a9346f2061a9aba9199615c9f9612",
+    "servedBuildId": "c22dd233b79afd3acb3c03924f7f3111112ee438",
+    "testedAt": "2026-08-26T08:27:00+05:30",
+    "handlers": 140,
+    "methodProbes": 157,
+    "routeManifestSha256": "96b3d155f7777e64aca4e1d245743120dafe65ddeffa1d029511b5ef4112a428",
     "requestState": "anonymous; credentials omitted; empty JSON for body methods; invalid deterministic dynamic-route identifiers",
     "statusCounts": {
       "200": 5,
@@ -126,7 +126,7 @@
     },
     "liveRazorpayExecution": "EXCLUDED; only anonymous empty-boundary rejection was exercised",
     "result": "PASS",
-    "evidence": "All 153 hosted method probes completed without timeout, 5xx, or protected anonymous 2xx. The batch-image trigger that previously crashed before authentication returned 401 after the Cloud Tasks proto trace fix."
+    "evidence": "All 157 hosted method probes completed without timeout, 5xx, or protected anonymous 2xx. The four MenuList Growth Kits API routes are now included in the same exhaustive anonymous boundary. The batch-image trigger that previously crashed before authentication returned 401 after the Cloud Tasks proto trace fix."
   },
   "hostedMobileBillingRecovery": {
     "baseUrl": "https://app.menulist.digital/billing",
@@ -136,6 +136,33 @@
     "testedAt": "2026-08-25T13:54:55+05:30",
     "result": "PASS",
     "evidence": "Direct Billing entered MobileShell at #mobile/more/billing, rendered the correct pending subscription amount and state, had no horizontal overflow, and every visible interactive target measured at least 44px. Billing History opened a truthful empty sheet. Need billing help opened /help-center/ticket#mobile/more/answerlatticeSupport; the ticket form had no horizontal overflow and its Send Request target measured 44px. No ticket, file, payment, or provider action was submitted."
+  },
+  "authenticatedOwnerNavigation": {
+    "baseUrl": "https://app.menulist.digital",
+    "servedBuildId": "c22dd233b79afd3acb3c03924f7f3111112ee438",
+    "browser": "Connected Chrome",
+    "fixture": "Disposable reseller-labelled MenuList QA owner; tenant 4; store 4; active zero-value non-payment entitlement",
+    "viewport": "desktop",
+    "testedAt": "2026-08-26T08:24:00+05:30",
+    "routes": [
+      "/assets",
+      "/billing",
+      "/business-settings",
+      "/dashboard",
+      "/feedback",
+      "/growth-kits",
+      "/help-center",
+      "/locations",
+      "/menu-manager",
+      "/projects",
+      "/qr-code",
+      "/today",
+      "/transactions",
+      "/use-menulist",
+      "/users/list"
+    ],
+    "result": "PASS",
+    "evidence": "Each sidebar destination reached its intended owner route after a settled navigation wait and rendered without a generic load failure or horizontal overflow. Help Center shell rendering passed while its Answerlattice-backed tenant data remains separately BLOCKED_EXTERNAL. App settings opened its in-place panel. Growth Kits rendered as the plan-gated MenuList add-on; no refresh, generation, export, review, payment, or destructive control was invoked."
   },
   "publicWebsiteRouteRender": {
     "baseUrl": "http://localhost:3000",

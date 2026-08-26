@@ -82,8 +82,8 @@ const menuListRouteHandlers = objects.filter((row) => (
   row.item_type === 'api-route'
   && row.product_area === 'MenuList'
 ));
-if (menuListRouteHandlers.length !== 136) {
-  fail(`expected 136 MenuList route handlers, found ${menuListRouteHandlers.length}`);
+if (menuListRouteHandlers.length !== 140) {
+  fail(`expected 140 MenuList route handlers, found ${menuListRouteHandlers.length}`);
 }
 for (const row of menuListRouteHandlers) {
   if (row.control_or_action === 'UNRESOLVED_METHOD') {
@@ -108,18 +108,33 @@ const mainPages = objects.filter((row) => (
   && row.product_area === 'MenuList'
   && row.screen_or_tab.startsWith('src/app/(main)/')
 ));
-if (mainPages.length !== 58) fail(`expected 58 MenuList private pages, found ${mainPages.length}`);
+if (mainPages.length !== 59) fail(`expected 59 MenuList private pages, found ${mainPages.length}`);
 if (!fs.existsSync(runtimeEvidencePath)) fail('runtime evidence registry is missing');
 const runtimeEvidence = JSON.parse(fs.readFileSync(runtimeEvidencePath, 'utf8'));
 const privateAccessEvidence = runtimeEvidence.privateRouteAccess;
 if (privateAccessEvidence?.result !== 'PASS') fail('private-route browser access evidence is not passing');
 if (new Set(privateAccessEvidence.routes).size !== 58) fail('private-route browser access evidence must cover 58 unique routes');
+const authenticatedOwnerNavigationEvidence = runtimeEvidence.authenticatedOwnerNavigation;
+if (authenticatedOwnerNavigationEvidence?.result !== 'PASS') {
+  fail('authenticated owner navigation evidence is not passing');
+}
+const authenticatedOwnerNavigationRoutes = new Set(authenticatedOwnerNavigationEvidence.routes);
+const growthKitsPage = objects.find((row) => (
+  row.item_type === 'page'
+  && row.route_or_component === '/growth-kits'
+));
+if (
+  !growthKitsPage
+  || growthKitsPage.product_area !== 'MenuList'
+  || growthKitsPage.test_result !== 'PASS_AUTHENTICATED_RENDER'
+  || !authenticatedOwnerNavigationRoutes.has('/growth-kits')
+) fail('Growth Kits must remain an in-scope authenticated MenuList owner surface');
 const apiAnonymousBoundaryEvidence = runtimeEvidence.apiAnonymousBoundary;
 if (apiAnonymousBoundaryEvidence?.result !== 'PASS') fail('anonymous API boundary evidence is not passing');
 if (
-  apiAnonymousBoundaryEvidence.handlers !== 136
-  || apiAnonymousBoundaryEvidence.methodProbes !== 153
-) fail('anonymous API boundary evidence must cover 136 handlers and 153 exported methods');
+  apiAnonymousBoundaryEvidence.handlers !== 140
+  || apiAnonymousBoundaryEvidence.methodProbes !== 157
+) fail('anonymous API boundary evidence must cover 140 handlers and 157 exported methods');
 const currentApiRouteManifestSha256 = createHash('sha256')
   .update(menuListRouteHandlers.map((row) => [
     row.route_or_component,
@@ -183,10 +198,17 @@ for (const row of mainPages) {
       fail(`private page ${row.route_or_component} has unresolved ${column}`);
     }
   }
-  if (
-    row.test_result !== 'PASS_ACCESS_BOUNDARY'
-    || row.final_verification_status !== 'ACCESS_PASSED_FUNCTIONAL_INTERACTION_PENDING'
-  ) fail(`private page ${row.route_or_component} is missing bounded browser access evidence`);
+  const hasAccessBoundary = (
+    row.test_result === 'PASS_ACCESS_BOUNDARY'
+    && row.final_verification_status === 'ACCESS_PASSED_FUNCTIONAL_INTERACTION_PENDING'
+  );
+  const hasAuthenticatedRender = (
+    row.test_result === 'PASS_AUTHENTICATED_RENDER'
+    && row.final_verification_status === 'AUTHENTICATED_RENDER_PASSED_CONTROL_INTERACTION_PENDING'
+  );
+  if (!hasAccessBoundary && !hasAuthenticatedRender) {
+    fail(`private page ${row.route_or_component} is missing bounded browser evidence`);
+  }
 }
 const recoveryRoutes = mainPages
   .filter((row) => row.subscription_or_entitlement_state.includes('UNPAID'))

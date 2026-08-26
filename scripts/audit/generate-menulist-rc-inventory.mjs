@@ -16,6 +16,8 @@ const runtimeEvidence = fs.existsSync(RUNTIME_EVIDENCE_PATH)
 const privateRouteAccessEvidence = runtimeEvidence.privateRouteAccess ?? null;
 const privateRouteAccessRoutes = new Set(privateRouteAccessEvidence?.routes ?? []);
 const apiAnonymousBoundaryEvidence = runtimeEvidence.apiAnonymousBoundary ?? null;
+const authenticatedOwnerNavigationEvidence = runtimeEvidence.authenticatedOwnerNavigation ?? null;
+const authenticatedOwnerNavigationRoutes = new Set(authenticatedOwnerNavigationEvidence?.routes ?? []);
 const publicWebsiteRouteRenderEvidence = runtimeEvidence.publicWebsiteRouteRender ?? null;
 const publicSitemapPath = path.join(ROOT, "public/sitemap.xml");
 const publicSitemapPaths = fs.existsSync(publicSitemapPath)
@@ -108,7 +110,11 @@ function classifyProduct(file, route = "") {
     if (value.includes("signaldesk")) return "SignalDesk boundary";
     if (value.includes("mycodex")) return "MyCodex boundary";
     if (value.includes("sites/neelvara")) return "Neelvara boundary";
-    if (value.includes("growthos") || route.startsWith("/growth-kits")) return "GrowthOS boundary";
+    // GrowthOS is the internal implementation namespace for the shipped
+    // MenuList Growth Kits add-on. It has no standalone host or app surface,
+    // so its owner page, APIs, data paths, and reachable controls remain part
+    // of MenuList release certification.
+    if (value.includes("growthos") || route.startsWith("/growth-kits")) return "MenuList";
     if (value.includes("kitstamp")) return "KitStamp boundary";
     return "MenuList";
 }
@@ -299,8 +305,8 @@ function appRuntimeEvidence(file, route, itemType, product) {
         itemType === "api-route"
         && product === "MenuList"
         && apiAnonymousBoundaryEvidence?.result === "PASS"
-        && apiAnonymousBoundaryEvidence.handlers === 136
-        && apiAnonymousBoundaryEvidence.methodProbes === 153
+        && apiAnonymousBoundaryEvidence.handlers === 140
+        && apiAnonymousBoundaryEvidence.methodProbes === 157
     ) {
         return {
             test_result: "PASS_ANONYMOUS_BOUNDARY",
@@ -320,6 +326,19 @@ function appRuntimeEvidence(file, route, itemType, product) {
             test_result: "PASS_BROWSER_RENDER",
             final_verification_status: "RENDER_PASSED_CONTROL_INTERACTION_PENDING",
             evidence_or_notes: `${publicWebsiteRouteRenderEvidence.browser}; current sitemap concrete route rendered main and heading; ${publicWebsiteRouteRenderEvidence.testedAt}; individual controls remain separately pending`,
+        };
+    }
+    if (
+        itemType === "page"
+        && product === "MenuList"
+        && relative(file).startsWith("src/app/(main)/")
+        && authenticatedOwnerNavigationEvidence?.result === "PASS"
+        && authenticatedOwnerNavigationRoutes.has(route)
+    ) {
+        return {
+            test_result: "PASS_AUTHENTICATED_RENDER",
+            final_verification_status: "AUTHENTICATED_RENDER_PASSED_CONTROL_INTERACTION_PENDING",
+            evidence_or_notes: `${authenticatedOwnerNavigationEvidence.browser}; entitled owner reached ${route} on exact hosted build ${authenticatedOwnerNavigationEvidence.servedBuildId}; ${authenticatedOwnerNavigationEvidence.testedAt}; route rendered without generic load failure or horizontal overflow; child controls remain separately pending`,
         };
     }
     if (
