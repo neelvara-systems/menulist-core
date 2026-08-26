@@ -6621,3 +6621,44 @@ No Firebase source/configuration changes. Firestore Rules, indexes, Storage Rule
 
 - Closeout operation: commit only this performed-result ledger append and push `staging` non-force. Continue the broader MenuList QA certification from the next open gate; do not treat MLRC-088 closure as overall product certification.
 - Attribution confidence: exact.
+
+### GIT-20260826-122401-mlrc089-tenant-domain-copy
+
+- Timestamp: `2026-08-26T12:24:01+05:30`
+- Record type: `PLANNED`
+- Actor/session/thread ID: Codex `/root`; thread `01a034e1-c70a-74b1-a92b-0a103a981815`.
+- Registered worktrees: one worktree, `/Users/danny/Projects/MenuListAi/menulist-core`, branch `staging`, HEAD `75392c96db759fcba5404a79ab1237959052a9ea`.
+- Starting filesystem state: `0` staged, `5` tracked modified, and `2` untracked intended MenuList paths. No unrelated dirty path exists.
+- Operation: commit the environment-aware desktop/mobile tenant-domain guidance correction, pure regression, verifier extension, and MLRC-089 source evidence; push local `staging` to `origin/staging` non-force; leave `main` untouched. No manual Vercel or Firebase deployment is authorized.
+- Branch matrix before:
+
+| Branch | Local full SHA | Server ref/full SHA | Tracking ref | Ahead/behind | Worktree | Staged/unstaged/untracked | Status |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `staging` | `75392c96db759fcba5404a79ab1237959052a9ea` | `refs/heads/staging` / `75392c96db759fcba5404a79ab1237959052a9ea` | `origin/staging` | `0/0` | primary | `0/5/2` before this append | `IN_SYNC` |
+| `main` | `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `refs/heads/main` / `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `origin/main` | `0/0` | none | n/a | `IN_SYNC` |
+
+- Validation before mutation: exact hosted entitled-owner Search & Discovery reproduction showed the real `.menulist.digital` link/suffix beside stale `.menulist.online` guidance. The non-mutating invalid-domain action returned the specific format error and exposed no Connect action; the field was restored and no provider state was created. `test:tenant-domain-copy`, the full custom-domain boundary/provider/identity suite, focused and full zero-warning ESLint, strict TypeScript, production build with 450/450 static pages and 53 service-worker precache entries, and `git diff --check` all passed. Existing Sass and absent optional Gemini-key warnings remain non-failing.
+- Firebase matrix before/after (application source/tests/docs only; no deployable Firebase source/configuration changed):
+
+| Product/target | Component | Local source/hash or tree | Local validation | Server/readback | Delta | Deployment state |
+| --- | --- | --- | --- | --- | --- | --- |
+| MenuList QA / `menulist-qa` | Firestore Rules | `firestore-menulist.rules` / `2059459e…` / 132684 | unchanged | not read back / `2026-08-26T12:24:01+05:30` | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| MenuList QA / `menulist-qa` | Firestore indexes | `firestore.indexes.json` / `5629ae4d…` / 78310 | unchanged | not read back / same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| MenuList QA / `menulist-qa` | Storage Rules | `storage.rules` / `226d2a20…` / 18176 | unchanged | not read back / same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| MenuList QA / `menulist-qa` | Cloud Functions | `functions/` / tree `3c42f5d3…` | unchanged | not read back / same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| MenuList production / `menulist-prod` | Firestore Rules | same MenuList QA source/hash/bytes | unchanged | not read back / same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| MenuList production / `menulist-prod` | Firestore indexes | same MenuList QA source/hash/bytes | unchanged | not read back / same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| MenuList production / `menulist-prod` | Storage Rules | same MenuList QA source/hash/bytes | unchanged | not read back / same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| MenuList production / `menulist-prod` | Cloud Functions | same MenuList QA source/tree | unchanged | not read back / same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| Answerlattice QA / `neelvara-answerlattice-qa` | Firestore Rules | `firestore-answerlattice.rules` / `a92cbacb…` / 116222 | unchanged | not read back / same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| Answerlattice QA / `neelvara-answerlattice-qa` | Firestore indexes | `firestore-answerlattice.indexes.json` / `0114bdf8…` / 50941 | unchanged | not read back / same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| Answerlattice QA / `neelvara-answerlattice-qa` | Storage Rules | `storage-answerlattice.rules` / `5fc8f980…` / 6948 | unchanged | not read back / same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| Answerlattice QA / `neelvara-answerlattice-qa` | Cloud Functions | `functions-answerlattice/` / tree `ae5750c6…` | unchanged | not read back / same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| Answerlattice production / `neelvara-answerlattice-prod` | Firestore Rules | same Answerlattice QA source/hash/bytes | unchanged | not read back / same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| Answerlattice production / `neelvara-answerlattice-prod` | Firestore indexes | same Answerlattice QA source/hash/bytes | unchanged | not read back / same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| Answerlattice production / `neelvara-answerlattice-prod` | Storage Rules | same Answerlattice QA source/hash/bytes | unchanged | not read back / same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| Answerlattice production / `neelvara-answerlattice-prod` | Cloud Functions | same Answerlattice QA source/tree | unchanged | not read back / same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+
+- Firebase deployment evidence or blocker: no Firebase infrastructure delta exists; no deployment is required or authorized.
+- Final filesystem state: pending explicit-path staging, staged-diff validation, commit, non-force staging push, direct server readback, automatic QA build, and exact hosted desktop/mobile copy retest.
+- Attribution confidence: exact.

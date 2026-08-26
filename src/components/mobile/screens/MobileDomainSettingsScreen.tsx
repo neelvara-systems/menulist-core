@@ -5,6 +5,7 @@ import { assertStoreUpdateSucceeded, checkCustomDomainAvailability, updateStore 
 import { getBoundedStoreStringContext, logStoreDataFailure } from '@database/stores/storeDiagnostics';
 import { AUTH_BROWSER_REQUEST_POLICY } from '@lib/auth/browserRequestPolicy';
 import { openIsolatedBrowserUrl } from '@lib/browser/openIsolatedBrowserUrl';
+import { renderTenantDomainCopy } from '@lib/domains/tenantDomainCopy';
 import { normalizeVercelDomainDnsRecords } from '@lib/domains/vercelDnsRecords';
 import { createLatestRequestGuard } from '@lib/runtime/latestRequestGuard';
 import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
@@ -179,6 +180,10 @@ function MobileDomainSettingsScreenContent({ onBack }: MobileDomainSettingsScree
     const t = useTranslations('BusinessSettings');
     const common = useTranslations('Common');
     const tMobile = useTranslations('MobileSettings');
+    const tenantDomainCopy = useCallback(
+        (copy: string) => renderTenantDomainCopy(copy, MENULIST_TENANT_BASE_DOMAIN),
+        [],
+    );
     const { token } = theme.useToken();
     const { storeDetails, setStoreDetails } = useContext(PlatformGlobalDataContext);
     const domainScopeKey = `${String(storeDetails?.tenantId ?? '')}:${String(storeDetails?.storeId ?? '')}`;
@@ -727,7 +732,7 @@ function MobileDomainSettingsScreenContent({ onBack }: MobileDomainSettingsScree
                         <Text type="secondary">
                             {storeDetails?.subdomain
                                 ? getMenuUrl(storeDetails.subdomain).replace(/^https?:\/\//, '')
-                                : t('noSubdomainDesc')}
+                                : tenantDomainCopy(t('noSubdomainDesc'))}
                         </Text>
                         <Flex align="center" justify="space-between">
                             <Text strong>{t('customDomain')}</Text>
@@ -742,7 +747,7 @@ function MobileDomainSettingsScreenContent({ onBack }: MobileDomainSettingsScree
                         <Text type="secondary">
                             {activeDomain
                                 ? (customDomainVerified ? `${t('menuLiveAt')} ${activeDomain}` : t('waitingDnsVerification', { domain: activeDomain }))
-                                : t('customDomainDesc')}
+                                : tenantDomainCopy(t('customDomainDesc'))}
                         </Text>
                     </Flex>
                 </Card>
@@ -754,11 +759,11 @@ function MobileDomainSettingsScreenContent({ onBack }: MobileDomainSettingsScree
                         {storeDetails?.isMaster === false ? (
                             <>
                                 <Text>{subdomainUrl ? subdomainUrl.replace(/^https?:\/\//, '') : t('outletSubdomainInfo')}</Text>
-                                <Text type="secondary">{t('outletSubdomainDesc')}</Text>
+                                <Text type="secondary">{tenantDomainCopy(t('outletSubdomainDesc'))}</Text>
                             </>
                         ) : subdomainLocked ? (
                             <>
-                                <Text>{subdomainUrl ? subdomainUrl.replace(/^https?:\/\//, '') : t('noSubdomainDesc')}</Text>
+                                <Text>{subdomainUrl ? subdomainUrl.replace(/^https?:\/\//, '') : tenantDomainCopy(t('noSubdomainDesc'))}</Text>
                                 <Alert
                                     description={t('subdomainChangeWarning')}
                                     message={t('subdomainLockedMessage')}
@@ -787,7 +792,7 @@ function MobileDomainSettingsScreenContent({ onBack }: MobileDomainSettingsScree
                                     value={subdomainValue}
                                 />
                                 <Text type="secondary">Use a clean public name for your MenuList address. Customers will see and share this link.</Text>
-                                <Text type="secondary">{t('subdomainHelp')}</Text>
+                                <Text type="secondary">{tenantDomainCopy(t('subdomainHelp'))}</Text>
                                 {availability ? (
                                     <Flex align="center" gap={8}>
                                         {availability.available ? <LuCheck color={token.colorSuccess} size={16} /> : <LuX color={token.colorError} size={16} />}
@@ -796,7 +801,7 @@ function MobileDomainSettingsScreenContent({ onBack }: MobileDomainSettingsScree
                                 ) : null}
                                 {!storeDetails?.subdomain ? (
                                     <Alert
-                                        description={t('noSubdomainDesc')}
+                                        description={tenantDomainCopy(t('noSubdomainDesc'))}
                                         message={t('noSubdomainSet')}
                                         showIcon
                                         type="warning"
@@ -823,7 +828,7 @@ function MobileDomainSettingsScreenContent({ onBack }: MobileDomainSettingsScree
                 <Card>
                     <Flex gap={8} vertical>
                         <Text strong>{t('customDomain')}</Text>
-                        <Text type="secondary">{t('customDomainDesc')}</Text>
+                        <Text type="secondary">{tenantDomainCopy(t('customDomainDesc'))}</Text>
                         <Text type="secondary">{t('dnsOwnershipNote')}</Text>
                         {activeDomain ? (
                             <>
@@ -963,7 +968,7 @@ function MobileDomainSettingsScreenContent({ onBack }: MobileDomainSettingsScree
                                 <LuCheckCircle2 color={token.colorSuccess} size={18} />
                                 <Text strong>{t('customDomainActive')}</Text>
                             </Flex>
-                            <Text type="secondary">{t('autoRedirect')}</Text>
+                            <Text type="secondary">{tenantDomainCopy(t('autoRedirect'))}</Text>
                         </Flex>
                     </Card>
                 ) : null}

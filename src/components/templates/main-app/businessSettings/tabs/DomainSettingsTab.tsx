@@ -5,6 +5,7 @@ import { checkCustomDomainAvailability } from '@database/stores';
 import { getBoundedStoreStringContext, logStoreDataFailure } from '@database/stores/storeDiagnostics';
 import { AUTH_BROWSER_REQUEST_POLICY } from '@lib/auth/browserRequestPolicy';
 import { openIsolatedBrowserUrl } from '@lib/browser/openIsolatedBrowserUrl';
+import { renderTenantDomainCopy } from '@lib/domains/tenantDomainCopy';
 import { normalizeVercelDomainDnsRecords } from '@lib/domains/vercelDnsRecords';
 import { createLatestRequestGuard } from '@lib/runtime/latestRequestGuard';
 import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
@@ -209,6 +210,10 @@ async function readDesktopDomainSettingsDomainResponseJson<T>(
 
 function DomainSettingsTab({ scrollRef, storeDetails, onStoreStateUpdate, onStoreUpdate }: DomainSettingsTabProps) {
     const t = useTranslations('BusinessSettings');
+    const tenantDomainCopy = useCallback(
+        (copy: string) => renderTenantDomainCopy(copy, MENULIST_TENANT_BASE_DOMAIN),
+        [],
+    );
     const domainScopeKey = `${String(storeDetails?.tenantId ?? '')}:${String(storeDetails?.storeId ?? '')}`;
     const domainScopeKeyRef = useRef(domainScopeKey);
     domainScopeKeyRef.current = domainScopeKey;
@@ -748,7 +753,7 @@ function DomainSettingsTab({ scrollRef, storeDetails, onStoreStateUpdate, onStor
     return (
         <Card size="small" ref={scrollRef}>
             <Title level={5} style={{ margin: 'unset' }}>{t('domain')}</Title>
-            <Text type="secondary">{t('customDomainDesc')}</Text>
+            <Text type="secondary">{tenantDomainCopy(t('customDomainDesc'))}</Text>
             <Divider />
 
             <Alert
@@ -766,7 +771,7 @@ function DomainSettingsTab({ scrollRef, storeDetails, onStoreStateUpdate, onStor
 
                 {storeDetails?.isMaster === false ? (
                     <Alert
-                        description={t('outletSubdomainDesc')}
+                        description={tenantDomainCopy(t('outletSubdomainDesc'))}
                         message={t('outletSubdomainInfo')}
                         showIcon
                         type="info"
@@ -816,7 +821,7 @@ function DomainSettingsTab({ scrollRef, storeDetails, onStoreStateUpdate, onStor
                                         setAvailability(null);
                                     }}
                                 />
-                                <Text type="secondary">{t('subdomainHelp')}</Text>
+                                <Text type="secondary">{tenantDomainCopy(t('subdomainHelp'))}</Text>
 
                                 {availability ? (
                                     <Text type={availability.available ? 'success' : 'danger'}>
@@ -847,7 +852,7 @@ function DomainSettingsTab({ scrollRef, storeDetails, onStoreStateUpdate, onStor
 
                                 {!storeDetails?.subdomain ? (
                                     <Alert
-                                        description={t('noSubdomainDesc')}
+                                        description={tenantDomainCopy(t('noSubdomainDesc'))}
                                         message={t('noSubdomainSet')}
                                         showIcon
                                         type="warning"
@@ -935,7 +940,7 @@ function DomainSettingsTab({ scrollRef, storeDetails, onStoreStateUpdate, onStor
                             </>
                         ) : (
                             <Alert
-                                description={t('autoRedirect')}
+                                description={tenantDomainCopy(t('autoRedirect'))}
                                 message={`${t('menuLiveAt')} ${normalizeBaseUrl(activeDomain)}`}
                                 showIcon
                                 type="success"

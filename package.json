@@ -528,6 +528,7 @@
     "test:claim-account-post-commit": "ts-node --compiler-options '{\"module\":\"CommonJS\"}' -r tsconfig-paths/register scripts/verification/test-claim-account-post-commit.ts",
     "test:stores-summary:rules": "GCLOUD_PROJECT=demo-stores-summary-rules firebase emulators:exec --only firestore --project demo-stores-summary-rules \"ts-node --compiler-options '{\\\"module\\\":\\\"CommonJS\\\"}' -r tsconfig-paths/register scripts/verification/test-stores-summary-rules.ts\"",
     "test:custom-domain-claim": "GCLOUD_PROJECT=demo-custom-domain-claim firebase emulators:exec --only firestore --project demo-custom-domain-claim \"ts-node --compiler-options '{\\\"module\\\":\\\"CommonJS\\\"}' -r tsconfig-paths/register scripts/verification/test-custom-domain-claim.ts\"",
+    "test:tenant-domain-copy": "ts-node --compiler-options '{\"module\":\"CommonJS\"}' -r tsconfig-paths/register scripts/verification/test-tenant-domain-copy.ts",
     "test:tenant-name-post-commit": "ts-node --compiler-options '{\"module\":\"CommonJS\"}' -r tsconfig-paths/register scripts/verification/test-tenant-name-post-commit.ts",
     "test:project-propagation-boundary": "ts-node --compiler-options '{\"module\":\"CommonJS\"}' -r tsconfig-paths/register scripts/verification/test-project-propagation-boundary.ts",
     "test:public-entity-identity": "ts-node --compiler-options '{\"module\":\"CommonJS\"}' -r tsconfig-paths/register scripts/verification/test-public-entity-identity.ts",

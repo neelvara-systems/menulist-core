@@ -26,6 +26,7 @@ const requiresOrder = (source, tokens, label) => {
 
 const route = read('src/app/api/domain/route.ts');
 const claim = read('src/lib/routing/customDomainClaim.ts');
+const tenantDomainCopy = read('src/lib/domains/tenantDomainCopy.ts');
 const publicEligibility = read('src/lib/publicTruth/entityEligibility.ts');
 const clientLookup = read('src/lib/firestore/clientStoreLookup.ts');
 const domainLookup = read('src/lib/multiTenant/domainLookup.ts');
@@ -206,7 +207,13 @@ forbids(storesDal, [
   "aria-label={t('customDomain')}",
   "aria-label={`${t('checkAvailability')}: ${t('subdomain')}`}",
   "aria-label={`${t('checkAvailability')}: ${t('customDomain')}`}",
+  "renderTenantDomainCopy(copy, MENULIST_TENANT_BASE_DOMAIN)",
 ], index === 0 ? 'desktop custom-domain status parity' : 'mobile custom-domain status parity'));
+requires(tenantDomainCopy, [
+  "const CANONICAL_TENANT_DOMAIN_COPY = 'menulist.online'",
+  'tenantBaseDomain.trim().toLowerCase()',
+  'copy.replaceAll(CANONICAL_TENANT_DOMAIN_COPY, normalizedTenantBaseDomain)',
+], 'environment-aware tenant-domain owner copy');
 requires(mobileDomainSettings, [
   'data?.success !== true || !isNonEmptyString(data.domain)',
 ], 'mobile custom-domain add acknowledgement');
