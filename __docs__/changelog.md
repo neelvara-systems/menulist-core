@@ -32877,3 +32877,14 @@ TEMPLATE FOR NEW ENTRIES:
 - Routed both mobile Billing support actions directly to the permitted Help
   ticket recovery route so unpaid and payment-pending owners are not bounced
   back to Billing by the dashboard entitlement guard.
+
+# 2026-08-26 - MenuList keyless Storage header compatibility
+
+- Preserved MenuList and Answerlattice's separate keyless WIF clients while
+  adapting the root google-auth-library v10 WHATWG header result to the plain
+  header map expected by `@google-cloud/storage`'s nested v9 auth runtime.
+- Added a regression through Storage's actual authorization method proving the
+  short-lived Authorization header is present and existing request headers are
+  retained.
+- Kept Firestore, Firebase Auth, IAM, tenant/store paths, retries, operation
+  counts, static-key prohibition, and provider boundaries unchanged.

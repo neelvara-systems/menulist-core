@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import type { App } from 'firebase-admin/app';
-import type { BaseExternalAccountClient } from 'google-auth-library';
+import type { AuthClient, BaseExternalAccountClient } from 'google-auth-library';
 import {
     admin as firebaseAdminCompat,
     registerFirebaseFirestoreCompatInstance,
@@ -307,9 +307,36 @@ assert.equal(workloadIdentityStorage.app, firebaseApp);
 assert.equal(workloadIdentityStorage.bucket().name, 'menulist-prod.firebasestorage.app');
 assert.equal(workloadIdentityStorage.bucket('explicit-bucket').name, 'explicit-bucket');
 const storageAuth = (workloadIdentityStorage.bucket() as unknown as {
-    storage: { authClient: { getClient: () => Promise<unknown> } };
+    storage: { authClient: {
+        authorizeRequest: (options: { headers?: Record<string, string>; url: string }) => Promise<{
+            headers?: Record<string, string>;
+        }>;
+        getClient: () => Promise<AuthClient>;
+    } };
 }).storage.authClient;
-assert.equal(await storageAuth.getClient(), menulistClient);
+assert.notEqual(await storageAuth.getClient(), menulistClient);
+
+const headerCompatibilityStorage = createWorkloadIdentityStorageAdmin({
+    app: firebaseApp,
+    authClient: {
+        getRequestHeaders: async () => new Headers({ authorization: 'Bearer short-lived-test-token' }),
+    } as unknown as AuthClient,
+    defaultBucket: 'menulist-prod.firebasestorage.app',
+    projectId: menulistConfig.projectId,
+});
+const headerCompatibilityAuth = (headerCompatibilityStorage.bucket() as unknown as {
+    storage: { authClient: {
+        authorizeRequest: (options: { headers?: Record<string, string>; url: string }) => Promise<{
+            headers?: Record<string, string>;
+        }>;
+    } };
+}).storage.authClient;
+const authorizedStorageRequest = await headerCompatibilityAuth.authorizeRequest({
+    headers: { 'x-test-header': 'retained' },
+    url: 'https://storage.googleapis.com/upload/storage/v1/b/test/o',
+});
+assert.equal(authorizedStorageRequest.headers?.authorization, 'Bearer short-lived-test-token');
+assert.equal(authorizedStorageRequest.headers?.['x-test-header'], 'retained');
 
 expectThrows(
     () => readAnswerlatticeWorkloadIdentityConfig({}),
