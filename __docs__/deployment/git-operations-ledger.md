@@ -6134,3 +6134,20 @@ No Firebase source/configuration changes. Firestore Rules, indexes, Storage Rule
 
 - After the planned entry and before staging, an independent writer modified `src/lib/answerlattice/canonicalRetrieval.ts` and `scripts/verification/test-answerlattice-governance-emulator.ts`. Their actor/session attribution is `unknown` from this MenuList operation.
 - Both unrelated paths remain unstaged and are excluded from the explicit MLRC-086 commit. The branch and direct server ref remain exact at `0013aad25e88fbb4b45ad5adf9b8fd1dfce055a5`; no concurrent ref movement was observed.
+
+#### MLRC-086 performed result and hosted-retest plan — `2026-08-26T10:48:06+05:30`
+
+- Commit/push: `adef27ae20d24c0031c833b13f28c30eef158605` (`fix(menulist): preserve outlet auth scope`) was pushed non-force from local `staging` to `origin/staging`.
+- Direct server readback returned exact `refs/heads/staging` SHA `adef27ae20d24c0031c833b13f28c30eef158605` with `0/0` divergence. Local and remote `main` remain untouched at `fe625d5bbf527c1b7e537b00ab32a4f655905c35`.
+- Validation: exact hosted reproduction and bounded fixture readback; session/store-switch regressions; auth/security failure matrix; multi-location boundary; shared Firestore billing Rules emulator; strict TypeScript; zero-warning lint; production build; documentation links; staged diff validation; and `git diff --check` passed at their recorded evidence levels.
+- Firebase state: all 16 planned component/target rows remain independently `NO_INFRA_CHANGE` / `SERVER_STATE_UNKNOWN`; no Firebase infrastructure source/configuration changed, deployed, or received authenticated server readback.
+- Manual deployment state: no Firebase or Vercel deployment command was run. The branch-tracked QA build may deploy automatically.
+- Post-operation branch matrix before this ledger-only closeout:
+
+| Branch | Local full SHA | Server ref/full SHA | Tracking ref | Ahead/behind | Worktree | Staged/unstaged/untracked | Status |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `staging` | `adef27ae20d24c0031c833b13f28c30eef158605` | `refs/heads/staging` / `adef27ae20d24c0031c833b13f28c30eef158605` | `origin/staging` | `0/0` | primary | `0/2/0` before this ledger append; both unstaged paths are unrelated Answerlattice work | `IN_SYNC` |
+| `main` | `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `refs/heads/main` / `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `origin/main` | `0/0` | none | n/a | `IN_SYNC` |
+
+- Closeout operation: commit only this ledger result and push `staging` non-force, leaving both unrelated Answerlattice paths unstaged; then wait for exact automatic QA promotion and rerun outlet/HQ/adjacent flows.
+- Attribution confidence: exact.
