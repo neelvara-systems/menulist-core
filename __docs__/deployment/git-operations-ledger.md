@@ -6176,6 +6176,23 @@ No Firebase source/configuration changes. Firestore Rules, indexes, Storage Rule
 - Final filesystem state: pending all-path staging, commit, non-force staging push, direct server readback, automatic QA build, and exact hosted supported/abstention/escalation retest.
 - Attribution confidence: exact.
 
+#### ALRC-087 performed result and closeout plan — `2026-08-26T10:50:41+05:30`
+
+- Commit/push: `b580a2473c2ec4d30af44422bee6f3d08a34c5ef` (`fix(answerlattice): abstain on unrelated owner requests`) was pushed non-force from local `staging` to `origin/staging`.
+- Direct server readback returned exact `refs/heads/staging` SHA `b580a2473c2ec4d30af44422bee6f3d08a34c5ef` with `0/0` divergence. Local and remote `main` remained untouched at `fe625d5bbf527c1b7e537b00ab32a4f655905c35` with `0/0` divergence.
+- Validation: fresh widget key/config origin contract, supported canonical search, positive feedback, exact unrelated-owner defect reproduction, strengthened governance emulator, Answerlattice TypeScript, widget answer contracts, Answer Test runtime contracts, focused ESLint, staged diff validation, and `git diff --check` passed at their recorded evidence levels.
+- Firebase state: all 16 planned component/target rows remain independently `NO_INFRA_CHANGE` / `SERVER_STATE_UNKNOWN`; no Firebase infrastructure source/configuration changed, deployed, or received authenticated readback.
+- Manual deployment state: no Firebase or Vercel deployment command was run. The branch-tracked QA build may deploy automatically.
+- Post-operation branch matrix before this ledger-only closeout:
+
+| Branch | Local full SHA | Server ref/full SHA | Tracking ref | Ahead/behind | Worktree | Staged/unstaged/untracked | Status |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `staging` | `b580a2473c2ec4d30af44422bee6f3d08a34c5ef` | `refs/heads/staging` / `b580a2473c2ec4d30af44422bee6f3d08a34c5ef` | `origin/staging` | `0/0` | primary | `0/0/0` before this append | `IN_SYNC` |
+| `main` | `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `refs/heads/main` / `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `origin/main` | `0/0` | none | n/a | `IN_SYNC` |
+
+- Closeout operation: commit this ledger-only result and push `staging` non-force, then wait for exact automatic QA promotion and rerun the supported, abstention, feedback, escalation, owner-resolution, invalid-key, and responsive evidence. `main` remains untouched.
+- Attribution confidence: exact.
+
 #### MLRC-086 performed result and hosted-retest plan — `2026-08-26T10:48:06+05:30`
 
 - Commit/push: `adef27ae20d24c0031c833b13f28c30eef158605` (`fix(menulist): preserve outlet auth scope`) was pushed non-force from local `staging` to `origin/staging`.
