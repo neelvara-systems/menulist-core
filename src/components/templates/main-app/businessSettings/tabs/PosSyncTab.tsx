@@ -32,6 +32,7 @@ import { createLatestRequestGuard } from "@lib/runtime/latestRequestGuard";
 import { getBoundedBusinessSettingsStringContext, logBusinessSettingsFailure } from "../utils/businessSettingsDiagnostics";
 import { formatDateTime } from "@util/dateTime";
 import {
+    App,
     Alert,
     Badge,
     Button,
@@ -47,7 +48,6 @@ import {
     Tag,
     Tooltip,
     Typography,
-    message,
     theme,
 } from "antd";
 import { collection, getDocs, limit, orderBy, query } from "firebase/firestore";
@@ -200,6 +200,7 @@ const PosSyncTab: React.FC<PosSyncTabProps> = ({
     onStoreStateUpdate,
     onStoreUpdate,
 }) => {
+    const { message: messageApi } = App.useApp();
     const t = useTranslations('PosSync');
     const formatter = useFormatter();
     const { token } = theme.useToken();
@@ -414,7 +415,7 @@ const PosSyncTab: React.FC<PosSyncTabProps> = ({
                     && posSyncScopeKeyRef.current === requestScopeKey
                 ) {
                     setEnabled(previousEnabled);
-                    message.error('Could not prepare the verification secret. Try again.');
+                    messageApi.error('Could not prepare the verification secret. Try again.');
                 }
                 return;
             } finally {
@@ -455,7 +456,7 @@ const PosSyncTab: React.FC<PosSyncTabProps> = ({
             ) {
                 setEnabled(previousEnabled);
                 if (!ensuredSecret) setWebhookSecret(previousWebhookSecret);
-                message.error('Failed to save external sync settings.');
+                messageApi.error('Failed to save external sync settings.');
             }
         }
     }, [enabled, webhookSecret, onStoreUpdate, storeId, tenantId]);
@@ -465,7 +466,7 @@ const PosSyncTab: React.FC<PosSyncTabProps> = ({
         const requestScopeKey = `${String(tenantId ?? '')}:${String(storeId ?? '')}`;
         const validation = validatePosSyncWebhookUrl(webhookUrl);
         if (!validation.valid || !validation.normalizedUrl) {
-            message.error(validation.error || 'Please enter a valid URL');
+            messageApi.error(validation.error || 'Please enter a valid URL');
             return;
         }
         try {
@@ -483,7 +484,7 @@ const PosSyncTab: React.FC<PosSyncTabProps> = ({
                 && posSyncScopeKeyRef.current === requestScopeKey
             ) {
                 setWebhookUrl(validation.normalizedUrl);
-                message.success('Provider connection URL saved');
+                messageApi.success('Provider connection URL saved');
             }
         } catch (error) {
             logBusinessSettingsFailure(
@@ -498,7 +499,7 @@ const PosSyncTab: React.FC<PosSyncTabProps> = ({
                 componentActiveRef.current
                 && posSyncScopeKeyRef.current === requestScopeKey
             ) {
-                message.error('Failed to save external sync settings.');
+                messageApi.error('Failed to save external sync settings.');
             }
         }
     }, [enabled, webhookUrl, onStoreUpdate, storeId, tenantId]);
@@ -591,7 +592,7 @@ const PosSyncTab: React.FC<PosSyncTabProps> = ({
 
     const confirmSecretRegeneration = useCallback(async () => {
         if (regenerateSecretConfirmationText.trim() !== REGENERATE_SECRET_CONFIRMATION) {
-            message.error(`Type ${REGENERATE_SECRET_CONFIRMATION} to continue.`);
+            messageApi.error(`Type ${REGENERATE_SECRET_CONFIRMATION} to continue.`);
             return;
         }
 
@@ -634,7 +635,7 @@ const PosSyncTab: React.FC<PosSyncTabProps> = ({
                 componentActiveRef.current
                 && posSyncScopeKeyRef.current === requestScopeKey
             ) {
-                message.error('Could not save the new secret. Try again.');
+                messageApi.error('Could not save the new secret. Try again.');
             }
             return;
         } finally {
@@ -659,7 +660,7 @@ const PosSyncTab: React.FC<PosSyncTabProps> = ({
         ) {
             setRegenerateSecretModalOpen(false);
             setRegenerateSecretConfirmationText('');
-            message.success('New secret generated. Use Copy to share it with your provider.');
+            messageApi.success('New secret generated. Use Copy to share it with your provider.');
         }
     }, [buildSecretRotationAudit, enabled, onStoreStateUpdate, regenerateSecretConfirmationText, storeId, tenantId, webhookSecret]);
 
@@ -667,7 +668,7 @@ const PosSyncTab: React.FC<PosSyncTabProps> = ({
         if (!webhookSecret) return;
         try {
             await copyDesktopPosSyncText(webhookSecret);
-            message.success('Secret copied to clipboard');
+            messageApi.success('Secret copied to clipboard');
         } catch (error) {
             logBusinessSettingsFailure(
                 'desktop_pos_sync_secret_copy_failed',
@@ -680,7 +681,7 @@ const PosSyncTab: React.FC<PosSyncTabProps> = ({
                     hasCopyFallback: hasDesktopPosSyncCopyFallback(),
                 }),
             );
-            message.error('Unable to copy secret.');
+            messageApi.error('Unable to copy secret.');
         }
     }, [secretVisible, storeId, tenantId, webhookSecret]);
 
@@ -706,7 +707,7 @@ const PosSyncTab: React.FC<PosSyncTabProps> = ({
         const recipient = providerEmail.trim();
         if (!recipient) return;
         if (!PROVIDER_EMAIL_PATTERN.test(recipient)) {
-            message.error('Enter a valid provider email');
+            messageApi.error('Enter a valid provider email');
             return;
         }
 
@@ -718,7 +719,7 @@ const PosSyncTab: React.FC<PosSyncTabProps> = ({
             const sentCount = sentDate === today ? (posSync?.instructionsSentCount || 0) : 0;
 
             if (sentCount >= MAX_SENDS_PER_DAY) {
-                message.error(`Maximum ${MAX_SENDS_PER_DAY} instruction emails per day. Try again tomorrow.`);
+                messageApi.error(`Maximum ${MAX_SENDS_PER_DAY} instruction emails per day. Try again tomorrow.`);
                 return;
             }
 
@@ -734,7 +735,7 @@ const PosSyncTab: React.FC<PosSyncTabProps> = ({
             const body = encodeURIComponent(buildTechnicalSummary());
             window.location.href = `mailto:${encodeURIComponent(recipient)}?subject=${subject}&body=${body}`;
 
-            message.success(`Email draft prepared (${MAX_SENDS_PER_DAY - sentCount - 1} sends remaining today)`);
+            messageApi.success(`Email draft prepared (${MAX_SENDS_PER_DAY - sentCount - 1} sends remaining today)`);
             setProviderEmail('');
         } catch (error) {
             logBusinessSettingsFailure(
@@ -745,7 +746,7 @@ const PosSyncTab: React.FC<PosSyncTabProps> = ({
                     technicalSummaryLength: buildTechnicalSummary().length,
                 }),
             );
-            message.error('Failed to prepare instructions');
+            messageApi.error('Failed to prepare instructions');
         } finally {
             setSendingInstructions(false);
         }
@@ -755,7 +756,7 @@ const PosSyncTab: React.FC<PosSyncTabProps> = ({
         const technicalSummary = buildTechnicalSummary();
         try {
             await copyDesktopPosSyncText(technicalSummary);
-            message.success('Technical summary copied');
+            messageApi.success('Technical summary copied');
         } catch (error) {
             logBusinessSettingsFailure(
                 'desktop_pos_sync_technical_summary_copy_failed',
@@ -766,7 +767,7 @@ const PosSyncTab: React.FC<PosSyncTabProps> = ({
                     hasCopyFallback: hasDesktopPosSyncCopyFallback(),
                 }),
             );
-            message.error('Could not copy technical summary');
+            messageApi.error('Could not copy technical summary');
         }
     }, [buildTechnicalSummary, storeId, tenantId]);
 
@@ -826,7 +827,7 @@ const PosSyncTab: React.FC<PosSyncTabProps> = ({
                     ...getBoundedBusinessSettingsStringContext('currency', sample.currency),
                 }),
             );
-            message.error('Could not download sample payload');
+            messageApi.error('Could not download sample payload');
         } finally {
             if (url) {
                 URL.revokeObjectURL(url);
@@ -1039,6 +1040,7 @@ const PosSyncTab: React.FC<PosSyncTabProps> = ({
                                 <Space>
                                     <Tooltip title={t('copySecret')}>
                                         <Button
+                                            aria-label={t('copySecret')}
                                             disabled={!webhookSecret || secretLoading}
                                             size="small"
                                             icon={<LuCopy size={14} />}
@@ -1047,6 +1049,7 @@ const PosSyncTab: React.FC<PosSyncTabProps> = ({
                                     </Tooltip>
                                     <Tooltip title={t('regenerateSecret')}>
                                         <Button
+                                            aria-label={t('regenerateSecret')}
                                             disabled={secretLoading}
                                             size="small"
                                             icon={<LuRefreshCw size={14} />}
@@ -1063,6 +1066,7 @@ const PosSyncTab: React.FC<PosSyncTabProps> = ({
                                 suffix={(
                                     <Tooltip title={secretVisible ? 'Hide secret' : 'Reveal secret'}>
                                         <Button
+                                            aria-label={secretVisible ? 'Hide secret' : 'Reveal secret'}
                                             disabled={!webhookSecret || secretLoading}
                                             icon={secretVisible ? <LuEyeOff size={14} /> : <LuEye size={14} />}
                                             onClick={() => setSecretVisible((current) => !current)}

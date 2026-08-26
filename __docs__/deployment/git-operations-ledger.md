@@ -7077,3 +7077,55 @@ No Firebase source/configuration changes. Firestore Rules, indexes, Storage Rule
 - Firebase deployment evidence or blocker: no Firebase infrastructure delta exists; no deployment is required or authorized.
 - Final filesystem state: pending full lint/build, explicit-path staging, staged-diff validation, commit, non-force staging push, direct server readback, automatic QA build, and exact hosted guide replay.
 - Attribution confidence: exact.
+
+#### MenuList Analytics-guide truth performed result — `2026-08-26T14:10:47+05:30`
+
+- Commit/push: `3e558bc47ef6f720e3ffe6ba0d51d1c1646d2655` (`fix(menulist): align analytics setup truth`) was pushed non-force to `origin/staging`; direct server readback returned the same SHA with `0/0` divergence. Local and remote `main` remain untouched at `fe625d5bbf527c1b7e537b00ab32a4f655905c35`.
+- Exact deployment: Vercel QA deployment `9AeXc7yTmMid92iyo1W91Q4VX1Rx` reached Ready after 7m49s. Canonical `https://app.menulist.digital/api/version` returned exact build `3e558bc47ef6f720e3ffe6ba0d51d1c1646d2655` and deployment host `menulist-core-pfwichs8k-neelvara-systems.vercel.app` before the hosted retest.
+- Hosted closeout: all six setup-wizard steps rendered current business-neutral provider guidance, implemented customer-action and coarse-location boundaries, and bounded privacy copy. Unsupported revenue, absolute-privacy, ranking, restaurant-only, dead-video, and missing-preview references were absent. Quick and Complete View Guide tabs both rendered the implemented MenuList/external-provider contract without e-commerce, order, cart, purchase-conversion, ROI, or obsolete MenuListAI-domain claims. The guide was closed without changing or saving analytics settings.
+- Validation: the maintained public website analytics-minimization regression, focused/full zero-warning ESLint, strict TypeScript, production build with 450/450 static pages and 53 service-worker precache entries, and `git diff --check` passed. Existing Sass and absent optional Gemini-key warnings remain non-failing.
+- Security/cost: UI truth-only changes add no analytics event, Firestore read/write, Storage operation, Cloud Function invocation, external provider request, or cache behavior.
+- Firebase state: every previously recorded MenuList/Answerlattice QA/production Rules, indexes, Storage Rules, and Functions row remains `NO_INFRA_CHANGE` / `SERVER_STATE_UNKNOWN`; no infrastructure deployment or authenticated infrastructure readback was performed or claimed.
+- Razorpay boundary: no checkout, provider call, charge, webhook completion, refund, or money movement was initiated.
+- Attribution confidence: exact.
+
+### GIT-20260826-141047-mlrc095-pos-sync-feedback-a11y
+
+- Timestamp: `2026-08-26T14:10:47+05:30`
+- Record type: `PLANNED`
+- Actor/session/thread ID: Codex `/root`; thread `01a034e1-c70a-74b1-a92b-0a103a981815`.
+- Registered worktrees: one worktree, `/Users/danny/Projects/MenuListAi/menulist-core`, branch `staging`, HEAD `3e558bc47ef6f720e3ffe6ba0d51d1c1646d2655`.
+- Starting filesystem state: `0` staged, `15` tracked modified, `2` untracked before this append. Only the MenuList certification report, POS Sync verifier, and desktop POS Sync component belong to this operation. Twelve tracked and two untracked Answerlattice paths appeared concurrently and remain unstaged, untouched, and excluded.
+- Operation: add accessible secret-control names, route existing desktop POS Sync feedback through the mounted Ant application context, extend its regression, commit exact intended paths plus this ledger append, push `staging` non-force, and retest the automatic exact QA build. Do not read, log, capture, or copy the verification secret. `main` remains untouched. No manual Vercel or Firebase deployment is authorized.
+- Branch matrix before:
+
+| Branch | Local full SHA | Server ref/full SHA | Tracking ref | Ahead/behind | Worktree | Staged/unstaged/untracked | Status |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `staging` | `3e558bc47ef6f720e3ffe6ba0d51d1c1646d2655` | `refs/heads/staging` / `3e558bc47ef6f720e3ffe6ba0d51d1c1646d2655` | `origin/staging` | `0/0` | primary | `0/15/2` before this append | `IN_SYNC` |
+| `main` | `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `refs/heads/main` / `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `origin/main` | `0/0` | none | n/a | `IN_SYNC` |
+
+- Validation before mutation: exact hosted enabled External Sync state reproduced all three unnamed secret controls and retained a masked secret preview. The enable switch was reversibly returned off and hard refresh confirmed the disabled state. `verify:pos-sync-boundary`, behavioral POS Sync tests, Firestore secret Rules, focused zero-warning ESLint, strict TypeScript, and `git diff --check` passed. Expected permission-denied emulator output belongs to negative Rules assertions. One initial strict-TypeScript run caught `App` added to the wrong import block; the import was corrected and the same complete targeted sequence passed.
+- Firebase matrix before/after (UI/test/report only; no deployable Firebase source/configuration changed):
+
+| Product/target | Component | Local source/hash or tree | Local validation | Server/readback | Delta | Deployment state |
+| --- | --- | --- | --- | --- | --- | --- |
+| MenuList QA / `menulist-qa` | Firestore Rules | `firestore-menulist.rules` / `2059459e…` / 132684 | POS Sync secret Rules PASS | not read back / `2026-08-26T14:10:47+05:30` | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| MenuList QA / `menulist-qa` | Firestore indexes | `firestore.indexes.json` / `5629ae4d…` / 78310 | unchanged | not read back / same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| MenuList QA / `menulist-qa` | Storage Rules | `storage.rules` / `226d2a20…` / 18176 | unchanged | not read back / same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| MenuList QA / `menulist-qa` | Cloud Functions | `functions/` / tree `3c42f5d3…` | unchanged | not read back / same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| MenuList production / `menulist-prod` | Firestore Rules | same MenuList artifact | POS Sync secret Rules PASS | not read back / same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| MenuList production / `menulist-prod` | Firestore indexes | same MenuList artifact | unchanged | not read back / same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| MenuList production / `menulist-prod` | Storage Rules | same MenuList artifact | unchanged | not read back / same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| MenuList production / `menulist-prod` | Cloud Functions | same MenuList tree | unchanged | not read back / same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| Answerlattice QA / `neelvara-answerlattice-qa` | Firestore Rules | `firestore-answerlattice.rules` / `a92cbacb…` / 116222 | unchanged | not read back / same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| Answerlattice QA / `neelvara-answerlattice-qa` | Firestore indexes | `firestore-answerlattice.indexes.json` / `0114bdf8…` / 50941 | unchanged | not read back / same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| Answerlattice QA / `neelvara-answerlattice-qa` | Storage Rules | `storage-answerlattice.rules` / `5fc8f980…` / 6948 | unchanged | not read back / same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| Answerlattice QA / `neelvara-answerlattice-qa` | Cloud Functions | `functions-answerlattice/` / tree `ae5750c6…` | unchanged | not read back / same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| Answerlattice production / `neelvara-answerlattice-prod` | Firestore Rules | same Answerlattice artifact | unchanged | not read back / same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| Answerlattice production / `neelvara-answerlattice-prod` | Firestore indexes | same Answerlattice artifact | unchanged | not read back / same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| Answerlattice production / `neelvara-answerlattice-prod` | Storage Rules | same Answerlattice artifact | unchanged | not read back / same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| Answerlattice production / `neelvara-answerlattice-prod` | Cloud Functions | same Answerlattice tree | unchanged | not read back / same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+
+- Firebase deployment evidence or blocker: no Firebase infrastructure delta exists; no deployment is required or authorized.
+- Final filesystem state: pending full lint/build, exact-path staging, staged-diff validation, commit, non-force staging push, direct server readback, automatic QA build, exact hosted semantics/feedback retest, and final fixture restoration verification. Concurrent Answerlattice work remains excluded.
+- Attribution confidence: exact.

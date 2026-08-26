@@ -724,6 +724,12 @@ function verifyPosSyncBoundary() {
     [desktopPosSync, 'Desktop POS sync enable control'],
     [mobilePosSync, 'Mobile POS sync enable control'],
   ].forEach(([source, label]) => assertIncludes(source, "aria-label={t('enablePosSync')}", label));
+  assertIncludes(desktopPosSync, 'App.useApp()', 'Desktop POS sync scoped feedback context');
+  assertNotIncludes(desktopPosSync, 'message.success(', 'Desktop POS sync detached success feedback');
+  assertNotIncludes(desktopPosSync, 'message.error(', 'Desktop POS sync detached error feedback');
+  assertIncludes(desktopPosSync, "aria-label={t('copySecret')}", 'Desktop POS sync copy-secret accessible name');
+  assertIncludes(desktopPosSync, "aria-label={t('regenerateSecret')}", 'Desktop POS sync regenerate-secret accessible name');
+  assertIncludes(desktopPosSync, "aria-label={secretVisible ? 'Hide secret' : 'Reveal secret'}", 'Desktop POS sync reveal-secret accessible name');
   verifyDebouncedDeliveryBoundary(eventBuilder, projectDal, platformProvider, editor);
   verifyDeliveryFailureThreshold(deliverRoute, testRoute, deliveryState, posSyncTypes, storeTypes, desktopPosSync, mobilePosSync, secretRoute);
   verifyServerOwnedSecretBoundary(secretRoute, secretStore, firestoreRules, databaseConstants, posSyncTypes, storeTypes);
