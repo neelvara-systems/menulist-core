@@ -9,6 +9,7 @@
 import { FEATURE_FLAGS } from '@config/features';
 import { MENULIST_B2C_PLAN_IDS } from '@constant/menulistPlans';
 import { getBoundedMultiOutletStringContext, logMultiOutletFailure } from '@lib/multiOutlet/diagnostics';
+import { refreshCreatedOutletSessionAccess } from '@lib/multiOutlet/outletSessionRefresh';
 import {
     createMultiOutletStatusError,
     isOutletCreateResponse,
@@ -27,6 +28,7 @@ import { formatCurrency } from '@util/formatters';
 import { calculateProration, hasValidSubscriptionAccess } from '@util/razorpay';
 import { Alert, Button, Input, Modal, Space, Typography } from 'antd';
 import { useRouter } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 import { useCallback, useContext, useRef, useState } from 'react';
 
 const { Text } = Typography;
@@ -74,10 +76,16 @@ async function readDesktopAddOutletResponse(
 export default function AddOutletModal({ open, onClose, subscription }: AddOutletModalProps) {
     const { tenantDetails, storeDetails, setStoreDetails, setTenantDetails } = useContext(PlatformGlobalDataContext);
     const router = useRouter();
+    const { update: updateSession } = useSession();
     const [outletName, setOutletName] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [requiresBillingAction, setRequiresBillingAction] = useState(false);
+    const [createdOutletPendingSession, setCreatedOutletPendingSession] = useState<{
+        expectedStoreId: string | number;
+        expectedTenantId: string | number;
+        storeId: number;
+    } | null>(null);
     const actionInFlightRef = useRef(false);
     const modalEpochRef = useRef(0);
     const previousOpenRef = useRef(open);
@@ -136,6 +144,55 @@ export default function AddOutletModal({ open, onClose, subscription }: AddOutle
     };
 
     const handleCreate = async () => {
+        if (createdOutletPendingSession) {
+            const expectedModalEpoch = modalEpochRef.current;
+            if (!isExpectedScope(
+                createdOutletPendingSession.expectedTenantId,
+                createdOutletPendingSession.expectedStoreId,
+                expectedModalEpoch,
+            ) || actionInFlightRef.current) return;
+            actionInFlightRef.current = true;
+            setLoading(true);
+            setError(null);
+            try {
+                const sessionReady = await refreshCreatedOutletSessionAccess(
+                    () => updateSession(),
+                    createdOutletPendingSession.storeId,
+                );
+                if (!isExpectedScope(
+                    createdOutletPendingSession.expectedTenantId,
+                    createdOutletPendingSession.expectedStoreId,
+                    expectedModalEpoch,
+                )) return;
+                if (!sessionReady) {
+                    setError('Outlet created, but account access is still syncing. Try syncing access again.');
+                    return;
+                }
+                setCreatedOutletPendingSession(null);
+                setOutletName('');
+                handleClose();
+            } catch (sessionError) {
+                logMultiOutletFailure('desktop_location_create_session_refresh_failed', sessionError, {
+                    ...buildAddOutletLogContext(storeDetails, tenantDetails, outletName),
+                    ...getBoundedMultiOutletStringContext('createdStoreId', createdOutletPendingSession.storeId),
+                });
+                if (isExpectedScope(
+                    createdOutletPendingSession.expectedTenantId,
+                    createdOutletPendingSession.expectedStoreId,
+                    expectedModalEpoch,
+                )) {
+                    setError('Outlet created, but account access could not sync. Try syncing access again.');
+                }
+            } finally {
+                actionInFlightRef.current = false;
+                if (isExpectedScope(
+                    createdOutletPendingSession.expectedTenantId,
+                    createdOutletPendingSession.expectedStoreId,
+                    expectedModalEpoch,
+                )) setLoading(false);
+            }
+            return;
+        }
         if (!outletName.trim() || !storeDetails?.storeId || !(storeDetails.tenantId || tenantDetails?.tenantId)) return;
         const expectedStoreId = storeDetails.storeId;
         const expectedTenantId = storeDetails.tenantId || tenantDetails?.tenantId;
@@ -146,6 +203,7 @@ export default function AddOutletModal({ open, onClose, subscription }: AddOutle
         setLoading(true);
         setError(null);
         setRequiresBillingAction(false);
+        let outletCommitted = false;
 
         try {
             const res = await fetch('/api/outlets/create', {
@@ -189,6 +247,7 @@ export default function AddOutletModal({ open, onClose, subscription }: AddOutle
                 setError('Failed to create outlet');
                 return;
             }
+            outletCommitted = true;
 
             // Update local tenant storesList
             if (data.storeId) {
@@ -229,16 +288,37 @@ export default function AddOutletModal({ open, onClose, subscription }: AddOutle
                     : previous);
             }
 
+            const pendingSession = {
+                expectedStoreId,
+                expectedTenantId: String(expectedTenantId),
+                storeId: data.storeId,
+            };
+            setCreatedOutletPendingSession(pendingSession);
+            const sessionReady = await refreshCreatedOutletSessionAccess(
+                () => updateSession(),
+                data.storeId,
+            );
+            if (!isExpectedScope(expectedTenantId, expectedStoreId, expectedModalEpoch)) return;
+            if (!sessionReady) {
+                setError('Outlet created, but account access is still syncing. Try syncing access again.');
+                return;
+            }
+
+            setCreatedOutletPendingSession(null);
             setOutletName('');
             handleClose();
         } catch (e) {
             logMultiOutletFailure(
-                'desktop_location_create_failed',
+                outletCommitted
+                    ? 'desktop_location_create_session_refresh_failed'
+                    : 'desktop_location_create_failed',
                 e,
                 buildAddOutletLogContext(storeDetails, tenantDetails, submittedOutletName),
             );
             if (isExpectedScope(expectedTenantId, expectedStoreId, expectedModalEpoch)) {
-                setError('Network error. Please try again.');
+                setError(outletCommitted
+                    ? 'Outlet created, but account access could not sync. Try syncing access again.'
+                    : 'Network error. Please try again.');
             }
         } finally {
             actionInFlightRef.current = false;
@@ -252,8 +332,11 @@ export default function AddOutletModal({ open, onClose, subscription }: AddOutle
             open={open}
             onCancel={handleClose}
             onOk={handleCreate}
-            okText="Add Outlet"
-            okButtonProps={{ loading, disabled: !outletName.trim() || !hasBillingAccess }}
+            okText={createdOutletPendingSession ? 'Sync Access' : 'Add Outlet'}
+            okButtonProps={{
+                loading,
+                disabled: createdOutletPendingSession ? false : !outletName.trim() || !hasBillingAccess,
+            }}
             destroyOnHidden
         >
             <Space direction="vertical" size="middle" style={{ width: '100%' }}>
@@ -261,9 +344,19 @@ export default function AddOutletModal({ open, onClose, subscription }: AddOutle
                     placeholder="Outlet name (e.g. Downtown Branch)"
                     value={outletName}
                     onChange={(e) => setOutletName(e.target.value)}
+                    disabled={Boolean(createdOutletPendingSession)}
                     maxLength={200}
                     autoFocus
                 />
+
+                {createdOutletPendingSession && (
+                    <Alert
+                        type="warning"
+                        showIcon
+                        message="Outlet created"
+                        description="Sync account access before switching to the new location. This does not create another outlet."
+                    />
+                )}
 
                 {FEATURE_FLAGS.ENABLE_OUTLET_PRORATION_DISPLAY && proration && isDirectMultiLocationPlan && (
                     <Alert

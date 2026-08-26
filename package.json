@@ -393,6 +393,7 @@
     "test:auth-access-status-scope": "ts-node --compiler-options '{\"module\":\"CommonJS\",\"target\":\"ES2022\"}' -r tsconfig-paths/register scripts/verification/test-auth-access-status-scope.ts",
     "test:sensitive-server-store-scope": "ts-node --compiler-options '{\"module\":\"CommonJS\",\"target\":\"ES2022\"}' -r tsconfig-paths/register scripts/verification/test-sensitive-server-store-scope.ts",
     "test:session-store-context-boundary": "ts-node --compiler-options '{\"module\":\"CommonJS\"}' -r tsconfig-paths/register scripts/verification/test-session-store-context-boundary.ts",
+    "test:outlet-session-refresh": "ts-node --compiler-options '{\"module\":\"CommonJS\"}' -r tsconfig-paths/register scripts/verification/test-outlet-session-refresh.ts",
     "test:purchase-intent-boundary": "ts-node --compiler-options '{\"module\":\"CommonJS\"}' -r tsconfig-paths/register scripts/verification/test-purchase-intent-boundary.ts",
     "test:menulist-pricing-policy": "ts-node --compiler-options '{\"module\":\"CommonJS\"}' -r tsconfig-paths/register scripts/verification/test-menulist-pricing-policy.ts",
     "test:menulist-taxation-policy": "ts-node --compiler-options '{\"module\":\"CommonJS\"}' -r tsconfig-paths/register scripts/verification/test-menulist-taxation-policy.ts",

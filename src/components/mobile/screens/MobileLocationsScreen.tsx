@@ -8,6 +8,7 @@ import { AUTH_ACCOUNT_REQUEST_POLICY, readAuthAccountResponse } from '@lib/auth/
 import { refreshFirebaseAuthClaims } from '@lib/auth/firebaseAuthSync';
 import { getStoreContextName } from '@lib/businessIdentity/names';
 import { getBoundedMultiOutletStringContext, logMultiOutletFailure } from '@lib/multiOutlet/diagnostics';
+import { refreshCreatedOutletSessionAccess } from '@lib/multiOutlet/outletSessionRefresh';
 import { canCreateOutletLocation, canManageLocationSettings } from '@lib/multiOutlet/locationAccess';
 import { claimStoreSwitchAttempt, releaseStoreSwitchAttempt } from '@lib/multiOutlet/storeSwitchAccess';
 import {
@@ -28,6 +29,7 @@ import { formatCurrency } from '@util/formatters';
 import { calculateProration, hasValidSubscriptionAccess } from '@util/razorpay';
 import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
+import { useSession } from 'next-auth/react';
 import { useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { LuCreditCard, LuMapPin, LuPencil, LuPlus, LuShieldCheck, LuStar, LuX } from 'react-icons/lu';
 import { Button, Card, Dialog, Flex, Input, List, NavBar, Popup, Switch, Tag, Text, Title, Toast } from '../antd';
@@ -77,6 +79,7 @@ const getChangedPolicy = (basePolicy: OutletPolicy, nextPolicy: OutletPolicy): P
 function MobileLocationsScreenContent({ onBack, onOpenBilling }: MobileLocationsScreenProps) {
     const t = useTranslations('MobileLocations');
     const { token } = theme.useToken();
+    const { update: updateSession } = useSession();
     const {
         tenantDetails,
         storeDetails,
@@ -96,6 +99,11 @@ function MobileLocationsScreenContent({ onBack, onOpenBilling }: MobileLocations
     const [showPolicy, setShowPolicy] = useState(false);
     const [outletName, setOutletName] = useState('');
     const [isCreating, setIsCreating] = useState(false);
+    const [createdOutletPendingSession, setCreatedOutletPendingSession] = useState<{
+        expectedStoreId: string | number;
+        expectedTenantId: string | number;
+        storeId: number;
+    } | null>(null);
     const [deactivatingStoreId, setDeactivatingStoreId] = useState<number | null>(null);
     const [policy, setPolicy] = useState<OutletPolicy>(normalizeOutletPolicy(policySourceStore?.outletPolicy));
     const [draftPolicy, setDraftPolicy] = useState<OutletPolicy>(normalizeOutletPolicy(policySourceStore?.outletPolicy));
@@ -480,6 +488,49 @@ function MobileLocationsScreenContent({ onBack, onOpenBilling }: MobileLocations
     };
 
     const handleCreateOutlet = async () => {
+        if (createdOutletPendingSession) {
+            if (
+                locationActionInFlightRef.current
+                || !isExpectedLocationScope(
+                    createdOutletPendingSession.expectedTenantId,
+                    createdOutletPendingSession.expectedStoreId,
+                )
+            ) return;
+            locationActionInFlightRef.current = true;
+            setIsCreating(true);
+            try {
+                const sessionReady = await refreshCreatedOutletSessionAccess(
+                    () => updateSession(),
+                    createdOutletPendingSession.storeId,
+                );
+                if (!isExpectedLocationScope(
+                    createdOutletPendingSession.expectedTenantId,
+                    createdOutletPendingSession.expectedStoreId,
+                )) return;
+                if (!sessionReady) {
+                    Toast.show({ content: 'Outlet created. Tap Sync Access to try again.', duration: 2500 });
+                    return;
+                }
+                setCreatedOutletPendingSession(null);
+                setOutletName('');
+                setShowAddOutlet(false);
+                Toast.show({ content: t('outletCreated'), duration: 1500 });
+            } catch (sessionError) {
+                logMultiOutletFailure('mobile_location_create_session_refresh_failed', sessionError, buildMobileLocationLogContext('create_outlet_session_refresh', {
+                    ...getBoundedMultiOutletStringContext('createdStoreId', createdOutletPendingSession.storeId),
+                }));
+                if (isExpectedLocationScope(
+                    createdOutletPendingSession.expectedTenantId,
+                    createdOutletPendingSession.expectedStoreId,
+                )) {
+                    Toast.show({ content: 'Outlet created. Tap Sync Access to try again.', duration: 2500 });
+                }
+            } finally {
+                locationActionInFlightRef.current = false;
+                if (isMountedRef.current) setIsCreating(false);
+            }
+            return;
+        }
         if (
             !outletName.trim()
             || !storeDetails?.tenantId
@@ -491,6 +542,7 @@ function MobileLocationsScreenContent({ onBack, onOpenBilling }: MobileLocations
         const submittedOutletName = outletName.trim();
         locationActionInFlightRef.current = true;
         setIsCreating(true);
+        let outletCommitted = false;
         try {
             const res = await fetch('/api/outlets/create', {
                 ...MULTI_OUTLET_ACTION_REQUEST_POLICY,
@@ -533,6 +585,7 @@ function MobileLocationsScreenContent({ onBack, onOpenBilling }: MobileLocations
                 }));
                 throw invalidResponseError;
             }
+            outletCommitted = true;
             if (!isExpectedLocationScope(expectedTenantId, expectedStoreId)) return;
             if (data.storeId) {
                 setTenantDetails((previous: any) => previous?.storesList
@@ -572,15 +625,39 @@ function MobileLocationsScreenContent({ onBack, onOpenBilling }: MobileLocations
                         : previous
                 ));
             }
+            setCreatedOutletPendingSession({
+                expectedStoreId,
+                expectedTenantId,
+                storeId: data.storeId,
+            });
+            const sessionReady = await refreshCreatedOutletSessionAccess(
+                () => updateSession(),
+                data.storeId,
+            );
+            if (!isExpectedLocationScope(expectedTenantId, expectedStoreId)) return;
+            if (!sessionReady) {
+                Toast.show({ content: 'Outlet created. Tap Sync Access to try again.', duration: 2500 });
+                return;
+            }
+            setCreatedOutletPendingSession(null);
             setOutletName('');
             setShowAddOutlet(false);
             Toast.show({ content: t('outletCreated'), duration: 1500 });
         } catch (error) {
-            logMultiOutletFailure('mobile_location_create_failed', error, buildMobileLocationLogContext('create_outlet', {
+            logMultiOutletFailure(outletCommitted
+                ? 'mobile_location_create_session_refresh_failed'
+                : 'mobile_location_create_failed', error, buildMobileLocationLogContext(outletCommitted
+                ? 'create_outlet_session_refresh'
+                : 'create_outlet', {
                 ...getBoundedMultiOutletStringContext('outletName', submittedOutletName),
             }));
             if (isExpectedLocationScope(expectedTenantId, expectedStoreId)) {
-                Toast.show({ content: t('networkError'), duration: 2000 });
+                Toast.show({
+                    content: outletCommitted
+                        ? 'Outlet created. Tap Sync Access to try again.'
+                        : t('networkError'),
+                    duration: outletCommitted ? 2500 : 2000,
+                });
             }
         } finally {
             locationActionInFlightRef.current = false;
@@ -821,6 +898,7 @@ function MobileLocationsScreenContent({ onBack, onOpenBilling }: MobileLocations
                             <Text strong>{t('outletName')}</Text>
                             <Text type="secondary">{t('outletNameHelp')}</Text>
                             <Input
+                                disabled={Boolean(createdOutletPendingSession)}
                                 onChange={setOutletName}
                                 placeholder={t('outletNamePlaceholder')}
                                 value={outletName}
@@ -900,12 +978,12 @@ function MobileLocationsScreenContent({ onBack, onOpenBilling }: MobileLocations
                             <Button
                                 block
                                 color="primary"
-                                disabled={!outletName.trim() || !hasBillingAccess}
+                                disabled={createdOutletPendingSession ? false : !outletName.trim() || !hasBillingAccess}
                                 loading={isCreating}
                                 onClick={handleCreateOutlet}
                                 size="large"
                             >
-                                {t('addOutlet')}
+                                {createdOutletPendingSession ? 'Sync Access' : t('addOutlet')}
                             </Button>
                         </Flex>
                     </Flex>

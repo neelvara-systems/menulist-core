@@ -1366,6 +1366,10 @@ function verifyMultiLocationBoundary() {
   assertIncludes(files.desktopLocations, 'modal.confirm({', 'Desktop outlet destructive confirmation invocation');
   assertIncludes(files.desktopLocations, '{modalContextHolder}', 'Desktop outlet destructive confirmation holder');
   assertNotIncludes(files.desktopLocations, 'Modal.confirm({', 'Desktop outlet destructive confirmation must not use detached static rendering');
+  assertIncludes(files.addOutletModal, 'refreshCreatedOutletSessionAccess(', 'Desktop outlet creation refreshes durable session membership');
+  assertIncludes(files.addOutletModal, "createdOutletPendingSession ? 'Sync Access' : 'Add Outlet'", 'Desktop outlet creation exposes session-sync recovery without duplicate creation');
+  assertIncludes(files.mobileLocations, 'refreshCreatedOutletSessionAccess(', 'Mobile outlet creation refreshes durable session membership');
+  assertIncludes(files.mobileLocations, "createdOutletPendingSession ? 'Sync Access' : t('addOutlet')", 'Mobile outlet creation exposes session-sync recovery without duplicate creation');
 
   [
     'parseMasterOperationalState',
