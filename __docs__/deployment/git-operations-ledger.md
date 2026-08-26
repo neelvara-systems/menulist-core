@@ -6662,3 +6662,21 @@ No Firebase source/configuration changes. Firestore Rules, indexes, Storage Rule
 - Firebase deployment evidence or blocker: no Firebase infrastructure delta exists; no deployment is required or authorized.
 - Final filesystem state: pending explicit-path staging, staged-diff validation, commit, non-force staging push, direct server readback, automatic QA build, and exact hosted desktop/mobile copy retest.
 - Attribution confidence: exact.
+
+#### MLRC-089 tenant-domain guidance performed result — `2026-08-26T12:32:21+05:30`
+
+- Commit/push: `8061cd18b75f0dc3d0c15fed899fe8ffc7032280` (`fix(menulist): align QA tenant domain guidance`) was pushed non-force from local `staging` to `origin/staging`.
+- Direct Git server readback returned exact `refs/heads/staging` SHA `8061cd18b75f0dc3d0c15fed899fe8ffc7032280` with `0/0` divergence. Local and remote `main` remain untouched at `fe625d5bbf527c1b7e537b00ab32a4f655905c35`.
+- Exact hosted readback: Vercel marked deployment `4Nz37pfsNfnKmofMLGP5rAv2c3gJ` Ready/Latest in custom environment `qa`, with exact source `8061cd18…`; `https://app.menulist.digital/api/version` returned the same verified full build ID and preview environment.
+- Hosted owner retest: after a fresh exact-build load, visible Search & Discovery guidance, the active customer link, and the input suffix all used `menulist.digital`; the stale `yourname.menulist.online` copy and update prompt were absent. The shared mobile source uses the same pure helper and passed strict TypeScript, focused/full lint, and the custom-domain verifier.
+- Validation: tenant-domain pure regression, full custom-domain claim/provider/identity suite, focused/full zero-warning ESLint, strict TypeScript, production build 450/450 with 53 precache entries, staged diff validation, and `git diff --check` passed.
+- Firebase state: all 16 planned component/target rows remain independently `NO_INFRA_CHANGE` / `SERVER_STATE_UNKNOWN`; no infrastructure source/configuration changed, deployed, or received authenticated server readback. No custom domain was connected; the invalid candidate check created no provider state.
+- Post-operation branch matrix before the documentation/ledger closeout:
+
+| Branch | Local full SHA | Server ref/full SHA | Tracking ref | Ahead/behind | Worktree | Staged/unstaged/untracked | Status |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `staging` | `8061cd18b75f0dc3d0c15fed899fe8ffc7032280` | `refs/heads/staging` / `8061cd18b75f0dc3d0c15fed899fe8ffc7032280` | `origin/staging` | `0/0` | primary | `0/2/0` before this append | `IN_SYNC` |
+| `main` | `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `refs/heads/main` / `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `origin/main` | `0/0` | none | n/a | `IN_SYNC` |
+
+- Closeout operation: commit only the report and ledger evidence, push `staging` non-force, and continue the broader QA certification. The exact product-runtime proof remains attributable to `8061cd18…`; the documentation-only successor does not change that runtime result.
+- Attribution confidence: exact.
