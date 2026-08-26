@@ -6488,3 +6488,21 @@ No Firebase source/configuration changes. Firestore Rules, indexes, Storage Rule
 - Firebase deployment evidence or blocker: no Firebase infrastructure delta exists; no deployment is required or authorized.
 - Final filesystem state: pending all-path staging, staged-diff validation, commit, non-force staging push, direct server readback, automatic QA build, and hosted responsive embed retest after the managed QA widget credential is bound.
 - Attribution confidence: exact.
+
+#### Answerlattice responsive-widget performed result — `2026-08-26T11:46:46+05:30`
+
+- Commit/push: `833d32cfcb3e2de8a646a032982eda341b73e131` (`fix(answerlattice): honor mobile widget visibility`) was pushed non-force from local `staging` to `origin/staging`.
+- Direct server readback returned exact `refs/heads/staging` SHA `833d32cfcb3e2de8a646a032982eda341b73e131` with `0/0` divergence. Local and remote `main` remain untouched at `fe625d5bbf527c1b7e537b00ab32a4f655905c35` with `0/0` divergence.
+- Validation: Answerlattice MenuList reference-client, widget configuration, widget runtime authorization, widget answer/escalation, and guided-resolution contracts PASS; Answerlattice and full TypeScript PASS; focused and full zero-warning lint PASS; production build PASS with 450/450 static pages and 53 service-worker precache entries; staged diff validation and `git diff --check` PASS. Existing Sass deprecation and absent optional Gemini-key warnings remain non-failing.
+- Firebase state: all 16 planned infrastructure component/target rows remain independently `NO_INFRA_CHANGE` / `SERVER_STATE_UNKNOWN`; no Firebase infrastructure source/configuration changed, deployed, or received authenticated server readback.
+- Manual deployment state: no Firebase or Vercel deployment command was run. The branch-tracked QA build may deploy automatically.
+- Concurrent-work boundary: after direct readback, another active operation created unstaged MenuList changes in `src/components/mobile/screens/MobileLocationsScreen.tsx`, `src/components/organisms/AddOutletModal/index.tsx`, and new `src/lib/multiOutlet/outletSessionRefresh.ts`. They are excluded from this ledger-only closeout and left untouched for their owner.
+- Post-operation branch matrix before this ledger-only closeout:
+
+| Branch | Local full SHA | Server ref/full SHA | Tracking ref | Ahead/behind | Worktree | Staged/unstaged/untracked | Status |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `staging` | `833d32cfcb3e2de8a646a032982eda341b73e131` | `refs/heads/staging` / `833d32cfcb3e2de8a646a032982eda341b73e131` | `origin/staging` | `0/0` | primary | `0/2/1` excluding this ledger append | `IN_SYNC` |
+| `main` | `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `refs/heads/main` / `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `origin/main` | `0/0` | none | n/a | `IN_SYNC` |
+
+- Closeout operation: commit only this ledger result and push `staging` non-force, preserving the three concurrent MenuList paths; then wait for the exact automatic QA promotion. Hosted client embed proof still requires the managed QA widget credential binding, which is a separate secret-bearing operator action.
+- Attribution confidence: exact.
