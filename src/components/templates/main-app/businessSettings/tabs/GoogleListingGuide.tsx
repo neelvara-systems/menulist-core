@@ -18,7 +18,7 @@ import { openIsolatedBrowserUrl } from '@lib/browser/openIsolatedBrowserUrl';
 import { FEATURE_FLAGS } from '@config/features';
 import { getBoundedStoreStringContext, logStoreDataFailure } from '@database/stores/storeDiagnostics';
 import { generateOBPUrl } from '@lib/obp/generateOBPUrl';
-import { Alert, Button, Card, Divider, Flex, Steps, Typography, message, theme } from 'antd';
+import { Alert, App, Button, Card, Divider, Flex, Steps, Typography, theme } from 'antd';
 import { useState } from 'react';
 import { LuCheck, LuCopy, LuExternalLink, LuGlobe, LuStore } from 'react-icons/lu';
 
@@ -98,6 +98,7 @@ export default function GoogleListingGuide({
     onMarkDone,
     onDismiss,
 }: GoogleListingGuideProps) {
+    const { message: messageApi } = App.useApp();
     const [copied, setCopied] = useState(false);
     const [profileKitCopied, setProfileKitCopied] = useState(false);
     const { token } = theme.useToken();
@@ -138,14 +139,14 @@ export default function GoogleListingGuide({
         try {
             await copyGoogleListingGuideLink(obpUrl);
             setCopied(true);
-            message.success('Link copied');
+            messageApi.success('Link copied');
             setTimeout(() => setCopied(false), 2000);
         } catch (error) {
             logStoreDataFailure('google_listing_guide_link_copy_failed', error, buildGoogleListingGuideLogContext('copy_obp_link', {
                 hasClipboardWrite: hasGoogleListingGuideClipboardWrite(),
                 hasCopyFallback: hasGoogleListingGuideCopyFallback(),
             }));
-            message.error('Could not copy link');
+            messageApi.error('Could not copy link');
         }
     };
 
@@ -153,7 +154,7 @@ export default function GoogleListingGuide({
         try {
             await copyGoogleListingGuideLink(profileKitText);
             setProfileKitCopied(true);
-            message.success('Google profile kit copied');
+            messageApi.success('Google profile kit copied');
             setTimeout(() => setProfileKitCopied(false), 2000);
         } catch (error) {
             logStoreDataFailure('google_listing_guide_profile_kit_copy_failed', error, buildGoogleListingGuideLogContext('copy_profile_kit', {
@@ -164,7 +165,7 @@ export default function GoogleListingGuide({
                 hasKnownFor: Boolean(knownFor?.trim()),
                 kitLineCount: profileKitRows.length,
             }));
-            message.error('Could not copy profile kit');
+            messageApi.error('Could not copy profile kit');
         }
     };
 
@@ -175,7 +176,7 @@ export default function GoogleListingGuide({
             logStoreDataFailure('google_listing_guide_open_failed', error, buildGoogleListingGuideLogContext('open_google_profile', {
                 target: 'google_business_profile',
             }));
-            message.error('Could not open Google Business Profile');
+            messageApi.error('Could not open Google Business Profile');
         }
     };
 

@@ -12,7 +12,7 @@ import MediaImageCard from '@/components/shared/media/MediaImageCard';
 import MediaImageAdjustModal from '@/components/shared/media/MediaImageAdjustModal';
 import MediaPublicContextPreview from '@/components/shared/media/MediaPublicContextPreview';
 import { generateOBPUrl } from '@lib/obp/generateOBPUrl';
-import { Button, Card, Col, Divider, Flex, Form, Input, InputNumber, Row, Select, Switch, Tag, Typography, message, theme } from 'antd';
+import { App, Button, Card, Col, Divider, Flex, Form, Input, InputNumber, Row, Select, Switch, Tag, Typography, theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import React, { forwardRef, useEffect, useMemo, useRef, useState } from 'react';
 import ShareLinkCard from '../../ShareLinkCard';
@@ -101,6 +101,7 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
         onGoogleLinkDone,
         onGoogleLinkDismiss
     }, ref) => {
+        const { message: messageApi } = App.useApp();
         const t = useTranslations('BusinessSettings');
         const form = Form.useFormInstance();
         const session = useClientAuthSession();
@@ -194,7 +195,7 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
         ) => {
             if (!componentActiveRef.current) return;
             if (!session?.tId || !session?.sId) {
-                message.error(t('sessionUnavailable'));
+                messageApi.error(t('sessionUnavailable'));
                 return;
             }
 
@@ -228,7 +229,7 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                     sourceDataUrl: prepared.sourceDataUrl || fallbackDraft?.sourceDataUrl,
                     uploadFailed: false,
                 });
-                message.success(successMessage);
+                messageApi.success(successMessage);
             } catch {
                 if (componentActiveRef.current) {
                     setCoverDraft((previous) => previous ? {
@@ -237,7 +238,7 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                         previewDataUrl: prepared.dataUrl,
                         uploadFailed: true,
                     } : previous);
-                    message.error(t('businessCoverUploadFailed'));
+                    messageApi.error(t('businessCoverUploadFailed'));
                 }
             } finally {
                 if (componentActiveRef.current) setCoverUploading(false);
@@ -252,7 +253,7 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                     sourceDataUrl: prepared.sourceDataUrl,
                 });
             } catch {
-                if (componentActiveRef.current) message.error(t('businessCoverUploadFailed'));
+                if (componentActiveRef.current) messageApi.error(t('businessCoverUploadFailed'));
             }
         };
 
@@ -275,7 +276,7 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                 });
 
                 if (!candidate?.dataUrl) {
-                    if (componentActiveRef.current) message.error(t('businessCoverGenerateFailed'));
+                    if (componentActiveRef.current) messageApi.error(t('businessCoverGenerateFailed'));
                     return;
                 }
 
@@ -287,7 +288,7 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                     sourceDataUrl: prepared.sourceDataUrl,
                 }, t('businessCoverGenerated'));
             } catch {
-                if (componentActiveRef.current) message.error(t('businessCoverGenerateFailed'));
+                if (componentActiveRef.current) messageApi.error(t('businessCoverGenerateFailed'));
             } finally {
                 if (componentActiveRef.current) setCoverGenerating(false);
             }
@@ -322,7 +323,7 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
         ) => {
             if (!componentActiveRef.current) return;
             if (!session?.tId || !session?.sId) {
-                message.error(t('sessionUnavailable'));
+                messageApi.error(t('sessionUnavailable'));
                 return;
             }
             setPhotoDrafts((previous) => ({
@@ -361,7 +362,7 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                         uploadFailed: false,
                     },
                 }));
-                message.success(t('photoUploaded'));
+                messageApi.success(t('photoUploaded'));
             } catch {
                 if (componentActiveRef.current) {
                     setPhotoDrafts((previous) => ({
@@ -373,7 +374,7 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                             uploadFailed: true,
                         },
                     }));
-                    message.error(t('photoUploadFailed'));
+                    messageApi.error(t('photoUploadFailed'));
                 }
             } finally {
                 if (componentActiveRef.current) setPhotoUploading(null);
@@ -388,7 +389,7 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                     sourceDataUrl: prepared.sourceDataUrl,
                 });
             } catch {
-                if (componentActiveRef.current) message.error(t('photoUploadFailed'));
+                if (componentActiveRef.current) messageApi.error(t('photoUploadFailed'));
             }
         };
 

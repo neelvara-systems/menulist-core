@@ -24,7 +24,7 @@ import {
 } from '@lib/onboarding/starterActivation';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { StoreDataType } from '@type/platform/store';
-import { Button, Card, Flex, message, Tag, Typography, theme } from 'antd';
+import { App, Button, Card, Flex, Tag, Typography, theme } from 'antd';
 import { useContext, useEffect, useRef, useState } from 'react';
 import {
     LuAlertTriangle,
@@ -226,6 +226,7 @@ function buildAutoSurfaces(data: UseMenuListData): AutoSurface[] {
 // ── Component ────────────────────────────────────────────────
 
 export default function PresenceMonitor({ data, storeDetails }: PresenceMonitorProps) {
+    const { message: messageApi } = App.useApp();
     const { setStoreDetails } = useContext(PlatformGlobalDataContext);
     const { token } = theme.useToken();
     const [updating, setUpdating] = useState<string | null>(null);
@@ -294,7 +295,7 @@ export default function PresenceMonitor({ data, storeDetails }: PresenceMonitorP
             openIsolatedBrowserUrl(surface.openUrl);
         } catch (error) {
             logUseMenuListFailure('use_menulist_presence_external_open_failed', error, buildPresenceLogContext('open', surface));
-            message.error('Failed to open link');
+            messageApi.error('Failed to open link');
         }
     };
 
@@ -302,14 +303,14 @@ export default function PresenceMonitor({ data, storeDetails }: PresenceMonitorP
         const sourcedObpLink = withAnalyticsSource(data.obpLink, 'copy_link');
         try {
             await copyUseMenuListPresenceLink(sourcedObpLink);
-            message.success('Official business link copied');
+            messageApi.success('Official business link copied');
         } catch (error) {
             logUseMenuListFailure('use_menulist_presence_official_link_copy_failed', error, {
                 ...buildPresenceLogContext('copy', surface),
                 hasClipboardWrite: hasUseMenuListPresenceClipboardWrite(),
                 hasCopyFallback: hasUseMenuListPresenceCopyFallback(),
             });
-            message.error('Failed to copy');
+            messageApi.error('Failed to copy');
         }
         setExpandedGuide(surface.id);
     };
@@ -339,12 +340,12 @@ export default function PresenceMonitor({ data, storeDetails }: PresenceMonitorP
             ));
             if (String(currentStoreIdRef.current) === String(result.storeId)) {
                 setLocalPresence(prev => ({ ...prev, [surface.id]: result.recordedAt }));
-                message.success(`${surface.label} — official link added`);
+                messageApi.success(`${surface.label} — official link added`);
                 setExpandedGuide(null);
             }
         } catch (error) {
             logUseMenuListFailure('use_menulist_presence_confirm_failed', error, buildPresenceLogContext('confirm', surface));
-            message.error('Failed to update');
+            messageApi.error('Failed to update');
         } finally {
             setUpdating(null);
         }
@@ -378,7 +379,7 @@ export default function PresenceMonitor({ data, storeDetails }: PresenceMonitorP
             }
         } catch (error) {
             logUseMenuListFailure('use_menulist_presence_remove_failed', error, buildPresenceLogContext('remove', surface));
-            message.error('Failed to update');
+            messageApi.error('Failed to update');
         } finally {
             setUpdating(null);
         }

@@ -2,7 +2,7 @@
 
 import { useOwnerReferral } from '@hook/useOwnerReferral';
 import { getContentCreditOutcomeExamples } from '@data/shared/contentCreditPolicy';
-import { Button, Divider, Empty, Flex, List, Modal, Tag, Typography, message } from 'antd';
+import { App, Button, Divider, Empty, Flex, List, Modal, Tag, Typography } from 'antd';
 import { useFormatter, useTranslations } from 'next-intl';
 import { useState } from 'react';
 import { LuCopy, LuGift, LuMessageCircle, LuShare2, LuUserPlus } from 'react-icons/lu';
@@ -10,6 +10,7 @@ import { LuCopy, LuGift, LuMessageCircle, LuShare2, LuUserPlus } from 'react-ico
 const { Text, Title } = Typography;
 
 export default function OwnerReferralModal() {
+    const { message: messageApi } = App.useApp();
     const t = useTranslations('OwnerReferral');
     const format = useFormatter();
     const [open, setOpen] = useState(false);
@@ -25,9 +26,9 @@ export default function OwnerReferralModal() {
     const copy = async () => {
         try {
             await referral.copyInvite();
-            message.success(t('invitationCopied'));
+            messageApi.success(t('invitationCopied'));
         } catch {
-            message.error(t('copyFailed'));
+            messageApi.error(t('copyFailed'));
         }
     };
 
@@ -36,7 +37,7 @@ export default function OwnerReferralModal() {
             const shared = await referral.shareNative();
             if (!shared) await copy();
         } catch (error: any) {
-            if (error?.name !== 'AbortError') message.error(t('shareFailed'));
+            if (error?.name !== 'AbortError') messageApi.error(t('shareFailed'));
         }
     };
 
@@ -44,7 +45,7 @@ export default function OwnerReferralModal() {
         try {
             referral.openWhatsApp();
         } catch {
-            message.error(t('shareFailed'));
+            messageApi.error(t('shareFailed'));
         }
     };
 

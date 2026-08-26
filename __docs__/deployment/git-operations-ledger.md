@@ -7129,3 +7129,35 @@ No Firebase source/configuration changes. Firestore Rules, indexes, Storage Rule
 - Firebase deployment evidence or blocker: no Firebase infrastructure delta exists; no deployment is required or authorized.
 - Final filesystem state: pending full lint/build, exact-path staging, staged-diff validation, commit, non-force staging push, direct server readback, automatic QA build, exact hosted semantics/feedback retest, and final fixture restoration verification. Concurrent Answerlattice work remains excluded.
 - Attribution confidence: exact.
+
+### GIT-20260826-142055-mlrc096-owner-feedback-context
+
+- Timestamp: `2026-08-26T14:20:55+05:30`
+- Record type: `PLANNED`
+- Actor/session/thread ID: Codex `/root`; thread `01a034e1-c70a-74b1-a92b-0a103a981815`.
+- Registered worktrees: one worktree, `/Users/danny/Projects/MenuListAi/menulist-core`, branch `staging`, HEAD `72fdd62772b7dfef63ce9578e5ed3e628e42a8df`.
+- Starting filesystem state: `0` staged, `12` tracked modified, `4` untracked before this append. Every pre-existing path belongs to concurrent Answerlattice work and remains unstaged, untouched, and excluded.
+- Operation: replace the remaining detached static Ant feedback calls on reachable desktop Business Settings and Use MenuList child surfaces with the mounted application-context message API; add regression coverage; commit only exact MenuList paths plus report/ledger evidence; push `staging` non-force; and retest safe exact-hosted controls. Preserve every write, secret, upload, public-link, domain, provider, and mobile contract. `main` remains untouched. No manual Vercel or Firebase deployment is authorized.
+- Branch matrix before:
+
+| Branch | Local full SHA | Server ref/full SHA | Tracking ref | Ahead/behind | Worktree | Staged/unstaged/untracked | Status |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `staging` | `72fdd62772b7dfef63ce9578e5ed3e628e42a8df` | `refs/heads/staging` / `72fdd62772b7dfef63ce9578e5ed3e628e42a8df` | `origin/staging` | `0/0` | primary | `0/12/4` before this append | `IN_SYNC` |
+| `main` | `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `refs/heads/main` / `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `origin/main` | `0/0` | none | n/a | `IN_SYNC` |
+
+- Validation before mutation: exact hosted build `3e558bc47ef6f720e3ffe6ba0d51d1c1646d2655` completed both Official Business Page `Copy Link` and Google profile `Copy link` clipboard actions without rendering their intended success/failure feedback. Source inventory found the same detached-static contract on adjacent reachable Business Settings and Use MenuList child surfaces.
+- Firebase matrix before/after: UI feedback, test, and documentation paths only. MenuList QA/production and Answerlattice QA/production Firestore Rules, indexes, Storage Rules, and Cloud Functions remain `NO_INFRA_CHANGE` / `SERVER_STATE_UNKNOWN`; no deployable Firebase source/configuration is in scope and no deployment/readback is authorized or claimed.
+- Firebase deployment evidence or blocker: no Firebase infrastructure delta exists.
+- Final filesystem state: pending scoped implementation, regressions, complete validation, exact-path staging, commit/push/readback, automatic QA build, and exact-hosted retest. Concurrent Answerlattice work remains excluded.
+- Attribution confidence: exact.
+
+#### MenuList External Sync feedback/accessibility performed result — `2026-08-26T14:24:40+05:30`
+
+- Commit/push: `72fdd62772b7dfef63ce9578e5ed3e628e42a8df` (`fix(menulist): mount external sync feedback`) was pushed non-force to `origin/staging`; direct server readback returned the same SHA. Local and remote `main` remain untouched at `fe625d5bbf527c1b7e537b00ab32a4f655905c35`.
+- Exact deployment: automatic Vercel QA deployment `Az95YFU1NFeJbmfru2YDpJWijjVG` reached Ready after 4m26s. Canonical `https://app.menulist.digital/api/version` returned exact build `72fdd62772b7dfef63ce9578e5ed3e628e42a8df` and deployment host `menulist-core-4s8t9b4iy-neelvara-systems.vercel.app` before the hosted retest.
+- Hosted closeout: the enabled state exposed one each of named `Copy secret`, `Regenerate secret`, and `Reveal secret` buttons. An intentionally invalid provider URL produced the visible bounded message `Enter a valid provider connection URL.` without a write. The fixture was returned to External Sync off and a hard refresh confirmed the restored state. No secret was read, copied, logged, rotated, or captured; no provider request or instruction email was sent.
+- Validation: `verify:pos-sync-boundary`, behavioral POS Sync boundaries, Firestore secret Rules, focused/full zero-warning ESLint, corrected strict TypeScript, production build with 450/450 static pages and 53 service-worker precache entries, and `git diff --check` passed. One initial strict-TypeScript run caught the `App` import in the wrong module; that import was immediately corrected and the complete targeted sequence passed. Existing Sass and absent optional Gemini-key warnings remain non-failing.
+- Security/cost: the correction adds no Firestore read/write, Storage operation, Cloud Function invocation, secret exposure, provider request, or cache behavior. The reversible hosted check produced only the intended enable and disable store updates.
+- Firebase state: every previously recorded MenuList/Answerlattice QA/production Rules, indexes, Storage Rules, and Functions row remains `NO_INFRA_CHANGE` / `SERVER_STATE_UNKNOWN`; no infrastructure deployment or authenticated infrastructure readback was performed or claimed.
+- Razorpay boundary: no checkout, provider call, charge, webhook completion, refund, or money movement was initiated.
+- Attribution confidence: exact.

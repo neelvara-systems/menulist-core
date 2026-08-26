@@ -29,7 +29,7 @@ import { getBoundedPwaStringContext, logPwaTrackingFailure } from '@lib/pwa/pwaD
 import { buildBusinessCopyManualOverrideMeta } from '@services/ai/businessCopy/metadata';
 import { getStoreDeepDifference } from '@lib/store/storeNestedUpdateProjection';
 import type { UserUploadedFileType } from '@type/common';
-import { Alert, Button, Card, Flex, Input, Select, Space, Switch, Tag, Typography, message, theme } from 'antd';
+import { Alert, App, Button, Card, Flex, Input, Select, Space, Switch, Tag, Typography, theme } from 'antd';
 import { useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { LuCopy, LuImage, LuRefreshCw, LuShare2, LuSmartphone, LuSquare, LuTrash2, LuUpload } from 'react-icons/lu';
 
@@ -92,6 +92,7 @@ interface CustomerAppTabProps {
 }
 
 export default function CustomerAppTab({ scrollRef }: CustomerAppTabProps) {
+    const { message: messageApi } = App.useApp();
     const { storeDetails, setStoreDetails } = useContext(PlatformGlobalDataContext);
     const { token } = theme.useToken();
     const customerAppScopeKey = `${String(storeDetails?.tenantId ?? '')}:${String(storeDetails?.storeId ?? '')}`;
@@ -350,7 +351,7 @@ export default function CustomerAppTab({ scrollRef }: CustomerAppTabProps) {
                     iconUrl: nextIconUrl,
                 });
                 setOriginalLocalizedShortNameDrafts(localizedShortNameDrafts);
-                message.success('Customer App settings saved');
+                messageApi.success('Customer App settings saved');
             }
         } catch (err) {
             logPwaTrackingFailure('customer_app_desktop_settings_save_failed', err, {
@@ -366,7 +367,7 @@ export default function CustomerAppTab({ scrollRef }: CustomerAppTabProps) {
                 componentActiveRef.current
                 && customerAppScopeKeyRef.current === requestScopeKey
             ) {
-                message.error('Could not save. Please try again.');
+                messageApi.error('Could not save. Please try again.');
             }
         } finally {
             if (
@@ -424,7 +425,7 @@ export default function CustomerAppTab({ scrollRef }: CustomerAppTabProps) {
         if (!installLink) return;
         try {
             await copyCustomerAppDesktopInstallLink(installLink);
-            message.success('Install link copied');
+            messageApi.success('Install link copied');
         } catch (error) {
             logPwaTrackingFailure('customer_app_desktop_install_link_copy_failed', error, {
                 ...getBoundedPwaStringContext('storeId', storeDetails?.storeId),
@@ -437,7 +438,7 @@ export default function CustomerAppTab({ scrollRef }: CustomerAppTabProps) {
                 hasClipboardWrite: hasCustomerAppDesktopClipboardWrite(),
                 hasCopyFallback: hasCustomerAppDesktopCopyFallback(),
             });
-            message.error('Could not copy — please select and copy manually.');
+            messageApi.error('Could not copy — please select and copy manually.');
         }
     };
 
@@ -445,7 +446,7 @@ export default function CustomerAppTab({ scrollRef }: CustomerAppTabProps) {
         if (!file?.url) return;
         setSelectedIcon(file);
         setRemoveIconOnSave(false);
-        message.success('Icon selected. Click Save to apply.');
+        messageApi.success('Icon selected. Click Save to apply.');
     };
 
     if (!FEATURE_FLAGS.ENABLE_CUSTOMER_APP_PWA) {

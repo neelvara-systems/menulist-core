@@ -10,7 +10,7 @@ import { computeBusinessCopyCoverage } from '@services/ai/businessCopy/translati
 import { firstText, getActiveBusinessAttributeLabels } from '@services/ai/businessCopy/utils';
 import getDefaultProjectAiContext from '@services/ai/shared/getDefaultProjectAiContext';
 import { formatDateTime } from '@util/dateTime';
-import { Alert, Button, Card, Divider, Flex, Form, List, Tag, Typography, message, theme } from 'antd';
+import { Alert, App, Button, Card, Divider, Flex, Form, List, Tag, Typography, theme } from 'antd';
 import { useFormatter, useTranslations } from 'next-intl';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { LuAlertCircle, LuCheckCircle, LuLanguages, LuSparkles } from 'react-icons/lu';
@@ -28,6 +28,7 @@ interface BusinessCopySetupTabProps {
 const BUSINESS_COPY_CAPACITY_MESSAGE = 'Get more enhancements to continue. Visit Billing to add an enhancement pack.';
 
 export default function BusinessCopySetupTab({ onApplyGeneratedCopy, onGenerateMissingTranslations, scrollRef, storeDetails }: BusinessCopySetupTabProps) {
+    const { message: messageApi } = App.useApp();
     const t = useTranslations('BusinessSettings');
     const formatter = useFormatter();
     const { token } = theme.useToken();
@@ -74,7 +75,7 @@ export default function BusinessCopySetupTab({ onApplyGeneratedCopy, onGenerateM
 
     const handleGenerate = async () => {
         if (!businessName?.trim()) {
-            message.error(t('businessCopyMissingName'));
+            messageApi.error(t('businessCopyMissingName'));
             return;
         }
 
@@ -144,7 +145,7 @@ export default function BusinessCopySetupTab({ onApplyGeneratedCopy, onGenerateM
             if (!componentActiveRef.current || activeBusinessCopyScopeRef.current !== requestScopeKey) return;
 
             if (!generated) {
-                message.error(t('businessCopyFailed'));
+                messageApi.error(t('businessCopyFailed'));
                 return;
             }
 
@@ -181,7 +182,7 @@ export default function BusinessCopySetupTab({ onApplyGeneratedCopy, onGenerateM
                 },
                 tagline: generated.tagline,
             });
-            message.success(t(applyResult.translationIncomplete ? 'businessCopyPartialSuccess' : 'businessCopySuccess'));
+            messageApi.success(t(applyResult.translationIncomplete ? 'businessCopyPartialSuccess' : 'businessCopySuccess'));
         } catch (error) {
             logBusinessSettingsFailure('business_settings_business_copy_generation_failed', error, {
                 ...getBoundedBusinessSettingsStringContext('tenantId', storeDetails?.tenantId),
@@ -192,7 +193,7 @@ export default function BusinessCopySetupTab({ onApplyGeneratedCopy, onGenerateM
                 hasBusinessType: Boolean(businessType),
             });
             if (componentActiveRef.current && activeBusinessCopyScopeRef.current === requestScopeKey) {
-                message.error(error instanceof AICapacityError
+                messageApi.error(error instanceof AICapacityError
                     ? BUSINESS_COPY_CAPACITY_MESSAGE
                     : t('businessCopyFailed'));
             }
@@ -215,10 +216,10 @@ export default function BusinessCopySetupTab({ onApplyGeneratedCopy, onGenerateM
             const generated = await onGenerateMissingTranslations?.(projectContext?.projectId);
             if (!componentActiveRef.current || activeBusinessCopyScopeRef.current !== requestScopeKey) return;
             if (!generated) {
-                message.info(t('businessCopyCoverageGenerateNoMissing'));
+                messageApi.info(t('businessCopyCoverageGenerateNoMissing'));
                 return;
             }
-            message.success(t('businessCopyCoverageGenerateSuccess'));
+            messageApi.success(t('businessCopyCoverageGenerateSuccess'));
         } catch (error) {
             logBusinessSettingsFailure('business_settings_business_copy_translation_repair_failed', error, {
                 ...getBoundedBusinessSettingsStringContext('tenantId', storeDetails?.tenantId),
@@ -228,7 +229,7 @@ export default function BusinessCopySetupTab({ onApplyGeneratedCopy, onGenerateM
                 repairableGapCount: coverage.repairableGapCount,
             });
             if (componentActiveRef.current && activeBusinessCopyScopeRef.current === requestScopeKey) {
-                message.error(error instanceof AICapacityError
+                messageApi.error(error instanceof AICapacityError
                     ? BUSINESS_COPY_CAPACITY_MESSAGE
                     : t('businessCopyCoverageGenerateFailed'));
             }

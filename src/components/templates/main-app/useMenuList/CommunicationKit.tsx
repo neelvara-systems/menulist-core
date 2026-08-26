@@ -13,7 +13,7 @@ import { openIsolatedBrowserUrl } from '@lib/browser/openIsolatedBrowserUrl';
 
 import { withAnalyticsSource, type AnalyticsEntrySource } from '@lib/analytics/sourceAttribution';
 import { generateMessageTemplates, getTodayHours, MessageTemplate, type MessageTemplateInput } from '@lib/communication/messageTemplates';
-import { Button, Card, Flex, message, Typography } from 'antd';
+import { App, Button, Card, Flex, Typography } from 'antd';
 import { useMemo, useState } from 'react';
 import { LuCheck, LuCopy, LuMessageCircle, LuMessageSquare } from 'react-icons/lu';
 import type { StoreSpecialHours } from '@type/platform/store';
@@ -185,6 +185,7 @@ interface MessageCardProps {
 }
 
 function MessageCard({ copyMessage, diagnosticContext, template, themeToken, whatsappMessage }: MessageCardProps) {
+    const { message: messageApi } = App.useApp();
     const [copied, setCopied] = useState(false);
 
     const buildCommunicationKitLogContext = (action: 'copy' | 'whatsapp_open'): UseMenuListLogContext => ({
@@ -200,7 +201,7 @@ function MessageCard({ copyMessage, diagnosticContext, template, themeToken, wha
         try {
             await copyUseMenuListCommunicationKitMessage(copyMessage);
             setCopied(true);
-            message.success('Message copied');
+            messageApi.success('Message copied');
             setTimeout(() => setCopied(false), 2000);
         } catch (error) {
             logUseMenuListFailure('use_menulist_communication_kit_copy_failed', error, {
@@ -208,7 +209,7 @@ function MessageCard({ copyMessage, diagnosticContext, template, themeToken, wha
                 hasClipboardWrite: hasUseMenuListCommunicationKitClipboardWrite(),
                 hasCopyFallback: hasUseMenuListCommunicationKitCopyFallback(),
             });
-            message.error('Failed to copy');
+            messageApi.error('Failed to copy');
         }
     };
 
@@ -221,7 +222,7 @@ function MessageCard({ copyMessage, diagnosticContext, template, themeToken, wha
                 ...buildCommunicationKitLogContext('whatsapp_open'),
                 whatsappUrlLength: whatsappUrl.length,
             });
-            message.error('Failed to open WhatsApp');
+            messageApi.error('Failed to open WhatsApp');
         }
     };
 

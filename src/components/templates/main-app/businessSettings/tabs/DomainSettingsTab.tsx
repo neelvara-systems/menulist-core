@@ -10,7 +10,7 @@ import { normalizeVercelDomainDnsRecords } from '@lib/domains/vercelDnsRecords';
 import { createLatestRequestGuard } from '@lib/runtime/latestRequestGuard';
 import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
 import { getBoundedErrorNumberAtPath, getBoundedErrorStatus } from '@lib/monitoring/boundedLogContext';
-import { Alert, Button, Card, Divider, Input, List, message, Space, Steps, Tag, Typography } from 'antd';
+import { Alert, App, Button, Card, Divider, Input, List, Space, Steps, Tag, Typography } from 'antd';
 import { useTranslations } from 'next-intl';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { LuCheck, LuCopy, LuExternalLink, LuGlobe, LuRefreshCw, LuSearch, LuTrash2 } from 'react-icons/lu';
@@ -209,6 +209,7 @@ async function readDesktopDomainSettingsDomainResponseJson<T>(
 }
 
 function DomainSettingsTab({ scrollRef, storeDetails, onStoreStateUpdate, onStoreUpdate }: DomainSettingsTabProps) {
+    const { message: messageApi } = App.useApp();
     const t = useTranslations('BusinessSettings');
     const tenantDomainCopy = useCallback(
         (copy: string) => renderTenantDomainCopy(copy, MENULIST_TENANT_BASE_DOMAIN),
@@ -396,7 +397,7 @@ function DomainSettingsTab({ scrollRef, storeDetails, onStoreStateUpdate, onStor
                 nextSubdomain,
             ));
             if (componentActiveRef.current && domainScopeKeyRef.current === requestScopeKey) {
-                message.error('Could not save public link.');
+                messageApi.error('Could not save public link.');
             }
         } finally {
             if (componentActiveRef.current && domainScopeKeyRef.current === requestScopeKey) {
@@ -531,7 +532,7 @@ function DomainSettingsTab({ scrollRef, storeDetails, onStoreStateUpdate, onStor
             });
             onStoreStateUpdate?.({ customDomain: nextDomain, domainVerified: data.verified === true });
             if (data.providerCleanupPending === true || data.claimReleasePending === true || data.refreshPending === true) {
-                message.warning('Domain saved. Background refresh is still finishing.');
+                messageApi.warning('Domain saved. Background refresh is still finishing.');
             }
         } catch (err: any) {
             logStoreDataFailure(
@@ -627,7 +628,7 @@ function DomainSettingsTab({ scrollRef, storeDetails, onStoreStateUpdate, onStor
             setDomainInput('');
             onStoreStateUpdate?.({ customDomain: undefined, domainVerified: undefined });
             if (data.providerCleanupPending === true || data.claimReleasePending === true || data.refreshPending === true) {
-                message.warning('Domain removed. Background cleanup is still finishing.');
+                messageApi.warning('Domain removed. Background cleanup is still finishing.');
             }
         } catch (error) {
             logStoreDataFailure('desktop_domain_settings_remove_failed', error, buildDomainSettingsLogContext(
@@ -662,7 +663,7 @@ function DomainSettingsTab({ scrollRef, storeDetails, onStoreStateUpdate, onStor
                     hasCopyFallback: hasDesktopDomainSettingsCopyFallback(),
                 },
             );
-            message.error(DOMAIN_SETTINGS_COPY_ERROR);
+            messageApi.error(DOMAIN_SETTINGS_COPY_ERROR);
         }
     }, [storeDetails, subdomainUrl]);
 
@@ -679,7 +680,7 @@ function DomainSettingsTab({ scrollRef, storeDetails, onStoreStateUpdate, onStor
                     ...getBoundedStoreStringContext('openUrl', subdomainUrl),
                 },
             );
-            message.error(DOMAIN_SETTINGS_OPEN_ERROR);
+            messageApi.error(DOMAIN_SETTINGS_OPEN_ERROR);
         }
     }, [storeDetails, subdomainUrl]);
 
@@ -701,7 +702,7 @@ function DomainSettingsTab({ scrollRef, storeDetails, onStoreStateUpdate, onStor
                     hasCopyFallback: hasDesktopDomainSettingsCopyFallback(),
                 },
             );
-            message.error(DOMAIN_SETTINGS_COPY_ERROR);
+            messageApi.error(DOMAIN_SETTINGS_COPY_ERROR);
         }
     }, [activeDomain, storeDetails]);
 
@@ -719,7 +720,7 @@ function DomainSettingsTab({ scrollRef, storeDetails, onStoreStateUpdate, onStor
                     ...getBoundedStoreStringContext('openUrl', domainUrl),
                 },
             );
-            message.error(DOMAIN_SETTINGS_OPEN_ERROR);
+            messageApi.error(DOMAIN_SETTINGS_OPEN_ERROR);
         }
     }, [activeDomain, storeDetails]);
 
@@ -746,7 +747,7 @@ function DomainSettingsTab({ scrollRef, storeDetails, onStoreStateUpdate, onStor
                     hasCopyFallback: hasDesktopDomainSettingsCopyFallback(),
                 },
             );
-            message.error(DOMAIN_SETTINGS_COPY_ERROR);
+            messageApi.error(DOMAIN_SETTINGS_COPY_ERROR);
         }
     }, [activeDomain, dnsRecords.length, storeDetails]);
 

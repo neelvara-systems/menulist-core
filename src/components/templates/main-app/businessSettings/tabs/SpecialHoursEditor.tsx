@@ -14,6 +14,7 @@ import { isValidClockRange } from '@lib/menu/timeSlotPresetBoundary';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import type { StoreSpecialHours } from '@type/platform/store';
 import {
+    App,
     Button,
     DatePicker,
     Divider,
@@ -25,7 +26,6 @@ import {
     TimePicker,
     Tooltip,
     Typography,
-    message,
     theme,
 } from 'antd';
 import dayjs, { type Dayjs } from 'dayjs';
@@ -37,6 +37,7 @@ const { Text, Title } = Typography;
 type SpecialHoursMode = 'open' | 'closed';
 
 export default function SpecialHoursEditor() {
+    const { message: messageApi } = App.useApp();
     const { token } = theme.useToken();
     const { storeDetails, setStoreDetails } = useContext(PlatformGlobalDataContext);
     const [date, setDate] = useState<Dayjs | null>(null);
@@ -94,7 +95,7 @@ export default function SpecialHoursEditor() {
         const tenantId = Number(storeDetails?.tenantId);
         const requestScopeKey = scopeKey;
         if (!Number.isSafeInteger(storeId) || storeId <= 0 || !Number.isSafeInteger(tenantId) || tenantId <= 0) {
-            message.error('Store details are not available. Refresh and try again.');
+            messageApi.error('Store details are not available. Refresh and try again.');
             return false;
         }
 
@@ -134,7 +135,7 @@ export default function SpecialHoursEditor() {
                 && activeScopeRef.current === requestScopeKey
                 && actionInFlightRef.current === attempt
             ) {
-                message.error('Special hours were not saved. Please try again.');
+                messageApi.error('Special hours were not saved. Please try again.');
             }
             return false;
         } finally {
@@ -155,15 +156,15 @@ export default function SpecialHoursEditor() {
         if (saving) return;
         const dateKey = date?.format('YYYY-MM-DD');
         if (!dateKey || dateKey < todayKey) {
-            message.error('Choose today or a future date.');
+            messageApi.error('Choose today or a future date.');
             return;
         }
         if (!editingDate && !specialHours[dateKey] && entries.length >= SPECIAL_HOURS_MAX_ENTRIES) {
-            message.error(`Keep at most ${SPECIAL_HOURS_MAX_ENTRIES} special dates.`);
+            messageApi.error(`Keep at most ${SPECIAL_HOURS_MAX_ENTRIES} special dates.`);
             return;
         }
         if (mode === 'open' && (!start || !end || !isValidClockRange(start.format('HH:mm'), end.format('HH:mm')))) {
-            message.error('Choose different opening and closing times.');
+            messageApi.error('Choose different opening and closing times.');
             return;
         }
 
@@ -174,7 +175,7 @@ export default function SpecialHoursEditor() {
             ...(label.trim() ? { label: label.trim() } : {}),
         };
         if (await persist(next)) {
-            message.success('Special hours published.');
+            messageApi.success('Special hours published.');
             resetDraft();
         }
     };
@@ -195,7 +196,7 @@ export default function SpecialHoursEditor() {
         const next = { ...specialHours };
         delete next[dateKey];
         if (await persist(next)) {
-            message.success('Special date removed.');
+            messageApi.success('Special date removed.');
             if (editingDate === dateKey) resetDraft();
         }
     };

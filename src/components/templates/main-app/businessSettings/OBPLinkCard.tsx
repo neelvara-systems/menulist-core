@@ -15,7 +15,7 @@ import { generateOBPUrl, getDefaultProjectUrl } from '@lib/obp/generateOBPUrl';
 import { buildQrCodeFilename, downloadQrCode, generateBrandedQrCodeDataUrl } from '@lib/utils/qrCode';
 import { slugify } from '@lib/utils/slugify';
 import { StoreDataType } from '@type/platform/store';
-import { Button, Card, Flex, Segmented, Typography, message, theme } from 'antd';
+import { App, Button, Card, Flex, Segmented, Typography, theme } from 'antd';
 import { QRCodeCanvas } from 'qrcode.react';
 import { useEffect, useState } from 'react';
 import { LuCheck, LuCopy, LuExternalLink, LuGlobe, LuMessageCircle, LuQrCode } from 'react-icons/lu';
@@ -87,6 +87,7 @@ interface OBPLinkCardProps {
 }
 
 export default function OBPLinkCard({ storeDetails }: OBPLinkCardProps) {
+    const { message: messageApi } = App.useApp();
     const { token } = theme.useToken();
     const [copied, setCopied] = useState(false);
     const [showQr, setShowQr] = useState(false);
@@ -175,7 +176,7 @@ export default function OBPLinkCard({ storeDetails }: OBPLinkCardProps) {
                 OBP_LINK_CARD_COPY_FALLBACK_FAILED,
             );
             setCopied(true);
-            message.success('Link copied');
+            messageApi.success('Link copied');
             setTimeout(() => setCopied(false), 2000);
             recordOBPShare('copy_link', 'track_copy_link');
         } catch (error) {
@@ -184,7 +185,7 @@ export default function OBPLinkCard({ storeDetails }: OBPLinkCardProps) {
                 hasClipboardWrite: hasOBPLinkCardClipboardWrite(),
                 hasCopyFallback: hasOBPLinkCardCopyFallback(),
             }));
-            message.error('Could not copy link');
+            messageApi.error('Could not copy link');
         }
     };
 
@@ -196,7 +197,7 @@ export default function OBPLinkCard({ storeDetails }: OBPLinkCardProps) {
                 OBP_LINK_CARD_MESSAGE_COPY_UNAVAILABLE,
                 OBP_LINK_CARD_MESSAGE_COPY_FALLBACK_FAILED,
             );
-            message.success('Message copied — paste it in WhatsApp or anywhere');
+            messageApi.success('Message copied — paste it in WhatsApp or anywhere');
             recordOBPShare('copy_message', 'track_copy_message');
         } catch (error) {
             logStoreDataFailure('obp_link_card_copy_message_failed', error, buildOBPLinkCardLogContext('copy_message', {
@@ -204,7 +205,7 @@ export default function OBPLinkCard({ storeDetails }: OBPLinkCardProps) {
                 hasClipboardWrite: hasOBPLinkCardClipboardWrite(),
                 hasCopyFallback: hasOBPLinkCardCopyFallback(),
             }));
-            message.error('Could not copy message');
+            messageApi.error('Could not copy message');
         }
     };
 
@@ -220,7 +221,7 @@ export default function OBPLinkCard({ storeDetails }: OBPLinkCardProps) {
                 whatsappMessageLength: msg.length,
                 whatsappUrlLength: whatsappUrl.length,
             }));
-            message.error('Could not open WhatsApp');
+            messageApi.error('Could not open WhatsApp');
         }
     };
 
@@ -231,7 +232,7 @@ export default function OBPLinkCard({ storeDetails }: OBPLinkCardProps) {
             logStoreDataFailure('obp_link_card_open_failed', error, buildOBPLinkCardLogContext('open_link', {
                 ...getBoundedStoreStringContext('openUrl', obpOpenUrl),
             }));
-            message.error('Could not open link');
+            messageApi.error('Could not open link');
         }
     };
 
@@ -250,12 +251,12 @@ export default function OBPLinkCard({ storeDetails }: OBPLinkCardProps) {
                 activePlanType: (storeDetails as any)?.activePlanType,
             });
             downloadQrCode(dataUrl, buildQrCodeFilename(`${qrName}-${qrType}`, 'qr'));
-            message.success('QR code downloaded');
+            messageApi.success('QR code downloaded');
         } catch (error) {
             logStoreDataFailure('obp_link_card_qr_download_failed', error, buildOBPLinkCardLogContext('download_qr', {
                 ...getBoundedStoreStringContext('qrUrl', activeQrUrl),
             }));
-            message.error('Could not download QR code');
+            messageApi.error('Could not download QR code');
         }
     };
 
