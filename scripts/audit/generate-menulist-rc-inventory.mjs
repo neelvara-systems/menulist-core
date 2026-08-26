@@ -47,6 +47,30 @@ const CONTROL_PATTERNS = [
     ["action-handler", /\bonClick\s*=|\bonPress\s*=|\bonAction\s*=/],
     ["menu-action", /\b(?:items|menuItems|actions)\s*=\s*\[|\bkey\s*:\s*["'][^"']+["'][^\n]*(?:label|onClick)/],
 ];
+const CONCRETE_CONTROL_KINDS = new Set([
+    "button",
+    "link",
+    "form",
+    "input",
+    "selection",
+    "upload",
+]);
+
+function controlKindsForLine(line) {
+    const matchedKinds = CONTROL_PATTERNS
+        .filter(([, pattern]) => pattern.test(line))
+        .map(([kind]) => kind);
+    const hasConcreteControl = matchedKinds.some((kind) => CONCRETE_CONTROL_KINDS.has(kind));
+
+    return matchedKinds.filter((kind) => {
+        // onClick/onPress/onAction is the backing handler for a concrete
+        // element on the same line, not a second user-triggerable control.
+        if (kind === "action-handler" && hasConcreteControl) return false;
+        // A file input is one upload control, not both an input and upload.
+        if (kind === "input" && matchedKinds.includes("upload")) return false;
+        return true;
+    });
+}
 
 const COLUMNS = [
     "inventory_id",
@@ -476,8 +500,7 @@ for (const file of uiFiles) {
     const lines = fs.readFileSync(file, "utf8").split(/\r?\n/);
     for (let index = 0; index < lines.length; index += 1) {
         const line = lines[index];
-        for (const [kind, pattern] of CONTROL_PATTERNS) {
-            if (!pattern.test(line)) continue;
+        for (const kind of controlKindsForLine(line)) {
             add({
                 item_type: "user-control-candidate",
                 product_area: product,

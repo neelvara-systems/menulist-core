@@ -346,9 +346,23 @@ export default function ContactPage() {
                     />
                     <label htmlFor="agreeToTerms" style={{ fontSize: '0.875rem', color: 'var(--ws-text-muted)', cursor: 'pointer', lineHeight: 1.5 }}>
                       {t('Contact.formAgree')}
-                      <WebsiteLink href="/privacy-policy" style={{ color: 'var(--ws-brand-secondary)', textDecoration: 'none' }}>{t('Contact.formPrivacyPolicy')}</WebsiteLink>
+                      <WebsiteLink
+                        href="/privacy-policy"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{ color: 'var(--ws-brand-secondary)', textDecoration: 'none' }}
+                      >
+                        {t('Contact.formPrivacyPolicy')}
+                      </WebsiteLink>
                       {t('Contact.formAnd')}
-                      <WebsiteLink href="/terms-of-service" style={{ color: 'var(--ws-brand-secondary)', textDecoration: 'none' }}>{t('Contact.formTerms')}</WebsiteLink>{t('Contact.formAgreeEnd')}
+                      <WebsiteLink
+                        href="/terms-of-service"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{ color: 'var(--ws-brand-secondary)', textDecoration: 'none' }}
+                      >
+                        {t('Contact.formTerms')}
+                      </WebsiteLink>{t('Contact.formAgreeEnd')}
                     </label>
                   </div>
                   {errors.agreeToTerms && <p id="contact-terms-error" role="alert" style={{ ...errorStyle, marginTop: '-12px' }}>{errors.agreeToTerms.message}</p>}

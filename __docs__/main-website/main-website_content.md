@@ -1831,6 +1831,7 @@ Chat-style sequence:
 **Notes:**
 
 - Contact page keeps the existing form fields and sends them through the bounded public API route.
+- The consent-line Privacy Policy and Terms of Service links open in a separate safe tab so reading the required policies does not discard an unfinished enquiry. Footer and standalone legal navigation keep their normal same-tab behavior.
 - The proof strip names the supported question types without promising a monitored response time.
 - A successful form submission means the enquiry was recorded in `landingPageEnquiries`; direct team conversation is routed to `hello@menulist.ai`.
 - A monitored general-enquiry consumer/alert is still an owner-operated production requirement and must not be implied by website success copy until evidence exists.

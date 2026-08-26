@@ -231,6 +231,31 @@ const unresolvedRenderTree = menuListControls.filter((row) => row.screen_or_tab 
 if (unresolvedRenderTree.length > 0) fail(`${unresolvedRenderTree.length} MenuList controls still lack static page reachability`);
 const staticallyReachedControls = menuListControls.filter((row) => row.screen_or_tab !== 'UNREACHED_BY_APP_PAGE_STATIC_GRAPH');
 const staticallyUnreachedControls = menuListControls.filter((row) => row.screen_or_tab === 'UNREACHED_BY_APP_PAGE_STATIC_GRAPH');
+const controlKindsBySourceLine = new Map();
+for (const row of menuListControls) {
+  const separator = row.control_or_action.lastIndexOf('@');
+  if (separator < 0) fail(`control ${row.inventory_id} has no source-line identity`);
+  const sourceLine = `${row.route_or_component}@${row.control_or_action.slice(separator + 1)}`;
+  const kinds = controlKindsBySourceLine.get(sourceLine) ?? [];
+  kinds.push(row.control_or_action.slice(0, separator));
+  controlKindsBySourceLine.set(sourceLine, kinds);
+}
+for (const [sourceLine, kinds] of controlKindsBySourceLine) {
+  const concreteKinds = kinds.filter((kind) => [
+    'button',
+    'link',
+    'form',
+    'input',
+    'selection',
+    'upload',
+  ].includes(kind));
+  if (kinds.includes('action-handler') && concreteKinds.length > 0) {
+    fail(`${sourceLine} double-counts a concrete control and its backing action handler`);
+  }
+  if (kinds.includes('upload') && kinds.includes('input')) {
+    fail(`${sourceLine} double-counts one file upload as both input and upload`);
+  }
+}
 for (const row of staticallyUnreachedControls) {
   if (
     row.test_result !== 'PASS_NOT_SHIPPED'

@@ -87,7 +87,7 @@ The generated discovery inventory is retained in
 
 ## B. Inventory summary
 
-The current generator discovered 8,511 source candidates across the shared
+The current generator discovered 7,561 source candidates across the shared
 repository. These are discovery candidates, not passing test claims.
 
 | Inventory class | Discovered | Current status |
@@ -96,11 +96,11 @@ repository. These are discovery candidates, not passing test claims.
 | Route handlers | 293 | Product classification, methods, and boundary tests in progress |
 | Layouts | 19 | Source and host behavior in progress |
 | Loading/error/not-found surfaces | 9 | Runtime coverage in progress |
-| User-control candidates | 7,528 | 5,334 MenuList controls page-mapped; 155 MenuList controls explicitly classified as non-shipped source |
+| User-control candidates | 6,578 | 4,615 MenuList controls page-mapped; 149 MenuList controls explicitly classified as non-shipped source |
 | Feature flags | 333 | Product ownership and material alternate states in progress |
 | Firebase Function exports | 21 | Source/export inventory complete; runtime evidence is tracked separately |
 
-Current product classification yielded 6,000 MenuList candidates and 2,511
+Current product classification yielded 5,281 MenuList candidates and 2,280
 separation-boundary candidates. A candidate remains `DISCOVERED_UNTESTED` until
 its rendered reachability and behavior are proven; source inspection alone does
 not mark a control tested.
@@ -122,8 +122,8 @@ canonical destination. The catch-all Help Center page was exercised through
 `ACCESS_PASSED_FUNCTIONAL_INTERACTION_PENDING`, so authentication protection is
 proved without claiming their authenticated controls were exercised.
 
-Of 5,489 MenuList-classified control candidates, 5,334 map through the static
-import graph to one or more App Router pages. The remaining 155 controls in 45
+Of 4,764 MenuList-classified control candidates, 4,615 map through the static
+import graph to one or more App Router pages. The remaining 149 controls in 45
 source files have no page import path and now carry the explicit final status
 `SOURCE_UNREACHABLE_NOT_USER_TRIGGERABLE`. They are classified as non-shipped
 source, not represented as runtime-tested controls. Shared components retain
@@ -150,7 +150,7 @@ separately tracked and is not implied by this anonymous boundary pass.
 | --- | --- | --- | --- |
 | Baseline identity | Worktree, branch, HEAD, and filesystem ownership | PASS (Git identity) | Direct readback on August 25 proved local/server `staging` at exact descendant `45cae8cceaf2d016ec50efe46b0c54bb9a163a86` with `0/0` divergence. `main` remains unchanged at `fe625d5bbf527c1b7e537b00ab32a4f655905c35`. |
 | SecurityOS registry | MenuList surface/evidence registry integrity | PASS | Registry, tenant/store DAL, Rules, Storage, CSP, input/file/network, webhook, and API-scope evidence executed; the current selective planner was reviewed and `test:csp-report-boundary` reran successfully |
-| Route/control inventory | App Router, controls, flags, Functions | PASS (discovery, private-route classification/access, API classification, and static reachability) | `npm run verify:menulist-rc-inventory`; 8,511 unique rows; 59 MenuList private pages explicitly classified, 58 signed-out access-tested, and 15 exact-hosted entitled-owner render-tested; all 140 MenuList route handlers have resolved methods/access classes; 5,334/5,489 MenuList control candidates map to page routes and 155 are explicitly classified as non-shipped source |
+| Route/control inventory | App Router, controls, flags, Functions | PASS (discovery, private-route classification/access, API classification, and static reachability) | `npm run verify:menulist-rc-inventory`; 7,561 unique rows; 59 MenuList private pages explicitly classified, 58 signed-out access-tested, and 15 exact-hosted entitled-owner render-tested; all 140 MenuList route handlers have resolved methods/access classes; 4,615/4,764 MenuList control candidates map to page routes and 149 are explicitly classified as non-shipped source |
 | Private-route authentication | All 58 MenuList `(main)` page routes, including concrete catch-all and canonical aliases | PASS (signed-out access only) | Connected Chrome on current local source: 58/58 reached callback-aware sign-in; no private screen rendered. Authenticated functional state remains separately pending. |
 | Route-handler anonymous boundary | All 140 MenuList handlers and 157 exported HTTP methods | PASS exact hosted candidate | Exact hosted product commit `c22dd233b79afd3acb3c03924f7f3111112ee438` returned 200×5, 301×1, 400×15, 401×130, 403×1, and 404×5 with zero timeout/5xx. This now includes all four Growth Kits APIs. The authenticated internal batch worker rejects a request without its worker credentials with 403 before any Firebase read. Live Razorpay execution remains excluded. |
 | Entitled owner desktop navigation | Fifteen shipped owner destinations plus in-place App settings panel | PASS exact hosted candidate (route/render scope) | Connected Chrome on exact `c22dd233…` reached Dashboard, Today, Feedback, Projects, Business Settings, Use MenuList, QR, Assets, Users, Locations, Billing, Transactions, Help, Menu Manager, and Growth Kits without a generic load failure or horizontal overflow. App settings opened in place. Child controls and destructive mutations remain separately tracked. |
@@ -301,6 +301,8 @@ audit-fix-retest loop.
 | MLRC-098 | Medium | MenuList aggregate readiness verifier drift after native Storage WIF correction | The restarted local aggregate stopped at `verify:agent-readiness` because it still required the removed cross-major `authClient: auth` bridge. Git history and the dedicated current regression prove commit `12eff3e…` intentionally replaced that bridge with native external-account credentials. | Update only the stale aggregate assertions to require `createWorkloadIdentityExternalAccountCredentials`, the validated project ID, and absence of the incompatible bridge. Preserve all Workload Identity runtime code and deployment state. | `verify:agent-readiness`; `test:vercel-workload-identity`; complete from-zero `certify:menulist-local` | The targeted readiness and Workload Identity suites pass, and the corrected verifier passes in the final full aggregate without any runtime, credential, or deployment change. | CLOSED |
 | MLRC-099 | Medium | Authentication and owner-feature source-verifier drift after mounted feedback migration | The full aggregate stopped at the auth failure matrix and later at Billing because exact source assertions still required detached `message.error`/`message.success` calls that the corrected runtime no longer uses. The same stale positive expectations existed across owner notifications, platform monitors, report leads, scheduler, API tenant safety, extraction, export, and public-business-truth gates. | Update only the exact positive and corresponding non-vacuous negative assertions to require the mounted `messageApi` contract. Do not weaken expected copy, error handling, security ordering, or any feature behavior. | Authentication failure matrix and every chained suite; Billing, owner/platform notifications, ops, report-lead, scheduler, cost/founder monitor, API tenant safety, extraction 387/387, Menu Card Export, public-business-truth; complete from-zero aggregate | Every targeted verifier passes and the complete from-zero MenuList aggregate reaches its declared external Upstash boundary without another stale feedback assertion. | CLOSED |
 | MLRC-100 | Medium | Documentation command-reference verifier misclassified append-only failure evidence | `verify:doc-npm-scripts` treated two historical Git-ledger sentences that explicitly recorded attempted-and-failed nonexistent commands as active operator instructions, stopping the certification despite the evidence being intentionally immutable. | Exclude only Git-ledger lines that contain an attempted/failed context and the exact missing-script wording. Retain enforcement for active or unqualified documentation, and add positive/negative fixtures proving historical evidence is excluded while an active missing command still fails. | `verify:doc-npm-scripts`; focused ESLint; complete from-zero aggregate | The focused verifier passes its historical-evidence and active-instruction fixtures, and the complete from-zero aggregate passes the documentation command boundary. | CLOSED |
+| MLRC-101 | Medium | Certification inventory double-counted backing handlers as user-triggerable controls | The line-oriented discovery emitted both a semantic control row and a second `action-handler` row for the same button/link/form line. It also emitted one file input as both `input` and `upload`. The current matrix therefore overstated the user-triggerable surface by 950 rows across all products, including 719 MenuList rows, while making completion status harder to interpret. | When a source line contains a concrete control, retain that control and treat `onClick`/`onPress`/`onAction` as its backing handler rather than a second action. Retain handler-only rows for clickable non-semantic cards or containers. Classify a file input as one upload control. Add generated-matrix invariants that reject either duplicate shape. | `npm run verify:menulist-rc-inventory`; generated duplicate-source-line audit; `git diff --check` | Inventory verification passes with 7,561 total candidates, 6,578 control candidates, 5,281 MenuList candidates, and 4,764 MenuList controls. The duplicate-handler and input/upload invariants report zero violations; 4,615 MenuList controls map to page routes and 149 unreachable candidates retain explicit non-shipped status. | CLOSED |
+| MLRC-102 | Medium | Public contact legal-policy navigation discarded an unfinished enquiry | Exact hosted `/contact` correctly announced empty and malformed-field validation, but both consent-line legal links navigated in the same tab. After entering name, email, message, topic, and consent, opening Privacy Policy and returning with browser Back cleared every field and consent state. | Open only the two in-form Privacy Policy and Terms of Service links in a separate safe tab with `noopener noreferrer`. Preserve all visible copy, routes, footer/legal navigation, validation, Turnstile, rate limiting, and the one-write accepted-submission boundary. | `verify:public-business-truth`; `verify:website-public-copy-boundary`; focused zero-warning ESLint; strict TypeScript; production build; exact hosted form-state/legal-link retest | Empty submission exposed four specific announced errors without transmitting. Malformed email and short message retained two specific errors. The source fix and focused website/public-truth regressions pass; exact hosted retest remains pending the next staging build. | FIXED SOURCE / HOSTED RETEST PENDING |
 
 ## E. Firebase cost audit
 
@@ -463,7 +465,7 @@ represented as passing runtime claims.
 
 | Command | Result |
 | --- | --- |
-| `npm run verify:menulist-rc-inventory` | PASS — 8,511 rows; 21 Function exports; 59 private MenuList pages with bounded access/render evidence; 62 sitemap-backed website page patterns render-evidenced through 186 concrete URLs; all 140 MenuList route handlers have resolved methods/access classes and anonymous runtime evidence; 97.2% of MenuList control candidates statically mapped to page routes |
+| `npm run verify:menulist-rc-inventory` | PASS — 7,561 rows; 21 Function exports; 59 private MenuList pages with bounded access/render evidence; 62 sitemap-backed website page patterns render-evidenced through 186 concrete URLs; all 140 MenuList route handlers have resolved methods/access classes and anonymous runtime evidence; 96.9% of MenuList control candidates statically mapped to page routes |
 | `MENULIST_RC_BASE_URL=https://app.menulist.digital node scripts/verification/test-menulist-api-anonymous-boundary.js` | PASS — exact hosted `c22dd233…`; 140 handlers / 157 methods; 200×5, 301×1, 400×15, 401×130, 403×1, 404×5; zero failure, timeout, or 5xx |
 | `npm run verify:growthos` plus isolated existing-emulator transaction body | PASS — current source suite passed 265 security/cost/owner-flow checks; client/rate/timestamp contracts and the missing-hours isolated-project transaction body passed. The maintained launcher could not bind occupied port 8080, so its exact transaction body ran against the existing emulator under isolated project `demo-growthos-transactions` |
 | `node scripts/verification/verify-mobile-shell-route-map.js` | PASS — pending/unpaid subscription gate retains canonical Billing recovery and now exposes localized canonical sign-out cleanup with announced retry failure |
@@ -527,8 +529,8 @@ represented as passing runtime claims.
 
 ## I. Residual risks
 
-- The 5,334 page-reachable MenuList control candidates still require complete
-  individual runtime interaction evidence. The other 155 candidates in 45
+- The 4,615 page-reachable MenuList control candidates still require complete
+  individual runtime interaction evidence. The other 149 candidates in 45
   files are explicitly classified as non-shipped source from the App Router
   import graph; they are not represented as runtime-tested controls.
 - The source fixes MLRC-009 through MLRC-012, MLRC-016 through MLRC-022, and

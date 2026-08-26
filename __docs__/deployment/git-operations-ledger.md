@@ -7037,6 +7037,34 @@ No Firebase source/configuration changes. Firestore Rules, indexes, Storage Rule
 - Firebase state: all previously recorded QA/production Rules, indexes, Storage Rules, and Functions components remain `NO_INFRA_CHANGE` / `SERVER_STATE_UNKNOWN`; no infrastructure deployment/readback occurred.
 - Attribution confidence: exact.
 
+#### MLRC-097 documentation closeout push — `2026-08-26T16:10:00+05:30`
+
+- Documentation commit/push: `aef53330e8f760d6ce0f5348af5c52b97218a797` (`docs(menulist): close systemic feedback QA`) was pushed non-force to `origin/staging`.
+- Direct server readback returned exact staging SHA `aef53330e8f760d6ce0f5348af5c52b97218a797` with `0/0` divergence. Local/remote `main` remain untouched at `fe625d5bbf527c1b7e537b00ab32a4f655905c35`.
+- Scope: two documentation paths only—the certification defect ledger/status and this append-only Git ledger. Runtime source remains exact tested ancestor `228f44816409339cc5422a3f18a22eed5e925c94`; no additional application or Firebase behavior changed.
+- Concurrent work after push: the remaining unstaged/untracked count increased while this operation completed, demonstrating active Answerlattice/shared work. Those paths remain excluded and unattributed beyond `unknown` concurrent work.
+- Firebase state: all components remain `NO_INFRA_CHANGE` / `SERVER_STATE_UNKNOWN`; no infrastructure deployment or parity claim occurred.
+- Attribution confidence: exact.
+
+### GIT-20260826-mlrc101-102-inventory-contact-recovery
+
+- Timestamp: `2026-08-26T16:24:00+05:30`
+- Record type: `PLANNED_AND_VALIDATED_PRE_COMMIT`
+- Actor/session/thread ID: Codex `/root`; thread `01a034e1-c70a-74b1-a92b-0a103a981815`.
+- Registered worktrees: one worktree, `/Users/danny/Projects/MenuListAi/menulist-core`, branch `staging`, HEAD `aef53330e8f760d6ce0f5348af5c52b97218a797`.
+- Starting branch matrix: local, tracking, and direct server `staging` are exact `aef53330e8f760d6ce0f5348af5c52b97218a797` with `0/0` divergence. Local/remote `main` remain exact `fe625d5bbf527c1b7e537b00ab32a4f655905c35` with `0/0` divergence.
+- Starting filesystem state: `0` staged, `24` tracked unstaged, and `8` untracked. Only the MenuList inventory generator/verifier/output, contact component/public-truth verifier, website content doc, certification report, and this ledger belong to this operation. All Answerlattice/shared package/changelog/environment/input work remains unstaged, untouched, and excluded.
+- MLRC-101 reproduction: the prior matrix contained 718 MenuList source lines with both a concrete control row and a duplicate `action-handler` row, plus one input/upload duplicate. The repository-wide correction removes 950 overstated rows across product classifications, including 719 MenuList rows, while retaining handler-only clickable containers.
+- MLRC-102 reproduction: exact hosted `/contact` announced four empty-form errors and two malformed-input errors without transmitting. After entering name, email, message, topic, and consent, the in-form Privacy Policy link navigated in the same tab; browser Back returned with every field and consent cleared.
+- Change: de-duplicate only backing handler/input-upload inventory shapes and add generated invariants. Open only the consent-line Privacy Policy and Terms links in a safe separate tab; preserve all copy, routes, footer behavior, form fields, validation, Turnstile, rate limiting, submission response, and single accepted Firestore write boundary.
+- Validation: `verify:menulist-rc-inventory`, generator/verifier syntax checks, duplicate-source-line audit, `verify:public-business-truth` and all six chained truth suites, `verify:website-public-copy-boundary`, focused/full zero-warning ESLint, strict TypeScript, production build with 450/450 static pages and 53 service-worker precache entries, and `git diff --check` pass. Existing Sass and absent optional Gemini-key warnings remain non-failing.
+- Current inventory: 7,561 total candidates, 6,578 control candidates, 5,281 MenuList candidates, and 4,764 MenuList controls. Of those controls, 4,615 map to page routes; 149 remain explicitly non-shipped source.
+- Security/cost: MLRC-101 is audit evidence only. MLRC-102 adds no request, analytics event, Firestore read/write, Storage operation, Function invocation, provider action, or cache. It prevents accidental form-state loss without persisting draft personal data.
+- Firebase matrix: no deployable Firestore Rules, indexes, Storage Rules, or Cloud Functions source/configuration changed. MenuList QA/production and Answerlattice QA/production components remain independently `NO_INFRA_CHANGE` / `SERVER_STATE_UNKNOWN`; no Firebase infrastructure deployment/readback is authorized or claimed.
+- Razorpay boundary: no live provider execution or money movement occurred.
+- Intended operation: exact-path stage/commit, non-force push to `staging`, direct server readback, wait for the automatic QA deployment, then retest both in-form legal links and preserved form state on the exact hosted commit. `main` remains untouched.
+- Attribution confidence: exact.
+
 ### GIT-20260826-144344-mlrc097-systemic-feedback-context
 
 - Timestamp: `2026-08-26T14:43:44+05:30`
