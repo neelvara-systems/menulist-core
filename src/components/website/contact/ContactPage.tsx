@@ -344,8 +344,10 @@ export default function ContactPage() {
                       {...register('agreeToTerms')}
                       style={{ flexShrink: 0, width: '16px', height: '16px', cursor: 'pointer' }}
                     />
-                    <label htmlFor="agreeToTerms" style={{ fontSize: '0.875rem', color: 'var(--ws-text-muted)', cursor: 'pointer', lineHeight: 1.5 }}>
-                      {t('Contact.formAgree')}
+                    <span style={{ fontSize: '0.875rem', color: 'var(--ws-text-muted)', lineHeight: 1.5 }}>
+                      <label htmlFor="agreeToTerms" style={{ cursor: 'pointer' }}>
+                        {t('Contact.formAgree')}
+                      </label>
                       <WebsiteLink
                         href="/privacy-policy"
                         target="_blank"
@@ -363,7 +365,7 @@ export default function ContactPage() {
                       >
                         {t('Contact.formTerms')}
                       </WebsiteLink>{t('Contact.formAgreeEnd')}
-                    </label>
+                    </span>
                   </div>
                   {errors.agreeToTerms && <p id="contact-terms-error" role="alert" style={{ ...errorStyle, marginTop: '-12px' }}>{errors.agreeToTerms.message}</p>}
 

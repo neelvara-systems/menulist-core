@@ -6362,6 +6362,7 @@ function verifyPublicContactUsesBoundedServerRoute() {
   assertIncludes(contactPage, '.max(180)', 'MenuList contact page email bound matches the route');
   assertIncludes(contactPage, '.max(40)', 'MenuList contact page phone bound matches the route');
   assertIncludes(contactPage, '.max(2000)', 'MenuList contact page message bound matches the route');
+  assertIncludes(contactPage, "{t('Contact.formAgree')}\n                      </label>\n                      <WebsiteLink", 'MenuList contact policy links stay outside the checkbox label activation boundary');
   assertIncludes(contactPage, 'href="/privacy-policy"\n                        target="_blank"\n                        rel="noopener noreferrer"', 'MenuList contact privacy link preserves unfinished form state');
   assertIncludes(contactPage, 'href="/terms-of-service"\n                        target="_blank"\n                        rel="noopener noreferrer"', 'MenuList contact terms link preserves unfinished form state');
   assertNotIncludes(contactPage, '!result?.accepted', 'MenuList contact page must not accept generic accepted flag.');

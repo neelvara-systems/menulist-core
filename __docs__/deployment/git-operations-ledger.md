@@ -6992,6 +6992,24 @@ No Firebase source/configuration changes. Firestore Rules, indexes, Storage Rule
 - Razorpay boundary: no checkout, provider call, charge, webhook completion, refund, or money movement was initiated.
 - Attribution confidence: exact.
 
+### GIT-20260826-163751-mlrc103-contact-consent-activation
+
+- Timestamp: `2026-08-26T16:37:51+05:30`
+- Record type: `PERFORMED_PRIOR_COMMIT_AND_PLANNED_ADJACENT_FIX`
+- Actor/session/thread ID: Codex `/root`; thread `01a034e1-c70a-74b1-a92b-0a103a981815`.
+- Registered worktrees: one worktree, `/Users/danny/Projects/MenuListAi/menulist-core`, branch `staging`, HEAD `3284627fa78ae55f0e555ea483812be267a20a44`.
+- Prior operation result: commit `3284627fa78ae55f0e555ea483812be267a20a44` (`fix(menulist): preserve contact form recovery`) was pushed non-force to `origin/staging`; direct server readback matched exactly. Automatic Vercel QA deployment `BuAgGnWjXMZTZdtus7D65VRgPsak` reached Ready at `menulist-core-ngjn2os0i-neelvara-systems.vercel.app`; both `app.menulist.digital/api/version` and `menulist.digital/api/version` returned the exact verified build. Local/remote `main` remain untouched at `fe625d5bbf527c1b7e537b00ab32a4f655905c35`.
+- MLRC-102 hosted evidence: both consent-line links exposed `_blank` and `noopener noreferrer`. Privacy opened in a separate tab and the original form retained its name, selected topic, message, and checked consent; Terms opened separately through keyboard activation. No submit control was activated and no enquiry/API/Firebase write occurred.
+- MLRC-103 reproduction: on the same exact build, pointer activation of the in-form Terms link toggled the consent checkbox and opened no tab, while Enter opened the correct new tab. The policy links were nested inside the checkbox `<label>`, creating competing default activation behavior.
+- Change: keep the agreement text associated with `agreeToTerms`, but end the label before both policy links so the links are sibling controls. Preserve visible copy, `_blank`, `noopener noreferrer`, validation, Turnstile, rate limiting, submission, and one-write accepted-enquiry behavior.
+- Validation before commit: `verify:public-business-truth` plus all six chained public-truth suites, focused and full zero-warning ESLint, strict TypeScript, production build with 450/450 static pages and 53 service-worker precache entries, and `git diff --check` pass. Existing Sass and absent optional Gemini-key warnings remain non-failing.
+- Starting branch matrix: local/tracking/direct-server `staging` exact `3284627fa78ae55f0e555ea483812be267a20a44`, `0/0`, `IN_SYNC`; local/direct-server `main` exact `fe625d5bbf527c1b7e537b00ab32a4f655905c35`, `0/0`, `IN_SYNC`.
+- Starting filesystem state: `0` staged, `19` tracked unstaged, and `8` untracked. Only the contact component, public-truth verifier, certification report, and this ledger belong to this operation; all Answerlattice/shared package/changelog/environment/input work remains unstaged and excluded.
+- Firebase matrix: no deployable Firestore Rules, indexes, Storage Rules, or Cloud Functions source/configuration changed. MenuList QA/production and Answerlattice QA/production components remain independently `NO_INFRA_CHANGE` / `SERVER_STATE_UNKNOWN`; no Firebase infrastructure deployment/readback is authorized or claimed.
+- Razorpay boundary: no provider execution, checkout, webhook, refund, or money movement occurred.
+- Intended operation: exact-path stage/commit, non-force push to `staging`, direct server readback, automatic QA build, then pointer and keyboard retest of both policy links with retained form state. `main` remains untouched.
+- Attribution confidence: exact.
+
 #### MenuList owner child-action feedback performed result — `2026-08-26T14:43:44+05:30`
 
 - Commit/push: `243a6dd953576b99c6230a09f76fe2912ef1f136` (`fix(menulist): mount owner action feedback`) was pushed non-force to `origin/staging`; direct server readback returned the same SHA with local/server staging aligned. Local and remote `main` remain untouched at `fe625d5bbf527c1b7e537b00ab32a4f655905c35`.
