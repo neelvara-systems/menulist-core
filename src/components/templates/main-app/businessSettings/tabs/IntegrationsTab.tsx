@@ -145,6 +145,7 @@ const IntegrationsTab: React.FC<IntegrationsTabProps> = ({
     setStoreDetails,
 }) => {
     const { token } = theme.useToken();
+    const [modal, modalContextHolder] = Modal.useModal();
     const publicApiEnabled = FEATURE_FLAGS.ENABLE_PUBLIC_API;
     const gbpEnabled = FEATURE_FLAGS.ENABLE_GBP_SYNC;
     const gbp = storeDetails?.gbp;
@@ -292,7 +293,7 @@ const IntegrationsTab: React.FC<IntegrationsTabProps> = ({
     }, [getPublicApiKeyLogContext, setStoreDetails, storeDetails?.storeId, storeDetails?.tenantId]);
 
     const confirmRevokePublicApiKey = useCallback(() => {
-        Modal.confirm({
+        modal.confirm({
             title: 'Revoke public API key?',
             content: 'External systems using this key will stop reading your MenuList data.',
             okText: 'Revoke key',
@@ -300,7 +301,7 @@ const IntegrationsTab: React.FC<IntegrationsTabProps> = ({
             cancelText: 'Cancel',
             onOk: () => handleRevokePublicApiKey(),
         });
-    }, [handleRevokePublicApiKey]);
+    }, [handleRevokePublicApiKey, modal]);
 
     const handleCopyGeneratedApiKey = useCallback(async () => {
         if (!generatedApiKey) return;
@@ -331,6 +332,7 @@ const IntegrationsTab: React.FC<IntegrationsTabProps> = ({
 
     return (
         <Flex vertical gap={16} ref={scrollRef}>
+            {modalContextHolder}
             {publicApiEnabled ? (
                 <Card size="small">
                     <Flex align="center" gap={8}>

@@ -6722,3 +6722,44 @@ No Firebase source/configuration changes. Firestore Rules, indexes, Storage Rule
 
 - Closeout operation: commit only the report and ledger evidence, push `staging` non-force, and continue the broader QA certification. The exact product-runtime proof remains attributable to `8061cd18…`; the documentation-only successor does not change that runtime result.
 - Attribution confidence: exact.
+
+### GIT-20260826-124440-mlrc090-owner-confirmation-contexts
+
+- Timestamp: `2026-08-26T12:44:40+05:30`
+- Record type: `PLANNED`
+- Actor/session/thread ID: Codex `/root`; thread `01a034e1-c70a-74b1-a92b-0a103a981815`.
+- Registered worktrees: one worktree, `/Users/danny/Projects/MenuListAi/menulist-core`, branch `staging`, HEAD `1c1a5e1a522276f8dfd74a5b0e9bf36c1b63f31a`.
+- Concurrent-work boundary: local/server `staging` advanced from the prior MenuList evidence commit to exact unrelated Answerlattice commit `1c1a5e1a…` before this operation. The current dirty snapshot is limited to four intended MLRC-090 source/verifier/report paths; no unrelated dirty path exists before this append.
+- Operation: mount scoped Ant Design modal contexts for Working Hours clear-all and Integrations API-key revocation, extend the deterministic boundary regression, record MLRC-090 source and hosted pre-fix evidence, commit exact intended paths, and push `staging` non-force. `main` remains untouched. No manual Vercel or Firebase deployment is authorized.
+- Branch matrix before:
+
+| Branch | Local full SHA | Server ref/full SHA | Tracking ref | Ahead/behind | Worktree | Staged/unstaged/untracked | Status |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `staging` | `1c1a5e1a522276f8dfd74a5b0e9bf36c1b63f31a` | `refs/heads/staging` / `1c1a5e1a522276f8dfd74a5b0e9bf36c1b63f31a` | `origin/staging` | `0/0` | primary | `0/4/0` before this append | `IN_SYNC` |
+| `main` | `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `refs/heads/main` / `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `origin/main` | `0/0` | none | n/a | `IN_SYNC` |
+
+- Validation before mutation: exact hosted QA `8061cd18b75f0dc3d0c15fed899fe8ffc7032280` persisted Wednesday `08:00 AM - 11:45 PM` through owner hard refresh and immediately propagated the same hours to warm and cache-busted Official Business Page reads; reversible cleanup removed the hours from owner and public surfaces. The same build reproduced the detached `Modal.confirm` Clear All failure. The scoped-modal boundary regression, public-business-truth and adjacent tests, focused and full zero-warning ESLint, strict TypeScript, production build with 450/450 static pages and 53 service-worker precache entries, and `git diff --check` passed. Existing Sass and absent optional Gemini-key warnings remain non-failing.
+- Firebase matrix before/after (application source/tests/docs only; no deployable Firebase source/configuration changed):
+
+| Product/target | Component | Local source/hash or tree | Local validation | Server/readback | Delta | Deployment state |
+| --- | --- | --- | --- | --- | --- | --- |
+| MenuList QA / `menulist-qa` | Firestore Rules | `firestore-menulist.rules` / `2059459e…` / 132684 | unchanged | not read back / `2026-08-26T12:44:40+05:30` | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| MenuList QA / `menulist-qa` | Firestore indexes | `firestore.indexes.json` / `5629ae4d…` / 78310 | unchanged | not read back / same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| MenuList QA / `menulist-qa` | Storage Rules | `storage.rules` / `226d2a20…` / 18176 | unchanged | not read back / same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| MenuList QA / `menulist-qa` | Cloud Functions | `functions/` / tree `3c42f5d3…` | unchanged | not read back / same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| MenuList production / `menulist-prod` | Firestore Rules | same MenuList QA source/hash/bytes | unchanged | not read back / same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| MenuList production / `menulist-prod` | Firestore indexes | same MenuList QA source/hash/bytes | unchanged | not read back / same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| MenuList production / `menulist-prod` | Storage Rules | same MenuList QA source/hash/bytes | unchanged | not read back / same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| MenuList production / `menulist-prod` | Cloud Functions | same MenuList QA source/tree | unchanged | not read back / same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| Answerlattice QA / `neelvara-answerlattice-qa` | Firestore Rules | `firestore-answerlattice.rules` / `a92cbacb…` / 116222 | unchanged | not read back / same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| Answerlattice QA / `neelvara-answerlattice-qa` | Firestore indexes | `firestore-answerlattice.indexes.json` / `0114bdf8…` / 50941 | unchanged | not read back / same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| Answerlattice QA / `neelvara-answerlattice-qa` | Storage Rules | `storage-answerlattice.rules` / `5fc8f980…` / 6948 | unchanged | not read back / same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| Answerlattice QA / `neelvara-answerlattice-qa` | Cloud Functions | `functions-answerlattice/` / tree `ae5750c6…` | unchanged | not read back / same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| Answerlattice production / `neelvara-answerlattice-prod` | Firestore Rules | same Answerlattice QA source/hash/bytes | unchanged | not read back / same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| Answerlattice production / `neelvara-answerlattice-prod` | Firestore indexes | same Answerlattice QA source/hash/bytes | unchanged | not read back / same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| Answerlattice production / `neelvara-answerlattice-prod` | Storage Rules | same Answerlattice QA source/hash/bytes | unchanged | not read back / same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| Answerlattice production / `neelvara-answerlattice-prod` | Cloud Functions | same Answerlattice QA source/tree | unchanged | not read back / same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+
+- Firebase deployment evidence or blocker: no Firebase infrastructure delta exists; no deployment is required or authorized.
+- Final filesystem state: pending explicit-path staging, staged-diff validation, commit, non-force staging push, direct server readback, automatic QA build, and exact hosted confirmation/cancel/confirm/mutation/public-restoration retest.
+- Attribution confidence: exact.

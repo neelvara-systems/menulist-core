@@ -117,7 +117,7 @@ function verifyProjectCascade(projectsDal) {
   ].forEach((token) => assertIncludes(projectsDal, token, 'Project time-slot cascade boundary'));
 }
 
-function verifyDesktopSettings(businessSettings, timeSlotPresetsTab, timeSlotPresetForm) {
+function verifyDesktopSettings(businessSettings, workingHoursTab, integrationsTab, timeSlotPresetsTab, timeSlotPresetForm) {
   [
     'buildWorkingHourSlots(storeDetails?.workingHours)',
     'const [workingHoursDirty, setWorkingHoursDirty] = useState(false);',
@@ -155,6 +155,22 @@ function verifyDesktopSettings(businessSettings, timeSlotPresetsTab, timeSlotPre
     ],
     'Desktop working-hours acknowledgement order',
   );
+
+  [
+    'const [modal, modalContextHolder] = Modal.useModal();',
+    'modal.confirm({',
+    '{modalContextHolder}',
+    "title: 'Clear regular weekly hours?'",
+  ].forEach((token) => assertIncludes(workingHoursTab, token, 'Desktop working-hours confirmation context'));
+  assertNotIncludes(workingHoursTab, 'Modal.confirm({', 'Desktop working-hours confirmation must not use detached static rendering');
+
+  [
+    'const [modal, modalContextHolder] = Modal.useModal();',
+    'modal.confirm({',
+    '{modalContextHolder}',
+    "title: 'Revoke public API key?'",
+  ].forEach((token) => assertIncludes(integrationsTab, token, 'Desktop public API key confirmation context'));
+  assertNotIncludes(integrationsTab, 'Modal.confirm({', 'Desktop public API key confirmation must not use detached static rendering');
 
   [
     'const writeResult = await updateTimeSlotPresets(storeId, updatedPresets, cascadeMutation);',
@@ -610,6 +626,8 @@ function main() {
   const presetBoundary = read('src/lib/menu/timeSlotPresetBoundary.ts');
   const cascadeReconciler = read('src/lib/menu/reconcileTimeSlotPresetCascade.ts');
   const businessSettings = read('src/components/templates/main-app/businessSettings/index.tsx');
+  const workingHoursTab = read('src/components/templates/main-app/businessSettings/tabs/WorkingHoursTab.tsx');
+  const integrationsTab = read('src/components/templates/main-app/businessSettings/tabs/IntegrationsTab.tsx');
   const timeSlotPresetsTab = read('src/components/templates/main-app/businessSettings/tabs/TimeSlotPresetsTab.tsx');
   const timeSlotPresetForm = read('src/components/atoms/timeSlotPresetForm/index.tsx');
   const desktopSpecialHours = read('src/components/templates/main-app/businessSettings/tabs/SpecialHoursEditor.tsx');
@@ -649,7 +667,7 @@ function main() {
   verifyFirestoreCostBoundary(firestoreIndexes);
   verifyStoreDal(storesDal, presetBoundary, cascadeReconciler);
   verifyProjectCascade(projectsDal);
-  verifyDesktopSettings(businessSettings, timeSlotPresetsTab, timeSlotPresetForm);
+  verifyDesktopSettings(businessSettings, workingHoursTab, integrationsTab, timeSlotPresetsTab, timeSlotPresetForm);
   verifyMobileSettings(mobileWorkingHours, mobileHours, mobileTimeSlots, mobileMore);
   verifySpecialHoursOwnerSettings(
     storesDal,

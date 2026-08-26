@@ -22,6 +22,7 @@ interface WorkingHoursTabProps {
 
 const WorkingHoursTab: React.FC<WorkingHoursTabProps> = ({ scrollRef, workingHours, setWorkingHours, form }) => {
     const t = useTranslations('BusinessSettings');
+    const [modal, modalContextHolder] = Modal.useModal();
     const timePickerFormat = getClockTimeInputFormat();
     const persistWorkingHours = (nextHours: WorkingHourSlot[]) => {
         const invalid = nextHours.some((slot) => (
@@ -45,7 +46,7 @@ const WorkingHoursTab: React.FC<WorkingHoursTabProps> = ({ scrollRef, workingHou
     };
     const mondayHours = workingHours.find((slot) => slot.day === 'mon' || slot.day.toLowerCase() === 'monday');
     const clearWeeklyHours = () => {
-        Modal.confirm({
+        modal.confirm({
             title: 'Clear regular weekly hours?',
             content: 'Customers will not see regular opening hours after you save this change.',
             okText: 'Clear hours',
@@ -75,6 +76,7 @@ const WorkingHoursTab: React.FC<WorkingHoursTabProps> = ({ scrollRef, workingHou
 
     return (
         <Card size='small' ref={scrollRef}>
+            {modalContextHolder}
             <Title level={5} style={{ margin: "unset" }}>Regular weekly hours</Title>
             <Space style={{ float: 'right', marginTop: '-28px' }}>
                 <Button
