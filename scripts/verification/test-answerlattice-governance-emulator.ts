@@ -439,7 +439,7 @@ async function run(): Promise<void> {
             entityId: 'entity_qr_share',
             canonicalName: 'QR and share link',
             synonyms: [],
-            normalizedTokens: ['qr', 'share', 'link', 'customer', 'public', 'menu'],
+            normalizedTokens: ['qr', 'share', 'link', 'customer', 'public', 'menu', 'view'],
             prefixTokens: ['qr', 'sha', 'lin'],
             weight: 1,
         },

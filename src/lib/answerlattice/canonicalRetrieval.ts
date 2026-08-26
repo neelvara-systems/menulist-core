@@ -342,8 +342,8 @@ const RETRIEVAL_STOP_WORDS = new Set([
 // but none of them is specific enough to authorize a governed answer by itself.
 // A query must share at least one more discriminating term with the answer.
 const RETRIEVAL_DOMAIN_GENERIC_TERMS = new Set([
-    'answer', 'app', 'customer', 'feature', 'help', 'menu', 'menulist',
-    'page', 'product', 'public', 'support', 'user', 'website',
+    'access', 'answer', 'app', 'customer', 'feature', 'help', 'menu', 'menulist',
+    'open', 'page', 'product', 'public', 'support', 'user', 'view', 'website',
 ]);
 
 const expandRetrievalToken = (token: string): string[] => {
