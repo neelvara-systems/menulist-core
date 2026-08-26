@@ -406,7 +406,11 @@ async function run(): Promise<void> {
         false,
         'reversed broad terms must not make a public-surface answer authoritative for an unsupported synchronization question',
     );
-    assert.equal(unsupportedLocationRetrievalResult.fallbackReason, 'no_query_relevant_canonical_answer');
+    assert.equal(
+        unsupportedLocationRetrievalResult.fallbackReason,
+        'no_entity_match',
+        'generic product/menu/public terms must not manufacture an entity match',
+    );
 
     const qrAnswerId = 'canonical_qr_retrieval';
     const freshnessAnswerId = 'canonical_freshness_retrieval';
@@ -439,7 +443,7 @@ async function run(): Promise<void> {
             entityId: 'entity_qr_share',
             canonicalName: 'QR and share link',
             synonyms: [],
-            normalizedTokens: ['qr', 'share', 'link', 'customer', 'public', 'menu', 'view'],
+            normalizedTokens: ['qr', 'code', 'share', 'link', 'customer', 'use', 'open', 'official', 'public', 'menu'],
             prefixTokens: ['qr', 'sha', 'lin'],
             weight: 1,
         },
@@ -469,6 +473,20 @@ async function run(): Promise<void> {
         freshnessRetrievalResult.answer?.id,
         freshnessAnswerId,
         'a discriminating freshness term must outrank a broad customer-menu overlap',
+    );
+    const genericInterfaceRetrievalResult = await attemptCanonicalRetrieval(
+        'How do customers open or view the public menu?',
+        {
+            tId: 1,
+            sId: 101,
+            currentVersion: 1_000_000,
+            preloadedSearchIndex: freshnessSearchIndex,
+        },
+    );
+    assert.equal(
+        genericInterfaceRetrievalResult.found,
+        false,
+        'generic interface vocabulary alone must not select an authoritative product topic',
     );
     await Promise.all([
         db.collection(DB_COLLECTIONS.ANSWERLATTICE_CANONICAL_ANSWERS).doc(publishingAnswerId).delete(),

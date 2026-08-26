@@ -512,6 +512,11 @@ function matchEntitiesFromIndex(
         const normalizedTokens = getRetrievalTerms(entry.normalizedTokens.flatMap(token => answerlatticeTokenize(token)));
 
         Array.from(queryTerms).forEach((token) => {
+            // Shared product/interface vocabulary can help a later answer-level
+            // relevance check, but it must not select the authoritative topic.
+            // Otherwise equally weighted topics can tie on words such as
+            // "customer", "open", or "view" and admit an unrelated answer.
+            if (RETRIEVAL_DOMAIN_GENERIC_TERMS.has(token)) return;
             const frequency = documentFrequency.get(token) || searchIndex.length;
             const rarityWeight = 1 + Math.log((searchIndex.length + 1) / (frequency + 1));
             // Check canonical name
