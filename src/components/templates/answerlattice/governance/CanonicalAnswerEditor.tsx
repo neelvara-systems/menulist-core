@@ -977,7 +977,13 @@ export default function CanonicalAnswerEditor() {
                             </Form.Item>
                         )}
                         <Form.Item name="entityIds" label="Product Topics" rules={[{ required: true, type: 'array', min: 1, message: 'Select at least one product topic' }]}>
-                            <Select mode="multiple" options={entityOptions} placeholder="Select product topics" />
+                            <Select
+                                mode="multiple"
+                                showSearch
+                                optionFilterProp="label"
+                                options={entityOptions}
+                                placeholder="Select product topics"
+                            />
                         </Form.Item>
                         <Form.Item name="planIds" label="Applicable Plans (optional)">
                             <Select mode="multiple" options={planOptions} placeholder="All plans when empty" />
@@ -1081,7 +1087,13 @@ export default function CanonicalAnswerEditor() {
                         </Form.Item>
                     )}
                     <Form.Item name="entityIds" label="Product Topics" rules={[{ required: true, type: 'array', min: 1, message: 'Select at least one product topic' }]}>
-                        <Select mode="multiple" options={entityOptions} placeholder="Select product topics this answer is about" />
+                        <Select
+                            mode="multiple"
+                            showSearch
+                            optionFilterProp="label"
+                            options={entityOptions}
+                            placeholder="Select product topics this answer is about"
+                        />
                     </Form.Item>
                     <Form.Item name="planIds" label="Applicable Plans (optional)">
                         <Select mode="multiple" options={planOptions} placeholder="All plans when empty" />

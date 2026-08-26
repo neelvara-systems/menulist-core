@@ -194,6 +194,37 @@ const loadPublishedFaqs = async (tId: number, sId: number, sourceVersion?: numbe
     return faqs;
 };
 
+const loadPublishedFaqsByExactQuestion = async (
+    query: string,
+    tId: number,
+    sId: number,
+    sourceVersion?: number,
+): Promise<AnswerlatticeFaq[]> => {
+    const exactQuestion = cleanReferenceText(query, 240);
+    if (!exactQuestion) return [];
+
+    const cacheKey = `exact:${tId}:${sId}:${sourceVersion ?? 'unversioned'}:${exactQuestion}`;
+    const cached = readFaqsFromCache(cacheKey);
+    if (cached) return cached;
+
+    const snapshot = await requireAnswerlatticeFirestoreAdmin()
+        .collection(DB_COLLECTIONS.ANSWERLATTICE_FAQS)
+        .where('pId', '==', PRODUCT_IDS.ANSWERLATTICE)
+        .where('tId', '==', tId)
+        .where('sId', '==', sId)
+        .where('status', '==', ANSWERLATTICE_FAQ_STATUS.PUBLISHED)
+        .where('active', '==', true)
+        .where('question', '==', exactQuestion)
+        .limit(4)
+        .get();
+
+    const faqs = snapshot.docs
+        .map(doc => normalizeAnswerlatticeRetrievalFaq(doc.data(), doc.id, { tId, sId }))
+        .filter((faq): faq is AnswerlatticeFaq => faq !== null);
+    rememberFaqs(cacheKey, faqs);
+    return faqs;
+};
+
 const loadPublishedFaqById = async (
     faqId: string,
     scope: { tId: number; sId: number },
@@ -409,7 +440,19 @@ export const attemptFaqAnswerRetrieval = async (
 
     const faqs = await loadPublishedFaqs(tId, sId, sourceVersion);
     const match = chooseBestFaq(query, faqs, options.context);
-    if (!match) return { found: false, confidence: 'none', references: [] };
+    if (!match) {
+        const exactFaqs = await loadPublishedFaqsByExactQuestion(query, tId, sId, sourceVersion);
+        const exactMatch = chooseBestFaq(query, exactFaqs, options.context);
+        if (!exactMatch) return { found: false, confidence: 'none', references: [] };
+        return {
+            found: true,
+            faq: exactMatch.faq as AnswerlatticeFaq,
+            score: exactMatch.score,
+            confidence: exactMatch.score >= 110 ? 'high' : 'medium',
+            references: await loadLinkedArticleReference(exactMatch.faq as AnswerlatticeFaq, options.includeFullArticleReference !== false),
+            matchReason: `exact_overflow_${exactMatch.reason}`,
+        };
+    }
 
     return {
         found: true,

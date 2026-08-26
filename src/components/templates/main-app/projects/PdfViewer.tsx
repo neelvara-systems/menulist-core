@@ -139,7 +139,7 @@ export const PdfViewer = ({ pdfPagesCount, pdfFiles, setPdfFiles, onSave, onCanc
                                     placement="left"
                                     okType='danger'
                                 >
-                                    <Button shape='circle' icon={<LuTrash />} danger disabled={Boolean(isStillLoading)} />
+                                    <Button aria-label={`Delete page ${index + 1}`} shape='circle' icon={<LuTrash />} danger disabled={Boolean(isStillLoading)} />
                                 </Popconfirm>
                             </Flex>
                         </Card>

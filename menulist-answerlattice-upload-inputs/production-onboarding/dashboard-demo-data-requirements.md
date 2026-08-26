@@ -20,7 +20,7 @@ For MenuList, the dashboard needs to prove:
 | Dashboard | High-level coverage, recent activity, support/governance summary | Shows Answerlattice as an operating support workspace. |
 | Knowledge Intake | Completed MenuList intake job with source files and selected public URLs | Shows how product knowledge enters Answerlattice. |
 | Knowledge Base | 8 to 12 approved MenuList articles | Shows an actual support knowledge layer. |
-| FAQs | At least 30 reviewed FAQ entries, seeded from the 76-question FAQ CSV and weighted toward common/high-risk owner flows | Shows broad owner coverage without treating every seed as approved. |
+| FAQs | At least 30 reviewed FAQ entries, seeded from the 101-question FAQ CSV and weighted toward common/high-risk owner flows | Shows broad owner coverage without treating every seed as approved. |
 | Governance | Reviewed entity candidates and approved canonical answer drafts | Shows control and approval, not free-form answers. |
 | Product Surfaces | All 25 mapped MenuList surfaces created or explicitly excluded, with priority routes linked to reviewed knowledge | Shows page-aware support without silent surface gaps. |
 | Widget | Production key, allowed origins, blocked routes, runtime last-seen, safe configuration | Shows install and security readiness. |

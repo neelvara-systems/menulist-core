@@ -74,6 +74,7 @@ const ConversationHeader = ({ sessionTitle, firstMessageContent, mode, onSearch,
                                     style={{ borderRadius: 6 }}
                                 />
                                 <Button
+                                    aria-label="Close conversation search"
                                     type="text"
                                     size="small"
                                     icon={<LuX size={14} />}
@@ -90,6 +91,7 @@ const ConversationHeader = ({ sessionTitle, firstMessageContent, mode, onSearch,
                             transition={{ duration: 0.15 }}
                         >
                             <Button
+                                aria-label="Search this conversation"
                                 type="text"
                                 size="small"
                                 icon={<LuSearch size={16} />}

@@ -54,6 +54,7 @@ function LoadingMessage({ open, progress, message: customMessage, onCancel }: Lo
                             )}
                             {onCancel && (
                                 <Button
+                                    aria-label="Cancel operation"
                                     type="text"
                                     size="small"
                                     icon={<LuX size={14} />}

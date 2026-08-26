@@ -111,7 +111,7 @@ const BatchImageGenerationView: React.FC<BatchImageGenerationViewProps> = ({ gen
                                             return <Fragment key={styleName}>
                                                 <Tag style={{ fontSize: 12, lineHeight: 2 }} color="default">{styleObj?.name}</Tag></Fragment>
                                         })}
-                                        <Button shape='circle' type='text' icon={<LuPen />} />
+                                        <Button aria-label="Edit image styles" shape='circle' type='text' icon={<LuPen />} />
                                     </Flex>
                                 </Flex>
 

@@ -216,6 +216,10 @@ includes(governance, 'ANSWERLATTICE_CUSTOMER_LANGUAGE.knowledge.trustedAnswers',
 includes(governance, 'ANSWERLATTICE_CUSTOMER_LANGUAGE.knowledge.productTopics', 'Answer Quality tabs');
 includes(productPages, 'ANSWERLATTICE_CUSTOMER_LANGUAGE.knowledge.productPagesAndFlows', 'Product Pages and Flows heading');
 includes(canonicalEditor, 'ANSWERLATTICE_CUSTOMER_LANGUAGE.knowledge.trustedAnswers', 'Trusted Answers heading');
+assert(
+    (canonicalEditor.match(/mode="multiple"\s+showSearch\s+optionFilterProp="label"\s+options=\{entityOptions\}/g) || []).length === 2,
+    'Trusted Answer Product Topic selectors must search customer-visible labels instead of opaque ids',
+);
 includes(topicEditor, 'ANSWERLATTICE_CUSTOMER_LANGUAGE.knowledge.productTopics', 'Product Topics heading');
 includes(driftReview, 'ANSWERLATTICE_CUSTOMER_LANGUAGE.knowledge.answersToRecheck', 'Answers to Recheck heading');
 includes(friction, "title: 'Product topic'", 'Product Friction topic label');

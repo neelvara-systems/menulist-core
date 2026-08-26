@@ -1034,8 +1034,8 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                                         ) : null}
                                         {photo && photoCount > 1 ? (
                                             <Flex gap={6}>
-                                                <Button block disabled={idx === 0 || photoUploading != null} icon={<LuArrowLeft size={14} />} onClick={() => handlePhotoMove(idx, -1)} size="small" />
-                                                <Button block disabled={idx >= photoCount - 1 || photoUploading != null} icon={<LuArrowRight size={14} />} onClick={() => handlePhotoMove(idx, 1)} size="small" />
+                                                <Button aria-label={`Move photo ${idx + 1} earlier`} block disabled={idx === 0 || photoUploading != null} icon={<LuArrowLeft size={14} />} onClick={() => handlePhotoMove(idx, -1)} size="small" />
+                                                <Button aria-label={`Move photo ${idx + 1} later`} block disabled={idx >= photoCount - 1 || photoUploading != null} icon={<LuArrowRight size={14} />} onClick={() => handlePhotoMove(idx, 1)} size="small" />
                                             </Flex>
                                         ) : null}
                                     </Flex>

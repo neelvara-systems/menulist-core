@@ -515,7 +515,7 @@ const EditImageModal: React.FC<EditImageModalProps> = ({
                             }}
                         />
                     ) : (
-                        <Button size='large' type='text' style={{ height: 45, width: 45, marginLeft: 3, fontSize: 24 }} icon={<LuImagePlus />} onClick={() => fileInputRef.current?.click()} />
+                        <Button aria-label="Choose image to edit" size='large' type='text' style={{ height: 45, width: 45, marginLeft: 3, fontSize: 24 }} icon={<LuImagePlus />} onClick={() => fileInputRef.current?.click()} />
                     )}
                 </Flex>}
                 <Input.TextArea

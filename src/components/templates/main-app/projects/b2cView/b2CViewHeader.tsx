@@ -17,6 +17,7 @@ export default function B2CViewHeader({ activeDeviceType, setActiveDeviceType }:
         <>
             <Tooltip title="Back to Editor">
                 <Button
+                    aria-label="Back to project editor"
                     style={{
                         position: 'absolute',
                         top: 5,

@@ -167,6 +167,7 @@ const MessageReferences = ({ references, onArticleModalOpen, showConfidenceScore
                                     <Space size={4} direction={isMobile ? 'vertical' : 'horizontal'}>
                                         <Tooltip title="Quick preview">
                                             <Button
+                                                aria-label={`${isExpanded ? 'Hide' : 'Preview'} ${ref.title}`}
                                                 type="text"
                                                 size="small"
                                                 icon={
@@ -188,6 +189,7 @@ const MessageReferences = ({ references, onArticleModalOpen, showConfidenceScore
                                         </Tooltip>
                                         <Tooltip title="View full article">
                                             <Button
+                                                aria-label={`View full article: ${ref.title}`}
                                                 type="text"
                                                 size="small"
                                                 icon={<LuMaximize2 size={14} />}

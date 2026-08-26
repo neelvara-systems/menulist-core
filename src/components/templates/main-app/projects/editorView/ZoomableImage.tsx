@@ -324,6 +324,7 @@ export function ZoomableImage({ isLoading, src, alt, retryTranslations, retryDes
                         >
                             <Tooltip title="Zoom out (-)">
                                 <Button
+                                    aria-label="Zoom out"
                                     type="text"
                                     icon={<LuMinus />}
                                     onClick={handleZoomOut}
@@ -332,9 +333,15 @@ export function ZoomableImage({ isLoading, src, alt, retryTranslations, retryDes
                                 />
                             </Tooltip>
                             <Tooltip title="Click to reset zoom">
-                                <span
+                                <button
+                                    type="button"
+                                    aria-label="Reset zoom to 100%"
                                     onClick={handleResetZoom}
+                                    disabled={zoom <= 1}
                                     style={{
+                                        background: 'transparent',
+                                        borderTop: 0,
+                                        borderBottom: 0,
                                         color: token.colorTextSecondary,
                                         minWidth: 50,
                                         textAlign: 'center',
@@ -348,10 +355,11 @@ export function ZoomableImage({ isLoading, src, alt, retryTranslations, retryDes
                                     }}
                                 >
                                     {Math.round(zoom * 100)}%
-                                </span>
+                                </button>
                             </Tooltip>
                             <Tooltip title="Zoom in (+)">
                                 <Button
+                                    aria-label="Zoom in"
                                     type="text"
                                     icon={<LuPlus />}
                                     onClick={handleZoomIn}
@@ -362,6 +370,7 @@ export function ZoomableImage({ isLoading, src, alt, retryTranslations, retryDes
                             {zoom > 1 && (
                                 <Tooltip title="Reset zoom (0)">
                                     <Button
+                                        aria-label="Reset zoom"
                                         type="text"
                                         icon={<LuRotateCcw size={14} />}
                                         onClick={handleResetZoom}

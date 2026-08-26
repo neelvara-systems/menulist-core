@@ -1,5 +1,28 @@
 # MenuList — Changelog
 
+## August 26, 2026 - Answerlattice Fresh MenuList Client Certification
+
+- Replaced the MenuList-only public widget-key environment name with the same
+  `NEXT_PUBLIC_ANSWERLATTICE_WIDGET_KEY` install contract used by every
+  external Answerlattice client. The public `al_*` key remains revocable and is
+  never committed or hardcoded.
+- Added a guarded dual-project hosted-QA first-client fixture that creates a
+  short-lived zero-value non-payment entitlement, isolated Auth and workspace
+  scope, three onboarding surfaces, compiled-context control-plane documents,
+  scheduler tenant-summary registration, and a hashed widget key. Raw fixture
+  credentials remain only in mode-0600 `/tmp` evidence.
+- Added a paced hosted widget certification runner for all 75 maintained
+  MenuList owner questions. It uses the exact MenuList QA origin, refreshes the
+  short-lived runtime token, emits no widget key, and stores full answers only
+  in a private `/tmp` report for high-risk owner review.
+
+### Cost
+
+- Fixture creation adds bounded one-time QA writes only. The full question pass
+  performs 75 widget searches plus their normal bounded conversation,
+  accounting, retrieval, and signal operations; it is an explicit release gate,
+  not a scheduled or customer hot-path workload.
+
 ## August 26, 2026 - Growth Kits Export Failure Attribution
 
 - Added fixed-code, bounded server diagnostics for the two export-route 404
@@ -29108,7 +29131,7 @@ Support Board nightly derived-card source-text duplication boundary.
 ### Changed
 
 - **MenuList owner routes can now load the Answerlattice widget as an external client** — The owner app layout includes an env-configured Answerlattice widget embed for `/projects` and adjacent dashboard routes.
-- **No widget key is hardcoded** — The embed renders only when `NEXT_PUBLIC_MENULIST_ANSWERLATTICE_WIDGET_KEY` is set to an Answerlattice-issued `al_` key.
+- **No widget key is hardcoded** — The embed renders only when the external client configures `NEXT_PUBLIC_ANSWERLATTICE_WIDGET_KEY` with an Answerlattice-issued `al_` key.
 - **Script host follows the environment matrix** — Local uses localhost, QA/Preview uses `ecomsai.com`, and Production uses `answerlattice.com`, with an optional script source override for temporary previews.
 
 ### Cost

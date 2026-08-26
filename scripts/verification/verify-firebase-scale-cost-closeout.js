@@ -61,6 +61,17 @@ const closeoutFirebase = read('__docs__/firebase-scale-cost-closeout/firebase-sc
   maintenanceScheduler.includes(token),
   `Maintenance task lease finalization keeps ${token}`,
 ));
+[
+  "import { FEATURE_FLAGS as MESSAGING_ONBOARDING_FLAGS } from '../messagingOnboarding/constants';",
+  'enabled?: () => boolean;',
+  'enabled: () => MESSAGING_ONBOARDING_FLAGS.ENABLE_MESSAGING_ONBOARDING,',
+  '.filter((task) => task.enabled?.() !== false)',
+  'let leaseFinalized = false;',
+  'if (!leaseFinalized) {',
+].forEach((token) => assertCheck(
+  maintenanceScheduler.includes(token),
+  `Maintenance scheduler avoids disabled-task and finalized-lease overhead: ${token}`,
+));
 
 [
   'authority_maturation',

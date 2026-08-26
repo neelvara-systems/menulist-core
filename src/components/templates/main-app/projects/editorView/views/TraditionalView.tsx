@@ -775,6 +775,7 @@ export const TraditionalView = ({
                                                     )}
                                                     <Tooltip title="Edit category">
                                                         <Button
+                                                            aria-label={`Edit category ${category.name?.[activeLanguage] || 'Unnamed Category'}`}
                                                             type="text"
                                                             size="small"
                                                             icon={<LuPen size={14} />}
@@ -791,6 +792,7 @@ export const TraditionalView = ({
                                                     </Tooltip>
                                                     <Tooltip title="Delete category">
                                                         <Button
+                                                            aria-label={`Delete category ${category.name?.[activeLanguage] || 'Unnamed Category'}`}
                                                             type="text"
                                                             size="small"
                                                             danger
@@ -1116,6 +1118,7 @@ export const TraditionalView = ({
                                                                     >
                                                                         <Tooltip title="Edit item">
                                                                             <Button
+                                                                                aria-label={`Edit item ${item.name?.[activeLanguage] || 'Unnamed Item'}`}
                                                                                 type="default"
                                                                                 size="small"
                                                                                 icon={<LuPen />}
@@ -1135,6 +1138,7 @@ export const TraditionalView = ({
                                                                             }
                                                                         >
                                                                             <Button
+                                                                                aria-label={`Delete item ${item.name?.[activeLanguage] || 'Unnamed Item'}`}
                                                                                 type="default"
                                                                                 size="small"
                                                                                 danger

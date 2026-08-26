@@ -30,7 +30,7 @@ Preview environment for the exact `staging` Git branch, not every Preview branch
 
 Known product hostnames are stage-scoped. Middleware redirects a known QA hostname that reaches Production, or a known production hostname that reaches Preview, to the active hostname for that product instead of treating it as a custom tenant domain.
 
-MenuList can embed Answerlattice as an external client on owner routes only when `NEXT_PUBLIC_MENULIST_ANSWERLATTICE_WIDGET_KEY` is configured with an Answerlattice-issued `al_` widget key. The default script host follows the matrix above: local uses the same localhost app, QA/Preview uses `https://answerlattice.menulist.online`, and Production uses `https://answerlattice.com`. Use `NEXT_PUBLIC_MENULIST_ANSWERLATTICE_WIDGET_SCRIPT_SRC` only for temporary preview overrides.
+MenuList can embed Answerlattice as an external client on owner routes only when `NEXT_PUBLIC_ANSWERLATTICE_WIDGET_KEY` is configured with an Answerlattice-issued `al_` widget key. This is the same client installation contract used by any external Answerlattice customer; it is not a MenuList-only credential path. The default script host follows the matrix above: local uses the same localhost app, QA/Preview uses `https://canonica.app`, and Production uses `https://answerlattice.com`. Use `NEXT_PUBLIC_MENULIST_ANSWERLATTICE_WIDGET_SCRIPT_SRC` only for temporary preview overrides.
 
 ---
 
@@ -59,7 +59,7 @@ MenuList can embed Answerlattice as an external client on owner routes only when
 | 17  | Sanitization layer                               | **ALREADY EXISTS** | `sanitizeForClient()` in `src/lib/mce/utils.ts` strips `_mce`. `sanitizeForFirestore()` prevents undefined writes              |
 | 18  | Deployment safety checks                         | **ALREADY EXISTS** | `npm run verify:production-readiness-local`, `npm run verify:functions-deploy-preflight`, and `npm run verify:env-targets` provide source/preflight gates. They do not authorize deployment. |
 | 19  | Tenant isolation                                 | **ALREADY EXISTS** | `withAuth()` + `verifyTenantAccess()` on all protected routes. tId/sId on all queries                                          |
-| 20  | Over-engineering staging env                     | **UPDATED**        | Staging/QA exists as the Vercel Preview environment: MenuList uses `menulist.digital`/`app.menulist.digital`/`*.menulist.digital`; Answerlattice uses `answerlattice.menulist.online`. It uses QA Firebase targets and must not be treated as production. |
+| 20  | Over-engineering staging env                     | **UPDATED**        | Staging/QA exists as the Vercel Preview environment: MenuList uses `menulist.digital`/`app.menulist.digital`/`*.menulist.digital`; Answerlattice uses `canonica.app`. It uses QA Firebase targets and must not be treated as production. |
 | 21  | Cost visibility per store/feature                | **PARTIAL**        | Firebase cost docs per feature exist (`_firebase.md`), but no runtime cost tracking dashboard                                  |
 | 22  | Failure playbook                                 | **RESOLVED**       | [MenuList Incident Response Runbook](./incident-response-runbook.md) defines severity, containment, SAFE_MODE limits, scoped rollback, recovery, communication, and durable evidence requirements; live drill evidence remains pending |
 | 23  | Trust verification loop                          | **PARTIAL**        | Nightly scheduler runs integrity checks, but no daily menu sampling system                                                     |
@@ -288,7 +288,7 @@ ANSWERLATTICE_FIREBASE_CLIENT_EMAIL=
 ANSWERLATTICE_WIDGET_KEY_ENCRYPTION_SECRET=
 
 # MenuList as Answerlattice external client (optional owner-app widget embed)
-NEXT_PUBLIC_MENULIST_ANSWERLATTICE_WIDGET_KEY=
+NEXT_PUBLIC_ANSWERLATTICE_WIDGET_KEY=
 NEXT_PUBLIC_MENULIST_ANSWERLATTICE_WIDGET_SCRIPT_SRC=
 ```
 

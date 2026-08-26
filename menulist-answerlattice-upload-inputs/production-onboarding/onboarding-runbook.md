@@ -94,7 +94,7 @@ Exit criteria:
 
 ## Phase 5: MenuList Production Widget Connection
 
-- Set `NEXT_PUBLIC_MENULIST_ANSWERLATTICE_WIDGET_KEY` in the MenuList production environment to the Answerlattice-issued `al_` key.
+- Set `NEXT_PUBLIC_ANSWERLATTICE_WIDGET_KEY` in the client application's production environment to the Answerlattice-issued `al_` key.
 - Do not hardcode the key in source.
 - Use `NEXT_PUBLIC_MENULIST_ANSWERLATTICE_WIDGET_SCRIPT_SRC` only for an approved temporary override.
 - Verify the default production script host resolves to `https://answerlattice.com/widget/v1/answerlattice-widget.js`.

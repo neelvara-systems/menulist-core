@@ -159,7 +159,7 @@ const HelpSidebar = ({ categories, selectedCategory, selectedKnowledgeBaseSectio
     return (
         <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
             <Flex align="flex-start" gap="small" style={{ marginBottom: 16, position: 'relative' }} ref={searchContainerRef}>
-                <Button onClick={resetSelection} icon={<LuHome />} />
+                <Button aria-label="Knowledge base home" onClick={resetSelection} icon={<LuHome />} />
                 <div style={{ position: 'relative', flex: 1 }}>
                     <Input.Search
                         placeholder="Search articles, categories..."

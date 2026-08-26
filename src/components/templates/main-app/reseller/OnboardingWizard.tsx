@@ -550,7 +550,7 @@ function OnboardingWizard() {
     return (
         <div style={{ padding: '24px', maxWidth: 700, margin: '0 auto' }}>
             <Flex align="center" gap={8} style={{ marginBottom: 24 }}>
-                <Button icon={<LuArrowLeft />} onClick={() => router.push('/reseller')} type="text" />
+                <Button aria-label="Back to reseller dashboard" icon={<LuArrowLeft />} onClick={() => router.push('/reseller')} type="text" />
                 <Title level={3} style={{ margin: 0 }}>Onboard New Client</Title>
             </Flex>
 

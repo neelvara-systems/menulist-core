@@ -233,6 +233,7 @@ function UploadedImagesList({
                                     trigger="click"
                                 >
                                     <Button
+                                        aria-label="Open image actions"
                                         icon={<LuMoreVertical size={16} />}
                                         onClick={(event) => event.stopPropagation()}
                                         shape="circle"

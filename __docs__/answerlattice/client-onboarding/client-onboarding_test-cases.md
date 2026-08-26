@@ -1,6 +1,6 @@
 # Answerlattice Client Onboarding — Test Cases
 
-> **Last Audited:** 2026-08-14
+> **Last Audited:** 2026-08-26
 
 | ID | Case | Expected result | Proof |
 |---|---|---|---|
@@ -35,6 +35,10 @@
 | ONB-28 | Duplicate or unknown surface keys reach the pure projector | Known surfaces preserve first-seen order; duplicates/unknowns are dropped; fallback questions remain deterministic | Public website verifier |
 | ONB-29 | Proof analytics is emitted | Consent gate applies; no company, product, URL, email, or surface names are sent | Source gate + browser analytics inspection |
 | ONB-30 | Mobile 390px proof and plan flow | Questions wrap, controls remain at least 44px, back preserves details, and no horizontal scroll appears | Browser/physical-device QA |
+| ONB-31 | Hosted QA needs a fresh first-client journey while payment execution is excluded | Guarded dual-project fixture creates a unique login, isolated Answerlattice scope, zero-value 72-hour non-payment entitlement, three onboarding-equivalent surfaces, and a newly hashed widget key whose raw value exists only in a mode-0600 `/tmp` file | Fixture verifier + authenticated hosted QA |
+| ONB-32 | Empty-fixture cleanup is requested after intake data, product data, conversations, or non-fixture surfaces exist | Cleanup refuses and routes the operator to the governed workspace lifecycle instead of silently deleting or orphaning scoped records | Fixture verifier + hosted QA |
+| ONB-33 | Hosted first-client fixture reaches post-finalization processing | Compiled source versions include workspace, widget and surface changes; an empty bundle manifest has exact scope; the active tenant appears in its deterministic scheduler summary shard | Fixture verifier + authenticated hosted QA readback |
+| ONB-34 | MenuList owner-support certification is run | All 75 maintained questions use the real widget key, allowed MenuList QA origin, runtime authorization, bounded pacing, private report output and explicit high-risk human review | Hosted QA runner + owner review |
 
 ## Required Local Gates
 
@@ -42,6 +46,8 @@
 npm run test:answerlattice-onboarding-provisioning
 npm run verify:marketing-external-insights
 npm run test:answerlattice-onboarding-provisioning:emulator
+npm run verify:answerlattice-hosted-qa-first-client-fixture
+npm run verify:answerlattice-hosted-qa-menulist-widget-certification
 node scripts/verification/verify-answerlattice-runtime-truth.js
 npx tsc --noEmit --pretty false --incremental false
 git diff --check

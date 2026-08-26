@@ -48,6 +48,7 @@ Widget/search runtime:
 - Related compact FAQ candidates and any capped FAQ collection fallback are normalized through the same exact product/workspace/published DTO before scoring.
 - Runtime scope and source version are admitted before cache-key/query construction; numeric strings, fractions, unsafe values and malformed stored rows do not enter the cache.
 - A fallback FAQ collection miss can read at most 80 ordered published/active rows; the 60-second in-memory cache is partitioned by exact tenant, store and admitted source version.
+- If that bounded window has no match, retrieval may run one exact-question query capped at four duplicate rows. This keeps a newly published owner answer reachable even when its display order places it beyond the first 80 FAQs, without expanding the normal fuzzy-candidate scan.
 - When a compact product-surface FAQ appears to match, retrieval performs one exact FAQ document read and rescoring before serving it. Archived, edited, cross-scope, or no-longer-matching summary rows fall through to the normal published FAQ path.
 - A linked article reference is returned only after an exact article read confirms `pId: AL`, workspace ownership, `status: published`, and `active: true`; missing or stale links produce no citation.
 
@@ -104,6 +105,7 @@ Answerlattice FAQ indexes exist in both shared and Answerlattice-specific index 
 - `tId + sId + status + active + sortOrder + modifiedOn`
 - `tId + sId + sortOrder + modifiedOn`
 - `tId + sId + status + sortOrder + modifiedOn`
+- `tId + sId + status + active + question`
 - `tId + sId + articleId + active`
 
 ## Cost Position
@@ -128,4 +130,4 @@ FAQ-from-article race hardening adds one article re-read and one linked-FAQ re-q
 
 FAQ public projection hardening is also cost-neutral. It adds no reads or writes: `src/lib/answerlattice/faqContent.ts` validates and allowlists the already-read row, and `publicContentClient.ts` validates the already-returned JSON. Rejected-row diagnostics contain bounded scope metadata and a count, not FAQ content or actor identifiers.
 
-FAQ retrieval admission is cost-neutral for the normal collection fallback and adds one exact document read only when a compact related-FAQ candidate appears to match. That read protects against summary staleness. No listeners, new indexes, or provider calls are introduced.
+FAQ retrieval admission is cost-neutral for the normal collection fallback and adds one exact document read only when a compact related-FAQ candidate appears to match. That read protects against summary staleness. A bounded-window miss can additionally run one exact-question query, capped at four matching duplicates and cached for 60 seconds by tenant, store, source version, and exact question. The common contextual and first-80 paths add no reads; an overflow exact hit normally costs one FAQ document read, while a no-result exact query still incurs Firestore's minimum one-document query charge, instead of increasing every fallback scan from 80 to a larger cap. No listener or provider call is introduced.

@@ -52,6 +52,43 @@ function sourceHasJsxTag(relPath, expectedTagName) {
   return found;
 }
 
+function findUnnamedIconButtons(relPaths) {
+  const failures = [];
+  for (const relPath of relPaths) {
+    const source = read(relPath);
+    const sourceFile = ts.createSourceFile(
+      relPath,
+      source,
+      ts.ScriptTarget.Latest,
+      true,
+      ts.ScriptKind.TSX,
+    );
+    const visit = (node) => {
+      if (ts.isJsxSelfClosingElement(node) || ts.isJsxElement(node)) {
+        const openingElement = ts.isJsxElement(node) ? node.openingElement : node;
+        if (openingElement.tagName.getText(sourceFile) === 'Button') {
+          const attributes = openingElement.attributes.properties.filter(ts.isJsxAttribute);
+          const hasIcon = attributes.some((attribute) => attribute.name.text === 'icon');
+          const hasAccessibleName = attributes.some(
+            (attribute) => ['aria-label', 'aria-labelledby'].includes(attribute.name.text),
+          );
+          const hasMeaningfulChild = ts.isJsxElement(node) && node.children.some(
+            (child) => !(ts.isJsxText(child) && !child.getText(sourceFile).trim())
+              && !(ts.isJsxExpression(child) && !child.expression),
+          );
+          if (hasIcon && !hasAccessibleName && !hasMeaningfulChild) {
+            const line = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile)).line + 1;
+            failures.push(`${relPath}:${line}`);
+          }
+        }
+      }
+      ts.forEachChild(node, visit);
+    };
+    visit(sourceFile);
+  }
+  return failures;
+}
+
 const appSourceFiles = walk('src/app', (relPath) => /\.(?:ts|tsx)$/.test(relPath));
 for (const relPath of appSourceFiles) {
   const content = read(relPath);
@@ -226,6 +263,60 @@ const layoutWrapper = read('src/components/antdComponent/layoutWrapper/index.tsx
 assert(layoutWrapper.includes('<SkipToContentLink />'), 'owner shell must expose skip navigation');
 assert(layoutWrapper.includes('id="main-content"'), 'owner shell must expose a main-content target');
 assert(layoutWrapper.includes('<button'), 'desktop-to-mobile return control must use a native button');
+
+const appBreadcrumb = read('src/components/organisms/headerComponent/appBreadcrumb/appBreadcrumb.tsx');
+assert(
+  appBreadcrumb.includes("aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}"),
+  'desktop owner sidebar toggle must expose its current action',
+);
+assert(
+  appBreadcrumb.includes("aria-label={tHeader('goToHomePage')}"),
+  'desktop owner breadcrumb home action must use its localized accessible name',
+);
+
+[
+  'src/components/organisms/sidebar/index.tsx',
+  'src/components/organisms/sidebar/horizontalSidebar.tsx',
+].forEach((relPath) => {
+  const sidebar = read(relPath);
+  assert(
+    /SUPPORT_MENU_OPTIONS\.map\(\(option\) => \(\s*<button\s+type="button"/.test(sidebar),
+    `${relPath} support-popover actions must use native buttons`,
+  );
+  assert(
+    !/SUPPORT_MENU_OPTIONS\.map\(\(option\) => \(\s*<div\s+key=\{option\.key\}\s+onClick=/.test(sidebar),
+    `${relPath} support-popover actions must not be pointer-only divs`,
+  );
+});
+
+const ownerAccessibleSources = [
+  ...walk('src/components/templates/main-app', (relPath) => relPath.endsWith('.tsx')),
+  ...walk('src/components/organisms', (relPath) => relPath.endsWith('.tsx')),
+  ...walk('src/components/antdComponent', (relPath) => relPath.endsWith('.tsx')),
+];
+const unnamedOwnerButtons = findUnnamedIconButtons([...new Set(ownerAccessibleSources)]);
+assert(
+  unnamedOwnerButtons.length === 0,
+  `owner-app icon buttons require accessible names:\n${unnamedOwnerButtons.join('\n')}`,
+);
+const projectEditor = read('src/components/templates/main-app/projects/editorView/Editor.tsx');
+assert(projectEditor.includes('<span className="sr-only">Advanced view</span>'), 'advanced project view selector must have an accessible name');
+assert(projectEditor.includes('<span className="sr-only">Traditional view</span>'), 'traditional project view selector must have an accessible name');
+const editorActionsPopover = read('src/components/templates/main-app/projects/editorView/EditorActionsPopover.tsx');
+[
+  'role="button"',
+  'tabIndex={0}',
+  'aria-label={`${action.title}: ${action.description}`}',
+  "event.key === 'Enter' || event.key === ' '",
+  'event.preventDefault()',
+  'activateAction(action.key)',
+].forEach((token) => assert(
+  editorActionsPopover.includes(token),
+  `project editor action cards must preserve keyboard activation: ${token}`,
+));
+const zoomableImage = read('src/components/templates/main-app/projects/editorView/ZoomableImage.tsx');
+assert(!/<span\s+onClick=\{handleResetZoom\}/.test(zoomableImage), 'project image zoom reset must not be a pointer-only span');
+assert(zoomableImage.includes('aria-label="Reset zoom to 100%"'), 'project image zoom percentage reset must have an accessible name');
 
 assert(
   sourceHasJsxTag('src/app/(website)/layout.tsx', 'SkipToContentLink'),

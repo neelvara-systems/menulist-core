@@ -826,6 +826,7 @@ const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
             return (
                 <Flex align="center" gap={8} style={{ width: '100%' }}>
                     <Button
+                        aria-label="Back to image options"
                         icon={<LuArrowLeft />}
                         shape="circle"
                         onClick={onBack}

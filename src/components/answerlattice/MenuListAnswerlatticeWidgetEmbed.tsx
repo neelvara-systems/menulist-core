@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import type { AnswerlatticePageContext, AnswerlatticeWidgetRuntime } from '../../../packages/answerlattice-web/src';
 
-const MENULIST_ANSWERLATTICE_WIDGET_KEY = process.env.NEXT_PUBLIC_MENULIST_ANSWERLATTICE_WIDGET_KEY?.trim() || '';
+const ANSWERLATTICE_WIDGET_KEY = process.env.NEXT_PUBLIC_ANSWERLATTICE_WIDGET_KEY?.trim() || '';
 const CONFIGURED_SCRIPT_SRC = process.env.NEXT_PUBLIC_MENULIST_ANSWERLATTICE_WIDGET_SCRIPT_SRC?.trim() || '';
 
 type AnswerlatticeWidgetWindow = Window & {
@@ -134,7 +134,7 @@ export default function MenuListAnswerlatticeWidgetEmbed() {
     }, []);
 
     useEffect(() => {
-        if (!MENULIST_ANSWERLATTICE_WIDGET_KEY || !runtimeReady) return;
+        if (!ANSWERLATTICE_WIDGET_KEY || !runtimeReady) return;
         const widget = (window as AnswerlatticeWidgetWindow).AnswerlatticeWidget;
 
         if (shouldSuppressWidget) {
@@ -148,14 +148,14 @@ export default function MenuListAnswerlatticeWidgetEmbed() {
         if (pageContext) widget?.page?.(pageContext);
     }, [pageContext, runtimeReady, shouldSuppressWidget]);
 
-    if (!MENULIST_ANSWERLATTICE_WIDGET_KEY || !runtimeReady || shouldSuppressWidget || !pageContext) return null;
+    if (!ANSWERLATTICE_WIDGET_KEY || !runtimeReady || shouldSuppressWidget || !pageContext) return null;
 
     return (
         <Script
             id="menulist-answerlattice-widget"
             src={scriptSrc}
             strategy="afterInteractive"
-            data-answerlattice-key={MENULIST_ANSWERLATTICE_WIDGET_KEY}
+            data-answerlattice-key={ANSWERLATTICE_WIDGET_KEY}
             data-context-key={pageContext.contextKey}
             data-feature={pageContext.feature}
             data-page={pageContext.page}

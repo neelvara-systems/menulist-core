@@ -340,7 +340,7 @@ if (JSON.stringify(actualAssetPaths) !== JSON.stringify(manifestAssetPaths)) {
     fail('asset-inputs top-level artifacts do not exactly match upload-manifest.json assetFiles');
 }
 
-if (faq.rows.length !== 76) fail(`Expected 76 FAQ seeds, received ${faq.rows.length}`);
+if (faq.rows.length !== 101) fail(`Expected 101 FAQ seeds, received ${faq.rows.length}`);
 if (new Set(faq.rows.map((row) => row[0])).size !== faq.rows.length) fail('FAQ seed questions must be unique');
 if (supportQuestions.rows.length !== 75) fail(`Expected 75 live support questions, received ${supportQuestions.rows.length}`);
 const supportIds = supportQuestions.rows.map((row) => row[0]);

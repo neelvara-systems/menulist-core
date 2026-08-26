@@ -72,7 +72,7 @@
   ],
   "liveSupportEnablementRule": "Do not enable Answerlattice for live MenuList SMB owners until source files 01-26 are imported, all 75 owner-style questions are reviewed, common canonical answers are approved, risky topics are escalation-gated, exact product surfaces are mapped, and current account/provider/deployment state is verified.",
   "widgetInstall": {
-    "menulistEnvVar": "NEXT_PUBLIC_MENULIST_ANSWERLATTICE_WIDGET_KEY",
+    "clientEnvVar": "NEXT_PUBLIC_ANSWERLATTICE_WIDGET_KEY",
     "optionalScriptOverrideEnvVar": "NEXT_PUBLIC_MENULIST_ANSWERLATTICE_WIDGET_SCRIPT_SRC",
     "productionScriptHost": "https://answerlattice.com/widget/v1/answerlattice-widget.js",
     "allowedOriginsToApprove": [

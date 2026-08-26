@@ -1,15 +1,15 @@
 {
-  "generatedAt": "2026-08-26T10:01:50.605Z",
-  "repositoryHead": "243a6dd953576b99c6230a09f76fe2912ef1f136",
-  "totalDiscoveredFiles": 9437,
+  "generatedAt": "2026-08-26T14:14:07.346Z",
+  "repositoryHead": "59e1dc2561750ed2d97764fa30df7614c3071fd2",
+  "totalDiscoveredFiles": 9440,
   "vanishedDuringInventory": 0,
-  "inScopeFiles": 9123,
+  "inScopeFiles": 9126,
   "excludedFiles": 314,
   "byCategory": {
     "documentation/contract": 3581,
-    "shared-runtime": 1216,
+    "shared-runtime": 1217,
     "ui-component": 1021,
-    "verifier/test": 782,
+    "verifier/test": 784,
     "asset/public-output": 568,
     "nextjs-entrypoint": 386,
     "runtime/support": 346,
@@ -28,30 +28,30 @@
     "proxy/routing": 1
   },
   "byReviewStatus": {
-    "reviewed": 6926,
-    "in-progress": 1646,
-    "inventory-only": 551
+    "reviewed": 6893,
+    "in-progress": 1679,
+    "inventory-only": 554
   },
   "byCategoryAndReviewStatus": {
     "documentation/contract": {
-      "reviewed": 2716,
-      "in-progress": 575,
+      "reviewed": 2712,
+      "in-progress": 579,
       "inventory-only": 290
     },
     "shared-runtime": {
       "reviewed": 985,
       "in-progress": 153,
-      "inventory-only": 78
+      "inventory-only": 79
     },
     "ui-component": {
-      "reviewed": 699,
-      "in-progress": 313,
+      "reviewed": 674,
+      "in-progress": 338,
       "inventory-only": 9
     },
     "verifier/test": {
-      "reviewed": 511,
-      "in-progress": 204,
-      "inventory-only": 67
+      "reviewed": 508,
+      "in-progress": 207,
+      "inventory-only": 69
     },
     "asset/public-output": {
       "reviewed": 539,
@@ -84,8 +84,8 @@
       "inventory-only": 19
     },
     "configuration/data": {
-      "in-progress": 64,
-      "reviewed": 35,
+      "in-progress": 65,
+      "reviewed": 34,
       "inventory-only": 1
     },
     "data-access-layer": {

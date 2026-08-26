@@ -26,6 +26,7 @@ import { sendPlatformAlertDelivery } from '../monitoring/platformNotificationDel
 import { sendTelegramAlert } from '../monitoring/telegramAlert';
 import { revalidatePublicClientCacheForStore } from '../logic/publicCacheRevalidation';
 import { intakeProcessorLogic } from '../messagingOnboarding';
+import { FEATURE_FLAGS as MESSAGING_ONBOARDING_FLAGS } from '../messagingOnboarding/constants';
 import { PLATFORM_NOTIFICATION_TRIGGER_TYPES } from '../sharedData/platformNotificationRegistry';
 import { resolveNextSpecialMenuTransitionAt } from '../sharedData/specialMenuSchedule';
 import { parsePlatformStoreSummary } from '../sharedData/storeSummaryBoundary';
@@ -125,6 +126,7 @@ interface MaintenanceTask {
     name: string;
     cadence: TaskCadence;
     lockTtlMs: number;
+    enabled?: () => boolean;
     run: () => Promise<MaintenanceTaskResult>;
 }
 
@@ -509,6 +511,7 @@ async function runTask(task: MaintenanceTask, runId: string, dueAt: Date): Promi
     }
 
     const startedAt = new Date();
+    let leaseFinalized = false;
     try {
         const result = await task.run();
         const finishedAt = new Date();
@@ -530,6 +533,7 @@ async function runTask(task: MaintenanceTask, runId: string, dueAt: Date): Promi
             leaseError.code = SCHEDULER_LEASE_LOST_CODE;
             throw leaseError;
         }
+        leaseFinalized = true;
 
         return {
             name: task.name,
@@ -556,6 +560,7 @@ async function runTask(task: MaintenanceTask, runId: string, dueAt: Date): Promi
             durationMs,
             error: failureCode,
         });
+        leaseFinalized = recorded;
 
         if (!recorded) {
             logger.error(`[${SCHEDULER_NAME}] Task outcome rejected after lease ownership changed`, {
@@ -605,13 +610,15 @@ async function runTask(task: MaintenanceTask, runId: string, dueAt: Date): Promi
             error: failureCode,
         };
     } finally {
-        await releaseTaskLease(task, lease.leaseId).catch((error) => {
-            logger.error(`[${SCHEDULER_NAME}] Failed to release task lease`, {
-                task: task.name,
-                failureCode: SCHEDULER_LEASE_RELEASE_FAILED_CODE,
-                ...getSchedulerErrorContext(error),
+        if (!leaseFinalized) {
+            await releaseTaskLease(task, lease.leaseId).catch((error) => {
+                logger.error(`[${SCHEDULER_NAME}] Failed to release task lease`, {
+                    task: task.name,
+                    failureCode: SCHEDULER_LEASE_RELEASE_FAILED_CODE,
+                    ...getSchedulerErrorContext(error),
+                });
             });
-        });
+        }
     }
 }
 
@@ -2655,6 +2662,7 @@ const TASKS: MaintenanceTask[] = [
         name: 'messaging_intake',
         cadence: { type: 'every', minutes: 2 },
         lockTtlMs: 10 * MINUTE_MS,
+        enabled: () => MESSAGING_ONBOARDING_FLAGS.ENABLE_MESSAGING_ONBOARDING,
         run: runMessagingIntake,
     },
     {
@@ -2791,6 +2799,22 @@ const TASKS: MaintenanceTask[] = [
     },
 ];
 
+function getDueMaintenanceTasks(
+    state: SchedulerState,
+    now: Date,
+): MaintenanceTask[] {
+    return TASKS
+        .filter((task) => task.enabled?.() !== false)
+        .filter((task) => shouldRunTask(task, state.tasks?.[task.name], now));
+}
+
+export function getDueMaintenanceTaskNamesForTest(
+    state: SchedulerState,
+    now: Date,
+): string[] {
+    return getDueMaintenanceTasks(state, now).map((task) => task.name);
+}
+
 export const menulistMaintenanceScheduler = onSchedule({
     schedule: 'every 2 minutes',
     timeZone: 'UTC',
@@ -2804,7 +2828,7 @@ export const menulistMaintenanceScheduler = onSchedule({
     const startedAt = new Date();
     const stateSnapshot = await db.collection(DB_COLLECTIONS.SYSTEM).doc(STATE_DOC_ID).get();
     const state = (stateSnapshot.data() || {}) as SchedulerState;
-    const dueTasks = TASKS.filter((task) => shouldRunTask(task, state.tasks?.[task.name], startedAt));
+    const dueTasks = getDueMaintenanceTasks(state, startedAt);
 
     if (dueTasks.length === 0) {
         return;

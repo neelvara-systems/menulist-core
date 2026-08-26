@@ -267,6 +267,7 @@ export default function LocalSearchResults({ query, categoriesData }: LocalSearc
                                 </Flex>
                                 <Tooltip title="Open article">
                                     <Button
+                                        aria-label={`Open ${result.title}`}
                                         type="text"
                                         size="small"
                                         icon={<LuMaximize2 size={14} />}

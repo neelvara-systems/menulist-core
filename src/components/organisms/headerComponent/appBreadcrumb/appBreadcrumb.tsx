@@ -37,6 +37,7 @@ function AppBreadcrumb() {
                 <Space align="center">
                     {isVerticalSidebar ? (
                         <Button
+                            aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
                             icon={isCollapsed ? <LuPanelLeftOpen /> : <LuPanelLeftClose />}
                             type="text"
                             style={{ padding: 0, fontSize: 20 }}
@@ -47,7 +48,7 @@ function AppBreadcrumb() {
                     <Divider type="vertical" plain style={{ height: 32, margin: 0, borderInlineStartWidth: 2, top: 2 }} />
 
                     <Tooltip title={tHeader('goToHomePage')}>
-                        <Button icon={<LuHome />} type="text" style={{ padding: 0, fontSize: 20 }} onClick={() => router.push('/')} />
+                        <Button aria-label={tHeader('goToHomePage')} icon={<LuHome />} type="text" style={{ padding: 0, fontSize: 20 }} onClick={() => router.push('/')} />
                     </Tooltip>
 
                     <Divider type="vertical" plain style={{ height: 32, margin: 0, borderInlineStartWidth: 2, top: 2 }} />

@@ -186,6 +186,7 @@ const SessionCard = ({
                                 placement="bottomRight"
                             >
                                 <Button
+                                    aria-label="Conversation actions"
                                     type="text"
                                     size="small"
                                     icon={<LuMoreVertical size={14} />}

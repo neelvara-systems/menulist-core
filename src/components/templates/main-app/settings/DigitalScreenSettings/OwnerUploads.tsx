@@ -235,6 +235,7 @@ export default function OwnerUploads({
                                 actions={[
                                     editingSlideId === slide.id ? null : (
                                         <Button
+                                            aria-label={`Edit ${normalizeOwnerSlideCaption(slide.caption)}`}
                                             key="edit"
                                             type="text"
                                             icon={<LuPencil />}
@@ -254,6 +255,7 @@ export default function OwnerUploads({
                                         cancelText="Cancel"
                                     >
                                         <Button
+                                            aria-label={`Delete ${normalizeOwnerSlideCaption(slide.caption)}`}
                                             type="text"
                                             danger
                                             icon={<LuTrash2 />}

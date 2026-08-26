@@ -22,7 +22,7 @@ const DrawerElement = ({ children, footerActions, ...props }: DrawerElementProps
         }}
         title={(props.title || props.onClose) ? <Flex justify={props.title ? "space-between" : "flex-end"} align="center">
             {props.title && <Typography.Text>{props.title}</Typography.Text>}
-            {props.onClose && <Button type="text" shape="circle" icon={<LuX />} onClick={props.onClose} />}
+            {props.onClose && <Button aria-label="Close drawer" type="text" shape="circle" icon={<LuX />} onClick={props.onClose} />}
         </Flex> : null}
         footer={Boolean(footerActions?.length) ? <Space>
             {footerActions?.map((action, i) => {

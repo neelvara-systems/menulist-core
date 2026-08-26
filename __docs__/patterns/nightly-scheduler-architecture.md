@@ -77,6 +77,15 @@ MenuList has two scheduled entry points by design:
 
 Each task has an independent Firestore lease under `_system`, so overlapping scheduler ticks cannot duplicate sends, cleanup, or alerts while the lease is current. Outcome persistence verifies the current lease-owner token and releases that lease in the same transaction; an execution that finishes after its lease expired cannot overwrite replacement-owner state or clear the replacement lease.
 
+Runtime-disabled tasks are removed before cadence and lease selection. In particular,
+`messaging_intake` does not acquire a lease or persist a scheduler outcome while
+`ENABLE_MESSAGING_ONBOARDING=false`; retention work remains independently scheduled
+because disabling new provider intake must not pause declared cleanup obligations.
+Successful or recorded-failure outcomes already release the current lease atomically,
+so the fallback lease-release transaction runs only when outcome finalization did not
+complete. This preserves overlap recovery while avoiding an extra lock read after every
+normally finalized task.
+
 Each due store also has one ten-minute `_system/storeNightlyScheduler_{tId}_{sId}` execution lease shared by the hourly scheduler and `triggerStoreNightlyScheduler`. It is acquired before store project/analytics/provider work and finalized only by its exact owner. This prevents scheduled/manual overlap and cross-tab duplicate recovery from repeating coupled store effects; an expired owner cannot finalize over a replacement.
 
 ### Future Scheduler Rule

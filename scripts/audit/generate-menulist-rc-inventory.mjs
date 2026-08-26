@@ -18,6 +18,21 @@ const privateRouteAccessRoutes = new Set(privateRouteAccessEvidence?.routes ?? [
 const apiAnonymousBoundaryEvidence = runtimeEvidence.apiAnonymousBoundary ?? null;
 const authenticatedOwnerNavigationEvidence = runtimeEvidence.authenticatedOwnerNavigation ?? null;
 const authenticatedOwnerNavigationRoutes = new Set(authenticatedOwnerNavigationEvidence?.routes ?? []);
+const authenticatedOwnerControlEvidence = runtimeEvidence.authenticatedOwnerControlInteractions ?? null;
+const publicCustomerControlEvidence = runtimeEvidence.publicCustomerControlInteractions ?? null;
+const controlEvidenceSets = [authenticatedOwnerControlEvidence, publicCustomerControlEvidence]
+    .filter((evidenceSet) => evidenceSet?.result === "PASS");
+const controlEvidenceBySourceAction = new Map();
+for (const evidenceSet of controlEvidenceSets) {
+    for (const interaction of evidenceSet.interactions ?? []) {
+        for (const controlAction of interaction.controlActions ?? []) {
+            controlEvidenceBySourceAction.set(
+                `${interaction.source}|${controlAction}`,
+                { evidenceSet, interaction },
+            );
+        }
+    }
+}
 const publicWebsiteRouteRenderEvidence = runtimeEvidence.publicWebsiteRouteRender ?? null;
 const publicSitemapPath = path.join(ROOT, "public/sitemap.xml");
 const publicSitemapPaths = fs.existsSync(publicSitemapPath)
@@ -42,7 +57,9 @@ const CONTROL_PATTERNS = [
     ["link", /<(?:a|Link|NavLink)\b/],
     ["form", /<(?:form|Form)\b|\bonSubmit\s*=/],
     ["input", /<(?:input|Input|InputNumber|TextArea|textarea)\b/],
-    ["selection", /<(?:select|Select|Checkbox|Radio|Switch|DatePicker|TimePicker)\b/],
+    ["selection", /<(?:select|Select|Checkbox|Radio|Switch|DatePicker|TimePicker|Segmented|ColorPicker|Rate|Slider|RangePicker|TreeSelect|Tree)\b/],
+    ["disclosure", /<(?:Collapse|Tabs|Dropdown|Menu|Popover)\b/],
+    ["dialog-action-surface", /<(?:Modal|Drawer|Popconfirm)\b/],
     ["upload", /<(?:Upload|input)\b[^>]*\btype\s*=\s*["']file["']/],
     ["action-handler", /\bonClick\s*=|\bonPress\s*=|\bonAction\s*=/],
     ["menu-action", /\b(?:items|menuItems|actions)\s*=\s*\[|\bkey\s*:\s*["'][^"']+["'][^\n]*(?:label|onClick)/],
@@ -53,6 +70,8 @@ const CONCRETE_CONTROL_KINDS = new Set([
     "form",
     "input",
     "selection",
+    "disclosure",
+    "dialog-action-surface",
     "upload",
 ]);
 
@@ -382,6 +401,18 @@ function appRuntimeEvidence(file, route, itemType, product) {
     };
 }
 
+function controlRuntimeEvidence(source, controlAction) {
+    const matchedEvidence = controlEvidenceBySourceAction.get(`${source}|${controlAction}`);
+    if (!matchedEvidence) return {};
+    const { evidenceSet, interaction } = matchedEvidence;
+    return {
+        test_type: "hosted-browser-interaction",
+        test_result: "PASS_HOSTED_INTERACTION",
+        final_verification_status: "HOSTED_INTERACTION_PASSED",
+        evidence_or_notes: `${evidenceSet.browser}; exact hosted build ${evidenceSet.servedBuildId}; ${evidenceSet.testedAt}; ${interaction.evidence}`,
+    };
+}
+
 function routePatternMatches(pattern, candidate) {
     if (pattern === candidate) return true;
     const escaped = pattern
@@ -476,7 +507,7 @@ for (const pageFile of appFiles.filter((file) => PAGE_FILE.test(file))) {
     }
 }
 
-const uiRoots = ["src/components", "src/app"];
+const uiRoots = ["src/components", "src/modules", "src/app"];
 const uiFiles = uiRoots
     .flatMap((root) => walk(path.join(ROOT, root)))
     .filter((file) => SOURCE_EXTENSIONS.has(path.extname(file)))
@@ -501,17 +532,19 @@ for (const file of uiFiles) {
     for (let index = 0; index < lines.length; index += 1) {
         const line = lines[index];
         for (const kind of controlKindsForLine(line)) {
+            const controlAction = `${kind}@${index + 1}`;
             add({
                 item_type: "user-control-candidate",
                 product_area: product,
                 route_or_component: rel,
                 screen_or_tab: renderedSurface,
-                control_or_action: `${kind}@${index + 1}`,
+                control_or_action: controlAction,
                 expected_behavior: "Resolve label, reachability, guard, mutation, feedback, and recovery contract",
                 backing_api_dal_data_path: "TRACE_REQUIRED",
                 test_type: "runtime-interaction-required",
                 evidence_or_notes: `${reachableRoutes.length > 0 ? `Reachable from ${reachableRoutes.length} page route(s). ` : "No page import path found. "}${line.trim().replace(/\s+/g, " ").slice(0, 200)}`,
                 ...reachabilityEvidence,
+                ...controlRuntimeEvidence(rel, controlAction),
             });
         }
     }

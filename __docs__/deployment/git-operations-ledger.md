@@ -7330,3 +7330,98 @@ No Firebase source/configuration changes. Firestore Rules, indexes, Storage Rule
 - Firebase state: every previously recorded MenuList/Answerlattice QA/production Rules, indexes, Storage Rules, and Functions row remains `NO_INFRA_CHANGE` / `SERVER_STATE_UNKNOWN`; no infrastructure deployment or authenticated infrastructure readback was performed or claimed.
 - Razorpay boundary: no checkout, provider call, charge, webhook completion, refund, or money movement was initiated.
 - Attribution confidence: exact.
+
+### FIREBASE-20260826-212822-answerlattice-faq-index-qa
+
+- Timestamp: `2026-08-26T21:28:22+05:30`
+- Record type: `PLANNED`
+- Actor/session/thread ID: Codex `/root`; current thread ID `unknown`.
+- Authorization: Danny explicitly authorized the previously enumerated step-by-step hosted-QA release sequence in the current turn. This operation is limited to the new Answerlattice FAQ composite index in `neelvara-answerlattice-qa`. It does not authorize production Firebase, MenuList Firebase, Cloud Functions, Firestore Rules, Storage Rules, manual Vercel deployment, Vercel settings, `main`, or customer/payment mutation.
+- Registered worktrees: one worktree, `/Users/danny/Projects/MenuListAi/menulist-core`, branch `staging`, HEAD `59e1dc2561750ed2d97764fa30df7614c3071fd2`.
+- Starting filesystem state: `0` staged, `84` tracked changed, and `9` untracked. The snapshot was byte-stable across a 15-second concurrent-writer audit. Another ChatGPT process has the same working directory open, so no Git staging or commit occurs in this Firebase operation.
+- Starting branch matrix:
+
+| Branch | Local full SHA | Direct server ref/full SHA | Tracking ref | Ahead/behind | Worktree | Staged/unstaged/untracked | Status |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `staging` | `59e1dc2561750ed2d97764fa30df7614c3071fd2` | `refs/heads/staging` / `59e1dc2561750ed2d97764fa30df7614c3071fd2` | `origin/staging` | `0/0` | primary | `0/84/9` | `IN_SYNC` |
+| `main` | `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `refs/heads/main` / `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `origin/main` | `0/0` | none | n/a | `IN_SYNC` |
+
+- Local validation: JSON parse, FAQ boundary verifier, exact overflow Firestore emulator, strict TypeScript, full zero-warning lint, and the exact current `verify:answerlattice-runtime-truth` aggregate pass. The aggregate includes dedicated/shared Rules, retrieval, Public API, widget, MCP, tickets, signals, governance, Answer Tests, owner controls, scheduler analytics, and Knowledge Map contracts.
+- Intended command class: `firebase deploy --only firestore:indexes --project neelvara-answerlattice-qa --config firebase-answerlattice.json --non-interactive`, followed by authenticated `firebase firestore:indexes --pretty` polling until the exact index is `READY`. No other Firebase component is included.
+- Firebase matrix before deployment:
+
+| Product/target | Component | Local source/hash or tree | Local validation | Authenticated server/readback | Delta | Deployment state |
+| --- | --- | --- | --- | --- | --- | --- |
+| MenuList QA / `menulist-qa` | Firestore Rules | `firestore.rules` / `5c1a9f7b…` / 198762 bytes | unchanged in candidate | not read back in this evidence window | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| MenuList QA / `menulist-qa` | Firestore indexes | `firestore.indexes.json` / `5629ae4d…` / 78310 bytes | unchanged in candidate | not read back in this evidence window | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| MenuList QA / `menulist-qa` | Storage Rules | `storage.rules` / `226d2a20…` / 18176 bytes | unchanged in candidate | not read back in this evidence window | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| MenuList QA / `menulist-qa` | Cloud Functions | `functions/src` tree / `b1c7db46…` | Functions build plus scale/cost and maintenance-lease emulator PASS | not read back; outside authorized scope | `INFRA_CHANGE` | `DEPLOY_REQUIRED` |
+| MenuList production / `menulist-prod` | Firestore Rules | same MenuList artifact | unchanged in candidate | not read back in this evidence window | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| MenuList production / `menulist-prod` | Firestore indexes | same MenuList artifact | unchanged in candidate | not read back in this evidence window | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| MenuList production / `menulist-prod` | Storage Rules | same MenuList artifact | unchanged in candidate | not read back in this evidence window | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| MenuList production / `menulist-prod` | Cloud Functions | same MenuList Functions tree | same local PASS | not read back; outside authorized scope | `INFRA_CHANGE` | `DEPLOY_REQUIRED` |
+| Answerlattice QA / `neelvara-answerlattice-qa` | Firestore Rules | `firestore-answerlattice.rules` / `a92cbacb…` / 116222 bytes | unchanged; maintained suites PASS | not read back in this evidence window | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| Answerlattice QA / `neelvara-answerlattice-qa` | Firestore indexes | `firestore-answerlattice.indexes.json` / `bc66de95…` / 51973 bytes; adds `answerlattice_faqs` `pId+tId+sId+status+active+question` and explicitly retains six server-exported `__name__` orderings | JSON and exact overflow emulator PASS; exact server/local preflight preserves all 105 deployed indexes and adds one | authenticated CLI readback at `2026-08-26T21:07:57+05:30`: matching index count `0` | `INFRA_CHANGE` | `DEPLOY_REQUIRED` |
+| Answerlattice QA / `neelvara-answerlattice-qa` | Storage Rules | `storage-answerlattice.rules` / `5fc8f980…` / 6948 bytes | unchanged; maintained suites PASS | not read back in this evidence window | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| Answerlattice QA / `neelvara-answerlattice-qa` | Cloud Functions | `functions-answerlattice/src` tree / `bf3fcc89…` | unchanged in candidate | not read back in this evidence window | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| Answerlattice production / `neelvara-answerlattice-prod` | Firestore Rules | same Answerlattice artifact | unchanged | not read back in this evidence window | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| Answerlattice production / `neelvara-answerlattice-prod` | Firestore indexes | same `bc66de95…` artifact | exact overflow emulator PASS | authenticated CLI readback at `2026-08-26T21:07:57+05:30`: matching index count `0` | `INFRA_CHANGE` | `DEPLOY_REQUIRED` |
+| Answerlattice production / `neelvara-answerlattice-prod` | Storage Rules | same Answerlattice artifact | unchanged | not read back in this evidence window | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| Answerlattice production / `neelvara-answerlattice-prod` | Cloud Functions | same Answerlattice Functions tree | unchanged | not read back in this evidence window | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+
+- Razorpay boundary: no checkout, charge, webhook completion, refund, subscription mutation, or money movement is authorized or performed.
+- Attribution confidence: exact for this session's inspection, validation, and intended deployment; concurrent historical edits retain their source-file authorship as `unknown` unless already documented.
+
+#### Answerlattice QA FAQ index performed result — `2026-08-26T21:39:43+05:30`
+
+- The first scoped deploy attempt was rejected before the new index was created: current Firebase CLI comparison treated six pre-existing array/vector indexes without explicit local `__name__` ordering as different from their server-exported equivalents, then received HTTP 409 while attempting duplicate creation. No index deletion was authorized or performed.
+- The local index artifact was normalized to retain exactly those six server-exported `__name__` orderings. Exact preflight then proved all 105 deployed composite indexes were preserved and the FAQ question index was the only addition. The corrected artifact is SHA-256 `bc66de95e588ecdd7de677917a3395549468bf539208406ddb298bdfbfcc05a2`, 51,973 bytes.
+- Scoped deployment completed successfully with `firebase deploy --only firestore:indexes --project neelvara-answerlattice-qa --config firebase-answerlattice.json --non-interactive`. Firestore Rules were compiled for validation only; Rules were not included in the deploy target.
+- Authenticated status polling observed the exact `answerlattice_faqs` `pId+tId+sId+status+active+question` index transition from `CREATING` to `READY`.
+- Authenticated final readback at `2026-08-26T21:39:43+05:30` returned 106 local and 106 deployed composite indexes with zero local-only or server-only definitions, 33/33 field overrides, and exactly one FAQ question index. Answerlattice QA Firestore indexes are `INFRA_CHANGE` / `DEPLOYED_AND_READ_BACK` for this artifact.
+- Answerlattice production remains unchanged at authenticated matching-index count `0`; its Firestore indexes remain `INFRA_CHANGE` / `DEPLOY_REQUIRED`. MenuList Functions remain locally changed and validated but undeployed in both QA and production; those rows remain `INFRA_CHANGE` / `DEPLOY_REQUIRED` outside this authorization.
+- Branches and filesystem were not mutated by the Firebase release. Local/server `staging` remain `59e1dc2561750ed2d97764fa30df7614c3071fd2`; local/server `main` remain `fe625d5bbf527c1b7e537b00ab32a4f655905c35`. Git staging remains empty.
+- No Vercel action, application deployment, production Firebase mutation, customer data mutation, provider message, or Razorpay operation occurred.
+- Attribution confidence: exact.
+
+### GIT-20260826-214422-consolidated-answerlattice-menulist-qa
+
+- Timestamp: `2026-08-26T21:44:22+05:30`
+- Record type: `PLANNED`
+- Actor/session/thread ID: Codex `/root`; current thread ID `unknown`.
+- Authorization: Danny explicitly instructed Codex in the current turn to recheck all locally changed files, push everything from local to `staging`, and continue. This authorizes one consolidated non-force staging push that may trigger one automatic Vercel QA build. It does not authorize `main`, production, a manual Vercel deployment, Vercel billing/settings mutation, any additional Firebase deployment, customer/provider messages, or payment execution.
+- Registered worktrees: one worktree, `/Users/danny/Projects/MenuListAi/menulist-core`, branch `staging`, HEAD `59e1dc2561750ed2d97764fa30df7614c3071fd2`.
+- Starting filesystem state: `0` staged, `85` tracked changed, and `9` untracked. The full tracked diff hash `af10685a3817e01da3d15cf05224696922e4e552e130ea50457cf585d900d902` and untracked aggregate hash `06f81b9bd693e179e12f0bcea442d8d4249bdd237f672ceeab4c6afce92fb532` were unchanged across the final ten-second pre-stage audit.
+- Release scope: all local work in the single registered worktree—Answerlattice first-client fixture/certification tooling, Knowledge Intake mutation/batching hardening, FAQ overflow retrieval/index/test, governed Product Topic label search, MenuList widget/client configuration, MenuList owner accessibility and mounted-feedback corrections, project/help/dashboard interaction labels, MenuList maintenance-scheduler lease/disabled-task hardening, regenerated RC/data-flow evidence, upload inputs, Vercel build-cost rule, certification/runbook/changelog, Firebase evidence, and this ledger.
+- Starting branch matrix:
+
+| Branch | Local full SHA | Direct server ref/full SHA | Tracking ref | Ahead/behind | Worktree | Staged/unstaged/untracked | Status |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `staging` | `59e1dc2561750ed2d97764fa30df7614c3071fd2` | `refs/heads/staging` / `59e1dc2561750ed2d97764fa30df7614c3071fd2` | `origin/staging` | `0/0` | primary | `0/85/9` | `IN_SYNC` |
+| `main` | `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `refs/heads/main` / `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `origin/main` | `0/0` | none | n/a | `IN_SYNC` |
+
+- Validation before mutation: exact current `verify:answerlattice-runtime-truth`, Answerlattice first-client contracts, FAQ overflow emulator, FAQ/customer-language boundaries, upload-package verifier, MenuList RC inventory regeneration/verification, owner-feedback and global-accessibility boundaries, Firebase scale/cost closeout, Functions builds, platform/maintenance lease emulators, strict TypeScript, full zero-warning lint, `git diff --check`, and bounded changed-file secret scan pass. No production build is used as a default gate.
+- Intended Git mutation: `git add -A`; validate the complete staged diff and absence of secrets; commit once as `fix(release): consolidate Answerlattice QA and MenuList hardening`; push `staging` non-force; direct `git ls-remote` readback; verify `0/0` divergence and a clean filesystem; wait for and verify the one automatic Vercel QA build against `/api/version`. `main` remains untouched.
+- Firebase matrix before Git mutation (no Firebase deployment is included in this Git operation):
+
+| Product/target | Component | Local source/state | Server/readback | Delta | Deployment state |
+| --- | --- | --- | --- | --- | --- |
+| MenuList QA / `menulist-qa` | Firestore Rules | `firestore.rules` `5c1a9f7b…` / unchanged | not read back this window | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| MenuList QA / `menulist-qa` | Firestore indexes | `5629ae4d…` / unchanged | not read back this window | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| MenuList QA / `menulist-qa` | Storage Rules | `226d2a20…` / unchanged | not read back this window | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| MenuList QA / `menulist-qa` | Cloud Functions | `functions/src` tree `b1c7db46…` / validated change | outside authorization; not deployed/read back | `INFRA_CHANGE` | `DEPLOY_REQUIRED` |
+| MenuList production / `menulist-prod` | Firestore Rules | same MenuList artifact / unchanged | not read back this window | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| MenuList production / `menulist-prod` | Firestore indexes | same MenuList artifact / unchanged | not read back this window | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| MenuList production / `menulist-prod` | Storage Rules | same MenuList artifact / unchanged | not read back this window | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| MenuList production / `menulist-prod` | Cloud Functions | same validated changed tree | outside authorization; not deployed/read back | `INFRA_CHANGE` | `DEPLOY_REQUIRED` |
+| Answerlattice QA / `neelvara-answerlattice-qa` | Firestore Rules | `a92cbacb…` / unchanged | not read back this window | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| Answerlattice QA / `neelvara-answerlattice-qa` | Firestore indexes | `bc66de95…` / 51973 bytes | 106/106 composites, 33/33 overrides, exact FAQ index `READY` at `2026-08-26T21:39:43+05:30` | `INFRA_CHANGE` | `DEPLOYED_AND_READ_BACK` |
+| Answerlattice QA / `neelvara-answerlattice-qa` | Storage Rules | `5fc8f980…` / unchanged | not read back this window | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| Answerlattice QA / `neelvara-answerlattice-qa` | Cloud Functions | `functions-answerlattice/src` tree `bf3fcc89…` / unchanged | not read back this window | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| Answerlattice production / `neelvara-answerlattice-prod` | Firestore Rules | same Answerlattice artifact / unchanged | not read back this window | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| Answerlattice production / `neelvara-answerlattice-prod` | Firestore indexes | same `bc66de95…` local artifact | authenticated matching FAQ index count `0` | `INFRA_CHANGE` | `DEPLOY_REQUIRED` |
+| Answerlattice production / `neelvara-answerlattice-prod` | Storage Rules | same Answerlattice artifact / unchanged | not read back this window | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| Answerlattice production / `neelvara-answerlattice-prod` | Cloud Functions | same Answerlattice Functions tree / unchanged | not read back this window | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+
+- Razorpay boundary: no checkout, charge, payment webhook completion, refund, subscription mutation, or money movement is authorized or performed.
+- Attribution confidence: exact for the current snapshot, validation and release operation; historical per-file authorship is retained as `unknown` unless an earlier ledger entry provides exact attribution.

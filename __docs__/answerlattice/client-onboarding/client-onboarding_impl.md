@@ -1,7 +1,7 @@
 # Answerlattice Client Onboarding — Implementation
 
-> **Version:** 1.9.0
-> **Last Updated:** 2026-08-14
+> **Version:** 1.9.1
+> **Last Updated:** 2026-08-26
 > **Audience:** Developers
 
 ---
@@ -17,6 +17,8 @@ src/lib/answerlattice/firstTrustedAnswerStarterQuestions.ts # Shared First 10 qu
 src/lib/answerlattice/onboardingProof.ts              # Pure surface-to-preview projection
 src/lib/answerlattice/onboardingProvisioning.ts       # Pure attempt/provider/recovery contract
 src/lib/answerlattice/onboardingProvisioningServer.ts # Transactional attempt state
+scripts/answerlattice/hosted-qa-first-client-fixture.ts # Guarded hosted-QA post-payment fixture
+scripts/answerlattice/hosted-qa-menulist-widget-certification.ts # Bounded 75-question hosted-QA runner
 ```
 
 ---
@@ -48,6 +50,33 @@ This transition performs no fetch, AI/provider call, Firebase read/write, worksp
 10. Treat the local transaction as the finalization boundary. Restore `productAccounts.AL`, seed product surfaces and compact summaries, initialize compiled-context control-plane state, and return through the route-wide private/no-store response helper.
 11. If a provider outcome may exist, transactionally persist `provider_recovery_pending` on the exact tenant/store/user scope and preserve it for retry. If provider creation is proven not to have occurred, or the exact known checkout is terminal and unusable, compensate only documents owned by the same product, attempt, fingerprint, tenant, and store.
 12. Paid plans activate through the shared product-aware Razorpay verify/webhook flow using `productId: 'AL'` and Answerlattice Firebase persistence.
+
+Hosted QA certification does not fabricate Razorpay success. The guarded
+`answerlattice:hosted-qa-first-client-fixture` harness creates a disposable
+credential user in `menulist-qa`, an isolated workspace in
+`neelvara-answerlattice-qa`, an explicit zero-value 72-hour non-payment
+entitlement, the same three initial product surfaces, and a newly hashed widget
+key. It also writes the same compiled-context source-version/manifest pair and
+sharded scheduler tenant-summary entry that post-finalization onboarding owns.
+The `reconcile` action can restore only those control-plane documents while the
+fixture has no articles, canonical answers, or entities; it refuses populated
+workspaces so it cannot reset a live test tenant's versions. The raw password
+and widget key are written only to an operator-selected
+`/tmp/*.json` file with mode `0600`. Its `cleanup-empty` action refuses any
+workspace that already contains intake jobs/sources/review drafts, knowledge,
+entities, answers, signals, tickets, conversations, or non-fixture product
+surfaces; populated fixtures must use the normal workspace
+lifecycle and retention path. This is hosted product-flow evidence only, never
+payment-provider evidence.
+
+After knowledge is reviewed and published, the guarded
+`answerlattice:hosted-qa-menulist-widget-certification` runner exercises the 75
+maintained MenuList owner questions against `canonica.app` using the exact
+`app.menulist.digital` origin and a short-lived widget runtime authorization.
+It paces requests below the public limiter, refreshes expiring authorization,
+never prints the widget key, and writes full answer evidence only to a mode-0600
+`/tmp/*.json` report. Automated transport/source/citation counts are evidence,
+not semantic approval: every high-risk answer still receives owner review.
 
 **Reuses from MenuList:**
 - Same atomic transaction pattern as `create-subscription/route.ts`
@@ -183,6 +212,7 @@ This allows querying Answerlattice-specific tenants without a separate collectio
 
 | Date | Version | Change |
 |------|---------|--------|
+| 2026-08-26 | 1.9.1 | Added a guarded hosted-QA first-client fixture with onboarding-equivalent compiled-context and scheduler state, plus a bounded private 75-question MenuList widget certification runner |
 | 2026-08-14 | 1.9.0 | Added the shared deterministic onboarding-proof helper, proof-before-plan client state, and privacy-bounded proof analytics without changing the onboarding API |
 | 2026-08-01 | 1.7.3 | Added current default-auth admission and transaction-current bridge authority, required an exact provider checkout before finalization, bound payment-pending replay to the original fingerprint, and replayed bootstrap with create-only persistence |
 | 2026-07-28 | 1.7.2 | Rejected contradictory pending-subscription payload scope before transaction work and projected all four canonical workspace aliases from provisioning authority |

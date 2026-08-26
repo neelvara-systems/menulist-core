@@ -44,6 +44,11 @@ export default function EditorActionsPopover({
         });
     }, [canGenerateDescriptions, isMasterLinked, labels]);
 
+    const activateAction = (action: EditorAction) => {
+        setOpen(false);
+        onActionClick(action);
+    };
+
     const content = (
         <Flex vertical gap={12} style={{ width: "100%" }}>
             {visibleActions.map((action) => (
@@ -51,9 +56,15 @@ export default function EditorActionsPopover({
                     key={action.key}
                     size="small"
                     hoverable
-                    onClick={() => {
-                        setOpen(false);
-                        onActionClick(action.key);
+                    role="button"
+                    tabIndex={0}
+                    aria-label={`${action.title}: ${action.description}`}
+                    onClick={() => activateAction(action.key)}
+                    onKeyDown={(event) => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                            event.preventDefault();
+                            activateAction(action.key);
+                        }
                     }}
                     style={{ borderRadius: 14 }}
                     styles={{ body: { padding: 12 } }}

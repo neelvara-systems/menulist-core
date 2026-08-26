@@ -275,6 +275,7 @@ const EditorItem = memo(
                         >
                             <Tooltip title="Edit Item">
                                 <Button
+                                    aria-label={`Edit ${item.name?.[selectedLanguages[0]] || 'item'}`}
                                     type="default"
                                     size="small"
                                     icon={<LuPen />}
@@ -290,6 +291,7 @@ const EditorItem = memo(
 
                             <Tooltip title="Add/Manage Images">
                                 <Button
+                                    aria-label={`Manage images for ${item.name?.[selectedLanguages[0]] || 'item'}`}
                                     type="default"
                                     size="small"
                                     icon={<LuImagePlus />}
@@ -303,6 +305,7 @@ const EditorItem = memo(
                                 }
                             >
                                 <Button
+                                    aria-label={`Delete ${item.name?.[selectedLanguages[0]] || 'item'}`}
                                     type="default"
                                     size="small"
                                     danger
@@ -407,6 +410,7 @@ const EditorItem = memo(
                                                                     />
                                                                 </div>
                                                                 <Button
+                                                                    aria-label={`Delete attribute ${attr.name?.[lang] || ''}`.trim()}
                                                                     type="text"
                                                                     size="small"
                                                                     danger
@@ -676,6 +680,7 @@ export function EditorContent({
                                                 <Flex align="center" gap={4}>
                                                     <Tooltip title="Edit Category">
                                                         <Button
+                                                            aria-label={`Edit category ${category.name?.[selectedLanguages[0]] || ''}`.trim()}
                                                             type="default"
                                                             size="small"
                                                             icon={<LuPen />}
@@ -687,6 +692,7 @@ export function EditorContent({
                                                     </Tooltip>
                                                     <Tooltip title="Add Item">
                                                         <Button
+                                                            aria-label={`Add item to ${category.name?.[selectedLanguages[0]] || 'category'}`}
                                                             type="default"
                                                             size="small"
                                                             icon={<LuPlus />}
@@ -698,6 +704,7 @@ export function EditorContent({
                                                     </Tooltip>
                                                     <Tooltip title="Delete Category">
                                                         <Button
+                                                            aria-label={`Delete category ${category.name?.[selectedLanguages[0]] || ''}`.trim()}
                                                             type="default"
                                                             size="small"
                                                             danger

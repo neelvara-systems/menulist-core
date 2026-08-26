@@ -58,7 +58,7 @@ export default function SearchBar({
                 />
                 <div className={uiStyles.inputActions}>
                     <Space>
-                        {query && <Button icon={<LuX />} onClick={handleClear} type="text" shape="circle" />}
+                        {query && <Button aria-label="Clear search" icon={<LuX />} onClick={handleClear} type="text" shape="circle" />}
                         <Button disabled={isSearching || !query.trim()} type="primary" htmlType="submit" loading={isSearching} icon={<LuSparkles />}>
                             Ask a Question
                         </Button>

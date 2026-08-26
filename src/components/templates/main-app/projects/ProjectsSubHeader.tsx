@@ -70,7 +70,7 @@ export default function ProjectsSubHeader({
                 {/* Back button - only in UI Editor view */}
                 {isUIEditorView && (
                     <Tooltip title="Back to Editor">
-                        <Button shape="circle" icon={<LuArrowLeft />} onClick={() => setCurrentView(2)} />
+                        <Button aria-label="Back to project editor" shape="circle" icon={<LuArrowLeft />} onClick={() => setCurrentView(2)} />
                     </Tooltip>
                 )}
 

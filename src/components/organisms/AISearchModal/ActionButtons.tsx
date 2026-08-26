@@ -107,19 +107,21 @@ export default function ActionButtons({ answer, onRegenerate, isTyping, searchHi
             <div style={{ marginTop: '16px', textAlign: 'right' }}>
                 <Space>
                     <Tooltip title="Copy answer">
-                        <Button icon={<LuCopy />} onClick={handleCopy} />
+                        <Button aria-label="Copy answer" icon={<LuCopy />} onClick={handleCopy} />
                     </Tooltip>
                     <Tooltip title="Regenerate response">
-                        <Button icon={<LuRefreshCw />} onClick={() => onRegenerate()} />
+                        <Button aria-label="Regenerate response" icon={<LuRefreshCw />} onClick={() => onRegenerate()} />
                     </Tooltip>
                     <Tooltip title="Good response">
                         <Button
+                            aria-label="Mark response as good"
                             disabled={feedbackData.isGood}
                             type={feedbackData.isGood ? 'primary' : 'default'}
                             icon={<LuThumbsUp />} onClick={() => void handleFeedback('up')} />
                     </Tooltip>
                     <Tooltip title="Bad response">
                         <Button
+                            aria-label="Mark response as bad"
                             type={feedbackData.reasons.length ? 'primary' : 'default'}
                             icon={<LuThumbsDown />} onClick={() => handleFeedback('down')} />
                     </Tooltip>

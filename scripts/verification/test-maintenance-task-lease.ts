@@ -4,6 +4,7 @@ import assert = require('node:assert/strict');
 
 const {
     acquireTaskLeaseForTest,
+    getDueMaintenanceTaskNamesForTest,
     recordTaskOutcomeForTest,
     replaceBillingHealthStateForTest,
     runOwnerNotificationRetentionCleanupForTest,
@@ -59,6 +60,21 @@ async function run(): Promise<void> {
     }
 
     await resetState();
+    const disabledMessagingDueTasks = getDueMaintenanceTaskNamesForTest(
+        {},
+        new Date('2026-07-22T00:00:00.000Z'),
+    );
+    assert.equal(
+        disabledMessagingDueTasks.includes('messaging_intake'),
+        false,
+        'the provider-disabled messaging task must not acquire a lease or persist scheduler state',
+    );
+    assert.equal(
+        disabledMessagingDueTasks.includes('special_menu_lifecycle'),
+        true,
+        'the provider-independent special-menu lifecycle must keep its two-minute cadence',
+    );
+
     const firstStartedAt = new Date('2026-07-22T00:00:00.000Z');
     const firstLease = await acquireTaskLeaseForTest(task, 'run_one', firstStartedAt);
     assert.ok(firstLease, 'the first scheduler run must acquire the task lease');

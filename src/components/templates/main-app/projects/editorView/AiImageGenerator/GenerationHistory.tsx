@@ -85,6 +85,7 @@ const GenerationHistory: React.FC<GenerationHistoryProps> = ({
                 </Typography.Text>
               </Flex>
               <Button
+                aria-label="Regenerate image with these settings"
                 type="text"
                 icon={<LuRefreshCw size={16} />}
                 onClick={() => onRegenerate(item.config)}

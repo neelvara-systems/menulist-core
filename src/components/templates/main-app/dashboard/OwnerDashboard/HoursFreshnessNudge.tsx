@@ -116,6 +116,7 @@ export default function HoursFreshnessNudge() {
                     </Flex>
                 </Flex>
                 <Button
+                    aria-label="Dismiss business hours reminder"
                     type="text"
                     icon={<LuX size={14} />}
                     onClick={handleDismiss}

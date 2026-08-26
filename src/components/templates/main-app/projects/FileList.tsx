@@ -143,6 +143,7 @@ export function FileList({ files, onRemove, onClearAll, fileProcessingId }: File
 
                                                         {isImage && (
                                                             <Button
+                                                                aria-label={`Preview ${file.name}`}
                                                                 shape='circle'
                                                                 className='animate__animated animate__fadeInLeft animate__faster'
                                                                 icon={<LuEye style={{ fontSize: 18 }} />}
@@ -154,6 +155,7 @@ export function FileList({ files, onRemove, onClearAll, fileProcessingId }: File
                                                             />
                                                         )}
                                                         <Button
+                                                            aria-label={`Delete ${file.name}`}
                                                             shape='circle'
                                                             className='animate__animated animate__fadeInRight animate__faster'
                                                             danger

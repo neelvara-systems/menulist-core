@@ -249,7 +249,7 @@ Fix found during this pass:
 
 ## 2026-05-21 Client-Product Separation Cleanup
 
-The temporary client-product-specific widget host and changelog connector have been removed from runtime code. Answerlattice remains available through its own routes/domains, while client products integrate the widget only by embedding the generic public script with a real Answerlattice-issued `answerlatticeWidgetApi` key from their own codebase. MenuList follows that same model through `NEXT_PUBLIC_MENULIST_ANSWERLATTICE_WIDGET_KEY`; no key is committed and no test-host flag is used.
+The temporary client-product-specific widget host and changelog connector have been removed from runtime code. Answerlattice remains available through its own routes/domains, while client products integrate the widget only by embedding the generic public script with a real Answerlattice-issued `answerlatticeWidgetApi` key from their own codebase. MenuList follows that same external-client model through `NEXT_PUBLIC_ANSWERLATTICE_WIDGET_KEY`; no key is committed and no test-host flag is used.
 
 Follow-up verification for this cleanup:
 

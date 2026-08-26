@@ -166,9 +166,9 @@ function B2BView() {
                 <Flex vertical gap={14}>
                     <Flex gap={16} justify="space-between" align="center">
                         <Flex gap={8} wrap="wrap" align="center">
-                            <Button icon={<LuArrowLeft />} onClick={() => setCurrentView(currentView - 1)} shape="circle" />
+                            <Button aria-label="Back to project editor" icon={<LuArrowLeft />} onClick={() => setCurrentView(currentView - 1)} shape="circle" />
                             {isUpdated && (
-                                <Button icon={<LuRefreshCcw />} shape="circle" onClick={confirmResetChanges} />
+                                <Button aria-label="Reset project changes" icon={<LuRefreshCcw />} shape="circle" onClick={confirmResetChanges} />
                             )}
                         </Flex>
                         <Flex gap={8} align="center">

@@ -52,6 +52,7 @@ const MessageActions = ({
                     // User message actions
                     <Tooltip title="Copy question">
                         <Button
+                            aria-label="Copy question"
                             type="text"
                             size="small"
                             icon={<LuCopy size={14} />}
@@ -64,6 +65,7 @@ const MessageActions = ({
                     <>
                         <Tooltip title={feedbackState === 'up' ? 'Marked as helpful' : 'Helpful answer'}>
                             <Button
+                                aria-label={feedbackState === 'up' ? 'Answer marked as helpful' : 'Mark answer as helpful'}
                                 type={feedbackState === 'up' ? 'primary' : 'text'}
                                 size="small"
                                 icon={<LuThumbsUp size={14} />}
@@ -74,6 +76,7 @@ const MessageActions = ({
                         </Tooltip>
                         <Tooltip title={feedbackState === 'down' ? 'Marked as not helpful' : 'Not helpful'}>
                             <Button
+                                aria-label={feedbackState === 'down' ? 'Answer marked as not helpful' : 'Mark answer as not helpful'}
                                 type={feedbackState === 'down' ? 'primary' : 'text'}
                                 size="small"
                                 icon={<LuThumbsDown size={14} />}
@@ -85,6 +88,7 @@ const MessageActions = ({
                         </Tooltip>
                         <Tooltip title="Copy answer">
                             <Button
+                                aria-label="Copy answer"
                                 type="text"
                                 size="small"
                                 icon={<LuCopy size={14} />}
@@ -94,6 +98,7 @@ const MessageActions = ({
                         </Tooltip>
                         <Tooltip title="Regenerate">
                             <Button
+                                aria-label="Regenerate answer"
                                 type="text"
                                 size="small"
                                 icon={<LuRefreshCw size={14} />}

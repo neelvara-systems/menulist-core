@@ -1,20 +1,20 @@
 {
   "hostedCandidateIdentity": {
     "baseUrl": "https://app.menulist.digital",
-    "requestedStagingCommit": "c22dd233b79afd3acb3c03924f7f3111112ee438",
+    "requestedStagingCommit": "59e1dc2561750ed2d97764fa30df7614c3071fd2",
     "menuListProductSnapshotCommit": "3a34a975d52b1a3b8bec4be35c40b4930b1f9441",
-    "servedBuildId": "c22dd233b79afd3acb3c03924f7f3111112ee438",
-    "servedDeploymentUrl": "menulist-core-qbotpx8sn-neelvara-systems.vercel.app",
-    "testedAt": "2026-08-26T08:24:00+05:30",
+    "servedBuildId": "59e1dc2561750ed2d97764fa30df7614c3071fd2",
+    "servedDeploymentUrl": "menulist-core-b004re05i-neelvara-systems.vercel.app",
+    "testedAt": "2026-08-26T18:15:00+05:30",
     "result": "PASS_DEPLOYMENT_IDENTITY",
-    "evidence": "The no-store /api/version response matched exact MenuList staging commit c22dd233 with verified provenance after Vercel TypeScript, lint, 450-page production build, and deployment-bundle checks passed. The owner dashboard and tenant public menu then hard-loaded successfully; mutation evidence remains separately classified."
+    "evidence": "The cache-busted /api/version response matched exact MenuList staging base commit 59e1dc256 with verified provenance and deployment URL. No deployment was triggered by this readback. Current hosted authenticated interaction and mutation evidence remains separately classified; the local MLRC-104 and MLRC-105 certification-tool fixes are not part of this hosted build."
   },
   "privateRouteAccess": {
     "baseUrl": "http://localhost:3000",
     "browser": "Connected Chrome",
-    "candidateFilesystem": "uncommitted",
-    "sourceBaselineCommit": "916b5c94d82b848fef791babeb49addbd3c794b8",
-    "testedAt": "2026-08-25T04:25:00+05:30",
+    "candidateFilesystem": "local coordinated worktree snapshot; not pushed or deployed",
+    "sourceBaselineCommit": "59e1dc2561750ed2d97764fa30df7614c3071fd2",
+    "testedAt": "2026-08-26T18:08:00+05:30",
     "routes": [
       "/assets",
       "/billing",
@@ -22,6 +22,7 @@
       "/business-settings",
       "/dashboard",
       "/feedback",
+      "/growth-kits",
       "/help-center",
       "/help-center/[...segments]",
       "/locations",
@@ -85,13 +86,13 @@
       "/qrCode": "/qr-code"
     },
     "result": "PASS",
-    "evidence": "All 58 MenuList private page routes redirected a signed-out browser to /signin with the exact intended callback. No private screen rendered. Alias routes canonicalized before callback preservation."
+    "evidence": "All 59 current MenuList private page routes redirected a signed-out browser to /signin with the exact intended callback after settled navigation. No private screen rendered. Alias routes canonicalized before callback preservation."
   },
   "apiAnonymousBoundary": {
-    "baseUrl": "https://app.menulist.digital",
-    "candidateFilesystem": "staging classification correction; hosted route implementations from exact served build",
-    "sourceBaselineCommit": "c22dd233b79afd3acb3c03924f7f3111112ee438",
-    "testedAt": "2026-08-26T08:27:00+05:30",
+    "baseUrl": "http://localhost:3000",
+    "candidateFilesystem": "local coordinated worktree snapshot; not pushed or deployed",
+    "sourceBaselineCommit": "59e1dc2561750ed2d97764fa30df7614c3071fd2",
+    "testedAt": "2026-08-26T18:00:00+05:30",
     "handlers": 140,
     "methodProbes": 157,
     "routeManifestSha256": "96b3d155f7777e64aca4e1d245743120dafe65ddeffa1d029511b5ef4112a428",
@@ -106,7 +107,7 @@
     },
     "liveRazorpayExecution": "EXCLUDED; only anonymous empty-boundary rejection was exercised",
     "result": "PASS",
-    "evidence": "All exported methods across all 140 MenuList route handlers, including the four Growth Kits add-on APIs previously misclassified as a separate-product boundary, responded without 5xx or timeout. Authenticated, platform-admin, server-secret/signature, and provider-webhook methods did not return anonymous 2xx responses. Public/static 2xx responses remained limited to their classified boundary. No valid mutation payload or credential was supplied."
+    "evidence": "All exported methods across all 140 MenuList route handlers on the current local production build, including the four Growth Kits add-on APIs, responded without 5xx or timeout. Authenticated, platform-admin, server-secret/signature, and provider-webhook methods did not return anonymous 2xx responses. Public/static 2xx responses remained limited to their classified boundary. No valid mutation payload or credential was supplied."
   },
   "hostedApiAnonymousBoundary": {
     "baseUrl": "https://app.menulist.digital",
@@ -167,13 +168,314 @@
   "publicWebsiteRouteRender": {
     "baseUrl": "http://localhost:3000",
     "browser": "Connected Chrome",
-    "candidateFilesystem": "uncommitted",
-    "sourceBaselineCommit": "916b5c94d82b848fef791babeb49addbd3c794b8",
-    "testedAt": "2026-08-25T10:15:30+05:30",
+    "candidateFilesystem": "local coordinated worktree snapshot; not pushed or deployed",
+    "sourceBaselineCommit": "59e1dc2561750ed2d97764fa30df7614c3071fd2",
+    "testedAt": "2026-08-26T18:12:00+05:30",
     "sitemapRouteCount": 186,
     "uniqueRouteCount": 186,
     "routeManifestSha256": "30afee75c57db88ee93dec78926ed0b389a1ff7ddde99fb2510946d897e24fe8",
     "result": "PASS",
-    "evidence": "Every current sitemap URL rendered a main region and route-specific heading in connected Chrome without an application-error, internal-error, or Next.js not-found body. This proves render/recovery only; individual controls and successful transmitting mutations remain separately pending."
+    "evidence": "Every current sitemap URL rendered a main region and route-specific heading in connected Chrome without an application-error, internal-error, or Next.js not-found body. Four routes that were still showing the bounded loading shell at the initial 90 ms observation passed after a settled 900 ms retry. This proves render/recovery only; individual controls and successful transmitting mutations remain separately pending."
+  },
+  "currentLocalProductionRouteSmoke": {
+    "baseUrl": "http://localhost:3000",
+    "browser": "Node fetch plus Connected Chrome",
+    "candidateFilesystem": "local coordinated worktree snapshot; not pushed or deployed",
+    "sourceBaselineCommit": "59e1dc2561750ed2d97764fa30df7614c3071fd2",
+    "testedAt": "2026-08-26T17:55:49+05:30",
+    "nonDynamicMenuListPageRoutes": 134,
+    "statusCounts": {
+      "200": 123,
+      "301": 6,
+      "307": 3,
+      "308": 1,
+      "404": 1
+    },
+    "expected404": "/404",
+    "redirects": "Five customer-PWA action aliases returned 301 to /, /product returned 301 to /how-it-works, three /ops aliases returned 307 to canonical /platform routes, and /qrCode returned 308 to /qr-code.",
+    "result": "PASS_RENDER_BOUNDARY",
+    "evidence": "Every current non-dynamic MenuList page candidate completed without timeout or 5xx from the local production build. Connected Chrome separately exercised pricing Pro selection through exact checkout callback preservation, sign-in identifier whitespace normalization, contact empty-submit validation and announced recovery, plus focused password-normalization and browser/cache contract suites. Dynamic tenant/entity routes and remaining individual control interactions retain separate status."
+  },
+  "authenticatedOwnerControlInteractions": {
+    "baseUrl": "https://app.menulist.digital",
+    "servedBuildId": "59e1dc2561750ed2d97764fa30df7614c3071fd2",
+    "browser": "Connected Chrome",
+    "fixture": "Disposable reseller-labelled MenuList QA owner; tenant 4; store 4; active zero-value non-payment entitlement",
+    "viewport": "desktop",
+    "testedAt": "2026-08-26T23:05:00+05:30",
+    "result": "PASS",
+    "interactions": [
+      {
+        "source": "src/components/shared/dashboardShell/DashboardSidebarShell.tsx",
+        "controlActions": ["button@193", "action-handler@199"],
+        "evidence": "The reusable desktop sidebar button reached all 15 owner destinations through real visible controls, including nested-scroll Menu Manager; App settings and the theme action also activated, and the original dark theme was restored."
+      },
+      {
+        "source": "src/components/organisms/sidebar/index.tsx",
+        "controlActions": ["disclosure@323"],
+        "evidence": "Need Help opened the complete three-destination support popover. The hosted destination semantics remain tracked by MLRC-107 and are not represented as passing here."
+      },
+      {
+        "source": "src/components/organisms/appSettings/index.tsx",
+        "controlActions": ["dialog-action-surface@85", "button@95", "action-handler@98"],
+        "evidence": "App settings opened in place as a named dialog and Close settings panel dismissed it without changing the route."
+      },
+      {
+        "source": "src/components/templates/main-app/businessSettings/index.tsx",
+        "controlActions": ["disclosure@1775", "action-handler@1779"],
+        "evidence": "All ten Business Settings menu tabs activated in turn and exposed the requested active menuitem state without saving business data."
+      },
+      {
+        "source": "src/components/templates/main-app/businessSettings/tabs/SocialMediaTab.tsx",
+        "controlActions": ["button@61", "action-handler@64", "button@140", "action-handler@144"],
+        "evidence": "Add Platform created one unsaved custom platform row and Remove platform_1 removed it again. No business-settings save was invoked and the original social-link state was retained."
+      },
+      {
+        "source": "src/components/templates/main-app/businessSettings/tabs/CompliancePagesSection.tsx",
+        "controlActions": ["button@390", "action-handler@395", "button@429", "button@453", "button@466", "action-handler@469"],
+        "evidence": "Privacy, Terms, and Refund each became the pressed compliance-page selector before returning to Privacy. View page opened the disposable tenant's correct public privacy route. Use my own content exposed the custom plain-text editor and Cancel restored view mode; no policy content was saved or reset."
+      },
+      {
+        "source": "src/components/templates/main-app/businessSettings/tabs/AnalyticsTab.tsx",
+        "controlActions": ["button@38", "action-handler@41", "button@46", "action-handler@49", "disclosure@141"],
+        "evidence": "The Analytics Setup Wizard and Analytics Guide each opened from their visible owner controls. All five tracking-category disclosures expanded and were restored to their original collapsed state; no tracking switch or analytics identifier changed."
+      },
+      {
+        "source": "src/components/templates/main-app/businessSettings/tabs/AnalyticsSetupWizard.tsx",
+        "controlActions": ["dialog-action-surface@260", "button@277", "button@281"],
+        "evidence": "Every Next Step advanced through the complete six-step provider-neutral setup guidance, and Finish Setup dismissed the wizard without saving analytics settings or contacting an external provider."
+      },
+      {
+        "source": "src/components/templates/main-app/businessSettings/tabs/AnalyticsGuideModal.tsx",
+        "controlActions": ["dialog-action-surface@173", "button@184", "disclosure@189"],
+        "evidence": "Complete Guide became the selected analytics-guide tab and the named Close action dismissed the dialog. No external documentation link was opened."
+      },
+      {
+        "source": "src/components/templates/main-app/businessSettings/tabs/TimeSlotPresetsTab.tsx",
+        "controlActions": ["button@267", "action-handler@270", "button@330", "action-handler@335", "dialog-action-surface@337", "button@344", "dialog-action-surface@358"],
+        "evidence": "Add Preset and the first Edit Time Slot action opened the correctly named create/edit dialogs and each was cancelled. The first Delete action opened its destructive confirmation and was cancelled. No preset was created, updated, or deleted."
+      },
+      {
+        "source": "src/components/templates/main-app/businessSettings/tabs/DomainSettingsTab.tsx",
+        "controlActions": ["button@785", "action-handler@787", "button@791", "input@953", "button@969", "action-handler@974"],
+        "evidence": "The permanent tenant subdomain copied and opened the correct disposable public business page. The custom-domain field accepted the malformed value 'not a domain'; Check Availability returned the bounded validation message 'Invalid domain format. Example: yourbusiness.com'. The unsaved value was then cleared, with no claim, provider call, DNS change, or store mutation."
+      },
+      {
+        "source": "src/components/templates/main-app/businessSettings/tabs/PosSyncTab.tsx",
+        "controlActions": ["disclosure@948"],
+        "evidence": "Who should use this? collapsed and re-expanded while External sync is off remained truthful. No integration enablement, credential, webhook, or sync action was invoked."
+      },
+      {
+        "source": "src/components/templates/main-app/businessSettings/tabs/GoogleListingGuide.tsx",
+        "controlActions": ["button@250", "action-handler@254", "button@280", "action-handler@284"],
+        "evidence": "Copy link and Copy kit each produced their mounted success feedback for the disposable tenant's Official Business Page and Google profile handoff fields. Google Business Profile was not opened and no provider state changed."
+      },
+      {
+        "source": "src/components/templates/main-app/businessSettings/tabs/CustomerAppTab.tsx",
+        "controlActions": ["button@771", "action-handler@773"],
+        "evidence": "The enabled Customer App install link copied successfully from Business Settings. No icon, PWA setting, or store data was changed."
+      },
+      {
+        "source": "src/components/templates/main-app/settings/DigitalScreenSettings/ScreenLink.tsx",
+        "controlActions": ["button@119", "button@123", "button@221", "action-handler@225"],
+        "evidence": "Both menu and highlight TV links copied with visible confirmation and opened their correct tokenized tenant routes. Refresh TV status completed with the visible 'TV status refreshed' result. No screen setting or slide changed."
+      },
+      {
+        "source": "src/components/templates/main-app/businessSettings/tabs/SpecialHoursEditor.tsx",
+        "controlActions": ["button@247", "action-handler@250"],
+        "evidence": "Empty Add date was rejected with the owner-actionable 'Choose today or a future date.' message. No special-hours record was created."
+      },
+      {
+        "source": "src/components/templates/main-app/businessSettings/tabs/BusinessAttributesTab.tsx",
+        "controlActions": ["button@105", "action-handler@109", "button@116"],
+        "evidence": "Add custom attribute created one unsaved row and its named Remove custom attributes action removed it. No Business Settings save was invoked."
+      },
+      {
+        "source": "src/components/templates/main-app/businessSettings/tabs/WorkingHoursTab.tsx",
+        "controlActions": ["button@84", "action-handler@86", "button@97", "action-handler@99"],
+        "evidence": "Copy Monday to all days updated only the unsaved form draft and a route reload restored persisted hours. Clear All opened its explicit destructive confirmation and Cancel dismissed it; no weekly-hours write occurred."
+      },
+      {
+        "source": "src/components/templates/main-app/dashboard/OwnerDashboard/index.tsx",
+        "controlActions": ["button@445", "action-handler@447", "button@452", "button@480", "action-handler@482"],
+        "evidence": "Fix what needs attention reached Projects, Share menu reached Use MenuList, and the current owner-action Open control reached Projects through real coordinate pointer clicks."
+      },
+      {
+        "source": "src/components/templates/main-app/dashboard/OwnerDashboard/ViewModeTabs.tsx",
+        "controlActions": ["selection@108"],
+        "evidence": "Today, Overview, Graphs, Previous day, Last 7 Days, This Month, and Overall each became the checked dashboard selector after settled-state interaction."
+      },
+      {
+        "source": "src/components/templates/main-app/dashboard/OwnerDashboard/MenuAnalyticsDetailsCard.tsx",
+        "controlActions": ["disclosure@33"],
+        "evidence": "Top Items, Categories, and Search Demand each changed from collapsed to expanded in the current Today analytics view."
+      },
+      {
+        "source": "src/components/templates/main-app/today/index.tsx",
+        "controlActions": ["button@296", "action-handler@298", "button@316", "action-handler@319"],
+        "evidence": "What is this opened the Today guide and its named Close Today guide control dismissed it."
+      },
+      {
+        "source": "src/components/templates/main-app/businessSettings/TempStatusCard.tsx",
+        "controlActions": ["button@339", "action-handler@342", "input@362"],
+        "evidence": "All six temporary-status presets became pressed in turn; the custom input rendered QA preview only and was cleared. Show to customers was not invoked, so no public status changed."
+      },
+      {
+        "source": "src/components/templates/main-app/feedback/FeedbackFilters.tsx",
+        "controlActions": ["selection@35", "selection@42", "selection@43", "selection@58"],
+        "evidence": "All, Needs Attention, and Resolved became checked after loading settled and rendered truthful 1, 0, and 1 visible counts."
+      },
+      {
+        "source": "src/components/templates/main-app/feedback/FeedbackCard.tsx",
+        "controlActions": ["button@319", "action-handler@324"],
+        "evidence": "The isolated resolved feedback changed to New and then returned to Resolved. A transient Firestore unavailable warning recovered through the existing retry path, and the final owner state matched the starting state."
+      },
+      {
+        "source": "src/components/templates/main-app/projects/editorView/Editor.tsx",
+        "controlActions": ["input@1292", "selection@1314"],
+        "evidence": "Projects search narrowed five menu items to the exact Cold Coffee result and clearing restored the full editor. The Advanced/Traditional segmented view switched by keyboard and returned to the starting Advanced editor state."
+      },
+      {
+        "source": "src/components/templates/main-app/projects/editorView/EditorFiltersPopover.tsx",
+        "controlActions": ["button@276", "action-handler@279", "disclosure@289", "button@298"],
+        "evidence": "Filters opened with all category, price, availability, image, and status controls; applying the unchanged defaults closed the popover and retained all five items. No data mutation occurred."
+      },
+      {
+        "source": "src/components/templates/main-app/projects/editorView/EditorActionsPopover.tsx",
+        "controlActions": ["disclosure@109", "button@124"],
+        "evidence": "More Actions opened and exposed all currently enabled menu-management destinations. Hosted action cards were confirmed pointer-only and remain defect evidence for the local MLRC-112 correction, so their action handler is not marked passing."
+      },
+      {
+        "source": "src/components/templates/main-app/useMenuList/index.tsx",
+        "controlActions": ["button@1116", "action-handler@1120", "button@1132", "action-handler@1135", "button@1143", "action-handler@1146", "button@1450", "action-handler@1454", "button@1493", "button@1496", "button@1534", "button@1537", "button@1779", "action-handler@1782", "button@1798", "action-handler@1801", "button@1826", "action-handler@1829", "dialog-action-surface@1854", "button@1858", "button@2016", "action-handler@2019"],
+        "evidence": "Copy Menu Link and Copy Screen Link each produced a named success acknowledgement. Open Menu reached the exact five-item public menu. Both normal/highlight screen links copied and opened their correct tokenized routes. Refresh TV status completed once. Setup, Printing, and Sharing guides each opened and dismissed correctly. Each of the three QR asset Download controls completed without a visible error; downloaded file contents were not independently inspected."
+      },
+      {
+        "source": "src/components/templates/main-app/ShareLinkCard.tsx",
+        "controlActions": ["button@243", "button@254", "button@257", "button@262", "action-handler@266"],
+        "evidence": "All three rendered share-card Copy Link and Copy Message actions completed. Each Open control reached its correct public business-profile, menu, or install URL. The business-profile Where should I share this action opened and dismissed the correct guide. No WhatsApp action was invoked."
+      },
+      {
+        "source": "src/components/templates/main-app/useMenuList/CommunicationKit.tsx",
+        "controlActions": ["button@257", "action-handler@261"],
+        "evidence": "All eight rendered customer/staff communication templates completed their Copy Message action and the final action rendered the named Message copied acknowledgement. No WhatsApp navigation was invoked."
+      },
+      {
+        "source": "src/components/templates/main-app/printableAssetTemplates/PrintableAssetTemplatesRoute.tsx",
+        "controlActions": ["button@957", "action-handler@962", "action-handler@1123", "dialog-action-surface@1187", "button@1304", "action-handler@1312"],
+        "evidence": "All fifteen available asset-type selectors became pressed. Three representative platform templates opened their named preview/action modal, and Customize in editor opened the embedded MenuList Creative Editor. No download, export, save, upload, or provider action was invoked."
+      },
+      {
+        "source": "src/modules/creative-editor/CreativeEditor.tsx",
+        "controlActions": ["button@7716", "button@7726", "button@7779", "button@7860"],
+        "evidence": "Inside the print-asset editor, grid/rulers and safe-area guides toggled and were restored, Preview opened and closed, and every enabled tool-rail panel rendered its named workspace: AI Tools, Templates, Background, Illustrations, Graphics, Characters, Images, Text, Styles, Tools, QRCode, Barcode, My Stuff, and Brand Kit. No design was saved or exported."
+      },
+      {
+        "source": "src/components/templates/main-app/users/usersList/index.tsx",
+        "controlActions": ["button@318"],
+        "evidence": "Add User opened the owner-scoped staff form for the disposable QA tenant. The form was dismissed without creating a user."
+      },
+      {
+        "source": "src/components/templates/main-app/users/usersList/usersListTable.tsx",
+        "controlActions": ["button@106", "button@110"],
+        "evidence": "View details opened the current owner's safe profile/store-access drawer, and Edit opened the guarded owner form with the owner-transfer warning and protected store-access state. No account mutation, passcode generation, sign-out, or removal was invoked."
+      },
+      {
+        "source": "src/components/templates/main-app/users/usersList/userDetailsModal.tsx",
+        "controlActions": ["button@31", "button@32"],
+        "evidence": "The details drawer Edit action opened the matching form and Close dismissed the drawer with no persisted change."
+      },
+      {
+        "source": "src/components/templates/main-app/users/usersList/userForm/index.tsx",
+        "controlActions": ["button@354", "button@357", "button@374", "action-handler@380"],
+        "evidence": "Staff Details, Store Access, and Permissions tabs each activated. Empty Add was rejected by required-field validation, and Cancel closed the form. No staff record was created or updated."
+      },
+      {
+        "source": "src/app/(main)/locations/page.tsx",
+        "controlActions": ["button@312", "action-handler@315"],
+        "evidence": "Add Outlet opened the correct entitlement-aware modal for the reseller fixture. No location was created."
+      },
+      {
+        "source": "src/components/organisms/AddOutletModal/index.tsx",
+        "controlActions": ["dialog-action-surface@330"],
+        "evidence": "The modal truthfully showed Prepaid location needed, kept Add disabled, and canceled safely without checkout or provider handoff."
+      },
+      {
+        "source": "src/components/organisms/OutletPolicyEditor/index.tsx",
+        "controlActions": ["selection@121"],
+        "evidence": "The Edit item descriptions outlet-policy switch persisted one change and was returned to its original false state; a settled reload confirmed the restoration."
+      },
+      {
+        "source": "src/components/templates/main-app/billing/index.tsx",
+        "controlActions": ["button@388"],
+        "evidence": "Contact support reached the canonical /help-center/ticket owner route. No ticket or payment action was submitted."
+      },
+      {
+        "source": "src/components/templates/main-app/billing/ActiveSubscriptionCard.tsx",
+        "controlActions": ["button@615"],
+        "evidence": "View Usage reached /transactions after settled navigation while the provider-free QA entitlement and 75-of-75 credit state remained truthful."
+      },
+      {
+        "source": "src/components/templates/main-app/billing/BillingHistory.tsx",
+        "controlActions": ["button@233", "action-handler@234"],
+        "evidence": "View Billing History completed its bounded hosted load and truthfully rendered 'No billing history was found for this store'; the control recovered as Check Billing History Again. No payment, invoice, or provider action was invoked."
+      },
+      {
+        "source": "src/components/templates/main-app/transactions/index.tsx",
+        "controlActions": ["button@283", "action-handler@287", "button@314", "action-handler@317", "selection@331", "button@340", "action-handler@341"],
+        "evidence": "The image-processing record opened its Transaction details modal from the row and keyboard Details action; Refresh completed; the action filter selected Image processing; Reset restored the original record set. Pagination and date-range controls were not invoked."
+      },
+      {
+        "source": "src/components/templates/main-app/helpCenter/MainSectionTabs.tsx",
+        "controlActions": ["action-handler@22"],
+        "evidence": "Knowledge Base, Submit a Ticket, Share Feedback, Read FAQ, and Contact Us reached their intended help surfaces. What's New retained the help root and targeted its current-page section."
+      },
+      {
+        "source": "src/components/organisms/addSupportTicket/index.tsx",
+        "controlActions": ["form@176", "button@213"],
+        "evidence": "Empty Send Request was rejected with the required subject and issue-detail messages. No ticket, attachment, or external request was transmitted."
+      },
+      {
+        "source": "src/components/templates/main-app/aiMenuManager/AiMenuManagerRoute.tsx",
+        "controlActions": ["button@1402", "action-handler@1404", "button@1495", "action-handler@1497", "button@1571", "action-handler@1573", "button@1649", "action-handler@1650", "disclosure@1689", "button@1711", "input@1719", "button@1776"],
+        "evidence": "After the existing retry/reload recovery restored the composer, suggestions opened and populated a draft, Work on selected Item and Cold Coffee, Done closed the picker, Clear removed context, and clearing the draft disabled Send. No Menu Manager command or menu mutation was submitted."
+      },
+      {
+        "source": "src/components/templates/main-app/growthos/index.tsx",
+        "controlActions": ["button@561", "button@581", "selection@593", "input@600", "button@607"],
+        "evidence": "All five prepared output Copy actions and Copy counter line returned non-empty distinct clipboard text. A synthetic one-star review produced the guarded owner-review warning and draft reply; rating and review text were restored to the original empty five-star state. No share, download, post, payment, or provider action was invoked."
+      }
+    ]
+  },
+  "publicCustomerControlInteractions": {
+    "baseUrl": "https://qa-rc-144110a18d.menulist.digital/menu",
+    "servedBuildId": "59e1dc2561750ed2d97764fa30df7614c3071fd2",
+    "browser": "Connected Chrome",
+    "fixture": "Disposable MenuList QA tenant 4; Main Store 4; published five-item menu",
+    "viewport": "desktop",
+    "testedAt": "2026-08-26T21:40:00+05:30",
+    "result": "PASS",
+    "interactions": [
+      {
+        "source": "src/components/templates/main-app/projects/b2cView/output/MenuSearchBar.tsx",
+        "controlActions": ["input@233", "action-handler@240", "button@265", "action-handler@266"],
+        "evidence": "Search narrowed the five-item public menu to the exact Cold Coffee result, announced one result across one section, and Clear search restored every item."
+      },
+      {
+        "source": "src/components/templates/main-app/projects/b2cView/menuPage/menuPageNew.tsx",
+        "controlActions": ["button@2434", "action-handler@2436", "link@2479", "action-handler@2482", "action-handler@2621"],
+        "evidence": "Show all restored the full menu after search; Featured and Bowls category links updated the correct anchors; selecting Cold Coffee opened its exact item dialog."
+      },
+      {
+        "source": "src/components/templates/main-app/projects/b2cView/output/PDPModal.tsx",
+        "controlActions": ["button@763", "action-handler@766"],
+        "evidence": "Close item details dismissed the Cold Coffee dialog and restored focus to the triggering Cold Coffee menu card. Native sharing was not invoked."
+      },
+      {
+        "source": "src/components/templates/main-app/projects/b2cView/output/FeedbackNudge.tsx",
+        "controlActions": ["button@257", "action-handler@258"],
+        "evidence": "The non-transmitting Not now action dismissed the customer feedback nudge. No feedback record or external review navigation was created."
+      }
+    ]
   }
 }

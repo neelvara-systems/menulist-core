@@ -13,6 +13,24 @@ const runtimeEvidencePath = path.join(
   '__docs__/audits/menulist-rc-runtime-evidence.json',
 );
 
+const INTERACTIVE_JSX_TAG_KINDS = new Map([
+  ['Segmented', 'selection'],
+  ['ColorPicker', 'selection'],
+  ['Rate', 'selection'],
+  ['Slider', 'selection'],
+  ['RangePicker', 'selection'],
+  ['TreeSelect', 'selection'],
+  ['Tree', 'selection'],
+  ['Collapse', 'disclosure'],
+  ['Tabs', 'disclosure'],
+  ['Dropdown', 'disclosure'],
+  ['Menu', 'disclosure'],
+  ['Popover', 'disclosure'],
+  ['Modal', 'dialog-action-surface'],
+  ['Drawer', 'dialog-action-surface'],
+  ['Popconfirm', 'dialog-action-surface'],
+]);
+
 function fail(message) {
   console.error(`MenuList RC inventory verification failed: ${message}`);
   process.exit(1);
@@ -113,7 +131,23 @@ if (!fs.existsSync(runtimeEvidencePath)) fail('runtime evidence registry is miss
 const runtimeEvidence = JSON.parse(fs.readFileSync(runtimeEvidencePath, 'utf8'));
 const privateAccessEvidence = runtimeEvidence.privateRouteAccess;
 if (privateAccessEvidence?.result !== 'PASS') fail('private-route browser access evidence is not passing');
-if (new Set(privateAccessEvidence.routes).size !== 58) fail('private-route browser access evidence must cover 58 unique routes');
+const expectedPrivateAccessRoutes = new Set(mainPages.map((row) => row.route_or_component));
+const privateAccessRoutes = new Set(privateAccessEvidence.routes);
+const missingPrivateAccessRoutes = [...expectedPrivateAccessRoutes]
+  .filter((route) => !privateAccessRoutes.has(route));
+const unexpectedPrivateAccessRoutes = [...privateAccessRoutes]
+  .filter((route) => !expectedPrivateAccessRoutes.has(route));
+if (
+  privateAccessRoutes.size !== expectedPrivateAccessRoutes.size
+  || missingPrivateAccessRoutes.length > 0
+  || unexpectedPrivateAccessRoutes.length > 0
+) {
+  fail([
+    'private-route browser access evidence does not match the current private-page inventory',
+    `missing: ${missingPrivateAccessRoutes.join(', ') || 'none'}`,
+    `unexpected: ${unexpectedPrivateAccessRoutes.join(', ') || 'none'}`,
+  ].join('; '));
+}
 const authenticatedOwnerNavigationEvidence = runtimeEvidence.authenticatedOwnerNavigation;
 if (authenticatedOwnerNavigationEvidence?.result !== 'PASS') {
   fail('authenticated owner navigation evidence is not passing');
@@ -129,6 +163,35 @@ if (
   || growthKitsPage.test_result !== 'PASS_AUTHENTICATED_RENDER'
   || !authenticatedOwnerNavigationRoutes.has('/growth-kits')
 ) fail('Growth Kits must remain an in-scope authenticated MenuList owner surface');
+const recordedControlEvidenceKeys = new Set();
+const verifyControlEvidenceSet = (evidenceSet, label, minimumRows) => {
+  if (evidenceSet?.result !== 'PASS') fail(`${label} control-interaction evidence is not passing`);
+  let recordedRows = 0;
+  for (const interaction of evidenceSet.interactions ?? []) {
+    if (!interaction.source || !interaction.evidence || !interaction.controlActions?.length) {
+      fail(`${label} control-interaction evidence has an incomplete entry`);
+    }
+    for (const controlAction of interaction.controlActions) {
+      const key = `${interaction.source}|${controlAction}`;
+      if (recordedControlEvidenceKeys.has(key)) fail(`duplicate runtime control evidence ${key}`);
+      recordedControlEvidenceKeys.add(key);
+      recordedRows += 1;
+      const row = objects.find((candidate) => (
+        candidate.item_type === 'user-control-candidate'
+        && candidate.route_or_component === interaction.source
+        && candidate.control_or_action === controlAction
+      ));
+      if (!row) fail(`${label} control evidence no longer resolves ${key}`);
+      if (
+        row.test_result !== 'PASS_HOSTED_INTERACTION'
+        || row.final_verification_status !== 'HOSTED_INTERACTION_PASSED'
+      ) fail(`${label} control evidence was not applied to ${key}`);
+    }
+  }
+  if (recordedRows < minimumRows) fail(`only ${recordedRows} ${label} control rows have runtime evidence`);
+};
+verifyControlEvidenceSet(runtimeEvidence.authenticatedOwnerControlInteractions, 'authenticated owner', 30);
+verifyControlEvidenceSet(runtimeEvidence.publicCustomerControlInteractions, 'public customer', 10);
 const apiAnonymousBoundaryEvidence = runtimeEvidence.apiAnonymousBoundary;
 if (apiAnonymousBoundaryEvidence?.result !== 'PASS') fail('anonymous API boundary evidence is not passing');
 if (
@@ -223,22 +286,45 @@ if (
   desktopOnlyPrivatePages.length !== 1
   || desktopOnlyPrivatePages[0].route_or_component !== '/platform/test-sentry'
 ) fail('private viewport inventory must retain only /platform/test-sentry as desktop-only');
-const menuListControls = objects.filter((row) => (
-  row.item_type === 'user-control-candidate'
-  && row.product_area === 'MenuList'
-));
+const allControls = objects.filter((row) => row.item_type === 'user-control-candidate');
+const menuListControls = allControls.filter((row) => row.product_area === 'MenuList');
 const unresolvedRenderTree = menuListControls.filter((row) => row.screen_or_tab === 'DERIVE_FROM_RENDER_TREE');
 if (unresolvedRenderTree.length > 0) fail(`${unresolvedRenderTree.length} MenuList controls still lack static page reachability`);
 const staticallyReachedControls = menuListControls.filter((row) => row.screen_or_tab !== 'UNREACHED_BY_APP_PAGE_STATIC_GRAPH');
 const staticallyUnreachedControls = menuListControls.filter((row) => row.screen_or_tab === 'UNREACHED_BY_APP_PAGE_STATIC_GRAPH');
 const controlKindsBySourceLine = new Map();
-for (const row of menuListControls) {
+for (const row of allControls) {
   const separator = row.control_or_action.lastIndexOf('@');
   if (separator < 0) fail(`control ${row.inventory_id} has no source-line identity`);
   const sourceLine = `${row.route_or_component}@${row.control_or_action.slice(separator + 1)}`;
   const kinds = controlKindsBySourceLine.get(sourceLine) ?? [];
   kinds.push(row.control_or_action.slice(0, separator));
   controlKindsBySourceLine.set(sourceLine, kinds);
+}
+for (const sourceRoot of ['src/components', 'src/modules', 'src/app']) {
+  const pending = [path.join(root, sourceRoot)];
+  while (pending.length > 0) {
+    const current = pending.pop();
+    if (!current || !fs.existsSync(current)) continue;
+    const stat = fs.statSync(current);
+    if (stat.isDirectory()) {
+      for (const entry of fs.readdirSync(current)) pending.push(path.join(current, entry));
+      continue;
+    }
+    if (!/\.(?:tsx?|jsx?)$/.test(current)) continue;
+    const relativeSource = path.relative(root, current).split(path.sep).join('/');
+    const lines = fs.readFileSync(current, 'utf8').split(/\r?\n/);
+    for (let index = 0; index < lines.length; index += 1) {
+      for (const [tag, expectedKind] of INTERACTIVE_JSX_TAG_KINDS) {
+        if (!new RegExp(`<${tag}\\b`).test(lines[index])) continue;
+        const sourceLine = `${relativeSource}@${index + 1}`;
+        const discoveredKinds = controlKindsBySourceLine.get(sourceLine) ?? [];
+        if (!discoveredKinds.includes(expectedKind)) {
+          fail(`${sourceLine} omits interactive <${tag}> as ${expectedKind}`);
+        }
+      }
+    }
+  }
 }
 for (const [sourceLine, kinds] of controlKindsBySourceLine) {
   const concreteKinds = kinds.filter((kind) => [
@@ -247,6 +333,8 @@ for (const [sourceLine, kinds] of controlKindsBySourceLine) {
     'form',
     'input',
     'selection',
+    'disclosure',
+    'dialog-action-surface',
     'upload',
   ].includes(kind));
   if (kinds.includes('action-handler') && concreteKinds.length > 0) {

@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 };
 
 export default function AnswerlatticeLocalWidgetCertificationPage() {
-    const widgetKey = process.env.NEXT_PUBLIC_MENULIST_ANSWERLATTICE_WIDGET_KEY?.trim();
+    const widgetKey = process.env.NEXT_PUBLIC_ANSWERLATTICE_WIDGET_KEY?.trim();
     if (process.env.NODE_ENV !== 'development' || !widgetKey) notFound();
 
     return (

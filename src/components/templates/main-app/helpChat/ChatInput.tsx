@@ -412,6 +412,7 @@ const ChatInput = ({ onSendMessage, onInputChange, onImageUpload, placeholder, m
                             {selectedImage.size ? (selectedImage.size / 1024).toFixed(0) : '0'} KB
                         </span>
                         <Button
+                            aria-label="Remove uploaded image"
                             type="text"
                             icon={<LuX size={14} />}
                             onClick={handleRemoveImage}

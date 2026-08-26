@@ -1,5 +1,14 @@
 # Global Accessibility Verification
 
+The maintained source boundary parses the complete MenuList owner template,
+shared organism, and shared Ant-component TSX surfaces and rejects icon-only
+Ant buttons without an accessible name. It preserves named Advanced/Traditional
+view selectors and requires the zoom-percentage reset to be a native named
+button rather than a pointer-only span (MLRC-108/MLRC-110).
+
+The desktop owner breadcrumb also keeps explicit names on the sidebar
+expand/collapse action and localized Home action (MLRC-109).
+
 ## Source gate
 
 `npm run verify:global-accessibility-boundary` checks:
@@ -8,6 +17,11 @@
 - raw TSX images under `src/app` and `src/components` have alternatives;
 - shared mobile keyboard, touch-target, back-label, and floating-label contracts remain present;
 - owner and website skip navigation remains wired;
+- desktop vertical and horizontal support-popover destinations remain native
+  buttons instead of pointer-only clickable containers;
+- owner business settings, dashboard, support chat, reseller onboarding,
+  digital-screen settings, activity history, AI search, knowledge base, drawer,
+  and loading controls retain stable accessible names;
 - global focus and reduced-motion styles remain active;
 - known clickable-span and undersized-mobile-control regressions do not return;
 - global access-denied recovery copy uses readable punctuation instead of

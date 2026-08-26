@@ -102,7 +102,7 @@ Widget keys are shown once at creation time and are not recoverable by secret-ba
 MenuList loads Answerlattice as an external client only when this key exists:
 
 ```bash
-NEXT_PUBLIC_MENULIST_ANSWERLATTICE_WIDGET_KEY=al_full_widget_key_shown_once
+NEXT_PUBLIC_ANSWERLATTICE_WIDGET_KEY=al_full_widget_key_shown_once
 NEXT_PUBLIC_MENULIST_ANSWERLATTICE_WIDGET_SCRIPT_SRC=https://answerlattice.com/widget/v1/answerlattice-widget.js
 ```
 

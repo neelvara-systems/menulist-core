@@ -179,6 +179,7 @@ const PastActivityScreen = () => {
             <div className={styles.pastActivityContainer}>
                 <div className={styles.header}>
                     <Button
+                        aria-label="Go back"
                         type="text"
                         icon={<LuArrowLeft />}
                         onClick={() => router.back()}
@@ -235,6 +236,7 @@ const PastActivityScreen = () => {
             <div className={styles.pastActivityContainer}>
                 <div className={styles.header}>
                     <Button
+                        aria-label="Go back"
                         type="text"
                         icon={<LuArrowLeft />}
                         onClick={() => router.back()}
@@ -294,6 +296,7 @@ const PastActivityScreen = () => {
         <div className={styles.pastActivityContainer}>
             <div className={styles.header}>
                 <Button
+                    aria-label="Go back"
                     type="text"
                     icon={<LuArrowLeft />}
                     onClick={() => router.back()}

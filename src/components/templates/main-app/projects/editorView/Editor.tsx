@@ -1283,6 +1283,7 @@ function Editor({ selectedProject, onRemove, addFileButton, initialQualityAction
                     >
                         <Flex gap={8}>
                             <Button
+                                aria-label="Back to projects"
                                 shape="circle"
                                 icon={<LuArrowLeft />}
                                 onClick={onBackClick}
@@ -1321,6 +1322,7 @@ function Editor({ selectedProject, onRemove, addFileButton, initialQualityAction
                                             <Tooltip title="Advanced View - Side-by-side image and editor (Ctrl+\\)">
                                                 <div style={{ padding: "4px 8px" }}>
                                                     <LuLayoutGrid size={16} />
+                                                    <span className="sr-only">Advanced view</span>
                                                 </div>
                                             </Tooltip>
                                         ),
@@ -1331,6 +1333,7 @@ function Editor({ selectedProject, onRemove, addFileButton, initialQualityAction
                                             <Tooltip title="Traditional View - Category-based editing (Ctrl+\\)">
                                                 <div style={{ padding: "4px 8px" }}>
                                                     <LuLayoutList size={16} />
+                                                    <span className="sr-only">Traditional view</span>
                                                 </div>
                                             </Tooltip>
                                         ),
@@ -1346,6 +1349,7 @@ function Editor({ selectedProject, onRemove, addFileButton, initialQualityAction
                             {FEATURE_FLAGS.ENABLE_EDITOR_KEYBOARD_SHORTCUTS && (
                                 <Tooltip title="Keyboard Shortcuts (Shift+?)">
                                     <Button
+                                        aria-label="Open keyboard shortcuts"
                                         icon={<LuKeyboard />}
                                         onClick={() => setIsShortcutsHelpOpen(true)}
                                     ></Button>

@@ -673,6 +673,7 @@ function CustomDomainTab({ scrollRef, storeDetails, onStoreUpdate }: CustomDomai
                                             </td>
                                             <td style={{ padding: '8px' }}>
                                                 <Button
+                                                    aria-label={copied === `${i}` ? 'DNS record copied' : `Copy ${record.type} DNS record value`}
                                                     size="small"
                                                     type="text"
                                                     icon={copied === `${i}` ? <LuCheck /> : <LuCopy />}

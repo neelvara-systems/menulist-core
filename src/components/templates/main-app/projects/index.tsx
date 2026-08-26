@@ -3510,6 +3510,7 @@ function ProjectsPage() {
                     {currentView == 1 && !activeProject?.files?.length && (
                         <Tooltip title="Learn how the process works" placement="left">
                             <Button
+                                aria-label="Open project setup guide"
                                 shape='circle'
                                 icon={<LuInfo size={20} />}
                                 size="large"

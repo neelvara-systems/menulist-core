@@ -7,6 +7,13 @@ import {
     AnswerlatticeSourceGovernanceSchema,
 } from '@lib/answerlattice/knowledgeIntakeContracts';
 import { normalizeAnswerlatticeKnowledgeIntakeSourceId } from '@lib/answerlattice/knowledgeIntakeIdBoundary';
+import { buildAnswerlatticeKnowledgeIntakePublishBatches } from '@lib/answerlattice/knowledgeIntakePublishBatching';
+import {
+    markAnswerlatticeKnowledgeIntakeItemsPublished,
+    upsertAnswerlatticeKnowledgeIntakeJob,
+    upsertAnswerlatticeKnowledgeIntakeReviewItem,
+    upsertAnswerlatticeKnowledgeIntakeSource,
+} from '@lib/answerlattice/knowledgeIntakeMutationState';
 import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
 import { createLatestRequestGuard } from '@lib/runtime/latestRequestGuard';
 import { useAnswerlatticeAccess } from '@providers/answerlatticeAccessProvider';
@@ -451,6 +458,13 @@ export function useKnowledgeIntake() {
         }
     }, [enabled, scopeKey, visibleActiveJobId]);
 
+    const refreshAfterMutation = useCallback((jobId: string, includeJobs = false) => {
+        void (async () => {
+            if (includeJobs) await refreshJobs();
+            await refreshBundle(jobId);
+        })();
+    }, [refreshBundle, refreshJobs]);
+
     useEffect(() => {
         jobsRequestGuardRef.current.invalidate();
         bundleRequestGuardRef.current.invalidate();
@@ -488,9 +502,12 @@ export function useKnowledgeIntake() {
             });
             if (!isAnswerlatticeKnowledgeIntakeScopeCurrent(operationScopeKey, scopeKeyRef.current)) return null;
             setActiveJobId(data.job.id);
-            await refreshJobs();
-            await refreshBundle(data.job.id);
+            setJobs(current => upsertAnswerlatticeKnowledgeIntakeJob(current, data.job));
+            setJobsScopeKey(operationScopeKey);
+            setBundle({ job: data.job, sources: [], reviewItems: [] });
+            setBundleScopeKey(operationScopeKey);
             message.success('Knowledge intake created');
+            refreshAfterMutation(data.job.id, true);
             return data.job;
         } catch (error) {
             if (!isAnswerlatticeKnowledgeIntakeScopeCurrent(operationScopeKey, scopeKeyRef.current)) return null;
@@ -499,7 +516,7 @@ export function useKnowledgeIntake() {
         } finally {
             finishKnowledgeIntakeSavingOperation(savingOperationCountRef, setSaving);
         }
-    }, [refreshBundle, refreshJobs]);
+    }, [refreshAfterMutation]);
 
     const addSource = useCallback(async (jobId: string, input: Record<string, any>) => {
         const operationScopeKey = scopeKeyRef.current;
@@ -515,9 +532,9 @@ export function useKnowledgeIntake() {
                 body: JSON.stringify(input),
             });
             if (scopeKeyRef.current !== operationScopeKey) return null;
-            await refreshBundle(jobId);
-            if (scopeKeyRef.current !== operationScopeKey) return null;
+            setBundle(current => upsertAnswerlatticeKnowledgeIntakeSource(current, jobId, data.source));
             message.success(data.source.duplicate ? 'Source already exists in this intake' : 'Source added');
+            refreshAfterMutation(jobId);
             return data.source;
         } catch {
             if (scopeKeyRef.current !== operationScopeKey) return null;
@@ -526,7 +543,7 @@ export function useKnowledgeIntake() {
         } finally {
             finishKnowledgeIntakeSavingOperation(savingOperationCountRef, setSaving);
         }
-    }, [refreshBundle]);
+    }, [refreshAfterMutation]);
 
     const updateSourceGovernance = useCallback(async (
         jobId: string,
@@ -632,12 +649,12 @@ export function useKnowledgeIntake() {
                 responseKind: 'media_source_add',
             });
             if (scopeKeyRef.current !== operationScopeKey) return null;
-            await refreshBundle(jobId);
-            if (scopeKeyRef.current !== operationScopeKey) return null;
+            setBundle(current => upsertAnswerlatticeKnowledgeIntakeSource(current, jobId, data.source));
             const units = Number(data.usage?.unitsConsumed || 0);
             message.success(units > 0
                 ? `Media extracted and ${units} support credit${units === 1 ? '' : 's'} recorded`
                 : 'Media extracted');
+            refreshAfterMutation(jobId);
             return data;
         } catch {
             if (scopeKeyRef.current !== operationScopeKey) return null;
@@ -646,7 +663,7 @@ export function useKnowledgeIntake() {
         } finally {
             finishKnowledgeIntakeSavingOperation(savingOperationCountRef, setSaving);
         }
-    }, [refreshBundle]);
+    }, [refreshAfterMutation]);
 
     const discoverLinks = useCallback(async (url: string) => {
         const operationScopeKey = scopeKeyRef.current;
@@ -704,9 +721,8 @@ export function useKnowledgeIntake() {
                 body: JSON.stringify({}),
             });
             if (scopeKeyRef.current !== operationScopeKey) return null;
-            await refreshBundle(jobId);
-            if (scopeKeyRef.current !== operationScopeKey) return null;
             message.success(`${data.result.created} review draft${data.result.created === 1 ? '' : 's'} prepared`);
+            refreshAfterMutation(jobId);
             return data.result;
         } catch {
             if (scopeKeyRef.current !== operationScopeKey) return null;
@@ -715,14 +731,14 @@ export function useKnowledgeIntake() {
         } finally {
             finishKnowledgeIntakeSavingOperation(savingOperationCountRef, setSaving);
         }
-    }, [refreshBundle]);
+    }, [refreshAfterMutation]);
 
     const updateReviewItem = useCallback(async (jobId: string, itemId: string, patch: Record<string, any>) => {
         const operationScopeKey = scopeKeyRef.current;
         if (!operationScopeKey) return false;
         beginKnowledgeIntakeSavingOperation(savingOperationCountRef, setSaving);
         try {
-            await apiJson<KnowledgeIntakeReviewItemResponse>(`/api/answerlattice/knowledge-intake/jobs/${encodeURIComponent(jobId)}/review-items/${encodeURIComponent(itemId)}`, {
+            const data = await apiJson<KnowledgeIntakeReviewItemResponse>(`/api/answerlattice/knowledge-intake/jobs/${encodeURIComponent(jobId)}/review-items/${encodeURIComponent(itemId)}`, {
                 fallbackMessage: ANSWERLATTICE_INTAKE_REVIEW_ITEM_UPDATE_FAILED,
                 isValid: isKnowledgeIntakeReviewItemResponse,
                 responseKind: 'review_item_update',
@@ -731,8 +747,8 @@ export function useKnowledgeIntake() {
                 body: JSON.stringify(patch),
             });
             if (scopeKeyRef.current !== operationScopeKey) return false;
-            await refreshBundle(jobId);
-            if (scopeKeyRef.current !== operationScopeKey) return false;
+            setBundle(current => upsertAnswerlatticeKnowledgeIntakeReviewItem(current, jobId, data.item));
+            refreshAfterMutation(jobId);
             return true;
         } catch {
             if (scopeKeyRef.current !== operationScopeKey) return false;
@@ -741,27 +757,41 @@ export function useKnowledgeIntake() {
         } finally {
             finishKnowledgeIntakeSavingOperation(savingOperationCountRef, setSaving);
         }
-    }, [refreshBundle]);
+    }, [refreshAfterMutation]);
 
     const publishJob = useCallback(async (jobId: string, itemIds?: string[]) => {
         const operationScopeKey = scopeKeyRef.current;
         if (!operationScopeKey) return null;
+        const acceptedItemIds = itemIds?.length
+            ? itemIds
+            : visibleBundle.reviewItems
+                .filter(item => item.status === 'accepted')
+                .map(item => item.id);
+        const publishBatches = buildAnswerlatticeKnowledgeIntakePublishBatches(acceptedItemIds);
+        if (publishBatches.length === 0) return null;
         beginKnowledgeIntakeSavingOperation(savingOperationCountRef, setSaving);
         try {
-            const data = await apiJson<KnowledgeIntakePublishResponse>(`/api/answerlattice/knowledge-intake/jobs/${encodeURIComponent(jobId)}/publish`, {
-                fallbackMessage: ANSWERLATTICE_INTAKE_ITEMS_PUBLISH_FAILED,
-                isValid: isKnowledgeIntakePublishResponse,
-                responseKind: 'job_publish',
-            }, {
-                method: 'POST',
-                body: JSON.stringify({ itemIds }),
-            });
+            const published: KnowledgeIntakePublishResponse['result']['published'] = [];
+            for (const batch of publishBatches) {
+                const data = await apiJson<KnowledgeIntakePublishResponse>(`/api/answerlattice/knowledge-intake/jobs/${encodeURIComponent(jobId)}/publish`, {
+                    fallbackMessage: ANSWERLATTICE_INTAKE_ITEMS_PUBLISH_FAILED,
+                    isValid: isKnowledgeIntakePublishResponse,
+                    responseKind: 'job_publish',
+                }, {
+                    method: 'POST',
+                    body: JSON.stringify({ itemIds: batch }),
+                });
+                published.push(...data.result.published);
+            }
             if (scopeKeyRef.current !== operationScopeKey) return null;
-            await refreshJobs();
-            await refreshBundle(jobId);
-            if (scopeKeyRef.current !== operationScopeKey) return null;
-            message.success(`${data.result.published.length} approved item${data.result.published.length === 1 ? '' : 's'} published`);
-            return data.result;
+            setBundle(current => markAnswerlatticeKnowledgeIntakeItemsPublished(
+                current,
+                jobId,
+                published.map(item => item.itemId),
+            ));
+            message.success(`${published.length} approved item${published.length === 1 ? '' : 's'} published`);
+            refreshAfterMutation(jobId, true);
+            return { published };
         } catch {
             if (scopeKeyRef.current !== operationScopeKey) return null;
             message.error(ANSWERLATTICE_INTAKE_ITEMS_PUBLISH_FAILED);
@@ -769,7 +799,7 @@ export function useKnowledgeIntake() {
         } finally {
             finishKnowledgeIntakeSavingOperation(savingOperationCountRef, setSaving);
         }
-    }, [refreshBundle, refreshJobs]);
+    }, [refreshAfterMutation, visibleBundle.reviewItems]);
 
     const counts = useMemo(() => {
         const sourcesReady = visibleBundle.sources.filter(source => source.status === 'ready').length;

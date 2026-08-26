@@ -160,6 +160,7 @@ export default function GradientPicker({ value, onChange, onOpenColorPresets }: 
             />
             {gradientColors.length > 2 && (
               <Button
+                aria-label={`Remove gradient colour ${index + 1}`}
                 type="text"
                 icon={<LuMinus />}
                 size="small"

@@ -234,6 +234,7 @@ export default function BackgroundSettings({ config, onUpdate, previewAccentColo
                     {(config?.backgroundImage || config?.background) && (
                         <Tooltip title={t('removeBackground')}>
                             <Button
+                                aria-label={t('removeBackground')}
                                 type="text"
                                 danger
                                 size="small"

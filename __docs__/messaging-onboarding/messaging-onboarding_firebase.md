@@ -168,6 +168,15 @@ was unavailable.
 
 **Feature-independent lifecycle:** `ENABLE_MESSAGING_ONBOARDING` gates new product activity and the 12-hour provider reminder, but it does not gate expiry, terminal-session/Storage cleanup, durable upload cleanup, or inbound-message deletion. Disabling the feature cannot pause declared retention obligations.
 
+**Disabled intake cost boundary:** the consolidated maintenance scheduler excludes
+`messaging_intake` before lease acquisition while
+`ENABLE_MESSAGING_ONBOARDING=false`. The independently scheduled daily cleanup still
+runs, including inbound-message retention fallback. On the two-minute cadence this
+removes 720 no-op task settlements per day: 2,160 baseline Firestore reads and 2,160
+writes per day from that disabled task's acquire/outcome/fallback-release path. The
+shared scheduler invocation and the provider-independent special-menu lifecycle remain
+unchanged.
+
 ---
 
 ## Firebase Storage

@@ -154,6 +154,11 @@ assert(route.includes('parsed.data.expectedTenantId !== scope.tId'), 'public FAQ
 assert(route.includes('parsed.data.expectedStoreId !== scope.sId'), 'public FAQ route must reject initiating/current workspace mismatch');
 assert(view.includes('fetchAnswerlatticePublicFaqs(requestScope)'), 'Help Center FAQ UI must retain initiating Answerlattice scope');
 assert(retrieval.includes('normalizeAnswerlatticeRetrievalFaq(doc.data(), doc.id, { tId, sId })'), 'FAQ retrieval must normalize persisted rows before caching');
+assert(retrieval.includes('const loadPublishedFaqsByExactQuestion = async ('), 'FAQ retrieval must retain a bounded exact-question fallback beyond the ordered public window');
+assert(retrieval.includes(".where('question', '==', exactQuestion)"), 'FAQ overflow fallback must use the exact persisted question instead of scanning another collection page');
+assert(retrieval.includes('.limit(4)'), 'FAQ exact-question fallback must cap duplicate reads');
+assert(retrieval.includes('const exactFaqs = await loadPublishedFaqsByExactQuestion(query, tId, sId, sourceVersion);'), 'FAQ exact-question fallback must run only after the bounded candidate window misses');
+assert(retrieval.includes('matchReason: `exact_overflow_${exactMatch.reason}`'), 'FAQ overflow matches must remain observable without exposing question text');
 assert(retrieval.includes("const tId = typeof options.tId === 'number' ? normalizeAnswerlatticeScopeDocumentId(options.tId) : null;"), 'FAQ retrieval must require exact runtime tenant scope');
 assert(!retrieval.includes('const tId = Number(options.tId);'), 'FAQ retrieval must not coerce runtime tenant scope');
 assert(!retrieval.includes(".where('tId', '==', Number(tId))"), 'FAQ retrieval must not coerce tenant query scope');
@@ -191,5 +196,6 @@ assert(rules.includes('after.source == before.source'), 'FAQ update rules must k
 assert(rules.includes("'canonicalAnswerId', 'jobId', 'generatedFromArticleId', 'intakeJobId'"), 'FAQ create rules must reject system lineage fields');
 assert(rules.includes("'recentFeedbackOperations'"), 'FAQ create rules must reject server-owned feedback idempotency state');
 assert(packageJson.scripts['verify:answerlattice-faq-boundary'] === 'node scripts/verification/verify-answerlattice-faq-boundary.js', 'package must expose the FAQ boundary verifier');
+assert(packageJson.scripts['test:answerlattice-faq-overflow:emulator']?.includes('test-answerlattice-faq-overflow-emulator.ts'), 'package must expose the FAQ overflow emulator regression');
 
 process.stdout.write('Answerlattice FAQ public boundary verification passed.\n');

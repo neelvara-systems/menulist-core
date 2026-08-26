@@ -354,6 +354,7 @@ export const FileImagePreview = ({
                                 arrow={{ pointAtCenter: true }}
                             >
                                 <Button
+                                    aria-label="Open image controls help"
                                     icon={<LuHelpCircle style={{ fontSize: 16 }} />}
                                     shape="circle"
                                     type="default"
@@ -361,6 +362,7 @@ export const FileImagePreview = ({
                             </Popover>
                             <Tooltip title="View full image">
                                 <Button
+                                    aria-label={`View ${file.name} full size`}
                                     icon={<LuEye style={{ fontSize: 16 }} />}
                                     onClick={() => onPreview(file)}
                                     shape="circle"
@@ -370,6 +372,7 @@ export const FileImagePreview = ({
                     ) : null}
                     <Tooltip title={file.extractedData ? "Delete this file" : "Cannot delete until processed"}>
                         <Button
+                            aria-label={`${file.extractedData ? 'Delete' : 'Cannot delete'} ${file.name}`}
                             danger
                             icon={<LuTrash style={{ fontSize: 16 }} />}
                             shape="circle"

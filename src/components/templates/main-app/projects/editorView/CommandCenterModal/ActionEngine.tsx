@@ -190,6 +190,7 @@ export default function ActionEngine({
             {/* Breadcrumb / back */}
             <Flex align="center" gap={8} style={{ marginBottom: 16 }}>
                 <Button
+                    aria-label="Back to command centre actions"
                     type="text"
                     size="small"
                     icon={<LuArrowLeft />}

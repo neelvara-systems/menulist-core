@@ -140,7 +140,7 @@ const ItemFormView = memo((
                                 <Flex vertical gap={4}>
                                     {renderEditableContent(lang, attr.price || '', "attr_price", attr.id)}
                                 </Flex>
-                                <Button type="text" size="small" danger icon={<LuX />} onClick={() => handleDeleteAttribute(attr.id)} />
+                                <Button aria-label="Delete attribute" type="text" size="small" danger icon={<LuX />} onClick={() => handleDeleteAttribute(attr.id)} />
                             </Flex>
                         ))}
                     </Flex>

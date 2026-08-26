@@ -585,10 +585,35 @@ The final client-integration pass found one P1 release defect after the Answerla
 - No Firebase Rules, indexes, Storage Rules, or Functions source changed in this closeout, and no Firebase deployment or authenticated readback was performed.
 - No known P0 or P1 remains in the MenuList-to-Answerlattice hosted embed. Production-host, real physical-device, production telemetry, and the explicitly excluded Razorpay execution remain separate evidence gates.
 
+## 14. First-Client Knowledge Retrieval Local Delta — 2026-08-26
+
+> **Checkpoint:** `LOCAL_VALIDATED — RELEASE_REQUIRED`
+> **Boundary:** source review, Firebase emulators, maintained verification suites, and authenticated read-only Firestore index inventory. No Git mutation, Vercel deployment, Firebase deployment, production/customer data mutation, external message, or Razorpay operation was performed.
+
+The MenuList-first-client QA journey exposed a production-scale FAQ retrieval gap that smaller fixtures could not reveal. Runtime fallback intentionally scans only the first 80 ordered published FAQs to keep reads bounded, but an exact newly published FAQ outside that window was unreachable. The durable correction preserves the bounded fuzzy scan and performs one tenant/store/published/active exact-question query only after that scan misses. The query is capped at four duplicate rows and cached for 60 seconds.
+
+### 14.1 Findings and verification
+
+| Severity | Root cause | Durable fix | Verification |
+| --- | --- | --- | --- |
+| P1 | Exact published FAQ answers placed beyond the bounded first-80 retrieval window could not be served, even though publication and governance had completed correctly. | Added a scoped exact-question overflow query after the bounded candidate miss, retained published/active and tenant/store filters, capped duplicate reads at four, and added the required composite index. | A real Firestore emulator regression seeded 84 in-window FAQs, the 85th target, and wrong-product, wrong-tenant, wrong-store, draft, and inactive decoys. The target returned a high-confidence `exact_overflow_exact_question` match; every decoy failed closed. The regression passed twice and is now part of `verify:answerlattice-runtime-truth`. |
+| P2 | Trusted Answer Product Topic selectors searched their opaque stored IDs instead of customer-visible labels. | Enabled label-based search on both create and edit selectors. | The customer-language verifier asserts both selectors use `showSearch` and `optionFilterProp="label"`; focused lint, repository lint, and strict TypeScript passed. |
+
+After the new regression was wired into the maintained aggregate, the exact current `verify:answerlattice-runtime-truth` command completed with exit code 0. This replay covered the new FAQ overflow case together with dedicated/shared rules, retrieval, Public API, widget, MCP, tickets, signals, governance, Answer Tests, owner support controls, scheduler analytics, and Knowledge Map contracts.
+
+### 14.2 Cost and release state
+
+- The common contextual and first-80 FAQ paths add no reads. An overflow exact hit normally adds one FAQ document read; a no-result query still incurs Firestore's minimum one-document query charge. The 60-second exact cache prevents repeated reads for the same tenant, store, source version, and question.
+- The local Answerlattice index artifact is SHA-256 `bc66de95e588ecdd7de677917a3395549468bf539208406ddb298bdfbfcc05a2`, 51,973 bytes. It contains the `answerlattice_faqs` composite `pId + tId + sId + status + active + question`. Six pre-existing array/vector definitions also retain the server-exported `__name__` ordering explicitly so current Firebase CLI releases compare them to their deployed equivalents instead of attempting duplicate creation.
+- The FAQ index was deployed only to `neelvara-answerlattice-qa`. Authenticated status polling reached `READY`, and final readback at `2026-08-26T21:39:43+05:30` matched all 106 local/deployed composite indexes plus 33/33 field overrides exactly. QA is `Delta = INFRA_CHANGE` / `Deployment state = DEPLOYED_AND_READ_BACK` for the `bc66de95…` artifact.
+- Authenticated production inventory still contains zero matching FAQ question indexes. Production remains `Delta = INFRA_CHANGE` / `Deployment state = DEPLOY_REQUIRED` and requires a distinct explicit authorization.
+- Hosted FAQ overflow evidence remains pending until the application source is released through one explicitly authorized consolidated staging push. Static, emulator, or index evidence does not substitute for that hosted application proof.
+
 ## Version History
 
 | Date       | Change                                                      |
 | ---------- | ----------------------------------------------------------- |
+| 2026-08-26 | Recorded the locally validated first-client FAQ overflow correction, Product Topic label-search fix, cost boundary, and authenticated QA/production index deployment delta |
 | 2026-08-26 | Closed the MenuList client embed gate with exact-origin CSP hardening and current-build desktop/mobile hosted evidence |
 | 2026-08-24 | Deployed and read back the provider-health fix in the scoped QA and production scheduler Functions; opened production environment testing |
 | 2026-08-24 | Completed the final delta and production-transition certification; fixed hostile provider-health error-name handling and recorded the scoped Functions deployment requirement |

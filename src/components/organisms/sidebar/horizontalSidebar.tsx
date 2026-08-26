@@ -248,7 +248,8 @@ const HorizontalSidebarComponent = () => {
                 }}>{tSupport('subtitle')}</div>
             </div>
             {SUPPORT_MENU_OPTIONS.map((option) => (
-                <div
+                <button
+                    type="button"
                     key={option.key}
                     onClick={() => onClickSupportMenuItem(option)}
                     style={{
@@ -260,6 +261,12 @@ const HorizontalSidebarComponent = () => {
                         transition: 'all 0.2s',
                         borderRadius: 4,
                         margin: '0 8px',
+                        width: 'calc(100% - 16px)',
+                        border: 0,
+                        background: 'transparent',
+                        color: 'inherit',
+                        font: 'inherit',
+                        textAlign: 'start',
                     }}
                     onMouseEnter={(e) => {
                         e.currentTarget.style.backgroundColor = token.colorBgTextHover;
@@ -291,7 +298,7 @@ const HorizontalSidebarComponent = () => {
                             {tSupport(`${option.key}_desc` as any)}
                         </div>
                     </div>
-                </div>
+                </button>
             ))}
         </div>
     );
