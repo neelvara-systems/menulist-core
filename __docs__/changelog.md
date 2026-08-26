@@ -1,5 +1,14 @@
 # MenuList — Changelog
 
+## August 26, 2026 - Growth Kits Missing-Hours Truthfulness
+
+- Kept missing business hours distinct from an explicit closed-today schedule
+  in Growth Kits. Refresh now warns `Business hours are missing.` instead of
+  falsely telling the owner the store is marked closed.
+- Explicit `closed` schedules retain the existing closed-today warning, and
+  generated copy remains conservative (`on the menu`) whenever today's hours
+  are unknown. No read, write, cache, provider, or entitlement path changed.
+
 ## August 26, 2026 - Reproducible Hosted QA Fixture Verification
 
 - Replaced the unpinned, unavailable `tsx` invocation in the MenuList hosted-QA

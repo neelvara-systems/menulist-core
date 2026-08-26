@@ -636,15 +636,47 @@ withGrowthOSFlags({
     assertCheck(paidPlanOutsidePilot.allowed === false && paidPlanOutsidePilot.reason === "not_pilot_store", "GrowthOS pilot gate blocks paid stores outside allowlist");
 });
 assertCheck(facts.items.length === 3, "source facts read extracted menu items");
-assertCheck(
-    buildGrowthOSSourceFacts({
+const missingHoursFacts = buildGrowthOSSourceFacts({
         projectData: { files: { malformed: true }, name: { en: "Legacy menu" } },
         projectId: "legacy-project",
         sId: "dry-store",
         storeData: { workingHours: { mon: { malformed: true } } },
         tId: "dry-tenant",
-    }).items.length === 0,
+    });
+assertCheck(
+    missingHoursFacts.items.length === 0,
     "source facts contain malformed legacy arrays and hours without throwing",
+);
+const missingHoursReadiness = computeGrowthOSReadiness({
+    ...missingHoursFacts,
+    items: facts.items,
+});
+assertCheck(
+    missingHoursReadiness.warnings.includes("Business hours are missing.")
+    && !missingHoursReadiness.warnings.includes("Store is marked closed today."),
+    "missing business hours remain distinct from an explicit closed-today state",
+);
+const explicitlyClosedFacts = buildGrowthOSSourceFacts({
+    projectData,
+    projectId: "closed-project",
+    sId: "dry-store",
+    storeData: {
+        ...storeData,
+        workingHours: {
+            fri: "closed",
+            mon: "closed",
+            sat: "closed",
+            sun: "closed",
+            thu: "closed",
+            tue: "closed",
+            wed: "closed",
+        },
+    },
+    tId: "dry-tenant",
+});
+assertCheck(
+    computeGrowthOSReadiness(explicitlyClosedFacts).warnings.includes("Store is marked closed today."),
+    "an explicit closed-today schedule retains the closed warning",
 );
 assertCheck(facts.items.some((item) => item.name === "Free Dessert" && item.available === false), "source facts retain unavailable item for staff guardrails");
 assertCheck(readiness.status !== "blocked", "readiness allows available menu facts");

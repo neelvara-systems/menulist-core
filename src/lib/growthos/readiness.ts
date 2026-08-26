@@ -18,7 +18,9 @@ export function computeGrowthOSReadiness(facts: GrowthOSSourceFacts): GrowthOSPr
         warnings.push("Public menu link is missing.");
     }
 
-    if (!facts.isOpenToday) {
+    if (!facts.todayHoursLabel) {
+        warnings.push("Business hours are missing.");
+    } else if (!facts.isOpenToday) {
         warnings.push("Store is marked closed today.");
     }
 

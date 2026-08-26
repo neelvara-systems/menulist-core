@@ -41,7 +41,10 @@ function getTodayHoursLabel(storeData: unknown): { isOpenToday: boolean; label?:
     const todayKey = DAY_KEYS[new Date().getDay()];
     const workingHours = asRecord(asRecord(storeData).workingHours);
     const value = workingHours[todayKey];
-    if (typeof value !== "string" || !value.trim() || value.trim().toLowerCase() === "closed") {
+    if (typeof value !== "string" || !value.trim()) {
+        return { isOpenToday: false };
+    }
+    if (value.trim().toLowerCase() === "closed") {
         return { isOpenToday: false, label: "Closed today" };
     }
     return { isOpenToday: true, label: value.trim().replace("-", " - ") };

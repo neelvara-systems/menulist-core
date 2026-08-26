@@ -312,6 +312,24 @@ Do not widen beyond the Pro/Multi-location paid gate until:
 - stale kit behavior is tested with changed menu facts
 - support copy is reviewed for paid rollout
 
+## August 26, 2026 Missing-Hours Truthfulness
+
+Hosted QA reproduced a misleading owner warning after `Refresh`: the fixture
+had no business hours, but Growth Kits said `Store is marked closed today.`
+The public menu had no temporary-closure status and Dashboard correctly showed
+hours as missing.
+
+The source-facts boundary now leaves the hours label absent when today's hours
+are missing or malformed. Readiness renders `Business hours are missing.` for
+that state and retains `Store is marked closed today.` only for an explicit
+`closed` schedule. Menu output remains conservative while hours are unknown.
+
+Validation: the Growth Kits source suite passed 255 checks, including both
+missing-hours and explicit-closed regressions. Client contracts and the
+isolated-project transaction emulator body remain passing. This correction
+adds no Firestore read/write/delete, Storage operation, Function invocation,
+provider call, cache, rule, index, or deployment target.
+
 ## Current-Worktree Concurrency Cross-Check - July 17, 2026
 
 `npm run verify:growthos` passed 150 source assertions after adding executable
