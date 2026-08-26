@@ -395,6 +395,26 @@ async function run(): Promise<void> {
         'ordered answer relevance must resolve an owner-review question instead of a broader public-surface answer',
     );
 
+    const accountSpecificOwnerChangeResult = await attemptCanonicalRetrieval(
+        'I need a human to change the owner email on my specific MenuList account.',
+        {
+            tId: 1,
+            sId: 101,
+            currentVersion: 1_000_000,
+            preloadedSearchIndex: ambiguitySearchIndex,
+        },
+    );
+    assert.equal(
+        accountSpecificOwnerChangeResult.found,
+        false,
+        'one shared owner token must not authorize an unrelated owner-review canonical answer',
+    );
+    assert.equal(
+        accountSpecificOwnerChangeResult.fallbackReason,
+        'no_query_relevant_canonical_answer',
+        'account-specific support requests must abstain when no canonical answer shares ordered intent evidence',
+    );
+
     const unsupportedLocationRetrievalResult = await attemptCanonicalRetrieval(
         'How does the product sync my menu across multiple public directories or places automatically?',
         {

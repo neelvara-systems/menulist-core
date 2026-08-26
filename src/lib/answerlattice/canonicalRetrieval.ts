@@ -478,8 +478,7 @@ export const evaluateCanonicalAnswerQueryRelevance = (
         && answerSet.has(titleTerms[0]);
 
     return {
-        eligible: entityDiscriminatingOverlapCount >= 1
-            || singleTokenTitleMatch
+        eligible: singleTokenTitleMatch
             || (
                 overlapCount >= CANONICAL_QUERY_MIN_OVERLAP
                 && sequenceLength >= CANONICAL_QUERY_MIN_SEQUENCE
