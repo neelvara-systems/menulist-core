@@ -6564,3 +6564,44 @@ No Firebase source/configuration changes. Firestore Rules, indexes, Storage Rule
 
 - Closeout operation: commit this ledger-only performed result and push `staging` non-force, then wait for exact automatic QA promotion and execute the fresh outlet switch/hard-refresh/HQ/deactivation and fixture-cleanup cycle. `main` remains untouched.
 - Attribution confidence: exact.
+
+### GIT-20260826-121240-mlrc088-hosted-closeout
+
+- Timestamp: `2026-08-26T12:12:40+05:30`
+- Record type: `PLANNED`
+- Actor/session/thread ID: Codex `/root`; thread `01a034e1-c70a-74b1-a92b-0a103a981815`.
+- Registered worktrees: one worktree, `/Users/danny/Projects/MenuListAi/menulist-core`, branch `staging`, HEAD `cff9956610e3afb3d0dabb253ddd084ce07cf6b7`.
+- Operation: record exact hosted MLRC-088 create/switch/hard-refresh/Projects/HQ/deactivation proof and bounded disposable-fixture cleanup, commit only the certification report plus this ledger, and push `staging` non-force. `main` remains untouched; no manual deployment is authorized.
+- Branch matrix before:
+
+| Branch | Local full SHA | Server ref/full SHA | Tracking ref | Ahead/behind | Worktree | Staged/unstaged/untracked | Status |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `staging` | `cff9956610e3afb3d0dabb253ddd084ce07cf6b7` | `refs/heads/staging` / `cff9956610e3afb3d0dabb253ddd084ce07cf6b7` | `origin/staging` | `0/0` | primary | `0/1/0` before this append | `IN_SYNC` |
+| `main` | `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `refs/heads/main` / `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `origin/main` | `0/0` | none | n/a | `IN_SYNC` |
+
+- Hosted evidence: Vercel marked exact `cff9956610e3afb3d0dabb253ddd084ce07cf6b7` latest/ready in `qa` with the exact staging source. The real owner created outlet `7`; session refresh completed without recovery; switch retained full paid navigation; hard refresh retained the outlet; after the explicit ready-version service-worker activation, outlet Projects loaded its isolated inherited menu and remained healthy through another hard refresh; Back to HQ restored the original Cold Coffee menu. Owner UI deactivated outlets `6` and `7`; bounded QA readback proved HQ `4` active/master, outlets `5`/`6`/`7` inactive, and subscription `ml-hosted-qa-certification-144110a18d` restored to active/manual quantity `1`.
+- Validation remains: outlet-session-refresh regression, session/store-context, multi-location, billing-entitlement, public-business-truth/adjacent, focused/full lint, strict TypeScript, production build 450/450 with 53 precache entries, and diff checks PASS.
+- Firebase matrix before/after:
+
+| Product/target | Component | Local source/hash or tree | Local validation | Server/readback | Delta | Deployment state |
+| --- | --- | --- | --- | --- | --- | --- |
+| MenuList QA / `menulist-qa` | Firestore Rules | `firestore-menulist.rules` / `2059459e…` / 132684 | unchanged | not read back / `2026-08-26T12:12:40+05:30` | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| MenuList QA / `menulist-qa` | Firestore indexes | `firestore.indexes.json` / `5629ae4d…` / 78310 | unchanged | not read back / same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| MenuList QA / `menulist-qa` | Storage Rules | `storage.rules` / `226d2a20…` / 18176 | unchanged | not read back / same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| MenuList QA / `menulist-qa` | Cloud Functions | `functions/` / tree `3c42f5d3…` | unchanged | not read back / same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| MenuList production / `menulist-prod` | Firestore Rules | same MenuList QA source/hash/bytes | unchanged | not read back / same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| MenuList production / `menulist-prod` | Firestore indexes | same MenuList QA source/hash/bytes | unchanged | not read back / same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| MenuList production / `menulist-prod` | Storage Rules | same MenuList QA source/hash/bytes | unchanged | not read back / same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| MenuList production / `menulist-prod` | Cloud Functions | same MenuList QA source/tree | unchanged | not read back / same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| Answerlattice QA / `neelvara-answerlattice-qa` | Firestore Rules | `firestore-answerlattice.rules` / `a92cbacb…` / 116222 | unchanged | not read back / same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| Answerlattice QA / `neelvara-answerlattice-qa` | Firestore indexes | `firestore-answerlattice.indexes.json` / `0114bdf8…` / 50941 | unchanged | not read back / same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| Answerlattice QA / `neelvara-answerlattice-qa` | Storage Rules | `storage-answerlattice.rules` / `5fc8f980…` / 6948 | unchanged | not read back / same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| Answerlattice QA / `neelvara-answerlattice-qa` | Cloud Functions | `functions-answerlattice/` / tree `ae5750c6…` | unchanged | not read back / same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| Answerlattice production / `neelvara-answerlattice-prod` | Firestore Rules | same Answerlattice QA source/hash/bytes | unchanged | not read back / same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| Answerlattice production / `neelvara-answerlattice-prod` | Firestore indexes | same Answerlattice QA source/hash/bytes | unchanged | not read back / same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| Answerlattice production / `neelvara-answerlattice-prod` | Storage Rules | same Answerlattice QA source/hash/bytes | unchanged | not read back / same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| Answerlattice production / `neelvara-answerlattice-prod` | Cloud Functions | same Answerlattice QA source/tree | unchanged | not read back / same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+
+- No Firebase infrastructure source/configuration changed or was deployed. The QA owner/store/subscription actions were explicitly scoped disposable fixture data, not infrastructure publication.
+- Final filesystem state: pending explicit-path staging, commit, non-force staging push, direct server readback, and ledger performed-result closeout.
+- Attribution confidence: exact.
