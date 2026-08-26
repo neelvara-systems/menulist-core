@@ -377,6 +377,14 @@ const expandRetrievalToken = (token: string): string[] => {
         }
     };
 
+    // Preserve a small deterministic phrase bridge for wording whose meaning
+    // is lost when the tokenizer correctly keeps a hyphenated token intact.
+    // This lets "up-to-date" match governed freshness knowledge without
+    // teaching the global tokenizer product-specific or probabilistic rules.
+    if (token === 'up-to-date') {
+        addVariant('current');
+        addVariant('freshness');
+    }
     token.split('-').filter(Boolean).forEach(addInflectionVariants);
     return Array.from(variants);
 };

@@ -19,7 +19,10 @@ import {
     prepareAnswerlatticeProposalImpact,
     type AnswerlatticeGovernanceAccess,
 } from '../../src/lib/answerlattice/governanceServer';
-import { attemptCanonicalRetrieval } from '../../src/lib/answerlattice/canonicalRetrieval';
+import {
+    attemptCanonicalRetrieval,
+    evaluateCanonicalAnswerQueryRelevance,
+} from '../../src/lib/answerlattice/canonicalRetrieval';
 import { requireAnswerlatticeFirestoreAdmin } from '../../src/lib/firebase/answerlatticeFirebaseAdmin';
 import { Timestamp } from 'firebase-admin/firestore';
 
@@ -473,6 +476,21 @@ async function run(): Promise<void> {
         freshnessRetrievalResult.answer?.id,
         freshnessAnswerId,
         'a discriminating freshness term must outrank a broad customer-menu overlap',
+    );
+    const freshnessPhraseRelevance = evaluateCanonicalAnswerQueryRelevance(
+        'How do customers know if the menu they are viewing is current and up-to-date?',
+        {
+            title: 'Freshness and status signals',
+            content: {
+                structuredSummary: 'Customers see clear freshness and status signals where enabled on the public menu.',
+                detailedExplanation: 'Customers see clear freshness and status signals where enabled on the public menu.',
+            },
+        },
+        [freshnessSearchIndex[1]],
+    );
+    assert.ok(
+        freshnessPhraseRelevance.discriminatingOverlapCount >= 1,
+        'up-to-date wording must contribute direct freshness-answer evidence',
     );
     const genericInterfaceRetrievalResult = await attemptCanonicalRetrieval(
         'How do customers open or view the public menu?',
