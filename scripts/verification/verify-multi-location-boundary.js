@@ -1362,6 +1362,10 @@ function verifyMultiLocationBoundary() {
   assertIncludes(files.desktopLocations, 'formatCurrency(amount, currency)', 'Desktop per-store billing minor-unit display');
   assertIncludes(files.desktopLocations, 'formatCurrency(totalCost, currency)', 'Desktop total billing minor-unit display');
   assertNotIncludes(files.desktopLocations, 'formatter.number(amount, { currency, style:', 'Desktop location billing raw minor-unit display');
+  assertIncludes(files.desktopLocations, 'const [modal, modalContextHolder] = Modal.useModal();', 'Desktop outlet destructive confirmation context');
+  assertIncludes(files.desktopLocations, 'modal.confirm({', 'Desktop outlet destructive confirmation invocation');
+  assertIncludes(files.desktopLocations, '{modalContextHolder}', 'Desktop outlet destructive confirmation holder');
+  assertNotIncludes(files.desktopLocations, 'Modal.confirm({', 'Desktop outlet destructive confirmation must not use detached static rendering');
 
   [
     'parseMasterOperationalState',

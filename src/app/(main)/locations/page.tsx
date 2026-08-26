@@ -71,6 +71,7 @@ export default function LocationsPage() {
     } = useContext(PlatformGlobalDataContext);
 
     const [addOutletOpen, setAddOutletOpen] = useState(false);
+    const [modal, modalContextHolder] = Modal.useModal();
     // T2-N-01: outlet rename modal state.
     const [renameTarget, setRenameTarget] = useState<any | null>(null);
     const [deactivatingStoreId, setDeactivatingStoreId] = useState<number | null>(null);
@@ -155,7 +156,7 @@ export default function LocationsPage() {
 
     const handleDeactivateOutlet = (record: any) => {
         const confirmationScopeKey = locationScopeKey;
-        Modal.confirm({
+        modal.confirm({
             title: 'Deactivate outlet?',
             content: `This turns off ${record.name || `Store ${record.storeId}`} and removes it from normal store switching. Billing quantity is reduced when billing removal is enabled.`,
             okText: 'Deactivate',
@@ -300,6 +301,7 @@ export default function LocationsPage() {
 
     return (
         <div style={{ padding: 24, maxWidth: 900 }}>
+            {modalContextHolder}
             <Space direction="vertical" size="large" style={{ width: '100%' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <Title level={3} style={{ margin: 0 }}>
