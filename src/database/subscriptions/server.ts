@@ -388,7 +388,11 @@ export const getActiveSubscriptionForStoreServer = async (
     let masterStoreId: number | null = null;
     if (tenantStoresList) {
         masterStoreId = getMasterStoreIdFromList(tenantStoresList);
-    } else {
+    }
+    // Caller-provided summaries can be stale or enriched with conflicting
+    // embedded store state. Re-read the canonical tenant only when that list
+    // cannot prove one exact master; persisted ambiguity still fails closed.
+    if (!masterStoreId) {
         const tenantSnap = await firestoreAdmin
             .collection(DB_COLLECTIONS.TENANTS)
             .doc(tenantScope.documentId)

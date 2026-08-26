@@ -147,6 +147,8 @@ function verifyBillingEntitlementBoundary() {
   ));
   assertIncludes(subscriptionClient, 'getExactMasterStoreIdFromList(storesList)', 'MenuList client subscription master-store boundary');
   assertIncludes(subscriptionServer, 'getExactMasterStoreIdFromList(storesList)', 'MenuList server subscription master-store boundary');
+  assertIncludes(subscriptionClient, 'if (!masterStoreId) { const tenantRef = doc(firebaseClient, DB_COLLECTIONS.TENANTS, tenantScope.documentId);', 'MenuList client subscription canonical-master recovery');
+  assertIncludes(subscriptionServer, 'if (!masterStoreId) { const tenantSnap = await firestoreAdmin .collection(DB_COLLECTIONS.TENANTS)', 'MenuList server subscription canonical-master recovery');
   assertIncludes(subscriptionServer, 'MenuList subscription scope is immutable.', 'MenuList generic subscription updates preserve transaction-current workspace identity');
   assertIncludes(productSubscriptionScopeEmulator, 'a generic MenuList update must not move a subscription to another workspace', 'MenuList subscription scope immutability emulator regression');
   assertIncludes(subscriptionServer, '.where("status", "in", ["active", "cancelled", "paused"])', 'MenuList paid-cycle query excludes pending and separately evaluates past due recovery');

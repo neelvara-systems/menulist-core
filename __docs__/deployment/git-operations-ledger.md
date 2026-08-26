@@ -812,6 +812,47 @@ Those fields are explicitly `unknown` instead of guessed.
   unstaged path change; no pre-existing source or user work was altered.
 - Attribution confidence: exact.
 
+### GIT-20260826-110202-alrc088-provider-refusal-empty-result
+
+- Timestamp: `2026-08-26T11:02:02+05:30`
+- Record type: `PLANNED`
+- Actor/session/thread ID: Codex `/root`; current Answerlattice certification thread.
+- Registered worktrees: one worktree, `/Users/danny/Projects/MenuListAi/menulist-core`, branch `staging`, HEAD `d2d0e4ef1f96e6f3834c97e0b282993d37c08741`.
+- Concurrent-work boundary: four independently modified MenuList paths are preserved unstaged: `__docs__/audits/MENULIST_RC_CERTIFICATION.md`, `scripts/verification/verify-billing-entitlement-boundary.js`, `src/database/subscriptions/index.ts`, and `src/database/subscriptions/server.ts`; their actor/session attribution is `unknown` from this Answerlattice operation. This operation owns only `src/lib/search/searchCore.ts`, `scripts/verification/test-answerlattice-widget-answer-contracts.ts`, and this ledger entry.
+- Operation: normalize provider knowledge refusals to the shared `empty` answer contract so unsupported widget questions retain an explicit support handoff, commit only the two Answerlattice paths plus this ledger, and push `staging` non-force. `main` remains untouched. No manual Vercel or Firebase deployment is authorized.
+- Branch matrix before:
+
+| Branch | Local full SHA | Server ref/full SHA | Tracking ref | Ahead/behind | Worktree | Staged/unstaged/untracked | Status |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `staging` | `d2d0e4ef1f96e6f3834c97e0b282993d37c08741` | `refs/heads/staging` / `d2d0e4ef1f96e6f3834c97e0b282993d37c08741` | `origin/staging` | `0/0` | primary | `0/6/0` before this append | `IN_SYNC` |
+| `main` | `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `refs/heads/main` / `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `origin/main` | `0/0` | none | n/a | `IN_SYNC` |
+
+- Validation before mutation: Answerlattice TypeScript PASS; widget answer/escalation contracts PASS; focused ESLint PASS; `git diff --check` PASS. The full runtime-truth command completed its runtime/public suites until a maintained Rules test attempted to start a second Firestore emulator on occupied port `8080`; that aggregate command stopped on the environment collision rather than a product assertion.
+- Firebase matrix before/after (no deployable Firebase source/configuration changed; no infrastructure deployment is authorized):
+
+| Product | Environment/project | Component | Local source/config | Local hash/bytes or Git tree | Local validation | Server evidence | Readback time | Delta | Deployment state |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| MenuList | QA / `menulist-qa` | Firestore Rules | `firestore-menulist.rules` | `2059459e3b0263bdeca75f89ad0b490e8cebf1dee19cdef9012e0c02fbab5b89` / 132684 | unchanged | not read back | `2026-08-26T11:02:02+05:30` | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| MenuList | QA / `menulist-qa` | Firestore indexes | `firestore.indexes.json` | `5629ae4d5004bc59c82528f2e7f9b7e5bb1ffbf74e0fc2e2e5e5252abf0744e0` / 78310 | unchanged | not read back | same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| MenuList | QA / `menulist-qa` | Storage Rules | `storage.rules` | `226d2a206d7de8a442bf356a61ad048118322acb993eb89fa45744ed78ed1838` / 18176 | unchanged | not read back | same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| MenuList | QA / `menulist-qa` | Cloud Functions | `functions/` | Git tree `3c42f5d3fca47ca69e10fa34ad63cf8c28ab8f75` | unchanged | not read back | same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| MenuList | production / `menulist-prod` | Firestore Rules | `firestore-menulist.rules` | same QA hash/bytes | unchanged | not read back | same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| MenuList | production / `menulist-prod` | Firestore indexes | `firestore.indexes.json` | same QA hash/bytes | unchanged | not read back | same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| MenuList | production / `menulist-prod` | Storage Rules | `storage.rules` | same QA hash/bytes | unchanged | not read back | same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| MenuList | production / `menulist-prod` | Cloud Functions | `functions/` | same QA Git tree | unchanged | not read back | same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| Answerlattice | QA / `neelvara-answerlattice-qa` | Firestore Rules | `firestore-answerlattice.rules` | `a92cbacbf2b64d2939391449044ea5625e706ddb60e23dfab7c4ffb20d3a9e77` / 116222 | unchanged | not read back | same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| Answerlattice | QA / `neelvara-answerlattice-qa` | Firestore indexes | `firestore-answerlattice.indexes.json` | `0114bdf8ea6425b890a8e58fa03dac7915a7d3ed4372bc689ab59a8ce585ff4a` / 50941 | unchanged | not read back | same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| Answerlattice | QA / `neelvara-answerlattice-qa` | Storage Rules | `storage-answerlattice.rules` | `5fc8f980f289889da557ac69c91edd61f8e8646b066c9b0101b87141d67106cc` / 6948 | unchanged | not read back | same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| Answerlattice | QA / `neelvara-answerlattice-qa` | Cloud Functions | `functions-answerlattice/` | Git tree `ae5750c6e78f96a9ecfa234b64f906e04a2fdc16` | unchanged | not read back | same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| Answerlattice | production / `neelvara-answerlattice-prod` | Firestore Rules | `firestore-answerlattice.rules` | same QA hash/bytes | unchanged | not read back | same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| Answerlattice | production / `neelvara-answerlattice-prod` | Firestore indexes | `firestore-answerlattice.indexes.json` | same QA hash/bytes | unchanged | not read back | same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| Answerlattice | production / `neelvara-answerlattice-prod` | Storage Rules | `storage-answerlattice.rules` | same QA hash/bytes | unchanged | not read back | same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| Answerlattice | production / `neelvara-answerlattice-prod` | Cloud Functions | `functions-answerlattice/` | same QA Git tree | unchanged | not read back | same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+
+- Firebase deployment evidence or blocker: no Firebase infrastructure delta exists; no deployment is required or authorized.
+- Final filesystem state: pending explicit-path staging, staged-diff validation, commit, non-force `staging` push, direct server readback, automatic QA build, and exact hosted unsupported-question/escalation lifecycle retest.
+- Attribution confidence: exact.
+
 ### GIT-20260826-083900-mlrc082-growth-kits-hours-truth
 
 - Timestamp: `2026-08-26T08:39:00+05:30`
@@ -6208,4 +6249,45 @@ No Firebase source/configuration changes. Firestore Rules, indexes, Storage Rule
 | `main` | `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `refs/heads/main` / `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `origin/main` | `0/0` | none | n/a | `IN_SYNC` |
 
 - Closeout operation: commit only this ledger result and push `staging` non-force, leaving both unrelated Answerlattice paths unstaged; then wait for exact automatic QA promotion and rerun outlet/HQ/adjacent flows.
+- Attribution confidence: exact.
+
+### GIT-20260826-110211-mlrc086-canonical-master-recovery
+
+- Timestamp: `2026-08-26T11:02:11+05:30`
+- Record type: `PLANNED`
+- Actor/session/thread ID: Codex `/root`; thread `01a034e1-c70a-74b1-a92b-0a103a981815`.
+- Registered worktrees: one worktree, `/Users/danny/Projects/MenuListAi/menulist-core`, branch `staging`, HEAD `d2d0e4ef1f96e6f3834c97e0b282993d37c08741`.
+- Concurrent-work boundary: committed history through `d2d0e4ef1f96e6f3834c97e0b282993d37c08741` is preserved. The intended MenuList snapshot is `src/database/subscriptions/index.ts`, `src/database/subscriptions/server.ts`, `scripts/verification/verify-billing-entitlement-boundary.js`, and `__docs__/audits/MENULIST_RC_CERTIFICATION.md`. Concurrent unstaged Answerlattice paths `src/lib/search/searchCore.ts` and `scripts/verification/test-answerlattice-widget-answer-contracts.ts` are explicitly excluded.
+- Operation: add a canonical tenant-document retry when a caller-provided store summary cannot prove one exact MenuList master store, retain fail-closed ambiguity, update deterministic regression and certification evidence, commit only the four intended MenuList paths plus this ledger entry, and push `staging` non-force. `main` remains untouched. No manual Vercel or Firebase deployment is authorized.
+- Branch matrix before:
+
+| Branch | Local full SHA | Server ref/full SHA | Tracking ref | Ahead/behind | Worktree | Staged/unstaged/untracked | Status |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `staging` | `d2d0e4ef1f96e6f3834c97e0b282993d37c08741` | `refs/heads/staging` / `d2d0e4ef1f96e6f3834c97e0b282993d37c08741` | `origin/staging` | `0/0` | primary | `0/6/0` before this append | `IN_SYNC` |
+| `main` | `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `refs/heads/main` / `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `origin/main` | `0/0` | none | n/a | `IN_SYNC` |
+
+- Validation before mutation: `verify:billing-entitlement-boundary` PASS; `test:answerlattice-subscription-read-boundary` PASS; `test:session-store-context-boundary` PASS; focused ESLint PASS; strict TypeScript PASS; full zero-warning lint PASS; production build PASS with 450/450 static pages and 53 service-worker precache entries; `git diff --check` PASS. Existing Sass deprecation and absent optional Gemini-key warnings remain non-failing.
+- Firebase matrix before/after (no deployable Firebase source/configuration changed; no infrastructure deployment is authorized):
+
+| Product | Environment/project | Component | Local source/config | Local hash/bytes or Git tree | Local validation | Server evidence | Readback time | Delta | Deployment state |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| MenuList | QA / `menulist-qa` | Firestore Rules | `firestore-menulist.rules` | `2059459e3b0263bdeca75f89ad0b490e8cebf1dee19cdef9012e0c02fbab5b89` / 132684 | unchanged | not read back | `2026-08-26T11:02:11+05:30` | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| MenuList | QA / `menulist-qa` | Firestore indexes | `firestore.indexes.json` | `5629ae4d5004bc59c82528f2e7f9b7e5bb1ffbf74e0fc2e2e5e5252abf0744e0` / 78310 | unchanged | not read back | same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| MenuList | QA / `menulist-qa` | Storage Rules | `storage.rules` | `226d2a206d7de8a442bf356a61ad048118322acb993eb89fa45744ed78ed1838` / 18176 | unchanged | not read back | same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| MenuList | QA / `menulist-qa` | Cloud Functions | `functions/` | Git tree `3c42f5d3fca47ca69e10fa34ad63cf8c28ab8f75` | unchanged | not read back | same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| MenuList | production / `menulist-prod` | Firestore Rules | `firestore-menulist.rules` | same QA hash/bytes | unchanged | not read back | same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| MenuList | production / `menulist-prod` | Firestore indexes | `firestore.indexes.json` | same QA hash/bytes | unchanged | not read back | same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| MenuList | production / `menulist-prod` | Storage Rules | `storage.rules` | same QA hash/bytes | unchanged | not read back | same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| MenuList | production / `menulist-prod` | Cloud Functions | `functions/` | same QA Git tree | unchanged | not read back | same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| Answerlattice | QA / `neelvara-answerlattice-qa` | Firestore Rules | `firestore-answerlattice.rules` | `a92cbacbf2b64d2939391449044ea5625e706ddb60e23dfab7c4ffb20d3a9e77` / 116222 | unchanged | not read back | same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| Answerlattice | QA / `neelvara-answerlattice-qa` | Firestore indexes | `firestore-answerlattice.indexes.json` | `0114bdf8ea6425b890a8e58fa03dac7915a7d3ed4372bc689ab59a8ce585ff4a` / 50941 | unchanged | not read back | same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| Answerlattice | QA / `neelvara-answerlattice-qa` | Storage Rules | `storage-answerlattice.rules` | `5fc8f980f289889da557ac69c91edd61f8e8646b066c9b0101b87141d67106cc` / 6948 | unchanged | not read back | same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| Answerlattice | QA / `neelvara-answerlattice-qa` | Cloud Functions | `functions-answerlattice/` | Git tree `ae5750c6e78f96a9ecfa234b64f906e04a2fdc16` | unchanged | not read back | same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| Answerlattice | production / `neelvara-answerlattice-prod` | Firestore Rules | `firestore-answerlattice.rules` | same QA hash/bytes | unchanged | not read back | same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| Answerlattice | production / `neelvara-answerlattice-prod` | Firestore indexes | `firestore-answerlattice.indexes.json` | same QA hash/bytes | unchanged | not read back | same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| Answerlattice | production / `neelvara-answerlattice-prod` | Storage Rules | `storage-answerlattice.rules` | same QA hash/bytes | unchanged | not read back | same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| Answerlattice | production / `neelvara-answerlattice-prod` | Cloud Functions | `functions-answerlattice/` | same QA Git tree | unchanged | not read back | same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+
+- Firebase deployment evidence or blocker: no Firebase infrastructure delta exists; no deployment is required or authorized.
+- Final filesystem state: pending explicit-path staging, commit, non-force staging push, direct server readback, automatic QA build, and exact hosted outlet/HQ/adjacent-flow retest.
 - Attribution confidence: exact.

@@ -182,7 +182,13 @@ export const getActiveSubscriptionForStore = async (
             let masterStoreId: number | null = null;
             if (tenantStoresList) {
                 masterStoreId = getMasterStoreIdFromList(tenantStoresList);
-            } else {
+            }
+            // The provider enriches tenant summaries with live storeDetails as
+            // contexts load. If that client snapshot cannot prove one exact
+            // master, retry from the canonical tenant document instead of
+            // misclassifying an entitled outlet as unpaid. The same strict
+            // resolver still fails closed on malformed persisted state.
+            if (!masterStoreId) {
                 const tenantRef = doc(firebaseClient, DB_COLLECTIONS.TENANTS, tenantScope.documentId);
                 const tenantSnap = await getDoc(tenantRef);
                 if (tenantSnap.exists()) {
