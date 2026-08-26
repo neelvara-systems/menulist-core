@@ -7,7 +7,10 @@ import {
     getAnswerlatticeFirstTrustedAnswerCases,
     replaceAnswerlatticeFirstTrustedAnswerCases,
 } from '../../src/lib/answerlattice/answerTestStarterPack';
-import { AnswerlatticeAnswerTestCaseSchema } from '../../src/lib/answerlattice/answerTestContracts';
+import {
+    AnswerlatticeAnswerTestCaseSchema,
+    syncAnswerlatticeLaunchPackCaseFromReview,
+} from '../../src/lib/answerlattice/answerTestContracts';
 import {
     ANSWERLATTICE_PRODUCT_STARTER_PACK_CASE_IDS,
     ANSWERLATTICE_PRODUCT_STARTER_PACK_SIZE,
@@ -107,6 +110,17 @@ const productCases = starters.map((testCase, index) => ({
         reviewItemId: `kii_${index.toString(16).padStart(28, '0')}`,
     },
 }));
+const linkedProductCase = syncAnswerlatticeLaunchPackCaseFromReview(productCases[0], {
+    id: productCases[0].launchPack.reviewItemId,
+    title: 'Owner-edited menu input',
+    question: 'Which menu files can I upload?',
+    entityIds: ['entity_menu_input', 'entity_menu_input'],
+    updatedAt: '2026-07-16T01:00:00.000Z',
+});
+assert.equal(linkedProductCase.title, 'Owner-edited menu input', 'launch review title edits must reach the linked Answer Test');
+assert.equal(linkedProductCase.query, 'Which menu files can I upload?', 'launch review question edits must reach the linked Answer Test');
+assert.deepEqual(linkedProductCase.relatedEntityIds, ['entity_menu_input'], 'launch review Product Topics must reach the linked Answer Test without duplicates');
+assert.equal(linkedProductCase.updatedAt, '2026-07-16T01:00:00.000Z', 'linked Answer Test changes must retain an auditable update time');
 assert.deepEqual(
     createAnswerlatticeFirstTrustedAnswerCases(productCases.map(testCase => testCase.id), fixedNow),
     [],

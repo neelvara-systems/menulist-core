@@ -139,6 +139,7 @@ export const selectAnswerlatticeProposalImpactCases = (
     cases: AnswerlatticeAnswerTestCase[],
     relatedEntityIds: string[],
     targetAnswerId?: string | null,
+    intakeReviewItemId?: string | null,
 ): {
     cases: AnswerlatticeAnswerTestCase[];
     linkedTestCount: number;
@@ -151,6 +152,7 @@ export const selectAnswerlatticeProposalImpactCases = (
             testCase.active
             && (
                 Boolean(targetAnswerId && testCase.expected.answerId === targetAnswerId)
+                || Boolean(intakeReviewItemId && testCase.launchPack?.reviewItemId === intakeReviewItemId)
                 || testCase.relatedEntityIds.some(entityId => entityIds.has(entityId))
             )
         ))

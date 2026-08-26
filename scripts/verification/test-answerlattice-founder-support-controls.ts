@@ -603,6 +603,26 @@ assert.equal(selectedImpact.linkedTestCount, 12, 'proposal impact must count onl
 assert.equal(selectedImpact.cases.length, 10, 'proposal impact must cap execution at ten linked tests');
 assert.equal(selectedImpact.testsTruncated, true, 'proposal impact must disclose when linked tests are truncated');
 assert.equal(selectedImpact.cases[0].riskLevel, 'critical', 'critical linked tests must be selected before standard tests');
+const intakeLinkedImpact = selectAnswerlatticeProposalImpactCases(
+    [{
+        ...legacyCase,
+        id: 'intake_linked_case',
+        relatedEntityIds: [],
+        launchPack: {
+            version: 1,
+            sourceHash: 'a'.repeat(64),
+            reviewItemId: `kii_${'b'.repeat(28)}`,
+        },
+    }],
+    ['entity_added_after_generation'],
+    null,
+    `kii_${'b'.repeat(28)}`,
+);
+assert.equal(
+    intakeLinkedImpact.linkedTestCount,
+    1,
+    'proposal impact must retain direct First 10 provenance when Product Topics are linked after generation',
+);
 const allAffectedImpactEntities = buildAnswerlatticeProposalImpactAffectedEntityIds(
     Array.from({ length: 25 }, (_, index) => `proposal_entity_${index}`),
     Array.from({ length: 25 }, (_, index) => `current_entity_${index}`),

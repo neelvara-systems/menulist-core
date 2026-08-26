@@ -3,6 +3,14 @@ import { ANSWERLATTICE_TEXT_MODEL } from '@constant/answerlattice/ai';
 import { AI_ACTIONS_TYPES } from '@constant/common';
 import { DB_COLLECTIONS } from '@constant/database';
 import { PRODUCT_IDS } from '@constant/product';
+import {
+    getAnswerlatticeAnswerTestSummaryId,
+    syncAnswerlatticeLaunchPackCaseFromReview,
+} from '@lib/answerlattice/answerTestContracts';
+import {
+    compactAnswerlatticeAnswerTestSummaryForWrite,
+    normalizeAnswerlatticeAnswerTestSummary,
+} from '@lib/answerlattice/answerTestServer';
 import { normalizeAnswerlatticeScopeDocumentId } from '@lib/answerlattice/sessionScope';
 import { getUnitCost } from '@constant/AI/unitCosts';
 import { revalidateAnswerlatticePublicCache, type AnswerlatticePublicCacheSegment } from '@lib/actions/revalidateAnswerlatticePublicCache';
@@ -1776,6 +1784,44 @@ export async function updateKnowledgeIntakeReviewItem(scopeInput: IntakeScope, j
             }
         }
         const modifiedAt = now();
+        if (current.launchPack && (
+            patch.title !== undefined
+            || patch.question !== undefined
+            || patch.entityIds !== undefined
+        )) {
+            const answerTestSummaryRef = db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY)
+                .doc(getAnswerlatticeAnswerTestSummaryId(scope.tId, scope.sId));
+            const answerTestSummarySnap = await tx.get(answerTestSummaryRef);
+            if (answerTestSummarySnap.exists) {
+                const currentAnswerTestSummary = normalizeAnswerlatticeAnswerTestSummary(
+                    answerTestSummarySnap.data(),
+                    scope,
+                );
+                let changed = false;
+                const updatedAt = modifiedAt.toDate().toISOString();
+                const nextCases = currentAnswerTestSummary.cases.map((testCase) => {
+                    const nextCase = syncAnswerlatticeLaunchPackCaseFromReview(testCase, {
+                        id: current.id,
+                        title: patch.title !== undefined ? patch.title : current.title,
+                        question: patch.question !== undefined ? patch.question : current.question,
+                        entityIds: patch.entityIds !== undefined ? patch.entityIds : current.entityIds,
+                        updatedAt,
+                    });
+                    if (nextCase !== testCase) changed = true;
+                    return nextCase;
+                });
+                if (changed) {
+                    const nextAnswerTestSummary = compactAnswerlatticeAnswerTestSummaryForWrite({
+                        ...currentAnswerTestSummary,
+                        revision: currentAnswerTestSummary.revision + 1,
+                        cases: nextCases,
+                        updatedAt,
+                        updatedBy: cleanText(actor?.email || actor?.name || actor?.id || 'unknown', 180),
+                    });
+                    tx.set(answerTestSummaryRef, nextAnswerTestSummary, { merge: false });
+                }
+            }
+        }
         tx.set(ref, {
             ...patch,
             modifiedOn: modifiedAt,

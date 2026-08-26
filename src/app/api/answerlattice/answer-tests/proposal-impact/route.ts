@@ -147,6 +147,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             summary.cases,
             prepared.relatedEntityIds,
             prepared.targetAnswerId,
+            prepared.intakeReviewItemId,
         );
 
         let comparisons: AnswerlatticeProposalImpactComparison[] = [];
@@ -167,7 +168,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
 
         const warnings: string[] = [];
         if (selected.linkedTestCount === 0) {
-            warnings.push('No active Answer Test is linked to this answer or its product entities.');
+            warnings.push('No active Answer Test is linked to this answer, intake evidence, or its Product Topics.');
         }
         if (selected.testsTruncated) {
             warnings.push('Only the first 10 linked tests were checked, with critical tests evaluated first.');

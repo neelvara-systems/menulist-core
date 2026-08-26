@@ -21,6 +21,7 @@ import {
     replaceAnswerlatticeResolvedEntityReference,
 } from '@lib/answerlattice/governanceIdBoundary';
 import { normalizeAnswerlatticeScopeDocumentId } from '@lib/answerlattice/sessionScope';
+import { normalizeAnswerlatticeKnowledgeIntakeReviewItemId } from '@lib/answerlattice/knowledgeIntakeIdBoundary';
 import { normalizeStepOrder, validateProcedure } from '@lib/answerlattice/procedureValidation';
 import {
     parseAnswerlatticeRetrievalCanonicalAnswer,
@@ -770,6 +771,7 @@ type AnswerlatticeProposalImpactAnswerSummary = {
 export type AnswerlatticePreparedProposalImpact = {
     proposalId: string;
     targetAnswerId: string | null;
+    intakeReviewItemId: string | null;
     relatedEntityIds: string[];
     candidate: AnswerlatticeCanonicalAnswer;
     candidateSummary: AnswerlatticeProposalImpactAnswerSummary;
@@ -898,6 +900,7 @@ export async function prepareAnswerlatticeProposalImpact({
     return {
         proposalId,
         targetAnswerId: targetAnswerId || null,
+        intakeReviewItemId: normalizeAnswerlatticeKnowledgeIntakeReviewItemId(proposal.intakeReviewItemId) || null,
         relatedEntityIds: affectedEntityIds,
         candidate,
         candidateSummary: buildProposalImpactAnswerSummary(answerId, candidate),

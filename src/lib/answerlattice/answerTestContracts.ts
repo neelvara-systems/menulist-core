@@ -141,6 +141,38 @@ export type AnswerlatticeAnswerTestCase = Omit<z.infer<typeof AnswerlatticeAnswe
     context?: ValidatedContextPayload;
 };
 
+export const syncAnswerlatticeLaunchPackCaseFromReview = (
+    testCase: AnswerlatticeAnswerTestCase,
+    review: {
+        id: string;
+        title: string;
+        question?: string | null;
+        entityIds?: string[];
+        updatedAt: string;
+    },
+): AnswerlatticeAnswerTestCase => {
+    if (!testCase.launchPack || testCase.launchPack.reviewItemId !== review.id) return testCase;
+    const title = review.title.trim().slice(0, 120) || testCase.title;
+    const query = String(review.question || review.title).trim().slice(0, 500) || testCase.query;
+    const relatedEntityIds = Array.from(new Set((review.entityIds || [])
+        .map(entityId => entityId.trim().slice(0, 160))
+        .filter(Boolean)))
+        .slice(0, 10);
+    if (
+        title === testCase.title
+        && query === testCase.query
+        && relatedEntityIds.length === testCase.relatedEntityIds.length
+        && relatedEntityIds.every((entityId, index) => entityId === testCase.relatedEntityIds[index])
+    ) return testCase;
+    return {
+        ...testCase,
+        title,
+        query,
+        relatedEntityIds,
+        updatedAt: review.updatedAt,
+    };
+};
+
 const stableStringify = (value: unknown): string => {
     if (value === null || typeof value !== 'object') return JSON.stringify(value);
     if (Array.isArray(value)) return `[${value.map(stableStringify).join(',')}]`;

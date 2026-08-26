@@ -9,6 +9,10 @@ import {
     updateKnowledgeIntakeReviewItem,
 } from '../../src/lib/answerlattice/knowledgeIntake';
 import { generateAnswerlatticeProductStarterPack } from '../../src/lib/answerlattice/firstTrustedAnswerPackServer';
+import {
+    createEmptyAnswerlatticeAnswerTestSummary,
+    getAnswerlatticeAnswerTestSummaryId,
+} from '../../src/lib/answerlattice/answerTestContracts';
 import { normalizeAnswerlatticeRetrievalFaq } from '../../src/lib/answerlattice/faqContent';
 import { getBillingPeriodKey } from '../../src/lib/billing/billingPeriod';
 import { reserveAnswerlatticeIntakeUsage } from '../../src/lib/answerlattice/intakeUsageLedger';
@@ -565,9 +569,34 @@ async function run(): Promise<void> {
     assert.equal((await db.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc(subscriptionId).get()).data()?.monthlyCredits, 2);
 
     const canonicalPackItem = concurrentPack.reviewItems[0];
+    await db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY)
+        .doc(getAnswerlatticeAnswerTestSummaryId(scope.tId, scope.sId))
+        .set({
+            ...createEmptyAnswerlatticeAnswerTestSummary(scope.tId, scope.sId),
+            revision: 1,
+            cases: concurrentPack.cases,
+            updatedAt: new Date().toISOString(),
+            updatedBy: actor.email,
+        });
     await updateKnowledgeIntakeReviewItem(scope, packJobId, canonicalPackItem.id, {
+        title: 'Owner-reviewed billing launch answer',
+        question: 'How does the reviewed billing launch workflow work?',
+        entityIds: ['entity_billing_reviewed'],
         status: 'accepted',
     }, actor);
+    const syncedAnswerTests = (await db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY)
+        .doc(getAnswerlatticeAnswerTestSummaryId(scope.tId, scope.sId))
+        .get()).data();
+    const syncedLaunchCase = syncedAnswerTests?.cases?.find((testCase: any) => (
+        testCase.launchPack?.reviewItemId === canonicalPackItem.id
+    ));
+    assert.equal(syncedLaunchCase?.title, 'Owner-reviewed billing launch answer');
+    assert.equal(syncedLaunchCase?.query, 'How does the reviewed billing launch workflow work?');
+    assert.deepEqual(
+        syncedLaunchCase?.relatedEntityIds,
+        ['entity_billing_reviewed'],
+        'owner-linked Product Topics must update the exact First 10 case in the same review transaction',
+    );
     const packBeforePartialPublish = await getKnowledgeIntakeBundle(scope, packJobId);
     const remainingDraftCount = packBeforePartialPublish.reviewItems.filter(item => item.status === 'draft').length;
     assert.ok(remainingDraftCount > 0, 'the partial-publication regression requires remaining drafts');
