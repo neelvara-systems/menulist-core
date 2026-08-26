@@ -31,6 +31,8 @@ import { startLogCapture } from '@lib/localLogs/localLogsTracker';
 import { clearUserContext, setUserContext } from '@lib/monitoring/logger';
 import { logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import {
+    applyActiveStoreContextValueToSession,
+    normalizeActiveStoreContextValue,
     readActiveStoreContextIdForSession,
     writeActiveStoreContextId,
 } from '@lib/multiOutlet/activeStoreContext';
@@ -65,7 +67,7 @@ import { Session } from 'next-auth';
 import type LoginUserType from '@type/loginUser';
 import { SessionProvider as Provider, signOut } from 'next-auth/react';
 import { usePathname } from 'next/navigation';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import BrandedPageLoader from '@atoms/brandedPageLoader';
 import StoreAccessRecovery from '@/components/auth/StoreAccessRecovery';
 import PlatformGlobalDataProvider from './platformProviders/platformGlobalDataProvider';
@@ -158,11 +160,23 @@ export default function SessionProvider({ children, session, productContext }: P
     const effectiveSession = isAnswerlatticeRoute
         ? getAnswerlatticeScopedSession(authenticatedSession as LoginUserType | null)
         : authenticatedSession;
+    const activeStoreFirebaseSession = useMemo(() => (
+        !isAnswerlatticeRoute && activeStoreContext
+            ? applyActiveStoreContextValueToSession(
+                (effectiveSession || null) as LoginUserType | null,
+                normalizeActiveStoreContextValue({
+                    baseStoreId: effectiveSession?.sId,
+                    storeId: activeStoreContext,
+                    tenantId: effectiveSession?.tId,
+                }),
+            )
+            : effectiveSession
+    ), [activeStoreContext, effectiveSession, isAnswerlatticeRoute]);
     const requiresFirebaseAuth = Boolean(
-        effectiveSession?.user?.tenantId && effectiveSession?.user?.storeId,
+        activeStoreFirebaseSession?.user?.tenantId && activeStoreFirebaseSession?.user?.storeId,
     );
     const firebaseAuthRequiredScopeKey = requiresFirebaseAuth
-        ? getFirebaseAuthSessionScopeKey(effectiveSession)
+        ? getFirebaseAuthSessionScopeKey(activeStoreFirebaseSession)
         : null;
     const firebaseAuthReady = !requiresFirebaseAuth || Boolean(
         firebaseAuthRequiredScopeKey
@@ -332,7 +346,7 @@ export default function SessionProvider({ children, session, productContext }: P
 
         setFirebaseAuthSyncError(null);
 
-        ensureFirebaseAuthForSession(effectiveSession)
+        ensureFirebaseAuthForSession(activeStoreFirebaseSession)
             .then(() => {
                 if (!cancelled && firebaseAuthRequiredScopeKey) {
                     setFirebaseAuthReadyScopeKey(firebaseAuthRequiredScopeKey);
@@ -341,7 +355,7 @@ export default function SessionProvider({ children, session, productContext }: P
             .catch((error) => {
                 const normalizedError = new Error('Firebase Auth sync failed');
                 logFirebaseBootstrapFailure('firebase_auth_session_provider_sync_failed', error, {
-                    ...getFirebaseAuthSessionLogContext(effectiveSession),
+                    ...getFirebaseAuthSessionLogContext(activeStoreFirebaseSession),
                     pathPresent: Boolean(pathname),
                     pathLength: pathname?.length || 0,
                 });
@@ -361,8 +375,7 @@ export default function SessionProvider({ children, session, productContext }: P
         session?.user?.id,
         session?.user?.storeId,
         session?.user?.tenantId,
-        effectiveSession?.user?.storeId,
-        effectiveSession?.user?.tenantId,
+        activeStoreFirebaseSession,
         firebaseAuthRequiredScopeKey,
         firebaseAuthRetryNonce,
         requiresFirebaseAuth,
@@ -454,10 +467,10 @@ export default function SessionProvider({ children, session, productContext }: P
 
             const bootstrapStoreContext = async () => {
                 try {
-                    const canRefreshFirebaseAuth = Boolean(effectiveSession?.user?.tenantId && effectiveSession?.user?.storeId);
+                    const canRefreshFirebaseAuth = Boolean(activeStoreFirebaseSession?.user?.tenantId && activeStoreFirebaseSession?.user?.storeId);
                     const refreshFirebaseAuthForBootstrap = async () => {
                         if (!canRefreshFirebaseAuth) return;
-                        await ensureFirebaseAuthForSession(effectiveSession);
+                        await ensureFirebaseAuthForSession(activeStoreFirebaseSession);
                         await waitForFirebaseAuthPropagation();
                     };
                     const readTenantForBootstrap = async () => {
@@ -588,6 +601,7 @@ export default function SessionProvider({ children, session, productContext }: P
     }, [
         effectiveSession?.user?.storeId,
         effectiveSession?.user?.tenantId,
+        activeStoreFirebaseSession,
         clientProviderSession,
         fetchActiveSubscriptionForStore,
         firebaseAuthReady,

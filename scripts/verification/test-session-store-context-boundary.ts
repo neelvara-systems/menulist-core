@@ -218,6 +218,17 @@ assert.match(providerSource, /providerStateMatchesCurrentSession \? activeSubscr
 assert.match(providerSource, /providerStateMatchesCurrentSession \? tenantDetails : null/);
 assert.match(providerSource, /firebaseAuthReadyScopeKey === firebaseAuthRequiredScopeKey/);
 assert.match(providerSource, /setFirebaseAuthReadyScopeKey\(firebaseAuthRequiredScopeKey\)/);
+assert.match(
+    providerSource,
+    /applyActiveStoreContextValueToSession\([\s\S]*normalizeActiveStoreContextValue\([\s\S]*storeId: activeStoreContext/,
+    'Firebase Auth must follow the validated active outlet context instead of resetting claims to the login store',
+);
+assert.match(providerSource, /ensureFirebaseAuthForSession\(activeStoreFirebaseSession\)/);
+assert.doesNotMatch(
+    providerSource,
+    /ensureFirebaseAuthForSession\(effectiveSession\)/,
+    'an active outlet transition must not race a login-store claim refresh',
+);
 assert.doesNotMatch(providerSource, /useState\(\s*!session\?\.user\?\.storeId/);
 assert.match(providerSource, /setUserPermissions\(null\);\s+setStoreDetails\(targetStore\);/);
 assert.match(providerSource, /const rolePermissions = getPermissionsForRole\(userRoleId, authorityStoreDetails\.roles\);/);

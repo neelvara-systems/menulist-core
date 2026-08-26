@@ -69,6 +69,13 @@ async function run(): Promise<void> {
             tenantId: '1',
             uId: 'manager-1',
         }).firestore();
+        const menuListOutletManagerDb = testEnv.authenticatedContext('manager-outlet-1', {
+            role: 'MANAGER',
+            storeId: '202',
+            storeIds: ['101', '202'],
+            tenantId: '1',
+            uId: 'manager-outlet-1',
+        }).firestore();
         const otherDb = testEnv.authenticatedContext('owner-2', {
             role: 'OWNER',
             storeId: '202',
@@ -347,6 +354,9 @@ async function run(): Promise<void> {
                 await deleteDoc(doc(adminDb, 'payment_transactions', 'payment_menulist_conflicting_scope_1'));
             });
             await assertSucceeds(getDoc(doc(managerDb, 'subscriptions', 'sub_MenuList123')));
+            await assertSucceeds(
+                getDoc(doc(menuListOutletManagerDb, 'subscriptions', 'sub_MenuList123')),
+            );
             await assertSucceeds(getDoc(doc(managerDb, 'payment_transactions', 'payment_menulist_1')));
             await assertSucceeds(getDoc(doc(managerDb, 'topups', 'order_MenuList123')));
             await assertFails(getDoc(doc(managerDb, 'topups', 'order_MenuListConflictingScope123')));

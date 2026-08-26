@@ -73,8 +73,8 @@ The generated discovery inventory is retained in
   tenant and store, enabled/disabled feature, and material subscription and
   lifecycle states derived from current runtime guards. A disposable hosted
   QA owner is now active at tenant `4`, store `4`, with a labelled 72-hour
-  zero-value non-payment entitlement. Its password is retained only in a
-  mode-`0600` local temporary credential file and is excluded from this report.
+  zero-value non-payment entitlement. No reusable password is retained in the
+  repository, report, shell history, or a local credential file.
 
 ## B. Inventory summary
 
@@ -277,6 +277,7 @@ audit-fix-retest loop.
 | MLRC-083 | Medium | Growth Kits Staff line completion and duplicate execution | The entitled owner clicked `Done`; the prior used state had no durable visible acknowledgement, so a reasonable repeat click could create another export document plus kit/summary writes. Later copy/share/download actions also overwrote kit status away from `used`. | Treat `used` as terminal for the kit while continuing to record legitimate later handoffs. Render `Marked done` and disable the control on desktop/mobile after settlement; guard the handler against repeat mark-used calls. | Growth Kits 265-check source suite; client contracts; missing-hours isolated transaction emulator; focused ESLint; strict TypeScript; exact hosted `7696f0e…` build/version and mutation retest | Exact `7696f0e…` settled `Done` to disabled `Marked done`, retained it after reload, completed a later Copy, and retained `Marked done` after a second reload. Bounded Firestore readback returned terminal `used` with exactly one `mark_used` and one `copy` export for the tested pack. | CLOSED |
 | MLRC-084 | High | Hosted Growth Kits export/mark-used data path | Exact hosted `0a0dd9a…` prepared a ready Sales Pack, but Share/export acknowledgement returned 404; Download recovered with manual-copy guidance, and exact `d58217c…` mark-used returned the same failure. QA readback proved both exact-scope kit documents and all seven outputs exist. Bounded field inspection isolated `sourceFactsSummary.todayHoursLabel` as Firestore null: the missing-hours value was undefined in memory, the sanitizer stored null, and the projector accepted only string-or-absent, so every later kit read returned null. | Omit the unknown hours label while constructing future persisted source summaries; normalize the one legacy nullable hours label to absent during projection; retain fixed-code bounded 404 diagnostics. Preserve all other sanitizer/merge behavior plus response, auth, entitlement, rate-limit, tenant/store, cache, and collection contracts. | Exact hosted `0a0dd9a…`, `d58217c…`, diagnostic `d61d16c…`, and root-fix `7696f0e…` browser flows; exact bounded `growthos_export_kit_not_found` log; authenticated Firestore field/type/status/export-count readback; Growth Kits 265-check suite; client contracts; missing-hours isolated transaction emulator; focused ESLint; strict TypeScript | Exact `7696f0e…` projected the existing legacy-null pack, completed mark-used, Copy, and Download with success acknowledgements, preserved terminal state across reloads, and produced no repeat mark-used record. Firestore independently confirmed `status: used` on the legacy-field document and exactly three intended exports (`mark_used` ×1, `copy` ×1, `download` ×1). A newly prepared missing-hours pack omitted `todayHoursLabel` entirely and retained all seven outputs. Desktop Share reached the native browser boundary but the locked Mac could not complete the OS share sheet; no share export was written, so this is retained as an environment limitation rather than represented as a passing share. | CLOSED |
 | MLRC-085 | High | Official Business Page missing-hours public truth | Exact hosted `7696f0e…` rendered the isolated store as `Closed` even though authenticated Firestore readback returned no `workingHours`, no `specialHours`, and no temporary status. The disabled broader output-control flag sent missing data through the legacy status resolver, which represented unknown truth as a definite closure. | Keep the broader confidence feature flag unchanged. Add a pure shared `hasPublicHoursTruth()` boundary and use it on both single-store and multi-location OBP surfaces before the legacy Open/Closed resolver. Missing/empty hours render localized `Hours not available`; weekly hours or a current-local-date special schedule, including explicit `closed`, retain existing behavior. Another date's special-hours entry cannot imply today's status. | Exact hosted OBP plus authenticated bounded store-field readback; `verify-public-business-truth`; `verify-official-business-page-boundary`; focused ESLint; strict TypeScript; `git diff --check` | Exact hosted `246ff48…` rendered `Hours not available` for the same isolated no-hours store. Weekly explicit-closed, current-date special-closed, empty/missing hours, and other-date special-hours boundaries pass deterministic regression coverage. | CLOSED |
+| MLRC-086 | High | Provider-free multi-location owner switch | The real owner flow created outlet `5`, but selecting it triggered the explicit outlet Firebase claim refresh and then SessionProvider immediately synchronized Firebase Auth again from the original HQ session. The competing claim transition left outlet store/entitlement state unsettled and stripped the paid workspace. | Derive Firebase Auth synchronization from the already owner-scoped, membership-validated active-store session. HQ remains the login/permission authority, forged or unmapped browser contexts still fail closed, and clearing the outlet context restores the HQ claim. | `test:session-store-context-boundary`; `test:store-switch-access-boundary`; `verify:auth-security-failure-matrix`; `verify:multi-location-boundary`; shared Firestore Rules emulator inherited-entitlement read; strict TypeScript; lint; production build | Exact hosted defect reproduced twice on tenant `4`, HQ `4`, outlet `5`. Source and deterministic adjacent-flow regression pass; automatic QA deployment and exact hosted outlet/HQ switch retest pending. | CLOSED (source; hosted retest pending) |
 
 ## E. Firebase cost audit
 
@@ -329,6 +330,16 @@ the independently bounded public-store, screen-data, and menu-projection cache
 layers fail safely and converge after a direct Admin write that intentionally
 bypasses normal application invalidation; those fixture writes are test
 setup/cleanup, not a new product runtime path.
+
+Confirmed optimization MLRC-086: a successful outlet selection previously made
+the intentional `/api/auth/set-claims` transition and then could make a second
+claim-sync request for the HQ scope. That redundant request performs the
+bounded product-user lookup, canonical store read, and Firebase Auth
+claim/token work before the outlet flow tries to recover. The corrected
+SessionProvider recognizes the already validated outlet scope, so the matching
+token fast path performs zero additional set-claims requests and zero additional
+Firestore reads. The explicit switch authorization, membership validation,
+tenant/store rules, and master-entitlement fallback remain unchanged.
 
 Investigated without a justified runtime optimization: public projection
 reads, SWR local-storage scoping, public revalidation merge behavior, owner
@@ -418,6 +429,9 @@ represented as passing runtime claims.
 | `npm run security-os:audit -- --product menulist` | PASS — registry; mapped evidence executed separately |
 | `npm run verify:menulist-api-tenant-safety` | PASS — API scope, sensitive server store scope, Functions callable scope, and CSP report boundary |
 | `npm run verify:auth-security-failure-matrix` | PASS — authentication failure, claim-sync, persistence-settlement, storage lifecycle, and rate-limit boundaries |
+| `npm run test:session-store-context-boundary` and `npm run test:store-switch-access-boundary` | PASS — validated outlet context now controls Firebase claim synchronization without weakening forged-context denial |
+| `npm run verify:multi-location-boundary` | PASS — current desktop/mobile location, billing-capacity, role, isolation, and response contracts |
+| Shared Firestore billing Rules emulator on isolated port 8186 | PASS — an outlet claim with exact tenant membership and mapped HQ/outlet store IDs can read the inherited master-store MenuList entitlement; unrelated writes remained denied |
 | `npm run verify:billing-entitlement-boundary` | PASS — Billing access, history feedback/recovery, duplicate-read guard, and adjacent Answerlattice read boundary |
 | `npm run verify:menu-project-editor-boundary` | PASS — project scope/mutation/upload contracts, desktop/mobile persistence, public cache and screen invalidation |
 | `npm run verify:public-business-truth` | PASS — store projection, change log, drift, extraction learning, owner details |
