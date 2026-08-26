@@ -27,6 +27,31 @@ const developmentConnectDirective = buildCSPDirective(
     [...CSP_ALLOWLIST.connectSources, ...CSP_DEV_SETTINGS.connectSources],
 );
 
+for (const widgetOrigin of ['https://canonica.app', 'https://answerlattice.com']) {
+    assert.equal(
+        (CSP_ALLOWLIST.scriptSources as readonly string[]).includes(widgetOrigin),
+        true,
+        `${widgetOrigin} must be allowed to load the governed Answerlattice widget runtime`,
+    );
+    assert.equal(
+        (CSP_ALLOWLIST.connectSources as readonly string[]).includes(widgetOrigin),
+        true,
+        `${widgetOrigin} must be allowed for widget configuration and predictive-help requests`,
+    );
+    assert.equal(
+        (CSP_ALLOWLIST.frameSources as readonly string[]).includes(widgetOrigin),
+        true,
+        `${widgetOrigin} must be allowed to host the embedded Answerlattice widget frame`,
+    );
+}
+
+assert.equal(
+    ([...CSP_ALLOWLIST.scriptSources, ...CSP_ALLOWLIST.connectSources, ...CSP_ALLOWLIST.frameSources] as readonly string[])
+        .some((source) => source === 'https://*.answerlattice.com' || source === 'https://*.canonica.app'),
+    false,
+    'Answerlattice widget CSP access must remain limited to the exact governed QA and production origins',
+);
+
 for (const localSource of CSP_DEV_SETTINGS.connectSources) {
     assert.equal(
         productionConnectDirective.includes(localSource),

@@ -31,6 +31,8 @@ export const CSP_ALLOWLIST = {
         'https://*.clarity.ms', // Microsoft Clarity analytics (scripts.clarity.ms + www.clarity.ms)
         'https://plausible.io', // Plausible Cloud website analytics
         'https://*.plausible.io', // Plausible site-specific script hosts
+        'https://canonica.app', // Answerlattice QA widget runtime loaded by MenuList QA
+        'https://answerlattice.com', // Answerlattice production widget runtime loaded by MenuList production
         // Add more script sources here as needed
     ],
 
@@ -89,6 +91,8 @@ export const CSP_ALLOWLIST = {
         'https://*.sentry.io', // Sentry client event transport
         'https://*.ingest.sentry.io', // Sentry ingest endpoints
         'https://*.ingest.us.sentry.io', // Sentry US region ingest endpoints
+        'https://canonica.app', // Answerlattice QA widget configuration and predictive-help requests
+        'https://answerlattice.com', // Answerlattice production widget configuration and predictive-help requests
         // Add more API endpoints here as needed
     ],
 
@@ -107,6 +111,8 @@ export const CSP_ALLOWLIST = {
         'https://menulist.firebaseapp.com',
         'https://www.youtube.com',
         'https://www.youtube-nocookie.com',
+        'https://canonica.app', // Answerlattice QA widget iframe
+        'https://answerlattice.com', // Answerlattice production widget iframe
     ],
 
     /**
