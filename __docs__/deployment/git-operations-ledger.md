@@ -6945,3 +6945,34 @@ No Firebase source/configuration changes. Firestore Rules, indexes, Storage Rule
 - Firebase deployment evidence or blocker: no Firebase infrastructure delta exists; no deployment is required or authorized.
 - Final filesystem state: pending explicit-path staging, staged-diff validation, commit, non-force staging push, direct server readback, automatic QA build, and exact hosted Notification success-feedback retest. The owner preference is already restored to Email only.
 - Attribution confidence: exact.
+
+#### MenuList Notification settings performed result — `2026-08-26T13:36:52+05:30`
+
+- Commit/push: `d16e89e2611031f262a9cc47dd804b7de8bd53bb` (`fix(menulist): mount notification feedback`) was pushed non-force from local `staging` to `origin/staging`; direct server readback returned the exact same SHA with `0/0` divergence. Local and remote `main` remain untouched at `fe625d5bbf527c1b7e537b00ab32a4f655905c35`.
+- Exact deployment: Vercel QA deployment `8f8GMG5yoRZoYacyTseSg9ekVbdn` reached Ready. Canonical `https://app.menulist.digital/api/version` returned exact build `d16e89e2611031f262a9cc47dd804b7de8bd53bb` and deployment host `menulist-core-19lpg88y8-neelvara-systems.vercel.app` before the hosted retest.
+- Hosted closeout: the entitled disposable owner selected Preferred available, saved successfully, observed visible `Notification settings saved` feedback, and observed the Save control become disabled. A hard refresh retained Preferred available. The owner then restored Email only, observed the same success feedback, and a final hard refresh retained Email only with Preferred available unselected and Save disabled.
+- Validation: the complete maintained `verify:notification-os` suite, including 70 trigger contracts and Firestore consent-boundary rules, passed; expected permission-denied output belongs to negative authorization assertions. Focused/full zero-warning ESLint, strict TypeScript, production build with 450/450 static pages and 53 service-worker precache entries, and `git diff --check` passed. A stale orphaned demo emulator that held port 8080 was identified by exact PID/command and stopped before the maintained rules test was rerun successfully.
+- Security/cost: raw exception text is no longer exposed on desktop or mobile. The correction adds no Firestore read/write, Storage operation, Cloud Function invocation, listener, cache, provider notification, or analytics event; the reversible QA test performed only the two intended owner preference writes.
+- Firebase state: deployable Firestore Rules, indexes, Storage Rules, and Cloud Functions sources/configuration were unchanged. All previously recorded MenuList/Answerlattice QA/production component rows remain independently `NO_INFRA_CHANGE` / `SERVER_STATE_UNKNOWN`; no Firebase infrastructure deployment or authenticated infrastructure readback was performed or claimed.
+- Razorpay boundary: no checkout, provider call, charge, webhook completion, refund, or money movement was initiated.
+- Attribution confidence: exact.
+
+### GIT-20260826-133806-mlrc092-hosted-closeout
+
+- Timestamp: `2026-08-26T13:38:06+05:30`
+- Record type: `PLANNED`
+- Actor/session/thread ID: Codex `/root`; thread `01a034e1-c70a-74b1-a92b-0a103a981815`.
+- Registered worktrees: one worktree, `/Users/danny/Projects/MenuListAi/menulist-core`, branch `staging`, HEAD `d16e89e2611031f262a9cc47dd804b7de8bd53bb`.
+- Starting filesystem state: `0` staged, `2` tracked modified, `0` untracked, limited to the MenuList certification report and this ledger.
+- Operation: commit the exact hosted MLRC-092 closeout evidence, push `staging` non-force, perform direct server readback, and leave `main` untouched. No Vercel or Firebase deployment is authorized; the already-ready automatic QA deployment is evidence only.
+- Branch matrix before:
+
+| Branch | Local full SHA | Server ref/full SHA | Tracking ref | Ahead/behind | Worktree | Staged/unstaged/untracked | Status |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `staging` | `d16e89e2611031f262a9cc47dd804b7de8bd53bb` | `refs/heads/staging` / `d16e89e2611031f262a9cc47dd804b7de8bd53bb` | `origin/staging` | `0/0` | primary | `0/2/0` before this append | `IN_SYNC` |
+| `main` | `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `refs/heads/main` / `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `origin/main` | `0/0` | none | n/a | `IN_SYNC` |
+
+- Validation: exact hosted MLRC-092 lifecycle and fixture restoration passed; prior source validation evidence is retained in the immediately preceding performed result; `git diff --check` passed.
+- Firebase state: all deployable Firebase source/configuration is unchanged; MenuList and Answerlattice QA/production Rules, indexes, Storage Rules, and Functions remain `NO_INFRA_CHANGE` / `SERVER_STATE_UNKNOWN` in this documentation-only operation.
+- Final filesystem state: pending explicit-path staging, documentation-only commit, non-force staging push, and direct server readback.
+- Attribution confidence: exact.
