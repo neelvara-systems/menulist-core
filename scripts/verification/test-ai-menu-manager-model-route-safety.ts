@@ -139,6 +139,71 @@ assert.equal(normalizeAiMenuManagerInboxResponse({
     expectedSessionId: sessionId,
 }), null, 'inbox responses must bind the exact requested session');
 
+const recoveredSessionDate = '2026-07-29';
+const recoveredSessionId = buildDailySessionId({ ...responseScope, sessionDate: recoveredSessionDate });
+const recoveredOperationId = `amm_prop_${'c'.repeat(28)}`;
+const recoveredCard = { ...card, cardId: recoveredOperationId };
+const recoveredSession = {
+    sessionId: recoveredSessionId,
+    ...responseScope,
+    sessionDate: recoveredSessionDate,
+    storageMode: 'daily_compact',
+    status: 'active',
+    compactMessages: [],
+    pendingCardSummaries: [{
+        proposalId: recoveredOperationId,
+        actionType: recoveredCard.actionType,
+        title: recoveredCard.title,
+        status: recoveredCard.status,
+        risk: recoveredCard.risk,
+        projectId: responseScope.projectId,
+        updatedAt: createdAt,
+    }],
+    pendingOperations: [{
+        operationId: recoveredOperationId,
+        sessionId: recoveredSessionId,
+        ...responseScope,
+        card: recoveredCard,
+        executionMode: 'client_project_mutation',
+        patch: { kind: 'menu_settings_update', menuSettings: { specialNote: 'Lunch is ready.' } },
+        patchHash: '0123456789abcdef',
+        idempotencyKeys: ['recovered-command'],
+        createdAt,
+        updatedAt: createdAt,
+    }],
+    recentReceiptSummaries: [],
+    counters: {},
+    artifactRefs: [],
+    hasPendingOperations: true,
+    pendingCount: 1,
+    createdAt,
+    updatedAt: createdAt,
+};
+assert.ok(normalizeAiMenuManagerInboxResponse({
+    session: recoveredSession,
+    sessionId: recoveredSessionId,
+    cards: [],
+    receipts: [],
+}, {
+    ...responseScope,
+    expectedSessionId: sessionId,
+}), 'inbox responses may continue one exact-scope unresolved prior-day session');
+assert.equal(normalizeAiMenuManagerInboxResponse({
+    session: {
+        ...recoveredSession,
+        hasPendingOperations: false,
+        pendingCount: 0,
+        pendingOperations: [],
+        pendingCardSummaries: [],
+    },
+    sessionId: recoveredSessionId,
+    cards: [],
+    receipts: [],
+}, {
+    ...responseScope,
+    expectedSessionId: sessionId,
+}), null, 'inbox responses must not switch to a prior-day session after its pending work is cleared');
+
 const patch = {
     kind: 'menu_settings_update' as const,
     menuSettings: { specialNote: 'Lunch is ready.' },

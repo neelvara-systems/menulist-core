@@ -59,8 +59,9 @@ export const GET = withAuth(async (request: NextRequest, session) => {
         projectId: parsed.data.projectId,
     });
 
-    return NextResponse.json(serializeAiMenuManagerInboxForJson({
-        ...inbox,
-        sessionId,
-    }));
+    // A no-current-day read can intentionally recover the newest unresolved
+    // prior-day session. Preserve that authoritative session identity so the
+    // client can continue its pending work instead of receiving a contradictory
+    // current-day ID paired with an older session body.
+    return NextResponse.json(serializeAiMenuManagerInboxForJson(inbox));
 });

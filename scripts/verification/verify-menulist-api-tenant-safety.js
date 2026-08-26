@@ -5440,6 +5440,8 @@ function verifyOwnerUtilitySecureLogging() {
 	  assert(!safeMode.includes('console.error'), 'SAFE_MODE helper must use bounded ops diagnostics');
 	  assert(!safeMode.includes('new Error(String(error))'), 'SAFE_MODE helper must not stringify thrown values into logs');
 	  assert(!safeMode.includes('error instanceof Error ? error'), 'SAFE_MODE helper must not pass raw exceptions to secureError');
+	  assert(safeMode.includes("const { firestoreAdmin } = await import('@lib/firebase/firebaseAdmin');"), 'MenuList SAFE_MODE must use the product-scoped Workload Identity Firestore instance');
+	  assert(!safeMode.includes("await import('firebase-admin/firestore')"), 'MenuList SAFE_MODE must not bypass the product-scoped Firestore service binding');
 
   const opsDiagnostics = read('src/lib/ops/opsDiagnostics.ts');
   const opsControlRoomClientResponse = read('src/lib/ops/opsControlRoomClientResponse.ts');

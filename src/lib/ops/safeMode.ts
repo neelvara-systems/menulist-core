@@ -53,9 +53,12 @@ export async function checkSafeMode(options: CheckSafeModeOptions = {}): Promise
     const db = options.getFirestore
       ? options.getFirestore()
       : await (async () => {
-        // Dynamic import to avoid bundling firebase-admin on client.
-        const { getFirestore } = await import('firebase-admin/firestore');
-        return getFirestore();
+        // Dynamic import keeps Firebase Admin out of client bundles while using
+        // the product-scoped Firestore instance. In managed Vercel runtimes this
+        // instance carries the validated MenuList Workload Identity credential;
+        // getFirestore() on the default app would bypass that service binding.
+        const { firestoreAdmin } = await import('@lib/firebase/firebaseAdmin');
+        return firestoreAdmin;
       })();
 
     const doc = await db.collection(DB_COLLECTIONS.OPS_CONFIG).doc('system').get();

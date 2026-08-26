@@ -21,7 +21,7 @@ import {
     normalizeAiMenuManagerSessionId,
     normalizeAiMenuManagerScopeDocumentId,
 } from './routeIds';
-import { normalizeAiMenuManagerSessionDate } from './idempotency';
+import { isDailySessionIdForScope, normalizeAiMenuManagerSessionDate } from './idempotency';
 import {
     normalizeAiMenuManagerCardSnapshot,
     normalizeAiMenuManagerPatchSnapshot,
@@ -357,7 +357,7 @@ export function normalizeAiMenuManagerInboxResponse(
 ): (AiMenuManagerInboxResponse & { sessionId: string }) | null {
     if (!isUnknownRecord(value)) return null;
     const sessionId = normalizeAiMenuManagerSessionId(value.sessionId);
-    if (sessionId !== params.expectedSessionId) return null;
+    if (!sessionId) return null;
     const session = value.session === null
         ? null
         : normalizeAiMenuManagerSessionSnapshot(value.session);
@@ -371,6 +371,20 @@ export function normalizeAiMenuManagerInboxResponse(
             || session.projectId !== params.projectId
         )
     ) return null;
+    const isRequestedSession = sessionId === params.expectedSessionId;
+    const isRecoveredPendingSession = Boolean(
+        session
+        && session.hasPendingOperations
+        && session.sessionId === sessionId
+        && isDailySessionIdForScope({
+            sessionId,
+            tId: params.tId,
+            sId: params.sId,
+            projectId: params.projectId,
+            sessionDate: session.sessionDate,
+        }),
+    );
+    if (!isRequestedSession && !isRecoveredPendingSession) return null;
     const cards = normalizeResponseCards(value.cards, params);
     if (!cards || !Array.isArray(value.receipts) || value.receipts.length > 20) return null;
     const receipts = value.receipts.map((entry) => normalizeAiMenuManagerReceiptSnapshot(entry, params.projectId));

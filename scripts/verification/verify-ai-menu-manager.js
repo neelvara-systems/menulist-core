@@ -1282,6 +1282,8 @@ for (const [routeSource, routeLabel] of [[inboxRoute, 'Inbox route'], [sessionRo
   assert(routeSource.includes('serializeAiMenuManagerInboxForJson'), `${routeLabel} must use the shared typed inbox JSON boundary`);
   assert(!routeSource.includes('function serializeForJson'), `${routeLabel} must not retain the duplicate untyped recursive serializer`);
 }
+assert(inboxRoute.includes('serializeAiMenuManagerInboxForJson(inbox)'), 'Inbox route must preserve the authoritative recovered-session ID');
+assert(!inboxRoute.includes('...inbox,\n        sessionId,'), 'Inbox route must not pair prior-day recovered work with the requested current-day session ID');
 
 const ownerRoute = read('src/app/(main)/menu-manager/page.tsx');
 assert(ownerRoute.includes('AiMenuManagerRoute'), 'AMM owner route must be mounted at /menu-manager');

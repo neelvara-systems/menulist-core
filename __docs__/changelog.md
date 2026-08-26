@@ -32889,3 +32889,16 @@ TEMPLATE FOR NEW ENTRIES:
   incompatible root-v10 wrapper.
 - Kept Firestore, Firebase Auth, IAM, tenant/store paths, retries, operation
   counts, static-key prohibition, and provider boundaries unchanged.
+
+# 2026-08-26 - Menu Manager pending-session recovery consistency
+
+- Preserved the authoritative prior-day session ID when the protected inbox
+  recovers one exact-scope unresolved Menu Manager work stream.
+- Kept the client fail-closed: a recovered session is admitted only with exact
+  tenant/store/menu scope, unresolved work, an internally matching ID, and a
+  deterministic ID for its own validated session date. Cleared or mismatched
+  prior-day sessions remain rejected.
+- Routed MenuList SAFE_MODE checks through the existing product-scoped WIF
+  Firestore service instead of the unmanaged default-app service, eliminating
+  one invalid-credential attempt per guarded route without changing the one-read
+  success path, fail-open behavior, or Answerlattice's injected service boundary.

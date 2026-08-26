@@ -875,6 +875,49 @@ Those fields are explicitly `unknown` instead of guessed.
 - Manual deployment state: no Firebase or Vercel deployment command was run. The non-force `staging` push may trigger the existing branch-tracked custom-`qa` application build; exact hosted identity and Storage/import downstream retest remain pending.
 - Final filesystem state before this performed-result append: clean. Attribution confidence: exact.
 
+### GIT-20260826-071323-mlrc076-session-recovery
+
+- Timestamp: `2026-08-26T07:13:23+05:30`
+- Record type: `PLANNED`
+- Actor/session/thread ID: Codex `/root`; thread `01a034e1-c70a-74b1-a92b-0a103a981815`
+- Registered worktrees: one worktree, `/Users/danny/Projects/MenuListAi/menulist-core`, branch `staging`, HEAD `12eff3e361d3dabcdef4655ef117cd3fa6dfe720`.
+- Branch matrix before:
+
+| Branch | Local full SHA | Server ref/full SHA | Tracking ref | Ahead/behind | Worktree | Staged/unstaged/untracked | Status |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `staging` | `12eff3e361d3dabcdef4655ef117cd3fa6dfe720` | `refs/heads/staging` / `12eff3e361d3dabcdef4655ef117cd3fa6dfe720` | `origin/staging` | `0/0` | primary | `0/9/0` | `IN_SYNC` |
+| `main` | `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `refs/heads/main` / `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `origin/main` | `0/0` | none | n/a | `IN_SYNC` |
+
+- Starting filesystem state: nine tracked modified files. The prior MLRC-075 performed-result ledger append is exact prior-operation evidence; the remaining files are attributable to MLRC-076 recovered-session consistency, MLRC-077 SAFE_MODE service binding, regression coverage, changelog, and certification evidence. No staged or untracked file.
+- Operation: commit the nine exact tracked files and push local `staging` to `origin/staging` non-force. `main` remains untouched. The existing branch-tracked custom-`qa` pipeline may deploy automatically; no manual Vercel or Firebase deployment is authorized or planned.
+- Validation already completed: `test:ai-menu-manager:model-route-safety` PASS; complete `verify:ai-menu-manager` PASS; MenuList API tenant-safety verifier PASS; SecurityOS-selected `verify:auth-security-failure-matrix` PASS with every chained suite; focused ESLint PASS; strict TypeScript PASS; and `git diff --check` PASS.
+- Hosted/root-cause evidence: exact build `12eff3e361d3dabcdef4655ef117cd3fa6dfe720` completed owned-source Storage persistence, extraction, editor save, public rendering, warm-cache price mutation, and revert. Menu Manager loaded the selected project but rejected its inbox. One bounded authenticated QA query found the intended exact-scope unresolved `2026-08-25` session. The inbox route returned that older session body while overwriting its ID with the requested `2026-08-26` ID. MLRC-076 preserves the authoritative recovered ID and admits it only after exact scope, unresolved-work, internal-ID, and deterministic-date validation. MLRC-077 makes the existing SAFE_MODE read use the already product-scoped WIF Firestore instance. No customer, payment, production, IAM, collection, or Firebase infrastructure state was mutated.
+- Firebase matrix before/after (no Firebase source/config path changed; no infrastructure deployment or authenticated component readback is part of this application-source operation):
+
+| Product | Environment/project | Component | Local source/config | Local hash/bytes | Local validation | Server release/revision/inventory | Server hash/bytes | Readback time | Delta | Deployment state |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| MenuList | QA / `menulist-qa` | Firestore Rules | `firestore-menulist.rules` | `2059459e3b0263bdeca75f89ad0b490e8cebf1dee19cdef9012e0c02fbab5b89` / 132684 | unchanged previously validated artifact | not read back | unknown | `2026-08-26T07:13:23+05:30` | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| MenuList | QA / `menulist-qa` | Firestore indexes | `firestore.indexes.json` | `5629ae4d5004bc59c82528f2e7f9b7e5bb1ffbf74e0fc2e2e5e5252abf0744e0` / 78310 | unchanged | not read back | unknown | `2026-08-26T07:13:23+05:30` | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| MenuList | QA / `menulist-qa` | Storage Rules | `storage.rules` | `226d2a206d7de8a442bf356a61ad048118322acb993eb89fa45744ed78ed1838` / 18176 | unchanged | not read back | unknown | `2026-08-26T07:13:23+05:30` | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| MenuList | QA / `menulist-qa` | Cloud Functions | `functions/` | Git tree `3c42f5d3fca47ca69e10fa34ad63cf8c28ab8f75` | unchanged | not read back | unknown | `2026-08-26T07:13:23+05:30` | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| MenuList | production / `menulist-prod` | Firestore Rules | `firestore-menulist.rules` | same hash/bytes as QA row | unchanged | not read back | unknown | `2026-08-26T07:13:23+05:30` | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| MenuList | production / `menulist-prod` | Firestore indexes | `firestore.indexes.json` | same hash/bytes as QA row | unchanged | not read back | unknown | `2026-08-26T07:13:23+05:30` | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| MenuList | production / `menulist-prod` | Storage Rules | `storage.rules` | same hash/bytes as QA row | unchanged | not read back | unknown | `2026-08-26T07:13:23+05:30` | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| MenuList | production / `menulist-prod` | Cloud Functions | `functions/` | same Git tree as QA row | unchanged | not read back | unknown | `2026-08-26T07:13:23+05:30` | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| Answerlattice | QA / `neelvara-answerlattice-qa` | Firestore Rules | `firestore-answerlattice.rules` | `a92cbacbf2b64d2939391449044ea5625e706ddb60e23dfab7c4ffb20d3a9e77` / 116222 | unchanged | not read back | unknown | `2026-08-26T07:13:23+05:30` | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| Answerlattice | QA / `neelvara-answerlattice-qa` | Firestore indexes | `firestore-answerlattice.indexes.json` | `0114bdf8ea6425b890a8e58fa03dac7915a7d3ed4372bc689ab59a8ce585ff4a` / 50941 | unchanged | not read back | unknown | `2026-08-26T07:13:23+05:30` | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| Answerlattice | QA / `neelvara-answerlattice-qa` | Storage Rules | `storage-answerlattice.rules` | `5fc8f980f289889da557ac69c91edd61f8e8646b066c9b0101b87141d67106cc` / 6948 | unchanged | not read back | unknown | `2026-08-26T07:13:23+05:30` | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| Answerlattice | QA / `neelvara-answerlattice-qa` | Cloud Functions | `functions-answerlattice/` | Git tree `ae5750c6e78f96a9ecfa234b64f906e04a2fdc16` | unchanged | not read back | unknown | `2026-08-26T07:13:23+05:30` | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| Answerlattice | production / `neelvara-answerlattice-prod` | Firestore Rules | `firestore-answerlattice.rules` | same hash/bytes as QA row | unchanged | not read back | unknown | `2026-08-26T07:13:23+05:30` | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| Answerlattice | production / `neelvara-answerlattice-prod` | Firestore indexes | `firestore-answerlattice.indexes.json` | same hash/bytes as QA row | unchanged | not read back | unknown | `2026-08-26T07:13:23+05:30` | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| Answerlattice | production / `neelvara-answerlattice-prod` | Storage Rules | `storage-answerlattice.rules` | same hash/bytes as QA row | unchanged | not read back | unknown | `2026-08-26T07:13:23+05:30` | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| Answerlattice | production / `neelvara-answerlattice-prod` | Cloud Functions | `functions-answerlattice/` | same Git tree as QA row | unchanged | not read back | unknown | `2026-08-26T07:13:23+05:30` | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+
+- Firebase deployment evidence or blocker: no deployable Firebase source changed, no Firebase deployment is required, and no Firebase deployment is authorized.
+- Git server readback and divergence: pre-operation direct `git ls-remote` confirms both branch refs shown above; post-push readback pending.
+- Final filesystem state: pending commit/push.
+- Attribution confidence: exact.
+
 #### Pre-commit correction for `GIT-20260826-051553-mlrc071-import-stage-diagnostics`
 
 - The planned-operation sentence saying “seven scoped files plus this ledger” miscounted the candidate. The exact candidate is six non-ledger files plus this ledger, seven tracked files total. Scope and authorization are unchanged.
@@ -4919,3 +4962,19 @@ No Firebase source/configuration changes. Firestore Rules, indexes, Storage Rule
 #### Chronological tail correction for `GIT-20260826-064013-mlrc075-native-storage-wif`
 
 - The complete planned record remains preserved at line 819 and the first pointer at line 4788. This tail correction follows the final row of the later MLRC-074 matrix and makes the current append-only end resolve to MLRC-075 without deleting or moving prior text.
+
+#### MLRC-075 performed result — `2026-08-26T06:43:05+05:30`
+
+- Commit/push: `12eff3e361d3dabcdef4655ef117cd3fa6dfe720` (`fix(menulist): use native storage workload identity`) was pushed non-force from local `staging` to `origin/staging`.
+- Direct server readback returned exact `refs/heads/staging` SHA `12eff3e361d3dabcdef4655ef117cd3fa6dfe720` with `0/0` divergence. Local and remote `main` remained untouched at `fe625d5bbf527c1b7e537b00ab32a4f655905c35` with `0/0` divergence.
+- Post-operation branch matrix:
+
+| Branch | Local full SHA | Server ref/full SHA | Tracking ref | Ahead/behind | Worktree | Staged/unstaged/untracked | Status |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `staging` | `12eff3e361d3dabcdef4655ef117cd3fa6dfe720` | `refs/heads/staging` / `12eff3e361d3dabcdef4655ef117cd3fa6dfe720` | `origin/staging` | `0/0` | primary | `0/0/0` before performed-result append | `IN_SYNC` |
+| `main` | `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `refs/heads/main` / `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `origin/main` | `0/0` | none | n/a | `IN_SYNC` |
+
+- Validation: WIF/Storage regression, MenuList agent-readiness, focused ESLint, strict TypeScript, SecurityOS-selected auth/failure matrix and every chained suite, configuration safety, managed environment contract, documentation links, staged diff check, and `git diff --check` passed.
+- Firebase state after Git mutation: all 16 planned component/target rows remain independently `NO_INFRA_CHANGE` / `SERVER_STATE_UNKNOWN`; no Firebase source/configuration path changed and no Firebase deploy occurred.
+- Manual deployment state: no Firebase or Vercel deployment command was run. The automatic branch-tracked QA build started at `menulist-core-pdgq4aqon-neelvara-systems.vercel.app`; exact hosted identity and import retest remain pending.
+- Final filesystem state before this performed-result append: clean. Attribution confidence: exact.
