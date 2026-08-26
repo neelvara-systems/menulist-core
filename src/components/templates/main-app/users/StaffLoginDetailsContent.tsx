@@ -10,7 +10,7 @@ import {
     openWhatsAppWebShare,
     shareStaffLoginDetails,
 } from "@lib/staffManagement/shareLoginDetails";
-import { Button, message, Space, Typography } from "antd";
+import { Button, App, Space, Typography } from "antd";
 import { useEffect, useState } from "react";
 import { LuCopy, LuSend, LuShare2 } from "react-icons/lu";
 
@@ -29,6 +29,7 @@ type StaffLoginDetailsContentProps = {
 };
 
 export default function StaffLoginDetailsContent({ countryCode, diagnosticContext = {}, dialCode, phoneNumber, productName, staffLoginId, temporaryPasscode }: StaffLoginDetailsContentProps) {
+    const { message: messageApi } = App.useApp();
     const [supportsNativeShare, setSupportsNativeShare] = useState(false);
     const details = { countryCode, dialCode, phoneNumber, productName, staffLoginId, temporaryPasscode };
     const fullText = buildStaffLoginDetailsText(details);
@@ -55,7 +56,7 @@ export default function StaffLoginDetailsContent({ countryCode, diagnosticContex
     const copyValue = async (value: string, label: string) => {
         const copied = await copyTextToClipboard(value);
         if (copied) {
-            message.success(`${label} copied`);
+            messageApi.success(`${label} copied`);
             return;
         }
         logStaffClientFailure('desktop_staff_login_details_copy_failed', new Error('staff_login_details_copy_failed'), buildLoginShareLogContext('copy_login_detail', {
@@ -63,7 +64,7 @@ export default function StaffLoginDetailsContent({ countryCode, diagnosticContex
             ...getCopySupportContext(),
             copyValueLength: value.length,
         }));
-        message.error(`Could not copy ${label.toLowerCase()}`);
+        messageApi.error(`Could not copy ${label.toLowerCase()}`);
     };
 
     const shareOnWhatsAppWeb = async () => {
@@ -82,20 +83,20 @@ export default function StaffLoginDetailsContent({ countryCode, diagnosticContex
             }));
         }
         if (opened) {
-            message.success(copied ? 'WhatsApp opened. Login details copied too.' : 'WhatsApp opened');
+            messageApi.success(copied ? 'WhatsApp opened. Login details copied too.' : 'WhatsApp opened');
             return;
         }
         if (copied) {
-            message.success('Login details copied. Paste them in WhatsApp.');
+            messageApi.success('Login details copied. Paste them in WhatsApp.');
             return;
         }
-        message.error('Could not open WhatsApp');
+        messageApi.error('Could not open WhatsApp');
     };
 
     const shareFromDevice = async () => {
         const result = await shareStaffLoginDetails(details);
         if (result === 'shared') {
-            message.success('Share sheet opened');
+            messageApi.success('Share sheet opened');
             return;
         }
         if (result === 'cancelled') return;
@@ -110,7 +111,7 @@ export default function StaffLoginDetailsContent({ countryCode, diagnosticContex
                 ...getBoundedStaffStringContext('shareResult', result),
             }));
         }
-        message[copied ? 'success' : 'error'](copied ? 'Login details copied' : 'Could not share login details');
+        messageApi[copied ? 'success' : 'error'](copied ? 'Login details copied' : 'Could not share login details');
     };
 
     return (

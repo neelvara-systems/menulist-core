@@ -3,7 +3,7 @@
 import { FEATURE_FLAGS } from '@config/features';
 import { formatDateTime, type IntlFormatter } from '@util/dateTime';
 import type { TableColumnsType } from 'antd';
-import { Alert, Button, Card, Empty, Modal, Select, Space, Spin, Statistic, Table, Tag, Tooltip, Typography, message, theme } from 'antd';
+import { Alert, Button, Card, Empty, Modal, Select, Space, Spin, Statistic, Table, Tag, Tooltip, Typography, App, theme } from 'antd';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
 import { useSession } from 'next-auth/react';
@@ -464,6 +464,7 @@ function shortId(value: string | null | undefined) {
 }
 
 export default function AnswerlatticeIntakeMonitor() {
+    const { message: messageApi } = App.useApp();
     const { token } = theme.useToken();
     const formatter = useFormatter();
     const { data: session, status: sessionStatus } = useSession();
@@ -503,7 +504,7 @@ export default function AnswerlatticeIntakeMonitor() {
             );
             setSnapshot(data);
         } catch {
-            message.error(ANSWERLATTICE_INTAKE_MONITOR_LOAD_FAILED);
+            messageApi.error(ANSWERLATTICE_INTAKE_MONITOR_LOAD_FAILED);
         } finally {
             setLoading(false);
             setRefreshing(false);
@@ -568,7 +569,7 @@ export default function AnswerlatticeIntakeMonitor() {
 
     const handleManualRetry = () => {
         if (!selectedScope) {
-            message.warning('Select an Answerlattice workspace first.');
+            messageApi.warning('Select an Answerlattice workspace first.');
             return;
         }
 
@@ -599,10 +600,10 @@ export default function AnswerlatticeIntakeMonitor() {
                         isIntakeMonitorRetryResponse,
                         ANSWERLATTICE_INTAKE_MONITOR_RETRY_FAILED,
                     );
-                    message.success(`Manual retry finished: ${getManualRetryStatusLabel(data)}`);
+                    messageApi.success(`Manual retry finished: ${getManualRetryStatusLabel(data)}`);
                     await loadSnapshot('refresh', selectedScope);
                 } catch {
-                    message.error(ANSWERLATTICE_INTAKE_MONITOR_RETRY_FAILED);
+                    messageApi.error(ANSWERLATTICE_INTAKE_MONITOR_RETRY_FAILED);
                 } finally {
                     setTriggering(false);
                 }

@@ -32,7 +32,7 @@ import { InheritanceState } from '@type/multiOutlet.types';
 import { getISOStringDate } from '@util/dateTime';
 import { removeObjRef } from '@util/utils';
 import type { UploadProps } from 'antd';
-import { Button, Flex, message, Modal, Select, Tabs, theme, Typography, Upload } from 'antd';
+import { Button, Flex, App, Modal, Select, Tabs, theme, Typography, Upload } from 'antd';
 import React, { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { LuArrowLeft, LuSave, LuSparkles, LuUploadCloud, LuX } from 'react-icons/lu';
 import ItemPhotoCaptureAssist from '../../../../shared/media/ItemPhotoCaptureAssist';
@@ -135,6 +135,7 @@ const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
     isMasterLinked = false,
     allowInheritedImageOverride = false
 }) => {
+    const { message: messageApi } = App.useApp();
 
     const { token } = theme.useToken();
     const { isMobile } = useDeviceType();
@@ -282,7 +283,7 @@ const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
                         .map((item) => item.id)
                         .slice(0, IMAGE_BATCH_PROJECT_SELECTION_MAX_ITEMS);
                     if (initialBatchItemIdSet.size > IMAGE_BATCH_PROJECT_SELECTION_MAX_ITEMS) {
-                        message.info(`You can generate photos for up to ${IMAGE_BATCH_PROJECT_SELECTION_MAX_ITEMS} items at a time.`);
+                        messageApi.info(`You can generate photos for up to ${IMAGE_BATCH_PROJECT_SELECTION_MAX_ITEMS} items at a time.`);
                     }
                     setSelectedItemsForBatch((previous) => (
                         previous.length === nextSelectedItems.length &&
@@ -364,12 +365,12 @@ const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
         } else if (activeTab === 'upload' && selectedImages.length > 0) {
             imagesToUpload = selectedImages;
         } else {
-            message.info('No images selected for upload.');
+            messageApi.info('No images selected for upload.');
             return;
         }
 
         if (!selectedItem || imagesToUpload.length === 0) {
-            message.error('Please select an item and ensure images are ready for upload.');
+            messageApi.error('Please select an item and ensure images are ready for upload.');
             return;
         }
 
@@ -395,11 +396,11 @@ const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
         source: 'new' | 'retry',
     ): Promise<void> => {
         if (!FEATURE_FLAGS.ENABLE_AI_IMAGE_GENERATION) {
-            message.info('Image generation is currently unavailable.');
+            messageApi.info('Image generation is currently unavailable.');
             return;
         }
         if (batchStartInFlightRef.current) {
-            message.info('Image generation is already starting.');
+            messageApi.info('Image generation is already starting.');
             return;
         }
 
@@ -469,14 +470,14 @@ const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
             }
             await persistProjectImagePreferences(canonicalConfig);
             if (triggerResult.partial) {
-                message.warning(`${triggerResult.failedItemIds.length} item${triggerResult.failedItemIds.length === 1 ? '' : 's'} could not start. The remaining images are being generated.`);
+                messageApi.warning(`${triggerResult.failedItemIds.length} item${triggerResult.failedItemIds.length === 1 ? '' : 's'} could not start. The remaining images are being generated.`);
             } else {
-                message.success(source === 'retry' ? 'A new retry job has started.' : 'Batch image generation started successfully');
+                messageApi.success(source === 'retry' ? 'A new retry job has started.' : 'Batch image generation started successfully');
             }
 
         } catch (error: unknown) {
             if (error instanceof AICapacityError) {
-                message.info('Get more enhancements to continue. Visit Billing to add an enhancement pack.');
+                messageApi.info('Get more enhancements to continue. Visit Billing to add an enhancement pack.');
             } else {
                 logMenuEditorFailure('menu_editor_batch_image_generation_start_failed', error, {
                     ...getMenuEditorProjectLogContext(activeProject?.projectId, activeProject?.masterProjectId),
@@ -484,7 +485,7 @@ const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
                     batchItemCount: requestedItemIds.length,
                     source,
                 });
-                message.error('We could not confirm that image generation started. Check this job before trying again.');
+                messageApi.error('We could not confirm that image generation started. Check this job before trying again.');
             }
             throw error;
         } finally {
@@ -590,7 +591,7 @@ const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
                     ...getBoundedMenuEditorStringContext('fileName', file.name),
                     ...getBoundedMenuEditorStringContext('selectedItemId', selectedItem?.id),
                 });
-                message.error('Could not process this image. Please try another image.');
+                messageApi.error('Could not process this image. Please try another image.');
             }
 
             // Keep this as a local preview flow. Actual upload happens only on the final save action.

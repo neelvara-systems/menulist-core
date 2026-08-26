@@ -5,7 +5,7 @@ import { getCanonicalProjectSourceLanguage, normalizeProjectLanguages } from '@l
 import { canAddLanguage, getAvailableLanguagesForMaster, getAvailableLanguagesForOutlet, getRemainingLanguageSlots } from '@lib/localization/languageResolver';
 import { hasMeaningfulDescription } from '@lib/menu/descriptionQuality';
 import { StoreDataType } from '@type/platform/store';
-import { Button, Flex, message, Modal, Progress, Select, Tag, theme, Tooltip, Typography } from 'antd';
+import { Button, Flex, App, Modal, Progress, Select, Tag, theme, Tooltip, Typography } from 'antd';
 import React, { useMemo, useState } from 'react';
 import { LuAlertTriangle, LuCheck, LuFileText, LuLanguages, LuLock, LuPlusCircle, LuSparkles, LuSquare, LuTrash2 } from 'react-icons/lu';
 import { LanguageType, Project } from '../types';
@@ -42,6 +42,7 @@ const LanguageSelectorModal: React.FC<LanguageSelectorModalProps> = ({
     masterProjectLanguages,
     isMasterLinked = false
 }) => {
+    const { message: messageApi } = App.useApp();
     const { token } = theme.useToken();
     const labels = useOfferingLabels();
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -167,15 +168,15 @@ const LanguageSelectorModal: React.FC<LanguageSelectorModalProps> = ({
         if (!languageToRemove?.code) return;
         const currentLanguages = projectLanguages;
         if (languageToRemove.code === sourceLanguageCode) {
-            message.info('English is the source for translations and cannot be removed.');
+            messageApi.info('English is the source for translations and cannot be removed.');
             return;
         }
         if (languageToRemove.code === defaultLanguageCode) {
-            message.info('Change the default customer language before removing it.');
+            messageApi.info('Change the default customer language before removing it.');
             return;
         }
         if (currentLanguages.length <= 1) {
-            message.warning('At least one language must remain selected');
+            messageApi.warning('At least one language must remain selected');
             return;
         }
         // Filter using the code from the stored object
@@ -188,7 +189,7 @@ const LanguageSelectorModal: React.FC<LanguageSelectorModalProps> = ({
 
     const handleConfirmAdd = () => {
         if (!canTranslate) {
-            message.info('You do not have permission to add translated languages.');
+            messageApi.info('You do not have permission to add translated languages.');
             return;
         }
         // Check if languageToAdd and its code exist
@@ -335,11 +336,11 @@ const LanguageSelectorModal: React.FC<LanguageSelectorModalProps> = ({
                                                 icon={isSourceLanguage ? <LuLock size={12} /> : (isStagedForRemoval ? <LuTrash2 /> : <LuCheck />)}
                                                 onClick={() => {
                                                     if (isSourceLanguage) {
-                                                        message.info('English is the source for translations and cannot be removed.');
+                                                        messageApi.info('English is the source for translations and cannot be removed.');
                                                         return;
                                                     }
                                                     if (isDefaultLanguage) {
-                                                        message.info('Change the default customer language before removing it.');
+                                                        messageApi.info('Change the default customer language before removing it.');
                                                         return;
                                                     }
                                                     handleStageRemove(langData);

@@ -4,7 +4,7 @@ import type { AnswerlatticeFeedbackSubmission } from '@lib/answerlattice/feedbac
 import { useAppDispatch } from '@hook/useAppDispatch';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
 import { Feedback } from '@type/feedback';
-import { Alert, Button, Col, Flex, Form, List, message, Rate, Row, Steps, Typography } from 'antd';
+import { Alert, Button, Col, Flex, Form, List, App, Rate, Row, Steps, Typography } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { LuArrowLeft, LuArrowRight, LuHeartHandshake, LuInbox, LuLightbulb, LuRefreshCw, LuStar, LuThumbsDown, LuThumbsUp } from 'react-icons/lu';
@@ -15,6 +15,7 @@ import GeneralFeedback from './GeneralFeedback';
 const { Title, Text } = Typography;
 
 const ShareFeedbackView = () => {
+    const { message: messageApi } = App.useApp();
     const t = useTranslations('HelpCenter');
     const [form] = Form.useForm();
     const [currentStep, setCurrentStep] = useState(0);
@@ -60,7 +61,7 @@ const ShareFeedbackView = () => {
         } catch (error) {
             setLatestFeedback(null);
             setLatestFeedbackLoadFailed(true);
-            message.error(t('failedToFetchFeedback'));
+            messageApi.error(t('failedToFetchFeedback'));
         } finally {
             dispatch(stopLoader('fetch-latest-feedback'));
             setIsLoadingLatestFeedback(false);
@@ -95,12 +96,12 @@ const ShareFeedbackView = () => {
         dispatch(startLoader('send-feedback'));
         try {
             const submittedFeedback = await addFeedback(feedbackPayload);
-            message.success(t('feedbackSubmitted'));
+            messageApi.success(t('feedbackSubmitted'));
             form.resetFields();
             setLatestFeedback(submittedFeedback as Feedback);
         } catch (error) {
             setSubmitFailed(true);
-            message.error(t('failedToSendFeedback'));
+            messageApi.error(t('failedToSendFeedback'));
         } finally {
             dispatch(stopLoader('send-feedback'));
             submittingRef.current = false;

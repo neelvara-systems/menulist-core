@@ -15,7 +15,7 @@ import { formatPhoneForDisplay, generateWhatsAppLink, isValidWhatsAppNumber } fr
 import { GuestFeedback } from '@type/guestFeedback';
 import { toDate } from '@util/dateTime';
 import { timeAgo } from '@util/dateTime/timeAgo';
-import { Button, Card, Tag, Tooltip, theme, message } from 'antd';
+import { Button, Card, Tag, Tooltip, theme, App } from 'antd';
 import { useLocale, useTranslations } from 'next-intl';
 import React, { useState } from 'react';
 import {
@@ -98,6 +98,7 @@ export const FeedbackCard: React.FC<FeedbackCardProps> = ({
     onStatusUpdate,
     storeName,
 }) => {
+    const { message: messageApi } = App.useApp();
     const t = useTranslations('FeedbackInbox');
     const locale = useLocale();
     const { token } = theme.useToken();
@@ -122,7 +123,7 @@ export const FeedbackCard: React.FC<FeedbackCardProps> = ({
             const newStatus = isResolved ? 'new' : 'resolved';
             await onStatusUpdate(feedback.id!, newStatus);
         } catch (error) {
-            message.error(t('failedToUpdate'));
+            messageApi.error(t('failedToUpdate'));
         } finally {
             setIsUpdating(false);
         }
@@ -137,7 +138,7 @@ export const FeedbackCard: React.FC<FeedbackCardProps> = ({
     const handleCopyReply = async (replyTemplate: FeedbackReplyTemplate) => {
         try {
             await copyFeedbackReplyToClipboard(replyTemplate.message);
-            message.success('Reply copied');
+            messageApi.success('Reply copied');
         } catch (error) {
             logFeedbackInboxFailure('desktop_feedback_reply_copy_failed', error, {
                 ...getBoundedFeedbackInboxStringContext('feedbackId', feedback.id),
@@ -147,7 +148,7 @@ export const FeedbackCard: React.FC<FeedbackCardProps> = ({
                 hasClipboardWrite: hasFeedbackReplyClipboardWrite(),
                 hasCopyFallback: hasFeedbackReplyCopyFallback(),
             });
-            message.error('Could not copy reply');
+            messageApi.error('Could not copy reply');
         }
     };
 

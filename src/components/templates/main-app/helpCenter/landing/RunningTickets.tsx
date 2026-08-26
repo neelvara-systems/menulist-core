@@ -1,6 +1,6 @@
 'use client'
 import { helpCenterTabRouting } from '@constant/navigations';
-import { Alert, Button, Card, Col, Empty, Flex, message, Row, Tooltip, Typography } from 'antd';
+import { Alert, Button, Card, Col, Empty, Flex, App, Row, Tooltip, Typography } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 
@@ -17,6 +17,7 @@ import TicketItem from '../TicketItem';
 const TICKET_SUMMARY_LOADER_KEY = 'helpCenterTicketSummary';
 
 function RunningTickets() {
+    const { message: messageApi } = App.useApp();
     const t = useTranslations('HelpCenter');
     const router = useRouter();
     const { setAllItems, updateItem, cachedItems } = useTicketCache();
@@ -46,7 +47,7 @@ function RunningTickets() {
         } catch {
             if (requestId !== loadRequestRef.current) return;
             setLoadFailed(true);
-            message.error(t('failedToLoadTickets'));
+            messageApi.error(t('failedToLoadTickets'));
         } finally {
             if (requestId === loadRequestRef.current) {
                 dispatch(stopLoader(TICKET_SUMMARY_LOADER_KEY));

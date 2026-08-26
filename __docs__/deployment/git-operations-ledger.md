@@ -812,6 +812,41 @@ Those fields are explicitly `unknown` instead of guessed.
   unstaged path change; no pre-existing source or user work was altered.
 - Attribution confidence: exact.
 
+### GIT-20260826-145847-mlrc099-auth-matrix-feedback-parity
+
+- Timestamp: `2026-08-26T14:58:47+05:30`
+- Record type: `PLANNED`
+- Actor/session/thread ID: Codex `/root`; thread `01a034e1-c70a-74b1-a92b-0a103a981815`.
+- Registered worktrees: one worktree, `/Users/danny/Projects/MenuListAi/menulist-core`, branch `staging`, HEAD `243a6dd953576b99c6230a09f76fe2912ef1f136`.
+- Starting filesystem state: `0` staged, `76` tracked modified, `4` untracked before this append. The broad MenuList owner-feedback migration, its verifiers, AssetOS manifest, certification report, and ledger are active certification work; concurrent Answerlattice paths and `package.json` remain excluded and unstaged.
+- Operation: repair the auth/security failure-matrix assertions so the two fixed owner-safe failure paths require mounted `messageApi.error(...)` feedback instead of the retired detached static `message.error(...)` form; rerun the complete aggregate and release gates; later commit only exact MenuList certification paths and push `staging` non-force. `main` remains untouched. No manual Vercel or Firebase deployment is authorized.
+- Branch matrix before:
+
+| Branch | Local full SHA | Server ref/full SHA | Tracking ref | Ahead/behind | Worktree | Staged/unstaged/untracked | Status |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `staging` | `243a6dd953576b99c6230a09f76fe2912ef1f136` | `refs/heads/staging` / `243a6dd953576b99c6230a09f76fe2912ef1f136` | `origin/staging` | `0/0` | primary | `0/76/4` before this append | `IN_SYNC` |
+| `main` | `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `refs/heads/main` / `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `origin/main` | `0/0` | none | n/a | `IN_SYNC` |
+
+- Validation before mutation: the complete MenuList aggregate passed its first eight checks, including the repaired readiness verifier and refreshed AssetOS gate, then failed closed only because two exact-string auth-matrix assertions still expected detached static Ant feedback. Source readback confirms both components retain fixed translated owner-safe error copy through mounted Ant application context.
+- Firebase matrix before/after: verifier-only parity within the existing UI-feedback certification change. MenuList QA/production and Answerlattice QA/production Firestore Rules, indexes, Storage Rules, and Cloud Functions remain `NO_INFRA_CHANGE` / `SERVER_STATE_UNKNOWN`; no deployable Firebase source/configuration changes and no deployment/readback is authorized or claimed.
+- Firebase deployment evidence or blocker: no Firebase infrastructure delta exists.
+- Final filesystem state: pending exact verifier correction, complete aggregate restart, lint/type/build gates, exact-path staging, commit/push/readback, automatic QA build, and exact-hosted representative replay. Concurrent Answerlattice work remains excluded.
+- Attribution confidence: exact.
+
+### GIT-20260826-150359-mlrc100-doc-command-evidence-boundary
+
+- Timestamp: `2026-08-26T15:03:59+05:30`
+- Record type: `PLANNED`
+- Actor/session/thread ID: Codex `/root`; thread `01a034e1-c70a-74b1-a92b-0a103a981815`.
+- Registered worktrees: one worktree, `/Users/danny/Projects/MenuListAi/menulist-core`, branch `staging`, HEAD `243a6dd953576b99c6230a09f76fe2912ef1f136`.
+- Starting filesystem state: `0` staged, `92` tracked modified, `4` untracked before this append. MenuList certification changes remain unstaged; concurrent Answerlattice paths and `package.json` remain excluded.
+- Operation: repair the documentation npm-script verifier so explicit historical failed-command evidence in this append-only ledger is not misclassified as an active command reference, while continuing to reject every nonexistent command in active documentation and every unqualified ledger instruction. Include the verifier correction in the next exact MenuList staging commit after complete regression.
+- Branch matrix before: local/server `staging` remain exactly `243a6dd953576b99c6230a09f76fe2912ef1f136` (`0/0`, `IN_SYNC`); local/server `main` remain exactly `fe625d5bbf527c1b7e537b00ab32a4f655905c35` (`0/0`, `IN_SYNC`). One primary `staging` worktree is registered.
+- Validation before mutation: the resumed aggregate passed 23 checks after Billing, tenant, extraction, public-truth, platform, PWA, custom-domain, and Digital Screens coverage, then `verify:doc-npm-scripts` reported exactly two nonexistent commands in ledger sentences that explicitly say each attempt failed because no such package script exists. No active runbook references those commands.
+- Firebase matrix before/after: verifier/report/ledger only. All MenuList and Answerlattice QA/production Rules, indexes, Storage Rules, and Functions remain `NO_INFRA_CHANGE` / `SERVER_STATE_UNKNOWN`; no deployable Firebase source/configuration changes and no deployment/readback is authorized or claimed.
+- Final filesystem state: pending narrow ledger-evidence classifier, targeted adversarial verification, resumed/full aggregate, release gates, exact-path staging, commit/push/readback, and automatic QA retest.
+- Attribution confidence: exact.
+
 ### GIT-20260826-124129-answerlattice-widget-csp
 
 - Timestamp: `2026-08-26T12:41:29+05:30`
@@ -6955,6 +6990,71 @@ No Firebase source/configuration changes. Firestore Rules, indexes, Storage Rule
 - Security/cost: raw exception text is no longer exposed on desktop or mobile. The correction adds no Firestore read/write, Storage operation, Cloud Function invocation, listener, cache, provider notification, or analytics event; the reversible QA test performed only the two intended owner preference writes.
 - Firebase state: deployable Firestore Rules, indexes, Storage Rules, and Cloud Functions sources/configuration were unchanged. All previously recorded MenuList/Answerlattice QA/production component rows remain independently `NO_INFRA_CHANGE` / `SERVER_STATE_UNKNOWN`; no Firebase infrastructure deployment or authenticated infrastructure readback was performed or claimed.
 - Razorpay boundary: no checkout, provider call, charge, webhook completion, refund, or money movement was initiated.
+- Attribution confidence: exact.
+
+#### MenuList owner child-action feedback performed result — `2026-08-26T14:43:44+05:30`
+
+- Commit/push: `243a6dd953576b99c6230a09f76fe2912ef1f136` (`fix(menulist): mount owner action feedback`) was pushed non-force to `origin/staging`; direct server readback returned the same SHA with local/server staging aligned. Local and remote `main` remain untouched at `fe625d5bbf527c1b7e537b00ab32a4f655905c35`.
+- Exact deployment: automatic Vercel QA deployment `6rYVwHBFDeKSmzHW4kZw46DMeA5Q` reached Ready. Canonical `https://app.menulist.digital/api/version` returned exact build `243a6dd953576b99c6230a09f76fe2912ef1f136` and deployment host `menulist-core-m0fgmu9wb-neelvara-systems.vercel.app` before the hosted retest.
+- Hosted closeout: Google profile link copy displayed `Link copied`; Google profile kit displayed `Google profile kit copied`; Customer App install-link copy displayed `Install link copied`; and a Communication Kit message displayed `Message copied`. These non-destructive clipboard actions changed no setting, store/public truth, referral, provider, or customer output.
+- Validation: the dedicated 10-surface feedback-context regression, Official Business Page, Customer App, presence, working-hours, owner-referral, business-copy, and Business Settings reset suites, focused/full zero-warning ESLint, strict TypeScript, production build with 450/450 static pages and 53 service-worker precache entries, and `git diff --check` passed. Existing Sass and absent optional Gemini-key warnings remain non-failing.
+- Security/cost: UI context-only changes add no Firestore read/write, Storage operation, Cloud Function invocation, provider request, analytics event, or cache behavior.
+- Firebase state: every previously recorded MenuList/Answerlattice QA/production Rules, indexes, Storage Rules, and Functions row remains `NO_INFRA_CHANGE` / `SERVER_STATE_UNKNOWN`; no infrastructure deployment/readback was performed or claimed.
+- Razorpay boundary: no checkout, provider call, charge, webhook completion, refund, or money movement was initiated.
+- Attribution confidence: exact.
+
+#### MLRC-097 through MLRC-100 validated pre-commit result — `2026-08-26T15:57:49+05:30`
+
+- Scope: the systemic mounted-feedback migration covers 58 MenuList owner/project/billing/help/feedback/reseller/platform components, 338 direct feedback calls, and the computed Staff Login call. The prior focused ten-surface owner-feedback verifier was retained; the broader 79-file regression is additive. MLRC-098, MLRC-099, and MLRC-100 change only stale verification expectations and the bounded historical Git-ledger command-evidence classifier.
+- Fresh aggregate: `npm run certify:menulist-local` completed from zero with exit 0. It passed 161/162 checks, all 161 executable checks, all 158 MenuList child verification scripts, all 42 Firestore Rules predeploy suites, TypeScript, lint, documentation links, and diff validation. Forty-six sibling-product scripts were explicitly excluded. The sole non-pass is `verify:upstash-readiness`, correctly classified `BLOCKED_EXTERNAL` because its URL/token are unavailable in this shell.
+- Exact standalone validation: `npx tsc --noEmit --incremental false`, `npm run lint`, `npm run build`, `npm run verify:menulist-rc-inventory`, the retained focused feedback verifier, and `git diff --check` all passed. The production build generated 450/450 static pages and 53 service-worker precache entries; existing Sass deprecation and absent optional Gemini-key warnings remain non-failing.
+- Inventory: the regenerated current-worktree matrix contains 8,511 candidates: 6,000 MenuList and 2,511 explicit product-separation boundaries, including 7,528 control candidates and 21 Firebase Function exports. Discovery rows remain evidence classifications rather than runtime-pass claims.
+- Branch/server readback before staging: one registered worktree on `staging`; local `staging`, `origin/staging`, and direct `refs/heads/staging` readback are exact `243a6dd953576b99c6230a09f76fe2912ef1f136` with `0/0` divergence. Local/remote `main` remain exact `fe625d5bbf527c1b7e537b00ab32a4f655905c35` with `0/0` divergence. Filesystem counts before exact-path staging are `0` staged, `94` tracked unstaged, and `6` untracked.
+- Concurrent-work boundary: Answerlattice components, hooks, scripts, documents, shared `package.json`, shared changelog/environment documents, and six untracked Answerlattice files remain unstaged and excluded. The MenuList commit will contain only the exact feedback source, its affected verifiers, current audit outputs/report, AssetOS fingerprint, and this ledger.
+- Firebase matrix: no Firestore Rules, indexes, Storage Rules, or Cloud Functions source/configuration changed. MenuList QA/production and Answerlattice QA/production components remain independently `NO_INFRA_CHANGE` / `SERVER_STATE_UNKNOWN`; no Firebase infrastructure deployment or parity claim is authorized.
+- Razorpay boundary: no checkout, provider call, charge, webhook completion, refund, or money movement was initiated. The pending disposable owner fixture uses only the repository's guarded reseller-labelled zero-value QA entitlement path after Firebase CLI reauthentication.
+- Next operation: exact-path staging, staged-diff review, non-force `staging` commit/push, direct server readback, automatic QA deployment wait, and representative exact-hosted feedback retest. `main` remains untouched.
+- Attribution confidence: exact.
+
+### GIT-20260826-144344-mlrc097-systemic-feedback-context
+
+- Timestamp: `2026-08-26T14:43:44+05:30`
+- Record type: `PLANNED`
+- Actor/session/thread ID: Codex `/root`; thread `01a034e1-c70a-74b1-a92b-0a103a981815`.
+- Registered worktrees: one worktree, `/Users/danny/Projects/MenuListAi/menulist-core`, branch `staging`, HEAD `243a6dd953576b99c6230a09f76fe2912ef1f136`.
+- Starting filesystem state: `0` staged, `13` tracked modified, `4` untracked before this append. The MenuList report update is intended; all other pre-existing paths are concurrent Answerlattice work and remain unstaged, untouched, and excluded.
+- Operation: use an AST-guided mechanical migration to replace the remaining detached static Ant feedback calls across MenuList owner, project, billing, help, feedback, reseller, and platform operation components with mounted application-context feedback; add a complete source regression; run representative feature and browser checks; commit only exact MenuList paths plus report/ledger evidence; push `staging` non-force; and retest the automatic exact QA build. Preserve every underlying action, mutation, secret, upload, billing, provider, tenant/store, and cache contract. `main` remains untouched. No manual Vercel or Firebase deployment is authorized.
+- Branch matrix before:
+
+| Branch | Local full SHA | Server ref/full SHA | Tracking ref | Ahead/behind | Worktree | Staged/unstaged/untracked | Status |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `staging` | `243a6dd953576b99c6230a09f76fe2912ef1f136` | `refs/heads/staging` / `243a6dd953576b99c6230a09f76fe2912ef1f136` | `origin/staging` | `0/0` | primary | `0/13/4` before this append | `IN_SYNC` |
+| `main` | `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `refs/heads/main` / `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `origin/main` | `0/0` | none | n/a | `IN_SYNC` |
+
+- Validation before mutation: exact hosted `243a6dd953576b99c6230a09f76fe2912ef1f136` completed the shared Business Profile `Copy Link` action without changing its button state or rendering intended feedback. Static source inventory found 338 detached feedback calls across 58 additional MenuList files after excluding the ten MLRC-096 surfaces.
+- Firebase matrix before/after: UI feedback, tests, and documentation only. MenuList QA/production and Answerlattice QA/production Firestore Rules, indexes, Storage Rules, and Cloud Functions remain `NO_INFRA_CHANGE` / `SERVER_STATE_UNKNOWN`; no deployable Firebase source/configuration is in scope and no deployment/readback is authorized or claimed.
+- Firebase deployment evidence or blocker: no Firebase infrastructure delta exists.
+- Final filesystem state: pending AST-guided scoped migration, source review, regressions, feature suites, full validation, exact-path staging, commit/push/readback, automatic QA build, and representative exact-hosted retest. Concurrent Answerlattice work remains excluded.
+- Attribution confidence: exact.
+
+### GIT-20260826-145129-mlrc098-readiness-verifier-parity
+
+- Timestamp: `2026-08-26T14:51:29+05:30`
+- Record type: `PLANNED`
+- Actor/session/thread ID: Codex `/root`; thread `01a034e1-c70a-74b1-a92b-0a103a981815`.
+- Registered worktrees: one worktree, `/Users/danny/Projects/MenuListAi/menulist-core`, branch `staging`, HEAD `243a6dd953576b99c6230a09f76fe2912ef1f136`.
+- Starting filesystem state: MLRC-097 MenuList feedback migration/report/ledger changes plus the separately disclosed concurrent Answerlattice paths are unstaged; no staged path exists.
+- Operation: align the stale aggregate agent-readiness assertion with the native Storage Workload Identity credential contract already implemented and specifically tested by commit `12eff3e361d3dabcdef4655ef117cd3fa6dfe720`. Do not change runtime infrastructure, Firebase configuration, or deployment state. Include the verifier correction in the next exact MenuList staging commit after the complete aggregate is rerun.
+- Branch matrix before:
+
+| Branch | Local full SHA | Server ref/full SHA | Tracking ref | Ahead/behind | Worktree | Status |
+| --- | --- | --- | --- | --- | --- | --- |
+| `staging` | `243a6dd953576b99c6230a09f76fe2912ef1f136` | `refs/heads/staging` / `243a6dd953576b99c6230a09f76fe2912ef1f136` | `origin/staging` | `0/0` | primary | `IN_SYNC` |
+| `main` | `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `refs/heads/main` / `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `origin/main` | `0/0` | none | `IN_SYNC` |
+
+- Validation before mutation: `npm run certify:menulist-local` passed `verify:account-tenant-lifecycle`, then failed `verify:agent-readiness` because it required removed text `authClient: auth`. Git history and current source prove `12eff3e…` intentionally replaced that cross-major client bridge with `credentials: createWorkloadIdentityExternalAccountCredentials(...)`, `projectId: config.projectId`, and a dedicated native IdentityPoolClient regression.
+- Firebase matrix before/after: verifier/report/ledger only. All four products/targets and their Rules, indexes, Storage Rules, and Functions remain `NO_INFRA_CHANGE` / `SERVER_STATE_UNKNOWN`; no runtime or deployable infrastructure file is in scope.
+- Final filesystem state: pending verifier correction, targeted Workload Identity test, restarted full MenuList aggregate, and inclusion in the MLRC-097 staging commit. Concurrent Answerlattice work remains excluded.
 - Attribution confidence: exact.
 
 ### GIT-20260826-133806-mlrc092-hosted-closeout

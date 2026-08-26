@@ -5,7 +5,7 @@ import { startLoader, stopLoader } from '@reduxSlices/loader';
 import DisplayChangelog from '@template/platform/changelog/displayChangelog';
 import { ChangelogPage } from '@type/changelog';
 import type { AnswerlatticePublicChangelogPage } from '@lib/answerlattice/publicContentBoundary';
-import { message } from 'antd';
+import { App } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
@@ -14,6 +14,7 @@ interface ChangelogViewProps {
 }
 
 const ChangelogView = ({ initialEntryId }: ChangelogViewProps) => {
+    const { message: messageApi } = App.useApp();
     const t = useTranslations('HelpCenter');
     const dispatch = useAppDispatch();
     const [changelogPage, setChangelogPage] = useState<AnswerlatticePublicChangelogPage | null>(null);
@@ -33,7 +34,7 @@ const ChangelogView = ({ initialEntryId }: ChangelogViewProps) => {
             }
         } catch (error) {
             if (requestScopeKeyRef.current === initiatingScopeKey) {
-                message.error(t('failedToLoadChangelogPage'));
+                messageApi.error(t('failedToLoadChangelogPage'));
             }
         } finally {
             dispatch(stopLoader('Fetching Changelog...'));

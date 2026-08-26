@@ -11,7 +11,7 @@ import { ProjectsDataContext, ProjectsDataProviderType } from '@providers/projec
 import { startLoader, stopLoader } from '@reduxSlices/loader';
 import { UserUploadedFileType } from '@type/common';
 import { removeObjRef } from '@util/utils';
-import { Button, Flex, Image, Modal, Popover, Space, Tooltip, message, theme } from 'antd';
+import { Button, Flex, Image, Modal, Popover, Space, Tooltip, App, theme } from 'antd';
 import { Fragment, useContext, useRef, useState } from 'react';
 import { LuMoreVertical, LuPencil, LuTrash } from 'react-icons/lu';
 import { ExtractedDataItem, Project } from '../types';
@@ -33,6 +33,7 @@ function UploadedImagesList({
     onUploadGeneratedImage: (imagesToUpload: UserUploadedFileType[]) => Promise<void>;
     projectData: Project;
 }) {
+    const { message: messageApi } = App.useApp();
     const { token } = theme.useToken();
     const { isMobile } = useDeviceType();
     const dispatch = useAppDispatch()
@@ -56,7 +57,7 @@ function UploadedImagesList({
         if (disabled || deleteInFlightRef.current) return;
         const projectId = activeProject?.projectId || projectData.projectId;
         if (!projectId) {
-            message.error('The active project identity is unavailable.');
+            messageApi.error('The active project identity is unavailable.');
             return;
         }
         deleteInFlightRef.current = true;
@@ -102,7 +103,7 @@ function UploadedImagesList({
                             ...getBoundedMenuEditorStringContext('itemId', selectedItem.id),
                             ...getBoundedMenuEditorStringContext('imageUrl', imageToDelete.url),
                         });
-                        message.success('Image deleted successfully!');
+                        messageApi.success('Image deleted successfully!');
                     } catch (error) {
                         logMenuEditorFailure('menu_editor_item_image_delete_failed', error, {
                             ...getMenuEditorProjectLogContext(activeProject?.projectId || projectData.projectId, (projectData as { masterProjectId?: unknown }).masterProjectId),
@@ -112,7 +113,7 @@ function UploadedImagesList({
                             fileCount: updatedProjectData.files?.length || 0,
                             imageCount: selectedItem.images?.length || 0,
                         });
-                        message.error('Failed to delete image.');
+                        messageApi.error('Failed to delete image.');
                     } finally {
                         dispatch(stopLoader("deleting image"));
                         deleteInFlightRef.current = false;
@@ -121,7 +122,7 @@ function UploadedImagesList({
                 } else {
                     dispatch(stopLoader("deleting image"));
                     deleteInFlightRef.current = false;
-                    message.error('Failed to find the image to delete.');
+                    messageApi.error('Failed to find the image to delete.');
                 }
             },
         });

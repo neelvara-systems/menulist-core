@@ -9,7 +9,7 @@ import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { getFormatedDateAndTime, toDate } from '@util/dateTime';
 import { formatNumber, formatProcessingTime } from '@util/formatters';
-import { Button, Card, DatePicker, Empty, Flex, Row, Select, Spin, Table, Tag, Tooltip, Typography, message } from 'antd';
+import { Button, Card, DatePicker, Empty, Flex, Row, Select, Spin, Table, Tag, Tooltip, Typography, App } from 'antd';
 import dayjs from 'dayjs';
 import { useFormatter, useTranslations } from 'next-intl';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -49,6 +49,7 @@ interface PaginationState {
 }
 
 function TransactionPage() {
+    const { message: messageApi } = App.useApp();
     const t = useTranslations('Transactions');
     const [transactions, setTransactions] = useState<TransactionData[]>([]);
     const [loading, setLoading] = useState<boolean>(true);
@@ -101,7 +102,7 @@ function TransactionPage() {
                 && page > 1
                 && (!response.hasMore || !response.lastVisibleDoc)
             ) {
-                message.info(t('noMoreTransactions'));
+                messageApi.info(t('noMoreTransactions'));
                 setPagination((previous) => ({
                     ...previous,
                     current: Math.max(1, page - 1),
@@ -127,7 +128,7 @@ function TransactionPage() {
                 pageNumber: page,
                 pageSize: pagination.pageSize,
             }));
-            message.error(t('failedToLoad'));
+            messageApi.error(t('failedToLoad'));
         } finally {
             if (requestId === requestIdRef.current) {
                 setLoading(false);

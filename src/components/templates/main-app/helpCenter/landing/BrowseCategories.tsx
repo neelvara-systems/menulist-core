@@ -3,7 +3,7 @@ import CategoryIcon from '@atoms/CategoryIcon';
 import { helpCenterTabRouting } from '@constant/navigations';
 import { useKBCategoriesCache } from '@hook/useKBCategoriesCache';
 import { KnowledgeBaseCategory } from '@type/knowledgeBase';
-import { Alert, Button, Card, Col, Empty, Flex, Row, Typography, message, theme } from 'antd';
+import { Alert, Button, Card, Col, Empty, Flex, Row, Typography, App, theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -12,6 +12,7 @@ import { LuArrowRight, LuRefreshCw } from 'react-icons/lu';
 const { Title, Text, Paragraph } = Typography;
 
 function BrowseCategories() {
+    const { message: messageApi } = App.useApp();
     const t = useTranslations('HelpCenter');
     const { token } = theme.useToken();
     const router = useRouter();
@@ -24,7 +25,7 @@ function BrowseCategories() {
             await getCategoriesCached({ forceRefresh });
         } catch {
             setLoadFailed(true);
-            message.error(t('failedToLoadCategories'));
+            messageApi.error(t('failedToLoadCategories'));
         }
     }, [getCategoriesCached, t]);
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { Button, Checkbox, Flex, Form, Input, message, Modal, Typography, theme } from 'antd';
+import { Button, Checkbox, Flex, Form, Input, App, Modal, Typography, theme } from 'antd';
 import { useState } from 'react';
 
 const { Text } = Typography;
@@ -21,6 +21,7 @@ export const feedbackOptions = [
 ];
 
 export default function FeedbackModal({ visible, onClose, onSubmit }: FeedbackModalProps) {
+    const { message: messageApi } = App.useApp();
     const [form] = Form.useForm();
     const [loading, setLoading] = useState(false);
     const { token } = theme.useToken();
@@ -35,7 +36,7 @@ export default function FeedbackModal({ visible, onClose, onSubmit }: FeedbackMo
             onClose();
             // Success message handled by parent handler
         } catch (error) {
-            message.error('Failed to submit feedback. Please try again.');
+            messageApi.error('Failed to submit feedback. Please try again.');
             setLoading(false); // Only reset on error
         }
     };

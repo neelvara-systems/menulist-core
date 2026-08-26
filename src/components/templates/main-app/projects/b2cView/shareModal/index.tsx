@@ -23,7 +23,7 @@ import {
     emitMenuListAnswerlatticeWorkflowEvent,
     getMenuListAnswerlatticeTargetProps,
 } from '@lib/answerlattice/referenceClients/menuListGuidedResolution';
-import { Alert, Button, Card, Checkbox, ColorPicker, Divider, Flex, message, Modal, QRCode, theme, Tooltip, Typography } from 'antd';
+import { Alert, Button, Card, Checkbox, ColorPicker, Divider, Flex, App, Modal, QRCode, theme, Tooltip, Typography } from 'antd';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { FaFacebook, FaInstagram, FaWhatsapp } from 'react-icons/fa6';
@@ -104,6 +104,7 @@ function ShareModal({
     businessCategory,
     brandColor,
 }: ShareModalProps) {
+    const { message: messageApi } = App.useApp();
     const router = useRouter();
     const { token } = theme.useToken();
     const labels = useOfferingLabels();
@@ -184,7 +185,7 @@ function ShareModal({
 
     const handleDownloadQR = async () => {
         if (!hasPublicShareUrl) {
-            message.warning('Public link is not ready yet');
+            messageApi.warning('Public link is not ready yet');
             return;
         }
         try {
@@ -200,18 +201,18 @@ function ShareModal({
                 activePlanType,
             });
             downloadQrCode(dataUrl, buildQrCodeFilename(`${storeName}-menu`, 'qr'));
-            message.success('QR code downloaded');
+            messageApi.success('QR code downloaded');
         } catch (error) {
             logExportFailure('project_share_qr_download_failed', error, getShareModalLogContext('qr_download', {
                 qrDataUrlGenerated: false,
             }));
-            message.error('Failed to download QR code');
+            messageApi.error('Failed to download QR code');
         }
     };
 
     const handleShare = async (platform: 'whatsapp' | 'facebook' | 'instagram') => {
         if (!hasPublicShareUrl) {
-            message.warning('Public link is not ready yet');
+            messageApi.warning('Public link is not ready yet');
             return;
         }
         const urlWithUTM = withEntrySource(shareUrl, platform);
@@ -228,7 +229,7 @@ function ShareModal({
         try {
             if (platform === 'instagram') {
                 await copyExportTextToClipboard(urlWithUTM);
-                message.success('Link copied! Paste it in your Instagram bio or story');
+                messageApi.success('Link copied! Paste it in your Instagram bio or story');
                 return;
             }
 
@@ -244,7 +245,7 @@ function ShareModal({
                     hasCopyFallback: hasExportCopyFallback(),
                 } : {}),
             }));
-            message.error(platform === 'instagram' ? 'Failed to copy link' : 'Failed to open share link');
+            messageApi.error(platform === 'instagram' ? 'Failed to copy link' : 'Failed to open share link');
         }
     };
 
@@ -258,7 +259,7 @@ function ShareModal({
             logExportFailure('project_share_direct_open_failed', error, getShareModalLogContext('direct_open', {
                 directUrlLength: directUrl.length,
             }));
-            message.error('Failed to open link');
+            messageApi.error('Failed to open link');
         }
     };
 
@@ -267,14 +268,14 @@ function ShareModal({
         const copyUrl = withEntrySource(shareUrl, 'copy_link');
         try {
             await copyExportTextToClipboard(copyUrl);
-            message.success('URL copied');
+            messageApi.success('URL copied');
         } catch (error) {
             logExportFailure('project_share_direct_copy_failed', error, getShareModalLogContext('direct_copy', {
                 copyUrlLength: copyUrl.length,
                 hasClipboardWrite: hasExportClipboardWrite(),
                 hasCopyFallback: hasExportCopyFallback(),
             }));
-            message.error('Failed to copy link');
+            messageApi.error('Failed to copy link');
         }
     };
 
@@ -288,7 +289,7 @@ function ShareModal({
 
     const handleStructuredExport = async (type: 'json' | 'xlsx') => {
         if (items.length === 0 && categories.length === 0) {
-            message.warning(`No ${labels.offeringLower} data to export`);
+            messageApi.warning(`No ${labels.offeringLower} data to export`);
             return;
         }
 
@@ -303,7 +304,7 @@ function ShareModal({
                 type,
                 { filenameBase: exportFilenameBase },
             );
-            message.success(type === 'xlsx' ? 'Excel export downloaded' : 'JSON export downloaded');
+            messageApi.success(type === 'xlsx' ? 'Excel export downloaded' : 'JSON export downloaded');
         } catch (error) {
             logExportFailure('project_share_structured_export_failed', error, {
                 ...getBoundedExportStringContext('projectId', projectId),
@@ -315,7 +316,7 @@ function ShareModal({
                 languageCount: languages.length,
                 hasDefaultLanguage: Boolean(language),
             });
-            message.error(`Failed to export ${type.toUpperCase()}`);
+            messageApi.error(`Failed to export ${type.toUpperCase()}`);
         } finally {
             setExportingFormat(null);
         }
@@ -323,7 +324,7 @@ function ShareModal({
 
     const handleDownloadPdf = async () => {
         if (items.length === 0) {
-            message.warning(`No ${labels.itemsPlural} to export`);
+            messageApi.warning(`No ${labels.itemsPlural} to export`);
             return;
         }
 
@@ -350,7 +351,7 @@ function ShareModal({
             downloadPdf(pdfResult);
             recordLocalPdfDownload(pdfHistoryScope, projectId, pdfResult.snapshotHash);
             setLastPdfDownloadAt(Date.now());
-            message.success(`${labels.offeringTitle} PDF downloaded`);
+            messageApi.success(`${labels.offeringTitle} PDF downloaded`);
         } catch (error) {
             logExportFailure('project_share_pdf_generation_failed', error, {
                 ...getBoundedExportStringContext('projectId', projectId),
@@ -365,7 +366,7 @@ function ShareModal({
                 hasBrandColor: Boolean(brandColor),
                 hasBusinessType: Boolean(businessType),
             });
-            message.error('Failed to generate PDF');
+            messageApi.error('Failed to generate PDF');
         } finally {
             setGeneratingPdf(false);
         }

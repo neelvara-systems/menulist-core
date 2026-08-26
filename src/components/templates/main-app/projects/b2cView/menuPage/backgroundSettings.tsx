@@ -5,7 +5,7 @@ import MediaImageAdjustModal from '@/components/shared/media/MediaImageAdjustMod
 import MediaPublicContextPreview from '@/components/shared/media/MediaPublicContextPreview';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { removeObjRef } from '@util/utils';
-import { Button, Card, ColorPicker, Divider, Flex, Tabs, Tooltip, Typography, message, theme } from 'antd';
+import { Button, Card, ColorPicker, Divider, Flex, Tabs, Tooltip, Typography, App, theme } from 'antd';
 import type { Color } from 'antd/es/color-picker';
 import type { UploadFile, UploadProps } from 'antd/es/upload/interface';
 import { useTranslations } from 'next-intl';
@@ -86,6 +86,7 @@ const ImageUploadSection = ({
 };
 
 export default function BackgroundSettings({ config, onUpdate, previewAccentColor, previewSubtitle, previewTitle, from }: BackgroundSettingsProps) {
+    const { message: messageApi } = App.useApp();
     const t = useTranslations('MobileDesignEditor');
     const [fileList, setFileList] = useState<UploadFile[]>([]);
     const { token } = theme.useToken();
@@ -176,7 +177,7 @@ export default function BackgroundSettings({ config, onUpdate, previewAccentColo
             // Check 1: File type validation
             const isImage = file.type.startsWith('image/');
             if (!isImage) {
-                message.error('You can only upload image files!');
+                messageApi.error('You can only upload image files!');
                 return false;
             }
 
@@ -213,7 +214,7 @@ export default function BackgroundSettings({ config, onUpdate, previewAccentColo
                 ...getBoundedRuntimeStringContext('fileName', file.name),
                 ...getBoundedRuntimeStringContext('sourceView', from),
             });
-            message.error('Failed to process image. Please try another image.');
+            messageApi.error('Failed to process image. Please try another image.');
             return false;
         }
     };

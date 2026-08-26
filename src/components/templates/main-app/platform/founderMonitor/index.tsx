@@ -13,7 +13,7 @@ import type {
 import { createLatestRequestGuard } from '@lib/runtime/latestRequestGuard';
 import { logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { formatInrPaise } from '@util/formatters';
-import { Alert, Button, Card, Empty, Select, Space, Spin, Statistic, Table, Tabs, Tag, Typography, message } from 'antd';
+import { Alert, Button, Card, Empty, Select, Space, Spin, Statistic, Table, Tabs, Tag, Typography, App } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { useSession } from 'next-auth/react';
 import { redirect } from 'next/navigation';
@@ -72,6 +72,7 @@ function MetricCard({
 }
 
 export default function PlatformFounderMonitor() {
+    const { message: messageApi } = App.useApp();
   const { data: session, status } = useSession();
   const platformRole = session?.platformRole || session?.user?.platformRole;
   const isPlatform = platformRole === 'PLATFORM';
@@ -107,7 +108,7 @@ export default function PlatformFounderMonitor() {
     } catch (error) {
       if (!isMountedRef.current || !requestGuard.isCurrent(requestId)) return;
       logRuntimeFailure('founder_monitor_load_failed', error, { days });
-      message.error('Failed to load founder monitor');
+      messageApi.error('Failed to load founder monitor');
     } finally {
       if (isMountedRef.current && requestGuard.isCurrent(requestId)) {
         setLoading(false);

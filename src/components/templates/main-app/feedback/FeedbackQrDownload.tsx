@@ -19,7 +19,7 @@ import {
 } from '@lib/utils/feedbackQrCode';
 import { resolveStoreBrandColor } from '@lib/menu-kit/brandTokens';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
-import { Button, Card, Flex, Modal, Spin, Typography, message, theme } from 'antd';
+import { Button, Card, Flex, Modal, Spin, Typography, App, theme } from 'antd';
 import React, { useContext, useMemo, useState } from 'react';
 import { LuCopy, LuClipboard, LuDownload, LuExternalLink, LuMessageCircle, LuQrCode } from 'react-icons/lu';
 import { getBoundedFeedbackInboxStringContext, logFeedbackInboxFailure } from './feedbackInboxDiagnostics';
@@ -42,6 +42,7 @@ export const FeedbackQrDownload: React.FC<FeedbackQrDownloadProps> = ({
     projectId,
     storeName = 'store',
 }) => {
+    const { message: messageApi } = App.useApp();
     const { token } = theme.useToken();
     const { storeDetails } = useContext(PlatformGlobalDataContext);
     const storeBrandColor = useMemo(() => resolveStoreBrandColor(storeDetails as any), [storeDetails]);
@@ -146,7 +147,7 @@ export const FeedbackQrDownload: React.FC<FeedbackQrDownloadProps> = ({
                     hasLogoUrl: Boolean((storeDetails as any)?.logo),
                     ...getBoundedFeedbackInboxStringContext('activePlanType', (storeDetails as any)?.activePlanType),
                 }));
-                message.error('Failed to generate QR code');
+                messageApi.error('Failed to generate QR code');
                 setIsModalOpen(false);
             } finally {
                 setIsGenerating(false);
@@ -159,12 +160,12 @@ export const FeedbackQrDownload: React.FC<FeedbackQrDownloadProps> = ({
             const filename = getQrCodeFilename(storeName);
             try {
                 downloadQrCode(qrDataUrl, filename);
-                message.success('QR code downloaded');
+                messageApi.success('QR code downloaded');
             } catch (error) {
                 logFeedbackInboxFailure('desktop_feedback_qr_download_failed', error, buildFeedbackQrLogContext('download_qr', {
                     ...getBoundedFeedbackInboxStringContext('filename', filename),
                 }));
-                message.error('Could not download QR code');
+                messageApi.error('Could not download QR code');
             }
         }
     };
@@ -177,14 +178,14 @@ export const FeedbackQrDownload: React.FC<FeedbackQrDownloadProps> = ({
                 DESKTOP_FEEDBACK_LINK_COPY_UNAVAILABLE,
                 DESKTOP_FEEDBACK_LINK_COPY_FALLBACK_FAILED,
             );
-            message.success('Feedback link copied');
+            messageApi.success('Feedback link copied');
         } catch (error) {
             logFeedbackInboxFailure('desktop_feedback_link_copy_failed', error, buildFeedbackQrLogContext('copy_link', {
                 ...getBoundedFeedbackInboxStringContext('copyUrl', copyUrl),
                 hasClipboardWrite: hasFeedbackClipboardWrite(),
                 hasCopyFallback: hasFeedbackCopyFallback(),
             }));
-            message.error('Failed to copy feedback link');
+            messageApi.error('Failed to copy feedback link');
         }
     };
 
@@ -196,7 +197,7 @@ export const FeedbackQrDownload: React.FC<FeedbackQrDownloadProps> = ({
             logFeedbackInboxFailure('desktop_feedback_link_open_failed', error, buildFeedbackQrLogContext('open_link', {
                 ...getBoundedFeedbackInboxStringContext('directUrl', directUrl),
             }));
-            message.error('Could not open feedback link');
+            messageApi.error('Could not open feedback link');
         }
     };
 
@@ -210,7 +211,7 @@ export const FeedbackQrDownload: React.FC<FeedbackQrDownloadProps> = ({
                 shareMessageLength: shareMessage.length,
                 whatsappUrlLength: whatsappUrl.length,
             }));
-            message.error('Could not open WhatsApp');
+            messageApi.error('Could not open WhatsApp');
         }
     };
 
@@ -222,14 +223,14 @@ export const FeedbackQrDownload: React.FC<FeedbackQrDownloadProps> = ({
                 DESKTOP_FEEDBACK_MESSAGE_COPY_UNAVAILABLE,
                 DESKTOP_FEEDBACK_MESSAGE_COPY_FALLBACK_FAILED,
             );
-            message.success('Message copied — paste it in WhatsApp or anywhere');
+            messageApi.success('Message copied — paste it in WhatsApp or anywhere');
         } catch (error) {
             logFeedbackInboxFailure('desktop_feedback_message_copy_failed', error, buildFeedbackQrLogContext('copy_message', {
                 shareMessageLength: shareMessage.length,
                 hasClipboardWrite: hasFeedbackClipboardWrite(),
                 hasCopyFallback: hasFeedbackCopyFallback(),
             }));
-            message.error('Could not copy message');
+            messageApi.error('Could not copy message');
         }
     };
 

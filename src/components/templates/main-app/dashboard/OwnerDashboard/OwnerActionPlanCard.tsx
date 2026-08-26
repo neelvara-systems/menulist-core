@@ -19,7 +19,7 @@ import {
     OwnerConfidence,
     SourceQuality,
 } from '@template/main-app/projects/types';
-import { Button, Card, Col, Empty, Row, Space, Tag, Typography, message, theme } from 'antd';
+import { Button, Card, Col, Empty, Row, Space, Tag, Typography, App, theme } from 'antd';
 import { useLocale, useTranslations } from 'next-intl';
 import React, { useEffect, useState } from 'react';
 import { LuCheckCircle, LuCompass, LuFlame, LuLock, LuZap } from 'react-icons/lu';
@@ -50,6 +50,7 @@ const OwnerActionPlanCard: React.FC<OwnerActionPlanCardProps> = ({
     title,
     projectId,
 }) => {
+    const { message: messageApi } = App.useApp();
     const t = useTranslations('Dashboard.owner');
     const locale = useLocale();
     const actions = actionPlan?.actions || [];
@@ -77,9 +78,9 @@ const OwnerActionPlanCard: React.FC<OwnerActionPlanCardProps> = ({
         try {
             const receipt = await markOwnerActionDone({ projectId, action });
             setLocalReceipts((prev) => ({ ...prev, [receipt.receiptId]: receipt }));
-            message.success(t('actionPlan.markDoneSaved'));
+            messageApi.success(t('actionPlan.markDoneSaved'));
         } catch {
-            message.error(t('actionPlan.markDoneFailed'));
+            messageApi.error(t('actionPlan.markDoneFailed'));
         } finally {
             setMarkingActionId(null);
         }

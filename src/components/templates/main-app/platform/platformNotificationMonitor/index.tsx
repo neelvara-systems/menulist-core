@@ -44,7 +44,7 @@ import {
     Table,
     Tag,
     Typography,
-    message,
+    App,
     theme,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
@@ -178,6 +178,7 @@ function buildManualBody(record: PlatformNotificationRow, formatter: IntlFormatt
 }
 
 export default function PlatformNotificationMonitor() {
+    const { message: messageApi } = App.useApp();
     const { token } = theme.useToken();
     const formatter = useFormatter();
     const { data: session, status: sessionStatus } = useSession();
@@ -230,7 +231,7 @@ export default function PlatformNotificationMonitor() {
                 ...getBoundedRuntimeStringContext('triggerFilter', triggerFilter),
             });
             if (!data) {
-                message.error('Failed to load platform notifications');
+                messageApi.error('Failed to load platform notifications');
                 return;
             }
             setSnapshot(data);
@@ -241,7 +242,7 @@ export default function PlatformNotificationMonitor() {
                 ...getBoundedRuntimeStringContext('severityFilter', severityFilter),
                 ...getBoundedRuntimeStringContext('triggerFilter', triggerFilter),
             });
-            message.error('Failed to load platform notifications');
+            messageApi.error('Failed to load platform notifications');
         } finally {
             setLoading(false);
         }
@@ -269,10 +270,10 @@ export default function PlatformNotificationMonitor() {
                 ...getBoundedRuntimeStringContext('selectedEventId', selectedEventId),
             });
             if (!actionResult) {
-                message.error('Platform notification action failed');
+                messageApi.error('Platform notification action failed');
                 return false;
             }
-            message.success(actionResult.message || 'Action completed');
+            messageApi.success(actionResult.message || 'Action completed');
             await loadData(selectedEventId);
             return true;
         } catch (error) {
@@ -280,7 +281,7 @@ export default function PlatformNotificationMonitor() {
                 ...getBoundedRuntimeStringContext('action', body.action),
                 ...getBoundedRuntimeStringContext('selectedEventId', selectedEventId),
             });
-            message.error('Platform notification action failed');
+            messageApi.error('Platform notification action failed');
             return false;
         } finally {
             setActionLoading(false);
@@ -312,7 +313,7 @@ export default function PlatformNotificationMonitor() {
     const openPrefilledExternalTool = useCallback(() => {
         if (!prefillModal) return;
         if (!prefillModal.destination.trim()) {
-            message.warning(prefillModal.channel === 'email' ? 'Enter an email address' : 'Enter a WhatsApp number');
+            messageApi.warning(prefillModal.channel === 'email' ? 'Enter an email address' : 'Enter a WhatsApp number');
             return;
         }
 
@@ -334,7 +335,7 @@ export default function PlatformNotificationMonitor() {
                 ...getBoundedRuntimeStringContext('messageBody', prefillModal.body),
                 ...getBoundedRuntimeStringContext('whatsappWebHref', whatsappWebHref),
             });
-            message.error('Unable to open WhatsApp Web');
+            messageApi.error('Unable to open WhatsApp Web');
         }
     }, [prefillModal, selectedEventId, severityFilter, statusFilter, triggerFilter]);
 
@@ -345,7 +346,7 @@ export default function PlatformNotificationMonitor() {
             : prefillModal.body || '';
         try {
             await copyRuntimeTextToClipboard(messageText);
-            message.success('Message copied');
+            messageApi.success('Message copied');
         } catch (error) {
             logRuntimeFailure('platform_notification_monitor_message_copy_failed', error, {
                 ...getBoundedRuntimeStringContext('selectedEventId', selectedEventId),
@@ -360,7 +361,7 @@ export default function PlatformNotificationMonitor() {
                 hasClipboardWrite: hasRuntimeClipboardWrite(),
                 hasCopyFallback: hasRuntimeCopyFallback(),
             });
-            message.error('Unable to copy message');
+            messageApi.error('Unable to copy message');
         }
     }, [prefillModal, selectedEventId, severityFilter, statusFilter, triggerFilter]);
 

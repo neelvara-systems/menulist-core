@@ -50,6 +50,38 @@ function shouldIgnore(relPath) {
   return relPath.split(path.sep).some((part) => IGNORED_PATH_PARTS.has(part));
 }
 
+function isHistoricalMissingScriptEvidence(relPath, text, index) {
+  if (relPath !== '__docs__/deployment/git-operations-ledger.md') return false;
+
+  const lineStart = Math.max(0, text.lastIndexOf('\n', index) + 1);
+  const lineEnd = text.indexOf('\n', index);
+  const line = text.slice(lineStart, lineEnd === -1 ? text.length : lineEnd).toLowerCase();
+  const recordsAttempt = line.includes('attempted');
+  const recordsFailure = line.includes('failed');
+  const recordsMissingScript = line.includes('no such package script')
+    || line.includes('nonexistent package script')
+    || line.includes('package script does not exist');
+
+  return recordsAttempt && recordsFailure && recordsMissingScript;
+}
+
+const historicalEvidenceFixture = '- The attempted command `npm run missing:fixture` failed because no such package script exists.';
+if (!isHistoricalMissingScriptEvidence(
+  '__docs__/deployment/git-operations-ledger.md',
+  historicalEvidenceFixture,
+  historicalEvidenceFixture.indexOf('npm run'),
+)) {
+  throw new Error('Historical missing-script ledger evidence classifier regression.');
+}
+const activeCommandFixture = 'Run `npm run missing:fixture` before release.';
+if (isHistoricalMissingScriptEvidence(
+  '__docs__/deployment/git-operations-ledger.md',
+  activeCommandFixture,
+  activeCommandFixture.indexOf('npm run'),
+)) {
+  throw new Error('Active documentation command must not be excluded from script validation.');
+}
+
 function getInlineCommandDirectory(filePath, text, index) {
   const lineStart = Math.max(0, text.lastIndexOf('\n', index) + 1);
   const linePrefix = text.slice(lineStart, index);
@@ -99,6 +131,7 @@ for (const filePath of collectDocFiles(DOC_ROOT)) {
   let match;
   while ((match = npmRunPattern.exec(text))) {
     const scriptName = match[1];
+    if (isHistoricalMissingScriptEvidence(relPath, text, match.index)) continue;
     const commandDir = getInlineCommandDirectory(filePath, text, match.index);
     const scriptSet = commandDir ? readPackageScriptsForDir(commandDir) : rootScripts;
     if (!scriptSet?.has(scriptName)) {

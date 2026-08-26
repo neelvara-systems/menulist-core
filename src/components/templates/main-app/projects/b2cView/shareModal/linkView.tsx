@@ -7,7 +7,7 @@ import {
     hasExportCopyFallback,
     logExportFailure,
 } from '@lib/export/exportDiagnostics';
-import { Button, Flex, message, Typography } from 'antd';
+import { Button, Flex, App, Typography } from 'antd';
 import { LuCopy, LuExternalLink } from 'react-icons/lu';
 
 const { Text, Link } = Typography;
@@ -19,6 +19,7 @@ interface LinkViewProps {
 
 
 function LinkView({ shareUrl }: LinkViewProps) {
+    const { message: messageApi } = App.useApp();
     const labels = useOfferingLabels();
     const copyUrl = withAnalyticsSource(shareUrl, 'copy_link');
     const directUrl = withAnalyticsSource(shareUrl, 'direct');
@@ -27,7 +28,7 @@ function LinkView({ shareUrl }: LinkViewProps) {
     const handleCopyLink = async () => {
         try {
             await copyExportTextToClipboard(copyUrl);
-            message.success('Link copied to clipboard!');
+            messageApi.success('Link copied to clipboard!');
         } catch (error) {
             logExportFailure('project_share_legacy_link_copy_failed', error, {
                 ...getBoundedExportStringContext('shareUrl', shareUrl),
@@ -35,7 +36,7 @@ function LinkView({ shareUrl }: LinkViewProps) {
                 hasClipboardWrite: hasExportClipboardWrite(),
                 hasCopyFallback: hasExportCopyFallback(),
             });
-            message.error('Failed to copy link');
+            messageApi.error('Failed to copy link');
         }
     };
 

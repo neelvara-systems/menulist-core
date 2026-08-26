@@ -231,7 +231,7 @@ function verifyDesktop(component) {
     'if (controller.signal.aborted || activeRequestRef.current !== controller) return;',
     'setData(null);',
     "logRuntimeFailure('platform_cost_posture_load_failed'",
-    "message.error('Failed to load platform cost posture')",
+    "messageApi.error('Failed to load platform cost posture')",
     'Known internal cost signals for {data.periodDays} days. Whole-bill forecasting waits for Cloud Billing export.',
     'Cloud Billing export: ${statusLabel(data.billingExport.status)}',
     '<Statistic title="Known Internal Cost"',

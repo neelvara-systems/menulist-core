@@ -116,7 +116,7 @@ function verifyDesktopMonitor(component) {
     "redirect('/dashboard')",
     'usePlatformStoreSummaryOptions(isPlatform)',
     'getSchedulerDashboardSnapshot(filter, 50)',
-    "message.error('Failed to load scheduler data')",
+    "messageApi.error('Failed to load scheduler data')",
     'function formatDetailKey(key: string, index: number): string',
     'return /^[a-zA-Z0-9_.:-]{1,48}$/.test(normalized) ? normalized : `detail_${index + 1}`;',
     "if (value === undefined || value === null) return '[empty]'",

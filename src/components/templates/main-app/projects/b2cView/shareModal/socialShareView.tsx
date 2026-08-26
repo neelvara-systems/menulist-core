@@ -8,7 +8,7 @@ import {
     hasExportCopyFallback,
     logExportFailure,
 } from '@lib/export/exportDiagnostics';
-import { Button, Card, Flex, message, theme, Tooltip, Typography } from 'antd';
+import { Button, Card, Flex, App, theme, Tooltip, Typography } from 'antd';
 import React from 'react';
 import { FaFacebook, FaInstagram, FaLine, FaLinkedin, FaTelegram, FaVk, FaWeixin, FaWhatsapp, FaXTwitter } from 'react-icons/fa6';
 import { LuClipboard, LuShare2 } from 'react-icons/lu';
@@ -33,6 +33,7 @@ function withEntrySource(url: string, entrySource: string): string {
 }
 
 function SocialShareView({ shareUrl }: SocialShareViewProps) {
+    const { message: messageApi } = App.useApp();
     const { token } = theme.useToken();
     const labels = useOfferingLabels();
     // Define social media platforms with their sharing URLs
@@ -99,7 +100,7 @@ function SocialShareView({ shareUrl }: SocialShareViewProps) {
         const urlWithUTM = withEntrySource(shareUrl, platform);
         try {
             await copyExportTextToClipboard(urlWithUTM);
-            message.success(`Link with ${platform} tracking copied!`);
+            messageApi.success(`Link with ${platform} tracking copied!`);
         } catch (error) {
             logExportFailure('project_share_legacy_social_copy_failed', error, {
                 ...getBoundedExportStringContext('platform', platform),
@@ -108,7 +109,7 @@ function SocialShareView({ shareUrl }: SocialShareViewProps) {
                 hasClipboardWrite: hasExportClipboardWrite(),
                 hasCopyFallback: hasExportCopyFallback(),
             });
-            message.error('Failed to copy link');
+            messageApi.error('Failed to copy link');
         }
     };
 
@@ -123,7 +124,7 @@ function SocialShareView({ shareUrl }: SocialShareViewProps) {
                 ...getBoundedExportStringContext('shareUrl', shareUrl),
                 socialShareUrlLength: socialShareUrl.length,
             });
-            message.error('Failed to open share link');
+            messageApi.error('Failed to open share link');
         }
     };
 

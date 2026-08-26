@@ -18,7 +18,7 @@ import {
     fromNativeDateTimeInputValue,
     getClockTimeInputFormat,
 } from "@util/dateTime";
-import { Button, DatePicker, Form, Input, Modal, Radio, Select, Typography, message, theme } from "antd";
+import { Button, DatePicker, Form, Input, Modal, Radio, Select, Typography, App, theme } from "antd";
 import dayjs from "dayjs";
 import { useTranslations } from "next-intl";
 import { useContext, useMemo, useRef, useState } from "react";
@@ -56,6 +56,7 @@ export default function CreateSpecialMenuModal({
     baseProjectName,
     onSubmit,
 }: CreateSpecialMenuModalProps) {
+    const { message: messageApi } = App.useApp();
     const [form] = Form.useForm();
     const [loading, setLoading] = useState(false);
     const { token } = theme.useToken();
@@ -113,7 +114,7 @@ export default function CreateSpecialMenuModal({
             });
 
             if (result.success) {
-                message.success(
+                messageApi.success(
                     Date.parse(startsAt) <= Date.now()
                         ? `"${displayName}" created and active.`
                         : `"${displayName}" created. It will switch within a few minutes of the scheduled time.`,
@@ -123,7 +124,7 @@ export default function CreateSpecialMenuModal({
                 setSelectedLanguage(referenceLanguage);
                 onClose();
             } else {
-                message.error("Could not create special menu.");
+                messageApi.error("Could not create special menu.");
             }
         } catch (error) {
             const validationError = error as { errorFields?: unknown[] } | null;
@@ -135,7 +136,7 @@ export default function CreateSpecialMenuModal({
                 languageCount: managedLanguages.length,
                 draftCount: Object.keys(displayNameDrafts).length,
             });
-            message.error("Could not create special menu.");
+            messageApi.error("Could not create special menu.");
         } finally {
             submitInFlightRef.current = false;
             setLoading(false);
@@ -158,7 +159,7 @@ export default function CreateSpecialMenuModal({
             });
 
             if (!translated?.specialMenuDisplayName) {
-                message.info("No missing special menu name translations found.");
+                messageApi.info("No missing special menu name translations found.");
                 return;
             }
 
@@ -171,7 +172,7 @@ export default function CreateSpecialMenuModal({
                 ]),
             );
             setDisplayNameDrafts(nextDrafts);
-            message.success("Special menu name translations added.");
+            messageApi.success("Special menu name translations added.");
         } catch (error) {
             logProjectPageFailure('projects_page_special_menu_name_translation_failed', error, {
                 ...getProjectPageProjectLogContext(baseProjectId),
@@ -180,7 +181,7 @@ export default function CreateSpecialMenuModal({
                 languageCount: managedLanguages.length,
                 draftCount: Object.keys(displayNameDrafts).length,
             });
-            message.error("Could not translate the special menu name.");
+            messageApi.error("Could not translate the special menu name.");
         } finally {
             setIsTranslatingPublicContent(false);
         }

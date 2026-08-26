@@ -5,7 +5,7 @@ import { useAnswerlatticeCacheScope } from '@hook/answerlattice/useAnswerlattice
 import { getArticleById } from '@database/knowledgeBase/articles';
 import type { ChatReference } from '@type/chatSession';
 import type { KnowledgeBaseArticleType } from '@type/knowledgeBase';
-import { Button, Card, Flex, Space, Tag, Tooltip, Typography, message, theme } from 'antd';
+import { Button, Card, Flex, Space, Tag, Tooltip, Typography, App, theme } from 'antd';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useRef, useState } from 'react';
 import { LuArrowRight, LuChevronDown, LuChevronUp, LuFileText, LuMaximize2 } from 'react-icons/lu';
@@ -32,6 +32,7 @@ const getConfidenceInfo = (score?: number) => {
 };
 
 const MessageReferences = ({ references, onArticleModalOpen, showConfidenceScores = false, isMobile = false }: MessageReferencesProps) => {
+    const { message: messageApi } = App.useApp();
     const { token } = theme.useToken();
     const cacheScopeKey = useAnswerlatticeCacheScope();
     const [expandedArticleId, setExpandedArticleId] = useState<string | null>(null);
@@ -64,7 +65,7 @@ const MessageReferences = ({ references, onArticleModalOpen, showConfidenceScore
             const article = await getArticleById(reference.id);
             if (currentScopeKeyRef.current !== requestScopeKey) return null;
             if (!article) {
-                message.warning('This help article is no longer available.');
+                messageApi.warning('This help article is no longer available.');
                 return null;
             }
             setResolvedArticles((current) => (
@@ -73,7 +74,7 @@ const MessageReferences = ({ references, onArticleModalOpen, showConfidenceScore
             setResolvedArticlesScopeKey(requestScopeKey);
             return article;
         } catch {
-            message.error('Unable to load this help article.');
+            messageApi.error('Unable to load this help article.');
             return null;
         } finally {
             setLoadingArticleId((current) => current === reference.id ? null : current);

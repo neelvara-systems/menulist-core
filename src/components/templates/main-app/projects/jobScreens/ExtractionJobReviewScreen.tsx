@@ -36,7 +36,7 @@ import {
     setSafePreviewApprovals,
     updateReviewPreviewSession,
 } from '@lib/extraction/reviewPreview';
-import { Alert, Button, Card, Checkbox, Empty, Flex, message, Space, Tag, theme, Typography } from 'antd';
+import { Alert, Button, Card, Checkbox, Empty, Flex, App, Space, Tag, theme, Typography } from 'antd';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { LuAlertTriangle, LuCheck, LuChevronDown, LuChevronRight, LuDollarSign, LuPlus, LuRefreshCw, LuX } from 'react-icons/lu';
 
@@ -240,6 +240,7 @@ export function ExtractionJobReviewScreen({
     onSaveComplete,
     onDiscard,
 }: ExtractionJobReviewScreenProps) {
+    const { message: messageApi } = App.useApp();
     const { token } = theme.useToken();
     const dismissalScope = useMemo(() => ({ tenantId, storeId }), [storeId, tenantId]);
     const reviewIdentity = getReviewPreviewIdentity(projectId, jobId);
@@ -322,7 +323,7 @@ export function ExtractionJobReviewScreen({
     // Save handler
     const handleSave = useCallback(async () => {
         if (totalChanges === 0) {
-            message.warning('No changes selected');
+            messageApi.warning('No changes selected');
             return;
         }
 
@@ -355,12 +356,12 @@ export function ExtractionJobReviewScreen({
                 mode: applyPlan.mode,
                 projectId,
             })) {
-                message.success(`Applied ${totalChanges} changes`);
+                messageApi.success(`Applied ${totalChanges} changes`);
                 onSaveComplete();
             } else {
                 const errorMessage = 'Failed to apply changes';
                 setActionError(errorMessage);
-                message.error(errorMessage);
+                messageApi.error(errorMessage);
             }
         } catch (error: unknown) {
             if (!isMountedRef.current || activeReviewIdentityRef.current !== submittedReviewIdentity) {
@@ -372,7 +373,7 @@ export function ExtractionJobReviewScreen({
             });
             const errorMessage = 'Failed to save changes';
             setActionError(errorMessage);
-            message.error(errorMessage);
+            messageApi.error(errorMessage);
         } finally {
             if (isMountedRef.current && activeReviewIdentityRef.current === submittedReviewIdentity) {
                 setIsSaving(false);
@@ -391,7 +392,7 @@ export function ExtractionJobReviewScreen({
             if (!isMountedRef.current || activeReviewIdentityRef.current !== submittedReviewIdentity) {
                 return;
             }
-            message.info('Changes discarded');
+            messageApi.info('Changes discarded');
             onDiscard();
         } catch (error: unknown) {
             clearMenuProcessingJobDismissal(dismissalScope, jobId);
@@ -403,7 +404,7 @@ export function ExtractionJobReviewScreen({
             });
             const errorMessage = 'Failed to discard changes';
             setActionError(errorMessage);
-            message.error(errorMessage);
+            messageApi.error(errorMessage);
         } finally {
             if (isMountedRef.current && activeReviewIdentityRef.current === submittedReviewIdentity) {
                 setIsDiscarding(false);

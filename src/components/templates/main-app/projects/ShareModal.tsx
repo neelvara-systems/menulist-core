@@ -1,4 +1,4 @@
-import { Alert, Button, Card, Divider, Flex, Form, Input, Modal, Typography, message, theme } from 'antd';
+import { Alert, Button, Card, Divider, Flex, Form, Input, Modal, Typography, App, theme } from 'antd';
 import { getBoundedExportStringContext, logExportFailure } from '@lib/export/exportDiagnostics';
 import { useCallback, useRef, useState } from 'react';
 import { LuFileJson, LuSheet } from 'react-icons/lu';
@@ -52,6 +52,7 @@ interface ShareModalProps {
 }
 
 export const ShareModal = ({ isOpen, onClose, projectData, handleDownload }: ShareModalProps) => {
+    const { message: messageApi } = App.useApp();
     const [form] = Form.useForm();
     const [isSharing, setIsSharing] = useState(false);
     const { token } = theme.useToken();
@@ -84,7 +85,7 @@ export const ShareModal = ({ isOpen, onClose, projectData, handleDownload }: Sha
         let itemCount = 0;
         const apiUrl = normalizeShareEndpointUrl(values.apiUrl);
         if (!apiUrl) {
-            message.error(SHARE_ENDPOINT_INVALID_MESSAGE);
+            messageApi.error(SHARE_ENDPOINT_INVALID_MESSAGE);
             return;
         }
         if (actionInFlightRef.current) return;
@@ -111,7 +112,7 @@ export const ShareModal = ({ isOpen, onClose, projectData, handleDownload }: Sha
             }
 
             if (isExpectedScope(expectedProjectId, expectedModalEpoch)) {
-                message.success('Data shared successfully!');
+                messageApi.success('Data shared successfully!');
                 handleClose();
             }
         } catch (error) {
@@ -123,7 +124,7 @@ export const ShareModal = ({ isOpen, onClose, projectData, handleDownload }: Sha
                 responseStatus,
             });
             if (isExpectedScope(expectedProjectId, expectedModalEpoch)) {
-                message.error('Failed to share data. Please check the API URL and try again.');
+                messageApi.error('Failed to share data. Please check the API URL and try again.');
             }
         } finally {
             actionInFlightRef.current = false;

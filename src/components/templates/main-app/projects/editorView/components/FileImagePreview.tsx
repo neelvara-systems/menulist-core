@@ -1,6 +1,6 @@
 import { openIsolatedBrowserUrl } from '@lib/browser/openIsolatedBrowserUrl';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
-import { Alert, Button, Divider, Flex, message, Popover, Space, theme, Tooltip, Typography } from 'antd';
+import { Alert, Button, Divider, Flex, App, Popover, Space, theme, Tooltip, Typography } from 'antd';
 import { LuAlertTriangle, LuExternalLink, LuEye, LuFileText, LuHelpCircle, LuInfo, LuKeyboard, LuMinus, LuMousePointer2, LuMove, LuPlus, LuRotateCcw, LuTrash, LuXCircle } from 'react-icons/lu';
 import { TbLanguageHiragana } from 'react-icons/tb';
 import { FileMessage, ProjectFileType } from '../../types';
@@ -199,6 +199,7 @@ const SourceFilePreview = ({
     onRetryDescription: (file: ProjectFileType) => void;
     onRetryTranslations: (file: ProjectFileType) => void;
 }) => {
+    const { message: messageApi } = App.useApp();
     const { token } = theme.useToken();
     const sourceUrl = getSourceUrl(file);
     const source = (file as ProjectFileType & { source?: unknown }).source;
@@ -221,7 +222,7 @@ const SourceFilePreview = ({
                 ...getBoundedRuntimeStringContext('fileName', file.name),
                 ...getBoundedRuntimeStringContext('fileType', file.type),
             });
-            message.error('Unable to open source link');
+            messageApi.error('Unable to open source link');
         }
     };
 

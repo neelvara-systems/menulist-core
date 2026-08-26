@@ -207,7 +207,7 @@ assertIncludes(opsControlRoom, 'href="/ops/report-leads"', 'Ops Control Room Rep
   'requestIdRef.current + 1',
   'requestId !== requestIdRef.current',
   'setSnapshot(null)',
-  "message.error('Failed to load report leads')",
+  "messageApi.error('Failed to load report leads')",
   'copyRuntimeTextToClipboard(record.suggestedReply)',
   'hasRuntimeClipboardWrite()',
   'hasRuntimeCopyFallback()',

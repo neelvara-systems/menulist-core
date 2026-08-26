@@ -2452,7 +2452,7 @@ assert(!ownerBusinessAssistantAnswerHook.includes('err.message === OWNER_BUSINES
     ['mobile basic settings screen', mobileBasicSettingsScreen, 'mobile_basic_settings_logo_prepare_failed'],
     ['mobile Business Copy setup screen', mobileBusinessCopySetupScreen, 'mobile_business_copy_generation_failed'],
     ['mobile item edit sheet', mobileItemEditSheet, 'mobile_item_image_prepare_failed'],
-    ['owner assistant panel', ownerAssistantPanel, "message.error(t('businessHealth.assistant.answerError'))"],
+    ['owner assistant panel', ownerAssistantPanel, "messageApi.error(t('businessHealth.assistant.answerError'))"],
     ['business settings screen', businessSettings, 'business_settings_logo_prepare_failed'],
     ['Business Copy setup tab', businessCopySetupTab, 'business_settings_business_copy_generation_failed'],
     ['review reply tool', reviewReplyTool, 'desktop_review_reply_generation_failed'],
@@ -2460,7 +2460,7 @@ assert(!ownerBusinessAssistantAnswerHook.includes('err.message === OWNER_BUSINES
     ['AI image generator', aiImageGenerator, 'menu_editor_ai_image_generate_failed'],
     ['image upload modal', imageUploadModal, 'menu_editor_batch_image_generation_start_failed'],
     ['menu background settings', backgroundSettings, 'menu_background_image_prepare_failed'],
-    ['owner action plan card', ownerActionPlanCard, "message.error(t('actionPlan.markDoneFailed'))"],
+    ['owner action plan card', ownerActionPlanCard, "messageApi.error(t('actionPlan.markDoneFailed'))"],
     ['mobile owner action plan card', mobileOwnerActionPlanCard, "Toast.show({ content: t('actionPlan.markDoneFailed') })"],
 ].forEach(([label, source, expectedToken]) => {
     assertIncludes(source, expectedToken, `${label} must keep bounded diagnostics or fixed owner-safe copy for failure paths.`);

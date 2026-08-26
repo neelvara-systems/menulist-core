@@ -6,7 +6,7 @@ import { getBoundedOpsStringContext, logOpsFailure } from '@lib/ops/opsDiagnosti
 import { normalizeSchedulerRecoveryResponse, normalizeSchedulerRecoveryRunLogId } from '@lib/ops/schedulerRecoveryResponse';
 import type { SchedulerHealthSummary, SchedulerRunFilter, SchedulerRunLog, SchedulerRunStatus, SchedulerSettlementSummary, SchedulerTaskResult, SchedulerTrigger } from '@lib/ops/schedulerTypes';
 import { formatDateTime, type DateLike, type IntlFormatter } from '@util/dateTime';
-import { Alert, Button, Card, Collapse, Divider, Modal, Select, Spin, Table, Tag, Typography, message, theme } from 'antd';
+import { Alert, Button, Card, Collapse, Divider, Modal, Select, Spin, Table, Tag, Typography, App, theme } from 'antd';
 import { useSession } from 'next-auth/react';
 import { useFormatter } from 'next-intl';
 import { redirect } from 'next/navigation';
@@ -131,6 +131,7 @@ function flattenDetails(details: Record<string, unknown> | undefined): string {
 // ================================================================
 
 function SchedulerMonitor() {
+    const { message: messageApi } = App.useApp();
     const { token } = theme.useToken();
     const formatter = useFormatter();
     const { data: session, status: sessionStatus } = useSession();
@@ -191,7 +192,7 @@ function SchedulerMonitor() {
                 triggerFilter: filterTrigger,
                 ...getBoundedOpsStringContext('platformRole', platformRole),
             });
-            message.error('Failed to load scheduler data');
+            messageApi.error('Failed to load scheduler data');
         } finally {
             if (
                 isMountedRef.current
@@ -237,7 +238,7 @@ function SchedulerMonitor() {
     const handleManualNightlyRecovery = () => {
         if (!selectedStore || recoveryInFlightRef.current) {
             if (!selectedStore) {
-                message.warning('Select a store first');
+                messageApi.warning('Select a store first');
             }
             return;
         }
@@ -273,9 +274,9 @@ function SchedulerMonitor() {
                     if (!data) throw new Error('ops_scheduler_recovery_response_invalid');
                     if (!isMountedRef.current || !isPlatformRef.current) return;
                     const summary = `Nightly recovery ${data.status}: ${data.successCount} DI success, ${data.failedCount} failed · ${data.runLogId}`;
-                    if (data.status === 'success') message.success(summary);
-                    else if (data.status === 'partial') message.warning(summary);
-                    else message.error(summary);
+                    if (data.status === 'success') messageApi.success(summary);
+                    else if (data.status === 'partial') messageApi.warning(summary);
+                    else messageApi.error(summary);
                     await loadData();
                 } catch (error: unknown) {
                     const runLogId = normalizeSchedulerRecoveryRunLogId(
@@ -289,7 +290,7 @@ function SchedulerMonitor() {
                         ...getBoundedOpsStringContext('runLogId', runLogId),
                     });
                     if (isMountedRef.current && isPlatformRef.current) {
-                        message.error(`Nightly recovery failed${runLogId ? ` · Run log: ${runLogId}` : ''}`);
+                        messageApi.error(`Nightly recovery failed${runLogId ? ` · Run log: ${runLogId}` : ''}`);
                     }
                 } finally {
                     recoveryInFlightRef.current = false;

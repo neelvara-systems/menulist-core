@@ -59,7 +59,7 @@ import ProjectsDataProvider from '@providers/projectsDataProvider';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
 import { hasValidSubscriptionAccess } from '@util/razorpay';
 import { getBase64, removeObjRef } from '@util/utils';
-import { Button, Checkbox, Flex, Form, Input, message, Modal, Spin, Tag, theme, Tooltip, Typography, Upload } from 'antd';
+import { Button, Checkbox, Flex, Form, Input, App, Modal, Spin, Tag, theme, Tooltip, Typography, Upload } from 'antd';
 import type { UploadFileStatus, UploadProps } from 'antd/es/upload/interface';
 import DOMPurify from 'isomorphic-dompurify';
 import { useTranslations } from 'next-intl';
@@ -125,9 +125,13 @@ const getPendingMenuExtractionFileCount = (files?: ProjectFileType[] | null): nu
     (files || []).filter((file) => !file?.extractedData).length
 );
 
-const showMenuUploadFileLimitError = (incomingCount: number, existingPendingCount = 0) => {
+type ProjectFeedbackApi = {
+    error: (content: string) => void;
+};
+
+const showMenuUploadFileLimitError = (messageApi: ProjectFeedbackApi, incomingCount: number, existingPendingCount = 0) => {
     const totalCount = incomingCount + existingPendingCount;
-    message.error(
+    messageApi.error(
         `Upload up to ${MAX_MENU_EXTRACTION_FILES} menu pages at a time. ` +
         `You selected ${totalCount}. Clear or process some files before adding more.`,
     );
@@ -279,6 +283,7 @@ const { Dragger } = Upload;
 const { useToken } = theme;
 
 function ProjectsPage() {
+    const { message: messageApi } = App.useApp();
     const { token } = useToken();
     const searchParams = useSearchParams();
     const labels = useOfferingLabels();
@@ -1061,7 +1066,7 @@ function ProjectsPage() {
                         ...getMenuProcessingJobLogContext(activeProcessingJobId),
                         ...getMenuProcessingProjectLogContext(activeJobProjectId || selectedProject?.projectId || activeProject?.projectId),
                     });
-                    message.error('Failed to compare extracted data');
+                    messageApi.error('Failed to compare extracted data');
                 }
             })();
         }
@@ -1086,7 +1091,7 @@ function ProjectsPage() {
             setFileProcessingId(null);
             setShowReviewScreen(false);
             setComparisonResult(null);
-            message.info('Processing was cancelled');
+            messageApi.info('Processing was cancelled');
         }
 
         return () => {
@@ -1132,7 +1137,7 @@ function ProjectsPage() {
         setActiveProcessingJobId(null);
         setFileProcessingId(null);
         setExtractionStats(null);
-        message.info('Changes discarded');
+        messageApi.info('Changes discarded');
     }, [activeProcessingJobId, menuProcessingDismissalScope, setActiveProcessingJobId]);
 
     // Success modal handler - navigate to editor
@@ -1177,7 +1182,7 @@ function ProjectsPage() {
         const operationScope = projectFormScope;
         const mutationToken = beginProjectMutation('save', operationScope);
         if (!operationScope || !mutationToken) {
-            message.error(`This ${labels.offeringPhrase} form is no longer active for the current location.`);
+            messageApi.error(`This ${labels.offeringPhrase} form is no longer active for the current location.`);
             return;
         }
         try {
@@ -1199,7 +1204,7 @@ function ProjectsPage() {
             const localizedDescription = applyLocalizedProjectDraftMap(editingProject?.description, sanitizedDescriptionDrafts);
 
             if (!localizedName || !Object.values(sanitizedNameDrafts).some((value) => value.trim().length > 0)) {
-                message.error(`Please enter a ${labels.offeringPhrase} name`);
+                messageApi.error(`Please enter a ${labels.offeringPhrase} name`);
                 return;
             }
 
@@ -1292,7 +1297,7 @@ function ProjectsPage() {
                     !canDeactivateLinkedProjects &&
                     await isLinkedOutletProject(editingProject, operationScope)
                 ) {
-                    message.info("Deactivating inherited menus is not enabled for this store.");
+                    messageApi.info("Deactivating inherited menus is not enabled for this store.");
                     return;
                 }
 
@@ -1308,7 +1313,7 @@ function ProjectsPage() {
                     : null;
 
                 if (thisIsDefault && !nextIsDefault && !defaultReplacement) {
-                    message.error(`Add another regular ${labels.offeringPhrase} before removing the default one.`);
+                    messageApi.error(`Add another regular ${labels.offeringPhrase} before removing the default one.`);
                     return;
                 }
 
@@ -1416,10 +1421,10 @@ function ProjectsPage() {
                     } : current,
                     { revalidate: false }
                 );
-                message.success(`${offeringName} updated successfully`);
+                messageApi.success(`${offeringName} updated successfully`);
             } else {
                 if (!canCreateLocalProjects) {
-                    message.info("New local menus are not enabled for this store.");
+                    messageApi.info("New local menus are not enabled for this store.");
                     return;
                 }
 
@@ -1466,7 +1471,7 @@ function ProjectsPage() {
                     } : { projects: [projectMetadata], lastDoc: null },
                     { revalidate: false }
                 );
-                message.success(`${offeringName} created successfully`);
+                messageApi.success(`${offeringName} created successfully`);
             }
             if (!isCurrentProjectMutation(mutationToken, operationScope)) return;
             setIsModalOpen(false);
@@ -1483,7 +1488,7 @@ function ProjectsPage() {
                 canCreateLocalProjects,
             });
             if (isCurrentProjectMutation(mutationToken, operationScope)) {
-                message.error(`Failed to ${editingProject ? 'update' : 'create'} ${labels.offeringPhrase}`);
+                messageApi.error(`Failed to ${editingProject ? 'update' : 'create'} ${labels.offeringPhrase}`);
             }
         } finally {
             endProjectMutation(mutationToken);
@@ -1495,12 +1500,12 @@ function ProjectsPage() {
             const operationScope = projectFormScope;
             const mutationToken = beginProjectMutation('delete-modal', operationScope);
             if (!operationScope || !mutationToken) {
-                message.error(`This ${labels.offeringPhrase} form is no longer active for the current location.`);
+                messageApi.error(`This ${labels.offeringPhrase} form is no longer active for the current location.`);
                 return;
             }
             try {
                 if (!canDeactivateLinkedProjects && await isLinkedOutletProject(editingProject, operationScope)) {
-                    message.info("Removing inherited menus is not enabled for this store.");
+                    messageApi.info("Removing inherited menus is not enabled for this store.");
                     return;
                 }
 
@@ -1513,7 +1518,7 @@ function ProjectsPage() {
                     'projects_page_modal_delete_rejected',
                 );
                 if (!isCurrentProjectMutation(mutationToken, operationScope)) return;
-                message.success(`${offeringName} deleted successfully`);
+                messageApi.success(`${offeringName} deleted successfully`);
                 if (selectedProject?.projectId === editingProject.projectId) {
                     setSelectedProject(null);
                 }
@@ -1533,7 +1538,7 @@ function ProjectsPage() {
                     canDeactivateLinkedProjects,
                 });
                 if (isCurrentProjectMutation(mutationToken, operationScope)) {
-                    message.error(`Failed to delete ${labels.offeringPhrase}`);
+                    messageApi.error(`Failed to delete ${labels.offeringPhrase}`);
                 }
             } finally {
                 dispatch(stopLoader("Deleting project"))
@@ -1547,7 +1552,7 @@ function ProjectsPage() {
             const operationScope = currentProjectScopeRef.current;
             const mutationToken = beginProjectMutation('reset', operationScope);
             if (!operationScope || !mutationToken) {
-                message.error(`Could not verify this ${labels.offeringPhrase} location.`);
+                messageApi.error(`Could not verify this ${labels.offeringPhrase} location.`);
                 return;
             }
             try {
@@ -1573,7 +1578,7 @@ function ProjectsPage() {
                 // Revalidate cache after mutation
                 if (isCurrentProjectMutation(mutationToken, operationScope)) {
                     mutateProject();
-                    message.success(`${offeringName} has been reset`);
+                    messageApi.success(`${offeringName} has been reset`);
                 }
             } catch (error) {
                 logProjectPageFailure('projects_page_project_reset_failed', error, {
@@ -1583,7 +1588,7 @@ function ProjectsPage() {
                     fileCount: activeProject.files?.length ?? 0,
                 });
                 if (isCurrentProjectMutation(mutationToken, operationScope)) {
-                    message.error(`Failed to reset ${labels.offeringPhrase}`);
+                    messageApi.error(`Failed to reset ${labels.offeringPhrase}`);
                     // Revert on error
                     mutateProject();
                 }
@@ -1600,7 +1605,7 @@ function ProjectsPage() {
     const handleDuplicateProject = (project: ProjectMetadata) => {
         const operationScope = currentProjectScopeRef.current;
         if (!operationScope) {
-            message.error(`Could not verify this ${labels.offeringPhrase} location.`);
+            messageApi.error(`Could not verify this ${labels.offeringPhrase} location.`);
             return;
         }
         setProjectToDuplicate(project);
@@ -1615,23 +1620,23 @@ function ProjectsPage() {
         localizedDescription?: Record<string, string>,
     ) => {
         if (!projectToDuplicate?.projectId) {
-            message.error(`Invalid ${labels.offeringPhrase} data`);
+            messageApi.error(`Invalid ${labels.offeringPhrase} data`);
             return;
         }
         const operationScope = projectToDuplicateScope;
         const mutationToken = beginProjectMutation('duplicate', operationScope);
         if (!operationScope || !mutationToken) {
-            message.error(`This ${labels.offeringPhrase} action is no longer active for the current location.`);
+            messageApi.error(`This ${labels.offeringPhrase} action is no longer active for the current location.`);
             return;
         }
 
         try {
             if (!canCreateLocalProjects) {
-                message.info("New local menus are not enabled for this store.");
+                messageApi.info("New local menus are not enabled for this store.");
                 return;
             }
             if (await isLinkedOutletProject(projectToDuplicate, operationScope)) {
-                message.info("Inherited menus cannot be duplicated in this store.");
+                messageApi.info("Inherited menus cannot be duplicated in this store.");
                 return;
             }
 
@@ -1671,7 +1676,7 @@ function ProjectsPage() {
                 );
             }
 
-            message.success(`"${newName}" created successfully!`);
+            messageApi.success(`"${newName}" created successfully!`);
 
         } catch (error) {
             logProjectPageFailure('projects_page_project_duplicate_failed', error, {
@@ -1681,7 +1686,7 @@ function ProjectsPage() {
                 localizedDescriptionCount: localizedDescription ? Object.keys(localizedDescription).length : 0,
             });
             if (isCurrentProjectMutation(mutationToken, operationScope)) {
-                message.error(`Failed to duplicate ${labels.offeringPhrase}`);
+                messageApi.error(`Failed to duplicate ${labels.offeringPhrase}`);
             }
         } finally {
             dispatch(stopLoader("Duplicating project"));
@@ -1696,19 +1701,19 @@ function ProjectsPage() {
 
     const handleDeleteProjectFromSelector = async (project: ProjectMetadata) => {
         if (!project.projectId) {
-            message.error(`Invalid ${labels.offeringPhrase} data`);
+            messageApi.error(`Invalid ${labels.offeringPhrase} data`);
             return;
         }
         const operationScope = currentProjectScopeRef.current;
         const mutationToken = beginProjectMutation('delete-selector', operationScope);
         if (!operationScope || !mutationToken) {
-            message.error(`Could not verify this ${labels.offeringPhrase} location.`);
+            messageApi.error(`Could not verify this ${labels.offeringPhrase} location.`);
             return;
         }
 
         try {
             if (!canDeactivateLinkedProjects && await isLinkedOutletProject(project, operationScope)) {
-                message.info("Removing inherited menus is not enabled for this store.");
+                messageApi.info("Removing inherited menus is not enabled for this store.");
                 return;
             }
 
@@ -1731,7 +1736,7 @@ function ProjectsPage() {
             );
 
             const projectName = getLocalizedText(project.name, undefined, getPrimaryLocalizedLanguage(project.name, 'en'), 'Untitled');
-            message.success(`"${projectName}" deleted successfully`);
+            messageApi.success(`"${projectName}" deleted successfully`);
 
             // If deleted project was selected, clear selection
             if (selectedProject?.projectId === project.projectId) {
@@ -1745,7 +1750,7 @@ function ProjectsPage() {
                 canDeactivateLinkedProjects,
             });
             if (isCurrentProjectMutation(mutationToken, operationScope)) {
-                message.error(`Failed to delete ${labels.offeringPhrase}`);
+                messageApi.error(`Failed to delete ${labels.offeringPhrase}`);
             }
         } finally {
             dispatch(stopLoader("Deleting project"));
@@ -1770,7 +1775,7 @@ function ProjectsPage() {
     const openModal = async (project?: ProjectMetadata) => {
         const openingScope = currentProjectScopeRef.current;
         if (!openingScope) {
-            message.error(`Could not verify this ${labels.offeringPhrase} location.`);
+            messageApi.error(`Could not verify this ${labels.offeringPhrase} location.`);
             return;
         }
         if (project) {
@@ -1796,7 +1801,7 @@ function ProjectsPage() {
             });
         } else {
             if (!canCreateLocalProjects) {
-                message.info("New local menus are not enabled for this store.");
+                messageApi.info("New local menus are not enabled for this store.");
                 return;
             }
 
@@ -1832,14 +1837,14 @@ function ProjectsPage() {
         );
 
         if (hasUnsavedDrafts) {
-            message.info('Save the current project content first, then translate the missing public content.');
+            messageApi.info('Save the current project content first, then translate the missing public content.');
             return;
         }
 
         const operationScope = projectFormScope;
         const mutationToken = beginProjectMutation('translate', operationScope);
         if (!operationScope || !mutationToken) {
-            message.error(`This ${labels.offeringPhrase} form is no longer active for the current location.`);
+            messageApi.error(`This ${labels.offeringPhrase} form is no longer active for the current location.`);
             return;
         }
 
@@ -1855,7 +1860,7 @@ function ProjectsPage() {
             });
 
             if (!translated) {
-                message.info('No missing project public content translations found.');
+                messageApi.info('No missing project public content translations found.');
                 return;
             }
 
@@ -1911,7 +1916,7 @@ function ProjectsPage() {
                 } : current,
                 { revalidate: false },
             );
-            message.success('Project public content translations added.');
+            messageApi.success('Project public content translations added.');
         } catch (error) {
             logProjectPageFailure('projects_page_public_content_translation_failed', error, {
                 ...getProjectPageProjectLogContext(editingProject?.projectId, (editingProject as any)?.masterProjectId),
@@ -1919,7 +1924,7 @@ function ProjectsPage() {
                 languageCount: projectFormLanguages.length,
             });
             if (isCurrentProjectMutation(mutationToken, operationScope)) {
-                message.error('Could not translate project public content.');
+                messageApi.error('Could not translate project public content.');
             }
         } finally {
             setIsTranslatingProjectPublicContent(false);
@@ -1946,7 +1951,7 @@ function ProjectsPage() {
 
         const existingPendingCount = getPendingMenuExtractionFileCount(projectDataCopy.files);
         if (existingPendingCount + files.length > MAX_MENU_EXTRACTION_FILES) {
-            showMenuUploadFileLimitError(files.length, existingPendingCount);
+            showMenuUploadFileLimitError(messageApi, files.length, existingPendingCount);
             return;
         }
 
@@ -1964,7 +1969,7 @@ function ProjectsPage() {
         setPdfFiles({ images: [], action: "" });
         setPdfPagesCount(null);
         setFileProcessingId(null);
-        message.success('PDF processing cancelled - all remaining files skipped');
+        messageApi.success('PDF processing cancelled - all remaining files skipped');
         // Reset cancel flag after a longer delay to ensure all files are skipped
         setTimeout(() => {
             cancelPdfRef.current = false;
@@ -2005,7 +2010,7 @@ function ProjectsPage() {
                 projectCount: projectsList.length,
                 selectedProjectPresent: Boolean(selectedProject?.projectId),
             });
-            message.error(`Failed to load ${labels.offeringPhrase} data`);
+            messageApi.error(`Failed to load ${labels.offeringPhrase} data`);
         }
         if (projectError) {
             logProjectPageFailure('projects_page_project_load_failed', projectError, {
@@ -2013,7 +2018,7 @@ function ProjectsPage() {
                 ...getProjectPageStoreLogContext(storeDetails?.storeId, storeDetails?.tenantId),
                 projectCount: projectsList.length,
             });
-            message.error(`Failed to load ${labels.offeringPhrase} data`);
+            messageApi.error(`Failed to load ${labels.offeringPhrase} data`);
         }
     }, [clearPendingQualityAction, currentView, hasProjectFeatureAccess, labels.offeringPhrase, pendingQualityAction, projectError, projectsError, projectsList, selectedProject, storeDetails?.storeId, storeDetails?.tenantId]);
 
@@ -2119,7 +2124,7 @@ function ProjectsPage() {
                             'projects_page_upload_business_details_store_update_rejected',
                         );
                         setStoreDetails((previous: any) => ({ ...previous, ...updates }));
-                        message.success('Business details updated');
+                        messageApi.success('Business details updated');
                     } catch (error) {
                         logProjectPageFailure('projects_page_upload_business_details_update_failed', error, {
                             ...getProjectPageProjectLogContext(activeProject?.projectId, (activeProject as any)?.masterProjectId),
@@ -2127,7 +2132,7 @@ function ProjectsPage() {
                             selectedFieldCount: selectedFields.length,
                             suggestionCount: suggestions.length,
                         });
-                        message.error('Could not update business details.');
+                        messageApi.error('Could not update business details.');
                     } finally {
                         resolve();
                     }
@@ -2149,7 +2154,7 @@ function ProjectsPage() {
             const ignoredFiles = files.filter((_, index) => !validIndexes.has(index + 1));
 
             if (filesForExtraction.length === 0) {
-                message.error('We could not find a clear menu or price list in this upload.');
+                messageApi.error('We could not find a clear menu or price list in this upload.');
                 return { action: 'cancel' };
             }
 
@@ -2159,7 +2164,7 @@ function ProjectsPage() {
             }
 
             if (decision.severity === 'block') {
-                message.error(decision.message);
+                messageApi.error(decision.message);
                 return { action: 'cancel' };
             }
 
@@ -2193,7 +2198,7 @@ function ProjectsPage() {
 
                         try {
                             if (!canCreateLocalProjects) {
-                                message.info("New local menus are not enabled for this store.");
+                                messageApi.info("New local menus are not enabled for this store.");
                                 resolve({ action: 'cancel' });
                                 return;
                             }
@@ -2229,7 +2234,7 @@ function ProjectsPage() {
                                 } : { projects: [projectMetadata], lastDoc: null },
                                 { revalidate: false },
                             );
-                            message.success('Created a new menu for this upload');
+                            messageApi.success('Created a new menu for this upload');
                             resolve({
                                 action: 'create_new_project',
                                 projectId: newProject.projectId,
@@ -2246,7 +2251,7 @@ function ProjectsPage() {
                                 ignoredFileCount: ignoredFiles.length,
                                 canCreateLocalProjects,
                             });
-                            message.error('Could not create a new menu.');
+                            messageApi.error('Could not create a new menu.');
                             resolve({ action: 'cancel' });
                         }
                     },
@@ -2272,7 +2277,7 @@ function ProjectsPage() {
         projectDataCopy: Project
     ): Promise<{ jobId: string; uploadedUrls: Map<string, string>; projectId: string } | null> => {
         if (!canUseMenuExtraction) {
-            message.error('Menu extraction is not enabled for this location.');
+            messageApi.error('Menu extraction is not enabled for this location.');
             return null;
         }
         const operationScope = getProjectOwnerScopeFromProjectId(projectDataCopy.projectId);
@@ -2431,11 +2436,11 @@ function ProjectsPage() {
     const handleMenuLinkImport = useCallback(async () => {
         if (!FEATURE_FLAGS.ENABLE_MENU_LINK_IMPORT) return;
         if (!canUseMenuExtraction) {
-            message.error('Menu extraction is not enabled for this location.');
+            messageApi.error('Menu extraction is not enabled for this location.');
             return;
         }
         if (!selectedProject?.projectId) {
-            message.info('Create a menu before importing from a link.');
+            messageApi.info('Create a menu before importing from a link.');
             return;
         }
         if (!menuLinkInputValidation.valid) {
@@ -2443,21 +2448,21 @@ function ProjectsPage() {
             return;
         }
         if (!menuLinkPermissionConfirmed) {
-            message.error('Confirm you have permission to import this menu.');
+            messageApi.error('Confirm you have permission to import this menu.');
             return;
         }
         if (hasPendingLocalUploadFiles) {
-            message.info('Upload or clear selected files before importing a link.');
+            messageApi.info('Upload or clear selected files before importing a link.');
             return;
         }
         if (activeProcessingJobId) {
-            message.info('Wait for the current import to finish.');
+            messageApi.info('Wait for the current import to finish.');
             return;
         }
         const operationScope = getProjectOwnerScopeFromProjectId(selectedProject.projectId);
         const mutationToken = beginProjectMutation('link-import', operationScope);
         if (!operationScope || !mutationToken) {
-            message.error(`Could not verify this ${labels.offeringPhrase} location.`);
+            messageApi.error(`Could not verify this ${labels.offeringPhrase} location.`);
             return;
         }
 
@@ -2476,7 +2481,7 @@ function ProjectsPage() {
             setMenuLinkUrl('');
             setMenuLinkPermissionConfirmed(false);
             setMenuLinkImportModalOpen(false);
-            message.success(result.reusedExistingJob ? 'Existing import is still running.' : 'Menu link import started.');
+            messageApi.success(result.reusedExistingJob ? 'Existing import is still running.' : 'Menu link import started.');
         } catch (error) {
             logProjectPageFailure('projects_page_menu_link_import_failed', error, {
                 ...getProjectPageProjectLogContext(selectedProject?.projectId, (selectedProject as any)?.masterProjectId),
@@ -2486,7 +2491,7 @@ function ProjectsPage() {
             if (isCurrentProjectMutation(mutationToken, operationScope)) {
                 const ownerMessage = 'We could not read this menu link. Upload a photo/PDF or add the menu manually.';
                 setMenuLinkImportError(ownerMessage);
-                message.error(ownerMessage);
+                messageApi.error(ownerMessage);
             }
         } finally {
             setMenuLinkImporting(false);
@@ -2507,7 +2512,7 @@ function ProjectsPage() {
     const handleUploadAndContinue = async (activeProject: Project | null) => {
         if (!activeProject || !selectedProject) return;
         if (!canUseMenuExtraction) {
-            message.error('Menu extraction is not enabled for this location.');
+            messageApi.error('Menu extraction is not enabled for this location.');
             return;
         }
 
@@ -2536,7 +2541,7 @@ function ProjectsPage() {
             }
 
             if (filesToProcess.length > MAX_MENU_EXTRACTION_FILES) {
-                showMenuUploadFileLimitError(filesToProcess.length);
+                showMenuUploadFileLimitError(messageApi, filesToProcess.length);
                 return;
             }
 
@@ -2578,7 +2583,7 @@ function ProjectsPage() {
                 ...getMenuProcessingProjectLogContext(projectDataCopy.projectId),
             });
             setFileProcessingId(null);
-            message.error('Processing could not be completed. Please try again.');
+            messageApi.error('Processing could not be completed. Please try again.');
         }
     };
 
@@ -2607,7 +2612,7 @@ function ProjectsPage() {
 
             // Show success message
             const removedCount = activeProject.files.length - updatedFiles.length;
-            message.success(`Removed ${removedCount} unprocessed ${removedCount === 1 ? 'file' : 'files'}`);
+            messageApi.success(`Removed ${removedCount} unprocessed ${removedCount === 1 ? 'file' : 'files'}`);
 
             // If no files left, move back to view 1
             if (updatedFiles.length === 0) {
@@ -2621,21 +2626,21 @@ function ProjectsPage() {
         const failedFile = failedFiles.find(f => f.uid === fileUid);
         if (!failedFile) return;
 
-        message.info(`Retrying ${failedFile.name}...`);
+        messageApi.info(`Retrying ${failedFile.name}...`);
 
         // Remove from failed files list
         setFailedFiles(prev => prev.filter(f => f.uid !== fileUid));
 
         // Note: The actual file data is lost, so we can't retry automatically
         // User needs to re-upload. Show helpful message.
-        message.warning(`Please re-upload "${failedFile.name}" to try again`);
+        messageApi.warning(`Please re-upload "${failedFile.name}" to try again`);
     };
 
     // Error Recovery: Retry all failed files
     const handleRetryAllFailed = async () => {
         if (failedFiles.length === 0) return;
 
-        message.info(`Please re-upload ${failedFiles.length} failed file(s) to try again`);
+        messageApi.info(`Please re-upload ${failedFiles.length} failed file(s) to try again`);
 
         // Clear failed files list
         setFailedFiles([]);
@@ -2644,7 +2649,7 @@ function ProjectsPage() {
     // Error Recovery: Dismiss all failures
     const handleDismissFailures = () => {
         setFailedFiles([]);
-        message.info('Failed files cleared. You can try uploading them again.');
+        messageApi.info('Failed files cleared. You can try uploading them again.');
     };
 
     /**
@@ -2657,7 +2662,7 @@ function ProjectsPage() {
      */
     const validateSelectedFile = async (file: any, fileList: any[] = []) => {
         if (!canUseMenuExtraction) {
-            message.error('Menu extraction is not enabled for this location.');
+            messageApi.error('Menu extraction is not enabled for this location.');
             return Upload.LIST_IGNORE;
         }
 
@@ -2696,7 +2701,7 @@ function ProjectsPage() {
 
         const newFileList: ProjectFileType[] = [];
         if (!activeProject) {
-            message.error('Select a project before adding files.');
+            messageApi.error('Select a project before adding files.');
             return;
         }
         const projectDataCopy: Project = removeObjRef(activeProject)
@@ -2751,7 +2756,7 @@ function ProjectsPage() {
 
         const existingPendingCount = getPendingMenuExtractionFileCount(projectDataCopy.files);
         if (existingPendingCount + newFileList.length > MAX_MENU_EXTRACTION_FILES) {
-            showMenuUploadFileLimitError(newFileList.length, existingPendingCount);
+            showMenuUploadFileLimitError(messageApi, newFileList.length, existingPendingCount);
             return;
         }
 
@@ -2792,7 +2797,7 @@ function ProjectsPage() {
                     const pdf = await pdfjsLib.getDocument({ data: fileArrayBuffer }).promise;
 
                     if (pdf.numPages > MAX_PDF_PAGES) {
-                        message.error({
+                        messageApi.error({
                             content: `"${file.name}" has ${pdf.numPages} pages. Upload up to ${MAX_PDF_PAGES} pages at a time. Please split the PDF into smaller files.`,
                             duration: 8,
                         });
@@ -2803,7 +2808,7 @@ function ProjectsPage() {
                     }
 
                     if (pdf.numPages > WARN_PDF_PAGES) {
-                        message.warning({
+                        messageApi.warning({
                             content: `"${file.name}" has ${pdf.numPages} pages. This will take a few minutes to process.`,
                             duration: 8,
                         });

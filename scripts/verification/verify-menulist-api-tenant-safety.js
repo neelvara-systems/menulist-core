@@ -5894,9 +5894,9 @@ function verifyOwnerUtilitySecureLogging() {
 	      'ops_control_room_force_republish_response_invalid',
 	      'logOpsFailure',
 	      'getBoundedOpsStringContext',
-	      "message.error('Failed to toggle SAFE_MODE')",
-	      "message.error('Failed to mute alerts')",
-	      "message.error('Force republish failed')",
+	      "messageApi.error('Failed to toggle SAFE_MODE')",
+	      "messageApi.error('Failed to mute alerts')",
+	      "messageApi.error('Force republish failed')",
 	    ]],
 	    ['src/lib/ops/opsControlRoomClientResponse.ts', [
 	      'OPS_CONTROL_ROOM_RESPONSE_JSON_MAX_BYTES = 16 * 1024',
@@ -6077,10 +6077,10 @@ function verifyOwnerUtilitySecureLogging() {
 	      'messageTextLength: messageText.length',
 	      'hasClipboardWrite: hasRuntimeClipboardWrite()',
 	      'hasCopyFallback: hasRuntimeCopyFallback()',
-	      "message.error('Failed to load platform notifications')",
-	      "message.error('Platform notification action failed')",
-      "message.error('Unable to open WhatsApp Web')",
-      "message.error('Unable to copy message')",
+	      "messageApi.error('Failed to load platform notifications')",
+	      "messageApi.error('Platform notification action failed')",
+      "messageApi.error('Unable to open WhatsApp Web')",
+      "messageApi.error('Unable to copy message')",
     ]],
     ['src/lib/ops/platformNotificationClientResponse.ts', [
       'PLATFORM_NOTIFICATION_MONITOR_RESPONSE_JSON_MAX_BYTES = 256 * 1024',
@@ -6125,10 +6125,10 @@ function verifyOwnerUtilitySecureLogging() {
 	      'messageTextLength: messageText.length',
 	      'hasClipboardWrite: hasRuntimeClipboardWrite()',
 	      'hasCopyFallback: hasRuntimeCopyFallback()',
-	      "message.error('Failed to load owner notifications')",
-	      "message.error('Owner notification action failed')",
-      "message.error('Unable to open WhatsApp Web')",
-      "message.error('Unable to copy message')",
+	      "messageApi.error('Failed to load owner notifications')",
+	      "messageApi.error('Owner notification action failed')",
+      "messageApi.error('Unable to open WhatsApp Web')",
+      "messageApi.error('Unable to copy message')",
     ]],
     ['src/lib/ops/ownerNotificationClientResponse.ts', [
       'OWNER_NOTIFICATION_MONITOR_RESPONSE_JSON_MAX_BYTES = 256 * 1024',
@@ -6149,7 +6149,7 @@ function verifyOwnerUtilitySecureLogging() {
       'readOwnerBusinessAssistantMonitorResponse',
       'owner_business_assistant_monitor_load_failed',
       'logRuntimeFailure',
-      "message.error('Failed to load Business Health monitor')",
+      "messageApi.error('Failed to load Business Health monitor')",
     ]],
     ['src/app/api/platform/owner-business-assistant/monitor/route.ts', [
       'function getMonitorStringContext',
@@ -6168,7 +6168,7 @@ function verifyOwnerUtilitySecureLogging() {
     ['src/components/templates/main-app/platform/costPosture/index.tsx', [
       'platform_cost_posture_load_failed',
       'logRuntimeFailure',
-      "message.error('Failed to load platform cost posture')",
+      "messageApi.error('Failed to load platform cost posture')",
     ]],
 	    ['src/database/ops/costPosture.ts', [
 	      "const PLATFORM_COST_POSTURE_LOAD_FAILED = 'Failed to load platform cost posture';",
@@ -9920,7 +9920,7 @@ function verifyPaymentMutationBoundedJson() {
   assert(!desktopBillingPage.includes("logger.error('Enhancement pack purchase failed in handleCreditsPurchase'"), 'desktop billing must not logger.error raw credit-pack payment failures');
   assert(!desktopBillingPage.includes('logger.error'), 'desktop billing must not raw-log billing failures');
   assert(!desktopBillingPage.includes('throw new Error(data.error'), 'desktop billing store switch must not throw raw switch-store response text');
-  assert(!desktopBillingPage.includes('message.error(error?.message'), 'desktop billing store switch must not show raw exception text');
+  assert(!desktopBillingPage.includes('messageApi.error(error?.message'), 'desktop billing store switch must not show raw exception text');
 
   assertIncludes(
     'src/components/templates/main-app/billing/ActiveSubscriptionCard.tsx',
@@ -9933,14 +9933,14 @@ function verifyPaymentMutationBoundedJson() {
       'getBoundedPaymentStringContext',
       'const subscriptionCheckoutUrl = normalizeRazorpaySubscriptionCheckoutUrl(activeSubscription.shortUrl);',
       "openIsolatedBrowserUrl(subscriptionCheckoutUrl)",
-      "message.error('Subscription cancellation failed. Please contact support.')",
+      "messageApi.error('Subscription cancellation failed. Please contact support.')",
     ],
     'desktop subscription-card bounded payment diagnostics',
   );
   assert(!desktopSubscriptionCard.includes("logger.error('Cancellation failed'"), 'desktop subscription card must not logger.error raw cancellation failures');
   assert(!desktopSubscriptionCard.includes("logger.error('Pause failed'"), 'desktop subscription card must not logger.error raw pause failures');
   assert(!desktopSubscriptionCard.includes("logger.error('Resume failed'"), 'desktop subscription card must not logger.error raw resume failures');
-  assert(!desktopSubscriptionCard.includes('message.error(error.message'), 'desktop subscription card must not show raw payment error messages');
+  assert(!desktopSubscriptionCard.includes('messageApi.error(error.message'), 'desktop subscription card must not show raw payment error messages');
   assert(!desktopSubscriptionCard.includes('href={activeSubscription.shortUrl} target="_blank"'), 'desktop subscription card must not use raw payment target links');
 
   assertIncludes(
@@ -9951,7 +9951,7 @@ function verifyPaymentMutationBoundedJson() {
       'const documentUrl = record.billingDocumentUrl || record.invoiceUrl;',
       'openIsolatedBrowserUrl(documentUrl)',
       "getBoundedPaymentStringContext('invoiceUrl', documentUrl)",
-      "message.error('Could not open invoice.')",
+      "messageApi.error('Could not open invoice.')",
     ],
     'desktop billing-history bounded invoice diagnostics',
   );

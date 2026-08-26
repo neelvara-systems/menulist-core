@@ -9,7 +9,7 @@ import type { ResellerClientRecord } from "@lib/reseller/resellerClientRecord";
 import { readJsonResponseWithLimit } from "@lib/security/boundedResponseBody";
 import { formatDateTime, type IntlFormatter } from "@util/dateTime";
 import { formatInrPaise } from "@util/formatters";
-import { Badge, Button, Card, Col, Empty, Flex, InputNumber, message, Modal, Row, Select, Spin, Statistic, Table, Tag, Typography, theme } from "antd";
+import { Badge, Button, Card, Col, Empty, Flex, InputNumber, App, Modal, Row, Select, Spin, Statistic, Table, Tag, Typography, theme } from "antd";
 import { useSession } from "next-auth/react";
 import { useFormatter } from "next-intl";
 import { useRouter } from "next/navigation";
@@ -167,6 +167,7 @@ async function readRenewResponse(
 }
 
 function ResellerDashboard() {
+    const { message: messageApi } = App.useApp();
     const { token } = theme.useToken();
     const formatter = useFormatter();
     const { data: session } = useSession();
@@ -262,14 +263,14 @@ function ResellerDashboard() {
                 );
                 throw createResellerStatusError('desktop_reseller_dashboard_add_location_response_invalid', response.status);
             }
-            message.success(`Location capacity added. Collect ${formatInrPaise(data.amountExpected)}.`);
+            messageApi.success(`Location capacity added. Collect ${formatInrPaise(data.amountExpected)}.`);
             clearResellerOperationId(operationIntentKey);
             setSelectedClient(null);
             setLocationCount(1);
             refresh();
         } catch (error) {
             logResellerFailure('desktop_reseller_dashboard_add_location_failed', error, addLocationLogContext);
-            message.error('Failed to add location');
+            messageApi.error('Failed to add location');
         } finally {
             setAddingLocation(false);
         }
@@ -312,13 +313,13 @@ function ResellerDashboard() {
                 throw createResellerStatusError('desktop_reseller_dashboard_renew_response_invalid', response.status);
             }
             clearResellerOperationId(operationIntentKey);
-            message.success(`Renewed. Collect ${formatInrPaise(data.amountExpected)}.`);
+            messageApi.success(`Renewed. Collect ${formatInrPaise(data.amountExpected)}.`);
             setRenewalClient(null);
             setRenewalMonths(3);
             refresh();
         } catch (error) {
             logResellerFailure('desktop_reseller_dashboard_renew_failed', error, context);
-            message.error('Failed to renew client');
+            messageApi.error('Failed to renew client');
         } finally {
             setRenewing(false);
         }
@@ -345,26 +346,26 @@ function ResellerDashboard() {
     const copyPaymentLink = async (link?: string | null, record?: ResellerClientRecord | null) => {
         const checkoutUrl = normalizeRazorpaySubscriptionCheckoutUrl(link);
         if (!checkoutUrl) {
-            message.error('Payment link is unavailable.');
+            messageApi.error('Payment link is unavailable.');
             return;
         }
         try {
             await copyResellerTextToClipboard(checkoutUrl);
-            message.success('Payment link copied.');
+            messageApi.success('Payment link copied.');
         } catch (error) {
             logResellerFailure('desktop_reseller_dashboard_payment_link_copy_failed', error, buildResellerDashboardHandoffLogContext('copy_payment_link', record, {
                 ...getBoundedResellerStringContext('paymentLink', link),
                 hasClipboardWrite: hasResellerClipboardWrite(),
                 hasCopyFallback: hasResellerCopyFallback(),
             }));
-            message.error('Could not copy payment link.');
+            messageApi.error('Could not copy payment link.');
         }
     };
 
     const openPaymentLink = (link?: string | null, record?: ResellerClientRecord | null) => {
         const checkoutUrl = normalizeRazorpaySubscriptionCheckoutUrl(link);
         if (!checkoutUrl) {
-            message.error('Payment link is unavailable.');
+            messageApi.error('Payment link is unavailable.');
             return;
         }
         try {
@@ -373,7 +374,7 @@ function ResellerDashboard() {
             logResellerFailure('desktop_reseller_dashboard_payment_link_open_failed', error, buildResellerDashboardHandoffLogContext('open_payment_link', record, {
                 ...getBoundedResellerStringContext('paymentLink', link),
             }));
-            message.error('Could not open payment link.');
+            messageApi.error('Could not open payment link.');
         }
     };
 

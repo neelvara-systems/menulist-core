@@ -18,7 +18,7 @@ import {
 } from '@lib/answerlattice/helpChatDrafts';
 import { UserUploadedFileType } from '@type/common';
 import { getBase64 } from '@util/utils';
-import { Button, Flex, Image, Input, message, Tag, theme, Tooltip, Typography, Upload } from 'antd';
+import { Button, Flex, Image, Input, App, Tag, theme, Tooltip, Typography, Upload } from 'antd';
 import { RcFile } from 'antd/es/upload';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { LuImage, LuMessageSquarePlus, LuSend, LuX } from 'react-icons/lu';
@@ -49,6 +49,7 @@ interface ChatInputProps {
 }
 
 const ChatInput = ({ onSendMessage, onInputChange, onImageUpload, placeholder, mode, disabled, sessionId, draftScope, value, hasMessages = false, showQnAActions = false, onStartFollowUp, onNewQuestion, isMobile = false }: ChatInputProps) => {
+    const { message: messageApi } = App.useApp();
     const { token } = theme.useToken();
     const [inputValue, setInputValue] = useState('');
     const [selectedImage, setSelectedImage] = useState<UserUploadedFileType | null>(null);
@@ -126,7 +127,7 @@ const ChatInput = ({ onSendMessage, onInputChange, onImageUpload, placeholder, m
 
         // Show warning when at limit (only once)
         if (value.length >= MAX_INPUT_LENGTH && !hasShownLimitWarning.current) {
-            message.warning(`Maximum ${MAX_INPUT_LENGTH} characters allowed`);
+            messageApi.warning(`Maximum ${MAX_INPUT_LENGTH} characters allowed`);
             hasShownLimitWarning.current = true;
         } else if (value.length < MAX_INPUT_LENGTH * 0.9) {
             // Reset flag when user deletes enough characters
@@ -140,7 +141,7 @@ const ChatInput = ({ onSendMessage, onInputChange, onImageUpload, placeholder, m
     const handleImageUpload = async (file: File): Promise<boolean> => {
         const validation = validateImageFile(file);
         if (!validation.valid) {
-            message.error(validation.error || 'Unsupported image');
+            messageApi.error(validation.error || 'Unsupported image');
             return false;
         }
 

@@ -1,6 +1,6 @@
 'use client'
 import { helpCenterChangelogRouting } from '@constant/navigations';
-import { Alert, Button, Card, Flex, Grid, Modal, Typography, message } from 'antd';
+import { Alert, Button, Card, Flex, Grid, Modal, Typography, App } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -29,6 +29,7 @@ const getExcerpt = (entry: ChangelogEntry | AnswerlatticePublicChangelogEntry, m
 };
 
 function WhatsNew() {
+    const { message: messageApi } = App.useApp();
     const t = useTranslations('HelpCenter');
     const router = useRouter();
     const screens = Grid.useBreakpoint();
@@ -50,7 +51,7 @@ function WhatsNew() {
             .catch(() => {
                 if (requestId === loadRequestRef.current) {
                     setLoadFailed(true);
-                    message.error(t('failedToLoadChangelog'));
+                    messageApi.error(t('failedToLoadChangelog'));
                 }
             });
     }, [requestScope, t]);

@@ -591,7 +591,7 @@ function verifyDesktop(component) {
     "redirect('/dashboard')",
     'getPlatformFounderMonitor(days)',
     "logRuntimeFailure('founder_monitor_load_failed'",
-    "message.error('Failed to load founder monitor')",
+    "messageApi.error('Failed to load founder monitor')",
     'createLatestRequestGuard',
     'const requestId = requestGuard.begin();',
     'if (!isMountedRef.current || !requestGuard.isCurrent(requestId)) return;',

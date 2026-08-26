@@ -4,7 +4,7 @@ import { useTicketCache } from '@hook/useTicketCache';
 import AddSupportTicket from '@organisms/addSupportTicket';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
 import { SupportTicketType } from '@type/supportTicket';
-import { Badge, Card, Flex, Grid, Tooltip, Typography, message, theme } from 'antd';
+import { Badge, Card, Flex, Grid, Tooltip, Typography, App, theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { LuHistory, LuMessageSquare, LuWifi } from 'react-icons/lu';
@@ -13,6 +13,7 @@ import TicketHistoryView from './TicketHistoryView';
 const { Title, Paragraph } = Typography;
 
 function TicketView() {
+    const { message: messageApi } = App.useApp();
     const t = useTranslations('HelpCenter');
     const dispatch = useAppDispatch();
     const { token } = theme.useToken();
@@ -54,7 +55,7 @@ function TicketView() {
                         setIsRealtimeActive(false);
                         stopInitialLoader();
                         if (cachedTicketsOnMountRef.current.length === 0) {
-                            message.error(t('unableToLoadRequests'));
+                            messageApi.error(t('unableToLoadRequests'));
                         }
                     }
                 );
@@ -63,7 +64,7 @@ function TicketView() {
                 setIsRealtimeActive(false);
                 stopInitialLoader();
                 if (cachedTicketsOnMountRef.current.length === 0) {
-                    message.error(t('unableToLoadRequests'));
+                    messageApi.error(t('unableToLoadRequests'));
                 }
             }
         };

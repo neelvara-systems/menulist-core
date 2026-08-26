@@ -40,7 +40,7 @@ import {
     Table,
     Tag,
     Typography,
-    message,
+    App,
     theme,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
@@ -146,6 +146,7 @@ function CountMetric({ label, value, tone }: { label: string; value: number; ton
 }
 
 export default function OwnerNotificationMonitor() {
+    const { message: messageApi } = App.useApp();
     const { token } = theme.useToken();
     const formatter = useFormatter();
     const { data: session, status: sessionStatus } = useSession();
@@ -194,7 +195,7 @@ export default function OwnerNotificationMonitor() {
                 ...getBoundedRuntimeStringContext('statusFilter', statusFilter),
             });
             if (!data) {
-                message.error('Failed to load owner notifications');
+                messageApi.error('Failed to load owner notifications');
                 return;
             }
             setSnapshot(data);
@@ -204,7 +205,7 @@ export default function OwnerNotificationMonitor() {
                 ...getBoundedRuntimeStringContext('productId', productId),
                 ...getBoundedRuntimeStringContext('statusFilter', statusFilter),
             });
-            message.error('Failed to load owner notifications');
+            messageApi.error('Failed to load owner notifications');
         } finally {
             setLoading(false);
         }
@@ -232,17 +233,17 @@ export default function OwnerNotificationMonitor() {
                 ...getBoundedRuntimeStringContext('selectedEventId', selectedEventId),
             });
             if (!actionResult) {
-                message.error('Owner notification action failed');
+                messageApi.error('Owner notification action failed');
                 return;
             }
-            message.success(actionResult.message || 'Action completed');
+            messageApi.success(actionResult.message || 'Action completed');
             await loadData(selectedEventId);
         } catch (error) {
             logRuntimeFailure('owner_notification_monitor_action_failed', error, {
                 ...getBoundedRuntimeStringContext('action', body.action),
                 ...getBoundedRuntimeStringContext('selectedEventId', selectedEventId),
             });
-            message.error('Owner notification action failed');
+            messageApi.error('Owner notification action failed');
         } finally {
             setActionLoading(false);
         }
@@ -307,7 +308,7 @@ export default function OwnerNotificationMonitor() {
     const openPrefilledExternalTool = useCallback(() => {
         if (!prefillModal) return;
         if (!prefillDestination.trim()) {
-            message.warning(prefillModal.channel === 'email' ? 'Enter an email address' : 'Enter a WhatsApp number');
+            messageApi.warning(prefillModal.channel === 'email' ? 'Enter an email address' : 'Enter a WhatsApp number');
             return;
         }
 
@@ -328,7 +329,7 @@ export default function OwnerNotificationMonitor() {
                 ...getBoundedRuntimeStringContext('messageBody', prefillBody),
                 ...getBoundedRuntimeStringContext('whatsappWebHref', whatsappWebHref),
             });
-            message.error('Unable to open WhatsApp Web');
+            messageApi.error('Unable to open WhatsApp Web');
         }
     }, [prefillBody, prefillDestination, prefillModal, prefillSubject, productId, selectedEventId, statusFilter]);
 
@@ -339,7 +340,7 @@ export default function OwnerNotificationMonitor() {
             : prefillBody;
         try {
             await copyRuntimeTextToClipboard(messageText);
-            message.success('Message copied');
+            messageApi.success('Message copied');
         } catch (error) {
             logRuntimeFailure('owner_notification_monitor_message_copy_failed', error, {
                 ...getBoundedRuntimeStringContext('selectedEventId', selectedEventId),
@@ -353,7 +354,7 @@ export default function OwnerNotificationMonitor() {
                 hasClipboardWrite: hasRuntimeClipboardWrite(),
                 hasCopyFallback: hasRuntimeCopyFallback(),
             });
-            message.error('Unable to copy message');
+            messageApi.error('Unable to copy message');
         }
     }, [prefillBody, prefillDestination, prefillModal, prefillSubject, productId, selectedEventId, statusFilter]);
 

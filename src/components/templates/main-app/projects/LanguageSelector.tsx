@@ -1,7 +1,7 @@
 import { LANGUAGE_CONSTANTS } from '@constant/languages';
 import GlobalLanguagesList from '@data/languages';
 import { getAvailableLanguagesForMaster, getAvailableLanguagesForOutlet } from '@lib/localization/languageResolver';
-import { Flex, Select, Tag, Typography, message } from 'antd';
+import { Flex, Select, Tag, Typography, App } from 'antd';
 import { useTranslations } from 'next-intl';
 import { LuPlus } from 'react-icons/lu';
 
@@ -27,6 +27,7 @@ export function LanguageSelector({
     hideSelected,
     storeActiveLanguages
 }: LanguageSelectorProps) {
+    const { message: messageApi } = App.useApp();
     const t = useTranslations('LanguageSelector');
 
     // Multi-chain governance: Filter available languages based on store settings
@@ -49,7 +50,7 @@ export function LanguageSelector({
                                 const langIndex = newSelected.indexOf(lang);
                                 if (langIndex > -1) {
                                     if (newSelected.length <= 1) {
-                                        message.warning(t('atLeastOneRequired'));
+                                        messageApi.warning(t('atLeastOneRequired'));
                                         return;
                                     }
                                     newSelected.splice(langIndex, 1);
@@ -88,7 +89,7 @@ export function LanguageSelector({
                             if (newLanguage && !selectedLanguages.includes(value)) {
                                 // Enforce MAX_LANGUAGES limit
                                 if (selectedLanguages.length >= LANGUAGE_CONSTANTS.MAX_LANGUAGES_PER_PROJECT) {
-                                    message.warning(t('maxLanguagesWarning', { max: LANGUAGE_CONSTANTS.MAX_LANGUAGES_PER_PROJECT }));
+                                    messageApi.warning(t('maxLanguagesWarning', { max: LANGUAGE_CONSTANTS.MAX_LANGUAGES_PER_PROJECT }));
                                     return;
                                 }
                                 const updatedLanguages = [...selectedLanguages, value];

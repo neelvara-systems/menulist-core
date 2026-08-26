@@ -2,7 +2,7 @@ import { ItemForDropdown } from '@template/main-app/projects/types';
 import useDeviceType from '@hook/useDeviceType';
 import { CONTENT_CREDIT_OPERATION_COSTS } from '@data/shared/contentCreditPolicy';
 import { IMAGE_BATCH_PROJECT_SELECTION_MAX_ITEMS } from '@lib/ai/imageBatchProjectSelection';
-import { Button, Checkbox, Divider, Flex, Image, Input, message, Switch, theme, Typography } from 'antd';
+import { Button, Checkbox, Divider, Flex, Image, Input, App, Switch, theme, Typography } from 'antd';
 import type { CheckboxChangeEvent } from 'antd/es/checkbox';
 import React, { useMemo, useState } from 'react';
 import { LuArrowLeft, LuEye, LuImageOff, LuSparkles } from 'react-icons/lu';
@@ -24,6 +24,7 @@ const BatchSetupView: React.FC<BatchSetupViewProps> = ({
     onProceedToConfig,
     onBackToChoices,
 }) => {
+    const { message: messageApi } = App.useApp();
     const { token } = theme.useToken();
     const { isMobile } = useDeviceType();
     const [batchSearchTerm, setBatchSearchTerm] = useState('');
@@ -67,7 +68,7 @@ const BatchSetupView: React.FC<BatchSetupViewProps> = ({
         const nextIds = uniqueIds.slice(0, IMAGE_BATCH_PROJECT_SELECTION_MAX_ITEMS);
         setSelectedItemsForBatch(nextIds);
         if (uniqueIds.length > IMAGE_BATCH_PROJECT_SELECTION_MAX_ITEMS) {
-            message.warning(`Choose up to ${IMAGE_BATCH_PROJECT_SELECTION_MAX_ITEMS} items per batch. The first ${IMAGE_BATCH_PROJECT_SELECTION_MAX_ITEMS} are selected.`);
+            messageApi.warning(`Choose up to ${IMAGE_BATCH_PROJECT_SELECTION_MAX_ITEMS} items per batch. The first ${IMAGE_BATCH_PROJECT_SELECTION_MAX_ITEMS} are selected.`);
         }
         return nextIds;
     };
@@ -97,7 +98,7 @@ const BatchSetupView: React.FC<BatchSetupViewProps> = ({
         if (isChecked) {
             if (!newSelectedItems.includes(itemId)) {
                 if (newSelectedItems.length >= IMAGE_BATCH_PROJECT_SELECTION_MAX_ITEMS) {
-                    message.warning(`Choose up to ${IMAGE_BATCH_PROJECT_SELECTION_MAX_ITEMS} items per batch.`);
+                    messageApi.warning(`Choose up to ${IMAGE_BATCH_PROJECT_SELECTION_MAX_ITEMS} items per batch.`);
                     return;
                 }
                 newSelectedItems.push(itemId);
@@ -146,7 +147,7 @@ const BatchSetupView: React.FC<BatchSetupViewProps> = ({
                             onClick={() => {
                                 const itemsWithoutImages = allItemsForBatch.filter(item => !item.images || item.images.length === 0);
                                 const selectedIds = applySelectionLimit(itemsWithoutImages.map(item => item.id));
-                                message.success(`Selected ${selectedIds.length} item${selectedIds.length === 1 ? '' : 's'} without images`);
+                                messageApi.success(`Selected ${selectedIds.length} item${selectedIds.length === 1 ? '' : 's'} without images`);
                             }}
                             style={{ width: '100%' }}
                         >
@@ -277,7 +278,7 @@ const BatchSetupView: React.FC<BatchSetupViewProps> = ({
                             if (selectedItemsForBatch.length > 0) {
                                 onProceedToConfig();
                             } else {
-                                message.warning('Please select at least one item.');
+                                messageApi.warning('Please select at least one item.');
                             }
                         }}
                     >

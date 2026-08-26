@@ -23,7 +23,7 @@ import {
     emitMenuListAnswerlatticeWorkflowEvent,
     isVerifiedMenuPublishResult,
 } from "@lib/answerlattice/referenceClients/menuListGuidedResolution";
-import { Flex, message } from "antd";
+import { Flex, App } from "antd";
 import { forwardRef, useCallback, useContext, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { resolveMenuDesignConfig } from "./designSystem";
 import { getBoundedProjectPageStringContext, getProjectPageProjectLogContext, getProjectPageStoreLogContext, logProjectPageFailure } from "../utils/projectPageDiagnostics";
@@ -48,6 +48,7 @@ const requireB2CProject = (project: Project | null): Project => {
 };
 
 const B2CView = forwardRef<B2CViewRef, B2CViewProps>(({ activeDeviceType, setHasChanges }, ref) => {
+    const { message: messageApi } = App.useApp();
 
     const [activePage, setActivePage] = useState<PageType>(PageType.OBP);
     const { activeProject, setActiveProject } = useContext<ProjectsDataProviderType>(ProjectsDataContext)
@@ -136,7 +137,7 @@ const B2CView = forwardRef<B2CViewRef, B2CViewProps>(({ activeDeviceType, setHas
                     ? normalizeOwnerPublicPresenceLinks(storeDraft?.publicPresence || {})
                     : null;
                 if (normalizedOfficialLinks?.invalidKeys.length) {
-                    message.error('Enter valid HTTPS public-page links before publishing.');
+                    messageApi.error('Enter valid HTTPS public-page links before publishing.');
                     return;
                 }
 
@@ -280,7 +281,7 @@ const B2CView = forwardRef<B2CViewRef, B2CViewProps>(({ activeDeviceType, setHas
                     hasOfficialPageChanges: hasOfficialPageChanges(),
                     queuedObpPhotoDeleteCount: obpPhotoDeleteQueue.length,
                 });
-                message.error('Could not publish public page changes.');
+                messageApi.error('Could not publish public page changes.');
             } finally {
                 dispatch(stopLoader(loaderId));
             }

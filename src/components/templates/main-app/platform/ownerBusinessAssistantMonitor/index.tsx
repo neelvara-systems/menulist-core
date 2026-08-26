@@ -9,7 +9,7 @@ import {
 } from '@lib/ownerBusinessAssistant/clientResponses';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { createLatestRequestGuard } from '@lib/runtime/latestRequestGuard';
-import { Alert, Button, Card, Empty, Space, Spin, Statistic, Table, Tag, Typography, message } from 'antd';
+import { Alert, Button, Card, Empty, Space, Spin, Statistic, Table, Tag, Typography, App } from 'antd';
 import { useSession } from 'next-auth/react';
 import { redirect } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -30,6 +30,7 @@ const formatTimestamp = (value?: string | null) => {
 };
 
 export default function OwnerBusinessAssistantMonitor() {
+    const { message: messageApi } = App.useApp();
   const { data: session, status } = useSession();
   const platformRole = session?.platformRole || session?.user?.platformRole;
   const isPlatform = platformRole === 'PLATFORM';
@@ -71,7 +72,7 @@ export default function OwnerBusinessAssistantMonitor() {
       logRuntimeFailure('owner_business_assistant_monitor_load_failed', error, {
         ...getBoundedRuntimeStringContext('limit', 50),
       });
-      message.error('Failed to load Business Health monitor');
+      messageApi.error('Failed to load Business Health monitor');
     } finally {
       if (isMountedRef.current && requestGuard.isCurrent(requestId)) {
         setLoading(false);

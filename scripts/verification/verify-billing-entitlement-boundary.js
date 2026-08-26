@@ -469,7 +469,7 @@ function verifyBillingEntitlementBoundary() {
   ].forEach((token) => assertIncludes(desktopBillingHistory, token, 'Desktop billing history visible fetch/recovery state'));
   [
     "payment_desktop_billing_history_fetch_failed",
-    "message.error('Billing history could not be loaded.')",
+    "messageApi.error('Billing history could not be loaded.')",
     "return 'error' as const",
     "key={billingScopeKey || 'billing-history'}",
   ].forEach((token) => assertIncludes(desktopBilling, token, 'Desktop billing history bounded fetch failure'));

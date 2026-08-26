@@ -29,7 +29,7 @@ import {
     Table,
     Tag,
     Typography,
-    message,
+    App,
     theme,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
@@ -122,6 +122,7 @@ function Metric({ label, value, tone }: { label: string; value: number; tone?: '
 }
 
 export default function ReportLeadMonitor() {
+    const { message: messageApi } = App.useApp();
     const formatter = useFormatter();
     const { token } = theme.useToken();
     const { data: session, status: sessionStatus } = useSession();
@@ -164,7 +165,7 @@ export default function ReportLeadMonitor() {
             if (requestId !== requestIdRef.current) return;
             if (!data) {
                 setSnapshot(null);
-                message.error('Failed to load report leads');
+                messageApi.error('Failed to load report leads');
                 return;
             }
             setSnapshot(data);
@@ -175,7 +176,7 @@ export default function ReportLeadMonitor() {
                 ...getBoundedRuntimeStringContext('reportStatus', reportStatus),
                 ...getBoundedRuntimeStringContext('toolId', toolId),
             });
-            message.error('Failed to load report leads');
+            messageApi.error('Failed to load report leads');
         } finally {
             if (requestId === requestIdRef.current) setLoading(false);
         }
@@ -200,7 +201,7 @@ export default function ReportLeadMonitor() {
     const copyReply = useCallback(async (record: ReportLeadRow) => {
         try {
             await copyRuntimeTextToClipboard(record.suggestedReply);
-            message.success('Reply copied');
+            messageApi.success('Reply copied');
         } catch (error) {
             logRuntimeFailure('report_lead_reply_copy_failed', error, {
                 ...getBoundedRuntimeStringContext('leadId', record.id),
@@ -209,7 +210,7 @@ export default function ReportLeadMonitor() {
                 hasClipboardWrite: hasRuntimeClipboardWrite(),
                 hasCopyFallback: hasRuntimeCopyFallback(),
             });
-            message.error('Unable to copy reply');
+            messageApi.error('Unable to copy reply');
         }
     }, []);
 

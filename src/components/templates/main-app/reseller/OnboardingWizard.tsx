@@ -11,7 +11,7 @@ import {
     type ResellerOnboardingResponse,
 } from "@lib/reseller/resellerOnboardingResponse";
 import { formatInrPaise } from "@util/formatters";
-import { Button, Card, Col, Divider, Flex, Form, Input, InputNumber, message, Radio, Result, Row, Select, Steps, Typography, theme } from "antd";
+import { Button, Card, Col, Divider, Flex, Form, Input, InputNumber, App, Radio, Result, Row, Select, Steps, Typography, theme } from "antd";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -62,6 +62,7 @@ async function readOnboardResponse(
 }
 
 function OnboardingWizard() {
+    const { message: messageApi } = App.useApp();
     const { token } = theme.useToken();
     const { data: session } = useSession();
     const router = useRouter();
@@ -217,7 +218,7 @@ function OnboardingWizard() {
             clearResellerOperationId(operationIntentKey);
             setResult(data);
             setCurrentStep(3); // Success step
-            message.success('Client onboarded successfully!');
+            messageApi.success('Client onboarded successfully!');
         } catch (error) {
             const values = form.getFieldsValue(true);
             logResellerFailure('desktop_reseller_onboard_failed', error, {
@@ -228,7 +229,7 @@ function OnboardingWizard() {
                 paymentMode: 'online',
                 ...getBoundedResellerStringContext('pricingTier', values?.pricingTier),
             });
-            message.error('Failed to onboard client');
+            messageApi.error('Failed to onboard client');
         } finally {
             setLoading(false);
         }
@@ -256,7 +257,7 @@ function OnboardingWizard() {
         if (!copyValue) return;
         try {
             await copyResellerTextToClipboard(copyValue);
-            message.success(successMessage);
+            messageApi.success(successMessage);
         } catch (error) {
             logResellerFailure('desktop_reseller_onboarding_copy_failed', error, buildOnboardingHandoffLogContext('copy_result_value', {
                 copyKind,
@@ -264,7 +265,7 @@ function OnboardingWizard() {
                 hasClipboardWrite: hasResellerClipboardWrite(),
                 hasCopyFallback: hasResellerCopyFallback(),
             }));
-            message.error('Could not copy.');
+            messageApi.error('Could not copy.');
         }
     };
 

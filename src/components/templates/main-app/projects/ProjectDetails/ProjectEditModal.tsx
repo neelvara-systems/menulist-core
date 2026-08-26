@@ -4,7 +4,7 @@ import { getMediaProfileAcceptAttribute } from '@lib/media/imageProfiles';
 import { prepareMediaImage, type MediaImageCropIntent, type PreparedMediaImage } from '@lib/media/prepareMediaImage';
 import MediaImageCard from '@/components/shared/media/MediaImageCard';
 import MediaImageAdjustModal from '@/components/shared/media/MediaImageAdjustModal';
-import { Button, Flex, Form, FormInstance, Input, Modal, Select, Switch, message, theme, Typography } from "antd";
+import { Button, Flex, Form, FormInstance, Input, Modal, Select, Switch, App, theme, Typography } from "antd";
 import { useTranslations } from 'next-intl';
 import { useEffect, useState } from 'react';
 import { LuSparkles } from 'react-icons/lu';
@@ -73,6 +73,7 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
     translateActionDisabled,
     translateActionLoading,
 }) => {
+    const { message: messageApi } = App.useApp();
     const { token } = theme.useToken();
     const tBusiness = useTranslations('BusinessSettings');
     const labels = useOfferingLabels();
@@ -121,7 +122,7 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                 ...getProjectPageProjectLogContext(editingProject?.projectId),
                 ...getBoundedProjectPageStringContext('fileName', file.name),
             });
-            message.error('Could not prepare image. Please try again.');
+            messageApi.error('Could not prepare image. Please try again.');
         }
 
         return false;
@@ -130,7 +131,7 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
     const handleGenerateProjectImage = async () => {
         if (!onGenerateProjectImage) return;
         if (!nameValue.trim()) {
-            message.error(`Enter a ${labels.offeringPhrase} name first.`);
+            messageApi.error(`Enter a ${labels.offeringPhrase} name first.`);
             return;
         }
 
@@ -138,7 +139,7 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
         try {
             const generatedImage = await onGenerateProjectImage();
             if (!generatedImage) {
-                message.warning('Add menu items before generating a menu image.');
+                messageApi.warning('Add menu items before generating a menu image.');
                 return;
             }
             const prepared = await prepareMediaImage(generatedImage, 'projectImage', {
@@ -151,13 +152,13 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                 fileName: prepared.sourceName || 'generated-menu-image.webp',
                 sourceDataUrl: prepared.sourceDataUrl,
             });
-            message.success('Menu image generated');
+            messageApi.success('Menu image generated');
         } catch (error: any) {
             logProjectPageFailure('projects_page_project_image_generation_failed', error, {
                 ...getProjectPageProjectLogContext(editingProject?.projectId),
                 ...getBoundedProjectPageStringContext('projectName', nameValue.trim()),
             });
-            message.error('Failed to generate menu image. Please try again.');
+            messageApi.error('Failed to generate menu image. Please try again.');
         } finally {
             setIsGeneratingProjectImage(false);
         }

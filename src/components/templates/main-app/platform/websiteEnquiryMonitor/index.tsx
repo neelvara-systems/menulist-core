@@ -23,7 +23,7 @@ import {
     Table,
     Tag,
     Typography,
-    message,
+    App,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { useSession } from 'next-auth/react';
@@ -74,6 +74,7 @@ function buildMailtoHref(record: WebsiteEnquiryRow): string {
 }
 
 export default function WebsiteEnquiryMonitor() {
+    const { message: messageApi } = App.useApp();
     const formatter = useFormatter();
     const { data: session, status: sessionStatus } = useSession();
     const isPlatform = resolveExactSessionPlatformRole(session) === 'PLATFORM';
@@ -111,7 +112,7 @@ export default function WebsiteEnquiryMonitor() {
             if (requestId !== requestIdRef.current) return;
             if (!data) {
                 setSnapshot(null);
-                message.error('Failed to load website enquiries');
+                messageApi.error('Failed to load website enquiries');
                 return;
             }
             setSnapshot(data);
@@ -122,7 +123,7 @@ export default function WebsiteEnquiryMonitor() {
                 ...getBoundedRuntimeStringContext('kind', kind),
                 ...getBoundedRuntimeStringContext('topic', topic),
             });
-            message.error('Failed to load website enquiries');
+            messageApi.error('Failed to load website enquiries');
         } finally {
             if (requestId === requestIdRef.current) setLoading(false);
         }

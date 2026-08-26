@@ -1,5 +1,5 @@
 'use client'
-import { Alert, Button, Card, Empty, Flex, List, Typography, message, theme } from 'antd';
+import { Alert, Button, Card, Empty, Flex, List, Typography, App, theme } from 'antd';
 import { helpCenterTabRouting } from '@constant/navigations';
 import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
@@ -12,6 +12,7 @@ import { KnowledgeBaseArticleMeta, KnowledgeBaseCategoriesType, KnowledgeBaseSec
 
 
 function TrendingTopics() {
+    const { message: messageApi } = App.useApp();
     const t = useTranslations('HelpCenter');
     const router = useRouter();
     const { token } = theme.useToken();
@@ -51,7 +52,7 @@ function TrendingTopics() {
             buildArticles(result?.categories || {});
         } catch {
             setLoadFailed(true);
-            message.error(t('failedToLoadArticles'));
+            messageApi.error(t('failedToLoadArticles'));
         }
     }, [buildArticles, getCategoriesCached, t]);
 

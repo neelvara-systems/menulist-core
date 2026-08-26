@@ -9,7 +9,7 @@ import {
 } from '@lib/monitoring/boundedLogContext';
 import { withAnalyticsSource } from '@lib/analytics/sourceAttribution';
 import { secureError } from '@lib/security/secureLogger';
-import { Button, Card, Flex, Typography, message, theme } from 'antd';
+import { Button, Card, Flex, Typography, App, theme } from 'antd';
 import { LuClipboard, LuCopy, LuExternalLink, LuMessageCircle } from 'react-icons/lu';
 
 const { Text } = Typography;
@@ -123,6 +123,7 @@ export default function ShareLinkCard({
     onShareAction,
     diagnosticContext,
 }: ShareLinkCardProps) {
+    const { message: messageApi } = App.useApp();
     const { token } = theme.useToken();
 
     const withSrc = (src: 'copy' | 'whatsapp' | 'direct') => (
@@ -154,7 +155,7 @@ export default function ShareLinkCard({
                 SHARE_LINK_CARD_COPY_UNAVAILABLE,
                 SHARE_LINK_CARD_COPY_FALLBACK_FAILED,
             );
-            message.success(`${copySuccessLabel} copied`);
+            messageApi.success(`${copySuccessLabel} copied`);
             onShareAction?.('copy');
         } catch (error) {
             logShareLinkCardFailure('share_link_card_copy_failed', error, buildShareLinkLogContext('copy', {
@@ -162,7 +163,7 @@ export default function ShareLinkCard({
                 hasClipboardWrite: hasShareLinkCardClipboardWrite(),
                 hasCopyFallback: hasShareLinkCardCopyFallback(),
             }));
-            message.error('Could not copy link');
+            messageApi.error('Could not copy link');
         }
     };
 
@@ -177,7 +178,7 @@ export default function ShareLinkCard({
                 whatsappMessageLength: msg.length,
                 whatsappUrlLength: whatsappUrl.length,
             }));
-            message.error('Could not open WhatsApp');
+            messageApi.error('Could not open WhatsApp');
         }
     };
 
@@ -189,7 +190,7 @@ export default function ShareLinkCard({
                 SHARE_LINK_CARD_MESSAGE_COPY_UNAVAILABLE,
                 SHARE_LINK_CARD_MESSAGE_COPY_FALLBACK_FAILED,
             );
-            message.success('Message copied — paste it in WhatsApp or anywhere');
+            messageApi.success('Message copied — paste it in WhatsApp or anywhere');
             onShareAction?.('copy_message');
         } catch (error) {
             logShareLinkCardFailure('share_link_card_copy_message_failed', error, buildShareLinkLogContext('copy_message', {
@@ -197,7 +198,7 @@ export default function ShareLinkCard({
                 hasClipboardWrite: hasShareLinkCardClipboardWrite(),
                 hasCopyFallback: hasShareLinkCardCopyFallback(),
             }));
-            message.error('Could not copy message');
+            messageApi.error('Could not copy message');
         }
     };
 
@@ -209,7 +210,7 @@ export default function ShareLinkCard({
             logShareLinkCardFailure('share_link_card_open_failed', error, buildShareLinkLogContext('open', {
                 directUrlLength: directUrl.length,
             }));
-            message.error('Could not open link');
+            messageApi.error('Could not open link');
         }
     };
 

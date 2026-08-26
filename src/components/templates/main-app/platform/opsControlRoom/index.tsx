@@ -12,7 +12,7 @@ import {
 import { getBoundedOpsStringContext, logOpsFailure } from '@lib/ops/opsDiagnostics';
 import type { AdoptionPulse, IntegritySignals, OpsAlert, SystemState } from '@lib/ops/types';
 import { formatDateTime } from '@util/dateTime';
-import { Alert, Button, Card, Divider, Modal, Select, Spin, Tag, Typography, message, theme } from 'antd';
+import { Alert, Button, Card, Divider, Modal, Select, Spin, Tag, Typography, App, theme } from 'antd';
 import { useSession } from 'next-auth/react';
 import { useFormatter } from 'next-intl';
 import { redirect } from 'next/navigation';
@@ -32,6 +32,7 @@ const { Title, Text } = Typography;
  * @see __docs__/ops-control-room/ops-control-room_impl.md
  */
 function OpsControlRoom() {
+    const { message: messageApi } = App.useApp();
     const { token } = theme.useToken();
     const formatter = useFormatter();
     const { data: session, status } = useSession();
@@ -89,7 +90,7 @@ function OpsControlRoom() {
                 isPlatform,
                 ...getBoundedOpsStringContext('platformRole', platformRole),
             });
-            message.error('Failed to load ops data');
+            messageApi.error('Failed to load ops data');
         } finally {
             if (
                 isMountedRef.current
@@ -157,14 +158,14 @@ function OpsControlRoom() {
                     });
                     if (!data) throw new Error('ops_control_room_safe_mode_response_unavailable');
                     if (!isMountedRef.current || !isPlatformRef.current) return;
-                    message.success(`SAFE_MODE ${data.SAFE_MODE ? 'enabled' : 'disabled'}`);
+                    messageApi.success(`SAFE_MODE ${data.SAFE_MODE ? 'enabled' : 'disabled'}`);
                     await loadData();
                 } catch (error) {
                     logOpsFailure('ops_control_room_safe_mode_toggle_failed', error, {
                         ...getBoundedOpsStringContext('action', action),
                     });
                     if (isMountedRef.current && isPlatformRef.current) {
-                        message.error('Failed to toggle SAFE_MODE');
+                        messageApi.error('Failed to toggle SAFE_MODE');
                     }
                 } finally {
                     safeModeInFlightRef.current = false;
@@ -177,7 +178,7 @@ function OpsControlRoom() {
     // Force Republish
     const handleForceRepublish = () => {
         if (!selectedStore || republishInFlightRef.current) {
-            if (!selectedStore) message.warning('Select a store first');
+            if (!selectedStore) messageApi.warning('Select a store first');
             return;
         }
         republishInFlightRef.current = true;
@@ -210,9 +211,9 @@ function OpsControlRoom() {
                     const verification = result.data.verification;
                     const projectCount = result.data.projectCount;
                     if (result.data.success === false) {
-                        message.warning(`Republish triggered for ${projectCount} menu project${projectCount === 1 ? '' : 's'}, verification: ${verification}`);
+                        messageApi.warning(`Republish triggered for ${projectCount} menu project${projectCount === 1 ? '' : 's'}, verification: ${verification}`);
                     } else {
-                        message.success(`Republish triggered for ${projectCount} menu project${projectCount === 1 ? '' : 's'}, verification: ${verification}`);
+                        messageApi.success(`Republish triggered for ${projectCount} menu project${projectCount === 1 ? '' : 's'}, verification: ${verification}`);
                     }
                     await loadData();
                 } catch (error) {
@@ -221,7 +222,7 @@ function OpsControlRoom() {
                         ...getBoundedOpsStringContext('tenantId', republishStore.tId),
                     });
                     if (isMountedRef.current && isPlatformRef.current) {
-                        message.error('Force republish failed');
+                        messageApi.error('Force republish failed');
                     }
                 } finally {
                     republishInFlightRef.current = false;
@@ -249,14 +250,14 @@ function OpsControlRoom() {
             });
             if (!data) throw new Error('ops_control_room_mute_alerts_response_unavailable');
             if (!isMountedRef.current || !isPlatformRef.current) return;
-            message.success(`Alerts muted until ${formatDateTime(data.mutedUntil, 'time', formatter)}`);
+            messageApi.success(`Alerts muted until ${formatDateTime(data.mutedUntil, 'time', formatter)}`);
             await loadData();
         } catch (error) {
             logOpsFailure('ops_control_room_mute_alerts_failed', error, {
                 durationMinutes: 20,
             });
             if (isMountedRef.current && isPlatformRef.current) {
-                message.error('Failed to mute alerts');
+                messageApi.error('Failed to mute alerts');
             }
         } finally {
             muteInFlightRef.current = false;

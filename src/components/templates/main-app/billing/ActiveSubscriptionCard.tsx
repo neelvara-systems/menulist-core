@@ -18,7 +18,7 @@ import { startLoader, stopLoader } from '@reduxSlices/loader';
 import { FirestoreSubscriptionDoc } from '@type/razorpay';
 import { formatDateTime } from '@util/dateTime';
 import { getGracePeriodDisplayInfo, hasValidSubscriptionAccess } from '@util/razorpay';
-import { Button, Card, Col, Divider, Flex, message, Progress, Row, Space, Statistic, Tag, theme, Tooltip, Typography } from 'antd';
+import { Button, Card, Col, Divider, Flex, App, Progress, Row, Space, Statistic, Tag, theme, Tooltip, Typography } from 'antd';
 import { useFormatter } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
@@ -66,6 +66,7 @@ function ActiveSubscriptionCard({
     allowCreditPackPurchase = true,
     allowSubscriptionSelfService = true,
 }: ActiveSubscriptionCardProps) {
+    const { message: messageApi } = App.useApp();
     const { token } = theme.useToken();
     const [isCancellationModalOpen, setIsCancellationModalOpen] = useState(false);
     const [isPendingCheckoutLoading, setIsPendingCheckoutLoading] = useState(false);
@@ -163,7 +164,7 @@ function ActiveSubscriptionCard({
         dispatch(startLoader("Cancelling subscription"));
         try {
             await onCancelSubscription({ reason, otherReason, consent });
-            message.success('Your subscription has been cancelled successfully.');
+            messageApi.success('Your subscription has been cancelled successfully.');
             refetchActiveSubscription();
         } catch (error: any) {
             logPaymentFailure('payment_desktop_subscription_cancel_failed', error, buildSubscriptionActionPaymentLogContext('cancel_subscription', {
@@ -171,7 +172,7 @@ function ActiveSubscriptionCard({
                 hasOtherReason: Boolean(otherReason),
                 consent: Boolean(consent),
             }));
-            message.error('Subscription cancellation failed. Please contact support.');
+            messageApi.error('Subscription cancellation failed. Please contact support.');
         } finally {
             dispatch(stopLoader("Cancelling subscription"));
             setIsCancellationModalOpen(false);
@@ -182,11 +183,11 @@ function ActiveSubscriptionCard({
         dispatch(startLoader("Pausing subscription"));
         try {
             await onPauseSubscription();
-            message.success('Your subscription has been paused.');
+            messageApi.success('Your subscription has been paused.');
             refetchActiveSubscription();
         } catch (error: any) {
             logPaymentFailure('payment_desktop_subscription_pause_failed', error, buildSubscriptionActionPaymentLogContext('pause_subscription'));
-            message.error('Failed to pause subscription.');
+            messageApi.error('Failed to pause subscription.');
         } finally {
             dispatch(stopLoader("Pausing subscription"));
         }
@@ -196,11 +197,11 @@ function ActiveSubscriptionCard({
         dispatch(startLoader("Resuming subscription"));
         try {
             await onResumeSubscription();
-            message.success('Your subscription has been resumed.');
+            messageApi.success('Your subscription has been resumed.');
             refetchActiveSubscription();
         } catch (error: any) {
             logPaymentFailure('payment_desktop_subscription_resume_failed', error, buildSubscriptionActionPaymentLogContext('resume_subscription'));
-            message.error('Failed to resume subscription.');
+            messageApi.error('Failed to resume subscription.');
         } finally {
             dispatch(stopLoader("Resuming subscription"));
         }
@@ -214,7 +215,7 @@ function ActiveSubscriptionCard({
             logPaymentFailure('payment_desktop_subscription_payment_link_open_failed', error, buildSubscriptionActionPaymentLogContext(flow, {
                 ...getBoundedPaymentStringContext('shortUrl', subscriptionCheckoutUrl),
             }));
-            message.error('Could not open payment link.');
+            messageApi.error('Could not open payment link.');
         }
     };
     const handleContinuePendingCheckout = async () => {
@@ -222,9 +223,9 @@ function ActiveSubscriptionCard({
         try {
             const result = await onContinuePendingSubscriptionCheckout(activeSubscription);
             if (result.activationStatus === 'processing') {
-                message.info('Razorpay is still confirming this payment. No new checkout was opened.');
+                messageApi.info('Razorpay is still confirming this payment. No new checkout was opened.');
             } else {
-                message.success('Payment confirmed. Your subscription is active.');
+                messageApi.success('Payment confirmed. Your subscription is active.');
             }
             await refetchActiveSubscription();
         } catch (error) {
@@ -233,14 +234,14 @@ function ActiveSubscriptionCard({
                 return;
             }
             logPaymentFailure('payment_desktop_pending_subscription_continue_failed', error, buildSubscriptionActionPaymentLogContext('pending_payment'));
-            message.error('Could not continue checkout. Refresh Billing and try again.');
+            messageApi.error('Could not continue checkout. Refresh Billing and try again.');
         } finally {
             setIsPendingCheckoutLoading(false);
         }
     };
     const openCancellationModal = () => {
         if (!activeSubscription.cycleEndDate) {
-            message.error('The billing-cycle end date is unavailable. Contact support before cancelling.');
+            messageApi.error('The billing-cycle end date is unavailable. Contact support before cancelling.');
             return;
         }
         setIsCancellationModalOpen(true);

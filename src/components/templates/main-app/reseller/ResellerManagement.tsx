@@ -4,7 +4,7 @@ import { RESELLER_CAPS } from "@config/resellerPricing";
 import { formatInrPaise } from "@util/formatters";
 import {
     Alert, Badge, Button, Card, Col, Descriptions, Drawer, Empty, Flex, Form, Input, InputNumber,
-    message,
+    App,
     Row, Space, Spin, Statistic, Switch, Table,
     Typography,
     theme,
@@ -123,6 +123,7 @@ const readResellerManagementResponse = async (
  * - View reseller stats (stores onboarded, revenue, etc.)
  */
 function ResellerManagement() {
+    const { message: messageApi } = App.useApp();
     const { token } = theme.useToken();
     const { data: session } = useSession();
     const [profiles, setProfiles] = useState<ResellerManagementProfile[]>([]);
@@ -166,7 +167,7 @@ function ResellerManagement() {
             logResellerFailure('desktop_reseller_profiles_load_failed', error, {
                 action: 'load_profiles',
             });
-            message.error('Failed to load reseller profiles');
+            messageApi.error('Failed to load reseller profiles');
         } finally {
             setLoading(false);
         }
@@ -192,7 +193,7 @@ function ResellerManagement() {
             logResellerFailure('desktop_reseller_monthly_summary_load_failed', error, {
                 action: 'load_monthly_summary',
             });
-            message.error('Failed to load monthly reseller summary');
+            messageApi.error('Failed to load monthly reseller summary');
         } finally {
             setMonthlyLoading(false);
         }
@@ -238,7 +239,7 @@ function ResellerManagement() {
                 });
                 throw invalidResponseError;
             }
-            message.success(`Reseller ${result.action} successfully`);
+            messageApi.success(`Reseller ${result.action} successfully`);
             setDrawerOpen(false);
             setEditingProfile(null);
             form.resetFields();
@@ -250,7 +251,7 @@ function ResellerManagement() {
                 ...getBoundedResellerStringContext('email', values?.email),
                 ...getBoundedResellerStringContext('username', values?.username),
             });
-            message.error('Failed to save reseller');
+            messageApi.error('Failed to save reseller');
         } finally {
             setSaving(false);
         }

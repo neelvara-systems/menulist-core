@@ -13,7 +13,7 @@ import { startLoader, stopLoader } from '@reduxSlices/loader';
 import { BatchImageGenerationJobType, Project } from '@template/main-app/projects/types';
 import { getISOStringDate, toDate, type DateLike } from '@util/dateTime';
 import { useDateFormatters } from '@util/formatters';
-import { Alert, Button, Card, Checkbox, Divider, Flex, Image, message, Modal, Result, Tag, theme, Typography } from 'antd';
+import { Alert, Button, Card, Checkbox, Divider, Flex, Image, App, Modal, Result, Tag, theme, Typography } from 'antd';
 import { FC, Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { LuAlertCircle, LuCheck, LuEye, LuLoader, LuRefreshCcw, LuTrash, LuUploadCloud, LuX } from 'react-icons/lu';
 import styles from './BatchImageGenerationResultView.module.scss';
@@ -35,6 +35,7 @@ interface BatchImageGenerationResultViewProps {
 }
 
 const BatchImageGenerationResultView: FC<BatchImageGenerationResultViewProps> = ({ activeBatchImageJob: initialActiveBatchImageJob, projectData, onBatchImagesPersist, onComplete, onRetry }) => {
+    const { message: messageApi } = App.useApp();
     const [isDiscardModalVisible, setIsDiscardModalVisible] = useState(false);
     const [isCancelModalVisible, setIsCancelModalVisible] = useState(false);
     const { token } = theme.useToken();
@@ -45,7 +46,7 @@ const BatchImageGenerationResultView: FC<BatchImageGenerationResultViewProps> = 
     const ownerActionInFlightRef = useRef(false);
     const beginOwnerAction = (): boolean => {
         if (ownerActionInFlightRef.current) {
-            message.info('This batch action is already in progress.');
+            messageApi.info('This batch action is already in progress.');
             return false;
         }
         ownerActionInFlightRef.current = true;
@@ -167,11 +168,11 @@ const BatchImageGenerationResultView: FC<BatchImageGenerationResultViewProps> = 
                 BATCH_IMAGE_GENERATION_JOB_STATUS.CANCELLED,
                 'image_batch_result_cancel_update_rejected',
             );
-            message.success('Batch job cancelled successfully');
+            messageApi.success('Batch job cancelled successfully');
             onComplete()
         } catch (error) {
             logRuntimeFailure(IMAGE_BATCH_RESULT_CANCEL_FAILED, error, getBatchResultLogContext(action, BATCH_IMAGE_GENERATION_JOB_STATUS.CANCELLED));
-            message.error('Failed to cancel batch job');
+            messageApi.error('Failed to cancel batch job');
         } finally {
             ownerActionInFlightRef.current = false;
             dispatch(stopLoader("cancelling batch job"))
@@ -205,11 +206,11 @@ const BatchImageGenerationResultView: FC<BatchImageGenerationResultViewProps> = 
                 BATCH_IMAGE_GENERATION_JOB_STATUS.FINISHED,
                 'image_batch_result_upload_update_rejected',
             );
-            message.success('Images uploaded successfully');
+            messageApi.success('Images uploaded successfully');
             onComplete()
         } catch (error: unknown) {
             logRuntimeFailure(IMAGE_BATCH_RESULT_UPLOAD_FAILED, error, getBatchResultLogContext('upload', BATCH_IMAGE_GENERATION_JOB_STATUS.FINISHED));
-            message.error('Failed to update batch job status');
+            messageApi.error('Failed to update batch job status');
         } finally {
             ownerActionInFlightRef.current = false;
             dispatch(stopLoader("associating image"))
@@ -241,12 +242,12 @@ const BatchImageGenerationResultView: FC<BatchImageGenerationResultViewProps> = 
                 BATCH_IMAGE_GENERATION_JOB_STATUS.DISCARDED,
                 'image_batch_result_discard_update_rejected',
             );
-            message.success('Batch closed without adding images');
+            messageApi.success('Batch closed without adding images');
             setIsDiscardModalVisible(false);
             onComplete()
         } catch (error: unknown) {
             logRuntimeFailure(IMAGE_BATCH_RESULT_DISCARD_FAILED, error, getBatchResultLogContext('discard', BATCH_IMAGE_GENERATION_JOB_STATUS.DISCARDED));
-            message.error('Failed to update batch job status');
+            messageApi.error('Failed to update batch job status');
         } finally {
             ownerActionInFlightRef.current = false;
             dispatch(stopLoader("discarding image batch job"))
@@ -291,7 +292,7 @@ const BatchImageGenerationResultView: FC<BatchImageGenerationResultViewProps> = 
         } catch (error: unknown) {
             logRuntimeFailure(IMAGE_BATCH_RESULT_RETRY_FAILED, error, getBatchResultLogContext('retry', BATCH_IMAGE_GENERATION_JOB_STATUS.QUEUED));
             if (!retryHandoffStarted) {
-                message.error('Could not prepare this retry. Your available images were not removed.');
+                messageApi.error('Could not prepare this retry. Your available images were not removed.');
             }
         } finally {
             ownerActionInFlightRef.current = false;

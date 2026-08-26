@@ -4,6 +4,7 @@ const fs = require('fs');
 const path = require('path');
 
 const ROOT = path.resolve(__dirname, '..', '..');
+const MAIN_APP_ROOT = path.join(ROOT, 'src/components/templates/main-app');
 
 function read(relativePath) {
   return fs.readFileSync(path.join(ROOT, relativePath), 'utf8');
@@ -15,6 +16,14 @@ function assert(condition, message) {
 
 function assertIncludes(content, needle, label) {
   assert(content.includes(needle), `${label} must include ${needle}`);
+}
+
+function collectTsxFiles(directory) {
+  return fs.readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
+    const absolutePath = path.join(directory, entry.name);
+    if (entry.isDirectory()) return collectTsxFiles(absolutePath);
+    return entry.isFile() && entry.name.endsWith('.tsx') ? [absolutePath] : [];
+  });
 }
 
 const packageJson = JSON.parse(read('package.json'));
@@ -45,4 +54,28 @@ assertIncludes(businessSettings, 'onKeyDown={preventBusinessSettingsPickerEnterS
 assertIncludes(implementation, 'Desktop Business Settings Reset boundary', 'Business Settings Reset implementation documentation');
 assertIncludes(changelog, 'Business Settings Controlled-Draft Reset Boundary', 'Business Settings Reset changelog evidence');
 
-console.log('Business Settings Reset boundary verification passed.');
+const mainAppFiles = collectTsxFiles(MAIN_APP_ROOT);
+const detachedFeedbackFiles = mainAppFiles.filter((absolutePath) => {
+  const source = fs.readFileSync(absolutePath, 'utf8');
+  const antImports = [...source.matchAll(/import\s*{([^}]*)}\s*from ['"]antd['"]/g)].map((match) => match[1]);
+  return antImports.some((imports) => /\bmessage\b/.test(imports))
+    && /\bmessage\.(success|error|warning|info)\(/.test(source);
+});
+const legacyComputedMessageFiles = mainAppFiles.filter((absolutePath) => (
+  /\bmessage\s*\[/.test(fs.readFileSync(absolutePath, 'utf8'))
+));
+const scopedMessageApiFiles = mainAppFiles.filter((absolutePath) => (
+  /\bmessageApi\.(success|error|warning|info)\(/.test(fs.readFileSync(absolutePath, 'utf8'))
+));
+
+assert(detachedFeedbackFiles.length === 0, `Main app must not import detached static Ant feedback: ${detachedFeedbackFiles.join(', ')}`);
+assert(legacyComputedMessageFiles.length === 0, `Main app must not use legacy computed message calls: ${legacyComputedMessageFiles.join(', ')}`);
+for (const absolutePath of scopedMessageApiFiles) {
+  const source = fs.readFileSync(absolutePath, 'utf8');
+  assert(
+    source.includes('App.useApp()') || source.includes('message.useMessage()'),
+    `${path.relative(ROOT, absolutePath)} messageApi must come from a mounted Ant feedback context`,
+  );
+}
+
+console.log(`Business Settings Reset and owner feedback context verification passed across ${scopedMessageApiFiles.length} main-app files.`);

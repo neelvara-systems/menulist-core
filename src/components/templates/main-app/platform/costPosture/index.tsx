@@ -11,7 +11,7 @@ import type {
 } from '@lib/ops/costPostureTypes';
 import { logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { formatInrPaise } from '@util/formatters';
-import { Alert, Button, Card, Empty, Select, Space, Spin, Statistic, Table, Tag, Typography, message } from 'antd';
+import { Alert, Button, Card, Empty, Select, Space, Spin, Statistic, Table, Tag, Typography, App } from 'antd';
 import { useSession } from 'next-auth/react';
 import { redirect } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -35,6 +35,7 @@ const formatTimestamp = (value?: string | null) => {
 const statusLabel = (status: string) => status.replace(/_/g, ' ').toUpperCase();
 
 export default function PlatformCostPosture() {
+    const { message: messageApi } = App.useApp();
   const { data: session, status } = useSession();
   const platformRole = (session as any)?.platformRole || (session?.user as any)?.platformRole;
   const isPlatform = platformRole === 'PLATFORM';
@@ -67,7 +68,7 @@ export default function PlatformCostPosture() {
       if (controller.signal.aborted || activeRequestRef.current !== controller) return;
       setData(null);
       logRuntimeFailure('platform_cost_posture_load_failed', error, { days });
-      message.error('Failed to load platform cost posture');
+      messageApi.error('Failed to load platform cost posture');
     } finally {
       if (activeRequestRef.current === controller) {
         activeRequestRef.current = null;

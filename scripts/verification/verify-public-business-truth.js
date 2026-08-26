@@ -2008,7 +2008,7 @@ function verifyMenuHealthPublishLoggingIsBounded() {
   assertIncludes(b2cView, 'assertStoreUpdateSucceeded(', 'B2C Official Page store update acknowledgement guard');
   assertIncludes(b2cView, 'projects_b2c_official_page_store_update_rejected', 'B2C Official Page store rejected acknowledgement code');
   assertIncludes(b2cView, 'projects_b2c_publish_failed', 'B2C publish failure bounded diagnostic');
-  assertIncludes(b2cView, "message.error('Could not publish public page changes.')", 'B2C publish fixed owner failure copy');
+  assertIncludes(b2cView, "messageApi.error('Could not publish public page changes.')", 'B2C publish fixed owner failure copy');
   assertIncludes(b2cView, 'getProjectPageProjectLogContext(projectData?.projectId, projectData?.masterProjectId)', 'B2C publish verification bounded project context');
   assertIncludes(b2cView, 'getProjectPageStoreLogContext(storeDetails?.storeId, storeDetails?.tenantId)', 'B2C publish verification bounded store context');
   assertIncludes(b2cView, "getBoundedProjectPageStringContext('storeSlug', storeDetails?.subdomain)", 'B2C publish verification bounded slug context');

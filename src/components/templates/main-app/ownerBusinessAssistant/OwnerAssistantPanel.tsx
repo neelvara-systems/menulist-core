@@ -1,4 +1,4 @@
-import { Alert, Card, message } from 'antd';
+import { Alert, Card, App } from 'antd';
 import { FEATURE_FLAGS } from '@config/features';
 import type { OwnerBusinessHealthCurrentDoc, OwnerBusinessHealthQuestion } from '@lib/ownerBusinessAssistant/types';
 import { useOwnerBusinessAssistantAnswer } from '@hook/ownerBusinessAssistant/useOwnerBusinessAssistantAnswer';
@@ -16,6 +16,7 @@ export function OwnerAssistantPanel({ current, projectId, questions, storeScopeK
   questions?: OwnerBusinessHealthQuestion[];
   storeScopeKey?: string | number;
 }) {
+    const { message: messageApi } = App.useApp();
   const locale = useLocale();
   const t = useTranslations('Dashboard.owner');
   const { answer, ask, threadId, lastQuestion, isLoading } = useOwnerBusinessAssistantAnswer(projectId, {
@@ -30,22 +31,22 @@ export function OwnerAssistantPanel({ current, projectId, questions, storeScopeK
 
   const handleAsk = async (question: string, suggestedQuestionId?: string) => {
     if (!isHealthReady) {
-      message.info(t('businessHealth.assistant.notReady'));
+      messageApi.info(t('businessHealth.assistant.notReady'));
       return;
     }
     if (suggestedQuestionId && !canAskSuggested) {
-      message.info(t('businessHealth.assistant.suggestedUnavailable'));
+      messageApi.info(t('businessHealth.assistant.suggestedUnavailable'));
       return;
     }
     if (!suggestedQuestionId && !canAskFreeText) {
-      message.info(t('businessHealth.assistant.freeTextUnavailable'));
+      messageApi.info(t('businessHealth.assistant.freeTextUnavailable'));
       return;
     }
     try {
       const result = await ask(question, suggestedQuestionId);
       if (threadId || result?.threadId) void refreshThread();
     } catch (error) {
-      message.error(t('businessHealth.assistant.answerError'));
+      messageApi.error(t('businessHealth.assistant.answerError'));
     }
   };
 

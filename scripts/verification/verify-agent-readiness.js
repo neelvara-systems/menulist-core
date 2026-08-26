@@ -868,7 +868,9 @@ function verifyEnvironmentTargets() {
   assertIncludes(firebaseAdminSource, 'createWorkloadIdentityStorageAdmin', 'MenuList Storage uses the typed Workload Identity GoogleAuth client');
   assertIncludes(answerlatticeFirebaseAdminSource, 'createWorkloadIdentityFirestore', 'Answerlattice Firestore uses the typed Workload Identity GoogleAuth client');
   assertIncludes(answerlatticeFirebaseAdminSource, 'createWorkloadIdentityStorageAdmin', 'Answerlattice Storage uses the typed Workload Identity GoogleAuth client');
-  assertIncludes(workloadIdentityFirebaseServices, 'authClient: auth', 'Storage receives the shared Workload Identity GoogleAuth client');
+  assertIncludes(workloadIdentityFirebaseServices, 'credentials: createWorkloadIdentityExternalAccountCredentials(', 'Storage constructs a native external-account credential from the shared Workload Identity contract');
+  assertIncludes(workloadIdentityFirebaseServices, 'projectId: config.projectId', 'Storage uses the validated Workload Identity project');
+  assertNotIncludes(workloadIdentityFirebaseServices, 'authClient: auth', 'Storage must not bridge the incompatible root GoogleAuth client into its nested runtime');
   assertIncludes(workloadIdentityFirebaseServices, 'new Firestore({', 'Firestore is constructed without Firebase Admin custom-credential rejection');
   assertIncludes(firebaseAdminCompatSource, 'firestoreCompatInstances.get(', 'Firebase Admin compatibility calls reuse the registered product Firestore client');
   assertIncludes(firebaseAdminSource, 'registerFirebaseFirestoreCompatInstance(firebaseAdminApp, firestoreAdmin)', 'MenuList registers its selected Firestore client for compatibility callers');

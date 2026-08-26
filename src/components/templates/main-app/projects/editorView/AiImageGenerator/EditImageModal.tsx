@@ -9,7 +9,7 @@ import { startLoader, stopLoader } from '@reduxSlices/loader';
 import { AICapacityError } from '@services/ai/capacityError';
 import editImageViaApi from '@services/ai/image/editImageViaApi';
 import { UserUploadedFileType } from '@type/common';
-import { Button, Card, Divider, Flex, Image, Input, message, Modal, Space, theme, Tooltip, Typography } from 'antd';
+import { Button, Card, Divider, Flex, Image, Input, App, Modal, Space, theme, Tooltip, Typography } from 'antd';
 import React, { useContext, useEffect, useRef, useState } from 'react';
 import { LuCheckCircle, LuCircleDot, LuEye, LuImagePlus, LuPalette, LuPenTool, LuScissors, LuShirt, LuSparkles, LuTrash2, LuUploadCloud, LuWand2, LuZap } from 'react-icons/lu';
 import { NavBar, Popup } from '../../../../../mobile/antd';
@@ -43,6 +43,7 @@ const EditImageModal: React.FC<EditImageModalProps> = ({
     selectedItem,
     onUploadGeneratedImage,
 }) => {
+    const { message: messageApi } = App.useApp();
     const { isMobile } = useDeviceType();
     const { storeDetails } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext)
     const { activeProject } = useContext<ProjectsDataProviderType>(ProjectsDataContext)
@@ -113,17 +114,17 @@ const EditImageModal: React.FC<EditImageModalProps> = ({
 
     const generateNewImageClick = async () => {
         if (!sourceImage || (!prompt.trim() && selectedFeature.featureName === 'Custom Prompt') || !selectedItem) {
-            message.error("Please select a source image and enter a prompt.");
+            messageApi.error("Please select a source image and enter a prompt.");
             return;
         }
 
         if (Boolean(selectedFeature.userPrompt) && selectedFeature.userPrompt == "required" && !prompt.trim()) {
-            message.error("Please enter a prompt.");
+            messageApi.error("Please enter a prompt.");
             return;
         }
 
         if (Boolean(selectedFeature.promptImage) && selectedFeature.promptImage == "required" && !Boolean(selectedPromptImage?.url)) {
-            message.error("Please select a prompt image.");
+            messageApi.error("Please select a prompt image.");
             return;
         }
 
@@ -151,7 +152,7 @@ const EditImageModal: React.FC<EditImageModalProps> = ({
             })
 
             if (editedImages.length === 0) {
-                message.error("Edit generation failed.");
+                messageApi.error("Edit generation failed.");
                 dispatch(stopLoader("Editing Image"));
                 return;
             }
@@ -174,13 +175,13 @@ const EditImageModal: React.FC<EditImageModalProps> = ({
             setSelectedForUpload(prev => [...prev, newEditedImageUid]);
             setPrompt('');
             setSelectedFeature(platformfeaturesList[platformfeaturesList.length - 1]);
-            message.success("Edit preview generated! ✅ Selected for upload.");
+            messageApi.success("Edit preview generated! ✅ Selected for upload.");
 
         } catch (error) {
             if (error instanceof AICapacityError) {
-                message.info('Get more enhancements to continue. Visit Billing to add an enhancement pack.');
+                messageApi.info('Get more enhancements to continue. Visit Billing to add an enhancement pack.');
             } else {
-                message.error("Edit generation failed.");
+                messageApi.error("Edit generation failed.");
             }
         } finally {
             dispatch(stopLoader("Editing Image"));
@@ -190,7 +191,7 @@ const EditImageModal: React.FC<EditImageModalProps> = ({
     const handleUploadEditedImage = async () => {
         if (uploadInFlightRef.current) return;
         if (selectedForUpload.length === 0) {
-            message.error("Please select at least one image to upload.");
+            messageApi.error("Please select at least one image to upload.");
             return;
         }
         const imagesToUpload = generatedImages.filter(
@@ -214,7 +215,7 @@ const EditImageModal: React.FC<EditImageModalProps> = ({
                 ...getBoundedRuntimeStringContext('projectId', activeProject?.projectId),
                 selectedImageCount: imagesToUpload.length,
             });
-            message.error('Could not save edited image. Please try again.');
+            messageApi.error('Could not save edited image. Please try again.');
         } finally {
             uploadInFlightRef.current = false;
             setIsUploading(false);

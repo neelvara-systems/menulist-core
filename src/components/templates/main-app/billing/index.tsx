@@ -28,7 +28,7 @@ import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@prov
 import { startLoader, stopLoader } from '@reduxSlices/loader';
 import { BillingHistoryItem, Currency } from '@type/razorpay';
 import { formatDateTime } from '@util/dateTime';
-import { Alert, Button, Card, Empty, Flex, Select, Spin, Typography, message } from 'antd';
+import { Alert, Button, Card, Empty, Flex, Select, Spin, Typography, App } from 'antd';
 import { useSession } from 'next-auth/react';
 import { useFormatter, useTranslations } from 'next-intl';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -43,6 +43,7 @@ import UpgradeSubscriptionPayementSuccessModal from './UpgradeSubscriptionPayeme
 const { Title, Text } = Typography;
 
 function BillingPage() {
+    const { message: messageApi } = App.useApp();
     const t = useTranslations('Billing');
     const searchParams = useSearchParams();
     const router = useRouter();
@@ -162,7 +163,7 @@ function BillingPage() {
             logPaymentFailure('payment_desktop_billing_history_fetch_failed', error, buildBillingPaymentLogContext('billing_history_fetch', {
                 historyStoreIdPresent: Boolean(effectiveHistoryStoreId),
             }));
-            message.error('Billing history could not be loaded.');
+            messageApi.error('Billing history could not be loaded.');
             return 'error' as const;
         }
     };
@@ -193,7 +194,7 @@ function BillingPage() {
                 ...getBoundedPaymentStringContext('billingStoreId', billingStoreId),
                 ...getBoundedPaymentStringContext('historyStoreId', effectiveHistoryStoreId),
             }));
-            message.error(t('failedToLoadSubscription'));
+            messageApi.error(t('failedToLoadSubscription'));
         } finally {
             dispatch(stopLoader("Fetching subscription data"));
             if (
@@ -248,7 +249,7 @@ function BillingPage() {
                 ...getBoundedPaymentStringContext('targetStoreId', targetStoreId),
                 ...getBoundedPaymentStringContext('loginStoreId', loginStoreId),
             }));
-            message.error('Store switch failed');
+            messageApi.error('Store switch failed');
         } finally {
             releaseStoreSwitchAttempt(attemptToken);
         }
@@ -256,7 +257,7 @@ function BillingPage() {
 
     const handleConfirmUpgrade = async (newPlan: Plan, currency: Currency) => {
         if (!canManageSelectedSubscription) {
-            message.info(`Return to ${loginStore?.name || 'your signed-in store'} to change a subscription.`);
+            messageApi.info(`Return to ${loginStore?.name || 'your signed-in store'} to change a subscription.`);
             return;
         }
         if (!activeSubscription) {
@@ -268,11 +269,11 @@ function BillingPage() {
             dispatch(startLoader("Upgrading Plan"));
             const paymentResponse = await onUpgradePlan(activeSubscription, newPlan, currency);
             if (paymentResponse?.activationStatus === 'processing') {
-                message.info('Payment received. Subscription activation is being confirmed.');
+                messageApi.info('Payment received. Subscription activation is being confirmed.');
                 await refetchActiveSubscription();
                 return;
             }
-            message.success(t('upgradeSuccess'));
+            messageApi.success(t('upgradeSuccess'));
             refetchActiveSubscription();
             setIsSuccessModalOpen({ active: true, paymentDetails: { paymentResponse, ...newPlan } });
         } catch (error) {
@@ -280,7 +281,7 @@ function BillingPage() {
                 await refetchActiveSubscription();
                 return;
             }
-            message.error(t('paymentFailed'));
+            messageApi.error(t('paymentFailed'));
             logPaymentFailure('payment_desktop_billing_upgrade_failed', error, buildBillingPaymentLogContext('confirm_upgrade', {
                 ...getBoundedPaymentStringContext('planId', newPlan.planId),
             }));
@@ -292,20 +293,20 @@ function BillingPage() {
 
     const handleAddPaidLocation = async () => {
         if (!canManageSelectedSubscription) {
-            message.info(`Return to ${loginStore?.name || 'your signed-in store'} to change paid locations.`);
+            messageApi.info(`Return to ${loginStore?.name || 'your signed-in store'} to change paid locations.`);
             return;
         }
         if (!activeSubscription || !currentSubscriptionPlan) {
-            message.error('Current plan details are not available.');
+            messageApi.error('Current plan details are not available.');
             return;
         }
         if (!isMultiLocationPlan) {
-            message.info('Choose the Multi-location plan before adding locations.');
+            messageApi.info('Choose the Multi-location plan before adding locations.');
             setIsPricingModalOpen({ active: true, action: 'upgrade' });
             return;
         }
         if (isManualBilling) {
-            message.info('Ask your reseller to add prepaid location capacity.');
+            messageApi.info('Ask your reseller to add prepaid location capacity.');
             return;
         }
 
@@ -319,14 +320,14 @@ function BillingPage() {
                 nextPaidLocationCount,
             );
             if (paymentResponse.activationStatus === 'processing') {
-                message.info('Payment received. The paid location update is being confirmed.');
+                messageApi.info('Payment received. The paid location update is being confirmed.');
             } else {
-                message.success(`Paid locations updated to ${nextPaidLocationCount}.`);
+                messageApi.success(`Paid locations updated to ${nextPaidLocationCount}.`);
             }
             await refetchActiveSubscription();
         } catch (error) {
             if (isPaymentCheckoutDismissedError(error)) return;
-            message.error(t('paymentFailed'));
+            messageApi.error(t('paymentFailed'));
             logPaymentFailure('payment_desktop_billing_paid_location_failed', error, buildBillingPaymentLogContext('add_paid_location', {
                 ...getBoundedPaymentStringContext('planId', currentSubscriptionPlan.planId),
                 quantity: nextPaidLocationCount,
@@ -339,14 +340,14 @@ function BillingPage() {
 
     const handleCreditsPurchase = async (packId: string) => {
         if (!canBuyEnhancementPacks) {
-            message.info(`Return to ${loginStore?.name || 'your signed-in store'} to buy an enhancement pack.`);
+            messageApi.info(`Return to ${loginStore?.name || 'your signed-in store'} to buy an enhancement pack.`);
             return;
         }
         try {
             const pack = aiEnhancementPacksList.find((pack: AIEnhancementPack) => pack.packId === packId);
             if (!pack) throw new Error('Enhancement pack not found');
             const paymentResult: any = await handleTopupPurchase(pack, activeSubscription?.currency || (storeDetails?.currencyCode as Currency) || 'INR');
-            message.success(t('enhancementsReady'));
+            messageApi.success(t('enhancementsReady'));
             setTimeout(() => setShowConfetti(true), 500);
             setTimeout(() => setShowConfetti(false), 10000);
             setActiveSubscription((previous: any) => previous
@@ -359,7 +360,7 @@ function BillingPage() {
                 : previous);
         } catch (error) {
             if (isPaymentCheckoutDismissedError(error)) return;
-            message.error(t('enhancementsFailed'));
+            messageApi.error(t('enhancementsFailed'));
             logPaymentFailure('payment_desktop_billing_credit_pack_failed', error, buildBillingPaymentLogContext('credit_pack_purchase', {
                 ...getBoundedPaymentStringContext('packId', packId),
             }));

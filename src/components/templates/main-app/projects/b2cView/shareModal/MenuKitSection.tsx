@@ -24,7 +24,7 @@ import {
 import { getOfferingLabels } from '@lib/menu-kit/businessTypeLabels';
 import { downloadBlob, generateMenuKit, generateMenuKitAsset, type MenuKitAssetKey, shareBlob } from '@lib/menu-kit/menuKitGenerator';
 import { toDate, type DateLike } from '@util/dateTime';
-import { Button, Card, Flex, message, theme, Tooltip, Typography } from 'antd';
+import { Button, Card, Flex, App, theme, Tooltip, Typography } from 'antd';
 import { useEffect, useState } from 'react';
 import { LuCopy, LuDownload, LuMapPin, LuMessageCircle, LuPackage, LuShare2 } from 'react-icons/lu';
 
@@ -55,6 +55,7 @@ export default function MenuKitSection({
     brandColor,
     locale,
 }: MenuKitSectionProps) {
+    const { message: messageApi } = App.useApp();
     const { token } = theme.useToken();
     const [generating, setGenerating] = useState(false);
     const [supportsNativeShare, setSupportsNativeShare] = useState(false);
@@ -100,10 +101,10 @@ export default function MenuKitSection({
 
             downloadBlob(result.zipBlob, result.zipFilename);
             trackMenuKitDownload('zip_download');
-            message.success('Menu Kit downloaded');
+            messageApi.success('Menu Kit downloaded');
         } catch (error) {
             logExportFailure('project_share_menu_kit_generation_failed', error, getMenuKitExportLogContext());
-            message.error('Failed to generate Menu Kit. Please try again.');
+            messageApi.error('Failed to generate Menu Kit. Please try again.');
         } finally {
             setGenerating(false);
         }
@@ -133,17 +134,17 @@ export default function MenuKitSection({
             };
             if (actionMap[assetKey]) trackMenuKitDownload(actionMap[assetKey]!);
             if (shareResult === 'shared') {
-                message.success(`${label} shared`);
+                messageApi.success(`${label} shared`);
             } else {
                 downloadBlob(asset.blob, asset.filename);
-                message.success(`${label} downloaded`);
+                messageApi.success(`${label} downloaded`);
             }
         } catch (error) {
             logExportFailure('project_share_menu_kit_asset_generation_failed', error, {
                 ...getMenuKitExportLogContext(),
                 assetKey,
             });
-            message.error('Failed to generate asset');
+            messageApi.error('Failed to generate asset');
         }
     };
 
@@ -151,7 +152,7 @@ export default function MenuKitSection({
         const msg = `${labels.shareMessagePrefix}\n${menuUrl}`;
         try {
             await copyExportTextToClipboard(msg);
-            message.success('Share message copied');
+            messageApi.success('Share message copied');
         } catch (error) {
             logExportFailure('project_share_menu_kit_message_copy_failed', error, {
                 ...getMenuKitExportLogContext(),
@@ -159,14 +160,14 @@ export default function MenuKitSection({
                 hasClipboardWrite: hasExportClipboardWrite(),
                 hasCopyFallback: hasExportCopyFallback(),
             });
-            message.error('Failed to copy');
+            messageApi.error('Failed to copy');
         }
     };
 
     const handleCopyStaffScript = async () => {
         try {
             await copyExportTextToClipboard(labels.staffScript);
-            message.success('Staff line copied');
+            messageApi.success('Staff line copied');
         } catch (error) {
             logExportFailure('project_share_menu_kit_staff_script_copy_failed', error, {
                 ...getMenuKitExportLogContext(),
@@ -174,7 +175,7 @@ export default function MenuKitSection({
                 hasClipboardWrite: hasExportClipboardWrite(),
                 hasCopyFallback: hasExportCopyFallback(),
             });
-            message.error('Failed to copy');
+            messageApi.error('Failed to copy');
         }
     };
 
@@ -189,7 +190,7 @@ export default function MenuKitSection({
                 messageLength: msg.length,
                 whatsappUrlLength: whatsappUrl.length,
             });
-            message.error('Failed to open WhatsApp');
+            messageApi.error('Failed to open WhatsApp');
         }
     };
 

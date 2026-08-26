@@ -37,7 +37,7 @@ import {
     Flex,
     Image,
     Input,
-    message,
+    App,
     Segmented,
     theme,
     Tooltip,
@@ -122,6 +122,7 @@ const DEFAULT_EDITOR_FILTERS: EditorFilters = {
 };
 
 function Editor({ selectedProject, onRemove, addFileButton, initialQualityAction, onQualityActionHandled }: EditorProps) {
+    const { message: messageApi } = App.useApp();
     const { token } = theme.useToken();
     const formatter = useFormatter();
     const labels = useOfferingLabels();
@@ -656,7 +657,7 @@ function Editor({ selectedProject, onRemove, addFileButton, initialQualityAction
                     });
 
                     if (!translatedProjectContent) {
-                        message.info('No missing project detail translations found.');
+                        messageApi.info('No missing project detail translations found.');
                         return;
                     }
 
@@ -706,10 +707,10 @@ function Editor({ selectedProject, onRemove, addFileButton, initialQualityAction
                     setActiveProject(nextProject);
                     setHasChanges(false);
                     hasChangesRef.current = false;
-                    message.success('Project detail translations added.');
+                    messageApi.success('Project detail translations added.');
                 } catch (error) {
                     if (error instanceof AICapacityError) {
-                        message.info('Get more enhancements to continue. Visit Billing to add an enhancement pack.');
+                        messageApi.info('Get more enhancements to continue. Visit Billing to add an enhancement pack.');
                     } else {
                         logMenuEditorFailure('menu_editor_project_public_content_translation_failed', error, {
                             ...getMenuEditorProjectLogContext(projectData.projectId, projectData.masterProjectId),
@@ -718,7 +719,7 @@ function Editor({ selectedProject, onRemove, addFileButton, initialQualityAction
                             itemCount: totalItems,
                             isMasterLinked,
                         });
-                        message.error('Could not repair project details.');
+                        messageApi.error('Could not repair project details.');
                     }
                 } finally {
                     dispatch(stopLoader('repairing project details'));
@@ -766,7 +767,7 @@ function Editor({ selectedProject, onRemove, addFileButton, initialQualityAction
 
         if (actionRoute === 'priceOutliers') {
             setFilters(DEFAULT_EDITOR_FILTERS);
-            message.info('Review unusual prices in the editor.');
+            messageApi.info('Review unusual prices in the editor.');
             return;
         }
 
@@ -1195,11 +1196,11 @@ function Editor({ selectedProject, onRemove, addFileButton, initialQualityAction
                 projectId: getRequiredEditorProjectId(updatedProjectData),
             });
             applyPersistedEditorProject(updatedProjectData, persistedProject || undefined);
-            message.success("Image added successfully!");
+            messageApi.success("Image added successfully!");
             dispatch(stopLoader("associating image"));
         } else {
             dispatch(stopLoader("associating image"));
-            message.error("Failed to add image");
+            messageApi.error("Failed to add image");
         }
     };
 

@@ -20,7 +20,7 @@ import { getBoundedStoreStringContext, logStoreDataFailure } from '@database/sto
 import { generateOBPUrl } from '@lib/obp/generateOBPUrl';
 import { StoreDataType } from '@type/platform/store';
 import { assertStoreUpdateSucceeded, updateStore } from '@database/stores';
-import { Button, Card, Flex, Typography, message, theme } from 'antd';
+import { Button, Card, Flex, Typography, App, theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useState } from 'react';
 import { LuCheck, LuCopy, LuExternalLink, LuStore } from 'react-icons/lu';
@@ -87,6 +87,7 @@ interface GoogleListingCardProps {
 }
 
 export default function GoogleListingCard({ storeDetails, onStoreUpdate }: GoogleListingCardProps) {
+    const { message: messageApi } = App.useApp();
     const [copied, setCopied] = useState(false);
     const [saving, setSaving] = useState(false);
     const { token } = theme.useToken();
@@ -118,14 +119,14 @@ export default function GoogleListingCard({ storeDetails, onStoreUpdate }: Googl
         try {
             await copyOwnerGoogleListingLink(obpUrl);
             setCopied(true);
-            message.success(t('googleListing.linkCopied'));
+            messageApi.success(t('googleListing.linkCopied'));
             setTimeout(() => setCopied(false), 2000);
         } catch (error) {
             logStoreDataFailure('owner_dashboard_google_listing_copy_failed', error, buildGoogleListingCardLogContext('copy_obp_link', {
                 hasClipboardWrite: hasOwnerGoogleListingClipboardWrite(),
                 hasCopyFallback: hasOwnerGoogleListingCopyFallback(),
             }));
-            message.error(t('googleListing.couldNotCopy'));
+            messageApi.error(t('googleListing.couldNotCopy'));
         }
     };
 
@@ -136,7 +137,7 @@ export default function GoogleListingCard({ storeDetails, onStoreUpdate }: Googl
             logStoreDataFailure('owner_dashboard_google_listing_open_failed', error, buildGoogleListingCardLogContext('open_google_profile', {
                 target: 'google_business_profile',
             }));
-            message.error(t('googleListing.couldNotOpen'));
+            messageApi.error(t('googleListing.couldNotOpen'));
         }
     };
 
@@ -165,10 +166,10 @@ export default function GoogleListingCard({ storeDetails, onStoreUpdate }: Googl
             onStoreUpdate?.({
                 publicPresence: nextPublicPresence,
             } as any);
-            message.success(t('googleListing.markedUpdated'));
+            messageApi.success(t('googleListing.markedUpdated'));
         } catch (error) {
             logStoreDataFailure('owner_dashboard_google_listing_mark_done_failed', error, buildGoogleListingCardLogContext('mark_google_link_done'));
-            message.error(t('googleListing.couldNotSave'));
+            messageApi.error(t('googleListing.couldNotSave'));
         } finally {
             setSaving(false);
         }

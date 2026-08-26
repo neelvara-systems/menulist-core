@@ -14,7 +14,7 @@ import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/
 import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
 import { formatDateTime, type IntlFormatter } from '@util/dateTime';
 import { formatInrAmount } from '@util/formatters';
-import { Alert, Button, Card, Divider, Spin, Table, Tag, Typography, message, theme } from 'antd';
+import { Alert, Button, Card, Divider, Spin, Table, Tag, Typography, App, theme } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { useSession } from 'next-auth/react';
 import { useFormatter } from 'next-intl';
@@ -151,6 +151,7 @@ function Metric({ label, value, tone }: { label: string; value: string | number;
 }
 
 function MessagingOnboardingMonitor() {
+    const { message: messageApi } = App.useApp();
     const formatter = useFormatter();
     const { data: session, status: sessionStatus } = useSession();
     const [loading, setLoading] = useState(true);
@@ -186,7 +187,7 @@ function MessagingOnboardingMonitor() {
             if (activeRequestRef.current !== controller) return;
             if (!nextSnapshot) {
                 setSnapshot(null);
-                message.error(MESSAGING_ONBOARDING_MONITOR_LOAD_FAILED);
+                messageApi.error(MESSAGING_ONBOARDING_MONITOR_LOAD_FAILED);
                 return;
             }
             setSnapshot(nextSnapshot);
@@ -197,7 +198,7 @@ function MessagingOnboardingMonitor() {
                 ...getBoundedRuntimeStringContext('endpoint', '/api/ops/messaging-onboarding'),
                 isPlatform,
             });
-            message.error(MESSAGING_ONBOARDING_MONITOR_LOAD_FAILED);
+            messageApi.error(MESSAGING_ONBOARDING_MONITOR_LOAD_FAILED);
         } finally {
             if (activeRequestRef.current === controller) {
                 activeRequestRef.current = null;

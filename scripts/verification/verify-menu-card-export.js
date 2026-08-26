@@ -1122,7 +1122,7 @@ const menuKitSection = fs.readFileSync(path.join(root, 'src/components/templates
   'downloadBlob(result.zipBlob, result.zipFilename)',
   "if (shareResult === 'cancelled') return;",
   "if (shareResult === 'shared')",
-  'message.success(`${label} shared`)',
+  'messageApi.success(`${label} shared`)',
   "handleShareAsset('instagram_story'",
   "handleShareAsset('whatsapp_status'",
   "handleShareAsset('google_maps'",

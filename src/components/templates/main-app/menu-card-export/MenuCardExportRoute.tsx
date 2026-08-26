@@ -5,7 +5,7 @@ import useMenuCardExportController, {
     type MenuCardExportNotice,
 } from '@hook/useMenuCardExportController';
 import { formatDateTime } from '@util/dateTime';
-import { Alert, Button, Card, Empty, Flex, List, message, Modal, Segmented, Skeleton, Space, Switch, Tag, theme, Typography } from 'antd';
+import { Alert, Button, Card, Empty, Flex, List, App, Modal, Segmented, Skeleton, Space, Switch, Tag, theme, Typography } from 'antd';
 import { useFormatter } from 'next-intl';
 import { useSearchParams } from 'next/navigation';
 import { useCallback, useState } from 'react';
@@ -20,24 +20,25 @@ export default function MenuCardExportRoute() {
 }
 
 function DesktopMenuCardExportRoute() {
+    const { message: messageApi } = App.useApp();
     const searchParams = useSearchParams();
     const { token } = theme.useToken();
     const formatter = useFormatter();
     const [isProjectSelectorOpen, setIsProjectSelectorOpen] = useState(false);
     const notify = useCallback((notice: MenuCardExportNotice) => {
         if (notice.type === 'success') {
-            message.success(notice.content);
+            messageApi.success(notice.content);
             return;
         }
         if (notice.type === 'warning') {
-            message.warning(notice.content);
+            messageApi.warning(notice.content);
             return;
         }
         if (notice.type === 'error') {
-            message.error(notice.content);
+            messageApi.error(notice.content);
             return;
         }
-        message.info(notice.content);
+        messageApi.info(notice.content);
     }, []);
     const {
         adviceError,

@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updatedAt": "2026-08-25",
+  "updatedAt": "2026-08-26",
   "productBoundary": {
     "publicRuntime": false,
     "publicMarketing": false,
@@ -177,9 +177,9 @@
           "packages/asset-factory/brand/menulist.asset-context.md": "71f8f8195b97ab291d110a6c67743275e08c98dbea04f0486c3e230f29e05b09",
           "__docs__/main-website/main-website_image-assets.md": "689e24844c0fe4662d4e66e4092a12a7ff35bfe84e81b8bc3872dcc1301ba608",
           "src/components/website/home/SetupReliefSection.tsx": "78d32d10f3c5c78f047181663b28d3b1f9a108b89b279d902b16d6a7e41a7af3",
-          "src/components/templates/main-app/projects/jobScreens/ExtractionJobReviewScreen.tsx": "f068037e9e0feff0edb3d4672cbf7c93b37a4fdf363fc233ccff640506d9c41f"
+          "src/components/templates/main-app/projects/jobScreens/ExtractionJobReviewScreen.tsx": "38fd6b9c76e05db6972e4c5627c51c8638c94fd3157b2b020a49afccba64e8c3"
         },
-        "notes": "Locked by assets:fingerprint on 2026-08-20."
+        "notes": "Locked by assets:fingerprint on 2026-08-26."
       },
       "review": {
         "decision": "approved",

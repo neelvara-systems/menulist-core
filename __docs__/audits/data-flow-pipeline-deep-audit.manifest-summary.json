@@ -1,15 +1,15 @@
 {
-  "generatedAt": "2026-08-25T23:18:55.604Z",
-  "repositoryHead": "d21a0aab356b8d966aa30c3d7b790b45f1aa7d08",
-  "totalDiscoveredFiles": 9425,
+  "generatedAt": "2026-08-26T10:01:50.605Z",
+  "repositoryHead": "243a6dd953576b99c6230a09f76fe2912ef1f136",
+  "totalDiscoveredFiles": 9437,
   "vanishedDuringInventory": 0,
-  "inScopeFiles": 9111,
+  "inScopeFiles": 9123,
   "excludedFiles": 314,
   "byCategory": {
     "documentation/contract": 3581,
-    "shared-runtime": 1212,
+    "shared-runtime": 1216,
     "ui-component": 1021,
-    "verifier/test": 776,
+    "verifier/test": 782,
     "asset/public-output": 568,
     "nextjs-entrypoint": 386,
     "runtime/support": 346,
@@ -20,38 +20,38 @@
     "data-access-layer": 98,
     "hook/state-flow": 81,
     "type/schema-contract": 70,
+    "script/maintenance": 52,
     "presentation/public-output": 51,
-    "script/maintenance": 50,
     "security-rules": 9,
     "redux-state": 7,
     "test": 4,
     "proxy/routing": 1
   },
   "byReviewStatus": {
-    "reviewed": 7014,
-    "in-progress": 1558,
-    "inventory-only": 539
+    "reviewed": 6926,
+    "in-progress": 1646,
+    "inventory-only": 551
   },
   "byCategoryAndReviewStatus": {
     "documentation/contract": {
-      "reviewed": 2718,
-      "in-progress": 573,
+      "reviewed": 2716,
+      "in-progress": 575,
       "inventory-only": 290
     },
     "shared-runtime": {
-      "reviewed": 994,
-      "in-progress": 144,
-      "inventory-only": 74
+      "reviewed": 985,
+      "in-progress": 153,
+      "inventory-only": 78
     },
     "ui-component": {
-      "reviewed": 749,
-      "in-progress": 263,
+      "reviewed": 699,
+      "in-progress": 313,
       "inventory-only": 9
     },
     "verifier/test": {
-      "reviewed": 524,
-      "in-progress": 191,
-      "inventory-only": 61
+      "reviewed": 511,
+      "in-progress": 204,
+      "inventory-only": 67
     },
     "asset/public-output": {
       "reviewed": 539,
@@ -64,8 +64,8 @@
       "inventory-only": 11
     },
     "runtime/support": {
-      "reviewed": 274,
-      "in-progress": 67,
+      "reviewed": 273,
+      "in-progress": 68,
       "inventory-only": 5
     },
     "firebase-functions": {
@@ -74,8 +74,8 @@
       "inventory-only": 26
     },
     "api-route": {
-      "reviewed": 170,
-      "in-progress": 61,
+      "reviewed": 165,
+      "in-progress": 66,
       "inventory-only": 13
     },
     "constant/config/data": {
@@ -84,13 +84,13 @@
       "inventory-only": 19
     },
     "configuration/data": {
-      "in-progress": 63,
-      "reviewed": 36,
+      "in-progress": 64,
+      "reviewed": 35,
       "inventory-only": 1
     },
     "data-access-layer": {
-      "reviewed": 90,
-      "in-progress": 8
+      "reviewed": 85,
+      "in-progress": 13
     },
     "hook/state-flow": {
       "reviewed": 77,
@@ -98,18 +98,18 @@
       "inventory-only": 1
     },
     "type/schema-contract": {
-      "reviewed": 61,
-      "in-progress": 9
+      "reviewed": 59,
+      "in-progress": 11
+    },
+    "script/maintenance": {
+      "reviewed": 26,
+      "in-progress": 19,
+      "inventory-only": 7
     },
     "presentation/public-output": {
       "reviewed": 45,
       "in-progress": 5,
       "inventory-only": 1
-    },
-    "script/maintenance": {
-      "reviewed": 26,
-      "in-progress": 19,
-      "inventory-only": 5
     },
     "security-rules": {
       "in-progress": 5,

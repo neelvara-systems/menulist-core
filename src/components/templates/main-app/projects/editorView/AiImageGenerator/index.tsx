@@ -11,7 +11,7 @@ import { startLoader, stopLoader } from '@reduxSlices/loader';
 import { AICapacityError } from '@services/ai/capacityError';
 import generateImageViaApi from '@services/ai/image/generateImageViaApi';
 import { UserUploadedFileType } from '@type/common';
-import { Button, Card, Collapse, ColorPicker, Flex, Image, Input, message, Modal, Popconfirm, Skeleton, Space, Switch, Tag, theme, Tooltip, Typography, Upload } from 'antd';
+import { Button, Card, Collapse, ColorPicker, Flex, Image, Input, App, Modal, Popconfirm, Skeleton, Space, Switch, Tag, theme, Tooltip, Typography, Upload } from 'antd';
 import React, { Fragment, useContext, useEffect, useState } from 'react';
 import { FaImages } from 'react-icons/fa6';
 import { LuBadgeInfo, LuCheck, LuCheckCircle, LuChevronDown, LuImage, LuImagePlus, LuRefreshCcw, LuSettings2, LuWand2, LuX } from 'react-icons/lu';
@@ -47,6 +47,7 @@ const AiImageGenerator: React.FC<AiImageGeneratorProps> = ({
     onPreferencesUsed,
     batchItemCount
 }) => {
+    const { message: messageApi } = App.useApp();
 
     const { token } = theme.useToken();
     const { isMobile } = useDeviceType();
@@ -127,22 +128,22 @@ const AiImageGenerator: React.FC<AiImageGeneratorProps> = ({
     const onGenerateImage = async (): Promise<void> => {
         // Validate prompt only if it's empty AND no description exists for the item
         if (!generationConfig.prompt && !selectedItem?.descriptionLine) {
-            message.error('Please enter a prompt or ensure the item has a description.');
+            messageApi.error('Please enter a prompt or ensure the item has a description.');
             return;
         }
 
         if (selectedImageTypes.length === 0 && generationConfig.isMultiMode) {
-            message.error('Please select at least one image type for multi-mode generation.');
+            messageApi.error('Please select at least one image type for multi-mode generation.');
             return;
         }
         if (!selectedItem) {
-            message.error('Select an item before generating an image.');
+            messageApi.error('Select an item before generating an image.');
             return;
         }
         const projectId = activeProject?.projectId;
         const fileId = selectedItem.fileId;
         if (!projectId || !fileId) {
-            message.error('The selected item is missing its project or file identity.');
+            messageApi.error('The selected item is missing its project or file identity.');
             return;
         }
         const businessType =
@@ -190,17 +191,17 @@ const AiImageGenerator: React.FC<AiImageGeneratorProps> = ({
                 });
                 await onPreferencesUsed?.(generationConfig);
                 setSelectedGeneratedForUpload(newGenImages);
-                message.success('Image generated successfully!');
+                messageApi.success('Image generated successfully!');
                 dispatch(stopLoader("Generating Image"))
             } else {
-                message.error('Image generation failed!, try again.');
+                messageApi.error('Image generation failed!, try again.');
                 dispatch(stopLoader("Generating Image"))
                 setGenerationConfig({ ...generationConfig, loading: false });
             }
 
         } catch (error: any) {
             if (error instanceof AICapacityError) {
-                message.info('Get more enhancements to continue. Visit Billing to add an enhancement pack.');
+                messageApi.info('Get more enhancements to continue. Visit Billing to add an enhancement pack.');
             } else {
                 logMenuEditorFailure('menu_editor_ai_image_generate_failed', error, {
                     ...getMenuEditorProjectLogContext(activeProject?.projectId, activeProject?.masterProjectId),
@@ -215,7 +216,7 @@ const AiImageGenerator: React.FC<AiImageGeneratorProps> = ({
                         ? generationConfig.selectedImageTypes.length
                         : 0,
                 });
-                message.error('Image generation failed. Please try again.');
+                messageApi.error('Image generation failed. Please try again.');
             }
             dispatch(stopLoader("Generating Image"))
             setGenerationConfig({ ...generationConfig, loading: false });

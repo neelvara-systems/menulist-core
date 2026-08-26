@@ -6,7 +6,7 @@ import { requestBillingDocumentEmail } from '@lib/billing/billingDocumentsClient
 import { BillingHistoryItem } from '@type/razorpay';
 import { getBoundedPaymentStringContext, logPaymentFailure } from '@hook/paymentDiagnostics';
 import { formatDateTime } from '@util/dateTime';
-import { Button, Card, Empty, Flex, Space, Table, Tag, Tooltip, Typography, message, theme } from 'antd';
+import { Button, Card, Empty, Flex, Space, Table, Tag, Tooltip, Typography, App, theme } from 'antd';
 import { useFormatter } from 'next-intl';
 import { useRef, useState } from 'react';
 import { LuExternalLink, LuGift, LuMail, LuPackage, LuReceipt, LuZap } from 'react-icons/lu';
@@ -20,6 +20,7 @@ interface BillingHistoryProps {
 }
 
 const BillingHistory = ({ billingHistory, fetchBillingHistory, diagnosticContext }: BillingHistoryProps) => {
+    const { message: messageApi } = App.useApp();
     const { token } = theme.useToken();
     const formatter = useFormatter();
     const [sendingDocumentId, setSendingDocumentId] = useState<string | null>(null);
@@ -48,7 +49,7 @@ const BillingHistory = ({ billingHistory, fetchBillingHistory, diagnosticContext
                 ...getBoundedPaymentStringContext('billingHistoryItemType', record.type),
                 ...getBoundedPaymentStringContext('invoiceStatus', record.status),
             });
-            message.error('Could not open invoice.');
+            messageApi.error('Could not open invoice.');
         }
     };
     const handleEmailBillingDocument = async (record: BillingHistoryItem) => {
@@ -58,16 +59,16 @@ const BillingHistory = ({ billingHistory, fetchBillingHistory, diagnosticContext
             const delivery = await requestBillingDocumentEmail(record.billingDocumentId);
             switch (delivery.status) {
                 case 'sent':
-                    message.success('Billing document email sent.');
+                    messageApi.success('Billing document email sent.');
                     break;
                 case 'queued':
-                    message.success('Billing document email queued.');
+                    messageApi.success('Billing document email queued.');
                     break;
                 case 'partial':
-                    message.warning('Billing document delivery was only partially confirmed.');
+                    messageApi.warning('Billing document delivery was only partially confirmed.');
                     break;
                 case 'outcome_unknown':
-                    message.warning('Billing document email delivery is still being confirmed.');
+                    messageApi.warning('Billing document email delivery is still being confirmed.');
                     break;
                 default:
                     throw new Error('Billing document email could not be sent.');
@@ -80,7 +81,7 @@ const BillingHistory = ({ billingHistory, fetchBillingHistory, diagnosticContext
                 flow: 'billing_document_email',
                 ...getBoundedPaymentStringContext('billingDocumentId', record.billingDocumentId),
             });
-            message.error(error instanceof Error ? error.message : 'Billing document email could not be sent.');
+            messageApi.error(error instanceof Error ? error.message : 'Billing document email could not be sent.');
         } finally {
             setSendingDocumentId(null);
         }
