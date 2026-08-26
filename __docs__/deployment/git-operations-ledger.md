@@ -5044,3 +5044,13 @@ No Firebase source/configuration changes. Firestore Rules, indexes, Storage Rule
 #### Final chronological pointer for `GIT-20260826-072628-alrc078-product-topic-picker`
 
 - The complete planned operation and 16-row Firebase matrix are preserved at line 882 because an older repeated append anchor matched. This final pointer makes the current append-only ledger tail resolve to ALRC-078 without rewriting or deleting prior evidence.
+
+#### ALRC-078 performed result and closeout plan — `2026-08-26T07:29:35+05:30`
+
+- Performed commit/push: `e2178ff4aa4f7ac03bd7f8514f1221ede48a2c75` (`fix(answerlattice): make product topics searchable`) was pushed non-force from local `staging` to `origin/staging`.
+- Direct server readback returned exact `refs/heads/staging` SHA `e2178ff4aa4f7ac03bd7f8514f1221ede48a2c75` with `0/0` divergence. Local and remote `main` remained untouched at `fe625d5bbf527c1b7e537b00ab32a4f655905c35` with `0/0` divergence.
+- Source validation: First Trusted Answers contract regression, Answerlattice TypeScript, focused ESLint, staged diff validation, and `git diff --check` passed. Hosted UI verification remains pending the automatic custom-`qa` deployment.
+- Firebase state: all 16 planned rows remain `NO_INFRA_CHANGE` / `SERVER_STATE_UNKNOWN`; no Firebase source/configuration path changed and no Firebase deployment or readback occurred.
+- Manual deployment state: no Vercel or Firebase deployment command was run. The existing branch-tracked custom-`qa` pipeline may deploy the staging commit automatically.
+- Closeout operation: commit this ledger-only performed result and push local `staging` to `origin/staging` non-force. `main` remains untouched. Starting state is `0/1/0` staged/unstaged/untracked on `staging`; the exact source commit and server ref are otherwise in sync.
+- Attribution confidence: exact.
