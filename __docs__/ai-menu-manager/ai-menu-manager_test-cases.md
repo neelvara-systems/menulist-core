@@ -738,6 +738,8 @@ When a cap is exceeded, old detail must move to Storage or remain on proposal de
 Opening AMM with unresolved cards from a previous day must not scan historical daily session docs.
 When the current-day selected-project session is absent, the protected inbox must query exact tenant/store/project scope, filter `hasPendingOperations == true`, order newest first, and return at most one normalized session. It must validate proposal pointers against that recovered session ID, and desktop/mobile must continue using the returned session ID until its pending count reaches zero.
 
+When desktop/mobile retain a recovered deterministic v2 session ID across a subsequent render, the client must derive and revalidate its encoded date against the same tenant/store/project scope before the direct read. A cross-scope, malformed, or legacy hashed ID without an explicit validated date must fail closed. An explicit `/sessions/[sessionId]` lookup must return only that requested session and must not recover a different pending session.
+
 ### AMM-COST-007A: Compact Session Payload Budget
 
 Every browser and Admin compact-session mutation must pass the shared 700 KB write preparation boundary. When history makes the payload too large, the boundary removes artifact references, older receipt summaries, and oldest compact messages in that order. It must not remove pending operations or pending proposal summaries. If the payload still exceeds the budget, a new preparation fails with fixed owner-safe guidance; completion/cancel may proceed only when it reduces an already oversized retained document.

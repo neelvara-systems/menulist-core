@@ -1,5 +1,16 @@
 # MenuList — Changelog
 
+## August 26, 2026 - Recovered Menu Manager Session Continuity
+
+- Preserved the exact date encoded in a remembered scoped v2 Menu Manager
+  session ID, allowing desktop and mobile owner screens to continue an
+  unresolved prior-day card across subsequent renders. Cross-store,
+  cross-project, malformed, and undated legacy IDs still fail closed.
+- Made explicit session lookup exact: it no longer substitutes a different
+  pending session. The normal inbox retains its bounded latest-pending recovery.
+  No Firebase query, write, collection, cache, provider, or entitlement contract
+  changed.
+
 ## August 26, 2026 - Keyless Storage Credential Compatibility
 
 - Corrected the shared keyless Storage bridge to pass the actual product-scoped

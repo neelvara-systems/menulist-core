@@ -104,6 +104,32 @@ export function isDailySessionIdForScope(params: {
     }
 }
 
+export function resolveDailySessionDateFromId(params: {
+    sessionId: string;
+    tId: string | number;
+    sId: string | number;
+    projectId: string;
+}): string | null {
+    try {
+        const scope = requireDailySessionScope({
+            ...params,
+            sessionDate: '2000-01-01',
+        });
+        const prefix = `amm2_${scope.tId}_${scope.sId}_`;
+        const suffix = `_${scope.projectId}`;
+        if (!params.sessionId.startsWith(prefix) || !params.sessionId.endsWith(suffix)) return null;
+
+        const sessionDate = normalizeAiMenuManagerSessionDate(
+            params.sessionId.slice(prefix.length, -suffix.length),
+        );
+        return sessionDate && isDailySessionIdForScope({ ...scope, sessionDate, sessionId: params.sessionId })
+            ? sessionDate
+            : null;
+    } catch {
+        return null;
+    }
+}
+
 export function resolveDailySessionId(params: {
     sessionId?: string;
     tId: string | number;

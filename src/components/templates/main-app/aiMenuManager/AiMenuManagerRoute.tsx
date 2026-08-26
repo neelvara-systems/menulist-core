@@ -147,16 +147,25 @@ export default function AiMenuManagerRoute() {
     const chatScrollRef = useRef<HTMLDivElement | null>(null);
     const sessionIdRef = useRef<string | null>(null);
     const sessionProjectIdRef = useRef<string | null>(null);
+    const sessionDateRef = useRef<string | null>(null);
 
-    const rememberSessionId = useCallback((nextSessionId: string | null | undefined, projectId: string) => {
+    const rememberSessionId = useCallback((
+        nextSessionId: string | null | undefined,
+        projectId: string,
+        sessionDate?: string | null,
+    ) => {
         const normalizedSessionId = nextSessionId || null;
         sessionIdRef.current = normalizedSessionId;
         sessionProjectIdRef.current = normalizedSessionId ? projectId : null;
+        sessionDateRef.current = normalizedSessionId && sessionDate ? sessionDate : null;
         setSessionId(normalizedSessionId);
     }, []);
 
     const getSessionIdForProject = useCallback((projectId: string) => (
         sessionProjectIdRef.current === projectId ? sessionIdRef.current || undefined : undefined
+    ), []);
+    const getSessionDateForProject = useCallback((projectId: string) => (
+        sessionProjectIdRef.current === projectId ? sessionDateRef.current || undefined : undefined
     ), []);
 
     const storeName = useMemo(() => (
@@ -317,6 +326,7 @@ export default function AiMenuManagerRoute() {
             if (!nextSelectedProjectId) {
                 sessionIdRef.current = null;
                 sessionProjectIdRef.current = null;
+                sessionDateRef.current = null;
                 setSessionId(null);
                 setSelectedProject(null);
                 setCurrentSession(null);
@@ -347,8 +357,9 @@ export default function AiMenuManagerRoute() {
                 storeId,
                 projectId,
                 sessionId: getSessionIdForProject(projectId),
+                sessionDate: getSessionDateForProject(projectId),
             });
-            rememberSessionId(inbox.sessionId, projectId);
+            rememberSessionId(inbox.sessionId, projectId, inbox.session?.sessionDate);
             const nextOperations = inbox.operations || [];
             const nextReceipts = inbox.receipts || [];
             setCurrentSession(inbox.session || null);
@@ -370,7 +381,7 @@ export default function AiMenuManagerRoute() {
         } finally {
             setLoadingProject(false);
         }
-    }, [getSessionIdForProject, message, rememberSessionId, storeId]);
+    }, [getSessionDateForProject, getSessionIdForProject, message, rememberSessionId, storeId]);
 
     useEffect(() => {
         loadProjects();
@@ -579,7 +590,11 @@ export default function AiMenuManagerRoute() {
                 text,
             });
             clearComposerContext();
-            rememberSessionId(response.sessionId, selectedProjectId);
+            rememberSessionId(
+                response.sessionId,
+                selectedProjectId,
+                response.session?.sessionDate || currentSession?.sessionDate,
+            );
             if (response.session) {
                 applySessionState({
                     ...response.session,

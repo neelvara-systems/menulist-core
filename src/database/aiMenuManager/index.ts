@@ -19,6 +19,7 @@ import {
     buildProposalId,
     hashStableValue,
     isDailySessionIdForScope,
+    resolveDailySessionDateFromId,
     resolveDailySessionId,
     todaySessionDate,
 } from '@lib/ai-menu-manager/idempotency';
@@ -261,12 +262,22 @@ function buildSessionId(params: {
     scope: ClientScope;
     projectId: string;
 }) {
+    const sessionDate = params.sessionDate
+        || (params.sessionId
+            ? resolveDailySessionDateFromId({
+                sessionId: params.sessionId,
+                tId: params.scope.tId,
+                sId: params.scope.sId,
+                projectId: params.projectId,
+            })
+            : todaySessionDate());
+    if (!sessionDate) throw new Error('Session scope mismatch');
     return resolveDailySessionId({
         sessionId: params.sessionId,
         tId: params.scope.tId,
         sId: params.scope.sId,
         projectId: params.projectId,
-        sessionDate: params.sessionDate || todaySessionDate(),
+        sessionDate,
     });
 }
 

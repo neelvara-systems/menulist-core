@@ -136,16 +136,25 @@ export default function MobileAiMenuManagerScreen({
     const [workingCardId, setWorkingCardId] = useState<string | null>(null);
     const sessionIdRef = useRef<string | null>(null);
     const sessionProjectIdRef = useRef<string | null>(null);
+    const sessionDateRef = useRef<string | null>(null);
 
-    const rememberSessionId = useCallback((nextSessionId: string | null | undefined, projectId: string) => {
+    const rememberSessionId = useCallback((
+        nextSessionId: string | null | undefined,
+        projectId: string,
+        sessionDate?: string | null,
+    ) => {
         const normalizedSessionId = nextSessionId || null;
         sessionIdRef.current = normalizedSessionId;
         sessionProjectIdRef.current = normalizedSessionId ? projectId : null;
+        sessionDateRef.current = normalizedSessionId && sessionDate ? sessionDate : null;
         setSessionId(normalizedSessionId);
     }, []);
 
     const getSessionIdForProject = useCallback((projectId: string) => (
         sessionProjectIdRef.current === projectId ? sessionIdRef.current || undefined : undefined
+    ), []);
+    const getSessionDateForProject = useCallback((projectId: string) => (
+        sessionProjectIdRef.current === projectId ? sessionDateRef.current || undefined : undefined
     ), []);
     const cards = useMemo(() => operations.map((operation) => operation.card), [operations]);
     const approvalGroups = useMemo(() => {
@@ -276,8 +285,9 @@ export default function MobileAiMenuManagerScreen({
                 storeId,
                 projectId: selectedProjectId,
                 sessionId: getSessionIdForProject(selectedProjectId),
+                sessionDate: getSessionDateForProject(selectedProjectId),
             });
-            rememberSessionId(inbox.sessionId, selectedProjectId);
+            rememberSessionId(inbox.sessionId, selectedProjectId, inbox.session?.sessionDate);
             setCurrentSession(inbox.session || null);
             setOperations(inbox.operations || []);
             setReceipts(inbox.receipts || []);
@@ -289,7 +299,7 @@ export default function MobileAiMenuManagerScreen({
             });
             Toast.show({ content: 'Unable to load Menu Manager.' });
         }
-    }, [getSessionIdForProject, rememberSessionId, selectedProjectId, storeId]);
+    }, [getSessionDateForProject, getSessionIdForProject, rememberSessionId, selectedProjectId, storeId]);
 
     useEffect(() => {
         void loadInbox();
@@ -452,7 +462,11 @@ export default function MobileAiMenuManagerScreen({
                 text,
             });
             clearComposerContext();
-            rememberSessionId(response.sessionId, selectedProjectId);
+            rememberSessionId(
+                response.sessionId,
+                selectedProjectId,
+                response.session?.sessionDate || currentSession?.sessionDate,
+            );
             if (response.session) {
                 setCurrentSession(response.session);
                 setOperations(response.session.pendingOperations || response.operations || []);

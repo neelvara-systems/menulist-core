@@ -63,10 +63,8 @@ export const GET = withAuth(async (
         tId: scope.tId,
         sId: scope.sId,
         projectId,
+        recoverPending: false,
     });
 
-    return NextResponse.json(serializeAiMenuManagerInboxForJson({
-        ...inbox,
-        sessionId,
-    }));
+    return NextResponse.json(serializeAiMenuManagerInboxForJson(inbox));
 });

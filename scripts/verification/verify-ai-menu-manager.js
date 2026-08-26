@@ -344,6 +344,7 @@ assert(receiptBuilder.includes("boundedText(params.title, 160") && receiptBuilde
 assert(receiptBuilder.includes('normalizeExecutedAt(params.executedAt)'), 'AMM receipt persistence must canonicalize invalid execution timestamps');
 assert(clientDal.includes('canUserAccessStore({ sessionUser, storeId: storeScope.numericId })'), 'AMM client selected-store scope must reuse canonical accessible-store authorization');
 assert(clientDal.includes('resolveDailySessionId({') && clientDal.includes('sessionId: params.sessionId'), 'AMM direct client must bind supplied session IDs to tenant/store/project/date scope');
+assert(clientDal.includes('resolveDailySessionDateFromId({'), 'AMM direct client must recover the exact scoped date from a remembered v2 session ID');
 assert(clientDal.includes('storeIds: session.user.storeIds') && clientDal.includes('stores: session.user.stores'), 'AMM client selected-store authorization must use the normalized session user mapping contract');
 assert(!clientDal.includes('session?.storeIds') && !clientDal.includes('session?.stores'), 'AMM client selected-store authorization must not read nonexistent top-level session mapping fields');
 const sendCommandBlock = (clientDal.split('export async function sendAiMenuManagerCommand')[1] || '').split('export async function getAiMenuManagerClientInbox')[0] || '';
@@ -1284,6 +1285,9 @@ for (const [routeSource, routeLabel] of [[inboxRoute, 'Inbox route'], [sessionRo
 }
 assert(inboxRoute.includes('serializeAiMenuManagerInboxForJson(inbox)'), 'Inbox route must preserve the authoritative recovered-session ID');
 assert(!inboxRoute.includes('...inbox,\n        sessionId,'), 'Inbox route must not pair prior-day recovered work with the requested current-day session ID');
+assert(sessionRoute.includes('recoverPending: false'), 'Explicit session lookup must not substitute a different pending session');
+assert(sessionRoute.includes('serializeAiMenuManagerInboxForJson(inbox)'), 'Explicit session lookup must preserve the repository result without rewriting identity');
+assert(!sessionRoute.includes('...inbox,\n        sessionId,'), 'Explicit session lookup must not overwrite repository identity');
 
 const ownerRoute = read('src/app/(main)/menu-manager/page.tsx');
 assert(ownerRoute.includes('AiMenuManagerRoute'), 'AMM owner route must be mounted at /menu-manager');
@@ -1402,6 +1406,7 @@ assert(!desktopProposalCard.includes('window.open('), 'Desktop AMM cards must no
 assert(!desktopProposalCard.includes("if (navigator.clipboard?.writeText) {\n        await navigator.clipboard.writeText(value);\n        return;\n    }"), 'Desktop AMM cards must not fail rejected Clipboard API writes before textarea fallback');
 assert(!desktopProposalCard.includes("document.execCommand('copy');\n    document.body.removeChild(textarea);"), 'Desktop AMM cards must not treat failed textarea copy fallback as success');
 assert(desktopRoute.includes('sessionProjectIdRef'), 'Desktop AMM must track session ids per selected project');
+assert(desktopRoute.includes('sessionDateRef') && desktopRoute.includes('sessionDate: getSessionDateForProject(projectId)'), 'Desktop AMM must retain the validated date for remembered recovered sessions');
 assert(desktopRoute.includes('getAiMenuManagerComposerContextData') && desktopRoute.includes('buildAiMenuManagerComposerPrompt'), 'Desktop AMM must support composer context selection');
 assert(desktopRoute.includes('composerContext: commandContext') && desktopRoute.includes('clearComposerContext();'), 'Desktop AMM must pass exact composer context ids and clear them after use');
 assert(desktopRoute.includes('amm-desktop-context-picker') && desktopRoute.includes('Work on'), 'Desktop AMM must render an inline composer context picker');
@@ -1503,6 +1508,7 @@ assert(!mobileProposalCard.includes("if (navigator.clipboard?.writeText) {\n    
 assert(!mobileProposalCard.includes("document.execCommand('copy');\n    document.body.removeChild(textarea);"), 'Mobile AMM cards must not treat failed textarea copy fallback as success');
 assert(mobileScreen.includes('useMobileProjects'), 'Mobile AMM must use existing mobile project provider');
 assert(mobileScreen.includes('sessionProjectIdRef'), 'Mobile AMM must track session ids per selected project');
+assert(mobileScreen.includes('sessionDateRef') && mobileScreen.includes('sessionDate: getSessionDateForProject(selectedProjectId)'), 'Mobile AMM must retain the validated date for remembered recovered sessions');
 assert(mobileScreen.includes('getAiMenuManagerComposerContextData') && mobileScreen.includes('buildAiMenuManagerComposerPrompt'), 'Mobile AMM must support composer context selection');
 assert(mobileScreen.includes('composerContext: commandContext') && mobileScreen.includes('clearComposerContext();'), 'Mobile AMM must pass exact composer context ids and clear them after use');
 assert(mobileScreen.includes('Choose context or suggestions') && mobileScreen.includes('Start from') && mobileScreen.includes('Work on'), 'Mobile AMM must expose one composer tool entry for context and suggestions');

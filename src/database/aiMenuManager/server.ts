@@ -514,6 +514,7 @@ export async function getAiMenuManagerInbox(params: {
     tId: string | number;
     sId: string | number;
     projectId: string;
+    recoverPending?: boolean;
 }) {
     const scope = getAiMenuManagerScopeDocumentIds(params);
     if (
@@ -525,13 +526,15 @@ export async function getAiMenuManagerInbox(params: {
     }
 
     const requestedSession = await getAiMenuManagerSession(params.sessionId);
-    const session = requestedSession?.hasPendingOperations
+    const session = params.recoverPending === false
         ? requestedSession
-        : await getLatestPendingAiMenuManagerSession({
-            tId: scope.tId,
-            sId: scope.sId,
-            projectId: params.projectId,
-        }) || requestedSession;
+        : requestedSession?.hasPendingOperations
+            ? requestedSession
+            : await getLatestPendingAiMenuManagerSession({
+                tId: scope.tId,
+                sId: scope.sId,
+                projectId: params.projectId,
+            }) || requestedSession;
     if (
         !session
         || String(session.tId) !== scope.tId

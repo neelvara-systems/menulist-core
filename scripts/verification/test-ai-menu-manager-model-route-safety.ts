@@ -10,7 +10,11 @@ import {
     normalizeAiMenuManagerProposalActionResponse,
     normalizeAiMenuManagerProposalCompleteResponse,
 } from '@lib/ai-menu-manager/schemas';
-import { buildDailySessionId, hashStableValue } from '@lib/ai-menu-manager/idempotency';
+import {
+    buildDailySessionId,
+    hashStableValue,
+    resolveDailySessionDateFromId,
+} from '@lib/ai-menu-manager/idempotency';
 import { buildAiMenuManagerReceipt } from '@lib/ai-menu-manager/receiptBuilder';
 
 const answer: AiMenuManagerModelRouteResult = {
@@ -67,6 +71,24 @@ const responseScope = {
 };
 const sessionDate = '2026-07-30';
 const sessionId = buildDailySessionId({ ...responseScope, sessionDate });
+assert.equal(resolveDailySessionDateFromId({
+    ...responseScope,
+    sessionId,
+}), sessionDate, 'remembered v2 sessions must recover their exact encoded date');
+assert.equal(resolveDailySessionDateFromId({
+    ...responseScope,
+    sId: '999',
+    sessionId,
+}), null, 'remembered sessions must not cross store scope');
+assert.equal(resolveDailySessionDateFromId({
+    ...responseScope,
+    projectId: 'other-project',
+    sessionId,
+}), null, 'remembered sessions must not cross project scope');
+assert.equal(resolveDailySessionDateFromId({
+    ...responseScope,
+    sessionId: `amm_${'a'.repeat(24)}`,
+}), null, 'legacy hashed sessions require an explicit validated date');
 const proposalId = `amm_prop_${'a'.repeat(28)}`;
 const createdAt = '2026-07-30T00:00:00.000Z';
 const card = {
