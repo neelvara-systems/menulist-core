@@ -31,7 +31,7 @@ import type { StoreDataType, StoreSpecialHours } from "@type/platform/store";
 import { normalizeOBPExternalHttpsUrl, normalizeOBPGoogleMapsUrl, normalizeOBPReviewUrl, normalizeOBPSocialUrl, normalizeOBPWebsiteUrl } from "@lib/obp/publicLinks";
 import { normalizeOBPPublicPhotoUrls } from "@lib/obp/publicPhotos";
 import { buildTelHref, buildWhatsAppPhoneParam } from "@lib/phone/phoneNumber";
-import { resolveHoursOutput } from "@lib/outputControl";
+import { hasPublicHoursTruth, resolveHoursOutput } from "@lib/outputControl";
 import { shouldShowStarterPublicPlaceholders } from "@lib/onboarding/starterActivation";
 import { resolveMenuListAttributionPolicy } from "@lib/platform/menuListBranding";
 import { normalizePublicOutletSlug } from "@lib/publicRouting/pathSegments";
@@ -638,10 +638,13 @@ export default function OBPResolvedSurface({
             timeZone: store?.timeZone,
         })
         : null;
+    const hasHoursTruth = hasPublicHoursTruth(store?.workingHours, store?.specialHours);
     const status = hoursOutput
         ? { isOpen: hoursOutput.styleHint === "open", statusText: hoursOutput.statusText, nextChange: hoursOutput.secondaryText }
-        : getStoreOpenStatus(store?.workingHours, store?.timeZone, new Date(), store?.specialHours);
-    const showStatusBadge = hoursOutput ? hoursOutput.showStatusBadge : true;
+        : hasHoursTruth
+            ? getStoreOpenStatus(store?.workingHours, store?.timeZone, new Date(), store?.specialHours)
+            : { isOpen: false, statusText: 'Hours not available', nextChange: undefined };
+    const showStatusBadge = hoursOutput ? hoursOutput.showStatusBadge : hasHoursTruth;
     const openHoursState = showStatusBadge ? (status.isOpen ? 'open' : 'closed') : 'unknown';
     const statusText = localizeStatusText(status.statusText, t);
     const statusNextChange = localizeStatusNextChange(status.nextChange, t);

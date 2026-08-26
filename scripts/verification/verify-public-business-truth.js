@@ -504,7 +504,7 @@ function verifyHoursDoNotInventOpenState() {
   const audit = read('__docs__/audits/menulist-production-readiness-audit.md');
   const changelog = read('__docs__/changelog.md');
   const { getStoreStatus } = require('../../src/lib/hours/hoursEngine');
-  const { resolveHoursOutput } = require('../../src/lib/outputControl/hoursConfidence');
+  const { hasPublicHoursTruth, resolveHoursOutput } = require('../../src/lib/outputControl/hoursConfidence');
 
   assertIncludes(hoursConfidence, 'hours_confidence_timestamp_parse_failed', 'Hours confidence timestamp parse diagnostic');
   assertIncludes(hoursConfidence, 'logHoursTimestampParseFailure', 'Hours confidence bounded timestamp parse logger');
@@ -532,6 +532,10 @@ function verifyHoursDoNotInventOpenState() {
   });
   assert(noHoursOutput.confidenceState === 'BROKEN', 'Output control must treat missing hours as broken');
   assert(noHoursOutput.statusText === 'Check with store', 'Output control must suppress missing-hours authority');
+  assert(hasPublicHoursTruth(undefined, undefined) === false, 'Missing public hours must not imply closed');
+  assert(hasPublicHoursTruth({}, {}) === false, 'Empty public hours records must not imply closed');
+  assert(hasPublicHoursTruth({ mon: 'closed' }, undefined) === true, 'Explicit closed working hours remain known truth');
+  assert(hasPublicHoursTruth(undefined, { '2026-08-26': { hours: 'closed' } }) === true, 'Explicit special hours remain known truth');
 
   const invalidNumericFreshness = resolveHoursOutput({
     workingHours: { mon: '09:00-17:00' },

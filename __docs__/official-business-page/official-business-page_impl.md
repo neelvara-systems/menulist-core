@@ -2,7 +2,7 @@
 
 **Status:** IMPLEMENTED — 3-Year Freeze  
 **Author:** Cascade (Lead Architect)  
-**Date:** February 15, 2026 (Created) | March 11, 2026 (Infrastructure Domination Rebuild) | March 18, 2026 (Distribution Strategy Update) | May 10, 2026 (Business Cover Update) | June 30, 2026 (Mobile Link Copy Acknowledgement) | July 16, 2026 (Public Delivery Parity) | July 17, 2026 (Store Index Cost Boundary) | August 15, 2026 (Accessible Accent Reset)
+**Date:** February 15, 2026 (Created) | March 11, 2026 (Infrastructure Domination Rebuild) | March 18, 2026 (Distribution Strategy Update) | May 10, 2026 (Business Cover Update) | June 30, 2026 (Mobile Link Copy Acknowledgement) | July 16, 2026 (Public Delivery Parity) | July 17, 2026 (Store Index Cost Boundary) | August 15, 2026 (Accessible Accent Reset) | August 26, 2026 (Missing-Hours Truth Guard)
 **Audience:** Developers
 
 ---
@@ -159,6 +159,15 @@ OBP Menu CTA entry-source diagnostics: `OBPMenuCTA` uses the shared `withAnalyti
 OBP dashboard summary read diagnostics: `getOBPDashboardOverview()` still computes visible owner dashboard status, WTD, MTD, and historical weeks from the already-read OBP daily docs. The optional overall-summary read supplies only `viewsChange`; if that read fails, the dashboard keeps `viewsChange: null` and logs bounded `owner_dashboard_obp_summary_read_failed` diagnostics with tenant/store/project/summary-doc presence-length metadata plus the fixed `use_daily_obp_docs_without_views_change` fallback policy. It does not log raw tenant IDs, store IDs, summary document IDs, owner analytics payloads, or exception text, and it does not add any fallback Firestore read/write. Source gate: `npm run verify:owner-dashboard-today-boundary`.
 
 OBP hours status fallback diagnostics: while `ENABLE_OUTPUT_CONTROL` is disabled, OBP still uses `src/lib/obp/hoursStatus.ts` for open/closed display. Invalid timezone fallback now logs the shared `hours_status_timezone_fallback_failed` diagnostic, and malformed current-day time ranges degrade to `Hours not available` instead of confident Open/Closed copy. This adds no Firestore read/write/delete, analytics write, Storage operation, Cloud Function, API route, cache invalidation, rule, index, or deploy requirement. Source gate: `npm run verify:working-hours-boundary`.
+
+Missing-hours truth guard: the single-store and multi-location OBP surfaces use
+`hasPublicHoursTruth()` before the legacy Open/Closed resolver whenever the
+broader output-control feature is disabled. Missing or empty weekly and special
+hours now render the localized `Hours not available` state without an
+Open/Closed badge. A non-empty schedule, including an explicit `closed` value,
+continues through the existing status engine. This is a pure projection change
+with zero additional Firebase operations and does not enable the stale-hours
+confidence feature.
 
 Mobile Official Page media and public-output failures use the same boundary. `MobileOfficialPageScreen` logs `mobile_official_page_cover_prepare_failed`, `mobile_official_page_cover_upload_failed`, `mobile_official_page_cover_generate_failed`, `mobile_official_page_photo_prepare_failed`, `mobile_official_page_photo_upload_failed`, `mobile_official_page_link_copy_failed`, and `mobile_official_page_native_share_failed` with bounded store, tenant, file-name length/presence, photo index/count, media-presence metadata, official-page URL presence/length, selected-project presence/length, copy/share label/value presence/length, language presence, project count, native-share support, and clipboard/fallback support booleans only. Its public-link copied feedback waits for Clipboard API success or acknowledged textarea fallback success, so failed browser handoffs do not show false copied feedback.
 

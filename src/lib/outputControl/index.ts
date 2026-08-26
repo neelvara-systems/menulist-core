@@ -12,7 +12,7 @@
  * @see __docs__/constitution/18-silent-correction-doctrine.md
  */
 
-export { resolveHoursOutput, getHoursConfidenceState } from "./hoursConfidence";
+export { getHoursConfidenceState, hasPublicHoursTruth, resolveHoursOutput } from "./hoursConfidence";
 export { standardizeName, standardizeNames, isBrandSafe } from "./namingStandardization";
 export type {
     ConfidenceState,

@@ -140,6 +140,26 @@ function daysSince(date: Date | null): number {
     return Math.floor(diffMs / (1000 * 60 * 60 * 24));
 }
 
+function hasNonEmptyHoursRecord(value: unknown): boolean {
+    return Boolean(value)
+        && typeof value === "object"
+        && !Array.isArray(value)
+        && Object.keys(value as Record<string, unknown>).length > 0;
+}
+
+/**
+ * Public surfaces may use the legacy Open/Closed resolver while the broader
+ * confidence feature remains disabled. They must still distinguish missing
+ * truth from an explicit closed schedule.
+ */
+export function hasPublicHoursTruth(
+    workingHours: unknown,
+    specialHours: unknown,
+): boolean {
+    return hasNonEmptyHoursRecord(workingHours)
+        || hasNonEmptyHoursRecord(specialHours);
+}
+
 /**
  * Validate hours structure (basic checks).
  * Returns true if hours data is structurally valid.

@@ -27,7 +27,7 @@ import { getLocalizedText, getPrimaryLocalizedLanguage } from "@lib/localization
 import { createPublicCustomerTranslator } from "@lib/localization/publicCustomerMessages";
 import { resolveOBPAccentColor } from "@lib/obp/accentColor";
 import { getStoreOpenStatus } from "@lib/obp/hoursStatus";
-import { resolveHoursOutput } from "@lib/outputControl";
+import { hasPublicHoursTruth, resolveHoursOutput } from "@lib/outputControl";
 import { resolveMenuListAttributionPolicy } from "@lib/platform/menuListBranding";
 import { isPlatformEntityBlocked } from "@lib/platform/entityBlock";
 import { normalizeMultiOutletNumericDocumentId } from "@lib/multiOutlet/projectIdBoundary";
@@ -260,11 +260,14 @@ export default async function BrandOBPContent({ store, baseUrl, requestedLanguag
                             timeZone: outlet.timeZone,
                         })
                         : null;
+                    const hasHoursTruth = hasPublicHoursTruth(outlet.workingHours, outlet.specialHours);
                     const status = hoursOutput
                         ? { isOpen: hoursOutput.styleHint === 'open', statusText: hoursOutput.statusText }
-                        : getStoreOpenStatus(outlet.workingHours, outlet.timeZone, new Date(), outlet.specialHours);
+                        : hasHoursTruth
+                            ? getStoreOpenStatus(outlet.workingHours, outlet.timeZone, new Date(), outlet.specialHours)
+                            : { isOpen: false, statusText: 'Hours not available' };
                     const statusText = localizeOutletStatusText(status.statusText, t);
-                    const showBadge = hoursOutput ? hoursOutput.showStatusBadge : true;
+                    const showBadge = hoursOutput ? hoursOutput.showStatusBadge : hasHoursTruth;
                     // G-12 (§11 PUBLIC-ROUTING-DOCTRINE): the master location
                     // uses the canonical `/menu` path; non-master locations
                     // require a normalized owner-chosen outlet slug. The old
