@@ -6,15 +6,15 @@
 
 **Initial candidate commit:** `b857a164944012d42131917e7c62215c94022c0f`
 
-**Current tested MenuList product commit:** `c22dd233b79afd3acb3c03924f7f3111112ee438`
+**Current tested MenuList product commit:** `0a0dd9a55a4284603febcbeb865a2eae9f9ad033`
 
 **MenuList product snapshot commit:** `3a34a975d52b1a3b8bec4be35c40b4930b1f9441`
 
 **Candidate filesystem state:** direct Git, server-ref, Vercel build-log, and
 hosted `/api/version` readback proved exact MenuList product commit
-`c22dd233b79afd3acb3c03924f7f3111112ee438` on QA. Current shared `staging`
-HEAD is `9fcdf8a9c3251e4b45fa4e7ce99d305125cf71a0`; its newer delta is an
-independently owned Answerlattice change and retains `c22dd233…` as an ancestor.
+`0a0dd9a55a4284603febcbeb865a2eae9f9ad033` on QA. Current shared `staging`
+HEAD is the same exact commit. It includes the Growth Kits inventory and
+missing-hours corrections while `main` remains untouched.
 The two scoped-message verifier corrections and regenerated evidence are tracked
 as MLRC-069. The hosted
 MLRC-045 interaction remains attributable to its included
@@ -59,9 +59,11 @@ The generated discovery inventory is retained in
   and the MenuList QA application/tenant hosts after exact build identity is
   verified.
 - Production customer data and destructive production testing are excluded.
-- Canonica, Answerlattice, CampaignCue, SignalDesk, MyCodex, GrowthOS,
-  KitStamp, and Neelvara behavior is excluded except for routing and product
-  separation checks.
+- Canonica, Answerlattice, CampaignCue, SignalDesk, MyCodex, standalone
+  GrowthOS product behavior, KitStamp, and Neelvara behavior is excluded except
+  for routing and product-separation checks. MenuList's shipped owner-facing
+  Growth Kits add-on remains fully included even though its internal namespace
+  uses `growthos`.
 - Live Razorpay checkout, credentials, webhooks, captures, refunds,
   settlements, and money movement are excluded. Application behavior around
   the provider boundary is included through source, deterministic tests,
@@ -271,7 +273,8 @@ audit-fix-retest loop.
 | MLRC-079 | Medium | Recovered compact-session manual-card completion | Exact `529c356…` recovered the prior-day card, enabled the composer, and exposed `Mark done`, but inferred proposal backing from persisted `executionMode: existing_server_api`. The card existed in the compact session without a corresponding proposal document, so the UI called the proposal action route, received 404, and left the owner stuck. | Mark only normalized proposal-document projections with a non-persisted client flag. Route compact-session manual completion/cancel through the existing exact-session transaction on desktop and mobile; discard any stored marker during normalization. | Exact hosted 404 reproduction; compact-session integrity regression; full `verify:ai-menu-manager`; focused lint; strict TypeScript; exact `38d124e…` one-click completion, hard reload, and authenticated exact-session API readback | One click on exact `38d124e…` removed the card, rendered the truthful manual-task receipt, and left menu truth unchanged. Hard reload showed an enabled composer and no pending cards. Exact-session API readback returned the requested prior-day ID, `hasPendingOperations: false`, zero pending operations, and the persisted `manual_task` receipt. | CLOSED |
 | MLRC-080 | Medium | Hosted QA fixture command reproducibility | The maintained `menulist:hosted-qa-certification-fixture` command invoked `tsx`, but `tsx` is not a pinned repository dependency. A clean installed workspace failed immediately with `sh: tsx: command not found`, preventing repeatable fixture verification/cleanup. | Use the already pinned `ts-node` + `tsconfig-paths/register` repository convention, make the script CommonJS-transpilable, and lock the runner contract in the fixture verifier. | Exact failed command; fixture boundary regression; runner usage probe; focused ESLint; strict TypeScript | The registered command now reaches the guarded fixture program with pinned dependencies; the source verifier rejects any return to unpinned `tsx`. Authenticated data readback remains available through the connected Cloud Shell while the separate local Firebase CLI token requires operator reauthentication. | CLOSED |
 | MLRC-081 | High | MenuList certification inventory completeness | The generator classified `/growth-kits`, its four APIs, and GrowthOS-namespaced implementation controls as an out-of-scope product boundary even though active product truth and the hosted owner navigation define Growth Kits as a shipped MenuList Pro/Multi-location module. This excluded a reachable paid feature from the MenuList RC matrix and anonymous API sweep. | Keep the internal GrowthOS namespace and product boundary intact while classifying its shipped add-on surface as MenuList certification scope. Add exact-hosted entitled-owner navigation evidence, expand the API manifest to 140 handlers/157 methods, and make the verifier fail if `/growth-kits` leaves MenuList scope again. | Exact hosted owner navigation; 140-handler anonymous boundary; `verify:menulist-rc-inventory`; `verify:growthos`; GrowthOS transaction emulator body; `git diff --check` | Exact `c22dd233…` rendered Growth Kits without generic failure or overflow; all four APIs rejected the anonymous empty probe safely; 253 Growth Kits source checks, client/rate/timestamp contracts, and isolated-project transaction tests passed. | CLOSED |
-| MLRC-082 | Medium | Growth Kits readiness after Refresh with missing hours | The exact hosted owner refreshed a populated menu and Growth Kits rendered `Store is marked closed today.` even though Dashboard classified hours as missing and the public menu exposed no temporary closure. The source-facts helper collapsed missing, malformed, blank, and explicit `closed` hours into one false closed-today label. | Preserve the existing conservative `isOpenToday: false` behavior for unknown hours, but omit the closed label unless the stored schedule explicitly says `closed`. Readiness now distinguishes `Business hours are missing.` from the explicit closed warning; generated copy continues saying `on the menu` while hours are unknown. | Exact hosted owner/public comparison; Growth Kits 255-check source suite; client contracts; isolated-project transaction emulator body; strict TypeScript; focused ESLint | Source regression proves missing/malformed hours never emit the closed warning and an explicit closed schedule still does. Exact hosted fix retest pending automatic QA deployment. | CLOSED (source) |
+| MLRC-082 | Medium | Growth Kits readiness after Refresh with missing hours | The exact hosted owner refreshed a populated menu and Growth Kits rendered `Store is marked closed today.` even though Dashboard classified hours as missing and the public menu exposed no temporary closure. The source-facts helper collapsed missing, malformed, blank, and explicit `closed` hours into one false closed-today label. | Preserve the existing conservative `isOpenToday: false` behavior for unknown hours, but omit the closed label unless the stored schedule explicitly says `closed`. Readiness now distinguishes `Business hours are missing.` from the explicit closed warning; generated copy continues saying `on the menu` while hours are unknown. | Exact hosted owner/public comparison; exact `0a0dd9a…` build/version readback; Growth Kits 255-check source suite; client contracts; isolated-project transaction emulator body; strict TypeScript; focused ESLint | Exact `0a0dd9a…` Refresh rendered `Business hours are missing.`, made the old pack stale, and Prepare fresh pack produced ready output whose Google draft retained `on the menu` and omitted both closed warning and closed-hours copy. Explicit-closed source regression remains passing. | CLOSED |
+| MLRC-083 | Medium | Growth Kits Staff line completion and duplicate execution | The entitled owner clicked `Done`; the mark-used request completed, but the page remained visually indistinguishable with an enabled `Done` button. Reload did not expose the persisted state, so a reasonable repeat click could create another export document plus kit/summary writes. Later copy/share/download actions also overwrote kit status away from `used`. | Treat `used` as terminal for the kit while continuing to record legitimate later handoffs. Render `Marked done` and disable the control on desktop/mobile after settlement; guard the handler against repeat mark-used calls. | Growth Kits 260-check source suite; client contracts; isolated-project transaction emulator; focused ESLint; strict TypeScript; exact hosted reproduction on `0a0dd9a…` | Transaction regression proves a mark-used export settles `used` and a later copy retains `used`; source contracts require visible settled controls and repeat-write guards on desktop/mobile. Exact hosted fix retest pending the automatic QA build for the correction commit. | CLOSED (source) |
 
 ## E. Firebase cost audit
 
@@ -299,6 +302,13 @@ The maintained scanner now reviews 534 MenuList runtime files: 9 high-listener,
 The count increase from 533/52 to 534/53 was inventory drift, not a newly
 confirmed billed-operation regression. No runtime cache or query change was
 introduced without measurable evidence.
+
+Confirmed optimization MLRC-083: after the first successful Staff line
+mark-used operation, both owner clients now disable the settled control and the
+server preserves terminal `used` state. Before the correction, each later
+repeat click could add one export document and re-run the kit and summary merge
+writes; after settlement the repeated owner action performs zero backend
+operations. Legitimate copy/share/download handoffs remain recorded.
 
 Investigated without a justified runtime optimization: public projection
 reads, SWR local-storage scoping, public revalidation merge behavior, owner

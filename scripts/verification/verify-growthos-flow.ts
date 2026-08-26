@@ -930,6 +930,8 @@ assertCheck(growthOSPage.includes('aria-label="Menu"'), "Desktop Growth Kits men
 assertCheck(growthOSPage.includes('aria-label="Review rating"'), "Desktop Growth Kits review rating selector must have an accessible name");
 assertTextOrder(growthOSPage, 'const copied = await copyToClipboard(output.text);', 'await recordUse(output, "copy");', "Desktop Growth Kits must record copy only after copy succeeds");
 assertTextOrder(growthOSPage, 'if (!copied) throw new Error("desktop_growthos_share_fallback_copy_failed");', 'await recordUse(output, "share");', "Desktop Growth Kits must record share only after native share or fallback copy succeeds");
+assertCheck(growthOSPage.includes('latestKit.status === "used" ? "Marked done" : "Done"'), "Desktop Growth Kits must visibly preserve the completed staff action");
+assertCheck(growthOSPage.includes('if (latestKit?.status === "used") return;'), "Desktop Growth Kits must block repeated mark-used writes");
 assertTextOrder(growthOSPage, 'downloadText(`${output.destination}.txt`, output.text);', 'await recordUse(output, "download");', "Desktop Growth Kits must record download only after download starts");
 assertCheck(!growthOSPage.includes('onClick={() => copyToClipboard(reviewResult.reply || "")}'), "Desktop Growth Kits review reply copy must not be fire-and-forget");
 [
@@ -961,6 +963,9 @@ assertCheck(growthOSMobileCard.includes("getGrowthOSBoundedStringContext('output
 assertCheck(growthOSMobileCard.includes("outputTextLength: output?.text?.length || 0"), "Mobile Growth Kits must log only output text length");
 assertTextOrder(growthOSMobileCard, "const copied = await copyText(output.text);", "await record(output, 'copy');", "Mobile Growth Kits must record copy only after copy succeeds");
 assertTextOrder(growthOSMobileCard, "if (!copied) throw new Error('mobile_growthos_share_fallback_copy_failed');", "await record(output, 'share');", "Mobile Growth Kits must record share only after native share or fallback copy succeeds");
+assertCheck(growthOSMobileCard.includes("latestKit?.status === 'used' ? 'Marked done' : 'Done'"), "Mobile Growth Kits must visibly preserve the completed staff action");
+assertCheck(growthOSMobileCard.includes("if (latestKit?.status === 'used') return;"), "Mobile Growth Kits must block repeated mark-used writes");
+assertCheck(growthOSServerDal.includes('currentKit.status === "used" && nextStatus !== "used"'), "Growth Kits must preserve used status across later exports");
 assertCheck(!growthOSMobileCard.includes("(error as Error).message"), "Mobile Growth Kits failure toasts must not show raw exception messages");
 assertCheck(!growthOSClientDal.includes("payload?.message || payload?.error"), "GrowthOS client helper does not throw raw API response text");
 assertCheck(growthOSClientDal.includes("GROWTHOS_CLIENT_REQUEST_POLICY"), "GrowthOS client helper defines a shared browser request policy");

@@ -324,6 +324,28 @@ are missing or malformed. Readiness renders `Business hours are missing.` for
 that state and retains `Store is marked closed today.` only for an explicit
 `closed` schedule. Menu output remains conservative while hours are unknown.
 
+## August 26, 2026 Mark-Used Completion State
+
+Desktop and mobile Staff line controls now render `Marked done` and disable
+after a successful mark-used mutation. Both clients preserve the optimistic
+`used` state across later handoffs, and the server transaction keeps `used`
+terminal when a later copy, share, download, or print export is recorded.
+
+Validation:
+
+- Passed 260 Growth Kits source and contract checks.
+- Passed GrowthOS client/rate/timestamp contracts.
+- Passed the isolated-project Firestore transaction body against the already
+  running emulator on port 8080.
+- Passed focused ESLint and strict TypeScript.
+
+Cost impact: the first successful mark-used action keeps its existing one
+export write plus kit/summary merge behavior. A repeated click after settlement
+is now blocked in both owner clients, avoiding the additional export document
+and kit/summary update that the indistinguishable `Done` control previously
+allowed. No read, query, cache, entitlement, provider, scheduler, rules, index,
+or collection path changed.
+
 Validation: the Growth Kits source suite passed 255 checks, including both
 missing-hours and explicit-closed regressions. Client contracts and the
 isolated-project transaction emulator body remain passing. This correction

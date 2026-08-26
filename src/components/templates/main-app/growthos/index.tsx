@@ -302,7 +302,9 @@ const GrowthOSPage = () => {
                 ...current,
                 latestKit: current.latestKit ? {
                     ...current.latestKit,
-                    status: method === "mark_used" ? "used" : method === "copy" ? "copied" : method === "share" ? "shared" : "downloaded",
+                    status: current.latestKit.status === "used"
+                        ? "used"
+                        : method === "mark_used" ? "used" : method === "copy" ? "copied" : method === "share" ? "shared" : "downloaded",
                     isStale: typeof payload?.data?.isStale === "boolean" ? payload.data.isStale : current.latestKit.isStale,
                 } : current.latestKit,
             } : current, { revalidate: false });
@@ -380,6 +382,7 @@ const GrowthOSPage = () => {
     };
 
     const handleMarkUsed = async (output: GrowthOSOutput) => {
+        if (latestKit?.status === "used") return;
         try {
             await recordUse(output, "mark_used");
             notification.success({ message: "Marked used", placement: "bottomRight" });
@@ -566,7 +569,9 @@ const GrowthOSPage = () => {
                         <Card className={styles.staffPanel}>
                             <Text strong>Staff line</Text>
                             <Text className={styles.outputText}>{staffBrief.mainLine || staffBrief.text}</Text>
-                            <Button disabled={isLatestKitStale || !canUseOutput(staffBrief)} onClick={() => handleMarkUsed(staffBrief)}>Done</Button>
+                            <Button disabled={isLatestKitStale || !canUseOutput(staffBrief) || latestKit.status === "used"} onClick={() => handleMarkUsed(staffBrief)}>
+                                {latestKit.status === "used" ? "Marked done" : "Done"}
+                            </Button>
                         </Card>
                     ) : null}
                     {counterPrompt ? (

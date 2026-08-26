@@ -212,6 +212,20 @@ async function run(): Promise<void> {
     assert.equal((await kitsCollection.doc(generated.kit.id).get()).data()?.status, "copied");
     assert.equal((await summaryRef.get()).data()?.latestKit?.status, "copied");
 
+    const markedUsed = await recordGrowthOSExportServer({
+        ...exportParams,
+        method: "mark_used",
+        operationId: "00000000-0000-4000-8000-000000000105",
+    });
+    assert.equal(markedUsed.status, "used");
+    const copiedAfterUse = await recordGrowthOSExportServer({
+        ...exportParams,
+        operationId: "00000000-0000-4000-8000-000000000106",
+    });
+    assert.equal(copiedAfterUse.status, "used", "later exports must not erase the completed staff action");
+    assert.equal((await kitsCollection.doc(generated.kit.id).get()).data()?.status, "used");
+    assert.equal((await summaryRef.get()).data()?.latestKit?.status, "used");
+
     await projectRef.set({
         ...initialProject,
         files: [{

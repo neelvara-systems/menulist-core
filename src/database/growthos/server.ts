@@ -502,6 +502,9 @@ export async function recordGrowthOSExportServer(params: {
         const transactionStale = !currentSourceFactsHash
             || currentSourceFactsHash !== currentKit.sourceFactsHash
             || isGrowthOSKitExpired(currentKit.expiresAt);
+        const committedStatus = currentKit.status === "used" && nextStatus !== "used"
+            ? "used"
+            : nextStatus;
         if (
             transactionStale
             && params.method !== "mark_used"
@@ -515,9 +518,9 @@ export async function recordGrowthOSExportServer(params: {
             isStale: transactionStale,
         };
         transaction.create(exportRef, sanitizeForAdminFirestore(committedExportData));
-        if (nextStatus) {
+        if (committedStatus) {
             transaction.set(kitRef, sanitizeForAdminFirestore({
-                status: nextStatus,
+                status: committedStatus,
                 updatedAt: exportedAt,
             }), { merge: true });
         }
@@ -535,14 +538,14 @@ export async function recordGrowthOSExportServer(params: {
                 transaction.set(summaryRef, sanitizeForAdminFirestore({
                     latestKit: {
                         ...summary.latestKit,
-                        status: nextStatus || summary.latestKit.status,
+                        status: committedStatus || summary.latestKit.status,
                         isStale: transactionStale,
                     },
                     lastUpdated: exportedAt,
                 }), { merge: true });
             }
         }
-        return { exportId: exportRef.id, isStale: transactionStale, status: nextStatus };
+        return { exportId: exportRef.id, isStale: transactionStale, status: committedStatus };
     });
 }
 

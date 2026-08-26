@@ -1,5 +1,15 @@
 # MenuList — Changelog
 
+## August 26, 2026 - Growth Kits Mark-Used Completion State
+
+- Made the Staff line `Done` action visibly settle as `Marked done` on desktop
+  and mobile, with the completed control disabled to prevent repeated
+  mark-used submissions.
+- Kept the server-side kit state `used` after later copy, share, or download
+  exports so refreshes and adjacent handoffs cannot erase completion. This
+  prevents an avoidable repeat mark-used export write while retaining every
+  legitimate handoff record.
+
 ## August 26, 2026 - Growth Kits Missing-Hours Truthfulness
 
 - Kept missing business hours distinct from an explicit closed-today schedule

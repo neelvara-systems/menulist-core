@@ -200,7 +200,9 @@ export default function GrowthKitsMobileCard({
                 ...current,
                 latestKit: current.latestKit ? {
                     ...current.latestKit,
-                    status: method === 'mark_used' ? 'used' : method === 'copy' ? 'copied' : 'shared',
+                    status: current.latestKit.status === 'used'
+                        ? 'used'
+                        : method === 'mark_used' ? 'used' : method === 'copy' ? 'copied' : 'shared',
                     isStale: typeof payload?.data?.isStale === 'boolean' ? payload.data.isStale : current.latestKit.isStale,
                 } : current.latestKit,
             } : current, { revalidate: false });
@@ -261,6 +263,7 @@ export default function GrowthKitsMobileCard({
     };
 
     const markUsed = async (output: GrowthOSOutput) => {
+        if (latestKit?.status === 'used') return;
         if (!canUseOutput(output) || isStale) {
             Toast.show({ content: 'Update this pack before marking it used.', duration: 1800 });
             return;
@@ -363,8 +366,8 @@ export default function GrowthKitsMobileCard({
                             <Button fill="outline" onClick={() => copyOutput(staffBrief)} style={{ minHeight: 44 }}>
                                 Copy staff line
                             </Button>
-                            <Button fill="none" onClick={() => markUsed(staffBrief)} style={{ minHeight: 44 }}>
-                                Done
+                            <Button disabled={latestKit?.status === 'used'} fill="none" onClick={() => markUsed(staffBrief)} style={{ minHeight: 44 }}>
+                                {latestKit?.status === 'used' ? 'Marked done' : 'Done'}
                             </Button>
                         </Flex>
                     </Flex>
