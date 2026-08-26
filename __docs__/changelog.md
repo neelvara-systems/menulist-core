@@ -1,5 +1,16 @@
 # MenuList — Changelog
 
+## August 26, 2026 - Reproducible Hosted QA Fixture Verification
+
+- Replaced the unpinned, unavailable `tsx` invocation in the MenuList hosted-QA
+  fixture command with the repository's pinned `ts-node` and path-alias runner.
+  The maintained prepare, verify, repair, and cleanup harness can now start from
+  a clean dependency install without downloading an undeclared tool.
+- Extended provider-free subscription verification across cycle,
+  subscription, manual-confirmation, status-history, and QA lease timestamp
+  fields. This changes no fixture data, payment state, production path, or live
+  Razorpay behavior.
+
 ## August 26, 2026 - Recovered Menu Manager Session Continuity
 
 - Preserved the exact date encoded in a remembered scoped v2 Menu Manager

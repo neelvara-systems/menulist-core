@@ -72,7 +72,7 @@ function resolveFirebaseCliModule(name: 'api.js' | 'auth.js'): string {
 let ephemeralAdcDirectory: string | null = null;
 
 async function establishEphemeralFirebaseCliAdc(): Promise<void> {
-    const localRequire = createRequire(import.meta.url);
+    const localRequire = createRequire(__filename);
     const firebaseCliAuth = localRequire(resolveFirebaseCliModule('auth.js')) as FirebaseCliAuth;
     const firebaseCliApi = localRequire(resolveFirebaseCliModule('api.js')) as FirebaseCliApi;
     const account = firebaseCliAuth.findAccountByEmail(OPERATOR_EMAIL);
@@ -331,7 +331,14 @@ async function readFixture(fixtureId: string) {
     assert.equal(subscriptionData.pId, 'ML');
     assert.equal(subscriptionData.productId, 'ML');
     assert.equal(subscriptionData.status, 'active');
+    assert.ok(subscriptionData.cycleStartDate instanceof Timestamp);
     assert.ok(subscriptionData.cycleEndDate instanceof Timestamp);
+    assert.ok(subscriptionData.subscriptionStartDate instanceof Timestamp);
+    assert.ok(subscriptionData.subscriptionEndDate instanceof Timestamp);
+    assert.ok(subscriptionData.manualPaymentConfirmedAt instanceof Timestamp);
+    assert.ok(subscriptionData.qaCertification?.issuedAt instanceof Timestamp);
+    assert.ok(subscriptionData.qaCertification?.expiresAt instanceof Timestamp);
+    assert.ok(subscriptionData.statuses?.[0]?.timestamp instanceof Timestamp);
     assert.ok(subscriptionData.cycleEndDate.toMillis() > Date.now());
     assert.equal(markerData.authUid, subscriptionData.userId);
     assert.equal(markerData.tenantId, subscriptionData.tenantId);
