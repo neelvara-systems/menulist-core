@@ -164,8 +164,10 @@ Missing-hours truth guard: the single-store and multi-location OBP surfaces use
 `hasPublicHoursTruth()` before the legacy Open/Closed resolver whenever the
 broader output-control feature is disabled. Missing or empty weekly and special
 hours now render the localized `Hours not available` state without an
-Open/Closed badge. A non-empty schedule, including an explicit `closed` value,
-continues through the existing status engine. This is a pure projection change
+Open/Closed badge. Weekly hours or an explicit special-hours entry for the
+store's current local date, including an explicit `closed` value, continue
+through the existing status engine; a special-hours entry for another date does
+not imply today's status. This is a pure projection change
 with zero additional Firebase operations and does not enable the stale-hours
 confidence feature.
 

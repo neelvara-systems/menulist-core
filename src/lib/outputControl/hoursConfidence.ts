@@ -15,11 +15,14 @@
  */
 
 import {
+    getStoreLocalDateKey,
     getStoreStatus,
     normalizeWorkingHoursValue,
     WORKING_HOURS_DAY_KEYS,
 } from "@lib/hours/hoursEngine";
+import { getSpecialHoursEntry } from "@lib/hours/specialHours";
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from "@lib/runtime/runtimeDiagnostics";
+import type { StoreSpecialHours } from "@type/platform/store";
 import type {
     ConfidenceState,
     HoursConfidenceInput,
@@ -155,9 +158,16 @@ function hasNonEmptyHoursRecord(value: unknown): boolean {
 export function hasPublicHoursTruth(
     workingHours: unknown,
     specialHours: unknown,
+    timeZone?: string,
+    now = new Date(),
 ): boolean {
-    return hasNonEmptyHoursRecord(workingHours)
-        || hasNonEmptyHoursRecord(specialHours);
+    if (hasNonEmptyHoursRecord(workingHours)) return true;
+    if (!hasNonEmptyHoursRecord(specialHours)) return false;
+
+    return Boolean(getSpecialHoursEntry(
+        specialHours as StoreSpecialHours,
+        getStoreLocalDateKey(timeZone, now),
+    ));
 }
 
 /**

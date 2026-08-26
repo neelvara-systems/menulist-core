@@ -535,7 +535,18 @@ function verifyHoursDoNotInventOpenState() {
   assert(hasPublicHoursTruth(undefined, undefined) === false, 'Missing public hours must not imply closed');
   assert(hasPublicHoursTruth({}, {}) === false, 'Empty public hours records must not imply closed');
   assert(hasPublicHoursTruth({ mon: 'closed' }, undefined) === true, 'Explicit closed working hours remain known truth');
-  assert(hasPublicHoursTruth(undefined, { '2026-08-26': { hours: 'closed' } }) === true, 'Explicit special hours remain known truth');
+  assert(hasPublicHoursTruth(
+    undefined,
+    { '2026-08-26': { hours: 'closed' } },
+    'UTC',
+    new Date('2026-08-26T12:00:00.000Z'),
+  ) === true, 'Explicit current-date special hours remain known truth');
+  assert(hasPublicHoursTruth(
+    undefined,
+    { '2026-08-25': { hours: 'closed' } },
+    'UTC',
+    new Date('2026-08-26T12:00:00.000Z'),
+  ) === false, 'Another date special-hours record must not imply the current date is closed');
 
   const invalidNumericFreshness = resolveHoursOutput({
     workingHours: { mon: '09:00-17:00' },

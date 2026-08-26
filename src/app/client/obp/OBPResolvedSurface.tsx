@@ -638,7 +638,11 @@ export default function OBPResolvedSurface({
             timeZone: store?.timeZone,
         })
         : null;
-    const hasHoursTruth = hasPublicHoursTruth(store?.workingHours, store?.specialHours);
+    const hasHoursTruth = hasPublicHoursTruth(
+        store?.workingHours,
+        store?.specialHours,
+        store?.timeZone,
+    );
     const status = hoursOutput
         ? { isOpen: hoursOutput.styleHint === "open", statusText: hoursOutput.statusText, nextChange: hoursOutput.secondaryText }
         : hasHoursTruth

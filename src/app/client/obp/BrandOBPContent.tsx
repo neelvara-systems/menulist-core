@@ -260,7 +260,11 @@ export default async function BrandOBPContent({ store, baseUrl, requestedLanguag
                             timeZone: outlet.timeZone,
                         })
                         : null;
-                    const hasHoursTruth = hasPublicHoursTruth(outlet.workingHours, outlet.specialHours);
+                    const hasHoursTruth = hasPublicHoursTruth(
+                        outlet.workingHours,
+                        outlet.specialHours,
+                        outlet.timeZone,
+                    );
                     const status = hoursOutput
                         ? { isOpen: hoursOutput.styleHint === 'open', statusText: hoursOutput.statusText }
                         : hasHoursTruth

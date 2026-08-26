@@ -223,9 +223,11 @@ function verifyOwnerMutationBoundary() {
   const menuCta = read('src/app/client/obp/OBPMenuCTA.tsx');
   const obpStyles = read('src/app/client/obp/obp.module.scss');
 
-  assertIncludes(resolvedSurface, 'hasPublicHoursTruth(store?.workingHours, store?.specialHours)', 'single-store OBP missing-hours truth guard');
+  assertIncludes(resolvedSurface, 'hasPublicHoursTruth(', 'single-store OBP missing-hours truth guard');
+  assertIncludes(resolvedSurface, 'store?.timeZone,', 'single-store OBP current-date special-hours scope');
   assertIncludes(resolvedSurface, 'showStatusBadge = hoursOutput ? hoursOutput.showStatusBadge : hasHoursTruth', 'single-store OBP missing-hours badge suppression');
-  assertIncludes(brandContent, 'hasPublicHoursTruth(outlet.workingHours, outlet.specialHours)', 'brand OBP missing-hours truth guard');
+  assertIncludes(brandContent, 'hasPublicHoursTruth(', 'brand OBP missing-hours truth guard');
+  assertIncludes(brandContent, 'outlet.timeZone,', 'brand OBP current-date special-hours scope');
   assertIncludes(brandContent, 'showBadge = hoursOutput ? hoursOutput.showStatusBadge : hasHoursTruth', 'brand OBP missing-hours badge suppression');
 
   assertIncludes(locationTab, 'name="addressLine"', 'desktop canonical address field');
