@@ -305,6 +305,7 @@ export interface AiMenuManagerPendingOperation {
     projectId: string;
     card: AiMenuManagerCardPayload;
     executionMode: AiMenuManagerExecutionMode;
+    proposalApiBacked?: boolean;
     patch?: AiMenuManagerProjectPatch;
     patchHash?: string;
     baseProjectUpdatedAt?: string;

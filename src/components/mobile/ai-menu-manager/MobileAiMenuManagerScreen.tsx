@@ -600,7 +600,7 @@ export default function MobileAiMenuManagerScreen({
         }
         setWorkingCardId(card.cardId);
         try {
-            const isServerBackedCard = operation.executionMode === 'existing_server_api' && !operation.patch;
+            const isServerBackedCard = operation.proposalApiBacked === true;
             if (card.kind === 'unsupported') {
                 if (isServerBackedCard) {
                     await submitAiMenuManagerProposalAction({

@@ -740,6 +740,8 @@ When the current-day selected-project session is absent, the protected inbox mus
 
 When desktop/mobile retain a recovered deterministic v2 session ID across a subsequent render, the client must derive and revalidate its encoded date against the same tenant/store/project scope before the direct read. A cross-scope, malformed, or legacy hashed ID without an explicit validated date must fail closed. An explicit `/sessions/[sessionId]` lookup must return only that requested session and must not recover a different pending session.
 
+A compact-session manual card whose execution family is `existing_server_api` must not be treated as a proposal document merely from that execution mode. Mark done/cancel must transactionally remove the exact compact operation and add its receipt. Only a card projected from a normalized proposal document may carry the non-persisted proposal-API backing marker and use proposal action/completion routes; a forged persisted marker must be discarded during session normalization.
+
 ### AMM-COST-007A: Compact Session Payload Budget
 
 Every browser and Admin compact-session mutation must pass the shared 700 KB write preparation boundary. When history makes the payload too large, the boundary removes artifact references, older receipt summaries, and oldest compact messages in that order. It must not remove pending operations or pending proposal summaries. If the payload still exceeds the budget, a new preparation fails with fixed owner-safe guidance; completion/cancel may proceed only when it reduces an already oversized retained document.

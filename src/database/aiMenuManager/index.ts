@@ -671,6 +671,7 @@ function buildServerBackedOperations(params: {
         projectId: params.projectId,
         card,
         executionMode: 'existing_server_api',
+        proposalApiBacked: true,
         idempotencyKeys: [],
         createdAt: now,
         updatedAt: now,

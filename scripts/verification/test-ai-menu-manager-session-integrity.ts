@@ -111,6 +111,14 @@ assert.equal(normalized.counters.commands, 4);
 assert.equal(normalized.counters.compoundCommands, 0);
 assert.equal('injected' in normalized, false, 'unknown top-level fields must not survive normalization');
 
+const forgedProposalBacking = validSession();
+forgedProposalBacking.pendingOperations[0].proposalApiBacked = true;
+assert.equal(
+    normalizeAiMenuManagerSessionSnapshot(forgedProposalBacking)?.pendingOperations?.[0].proposalApiBacked,
+    undefined,
+    'persisted compact operations must not self-assert proposal API backing',
+);
+
 assert.equal(normalizeAiMenuManagerSessionSnapshot({
     ...validSession(),
     hasPendingOperations: false,

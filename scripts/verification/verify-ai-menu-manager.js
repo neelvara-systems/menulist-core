@@ -379,6 +379,7 @@ assert(clientDal.includes('getAiMenuManagerServerInbox'), 'AMM client inbox must
 assert(clientDal.includes('if (!session) {') && clientDal.includes('return buildClientInboxFromServer({ inbox, projectId: params.projectId, scope });'), 'AMM client inbox must use bounded server recovery when the current-day compact session does not exist');
 assert(clientDal.includes('const directOperations = normalizeOperations(session, params.projectId)') && clientDal.includes('operations: [...directOperations, ...serverOperations]'), 'AMM server inbox hydration must retain direct compact operations while adding server-backed proposal cards');
 assert(clientDal.includes('params.cards.map<AiMenuManagerPendingOperation>'), 'AMM server-backed card projection must retain the exact pending-operation contract');
+assert(clientDal.includes('proposalApiBacked: true'), 'Only proposal API projections may carry the client-only server-backing marker');
 assert(sendCommandBlock.includes('reusableSession?.hasPendingOperations') && sendCommandBlock.includes('reusableSession.sessionDate'), 'AMM commands must continue a recovered unresolved session until its pending work is cleared');
 assert(clientDal.includes("executionMode: 'existing_server_api'"), 'Server-backed fallback cards must be represented with the existing_server_api execution mode');
 assert(clientDal.includes('const body: AiMenuManagerCommandRequest') && !clientDal.includes('body: JSON.stringify({\n            ...request'), 'AMM server fallback command must send only API fields, not the loaded project JSON');
@@ -1443,6 +1444,8 @@ assert(desktopRoute.includes('buildAiMenuManagerClientExecutionDirective'), 'Des
 assert(desktopRoute.includes('buildAiMenuManagerClientBatchExecution') && desktopRoute.includes('completeAiMenuManagerClientOperations'), 'Desktop AMM must apply compound cards with one project save and one compact completion write');
 assert(desktopRoute.includes('Approve all') && desktopRoute.includes('updates prepared together'), 'Desktop AMM must expose a clear grouped approval control');
 assert(desktopRoute.includes('isServerBackedCard') && desktopRoute.includes('submitAiMenuManagerProposalAction'), 'Desktop AMM must use guarded proposal APIs only for server-backed fallback cards');
+assert(desktopRoute.includes("const isServerBackedCard = operation.proposalApiBacked === true"), 'Desktop AMM must not infer proposal backing from an execution mode persisted in compact sessions');
+assert(!desktopRoute.includes("const isServerBackedCard = operation.executionMode === 'existing_server_api'"), 'Desktop AMM compact-session cards must not be sent to a proposal API without proposal backing');
 assert(desktopRoute.includes('completeAiMenuManagerClientProposal'), 'Desktop AMM must complete server-backed fallback cards through the guarded proposal completion API');
 assert(desktopRoute.includes("card.kind === 'manual_task' && card.actions.includes('mark_done')"), 'Desktop AMM must only mark done cards that are manual tasks and expose mark_done');
 assert(!desktopRoute.includes("card.kind === 'manual_task' || card.actions.includes('mark_done')"), 'Desktop AMM must not mark non-manual cards done just because mark_done appears in actions');
@@ -1541,6 +1544,8 @@ assert(mobileScreen.includes('buildAiMenuManagerClientExecutionDirective'), 'Mob
 assert(mobileScreen.includes('buildAiMenuManagerClientBatchExecution') && mobileScreen.includes('completeAiMenuManagerClientOperations'), 'Mobile AMM must apply compound cards with one project save and one compact completion write');
 assert(mobileScreen.includes('Approve all') && mobileScreen.includes('updates prepared together'), 'Mobile AMM must expose a touch-safe grouped approval control');
 assert(mobileScreen.includes('isServerBackedCard') && mobileScreen.includes('submitAiMenuManagerProposalAction'), 'Mobile AMM must use guarded proposal APIs only for server-backed fallback cards');
+assert(mobileScreen.includes("const isServerBackedCard = operation.proposalApiBacked === true"), 'Mobile AMM must not infer proposal backing from an execution mode persisted in compact sessions');
+assert(!mobileScreen.includes("const isServerBackedCard = operation.executionMode === 'existing_server_api'"), 'Mobile AMM compact-session cards must not be sent to a proposal API without proposal backing');
 assert(mobileScreen.includes('completeAiMenuManagerClientProposal'), 'Mobile AMM must complete server-backed fallback cards through the guarded proposal completion API');
 assert(mobileScreen.includes("card.kind === 'manual_task' && card.actions.includes('mark_done')"), 'Mobile AMM must only mark done cards that are manual tasks and expose mark_done');
 assert(!mobileScreen.includes("card.kind === 'manual_task' || card.actions.includes('mark_done')"), 'Mobile AMM must not mark non-manual cards done just because mark_done appears in actions');

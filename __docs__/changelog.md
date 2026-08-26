@@ -11,6 +11,17 @@
   No Firebase query, write, collection, cache, provider, or entitlement contract
   changed.
 
+## August 26, 2026 - Menu Manager Card Backing Integrity
+
+- Distinguished cards read directly from compact sessions from cards projected
+  from server proposal documents. A recovered manual card now marks done or
+  cancels through its existing exact-session transaction instead of calling a
+  proposal route for a document that may not exist.
+- Only normalized proposal projections receive a non-persisted client marker;
+  compact-session normalization discards any stored attempt to assert that
+  marker. Desktop and mobile share the same boundary. This adds no Firebase
+  read/write beyond the already intended completion transaction.
+
 ## August 26, 2026 - Keyless Storage Credential Compatibility
 
 - Corrected the shared keyless Storage bridge to pass the actual product-scoped
