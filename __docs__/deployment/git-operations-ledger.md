@@ -6763,3 +6763,22 @@ No Firebase source/configuration changes. Firestore Rules, indexes, Storage Rule
 - Firebase deployment evidence or blocker: no Firebase infrastructure delta exists; no deployment is required or authorized.
 - Final filesystem state: pending explicit-path staging, staged-diff validation, commit, non-force staging push, direct server readback, automatic QA build, and exact hosted confirmation/cancel/confirm/mutation/public-restoration retest.
 - Attribution confidence: exact.
+
+#### MLRC-090 owner-confirmation contexts performed result — `2026-08-26T12:56:01+05:30`
+
+- Commit/push: `98bf9e6b236ee750d6b7ea6ac5def9cf601410ac` (`fix(menulist): mount owner confirmation contexts`) was pushed non-force from local `staging` to `origin/staging`.
+- Direct Git server readback returned exact `refs/heads/staging` SHA `98bf9e6b236ee750d6b7ea6ac5def9cf601410ac` with `0/0` divergence. Local and remote `main` remain untouched at `fe625d5bbf527c1b7e537b00ab32a4f655905c35`.
+- Exact hosted readback: Vercel marked deployment `Apkeer6u53Sgbx1x4AM33EGDXzh7` Ready in custom environment `qa`, with exact staging source `98bf9e6b…`; `https://app.menulist.digital/api/version` independently returned the same verified full build ID and preview environment.
+- Hosted owner/public retest: Clear All rendered the intended confirmation; Cancel closed it with all seven closed-day previews unchanged. A reversible Wednesday `08:00 AM - 11:45 PM` save survived owner hard refresh and propagated to a cache-busted Official Business Page as the exact range plus `Closed · Opens 08:00 AM`. Clear All then rendered again; Confirm produced seven closed previews; Save persisted the removal; a second owner hard refresh retained the empty schedule; and a new cache-busted public read returned `Hours not available` with no stale range or opening status. The QA fixture is restored.
+- Adjacent API-key boundary: the identical detached-modal root cause is corrected and covered by `verify:working-hours-boundary`; no API key was generated, exposed, or revoked during hosted testing.
+- Validation: scoped confirmation regression, deterministic working-hours suite, public-business-truth and adjacent tests, focused/full zero-warning ESLint, strict TypeScript, production build 450/450 with 53 precache entries, staged diff validation, and `git diff --check` passed. Existing Sass and absent optional Gemini-key warnings remain non-failing.
+- Firebase state: all 16 planned component/target rows remain independently `NO_INFRA_CHANGE` / `SERVER_STATE_UNKNOWN`; no infrastructure source/configuration changed, deployed, or received authenticated server readback.
+- Post-operation branch matrix before this documentation/ledger closeout:
+
+| Branch | Local full SHA | Server ref/full SHA | Tracking ref | Ahead/behind | Worktree | Staged/unstaged/untracked | Status |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `staging` | `98bf9e6b236ee750d6b7ea6ac5def9cf601410ac` | `refs/heads/staging` / `98bf9e6b236ee750d6b7ea6ac5def9cf601410ac` | `origin/staging` | `0/0` | primary | `0/2/0` before this append | `IN_SYNC` |
+| `main` | `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `refs/heads/main` / `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `origin/main` | `0/0` | none | n/a | `IN_SYNC` |
+
+- Closeout operation: commit only the report and ledger evidence, push `staging` non-force, and continue the broader QA certification. Exact product-runtime proof remains attributable to `98bf9e6b…`; the documentation-only successor does not change that runtime result.
+- Attribution confidence: exact.
