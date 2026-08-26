@@ -815,6 +815,7 @@
     "verify:menu-setup-progress-boundary": "node scripts/verification/verify-menu-setup-progress-boundary.js",
     "test:menu-intake-identity-suggestion-acceptance": "ts-node --compiler-options '{\"module\":\"CommonJS\"}' -r tsconfig-paths/register scripts/verification/test-menu-intake-identity-suggestion-acceptance.ts",
     "verify:multi-location-boundary": "node scripts/verification/verify-multi-location-boundary.js",
+    "test:outlet-store-document-boundary": "ts-node --compiler-options '{\"module\":\"CommonJS\"}' -r tsconfig-paths/register scripts/verification/test-outlet-store-document-boundary.ts",
     "test:master-update-diff": "ts-node --compiler-options '{\"module\":\"CommonJS\",\"target\":\"ES2022\"}' -r tsconfig-paths/register scripts/verification/test-master-update-diff.ts",
     "verify:multi-outlet-store-access-boundary": "npm run test:multi-outlet-store-access-boundary",
     "test:multi-outlet-store-access-boundary": "ts-node --compiler-options '{\"module\":\"CommonJS\"}' -r tsconfig-paths/register scripts/verification/test-multi-outlet-store-access-boundary.ts",

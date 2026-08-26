@@ -3943,7 +3943,7 @@ function verifyStoreAndUserDalDiagnosticsAreBounded() {
   assertNotIncludes(storesDal, 'addStore = async (data: any', 'Store create must preserve its typed mutation boundary');
   assertNotIncludes(storesDal, 'updateStore = async (data: any', 'Store update must preserve its typed mutation boundary');
   assertNotIncludes(storesDal, 'const updateLogoImage = async (data)', 'Store logo upload must preserve its typed prepared-media boundary');
-  assertIncludes(storesDal, 'if (Number.isSafeInteger(storeId) && isStoreDataType(value, storeId))', 'Platform store lists must validate persisted rows before returning typed data');
+  assertIncludes(storesDal, 'if (Number.isSafeInteger(storeId) && isReadableStoreDocument(value, storeId))', 'Platform store lists must validate persisted rows before returning typed data');
   assertIncludes(storesDal, "throw new Error('store_list_tenant_scope_invalid');", 'Platform store lists must reject non-canonical tenant scope');
   assertIncludes(storesDal, "'store_list_document_shape_invalid'", 'Malformed platform store rows must emit bounded diagnostics');
   assertIncludes(tenantsDal, 'export function assertTenantUpdateSucceeded', 'Tenant update acknowledgement guard');

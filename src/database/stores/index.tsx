@@ -51,6 +51,7 @@ import {
     STORE_NESTED_DELETE,
     type StoreNestedUpdateEntry,
 } from "@lib/store/storeNestedUpdateProjection";
+import { isReadableStoreDocument } from "@lib/store/storeDocumentBoundary";
 import {
     STARTER_ACTIVATION_PRESENCE_SIGNAL_BY_SURFACE,
     isStarterActivationSignal,
@@ -285,7 +286,7 @@ export const getAllStores = async () => {
             querySnapshot.forEach((doc) => {
                 const storeId = Number(doc.id);
                 const value = doc.data();
-                if (Number.isSafeInteger(storeId) && isStoreDataType(value, storeId)) {
+                if (Number.isSafeInteger(storeId) && isReadableStoreDocument(value, storeId)) {
                     list.push(value);
                 } else {
                     logStoreDataFailure('store_list_document_shape_invalid', new Error('store_list_document_shape_invalid'), {
@@ -321,7 +322,7 @@ export const getAllStoresByTenantId = async (tenantId: string | number) => {
                 querySnapshot.forEach((doc) => {
                     const storeId = Number(doc.id);
                     const value = doc.data();
-                    if (Number.isSafeInteger(storeId) && isStoreDataType(value, storeId)) {
+                    if (Number.isSafeInteger(storeId) && isReadableStoreDocument(value, storeId)) {
                         list.push(value);
                     } else {
                         logStoreDataFailure('store_list_document_shape_invalid', new Error('store_list_document_shape_invalid'), {
@@ -338,33 +339,6 @@ export const getAllStoresByTenantId = async (tenantId: string | number) => {
     );
 }
 
-const isStoreDataType = (value: unknown, expectedStoreId: number): value is StoreDataType => {
-    if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
-    const store = value as Partial<StoreDataType>;
-    return Number.isSafeInteger(store.storeId)
-        && store.storeId === expectedStoreId
-        && Number.isSafeInteger(store.tenantId)
-        && Number(store.tenantId) > 0
-        && typeof store.storeKey === 'string'
-        && typeof store.tenantName === 'string'
-        && typeof store.active === 'boolean'
-        && typeof store.deleted === 'boolean'
-        && typeof store.name === 'string'
-        && typeof store.email === 'string'
-        && typeof store.phoneNumber === 'string'
-        && typeof store.logo === 'string'
-        && typeof store.city === 'string'
-        && typeof store.state === 'string'
-        && typeof store.currencyCode === 'string'
-        && typeof store.currencySymbol === 'string'
-        && typeof store.businessType === 'string'
-        && typeof store.businessCategory === 'string'
-        && typeof store.contactPersonName === 'string'
-        && typeof store.contactPersonEmail === 'string'
-        && typeof store.contactPersonNumber === 'string'
-        && Array.isArray(store.roles);
-};
-
 export const readStoreById = async (id: number): Promise<StoreDataType | null> => {
     if (!Number.isSafeInteger(id) || id <= 0) return null;
     const collectionDocRef = await getDocRef(id);
@@ -372,7 +346,7 @@ export const readStoreById = async (id: number): Promise<StoreDataType | null> =
     if (!docSnap.exists()) return null;
 
     const storeData = docSnap.data();
-    if (!isStoreDataType(storeData, id)) {
+    if (!isReadableStoreDocument(storeData, id)) {
         logStoreDataFailure('store_document_shape_invalid', new Error('store_document_shape_invalid'), {
             storeId: id,
         });

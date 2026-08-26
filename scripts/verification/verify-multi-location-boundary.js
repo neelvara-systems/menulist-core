@@ -235,6 +235,15 @@ function verifyCreateRoute(createRoute) {
     'effectsPending: postCommit.effectsPending',
     'failedEffectCount: postCommit.failedEffectCount',
     'storeKey: result.storeKey',
+    'const outletStoreData = {',
+    "city: '',",
+    "state: '',",
+    "contactPersonName: '',",
+    "contactPersonEmail: '',",
+    "contactPersonNumber: '',",
+    'deleted: false,',
+    'if (!isReadableStoreDocument(outletStoreData, newStoreId))',
+    'tx.set(newStoreRef, outletStoreData);',
   ].forEach((token) => assertIncludes(createRoute, token, 'Outlet create route boundary'));
 
   [

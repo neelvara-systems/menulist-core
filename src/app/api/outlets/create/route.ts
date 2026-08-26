@@ -36,6 +36,7 @@ import { getOutletSessionScope } from "@lib/multiOutlet/outletSessionScope";
 import { isMultiOutletTenantStoreListEntryInScope } from "@lib/multiOutlet/projectIdBoundary";
 import { normalizePersistedOutletPolicy } from "@lib/multiOutlet/outletPolicyBoundary";
 import { isPlatformEntityBlocked } from "@lib/platform/entityBlock";
+import { isReadableStoreDocument } from "@lib/store/storeDocumentBoundary";
 import {
     buildUserStoreAccessUpdate,
     normalizeUserStoreAccessDocumentId,
@@ -576,7 +577,7 @@ export const POST = withAuth(async (request, session) => {
             // without needing a tenant-level fetch. Location-specific fields
             // (name, addressLine, workingHours) are set by outlet owner later.
             // @see __docs__/official-business-page/official-business-page_impl.md §2
-            tx.set(newStoreRef, {
+            const outletStoreData = {
                 name: outletName,
                 tenantName,
                 businessType,
@@ -584,6 +585,11 @@ export const POST = withAuth(async (request, session) => {
                 email: masterStore.email || '',
                 phoneNumber: masterStore.phoneNumber || '',
                 logo: masterStore.logo || '',
+                city: '',
+                state: '',
+                contactPersonName: '',
+                contactPersonEmail: '',
+                contactPersonNumber: '',
                 currencyCode: masterStore.currencyCode || 'INR',
                 currencySymbol: masterStore.currencySymbol || '₹',
                 country: masterStore.country || '',
@@ -591,6 +597,7 @@ export const POST = withAuth(async (request, session) => {
                 schedulerHour: masterStore.schedulerHour ?? 2, // Inherit from master (default 2 = 2:30 AM UTC)
                 defaultLanguage: masterStore.defaultLanguage || 'en',
                 active: true,
+                deleted: false,
                 verified: false,
                 tenantId,
                 storeId: newStoreId,
@@ -601,7 +608,11 @@ export const POST = withAuth(async (request, session) => {
                 outletSlug,
                 createdOn: now,
                 modifiedOn: now,
-            });
+            };
+            if (!isReadableStoreDocument(outletStoreData, newStoreId)) {
+                throw new Error('outlet_store_document_invalid');
+            }
+            tx.set(newStoreRef, outletStoreData);
             writeCurrentOutletSlugClaim(tx, outletSlugReservation, now);
 
             // Sync to storesSummary
