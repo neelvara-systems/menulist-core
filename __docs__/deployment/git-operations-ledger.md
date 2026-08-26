@@ -6605,3 +6605,19 @@ No Firebase source/configuration changes. Firestore Rules, indexes, Storage Rule
 - No Firebase infrastructure source/configuration changed or was deployed. The QA owner/store/subscription actions were explicitly scoped disposable fixture data, not infrastructure publication.
 - Final filesystem state: pending explicit-path staging, commit, non-force staging push, direct server readback, and ledger performed-result closeout.
 - Attribution confidence: exact.
+
+#### MLRC-088 hosted-closeout performed result — `2026-08-26T12:15:32+05:30`
+
+- Commit/push: `35bf38835e43f5d058c9ec93653565c463b6ce9e` (`docs(qa): close fresh outlet persistence retest`) was pushed non-force from local `staging` to `origin/staging`.
+- Direct server readback returned exact `refs/heads/staging` SHA `35bf38835e43f5d058c9ec93653565c463b6ce9e` with `0/0` divergence. Local and remote `main` remain untouched at `fe625d5bbf527c1b7e537b00ab32a4f655905c35`.
+- Scope: documentation/evidence only; hosted product proof remains attributable to exact ready QA deployment `cff9956610e3afb3d0dabb253ddd084ce07cf6b7`, which contains runtime correction `b109eddc4b38b28debf09fd407c3588f349509c1`.
+- Firebase state: all 16 preceding component/target rows remain independently `NO_INFRA_CHANGE` / `SERVER_STATE_UNKNOWN`; no infrastructure source/configuration changed, deployed, or received authenticated server readback. Disposable QA data cleanup is complete with HQ as the only active store and entitlement quantity `1`.
+- Post-operation branch matrix before this ledger-only closeout:
+
+| Branch | Local full SHA | Server ref/full SHA | Tracking ref | Ahead/behind | Worktree | Staged/unstaged/untracked | Status |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `staging` | `35bf38835e43f5d058c9ec93653565c463b6ce9e` | `refs/heads/staging` / `35bf38835e43f5d058c9ec93653565c463b6ce9e` | `origin/staging` | `0/0` | primary | `0/0/0` before this append | `IN_SYNC` |
+| `main` | `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `refs/heads/main` / `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `origin/main` | `0/0` | none | n/a | `IN_SYNC` |
+
+- Closeout operation: commit only this performed-result ledger append and push `staging` non-force. Continue the broader MenuList QA certification from the next open gate; do not treat MLRC-088 closure as overall product certification.
+- Attribution confidence: exact.
