@@ -6430,3 +6430,20 @@ No Firebase source/configuration changes. Firestore Rules, indexes, Storage Rule
 - Firebase deployment evidence or blocker: no Firebase infrastructure delta exists; no deployment is required or authorized.
 - Final filesystem state: pending all-path staging, commit, non-force staging push, direct server readback, automatic QA build, exact hosted deactivation, fresh outlet create/switch/reload/deactivate, and fixture cleanup.
 - Attribution confidence: exact.
+
+#### MLRC-087 scoped-deactivate modal performed result — `2026-08-26T11:30:43+05:30`
+
+- Commit/push: `10b2f9aaa3dba204943a1dc499af5ca43c7ae7bb` (`fix(menulist): mount outlet confirmation`) was pushed non-force from local `staging` to `origin/staging`.
+- Direct server readback returned exact `refs/heads/staging` SHA `10b2f9aaa3dba204943a1dc499af5ca43c7ae7bb` with `0/0` divergence. Local and remote `main` remain untouched at `fe625d5bbf527c1b7e537b00ab32a4f655905c35`.
+- Validation: exact hosted click/keyboard reproduction, multi-location verifier, focused ESLint, strict TypeScript, production build with 450/450 static pages and 53 service-worker precache entries, and `git diff --check` passed.
+- Firebase state: all 16 planned infrastructure component/target rows remain `NO_INFRA_CHANGE` / `SERVER_STATE_UNKNOWN`; no Firebase infrastructure source/configuration changed, deployed, or received authenticated server readback.
+- Manual deployment state: no Firebase or Vercel deployment command was run. The branch-tracked QA build may deploy automatically.
+- Post-operation branch matrix before this ledger-only closeout:
+
+| Branch | Local full SHA | Server ref/full SHA | Tracking ref | Ahead/behind | Worktree | Staged/unstaged/untracked | Status |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `staging` | `10b2f9aaa3dba204943a1dc499af5ca43c7ae7bb` | `refs/heads/staging` / `10b2f9aaa3dba204943a1dc499af5ca43c7ae7bb` | `origin/staging` | `0/0` | primary | `0/0/0` before this append | `IN_SYNC` |
+| `main` | `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `refs/heads/main` / `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `origin/main` | `0/0` | none | n/a | `IN_SYNC` |
+
+- Closeout operation: commit this ledger-only result and push `staging` non-force, then wait for exact automatic QA promotion and resume the owner deactivation/fresh-create/cleanup cycle.
+- Attribution confidence: exact.
