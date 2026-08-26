@@ -277,6 +277,7 @@ function verifyOwnerExperience() {
   const health = read('src/lib/screen/screenHealth.ts');
   const desktop = read('src/components/templates/main-app/settings/DigitalScreenSettings/index.tsx');
   const desktopLink = read('src/components/templates/main-app/settings/DigitalScreenSettings/ScreenLink.tsx');
+  const desktopUploads = read('src/components/templates/main-app/settings/DigitalScreenSettings/OwnerUploads.tsx');
   const mobile = read('src/components/mobile/screens/MobileDigitalScreensScreen.tsx');
   const output = read('src/components/templates/main-app/useMenuList/index.tsx');
   const desktopAi = read('src/components/templates/main-app/aiMenuManager/AiMenuManagerRoute.tsx');
@@ -299,6 +300,13 @@ function verifyOwnerExperience() {
   assertIncludes(output, 'aria-label="Refresh TV status"', 'Digital Screens Output Center explicit status refresh');
   assertNotIncludes(output, 'getDigitalScreenHealth(data.screenLastSeenAt)', 'Digital Screens Output Center legacy aggregate status');
   assertIncludes(desktopLink, 'Refresh TV status', 'Digital Screens desktop status refresh');
+  [desktop, desktopLink, desktopUploads, output].forEach((surface, index) => {
+    assertIncludes(surface, 'App.useApp()', `Digital Screens scoped desktop feedback surface ${index + 1}`);
+    assertNotIncludes(surface, 'message.success(', `Digital Screens detached success feedback surface ${index + 1}`);
+    assertNotIncludes(surface, 'message.error(', `Digital Screens detached error feedback surface ${index + 1}`);
+  });
+  assertIncludes(desktop, 'messageApi.success("TV status refreshed")', 'Digital Screens scoped status-refresh feedback');
+  assertIncludes(desktopLink, 'messageApi.success("Screen link copied")', 'Digital Screens scoped copy feedback');
   assertIncludes(desktopLink, '<style jsx global>', 'Digital Screens desktop child-card style scope');
   assertIncludes(desktopLink, '.screen-link-section {', 'Digital Screens desktop scoped style wrapper');
   assertIncludes(desktopLink, '.screen-link-section .screen-preview.highlights {', 'Digital Screens desktop child preview namespace');

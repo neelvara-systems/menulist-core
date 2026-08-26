@@ -7,7 +7,7 @@ import { openIsolatedBrowserUrl } from '@lib/browser/openIsolatedBrowserUrl';
  * Per spec v2.0: Two URLs per store: Menu Board (default) and Highlights.
  */
 
-import { Button, QRCode, Space, Tag, Tooltip, Typography, message, theme } from "antd";
+import { App, Button, QRCode, Space, Tag, Tooltip, Typography, theme } from "antd";
 import {
     copyScreenTextToClipboard,
     getBoundedScreenStringContext,
@@ -148,6 +148,7 @@ export default function ScreenLink({
     screenSeenByMode,
     screenUrl,
 }: ScreenLinkProps) {
+    const { message: messageApi } = App.useApp();
     const { token } = theme.useToken();
     const [copiedMenu, setCopiedMenu] = useState(false);
     const [copiedHighlights, setCopiedHighlights] = useState(false);
@@ -177,7 +178,7 @@ export default function ScreenLink({
                 hasSeenSignal,
                 ...getBoundedScreenStringContext("screenOpenUrl", url),
             });
-            message.error("Unable to open screen link");
+            messageApi.error("Unable to open screen link");
         }
     };
 
@@ -191,7 +192,7 @@ export default function ScreenLink({
                 setCopiedHighlights(true);
                 setTimeout(() => setCopiedHighlights(false), 2000);
             }
-            message.success("Screen link copied");
+            messageApi.success("Screen link copied");
         } catch (error) {
             logScreenSettingsFailure("desktop_digital_screen_link_copy_failed", error, {
                 surface: "desktop_digital_screen_settings",
@@ -203,7 +204,7 @@ export default function ScreenLink({
                 hasCopyFallback: hasScreenCopyFallback(),
                 ...getBoundedScreenStringContext("screenCopyUrl", url),
             });
-            message.error("Unable to copy screen link");
+            messageApi.error("Unable to copy screen link");
         }
     };
 

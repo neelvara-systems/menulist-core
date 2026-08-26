@@ -6985,3 +6985,44 @@ No Firebase source/configuration changes. Firestore Rules, indexes, Storage Rule
 - Firebase state remains `NO_INFRA_CHANGE` / `SERVER_STATE_UNKNOWN` for every previously recorded QA/production component row; no infrastructure or production deployment was performed.
 - Final filesystem state after this append: only this ledger performed-result append is modified; it will be committed and pushed as the final documentation-only closeout for the operation.
 - Attribution confidence: exact.
+
+### GIT-20260826-134633-mlrc093-digital-screen-feedback
+
+- Timestamp: `2026-08-26T13:46:33+05:30`
+- Record type: `PLANNED`
+- Actor/session/thread ID: Codex `/root`; thread `01a034e1-c70a-74b1-a92b-0a103a981815`.
+- Registered worktrees: one worktree, `/Users/danny/Projects/MenuListAi/menulist-core`, branch `staging`, HEAD `36389c88ffd874570f35b941dfe6dcd56bdfebe3`.
+- Starting filesystem state: `0` staged, `6` tracked modified, `0` untracked, limited to four Digital Screens/Use MenuList desktop surfaces, the Digital Screens verifier, and the MenuList certification report before this append.
+- Operation: replace detached desktop Digital Screens and Use MenuList feedback calls with the already-mounted Ant application context, add regression coverage, record MLRC-093, commit exact intended paths, push `staging` non-force, and retest the exact automatic QA build. `main` remains untouched. No manual Vercel or Firebase deployment is authorized.
+- Branch matrix before:
+
+| Branch | Local full SHA | Server ref/full SHA | Tracking ref | Ahead/behind | Worktree | Staged/unstaged/untracked | Status |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `staging` | `36389c88ffd874570f35b941dfe6dcd56bdfebe3` | `refs/heads/staging` / `36389c88ffd874570f35b941dfe6dcd56bdfebe3` | `origin/staging` | `0/0` | primary | `0/6/0` before this append | `IN_SYNC` |
+| `main` | `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `refs/heads/main` / `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `origin/main` | `0/0` | none | n/a | `IN_SYNC` |
+
+- Validation before mutation: exact hosted `d16e89e…` reproduced missing refresh and screen-copy feedback. `verify:digital-screens-boundary` passed its source, scope, timestamp, lifecycle, Firestore Rules, and Admin management-emulator checks. Focused/full zero-warning ESLint, strict TypeScript, production build with 450/450 static pages and 53 service-worker precache entries, and `git diff --check` passed. Expected permission-denied emulator lines belong to negative Rules assertions; existing Sass and absent optional Gemini-key warnings remain non-failing.
+- Firebase matrix before/after (application source/tests/docs only; no deployable Firebase source/configuration changed):
+
+| Product/target | Component | Local source/hash or tree | Local validation | Server/readback | Delta | Deployment state |
+| --- | --- | --- | --- | --- | --- | --- |
+| MenuList QA / `menulist-qa` | Firestore Rules | `firestore-menulist.rules` / `2059459e…` / 132684 | Digital Screens Rules PASS | not read back / `2026-08-26T13:46:33+05:30` | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| MenuList QA / `menulist-qa` | Firestore indexes | `firestore.indexes.json` / `5629ae4d…` / 78310 | unchanged | not read back / same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| MenuList QA / `menulist-qa` | Storage Rules | `storage.rules` / `226d2a20…` / 18176 | unchanged | not read back / same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| MenuList QA / `menulist-qa` | Cloud Functions | `functions/` / tree `3c42f5d3…` | unchanged | not read back / same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| MenuList production / `menulist-prod` | Firestore Rules | same MenuList artifact | Digital Screens Rules PASS | not read back / same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| MenuList production / `menulist-prod` | Firestore indexes | same MenuList artifact | unchanged | not read back / same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| MenuList production / `menulist-prod` | Storage Rules | same MenuList artifact | unchanged | not read back / same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| MenuList production / `menulist-prod` | Cloud Functions | same MenuList tree | unchanged | not read back / same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| Answerlattice QA / `neelvara-answerlattice-qa` | Firestore Rules | `firestore-answerlattice.rules` / `a92cbacb…` / 116222 | unchanged | not read back / same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| Answerlattice QA / `neelvara-answerlattice-qa` | Firestore indexes | `firestore-answerlattice.indexes.json` / `0114bdf8…` / 50941 | unchanged | not read back / same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| Answerlattice QA / `neelvara-answerlattice-qa` | Storage Rules | `storage-answerlattice.rules` / `5fc8f980…` / 6948 | unchanged | not read back / same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| Answerlattice QA / `neelvara-answerlattice-qa` | Cloud Functions | `functions-answerlattice/` / tree `ae5750c6…` | unchanged | not read back / same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| Answerlattice production / `neelvara-answerlattice-prod` | Firestore Rules | same Answerlattice artifact | unchanged | not read back / same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| Answerlattice production / `neelvara-answerlattice-prod` | Firestore indexes | same Answerlattice artifact | unchanged | not read back / same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| Answerlattice production / `neelvara-answerlattice-prod` | Storage Rules | same Answerlattice artifact | unchanged | not read back / same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| Answerlattice production / `neelvara-answerlattice-prod` | Cloud Functions | same Answerlattice tree | unchanged | not read back / same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+
+- Firebase deployment evidence or blocker: no Firebase infrastructure delta exists; no deployment is required or authorized.
+- Final filesystem state: pending explicit-path staging, staged-diff validation, commit, non-force staging push, direct server readback, automatic QA build, and exact hosted refresh/copy feedback retest. No QA fixture data was changed during reproduction.
+- Attribution confidence: exact.

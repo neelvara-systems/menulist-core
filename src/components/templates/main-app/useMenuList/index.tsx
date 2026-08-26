@@ -66,7 +66,7 @@ import { buildQrCodeFilename, downloadQrCode, generateBrandedQrCodeDataUrl } fro
 import { generateProjectUrl } from '@lib/utils/slugify';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { hasValidSubscriptionAccess } from '@util/razorpay';
-import { Button, Card, Col, Divider, Empty, Flex, message, Modal, Row, Spin, Tag, theme, Tooltip, Typography } from 'antd';
+import { App, Button, Card, Col, Divider, Empty, Flex, Modal, Row, Spin, Tag, theme, Tooltip, Typography } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
@@ -160,6 +160,7 @@ interface UseMenuListProps {
 }
 
 export default function UseMenuList({ view = 'overview' }: UseMenuListProps) {
+    const { message: messageApi } = App.useApp();
     const {
         activeSubscription,
         activeSubscriptionLoading,
@@ -431,7 +432,7 @@ export default function UseMenuList({ view = 'overview' }: UseMenuListProps) {
     const handleCopy = async (text: string, label: string, starterSignal?: StarterActivationSignal) => {
         try {
             await copyUseMenuListText(text);
-            message.success(`${label} copied`);
+            messageApi.success(`${label} copied`);
             recordStarterSignal(starterSignal);
         } catch (error) {
             logUseMenuListFailure('use_menulist_copy_failed', error, {
@@ -442,7 +443,7 @@ export default function UseMenuList({ view = 'overview' }: UseMenuListProps) {
                 hasClipboardWrite: hasUseMenuListClipboardWrite(),
                 hasCopyFallback: hasUseMenuListCopyFallback(),
             });
-            message.error('Failed to copy');
+            messageApi.error('Failed to copy');
         }
     };
 
@@ -455,7 +456,7 @@ export default function UseMenuList({ view = 'overview' }: UseMenuListProps) {
                 ...getBoundedUseMenuListStringContext('url', url),
                 ...getBoundedUseMenuListStringContext('label', label),
             });
-            message.error('Failed to open link');
+            messageApi.error('Failed to open link');
         }
     };
 
@@ -477,13 +478,13 @@ export default function UseMenuList({ view = 'overview' }: UseMenuListProps) {
                 screenSeenByMode: screenState?.screenSeenByMode,
                 screenToken,
             } : current);
-            message.success('TV status refreshed');
+            messageApi.success('TV status refreshed');
         } catch (error) {
             logUseMenuListFailure('use_menulist_screen_status_refresh_failed', error, {
                 ...getOutputDiagnosticContext(),
                 hasScreen: data.hasScreen,
             });
-            message.error('Unable to refresh TV status');
+            messageApi.error('Unable to refresh TV status');
         } finally {
             setRefreshingDigitalScreenStatus(false);
         }
@@ -520,7 +521,7 @@ export default function UseMenuList({ view = 'overview' }: UseMenuListProps) {
         try {
             const result = await generateMenuKit(input);
             downloadBlob(result.zipBlob, result.zipFilename);
-            message.success('Menu Kit downloaded');
+            messageApi.success('Menu Kit downloaded');
             recordStarterSignal(STARTER_ACTIVATION_SIGNALS.MENU_KIT_DOWNLOADED);
         } catch (error) {
             logUseMenuListFailure('use_menulist_menu_kit_download_failed', error, {
@@ -532,7 +533,7 @@ export default function UseMenuList({ view = 'overview' }: UseMenuListProps) {
                 ...getBoundedUseMenuListStringContext('businessType', input.businessType),
                 ...getBoundedUseMenuListStringContext('businessCategory', input.businessCategory),
             });
-            message.error('Failed to generate Menu Kit');
+            messageApi.error('Failed to generate Menu Kit');
         } finally {
             setGeneratingKit(false);
         }
@@ -545,14 +546,14 @@ export default function UseMenuList({ view = 'overview' }: UseMenuListProps) {
         try {
             const asset = await generateMenuKitAsset(input, assetKey);
             downloadBlob(asset.blob, asset.filename);
-            message.success(`${assetLabel} downloaded`);
+            messageApi.success(`${assetLabel} downloaded`);
         } catch (error) {
             logUseMenuListFailure('use_menulist_menu_kit_asset_download_failed', error, {
                 ...getOutputDiagnosticContext(),
                 assetKey,
                 ...getBoundedUseMenuListStringContext('assetLabel', assetLabel),
             });
-            message.error(`Failed to generate ${assetLabel}`);
+            messageApi.error(`Failed to generate ${assetLabel}`);
         } finally {
             setGeneratingAsset(null);
         }
@@ -568,7 +569,7 @@ export default function UseMenuList({ view = 'overview' }: UseMenuListProps) {
             const previewUrl = URL.createObjectURL(previewBlob);
             try {
                 openIsolatedBrowserUrl(previewUrl);
-                message.success(`${assetLabel} preview requested`);
+                messageApi.success(`${assetLabel} preview requested`);
             } catch (error) {
                 logUseMenuListFailure('use_menulist_menu_kit_asset_preview_open_failed', error, {
                     ...getOutputDiagnosticContext(),
@@ -576,7 +577,7 @@ export default function UseMenuList({ view = 'overview' }: UseMenuListProps) {
                     ...getBoundedUseMenuListStringContext('assetLabel', assetLabel),
                 });
                 downloadBlob(asset.blob, asset.filename);
-                message.info('Preview could not start, so the file was downloaded instead');
+                messageApi.info('Preview could not start, so the file was downloaded instead');
             }
 
             window.setTimeout(() => URL.revokeObjectURL(previewUrl), 60000);
@@ -586,7 +587,7 @@ export default function UseMenuList({ view = 'overview' }: UseMenuListProps) {
                 assetKey,
                 ...getBoundedUseMenuListStringContext('assetLabel', assetLabel),
             });
-            message.error(`Failed to preview ${assetLabel}`);
+            messageApi.error(`Failed to preview ${assetLabel}`);
         } finally {
             setPreviewingAsset(null);
         }
@@ -616,7 +617,7 @@ export default function UseMenuList({ view = 'overview' }: UseMenuListProps) {
                 activePlanType: (storeDetails as any)?.activePlanType,
             });
             downloadQrCode(dataUrl, buildQrCodeFilename(filenameLabel));
-            message.success(`${label} downloaded`);
+            messageApi.success(`${label} downloaded`);
             recordStarterSignal(starterSignal);
         } catch (error) {
             logUseMenuListFailure('use_menulist_qr_download_failed', error, {
@@ -629,7 +630,7 @@ export default function UseMenuList({ view = 'overview' }: UseMenuListProps) {
                 ...getBoundedUseMenuListStringContext('cardTitle', cardCopy?.title),
                 ...getBoundedUseMenuListStringContext('cardSubtitle', cardCopy?.subtitle),
             });
-            message.error(`Failed to generate ${label}`);
+            messageApi.error(`Failed to generate ${label}`);
         } finally {
             setGeneratingAsset(null);
         }
@@ -657,7 +658,7 @@ export default function UseMenuList({ view = 'overview' }: UseMenuListProps) {
                 : fileCategories;
 
             if (!items.length) {
-                message.warning(`No ${labels.offeringLower} items to export`);
+                messageApi.warning(`No ${labels.offeringLower} items to export`);
                 setGeneratingAsset(null);
                 return;
             }
@@ -682,7 +683,7 @@ export default function UseMenuList({ view = 'overview' }: UseMenuListProps) {
                 categories,
             });
             downloadPdf(pdfResult);
-            message.success('Menu PDF downloaded');
+            messageApi.success('Menu PDF downloaded');
         } catch (error) {
             logUseMenuListFailure('use_menulist_pdf_download_failed', error, {
                 ...getOutputDiagnosticContext(),
@@ -691,7 +692,7 @@ export default function UseMenuList({ view = 'overview' }: UseMenuListProps) {
                 ...getBoundedUseMenuListStringContext('businessType', (storeDetails as any)?.businessType || data.businessType),
                 ...getBoundedUseMenuListStringContext('businessCategory', (storeDetails as any)?.businessCategory),
             });
-            message.error('Failed to generate PDF');
+            messageApi.error('Failed to generate PDF');
         } finally {
             setGeneratingAsset(null);
         }
@@ -950,7 +951,7 @@ export default function UseMenuList({ view = 'overview' }: UseMenuListProps) {
                                 loading={generatingAsset === 'Feedback QR'}
                                 onDownload={async () => {
                                     if (!data.feedbackLink) {
-                                        message.info('Feedback is not enabled');
+                                        messageApi.info('Feedback is not enabled');
                                         return;
                                     }
                                     setGeneratingAsset('Feedback QR');
@@ -966,7 +967,7 @@ export default function UseMenuList({ view = 'overview' }: UseMenuListProps) {
                                             activePlanType: (storeDetails as any)?.activePlanType,
                                         }, data.obpLink);
                                         downloadQrCode(qrDataUrl, getQrCodeFilename(data.storeName));
-                                        message.success('Feedback QR downloaded');
+                                        messageApi.success('Feedback QR downloaded');
                                     } catch (error) {
                                         logUseMenuListFailure('use_menulist_feedback_qr_download_failed', error, {
                                             ...getOutputDiagnosticContext(),
@@ -974,7 +975,7 @@ export default function UseMenuList({ view = 'overview' }: UseMenuListProps) {
                                             ...getBoundedUseMenuListStringContext('feedbackQrLink', data.feedbackQrLink),
                                             ...getBoundedUseMenuListStringContext('obpLink', data.obpLink),
                                         });
-                                        message.error('Failed to generate Feedback QR');
+                                        messageApi.error('Failed to generate Feedback QR');
                                     } finally {
                                         setGeneratingAsset(null);
                                     }
@@ -1144,7 +1145,7 @@ export default function UseMenuList({ view = 'overview' }: UseMenuListProps) {
                             icon={<LuMonitor size={16} />}
                             onClick={() => data.menuBoardLink
                                 ? handleCopy(data.menuBoardLink, 'Screen link')
-                                : message.info('Set up Digital Screens in Business Settings first')
+                                : messageApi.info('Set up Digital Screens in Business Settings first')
                             }
                             size="large"
                             disabled={!data.menuBoardLink}
@@ -1647,7 +1648,7 @@ export default function UseMenuList({ view = 'overview' }: UseMenuListProps) {
                             loading={generatingAsset === 'Feedback QR'}
                             onDownload={async () => {
                                 if (!data.feedbackLink) {
-                                    message.info('Feedback is not enabled');
+                                    messageApi.info('Feedback is not enabled');
                                     return;
                                 }
                                 setGeneratingAsset('Feedback QR');
@@ -1663,7 +1664,7 @@ export default function UseMenuList({ view = 'overview' }: UseMenuListProps) {
                                         activePlanType: (storeDetails as any)?.activePlanType,
                                     }, data.obpLink);
                                     downloadQrCode(qrDataUrl, getQrCodeFilename(data.storeName));
-                                    message.success('Feedback QR downloaded');
+                                    messageApi.success('Feedback QR downloaded');
                                 } catch (error) {
                                     logUseMenuListFailure('use_menulist_feedback_qr_download_failed', error, {
                                         ...getOutputDiagnosticContext(),
@@ -1671,7 +1672,7 @@ export default function UseMenuList({ view = 'overview' }: UseMenuListProps) {
                                         ...getBoundedUseMenuListStringContext('feedbackQrLink', data.feedbackQrLink),
                                         ...getBoundedUseMenuListStringContext('obpLink', data.obpLink),
                                     });
-                                    message.error('Failed to generate Feedback QR');
+                                    messageApi.error('Failed to generate Feedback QR');
                                 } finally {
                                     setGeneratingAsset(null);
                                 }

@@ -23,7 +23,7 @@ import { getBoundedScreenStringContext, logScreenSettingsFailure } from "@lib/sc
 import { buildScreenUrl } from "@lib/screen/utils";
 import { PlatformGlobalDataContext } from "@providers/platformProviders/platformGlobalDataProvider";
 import { DigitalScreenSeenByMode, ScreenSlide } from "@type/campaigns";
-import { Button, Card, Divider, Empty, message, Spin, Switch, theme, Typography } from "antd";
+import { App, Button, Card, Divider, Empty, Spin, Switch, theme, Typography } from "antd";
 import { useContext, useEffect, useMemo, useRef, useState } from "react";
 import { LuRefreshCw } from "react-icons/lu";
 import OwnerUploads from "./OwnerUploads";
@@ -44,6 +44,7 @@ interface ScreenSettingsData {
 }
 
 export default function DigitalScreenSettings() {
+    const { message: messageApi } = App.useApp();
     const { token } = theme.useToken();
     const { storeDetails, userPermissions } = useContext(PlatformGlobalDataContext);
     const canAccessDigitalScreens = hasAnyPermission(userPermissions, [PERMISSIONS.MANAGE_DIGITAL_SCREENS]);
@@ -115,8 +116,8 @@ export default function DigitalScreenSettings() {
 
     const handleRefreshStatus = async () => {
         const refreshed = await fetchSettings(true);
-        if (refreshed) message.success("TV status refreshed");
-        else message.error("Unable to refresh TV status");
+        if (refreshed) messageApi.success("TV status refreshed");
+        else messageApi.error("Unable to refresh TV status");
     };
 
     const handleOverrideToggle = async (enabled: boolean) => {
@@ -140,7 +141,7 @@ export default function DigitalScreenSettings() {
                 ownerOverrideEnabled: enabled,
                 screenSeenByMode: updateResult.screen.screenSeenByMode,
             } : null);
-            message.success(enabled ? 'Only custom slides is on' : 'Menu highlights restored');
+            messageApi.success(enabled ? 'Only custom slides is on' : 'Menu highlights restored');
         } catch (err) {
             logScreenSettingsFailure('digital_screen_settings_override_toggle_failed', err, {
                 desiredEnabled: enabled,
@@ -148,7 +149,7 @@ export default function DigitalScreenSettings() {
                 hasSettings: Boolean(settings),
                 pinnedSlideCount: settings?.pinnedSlides.length ?? 0,
             });
-            message.error('Failed to update setting');
+            messageApi.error('Failed to update setting');
         }
     };
 

@@ -16,7 +16,7 @@ import { screenTimestampToMillis } from "@lib/screen/screenTimestamp";
 import MediaImageCard from "@/components/shared/media/MediaImageCard";
 import MediaImageAdjustModal from "@/components/shared/media/MediaImageAdjustModal";
 import { ScreenSlide } from "@type/campaigns";
-import { Button, Flex, Input, List, Popconfirm, Space, theme, Typography, message } from "antd";
+import { App, Button, Flex, Input, List, Popconfirm, Space, theme, Typography } from "antd";
 import { useState } from "react";
 import { LuCheck, LuClock, LuImage, LuPencil, LuTrash2 } from "react-icons/lu";
 
@@ -39,6 +39,7 @@ export default function OwnerUploads({
     onSlideUploaded,
     onSlideDeleted
 }: OwnerUploadsProps) {
+    const { message: messageApi } = App.useApp();
     const { token } = theme.useToken();
     const [uploading, setUploading] = useState(false);
     const [pendingSlide, setPendingSlide] = useState<{
@@ -55,7 +56,7 @@ export default function OwnerUploads({
 
     const handleUpload = async (file: File) => {
         if (!canUpload) {
-            message.error(`Maximum ${maxUploads} custom slides allowed`);
+            messageApi.error(`Maximum ${maxUploads} custom slides allowed`);
             return false;
         }
 
@@ -68,14 +69,14 @@ export default function OwnerUploads({
                 prepared,
             });
             setPendingSlideCaption(normalizeOwnerSlideCaption(file.name.replace(/\.[^/.]+$/, "")));
-            message.success('Slide ready. Frame and save it.');
+            messageApi.success('Slide ready. Frame and save it.');
 
         } catch (error) {
             logScreenSettingsFailure('desktop_digital_screen_slide_prepare_failed', error, {
                 ...getBoundedScreenStringContext('fileName', file.name),
                 fileSizeBytes: file.size,
             });
-            message.error(SCREEN_SLIDE_PREPARE_FAILED_MESSAGE);
+            messageApi.error(SCREEN_SLIDE_PREPARE_FAILED_MESSAGE);
         } finally {
             setUploading(false);
         }
@@ -111,7 +112,7 @@ export default function OwnerUploads({
                 caption
             );
 
-            message.success(`Slide uploaded! Will expire in ${uploadExpiryDays} days`);
+            messageApi.success(`Slide uploaded! Will expire in ${uploadExpiryDays} days`);
             setPendingSlide(null);
             setPendingSlideCaption('');
             onSlideUploaded();
@@ -121,7 +122,7 @@ export default function OwnerUploads({
                 ...getBoundedScreenStringContext('caption', pendingSlideCaption),
                 fileSizeBytes: pendingSlide.prepared.sizeBytes,
             });
-            message.error(SCREEN_SLIDE_UPLOAD_FAILED_MESSAGE);
+            messageApi.error(SCREEN_SLIDE_UPLOAD_FAILED_MESSAGE);
         } finally {
             setUploading(false);
         }
@@ -135,7 +136,7 @@ export default function OwnerUploads({
                 updateResult,
                 'desktop_digital_screen_caption_update_rejected',
             );
-            message.success('Slide name updated');
+            messageApi.success('Slide name updated');
             setEditingSlideId(null);
             setEditingSlideCaption('');
             onSlideUploaded();
@@ -144,7 +145,7 @@ export default function OwnerUploads({
                 ...getBoundedScreenStringContext('slideId', slideId),
                 ...getBoundedScreenStringContext('caption', editingSlideCaption),
             });
-            message.error('Failed to update slide name');
+            messageApi.error('Failed to update slide name');
         } finally {
             setSavingCaptionId(null);
         }
@@ -159,14 +160,14 @@ export default function OwnerUploads({
                 'desktop_digital_screen_slide_delete_rejected',
             );
 
-            message.success('Slide removed');
+            messageApi.success('Slide removed');
             onSlideDeleted(slideId);
 
         } catch (error) {
             logScreenSettingsFailure('desktop_digital_screen_slide_delete_failed', error, {
                 ...getBoundedScreenStringContext('slideId', slideId),
             });
-            message.error('Failed to remove slide');
+            messageApi.error('Failed to remove slide');
         }
     };
 
