@@ -82,6 +82,10 @@ const analyticsWizardSource = readFileSync(
     resolve(process.cwd(), 'src/components/templates/main-app/businessSettings/tabs/AnalyticsSetupWizard.tsx'),
     'utf8',
 );
+const analyticsGuideSource = readFileSync(
+    resolve(process.cwd(), 'src/components/templates/main-app/businessSettings/tabs/AnalyticsGuideModal.tsx'),
+    'utf8',
+);
 const mobileAnalyticsSource = readFileSync(
     resolve(process.cwd(), 'src/components/mobile/screens/MobileSeoAnalyticsScreen.tsx'),
     'utf8',
@@ -104,6 +108,25 @@ for (const source of [desktopAnalyticsSource, analyticsWizardSource, mobileAnaly
 }
 assert.ok(!analyticsWizardSource.includes('Track Orders & Sales'));
 assert.ok(!analyticsWizardSource.includes('See how much money you make'));
+assert.ok(!analyticsWizardSource.includes('How much money you make'));
+assert.ok(!analyticsWizardSource.includes('We never collect personal information'));
+assert.ok(!analyticsWizardSource.includes('Watch Video'));
+assert.ok(!analyticsWizardSource.includes('/images/analytics/'));
+assert.ok(!analyticsWizardSource.includes('<Image'));
+assert.ok(!analyticsWizardSource.includes('restaurant name'));
+assert.ok(analyticsWizardSource.includes('Which customer actions happen after a menu visit'));
+assert.ok(analyticsWizardSource.includes('does not collect customer names, emails, payment details, or exact GPS locations'));
+assert.ok(analyticsWizardSource.includes('monitor its search presence'));
+for (const source of [analyticsWizardSource, analyticsGuideSource]) {
+    assert.ok(!source.includes('Enhanced E-commerce'));
+    assert.ok(!source.includes('detailed order tracking'));
+    assert.ok(!source.includes('cart adds'));
+    assert.ok(!source.includes('Track views, cart adds, and purchases'));
+    assert.ok(!source.includes('menulistai.com'));
+}
+assert.ok(analyticsGuideSource.includes('What MenuList Tracks'));
+assert.ok(analyticsGuideSource.includes('never exact GPS'));
+assert.ok(analyticsGuideSource.includes('does not collect customer names, emails, payment details, purchases, or exact GPS locations'));
 assert.ok(!analyticsWizardSource.includes('start seeing data in about 24 hours'));
 assert.ok(analyticsWizardSource.includes("const analytics = Form.useWatch('analytics', form) || {};"));
 assert.ok(analyticsWizardSource.includes('if (open) setCurrentStep(0);'));

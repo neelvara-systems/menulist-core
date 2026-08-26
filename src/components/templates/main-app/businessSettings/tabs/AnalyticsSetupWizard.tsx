@@ -1,4 +1,4 @@
-import { Alert, Button, Card, Form, Image, Modal, Space, Steps, Switch, Typography, theme, type FormInstance } from 'antd';
+import { Alert, Button, Card, Form, Modal, Space, Steps, Switch, Typography, theme, type FormInstance } from 'antd';
 import React, { useEffect, useState } from 'react';
 import { LuArrowLeft, LuArrowRight, LuCheckCircle, LuInfo } from 'react-icons/lu';
 
@@ -25,7 +25,7 @@ const AnalyticsSetupWizard: React.FC<AnalyticsSetupWizardProps> = ({ open, onClo
             title: "",
             content: (
                 <Card variant="borderless">
-                    <Title level={4}>Let&apos;s Set Up Your Restaurant Analytics!</Title>
+                    <Title level={4}>Let&apos;s Set Up Your Analytics!</Title>
                     <Paragraph>
                         We&apos;ll help you track important things like:
                     </Paragraph>
@@ -33,7 +33,7 @@ const AnalyticsSetupWizard: React.FC<AnalyticsSetupWizardProps> = ({ open, onClo
                         <li>How many people view your menu</li>
                         <li>Which dishes are most popular</li>
                         <li>Where your customers come from</li>
-                        <li>How much money you make</li>
+                        <li>Which customer actions happen after a menu visit</li>
                     </ul>
                     <Alert
                         message="Don&apos;t worry! This is easy and takes about 5 minutes."
@@ -58,32 +58,21 @@ const AnalyticsSetupWizard: React.FC<AnalyticsSetupWizardProps> = ({ open, onClo
                         <Card type="inner" title="How to Get Your ID">
                             <Space direction="vertical">
                                 <Text>1. Open a new tab and go to <a href="https://analytics.google.com" target="_blank" rel="noopener noreferrer">analytics.google.com</a></Text>
-                                <Text>2. Click the blue &quot;Start measuring&quot; button</Text>
-                                <Text>3. Follow these simple steps:</Text>
+                                <Text>2. Open Admin and create a Google Analytics 4 property. If this is your first property, choose &quot;Start measuring&quot;.</Text>
+                                <Text>3. Add a Web data stream:</Text>
                                 <ul>
-                                    <li>Enter your restaurant name</li>
-                                    <li>Choose &quot;Web&quot; for your menu website</li>
-                                    <li>Click &quot;Save&quot;</li>
-                                    <li>Click &quot;Create&quot;</li>
+                                    <li>Enter your business name</li>
+                                    <li>Use your public MenuList link as the website URL</li>
+                                    <li>Open the new Web stream</li>
                                 </ul>
-                                <Text>4. Copy your Measurement ID (starts with &quot;G-&quot;)</Text>
-                                <Image
-                                    src="/images/analytics/ga4-id-location.png"
-                                    alt="Where to find GA4 ID"
-                                    style={{ maxWidth: '100%', marginTop: '16px' }}
-                                />
+                                <Text>4. Under Stream details, copy the Measurement ID (starts with &quot;G-&quot;)</Text>
                             </Space>
                         </Card>
 
                         <Alert
-                            message="Need help? Watch our 2-minute video guide!"
-                            type="success"
+                            message="You can leave this ID blank and come back later."
+                            type="info"
                             showIcon
-                            action={
-                                <Button type="link">
-                                    Watch Video
-                                </Button>
-                            }
                         />
                     </Space>
                 </Card>
@@ -96,7 +85,7 @@ const AnalyticsSetupWizard: React.FC<AnalyticsSetupWizardProps> = ({ open, onClo
                     <Title level={4}>Step 2: Help People Find Your Menu (Optional)</Title>
                     <Space direction="vertical" size="large">
                         <Alert
-                            message="This helps your menu show up in Google search results!"
+                            message="This verifies your menu site with Google and lets you monitor its search presence."
                             type="info"
                             showIcon
                         />
@@ -104,14 +93,9 @@ const AnalyticsSetupWizard: React.FC<AnalyticsSetupWizardProps> = ({ open, onClo
                         <Card type="inner" title="Quick Setup Steps">
                             <Space direction="vertical">
                                 <Text>1. Go to <a href="https://search.google.com/search-console" target="_blank" rel="noopener noreferrer">Google Search Console</a></Text>
-                                <Text>2. Click &quot;Start measuring&quot;</Text>
-                                <Text>3. Enter your menu website address</Text>
-                                <Text>4. Choose &quot;HTML tag&quot; verification</Text>
-                                <Image
-                                    src="/images/analytics/search-console-verification.png"
-                                    alt="Search Console verification"
-                                    style={{ maxWidth: '100%', marginTop: '16px' }}
-                                />
+                                <Text>2. Add a URL-prefix property for your exact public MenuList link</Text>
+                                <Text>3. Choose &quot;HTML tag&quot; under ownership verification</Text>
+                                <Text>4. Copy the provided verification tag and paste it into the Google Search Console field below</Text>
                             </Space>
                         </Card>
 
@@ -142,11 +126,6 @@ const AnalyticsSetupWizard: React.FC<AnalyticsSetupWizardProps> = ({ open, onClo
                                 <Text>2. Click &quot;Connect Data Sources&quot;</Text>
                                 <Text>3. Select &quot;Web&quot; as your platform</Text>
                                 <Text>4. Copy your Pixel ID number</Text>
-                                <Image
-                                    src="/images/analytics/facebook-pixel-id.png"
-                                    alt="Facebook Pixel ID location"
-                                    style={{ maxWidth: '100%', marginTop: '16px' }}
-                                />
                             </Space>
                         </Card>
 
@@ -230,8 +209,8 @@ const AnalyticsSetupWizard: React.FC<AnalyticsSetupWizardProps> = ({ open, onClo
                         </Card>
 
                         <Alert
-                            message="We never collect personal information!"
-                            description="We only track general information like city and country, never exact locations."
+                            message="MenuList analytics does not collect customer names, emails, payment details, or exact GPS locations."
+                            description="Approximate location, when enabled, uses rounded location or timezone-region information."
                             type="info"
                             showIcon
                         />
