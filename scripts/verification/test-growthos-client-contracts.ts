@@ -78,6 +78,15 @@ assert.equal(projectedKit?.createdAt, "2026-07-26T12:00:00.000Z");
 assert.equal(projectedKit?.expiresAt, "2026-07-26T12:00:00.000Z");
 assert.equal(projectedKit?.updatedAt, "2026-07-26T12:00:00.000Z");
 assert.equal(Object.prototype.hasOwnProperty.call(projectedKit || {}, "privateField"), false);
+const projectedLegacyMissingHoursKit = projectGrowthOSKitForScope({
+    ...kit,
+    sourceFactsSummary: {
+        ...kit.sourceFactsSummary,
+        todayHoursLabel: null,
+    },
+}, scopeA!);
+assert.ok(projectedLegacyMissingHoursKit);
+assert.equal(projectedLegacyMissingHoursKit.sourceFactsSummary.todayHoursLabel, undefined);
 assert.equal(projectGrowthOSKitForScope({ ...kit, tId: "12" }, scopeA!), null);
 assert.equal(projectGrowthOSKitForScope({ ...kit, outputs: [{ ...output, text: 42 }] }, scopeA!), null);
 

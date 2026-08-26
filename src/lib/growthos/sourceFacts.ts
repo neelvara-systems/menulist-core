@@ -170,17 +170,17 @@ export function summarizeGrowthOSSourceFacts(
     return {
         businessName: facts.businessName,
         projectName: facts.projectName,
-        menuLink: facts.menuLink,
+        ...(facts.menuLink ? { menuLink: facts.menuLink } : {}),
         itemCount: facts.items.length,
         availableItemCount: availableItems.length,
         unavailableItemNames: facts.items
             .filter((item) => !item.available)
             .slice(0, GROWTHOS_MAX_UNAVAILABLE_ITEMS)
             .map((item) => item.name),
-        promotedItemName: promotedItem?.name,
+        ...(promotedItem?.name ? { promotedItemName: promotedItem.name } : {}),
         promotedItemPrice: promotedItem?.price ?? null,
         isOpenToday: facts.isOpenToday,
-        todayHoursLabel: facts.todayHoursLabel,
+        ...(facts.todayHoursLabel ? { todayHoursLabel: facts.todayHoursLabel } : {}),
     };
 }
 

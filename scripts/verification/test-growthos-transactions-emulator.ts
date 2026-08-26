@@ -49,15 +49,6 @@ const initialStore = {
     storeId,
     subdomain: "transaction-cafe",
     tenantId,
-    workingHours: {
-        fri: "09:00-22:00",
-        mon: "09:00-22:00",
-        sat: "09:00-22:00",
-        sun: "09:00-22:00",
-        thu: "09:00-22:00",
-        tue: "09:00-22:00",
-        wed: "09:00-22:00",
-    },
 };
 
 const initialProject = {
@@ -176,6 +167,7 @@ async function run(): Promise<void> {
     );
 
     const generated = buildPersistableKit(generationOperationId);
+    assert.equal(generated.kit.sourceFactsSummary.todayHoursLabel, undefined);
     const generationAttempts = await Promise.all([
         writeGrowthOSKitAndSummaryServer(generated.kit, generated.summary),
         writeGrowthOSKitAndSummaryServer(generated.kit, generated.summary),
@@ -188,6 +180,11 @@ async function run(): Promise<void> {
     const kitsCollection = firestoreAdmin
         .collection(`${DB_COLLECTIONS.GROWTHOS_KITS}/${tenantId}/${storeId}`);
     assert.equal((await kitsCollection.get()).size, 1, "one operation may persist only one kit");
+    assert.equal(
+        (await kitsCollection.doc(generated.kit.id).get()).data()?.sourceFactsSummary?.todayHoursLabel,
+        undefined,
+        "missing hours must remain omitted instead of becoming an unreadable null",
+    );
 
     const output = generated.kit.outputs[0];
     assert.ok(output, "fixture must produce an exportable output");

@@ -520,6 +520,7 @@ const growthOSExportRoute = fs.readFileSync(path.resolve("src/app/api/growthos/k
 const growthOSReviewSuggestRoute = fs.readFileSync(path.resolve("src/app/api/growthos/reviews/suggest/route.ts"), "utf8");
 const growthOSHook = fs.readFileSync(path.resolve("src/hooks/useGrowthOS.ts"), "utf8");
 const growthOSClientContracts = fs.readFileSync(path.resolve("src/lib/growthos/clientContracts.ts"), "utf8");
+const growthOSSourceFactsSource = fs.readFileSync(path.resolve("src/lib/growthos/sourceFacts.ts"), "utf8");
 const growthOSReadiness = fs.readFileSync(path.resolve("src/lib/growthos/readiness.ts"), "utf8");
 
 assertCheck(FEATURE_FLAGS.ENABLE_GROWTHOS_ADDON === true, "GrowthOS master flag is enabled");
@@ -969,6 +970,8 @@ assertTextOrder(growthOSMobileCard, "if (!copied) throw new Error('mobile_growth
 assertCheck(growthOSMobileCard.includes("latestKit?.status === 'used' ? 'Marked done' : 'Done'"), "Mobile Growth Kits must visibly preserve the completed staff action");
 assertCheck(growthOSMobileCard.includes("if (latestKit?.status === 'used') return;"), "Mobile Growth Kits must block repeated mark-used writes");
 assertCheck(growthOSServerDal.includes('currentKit.status === "used" && nextStatus !== "used"'), "Growth Kits must preserve used status across later exports");
+assertCheck(growthOSSourceFactsSource.includes('...(facts.todayHoursLabel ? { todayHoursLabel: facts.todayHoursLabel } : {})'), "Growth Kits source summaries must omit an unknown hours label before persistence");
+assertCheck(growthOSClientContracts.includes('todayHoursLabel: z.string().max(500).nullish().transform((value) => value ?? undefined)'), "Growth Kits must normalize legacy nullable hours labels");
 assertCheck(!growthOSMobileCard.includes("(error as Error).message"), "Mobile Growth Kits failure toasts must not show raw exception messages");
 assertCheck(!growthOSClientDal.includes("payload?.message || payload?.error"), "GrowthOS client helper does not throw raw API response text");
 assertCheck(growthOSClientDal.includes("GROWTHOS_CLIENT_REQUEST_POLICY"), "GrowthOS client helper defines a shared browser request policy");

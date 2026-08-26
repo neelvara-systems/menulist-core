@@ -9,6 +9,11 @@
   presence and length. They do not log kit IDs, output IDs, destinations,
   generated text, owner data, credentials, or raw exceptions, and add no
   Firebase operation.
+- The bounded QA document readback then identified the contract mismatch:
+  missing `todayHoursLabel` was persisted as `null`, while the projector
+  accepted only string-or-absent. Growth Kits now omits the optional hours
+  label while constructing future source summaries and normalizes this one
+  legacy nullable field to absent when reading existing kits.
 
 ## August 26, 2026 - Growth Kits Mark-Used Completion State
 

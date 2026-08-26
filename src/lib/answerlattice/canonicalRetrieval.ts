@@ -338,6 +338,14 @@ const RETRIEVAL_STOP_WORDS = new Set([
     'when', 'where', 'which', 'why', 'will', 'with', 'would', 'you', 'your',
 ]);
 
+// These words can legitimately occur throughout one product's support corpus,
+// but none of them is specific enough to authorize a governed answer by itself.
+// A query must share at least one more discriminating term with the answer.
+const RETRIEVAL_DOMAIN_GENERIC_TERMS = new Set([
+    'answer', 'app', 'customer', 'feature', 'help', 'menu', 'menulist',
+    'page', 'product', 'public', 'support', 'user', 'website',
+]);
+
 const expandRetrievalToken = (token: string): string[] => {
     const variants = new Set<string>();
     const addVariant = (value: string) => {
@@ -388,6 +396,7 @@ type CanonicalAnswerQueryRelevance = {
     overlapCount: number;
     sequenceLength: number;
     titleOverlapCount: number;
+    discriminatingOverlapCount: number;
 };
 
 const getOrderedRetrievalTerms = (text: string): string[] => {
@@ -444,6 +453,9 @@ export const evaluateCanonicalAnswerQueryRelevance = (
     const answerSet = new Set(answerTerms);
     const overlapCount = Array.from(querySet).filter(term => answerSet.has(term)).length;
     const titleOverlapCount = titleTerms.filter(term => querySet.has(term)).length;
+    const discriminatingOverlapCount = Array.from(querySet).filter(term => (
+        answerSet.has(term) && !RETRIEVAL_DOMAIN_GENERIC_TERMS.has(term)
+    )).length;
     const sequenceLength = getLongestCommonRetrievalSequenceLength(queryTerms, answerTerms);
     const singleTokenTitleMatch = titleTerms.length === 1
         && titleOverlapCount === 1
@@ -453,10 +465,12 @@ export const evaluateCanonicalAnswerQueryRelevance = (
         eligible: singleTokenTitleMatch || (
             overlapCount >= CANONICAL_QUERY_MIN_OVERLAP
             && sequenceLength >= CANONICAL_QUERY_MIN_SEQUENCE
+            && discriminatingOverlapCount >= 1
         ),
         overlapCount,
         sequenceLength,
         titleOverlapCount,
+        discriminatingOverlapCount,
     };
 };
 
@@ -1027,12 +1041,14 @@ export async function attemptCanonicalRetrieval(
             item.relevance.sequenceLength * 100
             + item.relevance.overlapCount * 10
             + item.relevance.titleOverlapCount
+            + item.relevance.discriminatingOverlapCount * 1_000
         )));
         const relevanceMatchedAnswers = queryRelevantAnswers
             .filter(item => (
                 item.relevance.sequenceLength * 100
                 + item.relevance.overlapCount * 10
                 + item.relevance.titleOverlapCount
+                + item.relevance.discriminatingOverlapCount * 1_000
             ) === strongestQueryRelevance)
             .map(item => item.answer);
         const directlyRetrievableAnswers = relevanceMatchedAnswers.filter(answer => (

@@ -102,7 +102,7 @@ const sourceFactsSummarySchema = z.object({
     promotedItemName: z.string().max(500).optional(),
     promotedItemPrice: z.number().finite().nullable().optional(),
     isOpenToday: z.boolean(),
-    todayHoursLabel: z.string().max(500).optional(),
+    todayHoursLabel: z.string().max(500).nullish().transform((value) => value ?? undefined),
 });
 const kitSchema = kitSummarySchema.extend({
     tId: z.string().min(1).max(180),

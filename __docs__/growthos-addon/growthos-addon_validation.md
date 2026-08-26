@@ -354,11 +354,41 @@ raw QA readback proved two exact-scope kit documents exist with seven expected
 outputs, so the remaining ambiguity is between kit projection and output
 matching inside the protected route.
 
+Exact diagnostic build `d61d16c…` reproduced mark-used once and emitted only
+`growthos_export_kit_not_found` with bounded presence/length metadata. This
+confirms projection rejected the existing document before output matching.
+
 The route now emits one of two fixed warning codes at those branches with only
 bounded presence/length and existing route/security context. This changes no
 response, Firestore read/write, entitlement, rate limit, cache, or owner copy.
 The next exact hosted replay must identify the branch before a root correction
 is selected.
+
+The bounded persisted-field inspection subsequently confirmed
+`sourceFactsSummary.todayHoursLabel` was stored as Firestore null on the
+missing-hours kit. The shared projector rejected that null even though every
+required scope, kit, output, enum, length, and timestamp field was valid.
+
+The root correction omits an unknown hours label when constructing the persisted
+source-facts summary and makes the projector accept legacy null as absent. The
+transaction fixture now uses a store with missing hours and proves
+the persisted kit omits the field, remains projectable, exports successfully,
+and preserves terminal used state. The client contract separately proves an
+already persisted nullable-hours kit remains readable.
+
+Root-fix validation:
+
+- Passed 265 Growth Kits source/contract checks.
+- Passed GrowthOS client/rate/timestamp contracts.
+- Passed the missing-hours Firestore generation/read/export transaction body
+  against the isolated project on the existing emulator.
+- Passed focused ESLint, strict TypeScript, and `git diff --check`.
+
+Cost impact: no read/query/listener/cache count changes. Successful exports keep
+their existing export create plus kit/summary merge. The correction prevents
+owners from repeating a deterministic failed attempt that previously consumed
+the protected route's entitlement, replay, kit, summary, and source-validation
+reads before returning 404.
 
 Validation: the Growth Kits source suite passed 255 checks, including both
 missing-hours and explicit-closed regressions. Client contracts and the

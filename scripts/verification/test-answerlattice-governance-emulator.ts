@@ -407,10 +407,75 @@ async function run(): Promise<void> {
         'reversed broad terms must not make a public-surface answer authoritative for an unsupported synchronization question',
     );
     assert.equal(unsupportedLocationRetrievalResult.fallbackReason, 'no_query_relevant_canonical_answer');
+
+    const qrAnswerId = 'canonical_qr_retrieval';
+    const freshnessAnswerId = 'canonical_freshness_retrieval';
+    await Promise.all([
+        db.collection(DB_COLLECTIONS.ANSWERLATTICE_CANONICAL_ANSWERS).doc(qrAnswerId).set({
+            ...answer,
+            title: 'QR code sharing functionality',
+            scope: { entityIds: ['entity_qr_share'], planIds: [], roleIds: [], stateIds: [] },
+            content: {
+                structuredSummary: 'MenuList provides a QR and share link for customers to open the public menu.',
+                detailedExplanation: 'Customers scan the QR code or use the share link to view the menu.',
+            },
+        }),
+        db.collection(DB_COLLECTIONS.ANSWERLATTICE_CANONICAL_ANSWERS).doc(freshnessAnswerId).set({
+            ...answer,
+            title: 'Freshness and status signals',
+            scope: { entityIds: ['entity_freshness'], planIds: [], roleIds: [], stateIds: [] },
+            content: {
+                structuredSummary: 'Freshness and status signals show whether the published menu is current.',
+                detailedExplanation: 'Customers can use the freshness status to know whether the menu is up to date.',
+            },
+        }),
+    ]);
+    const freshnessSearchIndex = [
+        {
+            id: 'entity_index_qr_share',
+            pId: 'AL' as const,
+            tId: 1,
+            sId: 101,
+            entityId: 'entity_qr_share',
+            canonicalName: 'QR and share link',
+            synonyms: [],
+            normalizedTokens: ['qr', 'share', 'link', 'customer', 'public', 'menu'],
+            prefixTokens: ['qr', 'sha', 'lin'],
+            weight: 1,
+        },
+        {
+            id: 'entity_index_freshness',
+            pId: 'AL' as const,
+            tId: 1,
+            sId: 101,
+            entityId: 'entity_freshness',
+            canonicalName: 'Menu freshness signals',
+            synonyms: [],
+            normalizedTokens: ['freshness', 'status', 'signal', 'current', 'published', 'menu'],
+            prefixTokens: ['fre', 'sta', 'sig'],
+            weight: 1,
+        },
+    ];
+    const freshnessRetrievalResult = await attemptCanonicalRetrieval(
+        'How do customers know if the menu they are viewing is current and up-to-date?',
+        {
+            tId: 1,
+            sId: 101,
+            currentVersion: 1_000_000,
+            preloadedSearchIndex: freshnessSearchIndex,
+        },
+    );
+    assert.equal(
+        freshnessRetrievalResult.answer?.id,
+        freshnessAnswerId,
+        'a discriminating freshness term must outrank a broad customer-menu overlap',
+    );
     await Promise.all([
         db.collection(DB_COLLECTIONS.ANSWERLATTICE_CANONICAL_ANSWERS).doc(publishingAnswerId).delete(),
         db.collection(DB_COLLECTIONS.ANSWERLATTICE_CANONICAL_ANSWERS).doc(errorAnswerId).delete(),
         db.collection(DB_COLLECTIONS.ANSWERLATTICE_CANONICAL_ANSWERS).doc(ownerReviewAnswerId).delete(),
+        db.collection(DB_COLLECTIONS.ANSWERLATTICE_CANONICAL_ANSWERS).doc(qrAnswerId).delete(),
+        db.collection(DB_COLLECTIONS.ANSWERLATTICE_CANONICAL_ANSWERS).doc(freshnessAnswerId).delete(),
     ]);
 
     assert.equal(
