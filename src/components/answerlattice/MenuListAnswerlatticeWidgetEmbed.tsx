@@ -7,7 +7,6 @@ import type { AnswerlatticePageContext, AnswerlatticeWidgetRuntime } from '../..
 
 const MENULIST_ANSWERLATTICE_WIDGET_KEY = process.env.NEXT_PUBLIC_MENULIST_ANSWERLATTICE_WIDGET_KEY?.trim() || '';
 const CONFIGURED_SCRIPT_SRC = process.env.NEXT_PUBLIC_MENULIST_ANSWERLATTICE_WIDGET_SCRIPT_SRC?.trim() || '';
-const MOBILE_WIDGET_MEDIA_QUERY = '(max-width: 767px), (pointer: coarse)';
 
 type AnswerlatticeWidgetWindow = Window & {
     AnswerlatticeWidget?: AnswerlatticeWidgetRuntime;
@@ -124,31 +123,18 @@ function buildPageContext(pathname: string): AnswerlatticePageContext | null {
 
 export default function MenuListAnswerlatticeWidgetEmbed() {
     const pathname = normalizePathname(usePathname());
-    const [runtimeState, setRuntimeState] = useState({ ready: false, mobile: false });
+    const [runtimeReady, setRuntimeReady] = useState(false);
     const scriptSrc = useMemo(() => resolveWidgetScriptSrc(), []);
     const pageContext = useMemo(() => buildPageContext(pathname), [pathname]);
     const blockedRoute = isBlockedRoute(pathname);
-    const shouldSuppressWidget = blockedRoute || runtimeState.mobile || !pageContext;
+    const shouldSuppressWidget = blockedRoute || !pageContext;
 
     useEffect(() => {
-        const mediaQuery = window.matchMedia(MOBILE_WIDGET_MEDIA_QUERY);
-        const syncRuntimeState = () => {
-            setRuntimeState({
-                ready: true,
-                mobile: mediaQuery.matches,
-            });
-        };
-
-        syncRuntimeState();
-        mediaQuery.addEventListener('change', syncRuntimeState);
-
-        return () => {
-            mediaQuery.removeEventListener('change', syncRuntimeState);
-        };
+        setRuntimeReady(true);
     }, []);
 
     useEffect(() => {
-        if (!MENULIST_ANSWERLATTICE_WIDGET_KEY || !runtimeState.ready) return;
+        if (!MENULIST_ANSWERLATTICE_WIDGET_KEY || !runtimeReady) return;
         const widget = (window as AnswerlatticeWidgetWindow).AnswerlatticeWidget;
 
         if (shouldSuppressWidget) {
@@ -160,9 +146,9 @@ export default function MenuListAnswerlatticeWidgetEmbed() {
 
         widget?.show?.();
         if (pageContext) widget?.page?.(pageContext);
-    }, [pageContext, runtimeState.ready, shouldSuppressWidget]);
+    }, [pageContext, runtimeReady, shouldSuppressWidget]);
 
-    if (!MENULIST_ANSWERLATTICE_WIDGET_KEY || !runtimeState.ready || shouldSuppressWidget || !pageContext) return null;
+    if (!MENULIST_ANSWERLATTICE_WIDGET_KEY || !runtimeReady || shouldSuppressWidget || !pageContext) return null;
 
     return (
         <Script
@@ -177,7 +163,6 @@ export default function MenuListAnswerlatticeWidgetEmbed() {
             data-user-role="owner"
             data-entity-hints={(pageContext.entityHints || []).join(',')}
             data-blocked-routes={BLOCKED_ROUTES.join(',')}
-            data-mobile-visibility="hide"
         />
     );
 }

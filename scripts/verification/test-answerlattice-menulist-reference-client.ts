@@ -224,6 +224,16 @@ assert.ok(
     widgetEmbedSource.includes('if (!routeConfig) return null;'),
     'unknown MenuList routes must be suppressed instead of becoming widget context',
 );
+assert.equal(
+    widgetEmbedSource.includes('MOBILE_WIDGET_MEDIA_QUERY'),
+    false,
+    'MenuList must not suppress the responsive web widget before the owner-controlled mobile policy is loaded',
+);
+assert.equal(
+    widgetEmbedSource.includes('data-mobile-visibility="hide"'),
+    false,
+    'MenuList must not override the owner-controlled mobile visibility configuration',
+);
 for (const blockedRoute of [
     '/growth-kits',
     '/growth-kits/*',
