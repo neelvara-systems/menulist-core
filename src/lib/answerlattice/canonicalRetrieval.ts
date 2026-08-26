@@ -42,6 +42,9 @@ import { AnswerlatticeAnswerType, AnswerlatticeCanonicalAnswer, AnswerlatticeCon
 // ═══════════════════════════════════════════════════════════════
 
 const ENTITY_MATCH_MIN_SCORE = 2.0;
+const CANONICAL_QUERY_RELEVANCE_MAX_TERMS = 80;
+const CANONICAL_QUERY_MIN_OVERLAP = 2;
+const CANONICAL_QUERY_MIN_SEQUENCE = 2;
 
 // ═══════════════════════════════════════════════════════════════
 // CONTEXT-AWARE SUPPORT CONSTANTS (Expansion Item #1)
@@ -379,6 +382,83 @@ const getIndexEntryRetrievalTerms = (entry: AnswerlatticeEntitySearchIndex): Set
     ...entry.synonyms.flatMap(synonym => answerlatticeTokenize(synonym)),
     ...entry.normalizedTokens.flatMap(token => answerlatticeTokenize(token)),
 ]);
+
+type CanonicalAnswerQueryRelevance = {
+    eligible: boolean;
+    overlapCount: number;
+    sequenceLength: number;
+    titleOverlapCount: number;
+};
+
+const getOrderedRetrievalTerms = (text: string): string[] => {
+    const ordered: string[] = [];
+    const seen = new Set<string>();
+    answerlatticeTokenize(text)
+        .flatMap(expandRetrievalToken)
+        .forEach((term) => {
+            if (seen.has(term) || ordered.length >= CANONICAL_QUERY_RELEVANCE_MAX_TERMS) return;
+            seen.add(term);
+            ordered.push(term);
+        });
+    return ordered;
+};
+
+const getLongestCommonRetrievalSequenceLength = (
+    queryTerms: string[],
+    answerTerms: string[],
+): number => {
+    if (queryTerms.length === 0 || answerTerms.length === 0) return 0;
+    let previous = new Array(answerTerms.length + 1).fill(0) as number[];
+    for (const queryTerm of queryTerms) {
+        const current = new Array(answerTerms.length + 1).fill(0) as number[];
+        for (let index = 1; index <= answerTerms.length; index += 1) {
+            current[index] = queryTerm === answerTerms[index - 1]
+                ? previous[index - 1] + 1
+                : Math.max(previous[index], current[index - 1]);
+        }
+        previous = current;
+    }
+    return previous[answerTerms.length] || 0;
+};
+
+/**
+ * Entity matches identify candidate product topics, but broad shared terms such
+ * as "menu", "customer", or "public" must not make an unrelated governed
+ * answer authoritative. Require the query and answer to share at least two
+ * ordered, meaningful terms before specificity metadata may rank the answer.
+ * A single-token answer title remains eligible only when that exact distinctive
+ * title is present in both the query and answer.
+ */
+export const evaluateCanonicalAnswerQueryRelevance = (
+    query: string,
+    answer: Pick<AnswerlatticeCanonicalAnswer, 'title' | 'content'>,
+): CanonicalAnswerQueryRelevance => {
+    const queryTerms = getOrderedRetrievalTerms(query);
+    const answerTerms = getOrderedRetrievalTerms([
+        answer.title,
+        answer.content.structuredSummary,
+        answer.content.detailedExplanation,
+    ].filter(Boolean).join(' '));
+    const titleTerms = getOrderedRetrievalTerms(answer.title);
+    const querySet = new Set(queryTerms);
+    const answerSet = new Set(answerTerms);
+    const overlapCount = Array.from(querySet).filter(term => answerSet.has(term)).length;
+    const titleOverlapCount = titleTerms.filter(term => querySet.has(term)).length;
+    const sequenceLength = getLongestCommonRetrievalSequenceLength(queryTerms, answerTerms);
+    const singleTokenTitleMatch = titleTerms.length === 1
+        && titleOverlapCount === 1
+        && answerSet.has(titleTerms[0]);
+
+    return {
+        eligible: singleTokenTitleMatch || (
+            overlapCount >= CANONICAL_QUERY_MIN_OVERLAP
+            && sequenceLength >= CANONICAL_QUERY_MIN_SEQUENCE
+        ),
+        overlapCount,
+        sequenceLength,
+        titleOverlapCount,
+    };
+};
 
 /**
  * Match query tokens against entity search index.
@@ -925,12 +1005,42 @@ export async function attemptCanonicalRetrieval(
         }
 
         const retrievableAnswers = scopeMatchedAnswers.filter(isRetrievableCanonicalAnswer);
-        const directlyRetrievableAnswers = retrievableAnswers.filter(answer => (
+        const queryRelevantAnswers = retrievableAnswers
+            .map(answer => ({
+                answer,
+                relevance: evaluateCanonicalAnswerQueryRelevance(query, answer),
+            }))
+            .filter(item => item.relevance.eligible);
+
+        if (queryRelevantAnswers.length === 0) {
+            return {
+                found: false,
+                canonical: false,
+                matchedEntityIds: topEntityIds,
+                confidence: 'low',
+                fallbackReason: 'no_query_relevant_canonical_answer',
+                entityDebug: buildEntityDebug(),
+            };
+        }
+
+        const strongestQueryRelevance = Math.max(...queryRelevantAnswers.map(item => (
+            item.relevance.sequenceLength * 100
+            + item.relevance.overlapCount * 10
+            + item.relevance.titleOverlapCount
+        )));
+        const relevanceMatchedAnswers = queryRelevantAnswers
+            .filter(item => (
+                item.relevance.sequenceLength * 100
+                + item.relevance.overlapCount * 10
+                + item.relevance.titleOverlapCount
+            ) === strongestQueryRelevance)
+            .map(item => item.answer);
+        const directlyRetrievableAnswers = relevanceMatchedAnswers.filter(answer => (
             answer.scope.entityIds.some(entityId => directlyMatchedEntityIds.has(entityId))
         ));
         const rankableAnswers = directlyRetrievableAnswers.length > 0
             ? directlyRetrievableAnswers
-            : retrievableAnswers;
+            : relevanceMatchedAnswers;
 
         if (rankableAnswers.length === 0) {
             return {

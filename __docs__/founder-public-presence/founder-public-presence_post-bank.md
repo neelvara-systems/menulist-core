@@ -191,6 +191,12 @@ review.
 
 ### FPP-C009 — State, not timestamp
 
+**Execution packet:** Original X post from
+`https://x.com/proofandstate` on Wednesday, August 26, 2026,
+8:00-8:15 PM Asia/Kolkata.
+
+**Exact text (260 characters):**
+
 ```text
 A trial is not just an expiry timestamp.
 
@@ -198,6 +204,22 @@ It may reserve public identity, allow compute, expose data, affect billing, and 
 
 Model the lifecycle as explicit states and transitions. Time can trigger a transition; it should not be the whole model.
 ```
+
+**Why this now:** It gives SaaS builders a compact lifecycle-design lesson:
+trials can affect identity, compute, data, billing, and cleanup, so time alone
+is not a sufficient model. It follows the agent-boundary post without repeating
+its mechanism.
+
+**Evidence and boundary:** Generalized lifecycle pattern only. No billing
+configuration, abuse control, customer data, product name, route, or private
+state machine is disclosed.
+
+**Native checks:** Text only; 260 characters; no link, media, hashtag, product
+name, or disclosure required. Preview the exact line breaks before posting.
+
+**Missed-window rule:** If August 26, 8:00-8:15 PM IST is missed, do not post
+later impulsively. Report `BLOCKED timing window missed`; re-slot after a fresh
+review.
 
 ### FPP-C010 — Wrong-scope proof
 

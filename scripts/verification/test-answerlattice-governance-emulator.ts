@@ -340,9 +340,77 @@ async function run(): Promise<void> {
         publishingAnswerId,
         'the strongest entity match must outrank weaker top-three answers with equal validation metadata',
     );
+
+    const ownerReviewAnswerId = 'canonical_owner_review_retrieval';
+    await db.collection(DB_COLLECTIONS.ANSWERLATTICE_CANONICAL_ANSWERS).doc(ownerReviewAnswerId).set({
+        ...answer,
+        title: 'Owner review before publishing',
+        scope: { entityIds: ['entity_owner_review'], planIds: [], roleIds: [], stateIds: [] },
+        content: {
+            structuredSummary: 'Owner review is required before anything becomes public.',
+            detailedExplanation: 'Review the prepared menu before it becomes public to customers.',
+        },
+    });
+    const ambiguitySearchIndex = [
+        {
+            id: 'entity_index_public_surfaces',
+            pId: 'AL' as const,
+            tId: 1,
+            sId: 101,
+            entityId: 'entity_menu_publishing',
+            canonicalName: 'Public customer surfaces',
+            synonyms: [],
+            normalizedTokens: ['public', 'customer', 'surfaces', 'official', 'menu', 'page'],
+            prefixTokens: ['pub', 'cus', 'sur'],
+            weight: 1,
+        },
+        {
+            id: 'entity_index_owner_review',
+            pId: 'AL' as const,
+            tId: 1,
+            sId: 101,
+            entityId: 'entity_owner_review',
+            canonicalName: 'Owner review',
+            synonyms: [],
+            normalizedTokens: ['owner', 'review', 'approval', 'menu', 'private', 'publication'],
+            prefixTokens: ['own', 'rev', 'app'],
+            weight: 1,
+        },
+    ];
+    const ownerReviewRetrievalResult = await attemptCanonicalRetrieval(
+        'Do I need to review my menu before it becomes public to customers?',
+        {
+            tId: 1,
+            sId: 101,
+            currentVersion: 1_000_000,
+            preloadedSearchIndex: ambiguitySearchIndex,
+        },
+    );
+    assert.equal(
+        ownerReviewRetrievalResult.answer?.id,
+        ownerReviewAnswerId,
+        'ordered answer relevance must resolve an owner-review question instead of a broader public-surface answer',
+    );
+
+    const unsupportedLocationRetrievalResult = await attemptCanonicalRetrieval(
+        'How does the product sync my menu across multiple public directories or places automatically?',
+        {
+            tId: 1,
+            sId: 101,
+            currentVersion: 1_000_000,
+            preloadedSearchIndex: ambiguitySearchIndex,
+        },
+    );
+    assert.equal(
+        unsupportedLocationRetrievalResult.found,
+        false,
+        'reversed broad terms must not make a public-surface answer authoritative for an unsupported synchronization question',
+    );
+    assert.equal(unsupportedLocationRetrievalResult.fallbackReason, 'no_query_relevant_canonical_answer');
     await Promise.all([
         db.collection(DB_COLLECTIONS.ANSWERLATTICE_CANONICAL_ANSWERS).doc(publishingAnswerId).delete(),
         db.collection(DB_COLLECTIONS.ANSWERLATTICE_CANONICAL_ANSWERS).doc(errorAnswerId).delete(),
+        db.collection(DB_COLLECTIONS.ANSWERLATTICE_CANONICAL_ANSWERS).doc(ownerReviewAnswerId).delete(),
     ]);
 
     assert.equal(
