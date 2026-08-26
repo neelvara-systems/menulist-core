@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import {
     ANSWERLATTICE_FIRST_TRUSTED_ANSWER_CASE_IDS,
     countAnswerlatticeFirstTrustedAnswerCases,
@@ -24,6 +25,20 @@ import {
 import { renderAnswerlatticePreOnboardingToolPrompt } from '../../src/lib/answerlattice/preOnboardingPrompt';
 
 const fixedNow = new Date('2026-07-16T00:00:00.000Z');
+const knowledgeIntakeReviewSource = readFileSync(
+    'src/components/templates/answerlattice/knowledgeIntake/AnswerlatticeKnowledgeIntake.tsx',
+    'utf8',
+);
+assert.equal(
+    knowledgeIntakeReviewSource.includes('<Form.Item name="entityIds" label="Entity IDs">'),
+    false,
+    'First 10 review must not require owners to paste internal Product Topic IDs',
+);
+assert.equal(
+    knowledgeIntakeReviewSource.includes('entityIds: normalizeEntitySelection(reviewValues.entityIds)'),
+    true,
+    'First 10 review must preserve searchable multi-select Product Topic values',
+);
 const starters = createAnswerlatticeFirstTrustedAnswerCases([], fixedNow);
 assert.equal(starters.length, 10, 'starter pack must contain ten priority questions');
 assert.equal(new Set(starters.map(testCase => testCase.id)).size, 10, 'starter IDs must be unique');

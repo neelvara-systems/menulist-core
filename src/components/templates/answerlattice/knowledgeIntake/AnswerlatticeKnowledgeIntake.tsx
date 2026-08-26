@@ -780,7 +780,7 @@ export default function AnswerlatticeKnowledgeIntake() {
             contentText: values.contentText,
             tags: splitTags(values.tags),
             contextKeys: splitTags(values.contextKeys),
-            entityIds: splitTags(values.entityIds),
+            entityIds: normalizeEntitySelection(values.entityIds),
         });
         if (source) textForm.resetFields();
     };
@@ -951,7 +951,7 @@ export default function AnswerlatticeKnowledgeIntake() {
             procedure,
             tags: splitTags(reviewValues.tags),
             contextKeys: splitTags(reviewValues.contextKeys),
-            entityIds: splitTags(reviewValues.entityIds),
+            entityIds: normalizeEntitySelection(reviewValues.entityIds),
         });
         if (ok) setEditingItem(null);
     };
@@ -1342,8 +1342,20 @@ export default function AnswerlatticeKnowledgeIntake() {
                                                 <Form.Item name="contextKeys" label="Surface/context keys">
                                                     <Input placeholder="billing, onboarding, settings" />
                                                 </Form.Item>
-                                                <Form.Item name="entityIds" label="Entity IDs">
-                                                    <Input placeholder="Optional: entity ids for canonical proposals" />
+                                                <Form.Item name="entityIds" label="Product Topics">
+                                                    <Select
+                                                        mode="multiple"
+                                                        showSearch
+                                                        filterOption={false}
+                                                        options={entitySelectOptions}
+                                                        loading={entitySearching}
+                                                        onSearch={handleEntitySearch}
+                                                        onClear={() => setEntityOptions([])}
+                                                        placeholder="Search feature, workflow, plan, or role"
+                                                        notFoundContent={entitySearching ? 'Searching...' : 'Type 3 characters to search'}
+                                                        maxTagCount="responsive"
+                                                        allowClear
+                                                    />
                                                 </Form.Item>
                                                 <Button type="primary" loading={saving} onClick={handleAddTextSource}>Add source</Button>
                                             </Form>
@@ -1433,7 +1445,7 @@ export default function AnswerlatticeKnowledgeIntake() {
                                                                             procedureJson: next.procedure ? JSON.stringify(next.procedure, null, 2) : '',
                                                                             tags: next.tags?.join(', '),
                                                                             contextKeys: next.contextKeys?.join(', '),
-                                                                            entityIds: next.entityIds?.join(', '),
+                                                                            entityIds: next.entityIds || [],
                                                                         });
                                                                     }}
                                                                     onAccept={(next) => activeJobId && updateReviewItem(activeJobId, next.id, { status: ANSWERLATTICE_INTAKE_REVIEW_STATUS.ACCEPTED })}
@@ -1678,8 +1690,24 @@ export default function AnswerlatticeKnowledgeIntake() {
                     <Form.Item name="contextKeys" label="Context keys">
                         <Input placeholder="billing, invoices" />
                     </Form.Item>
-                    <Form.Item name="entityIds" label="Entity IDs">
-                        <Input placeholder="Optional entity ids" />
+                    <Form.Item
+                        name="entityIds"
+                        label="Product Topics"
+                        extra="Search for the product topics this answer is about."
+                    >
+                        <Select
+                            mode="multiple"
+                            showSearch
+                            filterOption={false}
+                            options={entitySelectOptions}
+                            loading={entitySearching}
+                            onSearch={handleEntitySearch}
+                            onClear={() => setEntityOptions([])}
+                            placeholder="Search feature, workflow, plan, or role"
+                            notFoundContent={entitySearching ? 'Searching...' : 'Type 3 characters to search'}
+                            maxTagCount="responsive"
+                            allowClear
+                        />
                     </Form.Item>
                 </Form>
             </Modal>
