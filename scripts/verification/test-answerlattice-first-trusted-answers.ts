@@ -39,6 +39,11 @@ assert.equal(
     true,
     'First 10 review must preserve searchable multi-select Product Topic values',
 );
+assert.equal(
+    knowledgeIntakeReviewSource.includes("maxHeight: 'calc(100dvh - 200px)'"),
+    true,
+    'First 10 review must keep the complete draft form reachable inside the viewport',
+);
 const starters = createAnswerlatticeFirstTrustedAnswerCases([], fixedNow);
 assert.equal(starters.length, 10, 'starter pack must contain ten priority questions');
 assert.equal(new Set(starters.map(testCase => testCase.id)).size, 10, 'starter IDs must be unique');

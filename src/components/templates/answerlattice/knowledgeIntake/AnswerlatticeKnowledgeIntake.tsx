@@ -1629,6 +1629,13 @@ export default function AnswerlatticeKnowledgeIntake() {
                 okText="Save draft"
                 confirmLoading={saving}
                 width={760}
+                styles={{
+                    body: {
+                        maxHeight: 'calc(100dvh - 200px)',
+                        overflowY: 'auto',
+                        overscrollBehavior: 'contain',
+                    },
+                }}
                 forceRender
             >
                 {editingItem ? (
