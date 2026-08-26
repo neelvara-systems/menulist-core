@@ -1,5 +1,15 @@
 # MenuList — Changelog
 
+## August 26, 2026 - Growth Kits Export Failure Attribution
+
+- Added fixed-code, bounded server diagnostics for the two export-route 404
+  branches: a persisted kit that cannot be projected and a requested output
+  that cannot be found in that kit.
+- Diagnostics retain only existing route/security metadata plus identifier
+  presence and length. They do not log kit IDs, output IDs, destinations,
+  generated text, owner data, credentials, or raw exceptions, and add no
+  Firebase operation.
+
 ## August 26, 2026 - Growth Kits Mark-Used Completion State
 
 - Made the Staff line `Done` action visibly settle as `Marked done` on desktop

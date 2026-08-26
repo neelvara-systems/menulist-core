@@ -346,6 +346,20 @@ and kit/summary update that the indistinguishable `Done` control previously
 allowed. No read, query, cache, entitlement, provider, scheduler, rules, index,
 or collection path changed.
 
+## August 26, 2026 Export 404 Attribution
+
+Exact hosted `d58217c…` retained a ready persisted kit but reproduced 404 for
+mark-used, following the same 404 seen for copy/export acknowledgement. The
+raw QA readback proved two exact-scope kit documents exist with seven expected
+outputs, so the remaining ambiguity is between kit projection and output
+matching inside the protected route.
+
+The route now emits one of two fixed warning codes at those branches with only
+bounded presence/length and existing route/security context. This changes no
+response, Firestore read/write, entitlement, rate limit, cache, or owner copy.
+The next exact hosted replay must identify the branch before a root correction
+is selected.
+
 Validation: the Growth Kits source suite passed 255 checks, including both
 missing-hours and explicit-closed regressions. Client contracts and the
 isolated-project transaction emulator body remain passing. This correction

@@ -862,6 +862,9 @@ assertCheck(
         && growthOSExportRoute.includes("readGrowthOSExportReplayServer({\n            actorId,"),
     "GrowthOS export route passes the exact actor to replay and durable settlement",
 );
+assertCheck(growthOSExportRoute.includes('failureCode: "growthos_export_kit_not_found"'), "GrowthOS export route diagnoses missing projected kits without raw data");
+assertCheck(growthOSExportRoute.includes('failureCode: "growthos_export_output_not_found"'), "GrowthOS export route diagnoses missing projected outputs without raw data");
+assertCheck(!growthOSExportRoute.includes("failureCode: \"growthos_export_kit_not_found\",\n                kitId,"), "GrowthOS export not-found diagnostics must not log raw kit IDs");
 assertCheck(growthOSReviewSuggestRoute.includes("growthOSPrivateJson"), "GrowthOS review guard shared private JSON boundary");
 assertCheck(growthOSReviewSuggestRoute.includes("withGrowthOSPrivateHeaders"), "GrowthOS review guard helper-response policy");
 assertCheck(!growthOSReviewSuggestRoute.includes("NextResponse.json("), "GrowthOS review guard has no direct JSON response bypass");

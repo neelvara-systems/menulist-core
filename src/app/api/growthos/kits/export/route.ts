@@ -103,6 +103,12 @@ export const POST = withAuth(async (request, session) => {
             sId: scope.storeScope.documentId,
         });
         if (!kit) {
+            logger.warn("GrowthOS export target unavailable", {
+                failureCode: "growthos_export_kit_not_found",
+                ...getGrowthOSSecurityLogContext(session, request, "/api/growthos/kits/export", {
+                    ...getGrowthOSBoundedStringContext("kitId", kitId),
+                }),
+            });
             return growthOSPrivateJson({ error: "Growth Kit not found" }, { status: 404 });
         }
 
@@ -112,6 +118,14 @@ export const POST = withAuth(async (request, session) => {
             outputId: validation.data.outputId,
         });
         if (!output) {
+            logger.warn("GrowthOS export target unavailable", {
+                failureCode: "growthos_export_output_not_found",
+                ...getGrowthOSSecurityLogContext(session, request, "/api/growthos/kits/export", {
+                    ...getGrowthOSBoundedStringContext("kitId", kitId),
+                    ...getGrowthOSBoundedStringContext("outputId", validation.data.outputId),
+                    ...getGrowthOSBoundedStringContext("destination", validation.data.destination),
+                }),
+            });
             return growthOSPrivateJson({ error: "Growth Kit output not found" }, { status: 404 });
         }
         if (output.preflight?.status === "blocked" && !["mark_used", "stale"].includes(validation.data.method)) {
