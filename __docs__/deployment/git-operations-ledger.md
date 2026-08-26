@@ -6372,3 +6372,20 @@ No Firebase source/configuration changes. Firestore Rules, indexes, Storage Rule
 - Firebase deployment evidence or blocker: no Firebase infrastructure delta exists; no deployment is required or authorized. The QA fixture repair was a bounded disposable-data correction, not an infrastructure deployment.
 - Final filesystem state: pending all-path staging, staged-diff validation, commit, non-force staging push, direct server readback, automatic QA build, fresh hosted outlet creation/switch/deactivation, fixture cleanup, and exact adjacent-flow retest.
 - Attribution confidence: exact.
+
+#### MLRC-086 readable-outlet create performed result — `2026-08-26T11:21:30+05:30`
+
+- Commit/push: `4770d73758dc6e62633349d6ca9dbc21665ea567` (`fix(menulist): create readable outlet stores`) was pushed non-force from local `staging` to `origin/staging`.
+- Direct server readback returned exact `refs/heads/staging` SHA `4770d73758dc6e62633349d6ca9dbc21665ea567` with `0/0` divergence. Local and remote `main` remain untouched at `fe625d5bbf527c1b7e537b00ab32a4f655905c35` with `0/0` divergence.
+- Validation: exact hosted reproduction, bounded QA field readback and disposable fixture repair proof; multi-location and outlet-store-document boundaries; public-business-truth and adjacent tests; billing-entitlement and session/store-context boundaries; focused ESLint; strict TypeScript; full zero-warning lint; production build with 450/450 static pages; and `git diff --check` passed.
+- Firebase state: all 16 planned infrastructure component/target rows remain independently `NO_INFRA_CHANGE` / `SERVER_STATE_UNKNOWN`; no Firebase infrastructure source/configuration changed, deployed, or received authenticated server readback. The disposable fixture field repair was bounded QA test-data work only.
+- Manual deployment state: no Firebase or Vercel deployment command was run. The branch-tracked QA build may deploy automatically.
+- Post-operation branch matrix before this ledger-only closeout:
+
+| Branch | Local full SHA | Server ref/full SHA | Tracking ref | Ahead/behind | Worktree | Staged/unstaged/untracked | Status |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `staging` | `4770d73758dc6e62633349d6ca9dbc21665ea567` | `refs/heads/staging` / `4770d73758dc6e62633349d6ca9dbc21665ea567` | `origin/staging` | `0/0` | primary | `0/0/0` before this append | `IN_SYNC` |
+| `main` | `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `refs/heads/main` / `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `origin/main` | `0/0` | none | n/a | `IN_SYNC` |
+
+- Closeout operation: commit this ledger-only result and push `staging` non-force, then wait for exact automatic QA promotion and perform a fresh corrected outlet create/switch/deactivate plus fixture cleanup. `main` remains untouched.
+- Attribution confidence: exact.
