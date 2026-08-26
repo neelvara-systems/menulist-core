@@ -7016,6 +7016,27 @@ No Firebase source/configuration changes. Firestore Rules, indexes, Storage Rule
 - Next operation: exact-path staging, staged-diff review, non-force `staging` commit/push, direct server readback, automatic QA deployment wait, and representative exact-hosted feedback retest. `main` remains untouched.
 - Attribution confidence: exact.
 
+#### MLRC-097 through MLRC-100 staging push result — `2026-08-26T16:01:00+05:30`
+
+- Commit/push: exact-path commit `228f44816409339cc5422a3f18a22eed5e925c94` (`fix(menulist): mount remaining action feedback`) was pushed non-force to `origin/staging`.
+- Direct server readback: `refs/heads/staging` returned exact `228f44816409339cc5422a3f18a22eed5e925c94`; local staging and its tracking ref are aligned at `0/0`. Local/remote `main` remain untouched at `fe625d5bbf527c1b7e537b00ab32a4f655905c35`.
+- Filesystem separation after push: `0` staged, `13` tracked unstaged, and `6` untracked. Every remaining path belongs to concurrent Answerlattice/shared work and remains excluded from this operation.
+- Validation attached to the commit: final from-zero aggregate 161/162 with only external Upstash credentials blocked; exact TypeScript, zero-warning lint, 450/450 production build with 53 service-worker precache entries, generated 8,511-row inventory, AssetOS, retained focused feedback regression, expanded 79-file feedback regression, and `git diff --check` passed.
+- Firebase state: no deployable Firestore Rules, indexes, Storage Rules, or Cloud Functions delta exists. All MenuList/Answerlattice QA/production components remain `NO_INFRA_CHANGE` / `SERVER_STATE_UNKNOWN`; no infrastructure deployment/readback was performed or claimed.
+- Automatic hosted state: Vercel QA deployment and canonical `/api/version` exact-SHA readback are pending. No manual Vercel deployment is authorized or performed.
+- Razorpay boundary: no provider execution or money movement occurred.
+- Attribution confidence: exact.
+
+#### MLRC-097 exact-hosted closeout — `2026-08-26T16:08:30+05:30`
+
+- Exact deployment: automatic Vercel QA deployment `45dqKV99VVEbtqsUvGcoYQmumff3` reached Ready after 8m08s. Canonical `https://app.menulist.digital/api/version` returned verified full SHA `228f44816409339cc5422a3f18a22eed5e925c94` and deployment host `menulist-core-akirq1cpc-neelvara-systems.vercel.app` before interaction.
+- Hosted regression: a fresh entitled-owner document on `/use-menulist` displayed `Menu page link copied` for the previously silent Business Profile action, `Direct menu link copied` for the adjacent project link, `Customer App install link copied`, and `Message copied — paste it in WhatsApp or anywhere`. Clipboard feedback was visible through the mounted application context.
+- Scope honesty: the active fixture is an owner, not a reseller or platform administrator. Permission-gated reseller/platform feedback paths passed the complete static 79-file mounted-context regression and their feature suites but are not represented as hosted interaction.
+- Data/provider boundary: only non-destructive clipboard actions were exercised. No owner setting, menu, store/public truth, provider request, Firebase read/write attributable to the action, analytics mutation, cache state, checkout, payment, or money movement occurred.
+- Result: MLRC-097 is closed on exact QA. MLRC-098 through MLRC-100 remain closed by the final from-zero aggregate and targeted regression evidence.
+- Firebase state: all previously recorded QA/production Rules, indexes, Storage Rules, and Functions components remain `NO_INFRA_CHANGE` / `SERVER_STATE_UNKNOWN`; no infrastructure deployment/readback occurred.
+- Attribution confidence: exact.
+
 ### GIT-20260826-144344-mlrc097-systemic-feedback-context
 
 - Timestamp: `2026-08-26T14:43:44+05:30`
