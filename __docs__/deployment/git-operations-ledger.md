@@ -5723,3 +5723,20 @@ No Firebase source/configuration changes. Firestore Rules, indexes, Storage Rule
 - Firebase deployment evidence or blocker: no Firebase infrastructure delta exists; no deployment is required or authorized.
 - Final filesystem state: pending explicit-path staging, commit, non-force staging push, direct server readback, and performed-result append.
 - Attribution confidence: exact.
+
+#### MLRC-083/084 performed result and ledger closeout — `2026-08-26T09:32:07+05:30`
+
+- Commit/push: `411d437b1f89006b3e972107c3733c6e731725f1` (`docs(menulist): close Growth Kits hosted blockers`) was pushed non-force from local `staging` to `origin/staging`.
+- Direct server readback returned exact `refs/heads/staging` SHA `411d437b1f89006b3e972107c3733c6e731725f1` with `0/0` divergence. Local and remote `main` remained untouched at `fe625d5bbf527c1b7e537b00ab32a4f655905c35` with `0/0` divergence.
+- Validation/evidence: exact QA product build `7696f0e8f0056b468e9b37625d7fca2530d69b54` passed mark-used, first reload, later copy, second reload, and bounded Firestore status/export-count readback. Growth Kits 265-check verifier, client contracts, missing-hours isolated transaction, focused ESLint, strict TypeScript, docs link check, staged diff check, and `git diff --check` passed.
+- Firebase state: all 16 planned component/target rows remain independently `NO_INFRA_CHANGE` / `SERVER_STATE_UNKNOWN`; no Firebase infrastructure source/configuration changed, deployed, or received authenticated readback.
+- Manual deployment state: no Firebase or Vercel deployment command was run. The report-only branch commit may trigger an automatic QA build; the exact tested MenuList runtime remains `7696f0e8…`.
+- Post-operation branch matrix before this ledger-only closeout:
+
+| Branch | Local full SHA | Server ref/full SHA | Tracking ref | Ahead/behind | Worktree | Staged/unstaged/untracked | Status |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `staging` | `411d437b1f89006b3e972107c3733c6e731725f1` | `refs/heads/staging` / `411d437b1f89006b3e972107c3733c6e731725f1` | `origin/staging` | `0/0` | primary | `0/0/0` before this append | `IN_SYNC` |
+| `main` | `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `refs/heads/main` / `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `origin/main` | `0/0` | none | n/a | `IN_SYNC` |
+
+- Closeout operation: commit this ledger-only performed result and push `staging` non-force. `main` remains untouched.
+- Attribution confidence: exact.
