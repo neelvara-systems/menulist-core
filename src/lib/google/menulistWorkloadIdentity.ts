@@ -1,10 +1,13 @@
 import { getVercelOidcToken } from '@vercel/oidc';
 import type { Credential } from 'firebase-admin/app';
 import type { AuthClient, BaseExternalAccountClient } from 'google-auth-library';
+import { logFirebaseAdminFailure } from '@lib/firebase/firebaseAdminDiagnostics';
 import {
+    attachWorkloadIdentityAccessTokenFailureDiagnostic,
     createFirebaseWorkloadIdentityCredential,
     createProviderAudienceTokenSupplier,
     createWorkloadIdentityAuthClient,
+    readWorkloadIdentityTokenDiagnostics,
     readProductWorkloadIdentityConfig,
     resolveProductGoogleCredentialMode,
     type GoogleCredentialMode,
@@ -55,10 +58,28 @@ let workloadIdentityAuthClient: BaseExternalAccountClient | null = null;
 export const getMenulistWorkloadIdentityAuthClient = (): BaseExternalAccountClient => {
     if (workloadIdentityAuthClient) return workloadIdentityAuthClient;
     const config = readMenulistWorkloadIdentityConfig();
-    workloadIdentityAuthClient = createMenulistWorkloadIdentityAuthClient(
-        config,
-        createProviderAudienceTokenSupplier(config, getVercelOidcToken),
+    let oidcDiagnostics = readWorkloadIdentityTokenDiagnostics('', config);
+    const tokenSupplier = createProviderAudienceTokenSupplier(config, async (options) => {
+        const token = await getVercelOidcToken(options);
+        oidcDiagnostics = readWorkloadIdentityTokenDiagnostics(token, config);
+        return token;
+    });
+    const client = attachWorkloadIdentityAccessTokenFailureDiagnostic(
+        createMenulistWorkloadIdentityAuthClient(config, tokenSupplier),
+        (error) => {
+            logFirebaseAdminFailure('menulist_workload_identity_exchange_failed', error, {
+                audienceMatchesProvider: oidcDiagnostics.audienceMatchesProvider,
+                credentialSource: 'vercel_oidc',
+                environmentMatchesRuntimeTarget: oidcDiagnostics.environmentMatchesRuntimeTarget,
+                issuerHost: oidcDiagnostics.issuerHost,
+                projectIdMatchesRuntime: oidcDiagnostics.projectIdMatchesRuntime,
+                teamIdMatchesRuntime: oidcDiagnostics.teamIdMatchesRuntime,
+                tokenClaimsReadable: oidcDiagnostics.tokenClaimsReadable,
+                oidcEnvironment: oidcDiagnostics.tokenEnvironment,
+            });
+        },
     );
+    workloadIdentityAuthClient = client;
     return workloadIdentityAuthClient;
 };
 

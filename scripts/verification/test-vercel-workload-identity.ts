@@ -1,12 +1,15 @@
 import assert from 'node:assert/strict';
 import type { App } from 'firebase-admin/app';
+import type { BaseExternalAccountClient } from 'google-auth-library';
 import {
     admin as firebaseAdminCompat,
     registerFirebaseFirestoreCompatInstance,
 } from '../../src/lib/firebase/firebaseAdminCompat';
 import {
+    attachWorkloadIdentityAccessTokenFailureDiagnostic,
     createProviderAudienceTokenSupplier,
     createWorkloadIdentityGoogleAuth,
+    readWorkloadIdentityTokenDiagnostics,
 } from '../../src/lib/google/vercelWorkloadIdentity';
 import {
     createWorkloadIdentityFirestore,
@@ -171,6 +174,87 @@ for (const contract of projectContracts) {
     assert.equal(await tokenSupplier(), 'provider-scoped-vercel-oidc-token');
     assert.equal(requestedAudience, config.audience);
 }
+
+const diagnosticConfig = projectContracts[0].read(projectContracts[0].values);
+const diagnosticClaims = {
+    aud: diagnosticConfig.audience,
+    environment: 'qa',
+    iss: 'https://oidc.vercel.com/neelvara-systems',
+    owner_id: 'team_test',
+    project_id: 'prj_test',
+};
+const diagnosticToken = [
+    Buffer.from(JSON.stringify({ alg: 'RS256', typ: 'JWT' })).toString('base64url'),
+    Buffer.from(JSON.stringify(diagnosticClaims)).toString('base64url'),
+    'signature-not-inspected',
+].join('.');
+assert.deepEqual(
+    readWorkloadIdentityTokenDiagnostics(diagnosticToken, diagnosticConfig, {
+        VERCEL_ENV: 'preview',
+        VERCEL_PROJECT_ID: 'prj_test',
+        VERCEL_TARGET_ENV: 'qa',
+        VERCEL_TEAM_ID: 'team_test',
+    }),
+    {
+        audienceMatchesProvider: true,
+        environmentMatchesRuntimeTarget: true,
+        issuerHost: 'oidc.vercel.com',
+        projectIdMatchesRuntime: true,
+        teamIdMatchesRuntime: true,
+        tokenClaimsReadable: true,
+        tokenEnvironment: 'qa',
+    },
+);
+assert.equal(
+    readWorkloadIdentityTokenDiagnostics(diagnosticToken, diagnosticConfig, {
+        VERCEL_ENV: 'preview',
+        VERCEL_PROJECT_ID: 'different-project',
+        VERCEL_TARGET_ENV: 'preview',
+        VERCEL_TEAM_ID: 'different-team',
+    }).environmentMatchesRuntimeTarget,
+    false,
+);
+assert.deepEqual(
+    readWorkloadIdentityTokenDiagnostics('not-a-token', diagnosticConfig),
+    {
+        audienceMatchesProvider: false,
+        environmentMatchesRuntimeTarget: false,
+        issuerHost: 'unavailable',
+        projectIdMatchesRuntime: false,
+        teamIdMatchesRuntime: false,
+        tokenClaimsReadable: false,
+        tokenEnvironment: 'unavailable',
+    },
+);
+const expectedAccessTokenFailure = new Error('test exchange failure');
+let observedAccessTokenFailure: unknown;
+const diagnosedFailingClient = attachWorkloadIdentityAccessTokenFailureDiagnostic(
+    {
+        getAccessToken: async () => {
+            throw expectedAccessTokenFailure;
+        },
+    } as unknown as BaseExternalAccountClient,
+    (error) => {
+        observedAccessTokenFailure = error;
+    },
+);
+await assert.rejects(
+    () => diagnosedFailingClient.getAccessToken(),
+    (error) => error === expectedAccessTokenFailure,
+);
+assert.equal(observedAccessTokenFailure, expectedAccessTokenFailure);
+
+let successDiagnosticCalled = false;
+const diagnosedSuccessfulClient = attachWorkloadIdentityAccessTokenFailureDiagnostic(
+    {
+        getAccessToken: async () => ({ token: 'short-lived-test-token' }),
+    } as unknown as BaseExternalAccountClient,
+    () => {
+        successDiagnosticCalled = true;
+    },
+);
+assert.deepEqual(await diagnosedSuccessfulClient.getAccessToken(), { token: 'short-lived-test-token' });
+assert.equal(successDiagnosticCalled, false);
 
 const menulistClient = createMenulistWorkloadIdentityAuthClient(
     projectContracts[1].read(projectContracts[1].values),

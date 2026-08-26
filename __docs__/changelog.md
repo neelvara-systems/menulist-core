@@ -1,5 +1,18 @@
 # MenuList — Changelog
 
+## August 26, 2026 - Failure-Only Hosted Workload Identity Diagnostics
+
+- Added a bounded MenuList-only diagnostic at the keyless Google access-token
+  exchange boundary. A failed exchange now records only whether the Vercel OIDC
+  token's provider audience, custom-environment target, immutable project ID,
+  and immutable team ID match runtime expectations, plus a bounded environment
+  label and issuer hostname.
+- The diagnostic runs only after an access-token failure and never logs the
+  token, subject, IDs, credentials, raw issuer, provider response, or exception
+  message. Successful exchanges add no log. Authentication mode, Google STS,
+  service-account impersonation, scopes, Firebase calls, owner errors, retries,
+  and operation counts are unchanged.
+
 ## August 26, 2026 - Menu-Link Import Failure-Stage Diagnostics
 
 - Added one fixed bounded stage label to the existing authenticated menu-link

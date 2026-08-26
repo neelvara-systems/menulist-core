@@ -11,6 +11,16 @@ export type WorkloadIdentityEnvironment = Record<string, string | undefined>;
 export type OidcTokenSupplier = () => Promise<string>;
 export type AudienceOidcTokenFetcher = (options: { audience: string }) => Promise<string>;
 
+export interface WorkloadIdentityTokenDiagnostics {
+    audienceMatchesProvider: boolean;
+    environmentMatchesRuntimeTarget: boolean;
+    issuerHost: string;
+    projectIdMatchesRuntime: boolean;
+    teamIdMatchesRuntime: boolean;
+    tokenClaimsReadable: boolean;
+    tokenEnvironment: string;
+}
+
 export interface ProductGoogleCredentialDescriptor {
     authModeVar: string;
     clientEmailVars: readonly string[];
@@ -42,6 +52,85 @@ export const createProviderAudienceTokenSupplier = (
     config: WorkloadIdentityConfig,
     getToken: AudienceOidcTokenFetcher,
 ): OidcTokenSupplier => () => getToken({ audience: config.audience });
+
+const EMPTY_TOKEN_DIAGNOSTICS: WorkloadIdentityTokenDiagnostics = {
+    audienceMatchesProvider: false,
+    environmentMatchesRuntimeTarget: false,
+    issuerHost: 'unavailable',
+    projectIdMatchesRuntime: false,
+    teamIdMatchesRuntime: false,
+    tokenClaimsReadable: false,
+    tokenEnvironment: 'unavailable',
+};
+
+const getBoundedDiagnosticClaim = (value: unknown): string => {
+    if (typeof value !== 'string') return '';
+    const normalized = value.trim();
+    return /^[a-zA-Z0-9._-]{1,80}$/.test(normalized) ? normalized : '';
+};
+
+export const readWorkloadIdentityTokenDiagnostics = (
+    token: string,
+    config: WorkloadIdentityConfig,
+    env: WorkloadIdentityEnvironment = process.env,
+): WorkloadIdentityTokenDiagnostics => {
+    try {
+        const segments = token.split('.');
+        if (segments.length !== 3 || !segments[1] || segments[1].length > 16_384) {
+            return EMPTY_TOKEN_DIAGNOSTICS;
+        }
+
+        const claims = JSON.parse(Buffer.from(segments[1], 'base64url').toString('utf8')) as Record<string, unknown>;
+        if (!claims || typeof claims !== 'object' || Array.isArray(claims)) {
+            return EMPTY_TOKEN_DIAGNOSTICS;
+        }
+
+        const audience = typeof claims.aud === 'string' ? claims.aud : '';
+        const environment = getBoundedDiagnosticClaim(claims.environment);
+        const issuer = typeof claims.iss === 'string' ? claims.iss : '';
+        const projectId = getBoundedDiagnosticClaim(claims.project_id);
+        const teamId = getBoundedDiagnosticClaim(claims.owner_id);
+        const runtimeTarget = readWorkloadIdentityEnv(env, 'VERCEL_TARGET_ENV')
+            || readWorkloadIdentityEnv(env, 'VERCEL_ENV')
+            || '';
+        const runtimeProjectId = readWorkloadIdentityEnv(env, 'VERCEL_PROJECT_ID') || '';
+        const runtimeTeamId = readWorkloadIdentityEnv(env, 'VERCEL_TEAM_ID') || '';
+        let issuerHost = 'invalid';
+        try {
+            issuerHost = new URL(issuer).hostname || 'invalid';
+        } catch {
+            // Keep the diagnostic bounded; never log the raw issuer value.
+        }
+
+        return {
+            audienceMatchesProvider: audience === config.audience,
+            environmentMatchesRuntimeTarget: Boolean(environment && runtimeTarget && environment === runtimeTarget),
+            issuerHost,
+            projectIdMatchesRuntime: Boolean(projectId && runtimeProjectId && projectId === runtimeProjectId),
+            teamIdMatchesRuntime: Boolean(teamId && runtimeTeamId && teamId === runtimeTeamId),
+            tokenClaimsReadable: true,
+            tokenEnvironment: environment || 'invalid',
+        };
+    } catch {
+        return EMPTY_TOKEN_DIAGNOSTICS;
+    }
+};
+
+export const attachWorkloadIdentityAccessTokenFailureDiagnostic = (
+    client: BaseExternalAccountClient,
+    onFailure: (error: unknown) => void,
+): BaseExternalAccountClient => {
+    const getAccessToken = client.getAccessToken.bind(client);
+    client.getAccessToken = async () => {
+        try {
+            return await getAccessToken();
+        } catch (error) {
+            onFailure(error);
+            throw error;
+        }
+    };
+    return client;
+};
 
 const FIREBASE_ADMIN_SCOPES = [
     'https://www.googleapis.com/auth/cloud-platform',
