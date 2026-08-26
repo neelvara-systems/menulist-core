@@ -397,6 +397,7 @@ type CanonicalAnswerQueryRelevance = {
     sequenceLength: number;
     titleOverlapCount: number;
     discriminatingOverlapCount: number;
+    entityDiscriminatingOverlapCount: number;
 };
 
 const getOrderedRetrievalTerms = (text: string): string[] => {
@@ -441,6 +442,7 @@ const getLongestCommonRetrievalSequenceLength = (
 export const evaluateCanonicalAnswerQueryRelevance = (
     query: string,
     answer: Pick<AnswerlatticeCanonicalAnswer, 'title' | 'content'>,
+    scopedSearchIndex: AnswerlatticeEntitySearchIndex[] = [],
 ): CanonicalAnswerQueryRelevance => {
     const queryTerms = getOrderedRetrievalTerms(query);
     const answerTerms = getOrderedRetrievalTerms([
@@ -456,21 +458,30 @@ export const evaluateCanonicalAnswerQueryRelevance = (
     const discriminatingOverlapCount = Array.from(querySet).filter(term => (
         answerSet.has(term) && !RETRIEVAL_DOMAIN_GENERIC_TERMS.has(term)
     )).length;
+    const entityTerms = new Set(scopedSearchIndex.flatMap(entry => (
+        Array.from(getIndexEntryRetrievalTerms(entry))
+    )));
+    const entityDiscriminatingOverlapCount = Array.from(querySet).filter(term => (
+        entityTerms.has(term) && !RETRIEVAL_DOMAIN_GENERIC_TERMS.has(term)
+    )).length;
     const sequenceLength = getLongestCommonRetrievalSequenceLength(queryTerms, answerTerms);
     const singleTokenTitleMatch = titleTerms.length === 1
         && titleOverlapCount === 1
         && answerSet.has(titleTerms[0]);
 
     return {
-        eligible: singleTokenTitleMatch || (
-            overlapCount >= CANONICAL_QUERY_MIN_OVERLAP
-            && sequenceLength >= CANONICAL_QUERY_MIN_SEQUENCE
-            && discriminatingOverlapCount >= 1
-        ),
+        eligible: entityDiscriminatingOverlapCount >= 1
+            || singleTokenTitleMatch
+            || (
+                overlapCount >= CANONICAL_QUERY_MIN_OVERLAP
+                && sequenceLength >= CANONICAL_QUERY_MIN_SEQUENCE
+                && discriminatingOverlapCount >= 1
+            ),
         overlapCount,
         sequenceLength,
         titleOverlapCount,
         discriminatingOverlapCount,
+        entityDiscriminatingOverlapCount,
     };
 };
 
@@ -1022,7 +1033,11 @@ export async function attemptCanonicalRetrieval(
         const queryRelevantAnswers = retrievableAnswers
             .map(answer => ({
                 answer,
-                relevance: evaluateCanonicalAnswerQueryRelevance(query, answer),
+                relevance: evaluateCanonicalAnswerQueryRelevance(
+                    query,
+                    answer,
+                    searchIndex.filter(entry => answer.scope.entityIds.includes(entry.entityId)),
+                ),
             }))
             .filter(item => item.relevance.eligible);
 
@@ -1042,6 +1057,7 @@ export async function attemptCanonicalRetrieval(
             + item.relevance.overlapCount * 10
             + item.relevance.titleOverlapCount
             + item.relevance.discriminatingOverlapCount * 1_000
+            + item.relevance.entityDiscriminatingOverlapCount * 10_000
         )));
         const relevanceMatchedAnswers = queryRelevantAnswers
             .filter(item => (
@@ -1049,6 +1065,7 @@ export async function attemptCanonicalRetrieval(
                 + item.relevance.overlapCount * 10
                 + item.relevance.titleOverlapCount
                 + item.relevance.discriminatingOverlapCount * 1_000
+                + item.relevance.entityDiscriminatingOverlapCount * 10_000
             ) === strongestQueryRelevance)
             .map(item => item.answer);
         const directlyRetrievableAnswers = relevanceMatchedAnswers.filter(answer => (

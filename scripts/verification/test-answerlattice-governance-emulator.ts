@@ -425,8 +425,8 @@ async function run(): Promise<void> {
             title: 'Freshness and status signals',
             scope: { entityIds: ['entity_freshness'], planIds: [], roleIds: [], stateIds: [] },
             content: {
-                structuredSummary: 'Freshness and status signals show whether the published menu is current.',
-                detailedExplanation: 'Customers can use the freshness status to know whether the menu is up to date.',
+                structuredSummary: 'Customers see clear freshness and status signals where enabled on the public menu.',
+                detailedExplanation: 'Customers see clear freshness and status signals where enabled on the public menu.',
             },
         }),
     ]);
