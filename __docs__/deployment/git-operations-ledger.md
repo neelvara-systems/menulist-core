@@ -6824,3 +6824,64 @@ No Firebase source/configuration changes. Firestore Rules, indexes, Storage Rule
 - Concurrent-work boundary at staging: `__docs__/answerlattice/answerlattice-production-certification.md` became unstaged after the pre-operation snapshot. It belongs to another active operation, is excluded from this commit, and remains untouched.
 - Final filesystem state: pending explicit-path staging, staged-diff validation, commit, non-force staging push, direct server readback, automatic QA build, and exact hosted validation-feedback retest. Disposable preset and API-key fixtures are already removed.
 - Attribution confidence: exact.
+
+#### MLRC-091 Business Settings feedback performed result — `2026-08-26T13:16:56+05:30`
+
+- Commit/push: `785478789cf7021ec903b8e014d01e615e0e315d` (`fix(menulist): mount business settings feedback`) was pushed non-force from local `staging` to `origin/staging`.
+- Direct Git server readback returned exact `refs/heads/staging` SHA `785478789cf7021ec903b8e014d01e615e0e315d` with `0/0` divergence. Local and remote `main` remain untouched at `fe625d5bbf527c1b7e537b00ab32a4f655905c35`.
+- Exact hosted readback: Vercel marked deployment `8A4fHRqRRfX4Ho995A5yCkmjNjKy` Ready in custom environment `qa`, with exact source `785478789…`; the canonical `/api/version` independently returned the same verified full build ID and preview environment.
+- Hosted feedback retest: blank Time Slot Create kept the modal open, made no write, and visibly rendered `Please enter a label`. Equal Wednesday opening/closing inputs visibly rendered `Opening and closing times must be different.` and did not create a range. A disposable read-only API key visibly reported generation, then visibly reported revocation; a final hard refresh returned `Generate key` with no Revoke control. No key value was read, printed, logged, or retained.
+- Fixture cleanup: the QA store retains only its original four time-slot presets; no QA preset, invalid weekly-hours range, or public API key remains.
+- Validation: scoped feedback regression, deterministic working-hours/preset suite, public-business-truth and adjacent tests, focused/full zero-warning ESLint, strict TypeScript, production build 450/450 with 53 precache entries, staged diff validation, and `git diff --check` passed. Existing Sass and absent optional Gemini-key warnings remain non-failing.
+- Firebase state: all 16 planned component/target rows remain independently `NO_INFRA_CHANGE` / `SERVER_STATE_UNKNOWN`; no infrastructure source/configuration changed, deployed, or received authenticated server readback.
+- Post-operation branch matrix before this documentation/ledger closeout:
+
+| Branch | Local full SHA | Server ref/full SHA | Tracking ref | Ahead/behind | Worktree | Staged/unstaged/untracked | Status |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `staging` | `785478789cf7021ec903b8e014d01e615e0e315d` | `refs/heads/staging` / `785478789cf7021ec903b8e014d01e615e0e315d` | `origin/staging` | `0/0` | primary | `0/3/0` including two concurrent Answerlattice paths before this append | `IN_SYNC` |
+| `main` | `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `refs/heads/main` / `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `origin/main` | `0/0` | none | n/a | `IN_SYNC` |
+
+- Closeout operation: commit only the MenuList certification report and this performed-result ledger hunk, push `staging` non-force, and continue the broader QA certification. Preserve the concurrent Answerlattice report and ledger entry unstaged. Exact product-runtime proof remains attributable to `785478789…`.
+- Attribution confidence: exact.
+
+### GIT-20260826-130512-answerlattice-widget-closeout
+
+- Timestamp: `2026-08-26T13:05:12+05:30`
+- Record type: `PLANNED`
+- Actor/session/thread ID: Codex `/root`; active Answerlattice final-certification thread.
+- Registered worktrees: one worktree, `/Users/danny/Projects/MenuListAi/menulist-core`, branch `staging`, HEAD `ec68548995b03daede1c881efba657f865b3840e`.
+- Starting filesystem state: `0` staged, `5` tracked modified, `0` untracked before this append. All five pre-existing modified paths belong to the concurrent MenuList certification and remain unstaged and preserved. This operation adds only `__docs__/answerlattice/answerlattice-production-certification.md` and this append-only ledger path.
+- Continuity correction: the earlier `GIT-20260826-124129-answerlattice-widget-csp` planned entry was accidentally inserted into the historical ledger body because an ambiguous patch anchor matched an older entry. It remains unchanged under the append-only rule. This true-EOF record is the authoritative closeout continuation for source commit `1c1a5e1a522276f8dfd74a5b0e9bf36c1b63f31a`.
+- Operation: commit only the Answerlattice certification report and ledger evidence, push `staging` non-force, perform direct server readback, and append the performed result. Leave `main` and all concurrent MenuList files untouched. No manual Vercel deployment or Firebase deployment is authorized or required.
+- Branch matrix before:
+
+| Branch | Local full SHA | Server ref/full SHA | Tracking ref | Ahead/behind | Worktree | Staged/unstaged/untracked | Status |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `staging` | `ec68548995b03daede1c881efba657f865b3840e` | `refs/heads/staging` / `ec68548995b03daede1c881efba657f865b3840e` | `origin/staging` | `0/0` | primary | `0/5/0` before this append | `IN_SYNC` |
+| `main` | `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `refs/heads/main` / `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `origin/main` | `0/0` | none | n/a | `IN_SYNC` |
+
+- Validation before mutation: source commit `1c1a5e1a...` passed `test:runtime-policy-constants`, `verify:answerlattice-final-readiness`, Answerlattice SecurityOS product and authority/ingress bundle checks, `verify:answerlattice-security-audit`, focused ESLint, strict TypeScript, production build with 450/450 static pages and 53 service-worker precache entries, and `git diff --check`. Canonical QA build `ec685489...` was the first verified descendant and returned its exact build ID from `/api/version`. Desktop Chrome loaded the external script/iframe, produced the expected verified MenuList answer, failed safely for a private unknown request, refreshed route context, and suppressed the widget on `/growth-kits`. At 390×844 the widget stayed within viewport, added no overflow, closed/reopened, and answered correctly; the viewport was reset to 1512×807. Concurrent staging successor `785478789...` then became Ready at deployment `8A4fHRqRRfX4Ho995A5yCkmjNjKy`; canonical `/api/version` returned that exact build, and a clean desktop reload repeated the governed answer and blocked-route suppression. One frame request during deployment promotion timed out in Chrome while a direct `/widget/embed` GET returned HTTP 200/46,510 bytes; the clean retry passed and the condition did not persist.
+- Firebase matrix before/after (documentation-only closeout; no deployable Firebase source/configuration changed):
+
+| Product/target | Component | Local source/hash or tree | Local validation | Server/readback | Delta | Deployment state |
+| --- | --- | --- | --- | --- | --- | --- |
+| MenuList QA / `menulist-qa` | Firestore Rules | `firestore-menulist.rules` / `2059459e…` / 132684 | unchanged | not read back / `2026-08-26T13:05:12+05:30` | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| MenuList QA / `menulist-qa` | Firestore indexes | `firestore.indexes.json` / `5629ae4d…` / 78310 | unchanged | not read back / same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| MenuList QA / `menulist-qa` | Storage Rules | `storage.rules` / `226d2a20…` / 18176 | unchanged | not read back / same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| MenuList QA / `menulist-qa` | Cloud Functions | `functions/` / tree `3c42f5d3…` | unchanged | not read back / same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| MenuList production / `menulist-prod` | Firestore Rules | same MenuList QA source/hash/bytes | unchanged | not read back / same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| MenuList production / `menulist-prod` | Firestore indexes | same MenuList QA source/hash/bytes | unchanged | not read back / same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| MenuList production / `menulist-prod` | Storage Rules | same MenuList QA source/hash/bytes | unchanged | not read back / same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| MenuList production / `menulist-prod` | Cloud Functions | same MenuList QA source/tree | unchanged | not read back / same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| Answerlattice QA / `neelvara-answerlattice-qa` | Firestore Rules | `firestore-answerlattice.rules` / `a92cbacb…` / 116222 | unchanged | not read back / same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| Answerlattice QA / `neelvara-answerlattice-qa` | Firestore indexes | `firestore-answerlattice.indexes.json` / `0114bdf8…` / 50941 | unchanged | not read back / same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| Answerlattice QA / `neelvara-answerlattice-qa` | Storage Rules | `storage-answerlattice.rules` / `5fc8f980…` / 6948 | unchanged | not read back / same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| Answerlattice QA / `neelvara-answerlattice-qa` | Cloud Functions | `functions-answerlattice/` / tree `ae5750c6…` | unchanged | not read back / same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| Answerlattice production / `neelvara-answerlattice-prod` | Firestore Rules | same Answerlattice QA source/hash/bytes | unchanged | not read back / same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| Answerlattice production / `neelvara-answerlattice-prod` | Firestore indexes | same Answerlattice QA source/hash/bytes | unchanged | not read back / same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| Answerlattice production / `neelvara-answerlattice-prod` | Storage Rules | same Answerlattice QA source/hash/bytes | unchanged | not read back / same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| Answerlattice production / `neelvara-answerlattice-prod` | Cloud Functions | same Answerlattice QA source/tree | unchanged | not read back / same | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+
+- Firebase deployment evidence or blocker: no infrastructure delta exists. No deployment or authenticated readback was performed in this evidence window.
+- Final filesystem state: pending explicit-path staging, staged-diff validation, documentation-only commit, non-force staging push, direct server readback, and performed-result append. Concurrent MenuList changes remain unstaged.
+- Attribution confidence: exact.

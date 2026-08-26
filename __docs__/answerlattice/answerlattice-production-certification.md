@@ -550,10 +550,46 @@ The source-release condition in item 1 above was completed on 2026-08-24. Commit
 
 Production environment testing may now begin. The remaining licensed hosted-intake repetition, fresh backup preflight, production telemetry, and physical-device evidence remain non-blocking follow-ups and must not be represented as already completed.
 
+## 13. MenuList Client Embed Release Closeout — 2026-08-26
+
+> **Verdict:** `READY FOR PRODUCTION ENVIRONMENT TESTING WITH NON-BLOCKING FOLLOW-UPS`
+> **Current hosted build:** `785478789cf7021ec903b8e014d01e615e0e315d`, a verified descendant of widget CSP correction `1c1a5e1a522276f8dfd74a5b0e9bf36c1b63f31a`.
+> **Boundary:** the disposable Answerlattice widget key is bound only to the Vercel `qa` environment. No production Vercel environment, Firebase infrastructure, production or real-customer record, external message, or real Razorpay operation was changed or executed.
+
+The final client-integration pass found one P1 release defect after the Answerlattice widget itself had already passed direct hosted testing: MenuList's host-page Content Security Policy did not admit the governed Answerlattice script, frame, or request origin. The host therefore rendered the correct widget configuration but the browser could not execute it.
+
+### 13.1 Finding, fix, and verification
+
+| Severity | Root cause | Durable fix | Verification |
+| --- | --- | --- | --- |
+| P1 | MenuList CSP omitted the exact Answerlattice QA and production origins from `script-src`, `connect-src`, and `frame-src`, so the configured client embed could not execute. | Added only `https://canonica.app` and `https://answerlattice.com` to the three required directive allowlists. Added a regression that requires both exact origins and rejects wildcard Answerlattice/Canonica origins. | Runtime-policy regression, final-readiness verifier, SecurityOS product/bundle checks, dependency audits, focused lint, strict TypeScript, production build, direct header readback, and hosted desktop/mobile interaction all passed. |
+
+### 13.2 Hosted end-user evidence
+
+| Scenario | Status | Evidence |
+| --- | --- | --- |
+| Current build identity | `PASS_HOSTED_QA` | `https://canonica.app/api/version` returned verified build `785478789cf7021ec903b8e014d01e615e0e315d`, and Git ancestry proves it contains `1c1a5e1a...`. |
+| Host CSP | `PASS_HOSTED_QA` | The canonical MenuList QA response admitted the exact QA and production widget origins in `script-src`, `connect-src`, and `frame-src`; the regression prevents wildcard substitution and prevents local emulator origins from entering the production CSP. |
+| Desktop widget load | `PASS_HOSTED_QA` | The MenuList owner Dashboard loaded the external widget script, launcher, and `https://canonica.app/widget/embed` frame. The frame rendered route context as `Help for Menulist Owner Dashboard`. |
+| Governed answer | `PASS_HOSTED_QA` | `Can I upload a menu photo?` returned the expected MenuList answer, `Owners may input their current menu via a photo, PDF, existing link, or typed menu.`, marked `Verified answer`. The same question was repeated on the current `785478789...` build. |
+| Unknown/private request | `PASS_HOSTED_QA` | A private-owner-email question returned the bounded no-knowledge response and exposed `Contact support`; it did not invent or disclose an address. |
+| Route context and blocked route | `PASS_HOSTED_QA` | Projects refreshed the widget context to `Help for Menulist Owner Projects`. A fresh `/growth-kits` load on the current build mounted neither launcher nor container, proving blocked-route suppression rather than merely hiding an open frame. |
+| Deployment-transition retry | `PASS_HOSTED_QA` | One immediate Chrome frame navigation during the `785478789...` promotion showed a transient upstream timeout. At the same moment, direct `/widget/embed` GET returned HTTP 200 with 46,510 bytes. A clean host reload then loaded the frame and repeated the verified answer; the condition did not persist. |
+| Mobile widget | `PASS_HOSTED_QA` | At 390×844, the open widget stayed within the viewport at 366×560 (`left 4`, `right 370`, `top 196`, `bottom 756`). It answered the governed question, closed to the launcher, reopened, and added no document overflow: host `scrollWidth` remained 995 both closed and open. The 995-pixel width belongs to the underlying MenuList desktop owner layout, not to the widget. |
+| Viewport restoration | `PASS_RUNTIME` | The temporary viewport override was reset; Chrome returned to 1512×807. |
+
+### 13.3 Security, cost, and deployment impact
+
+- The security change follows the SecurityOS authority-and-ingress boundary: two exact governed origins, no wildcard subdomains, no new client-trusted tenant scope, and no credential value recorded in source or evidence.
+- The CSP correction and Vercel QA environment binding add zero Firestore reads, writes, deletes, Function invocations, Storage operations, Redis operations, or AI calls by themselves. Runtime question cost remains governed by the existing Answerlattice search, cache, entitlement, and credit contracts.
+- No Firebase Rules, indexes, Storage Rules, or Functions source changed in this closeout, and no Firebase deployment or authenticated readback was performed.
+- No known P0 or P1 remains in the MenuList-to-Answerlattice hosted embed. Production-host, real physical-device, production telemetry, and the explicitly excluded Razorpay execution remain separate evidence gates.
+
 ## Version History
 
 | Date       | Change                                                      |
 | ---------- | ----------------------------------------------------------- |
+| 2026-08-26 | Closed the MenuList client embed gate with exact-origin CSP hardening and current-build desktop/mobile hosted evidence |
 | 2026-08-24 | Deployed and read back the provider-health fix in the scoped QA and production scheduler Functions; opened production environment testing |
 | 2026-08-24 | Completed the final delta and production-transition certification; fixed hostile provider-health error-name handling and recorded the scoped Functions deployment requirement |
 | 2026-08-24 | Closed the pre-production gate after exact QA rules publication/readback and hosted support-board lifecycle |
