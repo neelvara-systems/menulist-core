@@ -29,6 +29,7 @@ import { resolveMenuDesignConfig } from "./designSystem";
 import { getBoundedProjectPageStringContext, getProjectPageProjectLogContext, getProjectPageStoreLogContext, logProjectPageFailure } from "../utils/projectPageDiagnostics";
 import { Project } from '../types';
 import PreviewModal from "./previewModal";
+import { hasProjectPublishChanges } from "./projectPublishState";
 import B2CSidebar from "./sidebar";
 import { DeviceTypes, PageType } from "./types";
 
@@ -77,8 +78,7 @@ const B2CView = forwardRef<B2CViewRef, B2CViewProps>(({ activeDeviceType, setHas
     const dispatch = useAppDispatch();
 
     const hasProjectChanges = () => {
-        if (!projectData || !lastPublishedState) return false;
-        return JSON.stringify(projectData) !== JSON.stringify(lastPublishedState);
+        return hasProjectPublishChanges(projectData, lastPublishedState);
     };
 
     const hasOfficialPageChanges = () => (

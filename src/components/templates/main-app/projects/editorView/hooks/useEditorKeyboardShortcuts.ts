@@ -380,7 +380,6 @@ export const useEditorKeyboardShortcuts = ({
                 action: () => {
                     if (!isSaving) {
                         void syncChanges();
-                        message.success("Changes saved");
                     }
                 },
             },

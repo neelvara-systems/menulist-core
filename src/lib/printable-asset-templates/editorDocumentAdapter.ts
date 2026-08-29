@@ -114,8 +114,15 @@ function truncateForLayer(value: string | null | undefined, max = 52): string {
     return trimmed.length > max ? `${trimmed.slice(0, max - 3)}...` : trimmed;
 }
 
+export function getPrintableAssetDisplayShortLink(input: PrintableAssetRenderInput): string {
+    const sourceUrl = input.assetTypeId === "feedback_qr"
+        ? (input.feedbackUrl || input.menuUrl)
+        : (input.shortLink || input.menuUrl);
+    return sourceUrl.replace(/^https?:\/\//, "");
+}
+
 function getDisplayShortLink(ctx: BuildContext): string {
-    return ctx.input.shortLink || ctx.input.menuUrl.replace(/^https?:\/\//, "");
+    return getPrintableAssetDisplayShortLink(ctx.input);
 }
 
 function getContactPhone(ctx: BuildContext): string {
@@ -842,32 +849,32 @@ function buildSticker(ctx: BuildContext) {
         x: Math.round(ctx.canvasWidth * 0.04),
         y: Math.round(ctx.canvasHeight * 0.04),
     }));
-    addIdentityBadge(ctx, ctx.canvasWidth / 2, Math.round(ctx.canvasHeight * 0.08), Math.round(ctx.canvasWidth * 0.18), "center");
+    addIdentityBadge(ctx, ctx.canvasWidth / 2, Math.round(ctx.canvasHeight * 0.05), Math.round(ctx.canvasWidth * 0.14), "center");
     ctx.elements.push(textElement(ctx, {
         align: "center",
         color: ctx.text,
-        fontSize: Math.round(ctx.canvasWidth * 0.07),
+        fontSize: Math.round(ctx.canvasWidth * 0.057),
         fontWeight: "800",
-        height: Math.round(ctx.canvasHeight * 0.09),
+        height: Math.round(ctx.canvasHeight * 0.075),
         name: "Business name",
         text: truncateForLayer(ctx.input.storeName, 30),
-        width: Math.round(ctx.canvasWidth * 0.82),
-        x: Math.round(ctx.canvasWidth * 0.09),
-        y: Math.round(ctx.canvasHeight * 0.25),
+        width: Math.round(ctx.canvasWidth * 0.86),
+        x: Math.round(ctx.canvasWidth * 0.07),
+        y: Math.round(ctx.canvasHeight * 0.20),
     }));
-    addQrPanel(ctx, Math.round(ctx.canvasWidth * 0.24), Math.round(ctx.canvasHeight * 0.39), Math.round(ctx.canvasWidth * 0.52));
     ctx.elements.push(textElement(ctx, {
         align: "center",
         color: ctx.accent,
-        fontSize: Math.round(ctx.canvasWidth * 0.06),
+        fontSize: Math.round(ctx.canvasWidth * 0.045),
         fontWeight: "800",
-        height: Math.round(ctx.canvasHeight * 0.08),
+        height: Math.round(ctx.canvasHeight * 0.06),
         name: "Call to action",
         text: `SCAN ${ctx.labels.offeringUpper}`,
         width: Math.round(ctx.canvasWidth * 0.82),
         x: Math.round(ctx.canvasWidth * 0.09),
-        y: Math.round(ctx.canvasHeight * 0.79),
+        y: Math.round(ctx.canvasHeight * 0.285),
     }));
+    addQrPanel(ctx, Math.round(ctx.canvasWidth * 0.27), Math.round(ctx.canvasHeight * 0.39), Math.round(ctx.canvasWidth * 0.46));
 }
 
 function buildEntrancePoster(ctx: BuildContext) {
@@ -1759,7 +1766,7 @@ export function rehydratePrintableAssetEditorDocument(
 
     const ctx = buildContext(admittedInput);
     const now = new Date().toISOString();
-    const shortLink = admittedInput.shortLink;
+    const shortLink = getPrintableAssetDisplayShortLink(admittedInput);
     const updatedElements = admittedDocument.elements.map((element): CreativeEditorElement => {
         if (element.type === "qr") {
             return {
@@ -1993,11 +2000,12 @@ async function renderPrintableAssetEditorDocumentFile(
     const dims = PRINT_DIMENSIONS[params.assetTypeId];
     const { jsPDF } = await import("jspdf");
     const pdf = new jsPDF({
+        compress: true,
         orientation: dims.widthMm >= dims.heightMm ? "landscape" : "portrait",
         unit: "mm",
         format: [dims.widthMm, dims.heightMm],
     });
-    pdf.addImage(dataUrl, "PNG", 0, 0, dims.widthMm, dims.heightMm);
+    pdf.addImage(dataUrl, "PNG", 0, 0, dims.widthMm, dims.heightMm, undefined, "FAST");
     return {
         blob: pdf.output("blob"),
         filename: result.filename.replace(/\.png$/i, pdfSuffix),

@@ -34,6 +34,8 @@
 | Compact transaction summaries showed raw target codes | Shared desktop/mobile owner summaries now resolve catalog-backed language names such as `French (fr)` |
 | Item translation lacked desktop/mobile detail rendering | All three translation action types use language detail views |
 | Owner/website copy said first language was source, promised “one-click” output, or implied translation needed no review | Active locale overrides and docs now describe English source, configurable display default, plan/credit limits, and owner review accurately |
+| Upload/setup Add Language retained a removed target as its hidden selected value | The transient selector is explicitly controlled empty, so removed targets can be selected again |
+| Fixed setup continuation covered language chips at a common desktop viewport | Uploaded-file setup reserves bottom clearance so pointer language actions and Continue remain distinct |
 
 ## Source evidence reviewed
 
@@ -104,9 +106,16 @@ Also parse every active MenuList locale JSON and run targeted lint on touched Ty
 - Legacy oversized caller lists are bounded before the five-target batch schema.
 - Owner operation rows admit compact `languageSummary` and omit unexpected raw fields.
 - English is present after language normalization and cannot be removed by desktop/mobile handlers.
+- Mobile Manage Languages preserves the outlet-language subset. When every
+  outlet-active language is already on the menu, the add-language picker is
+  disabled and localized Language & Region guidance replaces a generic empty
+  result; no global language is admitted merely to populate the control.
 - Extraction target normalization uses known catalog codes and `MAX_LANGUAGES_PER_PROJECT`.
 - Ordinary text retry contains no `IMAGE_TRANSLATION` action.
 - Desktop/mobile details include `ITEM_TRANSLATION`.
+- Upload/setup Add Language is controlled empty between choices and the fixed
+  Continue action retains enough bottom clearance to leave language chips
+  pointer-operable.
 
 ## Manual QA matrix
 

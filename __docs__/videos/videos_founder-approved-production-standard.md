@@ -22,7 +22,9 @@ Supporting technical and conversion documents remain authoritative for their own
 
 ## 1. Product Positioning
 
-MenuList is public-business truth infrastructure for SMBs. It is not positioned as:
+Internally, MenuList is public-business truth infrastructure for SMBs. This is category and architecture language for production strategy, partners, investors, and ecosystem explanation. Do not speak it or render it in owner-acquisition, website, launch, onboarding, sales, support, or paid-video copy.
+
+For non-technical owners, lead with the concrete problem and outcome: old menus, conflicting prices, scattered PDFs or links, and one owner-approved customer link for the latest published version. MenuList is not positioned as:
 
 - a QR-menu-only builder;
 - generic AI restaurant software;
@@ -43,6 +45,8 @@ One approved customer link - ready for customers, search, and AI-era discovery.
 ```
 
 This is readiness language, not a claim that MenuList guarantees rankings, recommendations, citations, traffic, or automatic updates to Google, Instagram, Zomato, Swiggy, or other external platforms.
+
+Do not use `always current`, `customers always see the current version`, `update once everywhere`, or similar absolute freshness and propagation claims. Prefer `latest owner-approved publish`, `latest published version`, and `supported MenuList outputs`. Name owner review and publishing whenever the workflow depends on them.
 
 ## 2. Non-Technical Owner Story
 

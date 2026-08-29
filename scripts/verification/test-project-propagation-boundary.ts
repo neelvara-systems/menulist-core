@@ -3,6 +3,7 @@ import {
     buildDeterministicOutletProjectId,
     MAX_PROJECT_PROPAGATION_STORES,
     normalizeProjectPropagationPlan,
+    shouldPropagateProjectAfterSourceSave,
 } from "../../src/lib/multiOutlet/projectPropagationBoundary";
 import { hashString } from "../../src/utils/hash";
 
@@ -27,6 +28,27 @@ assert.equal(normalizeProjectPropagationPlan(stores, 11, { storeId: 11, tenantId
 assert.equal(normalizeProjectPropagationPlan([{ storeId: 10, isMaster: true }, { storeId: "10" }], 10, canonicalMaster, 10), null, "duplicate store aliases fail closed");
 assert.equal(normalizeProjectPropagationPlan(new Array(MAX_PROJECT_PROPAGATION_STORES + 1).fill({ storeId: 1 }), 1, canonicalMaster, 10), null, "oversized lists fail closed");
 assert.equal(normalizeProjectPropagationPlan(stores, 10, { ...canonicalMaster, tenantId: 99 }, 10), null, "cross-tenant canonical source fails closed");
+
+assert.equal(shouldPropagateProjectAfterSourceSave({
+    currentFiles: [{ uid: "first-source" }],
+    masterProjectId: null,
+    previousFiles: [],
+}), true, "the first canonical master source triggers outlet propagation");
+assert.equal(shouldPropagateProjectAfterSourceSave({
+    currentFiles: [],
+    masterProjectId: null,
+    previousFiles: [],
+}), false, "an empty new menu must not attempt a rules-rejected outlet propagation");
+assert.equal(shouldPropagateProjectAfterSourceSave({
+    currentFiles: [{ uid: "existing-source" }],
+    masterProjectId: null,
+    previousFiles: [{ uid: "existing-source" }],
+}), false, "ordinary saves must not repeat propagation reads and writes");
+assert.equal(shouldPropagateProjectAfterSourceSave({
+    currentFiles: [{ uid: "outlet-source" }],
+    masterProjectId: "10-master-menu-10",
+    previousFiles: [],
+}), false, "linked outlets must never propagate to sibling outlets");
 
 const firstId = buildDeterministicOutletProjectId({
     masterProjectId: "10-master-menu-10",

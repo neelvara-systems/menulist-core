@@ -29,7 +29,7 @@ export function BusinessHealthAnalyticsStrip({ enabled = true, projectId, storeS
   if (!metrics.length) return null;
 
   return (
-    <Card className={styles.analyticsStrip} bodyStyle={{ padding: 12 }}>
+    <Card className={styles.analyticsStrip} styles={{ body: { padding: 12 } }}>
       <div className={styles.analyticsStripHeader}>
         <Text strong>{primaryPeriod.key === 'today' ? t('businessHealth.today') : t('businessHealth.latestActivity')}</Text>
         <Text type="secondary">{t(`businessHealth.periods.${primaryPeriod.key}`)}</Text>

@@ -454,7 +454,15 @@ function verifyBillingEntitlementBoundary() {
     '.where("productId", "==", DEFAULT_PRODUCT_ID)',
   ].forEach((token) => assertIncludes(subscriptionServer, token, 'MenuList server subscription exact product query'));
   assertIncludes(desktopBilling, 'getBillingHistoryForStore(session?.user?.tenantId, effectiveHistoryStoreId)', 'Desktop billing history must preserve raw signed scope for exact DAL admission');
+  assertIncludes(desktopBilling, 'aria-label="Billing store"', 'Desktop multi-location billing selector must have an accessible name');
   assertIncludes(mobileBilling, 'getBillingHistoryForStore(session?.user?.tenantId, historyStoreId)', 'Mobile billing history must preserve raw signed scope for exact DAL admission');
+  [
+    "aria-label={t('cancellationReasonTitle')}",
+    "aria-label={t('chooseAPlan')}",
+    'aria-label="Billing store"',
+    "aria-label={t('getMoreAiEnhancements')}",
+    "aria-label={t('billingHistory')}",
+  ].forEach((token) => assertIncludes(mobileBilling, token, 'Mobile billing popup accessible-name contract'));
   assertNotIncludes(desktopBilling, 'getBillingHistoryForStore(Number(session?.user?.tenantId)', 'Desktop billing history must not coerce nullable session scope');
   assertNotIncludes(mobileBilling, 'getBillingHistoryForStore(Number(session?.user?.tenantId)', 'Mobile billing history must not coerce nullable session scope');
   [
@@ -484,6 +492,14 @@ function verifyBillingEntitlementBoundary() {
     'tabIndex={0}',
     'event.key !== \'Enter\' && event.key !== \' \'',
   ].forEach((token) => assertIncludes(mobileBilling, token, 'Mobile billing history visible loading and keyboard contract'));
+  assertNotIncludes(mobileBilling, '<Button fill="outline" onClick={fetchHistory}', 'Mobile billing must not duplicate the canonical Billing History action inside the subscription card');
+  [
+    'aria-label={t(\'needBillingHelp\')}',
+    "router.push('/help-center/contact-us')",
+    'Open MenuList support options in Help Center.',
+    'type="button"',
+    "width: '100%'",
+  ].forEach((token) => assertIncludes(mobileBilling, token, 'Mobile billing help keyboard-navigation contract'));
   [
     "where('pId', '==', PRODUCT_IDS.ANSWERLATTICE)",
     "where('productId', '==', PRODUCT_IDS.ANSWERLATTICE)",

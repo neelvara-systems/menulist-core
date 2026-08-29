@@ -141,6 +141,7 @@ export default function GenerateDescriptionsSheet({
 
     return (
         <Popup
+            aria-label={t('menuDescriptions')}
             bodyStyle={MENU_SHEET_BODY_STYLE}
             destroyOnClose
             onMaskClick={isProcessing ? undefined : onClose}
@@ -194,7 +195,10 @@ export default function GenerateDescriptionsSheet({
                             <Text strong>{t('descriptionLength')}</Text>
                             <Flex gap={8} vertical>
                                 {DESCRIPTION_LENGTH_OPTIONS.map((option) => (
-                                    <div
+                                    <button
+                                        type="button"
+                                        aria-pressed={contentLength === option.value}
+                                        disabled={isProcessing}
                                         key={option.value}
                                         onClick={() => {
                                             if (isProcessing) return;
@@ -204,10 +208,14 @@ export default function GenerateDescriptionsSheet({
                                             backgroundColor: token.colorBgContainer,
                                             border: `1px solid ${contentLength === option.value ? token.colorPrimary : token.colorBorderSecondary}`,
                                             borderRadius: 12,
+                                            color: 'inherit',
                                             cursor: isProcessing ? 'not-allowed' : 'pointer',
+                                            font: 'inherit',
+                                            minHeight: 44,
                                             opacity: isProcessing ? 0.6 : 1,
                                             paddingBlock: 12,
                                             paddingInline: 12,
+                                            textAlign: 'start',
                                             width: '100%',
                                         }}
                                     >
@@ -236,7 +244,7 @@ export default function GenerateDescriptionsSheet({
                                                 {contentLength === option.value ? <LuCheck size={12} /> : null}
                                             </Flex>
                                         </Flex>
-                                    </div>
+                                    </button>
                                 ))}
                             </Flex>
                         </Flex>
@@ -250,7 +258,10 @@ export default function GenerateDescriptionsSheet({
                             </Flex>
                             <Flex gap={8} vertical>
                                 {DESCRIPTION_TONE_OPTIONS.map((option) => (
-                                    <div
+                                    <button
+                                        type="button"
+                                        aria-pressed={descriptionTone === option.value}
+                                        disabled={isProcessing}
                                         key={option.value}
                                         onClick={() => {
                                             if (isProcessing) return;
@@ -260,10 +271,14 @@ export default function GenerateDescriptionsSheet({
                                             backgroundColor: token.colorBgContainer,
                                             border: `1px solid ${descriptionTone === option.value ? token.colorPrimary : token.colorBorderSecondary}`,
                                             borderRadius: 12,
+                                            color: 'inherit',
                                             cursor: isProcessing ? 'not-allowed' : 'pointer',
+                                            font: 'inherit',
+                                            minHeight: 44,
                                             opacity: isProcessing ? 0.6 : 1,
                                             paddingBlock: 12,
                                             paddingInline: 12,
+                                            textAlign: 'start',
                                             width: '100%',
                                         }}
                                     >
@@ -292,7 +307,7 @@ export default function GenerateDescriptionsSheet({
                                                 {descriptionTone === option.value ? <LuCheck size={12} /> : null}
                                             </Flex>
                                         </Flex>
-                                    </div>
+                                    </button>
                                 ))}
                             </Flex>
                         </Flex>

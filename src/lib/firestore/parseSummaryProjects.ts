@@ -53,6 +53,11 @@ export function normalizeSummaryProjectLocalizedText(
     return Object.keys(normalized).length > 0 ? { ...normalized } : null;
 }
 
+export function isCompleteSummaryProject(project: SummaryProjectData): boolean {
+    return typeof project.active === 'boolean'
+        && normalizeSummaryProjectLocalizedText(project.name) !== null;
+}
+
 export function isCurrentActiveSpecialSummaryProject(
     project: SummaryProjectWithId,
     expectedProjectId: string,

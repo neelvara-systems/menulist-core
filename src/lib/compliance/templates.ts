@@ -28,7 +28,7 @@ function formatComplianceDate(value: unknown): string | null {
         } else if (value && typeof value === 'object' && typeof (value as { toDate?: unknown }).toDate === 'function') {
             date = (value as { toDate: () => Date }).toDate();
         } else if (value && typeof value === 'object') {
-            const seconds = Reflect.get(value, 'seconds');
+            const seconds = Reflect.get(value, 'seconds') ?? Reflect.get(value, '_seconds');
             if (typeof seconds === 'number' && Number.isFinite(seconds)) {
                 date = new Date(seconds * 1000);
             }

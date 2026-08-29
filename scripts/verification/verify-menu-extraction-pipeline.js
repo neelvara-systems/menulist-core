@@ -79,6 +79,33 @@ contains(
   'Desktop menu-link import validates the public URL before the protected request',
 );
 
+contains(
+  'src/app/(website)/create-menu/CreateMenuClient.tsx',
+  [
+    'validateMenuLinkInput(menuLink)',
+    '!menuLinkInputValidation.valid || !permissionConfirmed',
+    'const normalizedLink = menuLinkInputValidation.normalizedUrl;',
+    'url: normalizedLink',
+    'disabled={isProcessing || !menuLinkInputValidation.valid || !permissionConfirmed}',
+    'role="alert"',
+  ],
+  'Public create-menu link import validates and normalizes before any request',
+);
+
+contains(
+  'src/components/mobile/sheets/MenuUploadSheet.tsx',
+  [
+    'validateMenuLinkInput(linkUrl)',
+    'if (!linkInputValidation.valid)',
+    'Toast.show({ content: linkInputValidation.message',
+    'url: linkInputValidation.normalizedUrl',
+    '!linkInputValidation.valid || !linkPermissionConfirmed',
+    '{linkInputValidation.message}',
+    'role="alert"',
+  ],
+  'Mobile menu-link import validates and normalizes before project creation or the protected request',
+);
+
 filesEqual(
   'src/data/shared/menuExtractionProjectSize.ts',
   'functions/src/sharedData/menuExtractionProjectSize.ts',
@@ -1268,6 +1295,7 @@ contains(
   [
     'const canUseMenuExtraction = userPermissions?.canUseMenuExtraction === true;',
     'const canManageStore = userPermissions?.canManageStore === true;',
+    "accept: '.pdf,.jpg,.jpeg,.png,.webp'",
     'if (!canUseMenuExtraction) {',
     "messageApi.error('Menu extraction is not enabled for this location.');",
     'if (!canManageStore) return;',
@@ -1281,6 +1309,12 @@ contains(
     'menu_upload_uploaded_file_cleanup_failed',
     'menu_upload_job_create_failed',
     'menu_upload_image_optimization_failed',
+    "preparedName = file.name.replace(/\\.[^.]+$/, '') + '.jpg'",
+    'preparedSize = optimized.optimizedSize',
+    "preparedType = 'image/jpeg'",
+    'name: preparedName',
+    'size: preparedSize',
+    'type: preparedType',
     'menu_upload_pdf_conversion_failed',
     "getBoundedMenuProcessingStringContext('cleanupReason', cleanupReason)",
     'const cleanupResults = await Promise.allSettled(files.map(file => deleteFileByUrl(file.url)));',
@@ -3303,8 +3337,22 @@ contains(
     'maxLength={100}',
     'maxLength={200}',
     'BUSINESS_TYPES.map((type)',
+    'htmlFor="msg-preview-business-name"',
+    'id="msg-preview-business-name"',
+    'aria-label="Edit business name"',
+    'aria-label="Save business name"',
+    'htmlFor="msg-preview-business-type"',
+    'id="msg-preview-business-type"',
+    'aria-label="Edit business type"',
+    'aria-label="Save business type"',
+    'htmlFor="msg-preview-address"',
+    'id="msg-preview-address"',
+    'aria-label="Edit address"',
+    'aria-label="Save address"',
+    'aria-pressed={selectedIssues.includes(issue.value)}',
+    '<span aria-hidden="true">✓ </span>',
   ],
-  'Messaging preview UI bounds owner fields and selects from the canonical business-type registry',
+  'Messaging preview UI bounds and names owner fields, exposes correction selection state, and uses the canonical business-type registry',
 );
 
 contains(
@@ -3609,9 +3657,13 @@ contains(
   'src/lib/messaging-onboarding/publish.ts',
   [
     'export async function executeMessagingOnboardingPublish',
+    'sessionData: MessagingPublishSession;',
     'normalizeMessagingPreviewSessionId',
     'const normalizedSessionId = normalizeMessagingPreviewSessionId(sessionId);',
     'throw new Error("Invalid messaging preview session");',
+    'const sessionData = params.sessionData;',
+    'if (sessionData.sessionId !== normalizedSessionId)',
+    'throw new Error("Invalid messaging publish source");',
     'logPublishEvent(normalizedSessionId, sessionData, "PUBLISH_STARTED", "PUBLISHING", {',
     'const projectId = `${core.tenantId}-default-${core.storeId}`',
     'db.collection(`projects/${core.tenantId}/${core.storeId}`).doc(projectId)',
@@ -3693,8 +3745,9 @@ notContains(
     'secureError(',
     '.catch(() => {})',
     '.doc(sessionId)',
+    'normalizeMessagingPublishSession(\n    params.sessionData,',
   ],
-  'Messaging publish cache revalidation diagnostics are bounded',
+  'Messaging publish keeps bounded diagnostics and does not re-normalize its typed route handoff',
 );
 
 contains(
@@ -3705,6 +3758,10 @@ contains(
     'MSG_PREVIEW_MAX_CORRECTIONS_REACHED',
     'MSG_PREVIEW_COPY_FAILED',
     'MSG_PREVIEW_WHATSAPP_OPEN_FAILED',
+    'Open the newest preview link from your WhatsApp conversation.',
+    'send your menu photos again to start a new',
+    '<a href="/" style={styles.errorRecoveryLink}>',
+    'minHeight: 44',
     'copyMsgPreviewPublishedLinkToClipboard',
     'msg_preview_success_link_copy_unavailable',
     'msg_preview_success_link_copy_fallback_failed',

@@ -12,7 +12,7 @@
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useSession } from 'next-auth/react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { FcGoogle } from 'react-icons/fc';
 import { LuAlertCircle, LuCheck, LuLink, LuLoader, LuUpload } from 'react-icons/lu';
 import WebsiteHeadline from '@/components/website/shared/WebsiteHeadline';
@@ -29,6 +29,7 @@ import {
 import { normalizePublicMenuDraftId } from '@lib/public-menu-entry/publicDraftId';
 import { FEATURE_FLAGS } from '@config/features';
 import { PUBLIC_CREATE_MENU_UPLOAD_LIMITS } from '@data/shared/menuExtractionJob';
+import { validateMenuLinkInput } from '@lib/menu-link-import/menuLinkInput';
 
 type UploadState = 'idle' | 'optimizing' | 'uploading' | 'processing' | 'success' | 'error';
 type InputMode = 'photo' | 'link';
@@ -91,6 +92,7 @@ export default function CreateMenuClient({
     const [inputMode, setInputMode] = useState<InputMode>('photo');
     const [menuLink, setMenuLink] = useState('');
     const [permissionConfirmed, setPermissionConfirmed] = useState(false);
+    const menuLinkInputValidation = useMemo(() => validateMenuLinkInput(menuLink), [menuLink]);
     const submissionInFlightRef = useRef(false);
     const isAuthenticated = sessionStatus === 'authenticated';
     const isSessionLoading = sessionStatus === 'loading';
@@ -286,13 +288,12 @@ export default function CreateMenuClient({
             return;
         }
 
-        const trimmedLink = menuLink.trim();
-
-        if (!trimmedLink || !permissionConfirmed) {
+        if (!menuLinkInputValidation.valid || !permissionConfirmed) {
             setError(t('CreateMenu.invalidLink'));
             setState('error');
             return;
         }
+        const normalizedLink = menuLinkInputValidation.normalizedUrl;
         if (submissionInFlightRef.current) return;
         submissionInFlightRef.current = true;
 
@@ -304,7 +305,7 @@ export default function CreateMenuClient({
                     growthAcquisition,
                     permissionConfirmed,
                     sourceType: 'menu_link',
-                    url: trimmedLink,
+                    url: normalizedLink,
                 }),
                 cache: 'no-store',
                 credentials: 'same-origin',
@@ -324,7 +325,7 @@ export default function CreateMenuClient({
                 return;
             }
 
-            const { payload, parseFailed } = await readCreateMenuDraftResponseJson(response, 'link', trimmedLink);
+            const { payload, parseFailed } = await readCreateMenuDraftResponseJson(response, 'link', normalizedLink);
 
             if (!response.ok) {
                 setError(t('CreateMenu.linkFailed'));
@@ -336,7 +337,7 @@ export default function CreateMenuClient({
             if (parseFailed || !draftId) {
                 if (!parseFailed) {
                     logRuntimeFailure('public_create_menu_response_invalid', new Error('public_create_menu_response_invalid'), {
-                        ...getCreateMenuResponseLogContext('link', trimmedLink),
+                        ...getCreateMenuResponseLogContext('link', normalizedLink),
                         responseOk: response.ok,
                         responseStatus: response.status,
                         maxBytes: CREATE_MENU_RESPONSE_JSON_MAX_BYTES,
@@ -352,14 +353,14 @@ export default function CreateMenuClient({
             router.push(`${createMenuPreviewPath}/${draftId}`);
         } catch (err) {
             logRuntimeFailure('public_create_menu_request_failed', err, {
-                ...getCreateMenuResponseLogContext('link', trimmedLink),
+                ...getCreateMenuResponseLogContext('link', normalizedLink),
             });
             setError(t('CreateMenu.genericError'));
             setState('error');
         } finally {
             submissionInFlightRef.current = false;
         }
-    }, [createMenuPreviewPath, growthAcquisition, isAuthenticated, menuLink, permissionConfirmed, redirectToSignIn, router, t]);
+    }, [createMenuPreviewPath, growthAcquisition, isAuthenticated, menuLinkInputValidation, permissionConfirmed, redirectToSignIn, router, t]);
 
     const isProcessing = state === 'optimizing' || state === 'uploading' || state === 'processing';
     const processSteps = [
@@ -640,6 +641,11 @@ export default function CreateMenuClient({
                                             type="url"
                                             value={menuLink}
                                         />
+                                        {menuLink.trim() && !menuLinkInputValidation.valid ? (
+                                            <p role="alert" style={{ color: 'var(--ws-error)', fontSize: '13px', margin: 0 }}>
+                                                {t('CreateMenu.invalidLink')}
+                                            </p>
+                                        ) : null}
                                         <label style={{
                                             alignItems: 'flex-start',
                                             color: 'var(--ws-text-secondary)',
@@ -661,21 +667,21 @@ export default function CreateMenuClient({
                                             <span>{t('CreateMenu.linkPermission')}</span>
                                         </label>
                                         <button
-                                            disabled={isProcessing}
+                                            disabled={isProcessing || !menuLinkInputValidation.valid || !permissionConfirmed}
                                             style={{
                                                 alignItems: 'center',
                                                 backgroundColor: 'var(--ws-cta-default)',
                                                 border: 'none',
                                                 borderRadius: 'var(--ws-radius-lg)',
                                                 color: '#fff',
-                                                cursor: isProcessing ? 'default' : 'pointer',
+                                                cursor: isProcessing || !menuLinkInputValidation.valid || !permissionConfirmed ? 'not-allowed' : 'pointer',
                                                 display: 'inline-flex',
                                                 fontSize: '15px',
                                                 fontWeight: 700,
                                                 gap: '8px',
                                                 justifyContent: 'center',
                                                 minHeight: '48px',
-                                                opacity: isProcessing ? 0.7 : 1,
+                                                opacity: isProcessing || !menuLinkInputValidation.valid || !permissionConfirmed ? 0.7 : 1,
                                                 padding: '12px 18px',
                                                 width: '100%',
                                             }}

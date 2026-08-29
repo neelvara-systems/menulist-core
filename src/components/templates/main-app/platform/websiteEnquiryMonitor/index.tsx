@@ -249,6 +249,7 @@ export default function WebsiteEnquiryMonitor() {
             <Card size="small" style={{ marginBottom: 16 }}>
                 <Space wrap size={12}>
                     <Select
+                        aria-label="Filter website enquiries by type"
                         style={{ width: 200 }}
                         value={kind}
                         options={KIND_OPTIONS}
@@ -258,6 +259,7 @@ export default function WebsiteEnquiryMonitor() {
                         }}
                     />
                     <Select
+                        aria-label="Filter website enquiries by topic"
                         style={{ width: 190 }}
                         value={topic}
                         options={TOPIC_OPTIONS}

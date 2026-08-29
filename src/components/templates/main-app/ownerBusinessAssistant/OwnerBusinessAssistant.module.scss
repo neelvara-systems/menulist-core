@@ -77,12 +77,17 @@
 }
 
 .scopeSelectorTrigger {
+  appearance: none;
+  display: block;
   min-height: 48px;
   padding: 6px 12px;
   border-radius: 8px;
   cursor: pointer;
   background: var(--ant-color-fill-quaternary);
   border: 1px solid var(--ant-color-border);
+  color: inherit;
+  font: inherit;
+  text-align: left;
 }
 
 .locationSummaryRow {

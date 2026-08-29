@@ -122,7 +122,7 @@ function UsersListTable({ canManageTarget, canManageUsers, emptyText, onClickUse
                     >
                         <Button
                             aria-label={`Create temporary passcode for ${staffName}`}
-                            disabled={!targetCanBeManaged || mutationPending}
+                            disabled={!targetCanBeManaged || mutationPending || record.active === false}
                             onClick={(event) => event.stopPropagation()}
                             shape="circle"
                             icon={<LuKeyRound />}

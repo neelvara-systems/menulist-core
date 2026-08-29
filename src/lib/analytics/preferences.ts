@@ -21,6 +21,18 @@ export interface ResolvedAnalyticsPreferences {
 
 const GOOGLE_SEARCH_CONSOLE_TOKEN_PATTERN = /^[A-Za-z0-9_-]{6,256}$/;
 const GOOGLE_SEARCH_CONSOLE_INPUT_MAX_LENGTH = 2048;
+const GA4_MEASUREMENT_ID_PATTERN = /^G-[A-Z0-9]+$/;
+const META_PIXEL_ID_PATTERN = /^\d{5,32}$/;
+
+export function normalizeGoogleAnalyticsMeasurementId(value: unknown): string | undefined {
+  const normalized = String(value || '').trim().toUpperCase();
+  return GA4_MEASUREMENT_ID_PATTERN.test(normalized) ? normalized : undefined;
+}
+
+export function normalizeMetaPixelId(value: unknown): string | undefined {
+  const normalized = String(value || '').trim();
+  return META_PIXEL_ID_PATTERN.test(normalized) ? normalized : undefined;
+}
 
 export function normalizeGoogleSearchConsoleVerification(value: unknown): string | undefined {
   if (typeof value !== 'string') return undefined;

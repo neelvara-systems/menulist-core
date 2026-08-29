@@ -7425,3 +7425,84 @@ No Firebase source/configuration changes. Firestore Rules, indexes, Storage Rule
 
 - Razorpay boundary: no checkout, charge, payment webhook completion, refund, subscription mutation, or money movement is authorized or performed.
 - Attribution confidence: exact for the current snapshot, validation and release operation; historical per-file authorship is retained as `unknown` unless an earlier ledger entry provides exact attribution.
+
+#### Consolidated Answerlattice/MenuList staging release performed result — `2026-08-26T22:02:00+05:30`
+
+- Complete staging snapshot: all `94` stable candidate paths were staged together after the final byte-stability audit. The staged diff contained `10,401` insertions and `6,886` deletions; staged `git diff --check` and the bounded secret scan passed. Commit `4586bb8523a92b1c7d0ea37a5b17267432346cf6` (`fix(release): consolidate Answerlattice QA and MenuList hardening`) was created with `--no-verify` only after the separately recorded maintained validation matrix passed.
+- Push/readback: one non-force `git push origin staging` completed. Direct `git ls-remote` readback returned `refs/heads/staging` at `4586bb8523a92b1c7d0ea37a5b17267432346cf6`; fetch plus exact divergence readback returned `0/0`. Local and remote `main` remained untouched at `fe625d5bbf527c1b7e537b00ab32a4f655905c35`.
+- Vercel build guard: the one automatic QA deployment object `DsTq7yW2YxAP9gNXQBbCuvYEVkbx` was created for exact source `4586bb8523a92b1c7d0ea37a5b17267432346cf6`, environment `qa`, branch `staging`, but Vercel marked it `Canceled` before build execution. Authenticated deployment readback states: `The Deployment has been canceled early as a result of running the command defined in the "Ignored Build Step" setting.` No build CPU was consumed by this canceled deployment.
+- Exact hosted version readback: `https://canonica.app/api/version`, `https://app.menulist.digital/api/version`, and `https://menulist.digital/api/version` still returned prior build `59e1dc2561750ed2d97764fa30df7614c3071fd2`. Therefore exact-commit hosted QA for `4586bb8` is `BLOCKED`; no Ready/deployed claim is made.
+- Vercel settings evidence: authenticated read-only inspection found project ignored-build behavior `Automatic`, QA custom environment bound to `staging`, Standard build machine selected for the next deployment, and on-demand concurrent builds disabled. No Vercel setting, domain, environment variable, build machine, billing control, manual deployment, or redeploy action was changed or invoked.
+- Post-push filesystem: the committed tree was clean immediately after the push. Three generated MenuList RC evidence files then changed after the release while another process shared the same worktree; they remain preserved and unstaged. They are not silently added to the completed release and no second staging push is authorized or performed.
+- Branch matrix after:
+
+| Branch | Local full SHA | Direct server ref/full SHA | Tracking ref | Ahead/behind | Worktree | Staged/unstaged/untracked | Status |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `staging` | `4586bb8523a92b1c7d0ea37a5b17267432346cf6` | `refs/heads/staging` / `4586bb8523a92b1c7d0ea37a5b17267432346cf6` | `origin/staging` | `0/0` | primary | `0/3/0` after concurrent generated-evidence refresh | `IN_SYNC` |
+| `main` | `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `refs/heads/main` / `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `origin/main` | `0/0` | none | n/a | `IN_SYNC` |
+
+- Firebase state: Answerlattice QA FAQ index remains authenticated `DEPLOYED_AND_READ_BACK`; Answerlattice production FAQ index and MenuList QA/production Functions remain `DEPLOY_REQUIRED` as recorded above. This Git release performed no additional Firebase deployment.
+- Razorpay boundary: no checkout, charge, payment webhook completion, refund, subscription mutation, or money movement occurred.
+- Attribution confidence: exact for this session's Git mutation, direct server readback, authenticated Vercel deployment inspection, and hosted version probes.
+
+#### Authorized manual QA build result — `2026-08-26T22:47:39+05:30`
+
+- Authorization: Danny explicitly authorized exactly one manual Vercel QA build of staging commit `4586bb8523a92b1c7d0ea37a5b17267432346cf6`. The authorization excluded any second build/retry, additional Git push, `main`, production, Vercel settings/billing mutation, production Firebase deployment, and payment execution.
+- Exact deployment: Vercel manual QA deployment `7XtGat3jrRJtpYgC7fdJNA3dJsCd` targeted environment `qa`, branch `staging`, and exact source `4586bb8523a92b1c7d0ea37a5b17267432346cf6`. The repository's Ignored Build Step was bypassed only for this deployment. The Standard build machine was retained and existing Build Cache was not enabled.
+- Terminal result: `Build Failed (timed out)` after `45m 49s`. Authenticated Vercel readback states that the build exceeded the 45-minute limit. The build log completed `tsc --noEmit --incremental false --pretty false` from `22:00:57.477` to `22:03:10.104`, completed `eslint src --max-warnings=0` from `22:03:10.105` to `22:06:46.104`, then remained at Next.js `Creating an optimized production build ...` until the timeout. No runtime deployment or custom-domain assignment occurred.
+- Hosted safety/readback: throughout the build and after its terminal failure, `https://canonica.app/api/version`, `https://app.menulist.digital/api/version`, and `https://menulist.digital/api/version` continued to return verified prior build `59e1dc2561750ed2d97764fa30df7614c3071fd2`. Exact-commit hosted QA for `4586bb8` therefore remains `BLOCKED`; no behavior from the prior build is attributed to the candidate.
+- Branch matrix after: local/server `staging` remain `4586bb8523a92b1c7d0ea37a5b17267432346cf6` with `0/0` divergence. Local/server `main` remain untouched at `fe625d5bbf527c1b7e537b00ab32a4f655905c35` with `0/0` divergence. Direct server proof used `git ls-remote`, not only remote-tracking refs.
+- Filesystem boundary: concurrent local work remains preserved and unstaged. This evidence append performs no staging, commit, push, reset, checkout, or cleanup. It does not absorb or overwrite any concurrent source/generated-file changes.
+- Firebase state: no Firebase command or deployment was performed. Answerlattice QA FAQ indexes remain `INFRA_CHANGE` / `DEPLOYED_AND_READ_BACK`; Answerlattice production FAQ indexes and MenuList QA/production Functions remain `INFRA_CHANGE` / `DEPLOY_REQUIRED`. Other previously recorded component rows are unchanged and are not upgraded without a fresh authenticated readback.
+- Next gate: diagnose/validate the build-time path locally. Any cached redeploy, build-machine change, retry, or new source release requires a separate explicit authorization immediately before that action.
+- Razorpay boundary: no checkout, charge, payment webhook completion, refund, subscription mutation, or money movement occurred.
+- Attribution confidence: exact for the authorized Vercel action, terminal build result, direct Git readback, and canonical hosted-version probes.
+
+### GIT-20260830-003218-consolidated-staging-release
+
+- Timestamp: `2026-08-30T00:32:18+05:30`
+- Operation ID: `GIT-20260830-003218-consolidated-staging-release`
+- Actor/session/thread ID: Codex task `019e3e73-7d6a-7142-9c09-24bce20e1c65`
+- Attribution: exact for this operation; authorship of pre-existing working-tree changes is `unknown` unless separately recorded below or in an earlier entry.
+- Active worktree path/ID: `/Users/danny/Projects/MenuListAi/menulist-core` / `primary`
+- Registered worktrees: one (`primary`), checked out on `staging` at `4586bb8523a92b1c7d0ea37a5b17267432346cf6`.
+- Authorization: Danny explicitly authorized one consolidated commit and push of all current intended local changes to `staging` in the current turn. `main`, Firebase deployment, Vercel deployment/redeploy, and any second staging push are excluded.
+- Intended command class: stable-snapshot staging, one commit, one non-force `git push origin staging`, direct server readback.
+- Source/destination: working tree on local `staging` -> local `staging` commit -> `refs/heads/staging` on `origin`.
+- Stable cutoff evidence: `git status --porcelain=v1 -z` SHA-256 `f4d28776ee010f2ccaa72ecc85543f96ff498a39f8cb69f8f1e4ded3fdbe218f` and binary diff SHA-256 `63757700b04987d1ad620a76c887ef9c59b7cb67560b9ee5e0c7d0ac2c393779` matched across a 10-second interval. Pre-operation state was `0` staged, `635` tracked unstaged paths, and `66` untracked status entries (`184` untracked files).
+- Commit scope: all stable tracked changes plus `182` intended untracked files; expected file set spans application/runtime, mobile/desktop UI, Answerlattice/MenuList/Neelvara/MyCodex public surfaces, docs/evidence, tests/verifiers, media/assets, dependency metadata, Firebase rules/indexes, and both Functions source trees.
+- Excluded local artifacts: `.tmp-menulist-firestore-local.json` (local emulator configuration) and `output/` (generated PDF output). They remain untracked and are not included in the release.
+- Pre-stage validation: `npm run typecheck` passed; `npm run lint` passed with zero warnings; `git diff --check` passed; `npm run verify:menulist-firestore-rules` passed; `npm run test:answerlattice-early-access:rules` passed. `npm run verify:menulist-firebase-rules-predeploy` confirmed the generated MenuList deploy artifact is current, then could not start its first emulator test because existing local emulator PID `810` already owns port `8080`; the occupied process was preserved and no full-suite pass is claimed. No production build ran.
+
+#### Branch matrix before
+
+| Branch | Local full SHA | Direct server ref/full SHA | Tracking ref | Ahead/behind | Owning worktree path/ID | Staged/unstaged/untracked | Status |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `staging` | `4586bb8523a92b1c7d0ea37a5b17267432346cf6` | `refs/heads/staging` / `4586bb8523a92b1c7d0ea37a5b17267432346cf6` | `origin/staging` | `0/0` | `/Users/danny/Projects/MenuListAi/menulist-core` / `primary` | `0/635/66` status entries | `IN_SYNC` |
+| `main` | `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `refs/heads/main` / `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `origin/main` | `0/0` | none | n/a | `IN_SYNC` |
+
+#### Firebase matrix before
+
+Server inventory and deployed-source readback were not authorized or performed in this Git-only operation. `NO_INFRA_CHANGE` therefore does not assert parity. Directory hashes below are deterministic SHA-256 over sorted relative source paths and bytes, excluding `node_modules`, compiled `lib`, and local env files.
+
+| Target | Component | Local source/config and SHA-256 / bytes | Local validation | Firebase project/codebase | Authenticated server evidence/readback | Delta | Deployment state |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| MenuList QA | Firestore Rules | `firestore-menulist.rules` `0c1baf1bd730a2c725eed0173d7ef01bf07ed2828ad7f7bbdb30af01ddbaa010` / `133743` | generated artifact current; full predeploy emulator suite blocked by occupied `8080` | `menulist-qa` / default | not read back | `INFRA_CHANGE` | `LOCAL_NOT_VALIDATED` |
+| MenuList QA | Firestore indexes | `firestore.indexes.json` `5629ae4d5004bc59c82528f2e7f9b7e5bb1ffbf74e0fc2e2e5e5252abf0744e0` / `78310` | unchanged in this snapshot | `menulist-qa` / default | not read back | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| MenuList QA | Storage Rules | `storage.rules` `226d2a206d7de8a442bf356a61ad048118322acb993eb89fa45744ed78ed1838` / `18176` | unchanged in this snapshot | `menulist-qa` / default | not read back | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| MenuList QA | Cloud Functions | `functions/` `5525e84e1edc22d23cbc5e0b1d52fddc2a0322266df5100f73ef150467f6c387` / `3597730` across `230` files | root strict TypeScript passed; dedicated Functions build not run | `menulist-qa` / default | not read back | `INFRA_CHANGE` | `LOCAL_NOT_VALIDATED` |
+| MenuList production | Firestore Rules | same MenuList rules artifact | same local result | `menulist-prod` / default | not read back | `INFRA_CHANGE` | `LOCAL_NOT_VALIDATED` |
+| MenuList production | Firestore indexes | same MenuList indexes artifact | unchanged in this snapshot | `menulist-prod` / default | not read back | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| MenuList production | Storage Rules | same MenuList Storage artifact | unchanged in this snapshot | `menulist-prod` / default | not read back | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| MenuList production | Cloud Functions | same MenuList Functions source tree | same local result | `menulist-prod` / default | not read back | `INFRA_CHANGE` | `LOCAL_NOT_VALIDATED` |
+| Answerlattice QA | Firestore Rules | `firestore-answerlattice.rules` `ce88db732b2cbff02f911d34eb8f05f48a0deafdef85027238f6a616de0375e4` / `117281` | focused early-access isolation rules test passed; full rules matrix not run | `neelvara-answerlattice-qa` / `answerlattice` | not read back | `INFRA_CHANGE` | `LOCAL_NOT_VALIDATED` |
+| Answerlattice QA | Firestore indexes | `firestore-answerlattice.indexes.json` `4568ed15eb6a49b1557d846c2b91e4f4489e6da617d79fa2024dad79f44e2347` / `52433` | JSON present; deployment validation not run | `neelvara-answerlattice-qa` / `answerlattice` | not read back | `INFRA_CHANGE` | `LOCAL_NOT_VALIDATED` |
+| Answerlattice QA | Storage Rules | `storage-answerlattice.rules` `5fc8f980f289889da557ac69c91edd61f8e8646b066c9b0101b87141d67106cc` / `6948` | unchanged in this snapshot | `neelvara-answerlattice-qa` / `answerlattice` | not read back | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| Answerlattice QA | Cloud Functions | `functions-answerlattice/` `863834a0143043b2d87accf07c23824203107c535130cf68917fde9dc78a341e` / `1222677` across `100` files | root strict TypeScript passed; dedicated Functions build not run | `neelvara-answerlattice-qa` / `answerlattice` | not read back | `INFRA_CHANGE` | `LOCAL_NOT_VALIDATED` |
+| Answerlattice production | Firestore Rules | same Answerlattice rules artifact | same local result | `neelvara-answerlattice-prod` / `answerlattice` | not read back | `INFRA_CHANGE` | `LOCAL_NOT_VALIDATED` |
+| Answerlattice production | Firestore indexes | same Answerlattice indexes artifact | same local result | `neelvara-answerlattice-prod` / `answerlattice` | not read back | `INFRA_CHANGE` | `LOCAL_NOT_VALIDATED` |
+| Answerlattice production | Storage Rules | same Answerlattice Storage artifact | unchanged in this snapshot | `neelvara-answerlattice-prod` / `answerlattice` | not read back | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| Answerlattice production | Cloud Functions | same Answerlattice Functions source tree | same local result | `neelvara-answerlattice-prod` / `answerlattice` | not read back | `INFRA_CHANGE` | `LOCAL_NOT_VALIDATED` |
+
+- Planned post-operation proof: commit SHA/message, one push result, direct `git ls-remote` server SHA for `staging` and `main`, exact divergence, final worktree counts, and automatic Vercel QA status only if observable without mutating deployment state.
+- Razorpay boundary: no checkout, charge, payment webhook completion, refund, subscription mutation, or money movement is authorized or performed.

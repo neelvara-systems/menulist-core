@@ -246,7 +246,7 @@ assert.doesNotMatch(
 );
 assert.match(
     sessionProviderSource,
-    /getFirebaseAuthSessionScopeKey\(effectiveSession\)/,
+    /getFirebaseAuthSessionScopeKey\(activeStoreFirebaseSession\)/,
     'the provider Firebase readiness key must follow the route-aware MenuList or Answerlattice client scope',
 );
 assert.doesNotMatch(
@@ -259,15 +259,54 @@ assert.match(
     /productContext === 'answerlattice'[\s\S]*isAnswerlatticeRuntimeRoute\(normalizedPathname, currentHostname\)/,
     'the provider must accept a server-stable Answerlattice product context before consulting browser hostname',
 );
+assert.match(
+    sessionProviderSource,
+    /isAnswerlatticeSupportClientRoute\(normalizedPathname\)[\s\S]*resolveAnswerlatticeSessionScope\(authenticatedSession\)/,
+    'the provider must recognize a linked MenuList Help Center as an Answerlattice support-client scope',
+);
+assert.match(
+    sessionProviderSource,
+    /\(isAnswerlatticeRoute && Boolean\(answerlatticeScope\)\)[\s\S]*\|\| isAnswerlatticeSupportClient/,
+    'the linked Help Center must render without waiting for unrelated MenuList store bootstrap data',
+);
+assert.match(
+    sessionProviderSource,
+    /const canRenderBeforeFirebaseAuth = canRenderBeforeStoreData && !isAnswerlatticeSupportClient;/,
+    'the linked Help Center must wait for route-aware Answerlattice Firebase auth before rendering client data flows',
+);
+assert.match(
+    sessionProviderSource,
+    /if \(isAnswerlatticeRoute \|\| isAnswerlatticeSupportClient\) \{\s*setActiveSubscriptionLoading\(false\);\s*return;/,
+    'the linked Help Center must not read MenuList tenant or store documents while Answerlattice Firebase claims are active',
+);
 
 const answerlatticeLayoutSource = fs.readFileSync(
     path.resolve(process.cwd(), 'src/app/(answerlattice)/layout.tsx'),
     'utf8',
 );
+const answerlatticeSessionProviderSource = fs.readFileSync(
+    path.resolve(process.cwd(), 'src/providers/answerlatticeSessionProvider.tsx'),
+    'utf8',
+);
 assert.match(
     answerlatticeLayoutSource,
-    /<SessionProvider session=\{session\} productContext="answerlattice">/,
-    'the Answerlattice server layout must pin product context so rewritten clean-domain routes hydrate consistently',
+    /<AnswerlatticeSessionProvider session=\{session\}>/,
+    'the Answerlattice server layout must use its product-local validated session provider',
+);
+assert.match(
+    answerlatticeSessionProviderSource,
+    /refreshClientSessionCacheFromApi\(\)[\s\S]*doesClientSessionMatchTrustedServerSession\(session, refreshedSession\)/,
+    'the Answerlattice provider must validate the complete client session against the trusted server session',
+);
+assert.match(
+    answerlatticeSessionProviderSource,
+    /<NextAuthSessionProvider[\s\S]*session=\{clientSession\}/,
+    'the Answerlattice provider must expose only the validated complete session to client consumers',
+);
+assert.doesNotMatch(
+    answerlatticeSessionProviderSource,
+    /@database\/|PlatformGlobalDataProvider|@lib\/multiOutlet|@database\/subscriptions|@lib\/posSync/,
+    'the Answerlattice provider must not import MenuList data, subscription, multi-outlet, or POS bootstrap modules',
 );
 
 const firebaseAuthSyncSource = fs.readFileSync(

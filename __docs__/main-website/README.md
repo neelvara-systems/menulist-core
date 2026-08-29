@@ -2,9 +2,9 @@
 
 The current public brand framing is `The official customer-facing version of your business.` with the supporting line `Publish your menu, hours, links, and business information from one owner-approved source.` The implementation keeps the existing official-customer-link conversion story and owner-approved surface boundaries.
 
-**Version:** 3.6.121 (Pricing Sign-In Handoff Integrity)
+**Version:** 3.6.122 (Readable Mobile Navigation)
 **Status:** ✅ IMPLEMENTED — Canonical
-**Last Updated:** August 22, 2026
+**Last Updated:** August 29, 2026
 **Workflow:** `.codex/workflows/website.md`
 
 ---
@@ -15,11 +15,14 @@ The current implementation is the only default MenuList marketing website.
 
 | Canonical Version | Name | Core Message | Status |
 | ----------------- | ---- | ------------ | ------ |
+| **3.6.122** | **Readable Mobile Navigation** | **The MenuList hamburger presents two owner-readable Product and Resources groups, preserves every direct shortcut in a flat list with non-interactive workflow labels, and keeps account/theme/preview actions separate from content navigation.** | **ACTIVE** |
 | **3.6.121** | **Pricing Sign-In Handoff Integrity** | **An unauthenticated plan choice crosses to the canonical owner-app sign-in as a validated non-sensitive plan selection; business and billing details are collected only after authentication on the owner-app host.** | **ACTIVE** |
 | **3.6.120** | **Developer Reference Discoverability** | **The shared public footer links directly to the existing localized `/developers` reference so human and agent journeys can reach the implemented read-only API contract from homepage HTML.** | **ACTIVE** |
 | **3.6.119** | **Operational Proof Placement** | **Weekly Menu Review and outlet launch readiness appear as narrow proof inside existing homepage, Features, Business Health, and Multi-location stories without adding a route or homepage section.** | **ACTIVE** |
 | **3.6.118** | **Website Audit Hardening** | **Public pages load without the authenticated Firebase sign-out chain, closed menus leave the keyboard order, contact submissions have a bounded platform inbox, and dense conversion surfaces remain readable across practical viewports.** | **ACTIVE** |
 | **3.6.117** | **Homepage Private Preview Surface Polish** | **The try-first homepage preview now uses one readable, responsive product surface instead of nested card layers and low-contrast panel text.** | **ACTIVE** |
+
+Version 3.6.122 presents the existing mobile website destinations through the same clean navigation pattern proven on the Answerlattice public site, adapted to MenuList routes and tokens. `Product` keeps Feature overview, How It Works, AI Menu Manager, Multi-Location, and Pricing visible. `Resources` retains the complete existing Resources destination set from the shared header source. Account access is separated below navigation, while the existing theme control and private-preview CTA remain fixed outside the scroll area. Rows retain active-route state, 44px-plus targets, focus treatment, Escape close, focus trapping, localized English/Hindi labels, safe-area spacing, and light/dark support. Desktop navigation, route inventory, product claims, owner runtime, customer surfaces, Firebase, Functions, pricing/payment, Vercel, and deployment behavior are unchanged.
 
 Version 3.6.121 repairs the public Pricing to owner-app sign-in boundary. An unauthenticated plan click now carries only the canonical plan ID, interval, currency, type, and quantity in the same-origin callback path. Business and billing details are collected after authentication on `app.menulist.*`, so origin-scoped browser storage is never expected to cross from the public website host. Existing tenant owners continue to resolve their authoritative current or pending subscription instead of creating a second onboarding workspace. This adds no Firestore write, provider call, payment, entitlement, cookie broadening, Firebase infrastructure change, or deployment action by itself.
 
@@ -963,6 +966,10 @@ Protected scope:
 
 | Version | Date | Changes |
 | ------- | ---- | ------- |
+| 3.6.122 | August 29, 2026 | Replaced nested mobile header accordions with two flat, readable route groups, a separate account area, and fixed theme/preview actions while preserving desktop navigation and runtime boundaries. |
+| 3.6.121 | August 22, 2026 | Preserved validated pricing-plan intent across the public-site to canonical owner-app sign-in handoff without collecting business or billing details before authentication. |
+| 3.6.120 | August 21, 2026 | Added the existing localized Developers reference to shared footer discovery without adding an API capability or credential flow. |
+| 3.6.119 | August 19, 2026 | Placed Weekly Menu Review and outlet launch-readiness proof inside existing public stories without adding routes or runtime behavior. |
 | 3.6.118 | July 28, 2026 | Closed the locally actionable website audit findings: lazy authenticated sign-out loading, inert closed desktop menus, client-derived `/ml` alias, bounded platform enquiry inbox, practical sticky-CTA/grid breakpoints, readable mega-menu copy, accurate owner-facing wording, and removal of the unsupported X link. |
 | 3.6.117 | July 25, 2026 | Rebuilt the homepage private-preview visual as one responsive, theme-aware product surface with correct contrast, divider-based prepared rows, a compact review rail, and restrained limit/status proof instead of repeated nested cards. |
 | 3.6.116 | July 19, 2026 | Repaired the `/how-it-works` mobile source map with dedicated phone and tablet connector geometry so the source-to-review-to-output story remains visible without crossing card content or changing desktop behavior. |

@@ -52,7 +52,7 @@ export interface MessagingOnboardingPublishParams {
   businessType: string;
   phone: string;
   address: string;
-  sessionData: unknown;
+  sessionData: MessagingPublishSession;
 }
 
 export interface MessagingOnboardingPublishResult {
@@ -118,12 +118,10 @@ export async function executeMessagingOnboardingPublish(
   }
 
   const expectedBucket = storageAdmin.bucket().name;
-  const sessionData = normalizeMessagingPublishSession(
-    params.sessionData,
-    normalizedSessionId,
-    expectedBucket,
-  );
-  if (!sessionData) throw new Error("Invalid messaging publish source");
+  const sessionData = params.sessionData;
+  if (sessionData.sessionId !== normalizedSessionId) {
+    throw new Error("Invalid messaging publish source");
+  }
   if (!validateMessagingPublishProjectFiles(sessionData.extractedProjectFiles).valid) {
     throw new Error("Invalid messaging publish project menu");
   }

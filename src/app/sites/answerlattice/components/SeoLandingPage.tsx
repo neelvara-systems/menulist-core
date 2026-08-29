@@ -50,7 +50,7 @@ export default function SeoLandingPage({
                 actions={[
                     {
                         label: primaryCta,
-                        href: '/get-started',
+                        href: '/early-access',
                         variant: 'primary',
                         event: 'seo_page_cta_clicked',
                     },
@@ -190,10 +190,10 @@ export default function SeoLandingPage({
                     </AnswerlatticeLink>
                     <AnswerlatticeLink
                         basePath={basePath}
-                        href="/get-started"
+                        href="/early-access"
                         className="rounded-xl bg-teal-700 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-teal-500/25 transition hover:bg-teal-800"
                     >
-                        Create workspace
+                        Request early access
                     </AnswerlatticeLink>
                 </div>
             </section>

@@ -57,7 +57,7 @@ const BusinessAttributesTab = forwardRef<HTMLDivElement, BusinessAttributesTabPr
                                         valuePropName="checked"
                                         style={{ marginBottom: 8 }}
                                     >
-                                        <Switch size="small" />
+                                        <Switch aria-label={t(field.labelKey)} size="small" />
                                     </Form.Item>
                                 </Col>
                             ))}

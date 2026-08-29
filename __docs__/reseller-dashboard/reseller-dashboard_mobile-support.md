@@ -5,7 +5,7 @@
 **Feature:** Assisted Onboarding Portal for Authorized Resellers  
 **Status:** Implemented - reseller boundary source gate added July 2, 2026
 **Created:** February 27, 2026  
-**Last Updated:** July 16, 2026
+**Last Updated:** August 28, 2026
 **Audience:** Internal
 
 ---
@@ -76,6 +76,15 @@ The reseller dashboard is primarily a **field-sales tool**. Resellers onboard cl
 ## Mobile Navigation
 
 Reseller screens stay inside `MobileShell`. Feature-flagged entries in Mobile More open the reseller dashboard and onboarding sub-screens; platform users also receive reseller management. Direct `/reseller`, `/reseller/onboard`, and `/reseller/manage` routes map back into those shell states.
+
+## August 28, 2026 Local Provider-Boundary Certification
+
+- A disposable active reseller user/profile was created only in the MenuList Auth and Firestore emulators, used through the real sign-in form, and deleted with exact Auth/document readback after the pass.
+- At 390x844, the reseller hub, zero-client dashboard, Refresh, both onboarding entry paths, required-field recovery, complete business/billing draft, plan selection, confirmation, and back-navigation passed.
+- Tier, billing-interval, and commitment choices now expose `aria-pressed`; the location-count input exposes `Locations included`. These states were verified for Standard, yearly, two locations, and three months.
+- Confirmation stayed truthful about the Razorpay recurring handoff. `Create Link` was not invoked, so no provider checkout, client, store, subscription, or payment state was created.
+- Direct owner access to `/reseller` redirected to the owner dashboard. Direct reseller access to `/dashboard` now redirects to `/reseller`, removing the previous empty owner-workspace shell.
+- This is local emulator/browser evidence, not hosted, physical-device, or live Razorpay certification.
 
 ---
 

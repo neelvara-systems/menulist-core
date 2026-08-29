@@ -1,11 +1,13 @@
 import { PRODUCT_IDS, type ProductId } from '@constant/product';
 import {
     composeRequestBody,
+    type RequestBodyComposerSession,
     type RequestBodyComposerOptions,
 } from '@lib/apiHelper';
 import getActiveSession from '@lib/auth/getActiveSession';
 import { createRuntimeId } from '@lib/runtime/randomId';
 import type { SourceContext } from '@type/multiProduct';
+import { resolveAnswerlatticeSessionScope } from './sessionScope';
 
 const createTraceId = () => createRuntimeId('al');
 
@@ -119,6 +121,23 @@ const buildSourceContextFromSession = (
     };
 };
 
+export const resolveAnswerlatticePersistenceSession = (
+    session: Awaited<ReturnType<typeof getActiveSession>>,
+): RequestBodyComposerSession | null => {
+    if (!session) return null;
+
+    const answerlatticeScope = resolveAnswerlatticeSessionScope(session);
+    if (!answerlatticeScope) return session;
+
+    return {
+        ...session,
+        pId: PRODUCT_IDS.ANSWERLATTICE,
+        tId: answerlatticeScope.tenantId,
+        sId: answerlatticeScope.storeId,
+        role: answerlatticeScope.role || session.role,
+    };
+};
+
 /**
  * Answerlattice write composer.
  *
@@ -131,6 +150,7 @@ export const answerlatticeRequestBodyComposer = async <T extends object>(
     options: RequestBodyComposerOptions,
 ) => {
     const session = await getActiveSession();
+    const persistenceSession = resolveAnswerlatticePersistenceSession(session);
     const dataRecord = data as Record<string, unknown>;
     const sourceContext = normalizeAnswerlatticeSourceContext(dataRecord.sourceContext)
         || buildSourceContextFromSession(session);
@@ -147,5 +167,5 @@ export const answerlatticeRequestBodyComposer = async <T extends object>(
         sourceContext,
         traceId,
         requestId,
-    }, session, options);
+    }, persistenceSession, options);
 };

@@ -73,7 +73,7 @@ OBP has TWO surfaces — each assessed separately:
 - Descriptor, known for, special note, links, rating fields, action visibility, policy links
 - Business attributes and owner-defined custom attributes with the shared category icon/emoji picker
 - Public-page icon style with a localized accessible switch name and the same persisted `publicPresence.iconVariant` value as desktop
-- Accent colour opens from a named 44px native button, exposes pressed-state presets plus labelled native/hex inputs, and can return to the public default without retaining the old nested value
+- Accent colour opens from a named 44px native button into a programmatically named **Theme color** dialog, exposes pressed-state presets plus labelled native/hex inputs, and can return to the public default without retaining the old nested value. Preset selection remains draft-only until Save; Back plus parent Reset restores persisted truth without a write.
 - All seven customer-action visibility switches and all three policy-link switches use their localized visible text as accessible names and persist through the same mobile OBP draft/save path
 - Social Media uses the same owner-link normalizer as desktop and public rendering: known platforms require their matching HTTPS hosts, handles canonicalize to HTTPS profile URLs, custom platforms allow generic public HTTPS, and an invalid map stops before the existing store write. Icon-only open/edit/remove/close actions are named and keep 44px minimum targets.
 - Desktop and mobile initialize controlled attributes through the same known-key/strict-boolean runtime boundary used by public projections, so malformed legacy values cannot appear enabled or be resaved as owner truth.
@@ -117,6 +117,8 @@ Already mobile-first by design:
 - **MobileShareScreen:** Already behind auth in MobileShell
 - **Owner editor scope:** Mobile Official Page drafts remount on exact tenant/store change. Save admission, optimistic projection, rollback, cleanup queues, loading, and success/error feedback remain owned by the initiating scope and one admitted action.
 - **Media lifecycle:** Navigation/store switching cannot delete staged media during an unresolved store save. Uploads that finish after the source screen becomes obsolete self-clean their returned unreferenced object.
+- **Bottom-navigation clearance:** Reset and Save render in a body-level fixed action bar above the shared mobile-navigation clearance. The screen reserves equivalent scroll space so taps cannot fall through to a navigation tab and the final inputs remain reachable on small phones.
+- **Outlet link:** An outlet without its own host inherits the active master store host and appends its validated `outletSlug`, using the already-loaded tenant store list. The root host remains the multi-location selector while the emitted owner link and QR target the selected outlet directly.
 
 ---
 
@@ -136,4 +138,4 @@ Already mobile-first by design:
 ---
 
 **Document Signature:** Cascade (Lead Architect)  
-**Last Updated:** August 15, 2026
+**Last Updated:** August 27, 2026

@@ -276,6 +276,10 @@ export default async function AnswerlatticeHostedHelpPage(props: PageProps) {
     }
 
     const scope = { tId: site.tId, sId: site.sId };
+    const developmentDomain = (
+        (process.env.NODE_ENV === 'development' || process.env.VERCEL !== '1')
+        && searchParams?.domain === site.domain
+    ) ? site.domain : null;
     const [categories, faqs, changelogPage] = await Promise.all([
         getCachedKnowledgeBaseCategories(scope),
         site.config.showFaqs ? getCachedPublishedFaqs(scope) : Promise.resolve([]),
@@ -294,6 +298,7 @@ export default async function AnswerlatticeHostedHelpPage(props: PageProps) {
                 article={compactArticleForClient(article)}
                 categories={compactCategoriesForClient(categories)}
                 changelogPage={compactChangelogForClient(changelogPage)}
+                developmentDomain={developmentDomain}
                 faqs={compactFaqsForClient(faqs)}
                 site={compactSiteForClient(site)}
                 view="article"
@@ -305,6 +310,7 @@ export default async function AnswerlatticeHostedHelpPage(props: PageProps) {
         <HostedHelpClient
             categories={compactCategoriesForClient(categories)}
             changelogPage={compactChangelogForClient(changelogPage)}
+            developmentDomain={developmentDomain}
             faqs={compactFaqsForClient(faqs)}
             site={compactSiteForClient(site)}
             view={publicRoute.view}

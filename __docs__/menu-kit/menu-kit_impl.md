@@ -55,7 +55,11 @@ src/lib/menu-kit/
 └── types.ts                        # MenuKit types, UTM helpers, print instructions, surface constants
 ```
 
-`src/lib/export/browserFileShare.ts` is the shared native file-delivery boundary used by Menu Kit and Menu Card Export. It returns `shared`, `unsupported`, or `cancelled`; unsupported file sharing falls back to download, cancellation stays quiet, and a real share failure is surfaced instead of being mislabeled as a successful download.
+`src/lib/export/browserFileShare.ts` is the shared native file-delivery boundary used by Menu Kit and Menu Card Export. It returns `shared`, `unsupported`, or `cancelled`; unsupported file sharing and browser `NotAllowedError` handoff rejection fall back to download, cancellation stays quiet, and other share failures are surfaced instead of being mislabeled as a successful download.
+
+`MobileShareScreen` serializes generated-file operations with a synchronous ref
+lock in addition to its rendered loading state. Rapid repeat taps and taps on a
+second export tile cannot start a competing generation or native-share request.
 
 ```
 src/lib/print-menu-surfaces/

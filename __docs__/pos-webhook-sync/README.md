@@ -3,7 +3,7 @@
 > **Runtime name:** POS Webhook Sync / `posSync`
 > **Owner-facing name:** External Menu Sync
 > **Status:** Implemented in source; `ENABLE_POS_SYNC: true`
-> **Last code-truth review:** July 16, 2026
+> **Last code-truth review:** August 28, 2026
 > **Version:** 3.0
 
 ## Documents
@@ -27,7 +27,7 @@ It is not a named POS connector, bidirectional sync, guaranteed job queue, retry
 
 ## End-to-end flow
 
-1. An authorized owner or manager opens External Menu Sync on desktop or in `MobileShell > More`.
+1. An authorized owner or manager opens External Menu Sync on desktop or in `MobileShell > More`. The active outlet may be the login store or another store explicitly mapped into the authenticated session; the tenant remains session-derived.
 2. Desktop/mobile loads the signing secret through `GET /api/pos-sync/secret`. A legacy `store.posSync.webhookSecret` is copied to the server-only `posSyncSecrets` collection and removed from the store document transactionally.
 3. Enabling without a secret calls `POST /api/pos-sync/secret` with `action: ensure`. Rotation uses `action: rotate`.
 4. The owner saves a validated public HTTPS provider URL and runs the connection test.
@@ -53,6 +53,7 @@ It is not a named POS connector, bidirectional sync, guaranteed job queue, retry
 ## Security invariants
 
 - Signing secrets are server-owned in `posSyncSecrets/{tenantId}_{storeId}` and denied to direct clients by Firestore rules.
+- The secret route accepts only the login store or an explicitly session-mapped selected outlet, rejects malformed/unmapped stores, derives tenant authority from the authenticated session, and rechecks the canonical target store plus integration permission before returning or mutating a secret.
 - Only users with `canManageIntegrations` can read, ensure, or rotate a secret through the protected no-store route.
 - Legacy secrets migrate on settings read, connection test, or delivery.
 - Store documents retain only `posSync.secretVersion`; the version invalidates in-flight work after rotation.

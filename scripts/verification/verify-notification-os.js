@@ -327,6 +327,10 @@ assert(
   ),
   "Mobile deep links must match the owner-only API contract",
 );
+assert(
+  mobileMore.includes("pickItems(businessIdentityItems, ['notificationSettings', 'users', 'roles', 'locations', 'locale', 'timeSlots'])"),
+  "Mobile owner navigation must expose the admitted notification settings screen",
+);
 const firestoreRules = read("firestore.rules");
 assert(
   firestoreRules.includes(

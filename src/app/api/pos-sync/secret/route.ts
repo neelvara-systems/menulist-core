@@ -5,11 +5,7 @@ import { DB_COLLECTIONS } from '@constant/database';
 import { PERMISSIONS } from '@constant/permissions';
 import { resolveCurrentSessionUserDocumentId } from '@lib/auth/currentPlatformUser';
 import { admin } from '@lib/firebase/firebaseAdmin';
-import {
-    requireAnyStorePermissionForStoreData,
-    resolveStorePermissionSessionScope,
-} from '@lib/permissions/server';
-import { normalizePosSyncNumericDocumentId } from '@lib/posSync/posSyncDocumentId';
+import { requireAnyStorePermissionForStoreData } from '@lib/permissions/server';
 import {
     getNextPosSyncSecretVersion,
     getPosSyncSecretRef,
@@ -22,10 +18,11 @@ import { generateWebhookSecret } from '@lib/posSync/signature';
 import { checkRateLimit } from '@lib/rateLimit';
 import { readBoundedJsonBody } from '@lib/security/boundedRequestBody';
 import { getBoundedSecurityStringContext, logSecurityDiagnostic, logSecurityFailure } from '@lib/security/securityDiagnostics';
+import { resolvePosSyncSelectedStoreScope } from '@lib/posSync/selectedStoreScope';
 import { NextRequest, NextResponse } from 'next/server';
 import { hashPublicRateLimitValue } from 'src/middleware/publicApi';
 import { z } from 'zod';
-import { verifyTenantAccess, withAuth } from '../../../../middleware/auth';
+import { withAuth } from '../../../../middleware/auth';
 
 const POS_SYNC_SECRET_ACTION_MAX_BODY_BYTES = 4 * 1024;
 const POS_SYNC_SECRET_RESPONSE_HEADERS = { 'Cache-Control': 'private, no-store' };
@@ -35,17 +32,16 @@ const SecretActionSchema = z.object({
     tenantId: z.number().int().positive(),
 }).strict();
 
-function normalizeScope(storeId: unknown, tenantId: unknown) {
-    const storeScope = normalizePosSyncNumericDocumentId(storeId);
-    const tenantScope = normalizePosSyncNumericDocumentId(tenantId);
-    return storeScope && tenantScope ? { storeScope, tenantScope } : null;
-}
-
-function getScopeFromSearchParams(request: NextRequest) {
-    return normalizeScope(
-        request.nextUrl.searchParams.get('storeId'),
-        request.nextUrl.searchParams.get('tenantId'),
-    );
+function resolveRequestScope(session: any, storeId: unknown, tenantId: unknown) {
+    const resolution = resolvePosSyncSelectedStoreScope(session, storeId, tenantId);
+    if (resolution.ok) return resolution;
+    const forbidden = resolution.reason === 'forbidden';
+    return {
+        response: NextResponse.json(
+            { error: forbidden ? 'Forbidden' : 'Invalid input' },
+            { status: forbidden ? 403 : 400 },
+        ),
+    };
 }
 
 function buildContext(storeId: unknown, tenantId: unknown, action: string) {
@@ -64,15 +60,6 @@ async function readOrMutateSecret(params: {
     tenantScope: { documentId: string; numericId: number };
 }) {
     const { action, request, session, storeScope, tenantScope } = params;
-    const sessionScope = resolveStorePermissionSessionScope(session);
-    if (
-        !sessionScope
-        || sessionScope.tenantScope.numericId !== tenantScope.numericId
-        || sessionScope.storeScope.numericId !== storeScope.numericId
-        || !verifyTenantAccess(session, tenantScope.numericId, storeScope.numericId, request)
-    ) {
-        return { response: NextResponse.json({ error: 'Forbidden' }, { status: 403 }) };
-    }
     const actorId = resolveCurrentSessionUserDocumentId(session);
     if (!actorId) {
         return { response: NextResponse.json({ error: 'Forbidden' }, { status: 403 }) };
@@ -217,8 +204,12 @@ export const GET = withAuth(async (request: NextRequest, session) => {
     if (!FEATURE_FLAGS.ENABLE_POS_SYNC) {
         return NextResponse.json({ error: 'Feature disabled' }, { status: 403 });
     }
-    const scope = getScopeFromSearchParams(request);
-    if (!scope) return NextResponse.json({ error: 'Invalid input' }, { status: 400 });
+    const scope = resolveRequestScope(
+        session,
+        request.nextUrl.searchParams.get('storeId'),
+        request.nextUrl.searchParams.get('tenantId'),
+    );
+    if ('response' in scope) return scope.response;
     const context = buildContext(scope.storeScope.numericId, scope.tenantScope.numericId, 'read');
     try {
         const result = await readOrMutateSecret({ action: 'read', request, session, ...scope });
@@ -243,8 +234,8 @@ export const POST = withAuth(async (request: NextRequest, session) => {
     if (bodyResult.ok === false) return bodyResult.response;
     const validation = SecretActionSchema.safeParse(bodyResult.data);
     if (!validation.success) return NextResponse.json({ error: 'Invalid input' }, { status: 400 });
-    const scope = normalizeScope(validation.data.storeId, validation.data.tenantId);
-    if (!scope) return NextResponse.json({ error: 'Invalid input' }, { status: 400 });
+    const scope = resolveRequestScope(session, validation.data.storeId, validation.data.tenantId);
+    if ('response' in scope) return scope.response;
     const context = buildContext(validation.data.storeId, validation.data.tenantId, validation.data.action);
     try {
         const result = await readOrMutateSecret({ action: validation.data.action, request, session, ...scope });

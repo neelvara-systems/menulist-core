@@ -607,12 +607,113 @@ After the new regression was wired into the maintained aggregate, the exact curr
 - The local Answerlattice index artifact is SHA-256 `bc66de95e588ecdd7de677917a3395549468bf539208406ddb298bdfbfcc05a2`, 51,973 bytes. It contains the `answerlattice_faqs` composite `pId + tId + sId + status + active + question`. Six pre-existing array/vector definitions also retain the server-exported `__name__` ordering explicitly so current Firebase CLI releases compare them to their deployed equivalents instead of attempting duplicate creation.
 - The FAQ index was deployed only to `neelvara-answerlattice-qa`. Authenticated status polling reached `READY`, and final readback at `2026-08-26T21:39:43+05:30` matched all 106 local/deployed composite indexes plus 33/33 field overrides exactly. QA is `Delta = INFRA_CHANGE` / `Deployment state = DEPLOYED_AND_READ_BACK` for the `bc66de95…` artifact.
 - Authenticated production inventory still contains zero matching FAQ question indexes. Production remains `Delta = INFRA_CHANGE` / `Deployment state = DEPLOY_REQUIRED` and requires a distinct explicit authorization.
-- Hosted FAQ overflow evidence remains pending until the application source is released through one explicitly authorized consolidated staging push. Static, emulator, or index evidence does not substitute for that hosted application proof.
+- The consolidated application source is committed and present on local/remote `staging` as `4586bb8523a92b1c7d0ea37a5b17267432346cf6`. Vercel created automatic QA deployment `DsTq7yW2YxAP9gNXQBbCuvYEVkbx` for that exact source, but its configured Ignored Build Step canceled the deployment before build execution. All canonical QA `/api/version` endpoints therefore still report `59e1dc2561750ed2d97764fa30df7614c3071fd2`. Hosted FAQ overflow and Product Topic label-search evidence remain `BLOCKED` until one separately authorized Vercel build publishes `4586bb8`; static, emulator, index, or canceled-deployment evidence does not substitute for exact hosted application proof.
+
+### 14.3 Consolidated staging release evidence
+
+| Evidence | Status | Result |
+| --- | --- | --- |
+| Local/remote `staging` | `PASS_STATIC` | Direct `git ls-remote` readback returned exact commit `4586bb8523a92b1c7d0ea37a5b17267432346cf6`; divergence is `0/0`. |
+| Automatic QA deployment creation | `PASS_HOSTED_QA` | Vercel created deployment `DsTq7yW2YxAP9gNXQBbCuvYEVkbx` for environment `qa`, branch `staging`, and exact source `4586bb8`. |
+| Automatic QA build | `BLOCKED` | Vercel canceled deployment `DsTq7yW2YxAP9gNXQBbCuvYEVkbx` before build execution under the configured Ignored Build Step. No build CPU was consumed by that automatic deployment. |
+| Authorized manual QA build | `BLOCKED` | The one explicitly authorized manual QA deployment `7XtGat3jrRJtpYgC7fdJNA3dJsCd` targeted exact commit `4586bb8`, bypassed the Ignored Build Step, retained the Standard machine, and ran without existing Build Cache. It failed only at Vercel's 45-minute build limit after `45m 49s`: typecheck and lint completed, then the uncached Next.js optimized build remained in compilation until timeout. No runtime deployment or domain assignment occurred, and no retry was initiated. |
+| Canonical hosted identity | `BLOCKED` | `canonica.app`, `app.menulist.digital`, and `menulist.digital` `/api/version` endpoints remain on `59e1dc2`; hosted behavior must not be attributed to `4586bb8`. |
+| Hosted FAQ overflow and label-search retest | `NOT_RUN` | Deliberately not run against the stale hosted application because it would not validate the released fixes. |
+
+## 15. MenuList First-Client Local Isolation Closeout — 2026-08-27
+
+> **Checkpoint:** `LOCAL_VALIDATED — CONSOLIDATED RELEASE REQUIRED`
+> **Boundary:** two product-scoped local Firestore emulators, disposable synthetic first-client data, local Next.js runtimes, and the maintained contract/rules suites. No commit, push, Vercel build, Firebase deployment, production/customer mutation, external message, or Razorpay operation was performed.
+
+This pass repeated the real MenuList-client journey instead of treating the Answerlattice dashboard as sufficient proof: MenuList Help Centre question, governed retrieval, chat persistence, owner visibility in Answerlattice Conversations, return to MenuList, embedded widget answer, blocked-route suppression, and route-context restoration.
+
+### 15.1 Findings, fixes, and runtime proof
+
+| Severity | Root cause | Durable fix | Verification |
+| --- | --- | --- | --- |
+| P1 | A linked MenuList Help Centre route correctly selected Answerlattice Firebase claims, but the shared session provider still attempted unrelated MenuList tenant/store bootstrap and could render client data before Answerlattice Firebase Auth reached the matching scope. | Recognize linked Help Centre routes as Answerlattice support clients, skip unrelated MenuList store/subscription bootstrap, and still hold rendering until the route-aware Answerlattice Firebase Auth scope is ready. | Fresh disposable login rendered the imported Help Centre without the prior bootstrap failure. Active-session and Help Centre boundary suites passed. |
+| P1 | New chat creation uses a deterministic first-message document ID and transactionally reads the document before create for retry safety. Dedicated and shared rules allowed reads only when `resource.data` existed, so the required empty read was denied. | Dedicated and shared rules now allow only a missing-document `get` for an authenticated platform-support actor or an active workspace actor with support control. Existing-document reads and every create/update/delete remain product, workspace, actor, shape, and permission scoped. | A new rules regression proves the owner transaction succeeds, a viewer transaction fails, cross-workspace/forged/invalid writes fail, and existing support/admin behavior remains intact in both rulesets. The browser then persisted the governed two-message conversation and displayed it in history. |
+| P1 | The MenuList host marked the widget runtime ready on React mount, before the asynchronous `next/script` runtime existed. Its one `show()` attempt was therefore lost and the launcher remained hidden. | Render the script independently of runtime readiness and set readiness from `next/script` `onReady`, which runs after first load and on later remounts. | Dashboard showed the launcher, opened the real iframe, returned the verified MenuList sign-in answer, removed the launcher on `/help-center`, and restored it on `/projects` with `menulist_owner_projects` context. |
+| P2 | The disposable first-client fixture admitted earlier local ports but not the isolated `localhost:3020` client runtime, so the widget config endpoint correctly denied the otherwise valid key/origin pair. | Keep exact-origin enforcement and extend only the local synthetic fixture to the maintained localhost/loopback certification ports. | The same key remained hash-only in Firestore; config admission succeeded only after exact fixture-origin correction, and the embedded widget became visible without weakening production origin policy. |
+| P2 | Help Centre search already had an authenticated `withAuth` session, but the AI rate-limit helper performed a second context-sensitive session lookup, producing an avoidable authorization failure after the product-scope transition. | Allow the helper to receive the already validated session and reuse it from both Help Centre search and article-embedding routes while preserving fail-closed provider behavior. | Governed Help Centre search completed, returned the canonical sign-in answer, and persisted the conversation under the isolated Answerlattice data plane. |
+
+### 15.2 Regression and cost evidence
+
+- Dedicated and shared chat-session rules passed, including the new transaction-on-missing-document case and expected negative authorization assertions.
+- Chat-session contracts, widget runtime authorization, widget answer/escalation, widget-conversation emulator, active-session product scope, emulator-port isolation, Help Centre boundary, and MenuList reference-client suites passed.
+- Strict TypeScript, focused ESLint, and `git diff --check` passed. No production build was run.
+- The rule correction does not add a new read: the deterministic transaction already performs the initial document lookup. It makes that existing billed lookup usable without broadening access to an existing record.
+- Reusing the authenticated route session removes one redundant session-resolution path per affected request. Product-specific emulator ports are development-only and have no production operation cost.
+- `firestore-answerlattice.rules`, shared `firestore.rules`, and application source now contain local-only deltas. Server parity is not claimed; Firebase and Vercel release remain one later, explicitly authorized consolidated operation.
+
+## 16. Aggressive Local First-Client Regression — 2026-08-27
+
+> **Checkpoint:** `LOCAL_VALIDATED — CONSOLIDATED RELEASE REQUIRED`
+> **Boundary:** authenticated local Next.js runtime, dedicated Answerlattice Firebase emulators, disposable synthetic MenuList support knowledge, and localhost custom-host requests. No Next.js production build, Git mutation, Vercel build, Firebase deployment, production/customer mutation, external message, or Razorpay operation was performed.
+
+This pass restarted the first-client journey from an empty support outcome, created and published owner-reviewed MenuList knowledge, exercised the real widget and owner operations, then repeated route, responsive, failure, authorization, persistence, and cleanup checks.
+
+### 16.1 Findings and fixes
+
+| Severity | Root cause | Durable fix | Verification |
+| --- | --- | --- | --- |
+| P2 | A published or cancelled Knowledge Intake still rendered editable source forms. Submitting them reached the correct server guard but failed with HTTP 400, leaving the owner to discover the terminal-state rule through an error. | Added one shared terminal-state predicate aligned with the server mutation guard. Completed intakes now explain that they are read-only, disable every source form and mutation action, preserve evidence review, and provide a direct **New intake** recovery action. | Browser reproduction passed for the prior published fixture; all inputs and mutation actions were disabled, a new intake was created, repeated-reply generation and publication completed, and a regression covers draft/collecting/reviewing/failed versus publishing/published/cancelled states. |
+| P2 | The local widget certification route depended on a public environment key, which was unsuitable for rotating disposable keys and could encourage credential persistence in source or managed environment configuration. | Replaced the environment-key dependency with a development-only in-memory password input. The raw key is cleared from the field after widget load and is never placed in URL, browser storage, logs, or source. | Fresh hydration produced no warning, the real widget loaded with a disposable key, and the same raw key failed closed after UI revocation. |
+
+### 16.2 Runtime evidence
+
+- The governed repeated-reply flow generated an FAQ plus a trusted-answer proposal. The proposal correctly remained unapprovable without a Product Topic; only the human-accepted FAQ was published.
+- The published FAQ persisted with `pId=AL`, tenant `78001`, store `78101`, `status=published`, `active=true`, and the expected source lineage. The real widget returned it with `answerSource=faq`, `confidence=high`, and the correct workspace scope.
+- The widget persisted the two-message conversation and later `Solved` feedback in both `aiSearchHistory` and `chatSessions`. The earlier no-result path produced a recoverable support escalation and an owner-visible ticket rather than an invented answer.
+- Malformed keys failed before launcher creation. A temporarily disallowed localhost origin allowed only the harmless shell and denied the search request with a recoverable reconnect state. A temporary blocked route suppressed the launcher. Every configuration mutation was restored afterward.
+- Appearance save/reload persistence passed and the original header value was restored. The disposable widget key was revoked at completion; the UI reported `0/10 active keys`, and its former raw value no longer mounted a launcher.
+- Local hosted help resolved `help.menulist.test` through the custom-host middleware. `/`, `/faq`, and `/docs` returned the reviewed MenuList content; `robots.txt` disallowed all crawling and the no-index sitemap remained an empty URL set.
+- The real widget passed at 390×844, stayed within the viewport at 366×560, returned the governed answer, and preserved per-page history across close/reopen. Knowledge Intake had no document overflow and its navigation drawer fit at 280×844.
+- Support Tickets `Dashboard`, `Ticket Queue`, and `Deleted` rendered and switched correctly. At 834 px and 390 px all three segmented items had the same top coordinate, stayed on one line, and introduced no document overflow.
+- A fresh 53-route sweep covered every primary Answerlattice owner route, customer-help redirect, governance tab, widget/team default, and invalid-tab fallback. No blank page, access failure, runtime exception, or document overflow was observed. Fresh hydration checks for the certification harness, Settings, Knowledge Intake, and Tickets produced no console warning or error.
+
+### 16.3 Final local gates and limits
+
+- `npm run typecheck:answerlattice`, repository ESLint with zero warnings, `git diff --check`, `verify:answerlattice-final-readiness`, `verify:answerlattice-first-client-certification-contracts`, and the focused intake, widget, retrieval, conversation, and ticket suites passed.
+- The integrated emulator and earlier complete runtime aggregate remain the Firebase/rules evidence for this local checkpoint. A duplicate stale Firestore emulator on port 8482 was stopped; the active product-scoped emulator on port 8080 was retained for continued local work.
+- The local AI embedding/provider was deliberately unavailable. Its safe no-result path passed, while deterministic FAQ retrieval supplied the positive answer proof without pretending a provider-backed RAG call occurred.
+- The remaining Sass `@import` deprecation output is existing framework migration debt, not a newly introduced Answerlattice runtime failure. It does not change current behavior but should be removed in a separately scoped stylesheet migration before Dart Sass 3.
+- This checkpoint does not establish hosted QA, production-host, external AI-provider, production telemetry, or physical-device evidence for the current uncommitted filesystem. Those remain later release gates after one explicitly authorized consolidated staging push.
+
+### 16.4 Local continuation regression
+
+The local-only continuation repeated the highest-risk boundaries without changing any remote system:
+
+- Ticket notification authority, attachment, conversation, chat-session, and lifecycle suites passed. A retained older log failure was rerun against the current tree and did not reproduce.
+- AI failure escalation, provider-health state replacement, and Functions AI accounting passed against isolated project namespaces on the active Firestore emulator. The tests covered inaccessible provider error fields, stale private-field pruning, malformed token counters, invalid scope types, unregistered actions, bounded diagnostics, and secret-safe failure records.
+- Provider resilience and key-attribution contracts passed with synthetic keys. The actual local Answerlattice provider remained deliberately unconfigured; MenuList credentials were not borrowed across the product boundary.
+- Fourteen representative management templates passed at 390×844, nine passed at 768×1024, and the complete fourteen-tab governance set plus primary owner templates passed at 1280×800. Every measured page matched document and viewport width, rendered a main region, and produced no fresh runtime, authorization, console warning, or console error state.
+- Header controls stayed in one horizontal row. The visible Ticket Dashboard, Ticket Queue, and Deleted segments had identical top and bottom coordinates, and all three views switched successfully.
+- Security audit, backup/recovery, PWA, public website, public resource/contact/robots contracts, global accessibility, intake URL and scope-state, embedding-vector, and first-client suites passed.
+- The intake rich-text regression is now part of `verify:answerlattice-first-client-certification-contracts`. Its type-safe TipTap attribute projection was corrected, and it proves headings, emphasis, lists, inline code, links, fenced code, duplicate-title removal, and H1 demotion survive publication rendering.
+- Answerlattice contains zero Sass `@import` statements. The remaining eleven deprecated imports are shared or other-product stylesheet debt and were not changed during this scoped certification.
+- The temporary viewport override was reset after testing. No commit, push, Vercel build, Firebase deployment, provider call, production mutation, external message, or Razorpay execution occurred.
+
+### 16.5 Post-optimization authenticated local smoke
+
+The final authenticated smoke was repeated against the current optimized Answerlattice session boundary and disposable local emulator workspace.
+
+- Google OAuth with `admin@neelvara.com` reached `/answerlattice/activation` and rendered the expected `MenuList Support Workspace` owner scope.
+- Activation, Setup Status, Ticket Inbox, Knowledge Intake, and Widget UI Configuration settled with a main region, zero loading markers, no console warning or error, and no horizontal document overflow at the 1512-pixel desktop viewport.
+- Answerlattice sign-out returned to `/signin?callbackUrl=%2Fanswerlattice`; the immediate Google recovery completed and landed on `/answerlattice/activation` with the same workspace scope.
+- Rerunning the disposable fixture after another local fixture had already created the same owner email exposed an emulator-only identity collision. The fixture now resolves an existing Auth identity by email before falling back to its deterministic UID, then writes every scoped fixture document using the resolved UID. This preserves one local human identity instead of deleting or duplicating it.
+- The MenuList reference-client regression locks the existing-email reuse contract. The focused suite, Answerlattice TypeScript, two successful fixture reruns, and `git diff --check` passed.
+- No production/customer record, external provider, payment flow, remote branch, Vercel deployment, or Firebase cloud resource was touched.
 
 ## Version History
 
 | Date       | Change                                                      |
 | ---------- | ----------------------------------------------------------- |
+| 2026-08-27 | Continued local aggressive regression across AI failure/accounting, responsive owner/governance templates, notification handoff, security/PWA/public/accessibility gates, and registered rich-text publication coverage |
+| 2026-08-27 | Completed aggressive local first-client regression: governed FAQ publication, real widget answer/feedback/escalation, origin/key/route denial, hosted help, responsive segments, 53-route sweep, and disposable-key revocation |
+| 2026-08-27 | Closed the local MenuList first-client isolation pass: Help Centre auth/data scope, transactional chat rules, widget load readiness, exact local origins, owner visibility, and return-flow runtime evidence |
+| 2026-08-26 | Recorded the exact `4586bb8` manual QA build timeout after completed typecheck/lint and an uncached Standard-machine Next.js compile; hosted delta proof remains blocked without a separately authorized cached build |
+| 2026-08-26 | Recorded the consolidated `4586bb8` staging release and exact Vercel Ignored Build Step cancellation |
 | 2026-08-26 | Recorded the locally validated first-client FAQ overflow correction, Product Topic label-search fix, cost boundary, and authenticated QA/production index deployment delta |
 | 2026-08-26 | Closed the MenuList client embed gate with exact-origin CSP hardening and current-build desktop/mobile hosted evidence |
 | 2026-08-24 | Deployed and read back the provider-health fix in the scoped QA and production scheduler Functions; opened production environment testing |

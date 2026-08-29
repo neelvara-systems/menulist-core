@@ -50,7 +50,7 @@ The Customer App feature has two distinct components with different mobile requi
 
 `MobileCustomerAppScreen` remounts by exact tenant/store identity. Settings, localized short-name drafts, pending icon data and install-guide state cannot survive a store switch. Completed settings/business-copy/icon operations compare their captured tenant/store before any context merge or owner feedback, preventing an old-store save from becoming the current store's browser truth.
 
-Each owner-settings toggle exposes its visible label as the accessible name. The Show install prompt switch also forwards its disabled state to the underlying mobile control whenever Enable Customer App is off.
+Each owner-settings toggle exposes its visible label as the accessible name. The localized short-name input exposes its visible `Home screen name` purpose instead of relying on the example placeholder. The Show install prompt switch also forwards its disabled state to the underlying mobile control whenever Enable Customer App is off.
 
 ---
 

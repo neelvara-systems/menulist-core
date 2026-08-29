@@ -62,11 +62,25 @@ export const logAiServiceFailure = (
     error?: unknown,
     context: AiServiceLogContext = {},
 ): void => {
-    secureError('[AI Service] Operation failed', new Error(failureCode), {
+    const boundedContext = {
         ...context,
+        failureCode,
         sourceErrorName: getAiServiceErrorName(error),
         sourceErrorCode: getAiServiceErrorCode(error),
         sourceStatusCode: getAiServiceErrorStatus(error),
+    };
+
+    if (typeof window === 'undefined') {
+        secureError('[AI Service] Operation failed', new Error(failureCode), boundedContext);
+        return;
+    }
+
+    // Browser API failures already recover through owner-facing UI. Keep the
+    // bounded diagnostic available to local support capture without raising a
+    // Next.js development error overlay over that recovery state.
+    secureLog('[AI Service] Operation failed', {
+        ...boundedContext,
+        severity: 'error',
     });
 };
 

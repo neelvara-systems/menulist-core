@@ -6,6 +6,7 @@ import { ANSWERLATTICE_ROUTES, toAnswerlatticeDashboardRoute } from '@constant/a
 import { useKnowledgeIntake, type KnowledgeIntakeEntityOption } from '@hook/answerlattice/useKnowledgeIntake';
 import { assertAnswerlatticeDocxEntryIsBounded } from '@lib/answerlattice/knowledgeIntakeFileSafety';
 import { normalizeAnswerlatticeKnowledgeIntakePublicUrl } from '@lib/answerlattice/knowledgeIntakeDiscoveryContracts';
+import { canAnswerlatticeKnowledgeIntakeAcceptSources } from '@lib/answerlattice/knowledgeIntakeMutationState';
 import { AnswerlatticeProcedureSchema } from '@lib/answerlattice/procedureValidation';
 import {
     ANSWERLATTICE_RELEASE_EVIDENCE_MAX_TEXT_CHARS,
@@ -656,6 +657,7 @@ export default function AnswerlatticeKnowledgeIntake() {
             : bundle.sources.length > 0
                 ? 1
                 : 0;
+    const activeJobAcceptsSources = canAnswerlatticeKnowledgeIntakeAcceptSources(activeJob?.status);
 
     const openSourceGovernance = (source: AnswerlatticeKnowledgeSource) => {
         const governance = source.governance;
@@ -1059,6 +1061,20 @@ export default function AnswerlatticeKnowledgeIntake() {
                                     <Col xs={12} md={6}><Card><Statistic title="Credits used" value={activeJob.usageUnitsConsumed || 0} /></Card></Col>
                                 </Row>
 
+                                {!activeJobAcceptsSources ? (
+                                    <Alert
+                                        type="info"
+                                        showIcon
+                                        message="This intake is complete"
+                                        description="Create a new intake to add more sources or repeated replies. Completed intake evidence remains available here for review."
+                                        action={(
+                                            <Button onClick={() => setCreateOpen(true)}>
+                                                New intake
+                                            </Button>
+                                        )}
+                                    />
+                                ) : null}
+
                                 {sourceGovernanceEnabled && bundle.sources.length ? (
                                     <Card
                                         title={<Space><LuShieldCheck /> Source governance</Space>}
@@ -1112,10 +1128,10 @@ export default function AnswerlatticeKnowledgeIntake() {
 
                                 <Card
                                     title={<Space><LuGlobe /> Product and docs URLs</Space>}
-                                    extra={<Button loading={discovering} icon={<LuRefreshCw />} onClick={handleDiscover}>Inspect URL</Button>}
+                                    extra={<Button loading={discovering} disabled={!activeJobAcceptsSources} icon={<LuRefreshCw />} onClick={handleDiscover}>Inspect URL</Button>}
                                     style={{ borderRadius: 8 }}
                                 >
-                                    <Form form={urlForm} layout={isMobile ? 'vertical' : 'inline'}>
+                                    <Form form={urlForm} disabled={!activeJobAcceptsSources} layout={isMobile ? 'vertical' : 'inline'}>
                                         <Form.Item name="url" rules={[{ required: true, message: 'Enter a public URL.' }]} style={{ flex: 1, minWidth: isMobile ? '100%' : 420 }}>
                                             <Input prefix={<LuLink />} placeholder="https://yourapp.com or https://docs.yourapp.com" />
                                         </Form.Item>
@@ -1123,6 +1139,7 @@ export default function AnswerlatticeKnowledgeIntake() {
                                     {discoveredLinks.length ? (
                                         <Flex vertical gap={12} style={{ marginTop: 16 }}>
                                             <Checkbox.Group
+                                                disabled={!activeJobAcceptsSources}
                                                 value={selectedLinks}
                                                 onChange={(values) => setSelectedLinks(
                                                     values.filter((value): value is string => typeof value === 'string'),
@@ -1140,7 +1157,7 @@ export default function AnswerlatticeKnowledgeIntake() {
                                                     ))}
                                                 </Flex>
                                             </Checkbox.Group>
-                                            <Button type="primary" icon={<LuArrowRight />} disabled={!selectedLinks.length || saving} onClick={handleAddSelectedLinks}>
+                                            <Button type="primary" icon={<LuArrowRight />} disabled={!activeJobAcceptsSources || !selectedLinks.length || saving} onClick={handleAddSelectedLinks}>
                                                 Add selected pages
                                             </Button>
                                         </Flex>
@@ -1155,7 +1172,7 @@ export default function AnswerlatticeKnowledgeIntake() {
                                     <Paragraph type="secondary">
                                         Paste release notes or a GitHub Release export. Answerlattice saves the evidence, then prepares the existing governed Changelog review. It does not connect to or monitor a repository.
                                     </Paragraph>
-                                    <Form form={releaseForm} layout="vertical" initialValues={{ releasedAt: dayjs() }}>
+                                    <Form form={releaseForm} disabled={!activeJobAcceptsSources} layout="vertical" initialValues={{ releasedAt: dayjs() }}>
                                         <Row gutter={[12, 0]}>
                                             <Col xs={24} lg={12}>
                                                 <Form.Item name="title" label="Release title" rules={[
@@ -1245,6 +1262,7 @@ export default function AnswerlatticeKnowledgeIntake() {
                                                 type="primary"
                                                 icon={<LuArrowRight />}
                                                 loading={saving}
+                                                disabled={!activeJobAcceptsSources}
                                                 onClick={handlePrepareReleaseEvidence}
                                                 style={{ minHeight: 44 }}
                                             >
@@ -1260,7 +1278,7 @@ export default function AnswerlatticeKnowledgeIntake() {
                                         extra={<Tag color="purple">FAQ + answer proposal</Tag>}
                                         style={{ borderRadius: 8 }}
                                     >
-                                        <Form form={replyForm} layout="vertical">
+                                        <Form form={replyForm} disabled={!activeJobAcceptsSources} layout="vertical">
                                             <Form.Item name="title" label="Title">
                                                 <Input placeholder="Optional: billing card update answer" />
                                             </Form.Item>
@@ -1315,7 +1333,7 @@ export default function AnswerlatticeKnowledgeIntake() {
                                                 <Text type="secondary">
                                                     Creates review drafts only. Trusted Answer proposals still need a related Product Topic before approval.
                                                 </Text>
-                                                <Button type="primary" loading={saving} icon={<LuShieldCheck />} onClick={handleAddRepeatedReply}>
+                                                <Button type="primary" loading={saving} disabled={!activeJobAcceptsSources} icon={<LuShieldCheck />} onClick={handleAddRepeatedReply}>
                                                     Add repeated reply
                                                 </Button>
                                             </Flex>
@@ -1326,7 +1344,7 @@ export default function AnswerlatticeKnowledgeIntake() {
                                 <Row gutter={[16, 16]}>
                                     <Col xs={24} xl={12}>
                                         <Card title={<Space><LuFileText /> Paste source content</Space>} style={{ borderRadius: 8 }}>
-                                            <Form form={textForm} layout="vertical" initialValues={{ type: ANSWERLATTICE_KNOWLEDGE_SOURCE_TYPE.PRODUCT_NOTE }}>
+                                            <Form form={textForm} disabled={!activeJobAcceptsSources} layout="vertical" initialValues={{ type: ANSWERLATTICE_KNOWLEDGE_SOURCE_TYPE.PRODUCT_NOTE }}>
                                                 <Form.Item name="type" label="Source type">
                                                     <Select options={SOURCE_TYPE_OPTIONS} />
                                                 </Form.Item>
@@ -1357,7 +1375,7 @@ export default function AnswerlatticeKnowledgeIntake() {
                                                         allowClear
                                                     />
                                                 </Form.Item>
-                                                <Button type="primary" loading={saving} onClick={handleAddTextSource}>Add source</Button>
+                                                <Button type="primary" loading={saving} disabled={!activeJobAcceptsSources} onClick={handleAddTextSource}>Add source</Button>
                                             </Form>
                                         </Card>
                                     </Col>
@@ -1386,6 +1404,7 @@ export default function AnswerlatticeKnowledgeIntake() {
                                             <Flex align={isMobile ? 'stretch' : 'center'} gap={8} vertical={isMobile}>
                                                 <Button
                                                     icon={<LuUpload />}
+                                                    disabled={!activeJobAcceptsSources}
                                                     onClick={() => fileInputRef.current?.click()}
                                                     style={{ minHeight: 44 }}
                                                 >
@@ -1410,10 +1429,10 @@ export default function AnswerlatticeKnowledgeIntake() {
                                     title={<Space><LuSparkles /> Review drafts</Space>}
                                     extra={(
                                         <Space wrap>
-                                            <Button loading={saving} disabled={!counts.sourcesReady} icon={<LuSparkles />} onClick={() => activeJobId && analyzeJob(activeJobId)}>
+                                            <Button loading={saving} disabled={!activeJobAcceptsSources || !counts.sourcesReady} icon={<LuSparkles />} onClick={() => activeJobId && analyzeJob(activeJobId)}>
                                                 Generate review drafts
                                             </Button>
-                                            <Button type="primary" loading={saving} disabled={!counts.accepted} icon={<LuRocket />} onClick={() => activeJobId && publishJob(activeJobId)}>
+                                            <Button type="primary" loading={saving} disabled={!activeJobAcceptsSources || !counts.accepted} icon={<LuRocket />} onClick={() => activeJobId && publishJob(activeJobId)}>
                                                 Publish accepted
                                             </Button>
                                         </Space>
@@ -1465,7 +1484,7 @@ export default function AnswerlatticeKnowledgeIntake() {
                                                         Add a URL, paste source content, or upload a file first.
                                                     </Text>
                                                 ) : null}
-                                                <Button disabled={!counts.sourcesReady} icon={<LuSparkles />} onClick={() => activeJobId && analyzeJob(activeJobId)}>
+                                                <Button disabled={!activeJobAcceptsSources || !counts.sourcesReady} icon={<LuSparkles />} onClick={() => activeJobId && analyzeJob(activeJobId)}>
                                                     Generate review drafts
                                                 </Button>
                                             </Space>

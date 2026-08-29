@@ -2,7 +2,7 @@
 
 import { useSession } from "next-auth/react";
 import { useTranslations } from "next-intl";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, type FocusEvent as ReactFocusEvent, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import {
   LuArrowRight,
@@ -24,6 +24,7 @@ import {
 } from "react-icons/lu";
 import BrandWordmark from "./shared/BrandWordmark";
 import Link from "./shared/WebsiteLink";
+import WebsiteThemeSwitcher from "./shared/WebsiteThemeSwitcher";
 import { FEATURE_FLAGS } from "@config/features";
 import { buildWebsiteSignInPath } from "@/lib/website/signInLinks";
 import { DASHBOARD_URL } from "@constant/urls";
@@ -56,18 +57,30 @@ const resourceDropdownLinks = [
   { href: "/resources", key: "resourceAllResources", icon: LuLayoutGrid },
 ];
 
+const mobileNavigationGroups = [
+  {
+    key: "mobileProductLabel",
+    links: [
+      { href: "/features", key: "featureOverviewTitle", icon: LuLayoutGrid },
+      { href: "/how-it-works", key: "howItWorks", icon: LuZap },
+      { href: "/multi-location", key: "multiLocation", icon: LuMapPin },
+      { href: "/pricing", key: "pricing", icon: LuFileText },
+    ],
+  },
+  {
+    key: "mobileLearnLabel",
+    links: resourceDropdownLinks,
+  },
+] as const;
+
 export default function Header() {
   const t = useTranslations("Website");
   const { data: session, status } = useSession();
+  const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [openDesktopMenu, setOpenDesktopMenu] = useState<"features" | "resources" | null>(null);
   const mobileMenuButtonRef = useRef<HTMLButtonElement>(null);
   const mobileDrawerRef = useRef<HTMLDivElement>(null);
-  const [openMobileSections, setOpenMobileSections] = useState<Record<string, boolean>>({
-    features: true,
-    resources: false,
-  });
-  const [openMobileFeatureGroups, setOpenMobileFeatureGroups] = useState<Record<string, boolean>>({});
   const pathname = usePathname();
   const basePath = useWebsiteBasePath();
   const publicPathname = pathname ? withoutWebsiteBasePath(pathname, basePath) : pathname;
@@ -81,7 +94,8 @@ export default function Header() {
   const handleSignOut = useCallback(async () => {
     const { signOutSession } = await import("@lib/auth/client");
     await signOutSession("/");
-  }, []);
+    router.replace("/");
+  }, [router]);
 
   const handleDesktopDropdownKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
     if (event.key !== "Escape") {
@@ -112,21 +126,6 @@ export default function Header() {
     || /^\/[a-z]{2}-[A-Z]{2}\/tools(\/|$)/.test(publicPathname || ""),
   );
   const isCurrentPath = (href: string) => publicPathname === href || Boolean(publicPathname?.endsWith(href));
-  const activeFeatureGroupKey = websiteFeatureNavGroups.find((group) =>
-    group.links.some((featureLink) => isCurrentPath(featureLink.href)),
-  )?.key;
-  const toggleMobileSection = (key: string) => {
-    setOpenMobileSections((current) => ({
-      ...current,
-      [key]: !current[key],
-    }));
-  };
-  const toggleMobileFeatureGroup = (key: string) => {
-    setOpenMobileFeatureGroups((current) => ({
-      ...current,
-      [key]: !current[key],
-    }));
-  };
 
   useEffect(() => {
     document.body.style.overflow = isOpen ? "hidden" : "";
@@ -192,25 +191,6 @@ export default function Header() {
       previousFocus?.focus();
     };
   }, [closeDrawer, isOpen]);
-
-  useEffect(() => {
-    if (!isOpen) {
-      return;
-    }
-
-    setOpenMobileSections({
-      features: true,
-      resources: isResourcesPath || isToolsPath,
-    });
-    setOpenMobileFeatureGroups(
-      Object.fromEntries(
-        websiteFeatureNavGroups.map((group, index) => [
-          group.key,
-          group.key === activeFeatureGroupKey || (!activeFeatureGroupKey && index === 0),
-        ]),
-      ) as Record<string, boolean>,
-    );
-  }, [activeFeatureGroupKey, isOpen, isResourcesPath, isToolsPath]);
 
   return (
     <>
@@ -588,330 +568,133 @@ export default function Header() {
 
             <nav
               className="ws-mobile-drawer-nav"
-              style={{ flex: 1, minHeight: 0, overflowY: "auto" }}
+              aria-label={t("Header.mobileNavigationLabel")}
             >
-              {navItemKeys.map((item) => {
-                const Icon = item.icon;
-                const isFeaturesPath = Boolean(publicPathname?.startsWith("/features"));
-                const isActive = publicPathname === item.href
-                  || (item.href === "/features" && isFeaturesPath)
-                  || (item.href === "/resources" && (isResourcesPath || isToolsPath));
-
-                if (item.key === "features") {
-                  const isFeaturesOpen = openMobileSections.features;
-
-                  return (
-                    <section
-                      key={item.href}
-                      className="ws-mobile-accordion"
-                      data-open={isFeaturesOpen ? "true" : "false"}
+              <div className="ws-mobile-nav-groups">
+                {mobileNavigationGroups.map((group, groupIndex) => (
+                  <section
+                    key={group.key}
+                    className="ws-mobile-nav-group"
+                    aria-labelledby={`ws-mobile-nav-group-${group.key}`}
+                  >
+                    <p
+                      id={`ws-mobile-nav-group-${group.key}`}
+                      className="ws-mobile-nav-group__label"
                     >
-                      <button
-                        type="button"
-                        className="ws-mobile-accordion__trigger"
-                        aria-expanded={isFeaturesOpen}
-                        aria-controls="ws-mobile-features-panel"
-                        onClick={() => toggleMobileSection("features")}
-                      >
-                        <span className="ws-mobile-accordion__trigger-copy">
-                          <Icon
-                            size={18}
-                            color={
-                              isActive
-                                ? "var(--ws-brand-secondary)"
-                                : "var(--ws-text-muted)"
-                            }
-                          />
-                          <span>{t(`Header.${item.key}`)}</span>
-                        </span>
-                        <LuChevronDown size={16} aria-hidden="true" />
-                      </button>
-                      <div
-                        id="ws-mobile-features-panel"
-                        className="ws-mobile-accordion__panel"
-                        hidden={!isFeaturesOpen}
-                      >
-                        <Link
-                          href="/features"
-                          onClick={closeDrawer}
-                          className="ws-mobile-feature-overview-link"
-                        >
-                          <LuLayoutGrid size={16} aria-hidden="true" />
-                          <span>
-                            <strong>{t("Header.featureOverviewTitle")}</strong>
-                            <small>{t("Header.featureOverviewDesc")}</small>
-                          </span>
-                          <LuArrowRight size={16} aria-hidden="true" />
-                        </Link>
-                        <div className="ws-mobile-feature-links" aria-label={t("Header.featuresMenuTitle")}>
-                          {websiteFeatureNavGroups.map((group) => {
-                            const isGroupOpen = Boolean(openMobileFeatureGroups[group.key]);
+                      {t(`Header.${group.key}`)}
+                    </p>
+                    <div className="ws-mobile-nav-group__links">
+                      {group.links.map((item) => {
+                        const Icon = item.icon;
+                        const isActive = isCurrentPath(item.href);
 
-                            return (
-                              <div
-                                key={group.key}
-                                className="ws-mobile-feature-links__group"
-                                data-open={isGroupOpen ? "true" : "false"}
-                              >
-                                <button
-                                  type="button"
-                                  className="ws-mobile-feature-links__group-trigger"
-                                  aria-expanded={isGroupOpen}
-                                  aria-controls={`ws-mobile-feature-group-${group.key}`}
-                                  onClick={() => toggleMobileFeatureGroup(group.key)}
-                                >
-                                  <span>{t(`Header.${group.key}`)}</span>
-                                  <LuChevronDown size={14} aria-hidden="true" />
-                                </button>
-                                <div
-                                  id={`ws-mobile-feature-group-${group.key}`}
-                                  className="ws-mobile-feature-links__group-panel"
-                                  hidden={!isGroupOpen}
-                                >
-                                  {group.links.map((featureLink) => {
-                                    const FeatureIcon = featureLink.icon;
-                                    const isFeatureActive = isCurrentPath(featureLink.href);
+                        return (
+                          <Link
+                            key={item.href}
+                            href={item.href}
+                            onClick={closeDrawer}
+                            className="ws-mobile-nav-link"
+                            aria-current={isActive ? "page" : undefined}
+                          >
+                            <span className="ws-mobile-nav-link__icon" aria-hidden="true">
+                              <Icon size={18} />
+                            </span>
+                            <span>{t(`Header.${item.key}`)}</span>
+                          </Link>
+                        );
+                      })}
+                    </div>
+                    {group.key === "mobileProductLabel" && (
+                      <div className="ws-mobile-feature-sections" aria-label={t("Header.featuresMenuTitle")}>
+                        {websiteFeatureNavGroups.map((featureGroup) => (
+                          <section
+                            key={featureGroup.key}
+                            className="ws-mobile-feature-section"
+                            aria-labelledby={`ws-mobile-feature-section-${featureGroup.key}`}
+                          >
+                            <p
+                              id={`ws-mobile-feature-section-${featureGroup.key}`}
+                              className="ws-mobile-feature-section__label"
+                            >
+                              {t(`Header.${featureGroup.key}`)}
+                            </p>
+                            <div className="ws-mobile-nav-group__links">
+                              {featureGroup.links.map((featureLink) => {
+                                const FeatureIcon = featureLink.icon;
+                                const isFeatureActive = isCurrentPath(featureLink.href);
 
-                                    return (
-                                      <Link
-                                        key={featureLink.href}
-                                        href={featureLink.href}
-                                        onClick={closeDrawer}
-                                        className="ws-mobile-feature-link"
-                                        aria-current={isFeatureActive ? "page" : undefined}
-                                      >
-                                        <FeatureIcon size={15} aria-hidden="true" />
-                                        {t(`Header.${featureLink.key}`)}
-                                      </Link>
-                                    );
-                                  })}
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
+                                return (
+                                  <Link
+                                    key={featureLink.href}
+                                    href={featureLink.href}
+                                    onClick={closeDrawer}
+                                    className="ws-mobile-nav-link ws-mobile-nav-link--feature"
+                                    aria-current={isFeatureActive ? "page" : undefined}
+                                  >
+                                    <span className="ws-mobile-nav-link__icon" aria-hidden="true">
+                                      <FeatureIcon size={18} />
+                                    </span>
+                                    <span>{t(`Header.${featureLink.key}`)}</span>
+                                  </Link>
+                                );
+                              })}
+                            </div>
+                          </section>
+                        ))}
                       </div>
-                    </section>
-                  );
-                }
+                    )}
+                    {groupIndex < mobileNavigationGroups.length - 1 && (
+                      <div className="ws-mobile-nav-group__divider" aria-hidden="true" />
+                    )}
+                  </section>
+                ))}
+              </div>
 
-                if (item.key === "resources") {
-                  const isResourcesOpen = openMobileSections.resources;
-
-                  return (
-                    <section
-                      key={item.href}
-                      className="ws-mobile-accordion"
-                      data-open={isResourcesOpen ? "true" : "false"}
-                    >
-                      <button
-                        type="button"
-                        className="ws-mobile-accordion__trigger"
-                        aria-expanded={isResourcesOpen}
-                        aria-controls="ws-mobile-resources-panel"
-                        onClick={() => toggleMobileSection("resources")}
-                      >
-                        <span className="ws-mobile-accordion__trigger-copy">
-                          <Icon
-                            size={18}
-                            color={
-                              isActive
-                                ? "var(--ws-brand-secondary)"
-                                : "var(--ws-text-muted)"
-                            }
-                          />
-                          <span>{t(`Header.${item.key}`)}</span>
-                        </span>
-                        <LuChevronDown size={16} aria-hidden="true" />
-                      </button>
-                      <div
-                        id="ws-mobile-resources-panel"
-                        className="ws-mobile-accordion__panel"
-                        hidden={!isResourcesOpen}
-                      >
-                        <div className="ws-mobile-resource-links" aria-label={t("Header.resourcesMenuTitle")}>
-                          {resourceDropdownLinks.map((resourceLink) => {
-                            const ResourceIcon = resourceLink.icon;
-                            const isResourceActive = isCurrentPath(resourceLink.href);
-
-                            return (
-                              <Link
-                                key={resourceLink.href}
-                                href={resourceLink.href}
-                                onClick={closeDrawer}
-                                className="ws-mobile-resource-link"
-                                aria-current={isResourceActive ? "page" : undefined}
-                              >
-                                <ResourceIcon size={15} aria-hidden="true" />
-                                {t(`Header.${resourceLink.key}`)}
-                              </Link>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    </section>
-                  );
-                }
-
-                if (item.key === "aiMenuManager") {
-                  return null;
-                }
-
-                return (
-                  <div key={item.href}>
+              <section className="ws-mobile-account" aria-label={t("Header.mobileAccountLabel")}>
+                {status === "authenticated" && session?.user ? (
+                  <div className="ws-mobile-account__links">
                     <Link
-                      href={item.href}
+                      href={DASHBOARD_URL}
                       onClick={closeDrawer}
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "12px",
-                        padding: "14px 12px",
-                        fontSize: "0.9375rem",
-                        fontWeight: isActive ? 600 : 500,
-                        color: isActive
-                          ? "var(--ws-brand-secondary)"
-                          : "var(--ws-text-primary)",
-                        textDecoration: "none",
-                        borderRadius: "10px",
-                        backgroundColor: isActive ? "var(--ws-bg-accent)" : "transparent",
-                        transition: "background-color 0.15s",
-                        marginBottom: "2px",
-                      }}
-                      onMouseEnter={(e) => {
-                        if (!isActive)
-                          e.currentTarget.style.backgroundColor = "var(--ws-bg-subtle)";
-                      }}
-                      onMouseLeave={(e) => {
-                        if (!isActive)
-                          e.currentTarget.style.backgroundColor = "transparent";
-                      }}
+                      className="ws-mobile-nav-link"
                     >
-                      <Icon
-                        size={18}
-                        color={
-                          isActive
-                            ? "var(--ws-brand-secondary)"
-                            : "var(--ws-text-muted)"
-                        }
-                      />
-                      {t(`Header.${item.key}`)}
+                      <span className="ws-mobile-nav-link__icon" aria-hidden="true"><LuUser size={18} /></span>
+                      <span>{session.user.name || session.user.email || t("Header.dashboard")}</span>
                     </Link>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        closeDrawer();
+                        void handleSignOut().catch((): undefined => undefined);
+                      }}
+                      className="ws-mobile-nav-link ws-mobile-nav-link--danger"
+                    >
+                      <span className="ws-mobile-nav-link__icon" aria-hidden="true"><LuLogOut size={18} /></span>
+                      <span>{t("Header.logout")}</span>
+                    </button>
                   </div>
-                );
-              })}
-
-              <div
-                style={{
-                  height: "1px",
-                  backgroundColor: "var(--ws-border-subtle)",
-                  margin: "8px 12px",
-                }}
-              />
-
-              {status === "authenticated" && session?.user ? (
-                <>
+                ) : (
                   <Link
-                    href={DASHBOARD_URL}
+                    href={buildWebsiteSignInPath('/dashboard')}
                     onClick={closeDrawer}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "12px",
-                      padding: "14px 12px",
-                      fontSize: "0.9375rem",
-                      fontWeight: 500,
-                      color: "var(--ws-brand-secondary)",
-                      textDecoration: "none",
-                      borderRadius: "10px",
-                      backgroundColor: "var(--ws-bg-accent)",
-                      transition: "background-color 0.15s",
-                    }}
+                    className="ws-mobile-nav-link"
                   >
-                    <LuUser size={18} color="var(--ws-brand-secondary)" />
-                    {session.user.name ||
-                      session.user.email ||
-                      t("Header.dashboard")}
+                    <span className="ws-mobile-nav-link__icon" aria-hidden="true"><LuArrowRight size={18} /></span>
+                    <span>{t("Header.login")}</span>
                   </Link>
-                  <button
-                    onClick={() => {
-                      closeDrawer();
-                      void handleSignOut().catch((): undefined => undefined);
-                    }}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "12px",
-                      padding: "14px 12px",
-                      fontSize: "0.9375rem",
-                      fontWeight: 500,
-                      color: "var(--ws-error)",
-                      textDecoration: "none",
-                      borderRadius: "10px",
-                      backgroundColor: "transparent",
-                      border: "none",
-                      cursor: "pointer",
-                      width: "100%",
-                      textAlign: "left",
-                      transition: "background-color 0.15s",
-                    }}
-                    onMouseEnter={(e) =>
-                      (e.currentTarget.style.backgroundColor = "var(--ws-bg-danger-soft)")
-                    }
-                    onMouseLeave={(e) =>
-                      (e.currentTarget.style.backgroundColor = "transparent")
-                    }
-                  >
-                    <LuLogOut size={18} color="var(--ws-error)" />
-                    {t("Header.logout")}
-                  </button>
-                </>
-              ) : (
-                <Link
-                  href={buildWebsiteSignInPath('/dashboard')}
-                  onClick={closeDrawer}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "12px",
-                    padding: "14px 12px",
-                    fontSize: "0.9375rem",
-                    fontWeight: 500,
-                    color: "var(--ws-text-secondary)",
-                    textDecoration: "none",
-                    borderRadius: "10px",
-                    width: "100%",
-                    transition: "background-color 0.15s",
-                  }}
-                  onMouseEnter={(e) =>
-                    (e.currentTarget.style.backgroundColor = "var(--ws-bg-subtle)")
-                  }
-                  onMouseLeave={(e) =>
-                    (e.currentTarget.style.backgroundColor = "transparent")
-                  }
-                >
-                  <LuArrowRight size={18} color="var(--ws-text-muted)" />
-                  {t("Header.login")}
-                </Link>
-              )}
+                )}
+              </section>
             </nav>
 
             {/* CTA */}
             <div className="ws-drawer-cta">
+              <WebsiteThemeSwitcher />
               {status !== "authenticated" && (
                 <Link
                   href="/create-menu"
                   aria-label={t("Header.ctaAria")}
                   onClick={closeDrawer}
-                  className="ws-btn ws-btn--primary"
-                  style={{
-                    display: "flex",
-                    justifyContent: "center",
-                    width: "100%",
-                    fontSize: "0.9375rem",
-                    padding: "0.875rem",
-                    borderRadius: "10px",
-                  }}
+                  className="ws-btn ws-btn--primary ws-drawer-cta__button"
                 >
                   {t("Header.cta")}
                 </Link>

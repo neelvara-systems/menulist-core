@@ -13,7 +13,7 @@ import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useEffect, useMemo, useState } from 'react';
 import { LuCheck, LuClock, LuPlus, LuTrash2 } from 'react-icons/lu';
-import { Button, Card, Checkbox, Collapse, Flex, Input, NavBar, Popup, Switch, Tag, Text } from '../antd';
+import { Button, Card, Checkbox, Collapse, Dialog, Flex, Input, NavBar, Popup, Switch, Tag, Text } from '../antd';
 import type { MobileCategoryItem } from './CategoryManagerSheet';
 import { MENU_SHEET_CONTAINER_STYLE, MENU_SHEET_BODY_STYLE } from './menuSheetLayout';
 
@@ -168,6 +168,22 @@ export default function MobileCategoryEditSheet({
     ), [active, icon, names, presetIds, selectedLanguages]);
     const hasChanges = currentComparisonState !== initialComparisonState;
 
+    const handleClose = async () => {
+        if (isSaving) return;
+        if (!hasChanges) {
+            onClose();
+            return;
+        }
+
+        const confirmed = await Dialog.confirm({
+            cancelText: 'Keep editing',
+            confirmText: 'Discard changes',
+            content: 'Your unsaved category changes will be lost.',
+            title: 'Discard unsaved category changes?',
+        });
+        if (confirmed) onClose();
+    };
+
     const handleGenerateContent = async () => {
         if (!onGenerateContent || isSaving || !translationActionState?.mode || translationActionState.disabled) return;
         setIsSaving(true);
@@ -229,14 +245,14 @@ export default function MobileCategoryEditSheet({
             bodyStyle={MENU_SHEET_BODY_STYLE}
             destroyOnClose
             onMaskClick={() => {
-                if (!isSaving) onClose();
+                void handleClose();
             }}
             position="bottom"
             visible={visible}
         >
             <Flex style={MENU_SHEET_CONTAINER_STYLE} vertical>
                 <NavBar onBack={() => {
-                    if (!isSaving) onClose();
+                    void handleClose();
                 }}>
                     {mode === 'add' ? t('addCategoryLabel') : (category?.name || t('categoriesTitle'))}
                 </NavBar>
@@ -345,7 +361,7 @@ export default function MobileCategoryEditSheet({
                                     <Text strong>{t('active')}</Text>
                                     <Text type="secondary">{t('showOnMenuHelp')}</Text>
                                 </Flex>
-                                <Switch checked={active} onChange={setActive} />
+                                <Switch aria-label={t('active')} checked={active} onChange={setActive} />
                             </Flex>
                         </Flex>
                     </Card>
@@ -422,6 +438,7 @@ export default function MobileCategoryEditSheet({
                         <Flex gap={8}>
                             {mode === 'edit' && category?.id && onDelete ? (
                                 <Button
+                                    aria-label={`${t('delete')} ${category.name}`}
                                     color="danger"
                                     disabled={isSaving}
                                     fill="outline"

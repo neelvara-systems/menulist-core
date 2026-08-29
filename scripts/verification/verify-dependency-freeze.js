@@ -10,6 +10,7 @@ const PACKAGE_PAIRS = [
     label: 'root app package',
     dir: '.',
     expectedCoreVersions: {
+      '@ant-design/v5-patch-for-react-19': '1.0.3',
       '@google/genai': '2.13.0',
       '@react-email/render': '2.1.0',
       '@reduxjs/toolkit': '2.12.0',

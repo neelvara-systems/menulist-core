@@ -208,14 +208,16 @@ export function computePricingPreview(
             ? ((newPrice - safeCurrentPrice) / safeCurrentPrice) * 100
             : 0;
 
-        changes.push({
-            itemId: item.id,
-            itemName: item.name,
-            categoryName: item.categoryName,
-            oldPrice: safeCurrentPrice,
-            newPrice,
-            changePercent,
-        });
+        if (newPrice !== safeCurrentPrice) {
+            changes.push({
+                itemId: item.id,
+                itemName: item.name,
+                categoryName: item.categoryName,
+                oldPrice: safeCurrentPrice,
+                newPrice,
+                changePercent,
+            });
+        }
 
         // Also compute attribute price changes
         item.attributes?.forEach((attr) => {
@@ -223,6 +225,7 @@ export function computePricingPreview(
             if (!canForceFixedPrice && (attrPrice === null || attrPrice <= 0)) return;
             const safeAttrPrice = attrPrice === null || attrPrice < 0 ? 0 : attrPrice;
             const newAttrPrice = calculateNewPrice(safeAttrPrice, config);
+            if (newAttrPrice === safeAttrPrice) return;
             changes.push({
                 itemId: item.id,
                 itemName: item.name,
@@ -238,6 +241,7 @@ export function computePricingPreview(
 
     // Compute averages (items only, not attributes)
     const itemChanges = changes.filter((c) => !c.isAttribute);
+    const affectedItemIds = new Set(changes.map((change) => change.itemId));
     const avgBefore = itemChanges.length > 0
         ? itemChanges.reduce((s, c) => s + c.oldPrice, 0) / itemChanges.length
         : 0;
@@ -261,7 +265,7 @@ export function computePricingPreview(
     }
 
     return {
-        itemsAffected: itemChanges.length,
+        itemsAffected: affectedItemIds.size,
         itemsSkipped: skipped + selectedItems.filter((i) => i.isLocked).length,
         avgPriceBefore: roundPrice(avgBefore),
         avgPriceAfter: roundPrice(avgAfter),

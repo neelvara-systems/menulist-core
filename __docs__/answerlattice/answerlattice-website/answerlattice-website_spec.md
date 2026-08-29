@@ -1,7 +1,7 @@
 # AnswerLattice Website — Spec
 
-> **Version:** 1.3.11
-> **Last Updated:** 2026-08-11
+> **Version:** 1.3.13
+> **Last Updated:** 2026-08-27
 > **Audience:** CEO / PM / Marketing
 
 ---
@@ -12,7 +12,7 @@ The complete public route set follows one conversion hierarchy:
 
 `scattered founder knowledge -> reviewed support structure -> familiar support destinations -> owner-approved official guidance`
 
-- The route inventory contains 75 canonical public routes plus two intentional aliases: `/home` for `/` and `/use-cases/vibe-coded-saas` for `/use-cases/ai-built-saas`.
+- The route inventory contains 75 canonical public routes, three intentional aliases (`/home`, `/get-started`, and `/use-cases/vibe-coded-saas`), and the bounded `/offline` PWA recovery utility. The recovery route is intentionally excluded from sitemap and structured-data discovery.
 - Top-level and buyer-facing pages lead with the recognizable inputs founders already have: docs, tickets, release notes, screenshots, recordings, notes, and repeated replies.
 - Those pages explain the concrete outputs users can open: the in-app widget, hosted help center, documentation, FAQs, changelog, ticket fallback, and feedback paths.
 - Approved answers, safe page context, explicit owner review, Answer Tests, and visible support gaps explain why the resulting support can be trusted. They are differentiators inside the broader support-system story, not the entire category.
@@ -54,7 +54,7 @@ The first-use path remains optimized for a solo technical founder. Deeper pages 
 
 | Attribute | Value |
 |-----------|-------|
-| Role | Primary: AI-native SaaS founder, solo digital-product founder, technical founder. Secondary: selected support, product, and engineering operators sharing the same product truth. |
+| Role | Primary: vibe coder with real users, AI-native SaaS founder, solo digital-product founder, or technical founder. Secondary: selected support, product, and engineering operators sharing the same product truth. |
 | Business stage | Live, beta, or near-launch SaaS app or digital product with starter support truth |
 | Release cadence | Frequent product, plan, onboarding, billing, or settings changes |
 | Team size | One founder by default; small teams and bounded cross-functional product groups when support ownership or answer risk grows |
@@ -86,15 +86,15 @@ Company headcount is not a capability claim. A company of roughly 100 people may
 **Goal:** Communicate what AnswerLattice is in < 5 seconds: a reviewed support system that turns scattered founder knowledge into support users can open. Drive to self-service setup first, with the product simulation, install path, and product-suite pages as supporting proof paths.
 
 **Sections:**
-1. **Hero** — Centered founder-readable promise: "Support your product users without hiring a support team." The eyebrow must frame scattered product knowledge becoming structured support. Supporting copy, capability chips, and proof must make both sides of that transformation visible: docs, tickets, releases, screenshots, recordings, notes, and repeated replies become reviewed support knowledge for the in-product widget, hosted help center, documentation, FAQs, changelog, fallback, feedback review, and future AI-agent context. Approved answers first, safe fallback, and owner review remain the trust differentiator without narrowing the product to Q&A or claiming outsourced support, full helpdesk replacement, or autonomous support. Essential hero text and actions must be readable within 500ms without blur; media may settle within 800ms, and reduced-motion mode must remain immediate.
-2. **First Trusted Answers** — Bounded launch workflow for the first priority questions, owner review, and customer answer evidence.
+1. **Hero** — Centered founder-readable promise: "Support your product users without hiring a support team." The supporting copy starts from the first questions users will ask, the four capability chips stay concrete, and the primary action is `Build your first 10 answers`. Deeper technical terms belong after the first fold. Approved answers, safe fallback, and owner review remain the trust differentiator without claiming outsourced support, full helpdesk replacement, or autonomous support. Essential hero text and actions must be readable within 500ms without blur; media may settle within 800ms, and reduced-motion mode must remain immediate.
+2. **First Trusted Answers** — Three-step launch workflow: choose trusted product material, review ten likely questions, then test, publish, and improve from real gaps. This is the main activation story, not a secondary resource link.
 3. **Support Improvement Loop** — Concrete known-answer, missing-coverage, fallback, founder-review, and tested-improvement sequence with source, scope, and Answer Test proof.
-4. **Owner Decision System** — One focused section connecting Daily Brief, Knowledge Map, Product Friction Evidence, release impact, Answer Tests, and public article topic maps. It must distinguish owner review from public article navigation and state that these views do not publish answers, change releases, or create a second task system.
-5. **Install Surface Quickstarts** — Install confidence section for the widget contract, framework-specific setup paths, safe context rules, and verification before launch.
-6. **Founder Fit and Category Boundary** — One consolidated section with a best-fit founder panel plus the three boundary messages: not another chatbot, not a full helpdesk, and not static docs.
+4. **Owner Decision System** — One focused section with only three homepage outcomes: today’s priorities, missing answers, and release-affected guidance. Deeper product names remain linked on dedicated pages. It must state that these views do not publish answers or change the product without owner approval.
+5. **Install With Your Coding Agent** — Plain three-step handoff: give the prepared setup packet to the coding agent, connect only safe page details, and verify the widget before users see it. Framework-specific choices stay on Install.
+6. **Founder Fit and Category Boundary** — One consolidated section naming vibe coders, solo founders, small SaaS teams, and studios, plus the three boundary messages: not another chatbot, not a full helpdesk, and not static docs.
 7. **Pricing Preview** — Launch/Growth/Studio guidance and paid setup note.
 8. **Objections / FAQ Preview** — Top setup, safety, pricing, and fit objections.
-9. **CTA** — Final conversion panel with `Create workspace` as primary and demo as secondary.
+9. **CTA** — Final conversion panel with `Build your first 10 answers` as primary and demo as secondary.
 
 The homepage must stay compressed and product-led. `SupportSuiteSection`,
 `SupportSurfaceStorySection`, and `ProductOverviewSection` remain retained as
@@ -541,11 +541,11 @@ Comparable support platforms commonly expose product depth, pricing, demo/start 
 
 Final product-suite polish follows the observed pattern from product-led sites where the main nav exposes product families, each family can stand as its own landing page, and resource/use-case/developer/comparison pages cross-link back into those families. AnswerLattice applies that pattern without adding runtime reads, unimplemented integrations, unsupported public API claims, or unsupported public docs routes.
 
-The desktop header should stay product-led and high-intent: Product, Demo, Install, Use Cases, Resources, Pricing, and the primary `Create workspace` CTA. Demo and Install are top-level because the buyer needs to see the product and implementation path quickly. The desktop Product nav item should use the same compact title-only navigation treatment as the Resources dropdown: a Product overview row, a Support areas section, a Support tools section, small icon tiles, and tight two-column rows rather than a full-width mega panel. Support areas should use founder-readable labels: Set up support, In-app support widget, Help center, FAQ and tickets, and Review approved answers. Support tools should expose the concrete terms founders understand: Team access, Import support knowledge, Docs / Knowledge Base, FAQ, Changelog, Tickets, Support Board, Feedback review, Slack/email notifications, and Proactive help. Avoid navigation terms such as governance, ontology, canonical, retrieval, and control plane.
+The desktop header should stay product-led and high-intent: Product, Demo, Install, Use Cases, Resources, Pricing, and the primary `Build your first 10 answers` CTA. Demo and Install are top-level because the buyer needs to see the product and implementation path quickly. The desktop Product nav item should use the same compact title-only navigation treatment as the Resources dropdown: a Product overview row, a Support areas section, a Support tools section, small icon tiles, and tight two-column rows rather than a full-width mega panel. Support areas should use founder-readable labels: Set up support, In-app support widget, Help center, FAQ and tickets, and Review approved answers. Support tools should expose the concrete terms founders understand: Team access, Import support knowledge, Docs / Knowledge Base, FAQ, Changelog, Tickets, Support Board, Feedback review, Slack/email notifications, and Proactive help. Avoid navigation terms such as governance, ontology, canonical, retrieval, and control plane.
 
 The desktop Resources nav item should use the same compact title-only navigation treatment as the Product dropdown: a Resources overview row, a Resource guides section, small icon tiles, and rows for the highest-priority public resource articles: launch proof checklist, pre-onboarding source package, safe page context, widget verification, approved answers, hosted help setup, runtime safety, and all resources. It must not link to private dashboard, widget runtime, or API routes.
 
-The mobile/tablet hamburger mirrors the same information hierarchy in a right-side drawer: Product Overview, Product Areas, Support Tools, and an Other card for Use Cases, Resources, Pricing, Demo, Pre-Onboarding, Install, Security, Developers, Comparisons, Updates, and Contact. The mobile drawer must use the same founder-readable support labels as the desktop Product dropdown, open from right to left, include backdrop/close behavior, lock page scroll while open, and leave safe-area bottom space so the primary setup CTA is not clipped on phone browsers. Full desktop navigation should start only at the `xl` breakpoint so the header and Product dropdown remain inside the viewport; the hamburger trigger must not render on confirmed desktop viewports.
+The mobile/tablet hamburger is a short route chooser, not a copy of the desktop mega menus. `Start here` contains Product, Demo, Prepare your sources, Install, Use Cases, and Pricing. `Learn and verify` contains Resources, FAQ, Trust and Data Handling, and Contact. Prepare your sources routes to the primary human `/pre-onboarding` page before installation. Detailed product and resource routes remain discoverable after those hub pages. The drawer opens from right to left, includes backdrop/close behavior, locks page scroll while open, and leaves safe-area bottom space so the controlled-access CTA is not clipped on phone browsers. Full desktop navigation starts only at the `xl` breakpoint.
 
 Route naming must avoid conflicts with AnswerLattice dashboard roots. Public website learning content uses `/resources`, public implementation content uses `/developers`, public category education uses `/comparisons`, and public release communication uses `/updates`; dashboard-owned support routes keep `/docs`, `/help`, `/changelog`, and `/release-notes`.
 
@@ -590,7 +590,7 @@ AnswerLattice website CSS must remain root-loadable and product-scoped. Clean-ca
 
 | Page | Title | Description |
 |------|-------|-------------|
-| `/` | AnswerLattice - Governed Support Layer for SaaS Products | AnswerLattice turns scattered docs, tickets, releases, screenshots, recordings, notes, and repeated replies into reviewed support knowledge for your widget, help center, FAQs, fallback, and future AI agents. |
+| `/` | AnswerLattice - Support Users Without a Support Team | AnswerLattice helps founders turn scattered product knowledge into reviewed answers, in-app help, hosted help, and visible support gaps before hiring a support team. |
 | `/product` | Product \| AnswerLattice | One support layer for founder-led SaaS: launch setup, in-app widget, hosted help, FAQs, changelog, ticket fallback, feedback review, approved answers, and support-gap review. |
 | `/product/launch-setup` | Set Up Support \| AnswerLattice | Create an AnswerLattice workspace, add team access, import starter knowledge, map product pages, and verify the widget before launch. |
 | `/product/team-access` | Team Access \| AnswerLattice | Manage AnswerLattice workspace members, roles, custom permissions, owner reset, and force sign-out with workspace-scoped access. |
@@ -655,7 +655,7 @@ AnswerLattice public routes emit server-rendered Organization/WebSite/SoftwareAp
 ```
 Visitor lands on homepage
   ↓
-Reads launch-ready support hero + embedded demo -> "Create workspace" or "See 60-sec demo"
+Reads founder-readable support hero + embedded proof -> "Build your first 10 answers" or "See 60-sec demo"
   ↓
 Demo page → understands approved answer vs fallback vs support gap
   ↓

@@ -817,9 +817,14 @@ const mobileMore = fs.readFileSync(path.join(root, 'src/components/mobile/screen
   'initialProjectId={selectedProjectId}',
   "key: 'printMenu'",
   "label: 'Print Menu'",
+  "if (screen === 'printMenu') return canManageDailyActions && FEATURE_FLAGS.ENABLE_MENU_CARD_EXPORT;",
 ].forEach((token) => {
   if (!mobileMore.includes(token)) failures.push(`Mobile More entry missing token: ${token}`);
 });
+
+if (!mobileExportScreen.includes('{isProjectSheetOpen ? (') || !mobileExportScreen.includes('aria-label="Select menu"')) {
+  failures.push('Mobile export project selector must stay unmounted while closed and expose an accessible dialog name');
+}
 
 const mobilePrintAssetsScreen = fs.readFileSync(path.join(root, 'src/components/mobile/screens/MobilePrintAssetsScreen.tsx'), 'utf8');
 [
@@ -1439,6 +1444,8 @@ const browserFileShare = fs.readFileSync(path.join(root, 'src/lib/export/browser
   "typeof File === 'undefined'",
   "error.name === 'AbortError'",
   "return 'cancelled'",
+  "error.name === 'NotAllowedError'",
+  "return 'unsupported'",
   'throw error',
 ].forEach((token) => {
   if (!browserFileShare.includes(token)) failures.push(`Browser file-share boundary missing token: ${token}`);

@@ -30,7 +30,10 @@ export default function ResellerManagePage() {
 
     const platformRole = session?.platformRole || session?.user?.platformRole;
     if (platformRole !== 'PLATFORM') {
-        redirect('/dashboard');
+        // The parent reseller layout already admits only PLATFORM or RESELLER.
+        // A non-platform account reaching this client boundary is therefore a
+        // reseller and should return to its own dashboard, not the owner shell.
+        redirect('/reseller');
     }
 
     return <ResellerManagement />;

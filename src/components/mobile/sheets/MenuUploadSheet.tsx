@@ -15,6 +15,7 @@ import {
 import { createRandomIdSegment } from '@lib/runtime/randomId';
 import { MENU_IMAGE_CONFIG, optimizeImage } from '@lib/image/optimizeImage';
 import { createMenuLinkImportJob } from '@lib/menu-link-import/client';
+import { validateMenuLinkInput } from '@lib/menu-link-import/menuLinkInput';
 import { shouldCleanupUploadedFilesAfterJobStartError } from '@lib/menu-extraction/jobStartFailure';
 import {
     MENULIST_ANSWERLATTICE_TARGETS,
@@ -192,6 +193,7 @@ export default function MenuUploadSheet({
     const [errorMessage, setErrorMessage] = useState('');
     const [linkUrl, setLinkUrl] = useState('');
     const [linkPermissionConfirmed, setLinkPermissionConfirmed] = useState(false);
+    const linkInputValidation = useMemo(() => validateMenuLinkInput(linkUrl), [linkUrl]);
     const [linkImporting, setLinkImporting] = useState(false);
     const selectedFileCountRef = useRef(0);
     const selectedFilesRef = useRef<SelectedUploadFile[]>([]);
@@ -818,8 +820,8 @@ export default function MenuUploadSheet({
             Toast.show({ content: 'Menu extraction is not enabled for this location.', duration: 1800 });
             return;
         }
-        if (!linkUrl.trim()) {
-            Toast.show({ content: 'Paste a public menu link.', duration: 1800 });
+        if (!linkInputValidation.valid) {
+            Toast.show({ content: linkInputValidation.message, duration: 1800 });
             return;
         }
         if (!linkPermissionConfirmed) {
@@ -860,7 +862,7 @@ export default function MenuUploadSheet({
             const result = await createMenuLinkImportJob({
                 permissionConfirmed: linkPermissionConfirmed,
                 projectId,
-                url: linkUrl.trim(),
+                url: linkInputValidation.normalizedUrl,
             });
 
             setProgress(100);
@@ -882,6 +884,7 @@ export default function MenuUploadSheet({
         canUseMenuExtraction,
         currentProjectId,
         linkPermissionConfirmed,
+        linkInputValidation,
         linkUrl,
         onJobCreated,
         storeDetails?.businessCategory,
@@ -891,6 +894,7 @@ export default function MenuUploadSheet({
 
     return (
         <Popup
+            aria-label={t('uploadAndProcess')}
             bodyStyle={MENU_SHEET_BODY_STYLE}
             destroyOnClose
             onMaskClick={step === 'select' || step === 'review' || step === 'error' ? onClose : undefined}
@@ -1010,11 +1014,17 @@ export default function MenuUploadSheet({
                                         </Flex>
                                     </Flex>
                                     <Input
+                                        aria-label="Import from existing menu link"
                                         disabled={!canUploadToCurrentContext || linkImporting}
                                         onChange={setLinkUrl}
                                         placeholder="https://example.com/menu"
                                         value={linkUrl}
                                     />
+                                    {linkUrl.trim() && !linkInputValidation.valid ? (
+                                        <Text color="danger" role="alert">
+                                            {linkInputValidation.message}
+                                        </Text>
+                                    ) : null}
                                     <Checkbox
                                         checked={linkPermissionConfirmed}
                                         disabled={!canUploadToCurrentContext || linkImporting}
@@ -1026,7 +1036,7 @@ export default function MenuUploadSheet({
                                         {...getMenuListAnswerlatticeTargetProps(MENULIST_ANSWERLATTICE_TARGETS.MENU_IMPORT_START)}
                                         block
                                         color="primary"
-                                        disabled={!canUploadToCurrentContext || !linkUrl.trim() || !linkPermissionConfirmed}
+                                        disabled={!canUploadToCurrentContext || !linkInputValidation.valid || !linkPermissionConfirmed}
                                         icon={<LuGlobe2 size={18} />}
                                         loading={linkImporting}
                                         onClick={handleMenuLinkImport}
@@ -1071,6 +1081,7 @@ export default function MenuUploadSheet({
                                 {selectedFiles.map((file) => (
                                     <Card key={file.id} size="small" style={{ borderRadius: 16, position: 'relative' }}>
                                         <Button
+                                            aria-label={`Remove ${file.name}`}
                                             color="danger"
                                             fill="none"
                                             icon={<LuTrash2 size={16} />}

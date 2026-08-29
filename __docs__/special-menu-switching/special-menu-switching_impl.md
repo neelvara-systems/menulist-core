@@ -66,6 +66,9 @@ RESOLVER (public menu and configured screen):
 - `MobileProjectsProvider` admits only project IDs whose encoded tenant/store matches the current exact scope, masks values before current-scope hydration, and uses latest-request ownership for both list and forced detail reads.
 - Owner project selection uses `mobileSelectedProjectId:{tenantId}:{storeId}`. Exact-scope consumers do not read the old unscoped or store-only key.
 - `MobileSpecialMenuScreen` and its create/edit/card children remount or suppress settlement when tenant/store or source-item ownership changes.
+- Mobile mounted guards are re-armed on every effect setup, so React Strict Mode cleanup cannot permanently suppress create/edit/end/cancel settlement. Late project hydration fills only an empty base-menu draft and does not reset an owner-entered schedule.
+- Mobile create/update responses converge the project cache before navigation. A selected special that reaches `expired` or `cancelled` is replaced by its regular base-menu selection immediately.
+- Generic project deletion removes the full summary row, every legacy dotted subfield for that exact project ID, and any nested mixed-shape copy in the existing summary write. Summary-list readers ignore incomplete rows that lack the required name and active identity instead of synthesizing `Untitled` owner truth.
 
 ---
 

@@ -45,7 +45,7 @@ export default async function HostedHelpCenterForSaasPage() {
                     'Configure hosted help domain settings.',
                     'Publish reviewed help content and keep answer gaps visible.',
                 ]}
-                primaryCta="Create workspace"
+                primaryCta="Request early access"
             />
             <AnswerlatticeFooter basePath={basePath} />
         </>

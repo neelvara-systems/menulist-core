@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "updatedAt": "2026-08-02",
+  "updatedAt": "2026-08-29",
   "boundary": {
     "internalOnly": true,
     "publicRuntime": false,
@@ -440,19 +440,23 @@
       "product": "mycodex",
       "title": "MyCodex private authentication boundary",
       "risk": "high",
-      "coverageStatus": "registered",
+      "coverageStatus": "partial",
       "verificationStatus": "not-run",
       "sourcePaths": [
         "src/app/sites/mycodex",
+        "src/components/templates/mycodex/founder-console",
+        "src/lib/mycodex/founderConsoleCatalog.ts",
+        "src/lib/auth/platformRouteGuard.ts",
         "src/proxy.ts"
       ],
       "evidenceIds": [
-        "mycodex.auth-boundary"
+        "mycodex.auth-boundary",
+        "mycodex.founder-console-boundary"
       ],
       "bundleIds": [
         "mycodex.registered-security"
       ],
-      "notes": "Evidence is registered for a future product audit; MyCodex remains static and database-free."
+      "notes": "The private founder-console route, persisted PLATFORM-role admission, catalog closure, owner-host boundary, and database-free MyCodex shell are mapped. Existing product APIs and Firebase rules remain owned and evidenced by MenuList and Answerlattice."
     },
     {
       "id": "neelvara.public-site-boundary",

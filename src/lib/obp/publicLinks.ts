@@ -46,8 +46,8 @@ function getRawUrlValue(value: unknown): string {
 function buildHttpsCandidate(value: unknown, fallbackBase?: string): string {
     const raw = getRawUrlValue(value);
     if (!raw) return '';
-    if (/^http:\/\//i.test(raw)) return '';
     if (/^https:\/\//i.test(raw)) return raw;
+    if (/^[a-z][a-z\d+\-.]*:/i.test(raw)) return '';
 
     const stripped = raw.replace(/^@/, '').replace(/^\/+/, '');
     if (!stripped || /\s/.test(stripped)) return '';

@@ -9,6 +9,7 @@ import {
 } from '@lib/reseller/resellerMonthlySummary';
 import { RESELLER_REQUEST_POLICY } from '@template/main-app/reseller/resellerDiagnostics';
 import {
+    isResellerManagementDraftChanged,
     isResellerManagementProfilesResponse,
     type ResellerManagementProfile,
     type ResellerManagementProfilesResponse,
@@ -146,6 +147,7 @@ export default function MobileResellerManagementScreen({ onBack }: { onBack: () 
     const [monthlyLoading, setMonthlyLoading] = useState(false);
     const [saving, setSaving] = useState(false);
     const [editingProfile, setEditingProfile] = useState<ResellerManagementProfile | null>(null);
+    const [editorOpen, setEditorOpen] = useState(false);
     const [draft, setDraft] = useState<ResellerDraft>(emptyDraft);
     const isEditing = Boolean(editingProfile);
     const buildResellerMobileLogContext = (flow: string, metadata: Record<string, boolean | number | string | null | undefined> = {}) => ({
@@ -234,16 +236,19 @@ export default function MobileResellerManagementScreen({ onBack }: { onBack: () 
     const openCreate = () => {
         setEditingProfile(null);
         setDraft(emptyDraft());
+        setEditorOpen(true);
     };
 
     const openEdit = (profile: ResellerManagementProfile) => {
         setEditingProfile(profile);
         setDraft(draftFromProfile(profile));
+        setEditorOpen(true);
     };
 
     const closeEditor = () => {
         setEditingProfile(null);
         setDraft(emptyDraft());
+        setEditorOpen(false);
     };
 
     const submit = async () => {
@@ -253,6 +258,10 @@ export default function MobileResellerManagementScreen({ onBack }: { onBack: () 
         }
         if (!isEditing && draft.password.trim().length < 6) {
             Toast.show({ content: 'Password must be at least 6 characters.', duration: 2200 });
+            return;
+        }
+        if (editingProfile && !isResellerManagementDraftChanged(draft, editingProfile)) {
+            Toast.show({ content: 'No reseller changes to save.', duration: 1800 });
             return;
         }
 
@@ -334,39 +343,39 @@ export default function MobileResellerManagementScreen({ onBack }: { onBack: () 
         );
     }
 
-    if (editingProfile || draft.name || draft.phone || draft.email || draft.username || draft.password) {
+    if (editorOpen) {
         return (
             <Flex style={{ minHeight: '100%' }} vertical>
                 <MobileSettingsScreenHeader description="Create or update reseller profile details." onBack={closeEditor} title={editingProfile ? 'Edit Reseller' : 'Add Reseller'} />
                 <Flex gap={12} style={{ padding: 16 }} vertical>
                     <Card title="Personal details">
                         <Flex gap={10} vertical>
-                            <Input onChange={(value) => updateDraft('name', value)} placeholder="Full name" value={draft.name} />
-                            <Input inputMode="tel" onChange={(value) => updateDraft('phone', value)} placeholder="Phone" value={draft.phone} />
-                            <Input inputMode="email" onChange={(value) => updateDraft('email', value)} placeholder="Email" type="email" value={draft.email} />
-                            <Input onChange={(value) => updateDraft('username', value)} placeholder="Username" value={draft.username} />
-                            <Input onChange={(value) => updateDraft('password', value)} placeholder={editingProfile ? 'New password (optional)' : 'Password'} type="password" value={draft.password} />
+                            <Input aria-label="Reseller full name" onChange={(value) => updateDraft('name', value)} placeholder="Full name" value={draft.name} />
+                            <Input aria-label="Reseller phone" inputMode="tel" onChange={(value) => updateDraft('phone', value)} placeholder="Phone" value={draft.phone} />
+                            <Input aria-label="Reseller email" inputMode="email" onChange={(value) => updateDraft('email', value)} placeholder="Email" type="email" value={draft.email} />
+                            <Input aria-label="Reseller username" onChange={(value) => updateDraft('username', value)} placeholder="Username" value={draft.username} />
+                            <Input aria-label={editingProfile ? 'New reseller password' : 'Reseller password'} onChange={(value) => updateDraft('password', value)} placeholder={editingProfile ? 'New password (optional)' : 'Password'} type="password" value={draft.password} />
                         </Flex>
                     </Card>
 
                     <Card title="Address">
                         <Flex gap={10} vertical>
-                            <Input onChange={(value) => updateDraft('addressLine', value)} placeholder="Address" value={draft.addressLine} />
-                            <Input onChange={(value) => updateDraft('city', value)} placeholder="City" value={draft.city} />
-                            <Input onChange={(value) => updateDraft('state', value)} placeholder="State" value={draft.state} />
-                            <Input onChange={(value) => updateDraft('postalCode', value)} placeholder="Postal code" value={draft.postalCode} />
-                            <Input onChange={(value) => updateDraft('country', value)} placeholder="Country" value={draft.country} />
+                            <Input aria-label="Reseller address" onChange={(value) => updateDraft('addressLine', value)} placeholder="Address" value={draft.addressLine} />
+                            <Input aria-label="Reseller city" onChange={(value) => updateDraft('city', value)} placeholder="City" value={draft.city} />
+                            <Input aria-label="Reseller state" onChange={(value) => updateDraft('state', value)} placeholder="State" value={draft.state} />
+                            <Input aria-label="Reseller postal code" onChange={(value) => updateDraft('postalCode', value)} placeholder="Postal code" value={draft.postalCode} />
+                            <Input aria-label="Reseller country" onChange={(value) => updateDraft('country', value)} placeholder="Country" value={draft.country} />
                         </Flex>
                     </Card>
 
                     <Card title="Settings">
                         <Flex gap={10} vertical>
-                            <Input inputMode="numeric" onChange={(value) => updateDraft('maxOfflineActivations', value)} placeholder="Max offline activations" type="number" value={draft.maxOfflineActivations} />
+                            <Input aria-label="Maximum offline activations" inputMode="numeric" onChange={(value) => updateDraft('maxOfflineActivations', value)} placeholder="Max offline activations" type="number" value={draft.maxOfflineActivations} />
                             <Flex align="center" justify="space-between">
                                 <Text>Active</Text>
-                                <Switch checked={draft.active} onChange={(checked) => updateDraft('active', checked)} />
+                                <Switch aria-label="Active reseller profile" checked={draft.active} onChange={(checked) => updateDraft('active', checked)} />
                             </Flex>
-                            <TextArea onChange={(value) => updateDraft('notes', value)} placeholder="Internal notes" rows={3} value={draft.notes} />
+                            <TextArea aria-label="Internal notes" onChange={(value) => updateDraft('notes', value)} placeholder="Internal notes" rows={3} value={draft.notes} />
                         </Flex>
                     </Card>
 
@@ -385,7 +394,7 @@ export default function MobileResellerManagementScreen({ onBack }: { onBack: () 
                 description="Create and manage reseller profiles."
                 onBack={onBack}
                 right={(
-                    <Button fill="none" loading={loading || monthlyLoading} onClick={() => { void loadProfiles(); void loadMonthlySummary(); }} style={{ minHeight: 44, minWidth: 44, paddingInline: 0 }}>
+                    <Button aria-label="Refresh reseller profiles" fill="none" loading={loading || monthlyLoading} onClick={() => { void loadProfiles(); void loadMonthlySummary(); }} style={{ minHeight: 44, minWidth: 44, paddingInline: 0 }}>
                         <LuRefreshCw size={18} />
                     </Button>
                 )}
@@ -487,7 +496,7 @@ export default function MobileResellerManagementScreen({ onBack }: { onBack: () 
                                         <Tag>{profile.currentActiveOfflineStores || 0}/{profile.maxOfflineActivations || 0} offline</Tag>
                                         <Tag>{formatInrPaise(profile.totalRevenueCollectedPaise)}</Tag>
                                     </Flex>
-                                    <Button fill="outline" onClick={() => openEdit(profile)} style={{ minHeight: 44 }}>
+                                    <Button aria-label={`Edit reseller ${profile.name}`} fill="outline" onClick={() => openEdit(profile)} style={{ minHeight: 44 }}>
                                         <Flex align="center" gap={6} justify="center"><LuPencil size={16} /> Edit</Flex>
                                     </Button>
                                 </Flex>

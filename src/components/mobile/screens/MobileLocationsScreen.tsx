@@ -34,6 +34,7 @@ import { useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { LuCreditCard, LuMapPin, LuPencil, LuPlus, LuShieldCheck, LuStar, LuX } from 'react-icons/lu';
 import { Button, Card, Dialog, Flex, Input, List, NavBar, Popup, Switch, Tag, Text, Title, Toast } from '../antd';
 import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
+import { MOBILE_BOTTOM_NAV_CLEARANCE } from '../MobileNavigation';
 
 interface MobileLocationsScreenProps {
     onBack: () => void;
@@ -799,56 +800,64 @@ function MobileLocationsScreenContent({ onBack, onOpenBilling }: MobileLocations
 
                 <Card size="small" title={<Text strong>{t('stores')}</Text>}>
                     <List>
-                        {storesList.map((store: any) => (
-                            <List.Item
-                                key={store.storeId}
-                                onClick={() => handleSwitchStore(store.storeId)}
-                                prefix={store.isMaster ? <LuStar color={token.colorWarning} size={18} /> : <LuMapPin color={token.colorInfo} size={18} />}
-                                extra={
-                                    store.isMaster ? (
-                                        <Flex align="center" gap={6}>
-                                            <Tag color="warning">HQ</Tag>
-                                            {Number(store.storeId) === activeStoreId ? <Tag color="processing">Current</Tag> : null}
-                                        </Flex>
-                                    ) : store.active === false ? (
-                                        <Tag>{t('inactive')}</Tag>
-                                    ) : (
-                                        <Flex align="center" gap={6} justify="end" wrap="wrap">
-                                            {Number(store.storeId) === activeStoreId ? null : <Tag>View</Tag>}
-                                            {Number(store.storeId) === activeStoreId ? <Tag color="processing">Current</Tag> : null}
-                                            <Button
-                                                fill="outline"
-                                                onClick={(event) => {
-                                                    event.stopPropagation();
-                                                    handleOpenRenameOutlet(store);
-                                                }}
-                                                size="mini"
-                                                style={{ minHeight: 44 }}
-                                            >
-                                                <Flex align="center" gap={4}>
-                                                    <LuPencil size={13} />
-                                                    <Text>Rename</Text>
-                                                </Flex>
-                                            </Button>
-                                            <Button
-                                                color="danger"
-                                                fill="outline"
-                                                loading={deactivatingStoreId === Number(store.storeId)}
-                                                onClick={(event) => {
-                                                    event.stopPropagation();
-                                                    void handleDeactivateOutlet(store);
-                                                }}
-                                                size="mini"
-                                                style={{ minHeight: 44 }}
-                                            >
-                                                {t('deactivate')}
-                                            </Button>
-                                        </Flex>
-                                    )
-                                }
-                                title={<Text strong>{resolveStoreName(store)}</Text>}
-                            />
-                        ))}
+                        {storesList.map((store: any) => {
+                            const isCurrentStore = Number(store.storeId) === activeStoreId;
+                            const storeName = resolveStoreName(store);
+                            const viewStoreAction = isCurrentStore || store.active === false ? null : (
+                                <Button
+                                    aria-label={`View ${storeName}`}
+                                    fill="outline"
+                                    onClick={() => void handleSwitchStore(store.storeId)}
+                                    size="mini"
+                                    style={{ minHeight: 44 }}
+                                >
+                                    View
+                                </Button>
+                            );
+
+                            return (
+                                <List.Item
+                                    key={store.storeId}
+                                    prefix={store.isMaster ? <LuStar color={token.colorWarning} size={18} /> : <LuMapPin color={token.colorInfo} size={18} />}
+                                    extra={
+                                        store.isMaster ? (
+                                            <Flex align="center" gap={6}>
+                                                <Tag color="warning">HQ</Tag>
+                                                {isCurrentStore ? <Tag color="processing">Current</Tag> : viewStoreAction}
+                                            </Flex>
+                                        ) : store.active === false ? (
+                                            <Tag>{t('inactive')}</Tag>
+                                        ) : (
+                                            <Flex align="center" gap={6} justify="end" wrap="wrap">
+                                                {isCurrentStore ? <Tag color="processing">Current</Tag> : viewStoreAction}
+                                                <Button
+                                                    fill="outline"
+                                                    onClick={() => handleOpenRenameOutlet(store)}
+                                                    size="mini"
+                                                    style={{ minHeight: 44 }}
+                                                >
+                                                    <Flex align="center" gap={4}>
+                                                        <LuPencil size={13} />
+                                                        <Text>Rename</Text>
+                                                    </Flex>
+                                                </Button>
+                                                <Button
+                                                    color="danger"
+                                                    fill="outline"
+                                                    loading={deactivatingStoreId === Number(store.storeId)}
+                                                    onClick={() => void handleDeactivateOutlet(store)}
+                                                    size="mini"
+                                                    style={{ minHeight: 44 }}
+                                                >
+                                                    {t('deactivate')}
+                                                </Button>
+                                            </Flex>
+                                        )
+                                    }
+                                    title={<Text strong>{storeName}</Text>}
+                                />
+                            );
+                        })}
                     </List>
                 </Card>
 
@@ -883,6 +892,7 @@ function MobileLocationsScreenContent({ onBack, onOpenBilling }: MobileLocations
             </Flex>
 
             <Popup
+                aria-label={t('addNewOutlet')}
                 bodyStyle={{ maxHeight: '60vh', overflow: 'hidden', padding: 0 }}
                 onMaskClick={isCreating ? undefined : () => setShowAddOutlet(false)}
                 position="bottom"
@@ -898,6 +908,7 @@ function MobileLocationsScreenContent({ onBack, onOpenBilling }: MobileLocations
                             <Text strong>{t('outletName')}</Text>
                             <Text type="secondary">{t('outletNameHelp')}</Text>
                             <Input
+                                aria-label={t('outletName')}
                                 disabled={Boolean(createdOutletPendingSession)}
                                 onChange={setOutletName}
                                 placeholder={t('outletNamePlaceholder')}
@@ -991,6 +1002,7 @@ function MobileLocationsScreenContent({ onBack, onOpenBilling }: MobileLocations
             </Popup>
 
             <Popup
+                aria-label="Rename outlet URL"
                 bodyStyle={{ maxHeight: '74vh', overflow: 'hidden', padding: 0 }}
                 onMaskClick={isRenaming ? undefined : handleCloseRenameOutlet}
                 position="bottom"
@@ -1015,6 +1027,7 @@ function MobileLocationsScreenContent({ onBack, onOpenBilling }: MobileLocations
                             <Text strong>New outlet name</Text>
                             <Text type="secondary">Used in breadcrumbs, the official page, and owner screens.</Text>
                             <Input
+                                aria-label="New outlet name"
                                 disabled={isRenaming}
                                 maxLength={200}
                                 onChange={setRenameName}
@@ -1027,6 +1040,7 @@ function MobileLocationsScreenContent({ onBack, onOpenBilling }: MobileLocations
                             <Text strong>New outlet URL segment</Text>
                             <Text type="secondary">Leave blank to derive it from the name.</Text>
                             <Input
+                                aria-label="New outlet URL segment"
                                 disabled={isRenaming}
                                 maxLength={60}
                                 onChange={setRenameSlug}
@@ -1058,6 +1072,7 @@ function MobileLocationsScreenContent({ onBack, onOpenBilling }: MobileLocations
             </Popup>
 
             <Popup
+                aria-label={t('outletPolicy')}
                 bodyStyle={{ height: '90vh', maxHeight: '90vh', overflow: 'hidden', padding: 0 }}
                 onMaskClick={isSavingPolicy ? undefined : () => void handleClosePolicy()}
                 position="bottom"
@@ -1111,6 +1126,7 @@ function MobileLocationsScreenContent({ onBack, onOpenBilling }: MobileLocations
                                                                 {draftPolicy[item.key] ? 'Allowed' : 'Blocked'}
                                                             </Tag>
                                                             <Switch
+                                                                aria-label={item.label}
                                                                 checked={draftPolicy[item.key]}
                                                                 disabled={isSavingPolicy}
                                                                 onChange={(checked) => handleTogglePolicy(item.key, checked)}
@@ -1139,7 +1155,7 @@ function MobileLocationsScreenContent({ onBack, onOpenBilling }: MobileLocations
                                 backdropFilter: 'blur(10px)',
                                 backgroundColor: token.colorBgContainer,
                                 borderTop: `1px solid ${token.colorBorderSecondary}`,
-                                bottom: 0,
+                                bottom: MOBILE_BOTTOM_NAV_CLEARANCE,
                                 marginInline: -12,
                                 marginTop: 'auto',
                                 padding: '12px 16px calc(12px + env(safe-area-inset-bottom))',

@@ -78,6 +78,10 @@
 | Mobile create draft could predate store capability/timezone hydration | The first opened sheet could retain a date shape under a date-time control | Opening/context changes reinitialize schedule values from the hydrated store contract | mobile special-menu screen |
 | Desktop lacked schedule editing and hid times | Owners could not efficiently verify or correct a live window | Full schedule range plus desktop edit modal | `SpecialMenuCard.tsx` |
 | Immediate create/edit trusted stale store pointers | Owners could remain blocked after interrupted lifecycle cleanup | Exact pointed-project validation repairs stale state transactionally | project DAL |
+| Mobile Strict Mode cleanup permanently disabled lifecycle actions | Create, edit, end, and cancel could appear interactive but settle as no-ops in development/runtime replay conditions | Every mounted guard restores `true` on effect setup and `false` only on cleanup | mobile special-menu screen |
+| Late base-menu hydration left Create silently inert | A freshly opened sheet could display the base menu while retaining an empty submit identity | Open forms adopt the hydrated default only while their current base is empty, independently from schedule reset | mobile special-menu screen |
+| Created/edited/terminal menus retained stale client project truth | The owner could remain on an unnamed, old-name, or ended special menu after a successful mutation | Authoritative create/update results upsert the project cache before selection; terminal transitions restore the base selection | mobile special-menu screen + hook |
+| Mixed-shape deletion left dotted summary remnants | Deleted specials reappeared in the selector as `Untitled` ghost menus | One summary write deletes the full entry, every exact legacy dotted subfield, and any nested copy; incomplete rows are not owner-visible | project delete route + summary reader/writer |
 
 ---
 

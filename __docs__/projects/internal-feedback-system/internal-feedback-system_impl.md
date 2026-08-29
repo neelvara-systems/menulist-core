@@ -3,7 +3,7 @@
 July 28, 2026 persisted-identity correction: public feedback submit and standalone feedback rendering reconcile all canonical/legacy store tenant aliases before accepting project/store scope. A conflicting `tenantId`/`tId` row cannot create guest feedback or render store-derived public output.
 
 **Status:** Implemented in source; environment certification is separate
-**Last Source Audit:** July 23, 2026
+**Last Source Audit:** August 28, 2026
 **Audience:** Engineering, security, Firebase, QA
 
 ---
@@ -39,6 +39,7 @@ Authenticated desktop/mobile owner
 - Status acknowledgement requires the response's own feedback ID and status to match the requested row. Counts must be nonnegative safe integers.
 - Status mutations settle only while the exact source row still owns current state. A tenant/store or newer row replacement suppresses obsolete owner feedback and local projection.
 - A failed initial list/count settlement is not an empty inbox. Desktop keeps a persistent retryable error in the list region, suppresses the healthy empty-state illustration/copy, and marks the attention total unavailable until an authoritative retry succeeds. Load-more failure may retain already admitted rows but still uses the bounded failure diagnostic and transient notice.
+- The desktop Feedback QR/link card resolves its project from a validated explicit prop or the already-loaded store `primaryProjectId`. Legacy stores without either use one exact tenant/store-scoped `getExistingProjectsListWithoutLoader(true, expectedScope)` request, deduped for one hour with focus/reconnect revalidation disabled. Selection admits only active, non-deleted, non-special projects and prefers the default menu. The same active store name feeds reply drafts and QR/share copy.
 
 ---
 

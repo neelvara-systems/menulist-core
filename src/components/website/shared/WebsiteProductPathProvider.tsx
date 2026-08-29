@@ -12,6 +12,7 @@ const PREFIXABLE_WEBSITE_PATHS = [
     '/ai-menu-manager',
     '/contact',
     '/create-menu',
+    '/early-access',
     '/features',
     '/faq',
     '/get-started',

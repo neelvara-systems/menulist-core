@@ -41,6 +41,9 @@
 
 ## DAL Parity
 
+- The mobile pending upload keeps the shared prepared image under `preparedMedia`; it must not shadow that value under a mobile-only field because the upload boundary verifies the prepared checksum and media identity.
+- The shared mobile image adjustment surface is a named `Adjust image` dialog with named close, framing-reset, and full-reset actions.
+- Reads and mutations follow the active location while the server independently verifies mapped-store access, exact tenant/store scope, and current Digital Screens permission. Slide deletion confirms first, commits the state removal, and then cleans the referenced Storage object.
 - Uses same `getScreenState`, `initializeScreenState`, `updateScreenSettings`, pinned-slide DAL functions, and `assertDigitalScreenMutationSucceeded()` acknowledgement guard as desktop before local state or success copy changes
 - Those DAL functions call the permission-checked owner API; the bearer token is returned from the server-only private control only to a session with `MANAGE_DIGITAL_SCREENS`. Mobile never reads or writes the canonical summary/private control directly.
 - A failed owner API read remains a retryable failure and cannot be mistaken for first-time absence. Mobile renders no link, copy/open action, override, or slide mutation control until `getScreenState()` or an authoritative first-time initialization succeeds.

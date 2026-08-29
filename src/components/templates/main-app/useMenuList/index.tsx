@@ -1,5 +1,5 @@
 'use client';
-
+import ContextualStateIllustration from '@atoms/contextualStateIllustration';
 import { openIsolatedBrowserUrl } from '@lib/browser/openIsolatedBrowserUrl';
 
 /**
@@ -97,6 +97,7 @@ import PresenceMonitor from './PresenceMonitor';
 import ShareLinkCard from '../ShareLinkCard';
 import { PageState, ProjectLink, UseMenuListData } from './types';
 import { getBoundedUseMenuListStringContext, logUseMenuListFailure } from './useMenuListDiagnostics';
+import { getUseMenuListPrerequisiteState } from './useMenuListReadiness';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -170,7 +171,7 @@ export default function UseMenuList({ view = 'overview' }: UseMenuListProps) {
         isMasterUser,
         userPermissions,
     } = useContext(PlatformGlobalDataContext);
-    const { token: themeToken } = theme.useToken();
+    const { token: themeToken, token } = theme.useToken();
     const router = useRouter();
     const searchParams = useSearchParams();
     // T4-N-03: QR card labels + descriptions routed through i18n.
@@ -296,8 +297,13 @@ export default function UseMenuList({ view = 'overview' }: UseMenuListProps) {
                 || projects.find((p: any) => p.isDefault)
                 || projects[0];
 
-            if (!projects.length || !defaultProject) {
-                setPageState('no_menu');
+            const prerequisiteState = getUseMenuListPrerequisiteState({
+                customDomain: storeDetails.customDomain,
+                hasMenu: Boolean(projects.length && defaultProject),
+                subdomain: storeDetails.subdomain,
+            });
+            if (prerequisiteState !== 'ready') {
+                setPageState(prerequisiteState);
                 return;
             }
 
@@ -730,6 +736,22 @@ export default function UseMenuList({ view = 'overview' }: UseMenuListProps) {
                 >
                     <Button type="primary" href="/projects">
                         Create {labels.offeringTitle}
+                    </Button>
+                </Empty>
+            </div>
+        );
+    }
+
+    if (pageState === 'missing_public_address') {
+        return (
+            <div style={{ padding: 24 }}>
+                <Title level={3}>Use MenuList</Title>
+                <Empty image={<ContextualStateIllustration color={token.colorPrimary} size={104} treatment="softHalo" variant="emptyWorkspace" />}
+                    description="Set up your customer link before sharing your menu, QR code, or printable files."
+                    style={{ marginTop: 60 }}
+                >
+                    <Button type="primary" href="/business-settings?focus=customer-link">
+                        Set Up Customer Link
                     </Button>
                 </Empty>
             </div>

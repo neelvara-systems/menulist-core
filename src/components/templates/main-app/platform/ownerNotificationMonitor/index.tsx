@@ -578,8 +578,20 @@ export default function OwnerNotificationMonitor() {
             <Card size="small" style={{ marginBottom: 16 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap', alignItems: 'center' }}>
                     <Space wrap>
-                        <Select value={productId} options={PRODUCT_OPTIONS} style={{ width: 160 }} onChange={setProductId} />
-                        <Select value={statusFilter} options={STATUS_OPTIONS} style={{ width: 150 }} onChange={setStatusFilter} />
+                        <Select
+                            aria-label="Filter owner notifications by product"
+                            value={productId}
+                            options={PRODUCT_OPTIONS}
+                            style={{ width: 160 }}
+                            onChange={setProductId}
+                        />
+                        <Select
+                            aria-label="Filter owner notifications by status"
+                            value={statusFilter}
+                            options={STATUS_OPTIONS}
+                            style={{ width: 150 }}
+                            onChange={setStatusFilter}
+                        />
                     </Space>
                     <Text type="secondary">
                         Read cost: {snapshot?.cost.authReads || 0} auth / {snapshot?.cost.eventReads || 0} event / {snapshot?.cost.deliveryReads || 0} delivery / {snapshot?.cost.scopeReads || 0} scope / {snapshot?.cost.countQueries || 0} counts

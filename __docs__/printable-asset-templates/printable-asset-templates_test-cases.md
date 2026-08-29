@@ -30,6 +30,17 @@
 | Saved designs | Saved templates appear above Ready templates for the same asset type and can reopen in the editor. |
 | Rehydration | Opening a saved template after changing selected project refreshes QR/source values from the current project. |
 | Delete saved template | Deleting a Saved designs card removes it from the list without affecting generated Ready templates. |
+| Interrupted save | With Storage unavailable, Save as template remains visibly pending, Close editor is disabled, and a repeated Save produces the wait acknowledgement without a second DAL call. Restoring Storage completes exactly one template record/version. |
+| Edited saved title | Changing the Creative Editor document title before Save as template persists that edited title rather than the original generated family title. |
+| Delete confirmation accessibility | Saved design deletion exposes the complete visible destructive title as the dialog's accessible name; Cancel retains the design and confirmation removes only the selected disposable design. |
+| Inspector action accessibility | Lock/protected, duplicate, delete, seven background-alignment actions, and every gradient-stop removal button resolve by purpose. Lock/unlock restores state, duplicate/delete returns to the prior layer count, and Close editor discards unsaved alignment changes. |
+| Background control truth | No permanently checked read-only checkbox or no-op Color button is exposed. Color background renders as status, Add image layer opens Images, Solid/Gradient change mode, and preset/manual dimensions can be restored before Close. |
+| Preview action reachability | At 1280 x 720, the generated preview, Download PDF, Download image, and Customize design actions are visible without page scrolling. |
+| MenuList editor boundary | Customize design opens a body-level fixed fullscreen editor with only Background, Images, Text, Styles, and Brand Kit. CampaignCue defaults remain unchanged. |
+| Safe editor entry | The full asset is fitted, the left drawer is collapsed, and no layer or protected print guide is selected when the editor opens. |
+| Unsaved recovery | After an edit, Close exposes Keep editing and Discard changes; Keep editing preserves the exact document, Discard closes, and browser unload receives a warning. A pristine Close is immediate. |
+| Readiness-gated product output | Print PDF and Image open the readiness panel on the first attempt with actionable issues and permit only the intentional unchanged-warning repeat. |
+| Reusable-design hierarchy | Print PDF is the primary output action; Save reusable design remains visibly secondary and a successful save resets the dirty baseline. |
 | Download | File downloads with selected asset and template. |
 | Compatibility | Old `/use-menulist/print-assets` does not break. |
 | No reload | Use MenuList -> Assets -> Print Menu uses app navigation, not document reload. |
@@ -90,3 +101,15 @@ Every template family must be checked for:
 - Only explicit Saved designs save/delete can use the registry write path.
 - Do not add `window.location` navigation for owner shell print/download flows.
 - Do not add a blank free-form template editor; governed desktop customization must start from a generated print template.
+- Generate a Complete Menu Kit from a deterministic local owner fixture and
+  verify that its three raster-backed PDFs use compressed streams, the ZIP opens,
+  and the expected eleven PDF/PNG/instruction entries remain present.
+- Render every Counter Sticker family and fail when the call-to-action lower
+  edge exceeds the live QR upper edge.
+- Stop and restore the local Storage emulator around Save as template; verify
+  one reserved ID, one recovered index record/version, the edited title, and
+  zero residual index/Storage objects after deletion.
+- Fail the Creative Editor smoke verifier if any inspector icon-only action
+  loses its stable or state-aware accessible name.
+- Fail the smoke verifier if the false Show background checkbox returns or the
+  truthful Color background/Add image layer contract disappears.

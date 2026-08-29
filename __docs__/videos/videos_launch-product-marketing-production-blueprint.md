@@ -51,7 +51,7 @@ The design team should understand five things before starting:
 1. MenuList is not just a QR menu builder.
 2. MenuList is not generic AI restaurant software.
 3. MenuList is not a flashy SaaS dashboard.
-4. MenuList is public-business truth infrastructure for SMBs.
+4. Internally, MenuList is public-business truth infrastructure for SMBs; owner-facing video translates this into one owner-approved customer link for the latest published version and never renders the infrastructure phrase.
 5. Every video must feel calm, practical, owner-focused, and product-backed.
 
 ### AI-Era Market Layer

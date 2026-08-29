@@ -16,6 +16,18 @@ export type ProjectPropagationPlan = {
     sourceStoreId: string;
 };
 
+export function shouldPropagateProjectAfterSourceSave(params: {
+    currentFiles: unknown;
+    masterProjectId: unknown;
+    previousFiles: unknown;
+}): boolean {
+    return !params.masterProjectId
+        && Array.isArray(params.previousFiles)
+        && params.previousFiles.length === 0
+        && Array.isArray(params.currentFiles)
+        && params.currentFiles.length === 1;
+}
+
 const isRecord = (value: unknown): value is Record<string, unknown> => (
     value !== null && typeof value === "object" && !Array.isArray(value)
 );

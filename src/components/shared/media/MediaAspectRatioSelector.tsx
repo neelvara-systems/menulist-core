@@ -1,7 +1,7 @@
 import type { MediaAspectRatioOption, MediaAspectRatioValue, MediaImageType } from '@lib/media/imageProfiles';
 import { getAllowedMediaAspectRatioOptions, MEDIA_ASPECT_RATIO_OPTIONS } from '@lib/media/imageProfiles';
 import useDeviceType from '@hook/useDeviceType';
-import { Card, Flex, Typography, theme } from 'antd';
+import { Flex, Typography, theme } from 'antd';
 import React from 'react';
 import { LuCheck } from 'react-icons/lu';
 
@@ -48,6 +48,7 @@ const MediaAspectRatioSelector: React.FC<MediaAspectRatioSelectorProps> = ({
 
                         return (
                             <button
+                                aria-pressed={isSelected}
                                 key={ratio.value}
                                 onClick={() => onChange(ratio.value)}
                                 style={{
@@ -124,20 +125,24 @@ const MediaAspectRatioSelector: React.FC<MediaAspectRatioSelectorProps> = ({
                         const isSelected = selectedAspectRatio === ratio.value;
 
                         return (
-                            <Card
-                                hoverable
+                            <button
+                                aria-pressed={isSelected}
                                 key={ratio.value}
                                 onClick={() => onChange(ratio.value)}
-                                size="small"
                                 style={{
+                                    appearance: 'none',
+                                    background: token.colorBgContainer,
                                     border: `1px solid ${isSelected ? token.colorPrimary : token.colorBorder}`,
                                     borderRadius: 8,
+                                    color: token.colorText,
                                     cursor: 'pointer',
+                                    display: 'block',
                                     minHeight: 124,
+                                    padding: 12,
                                     transition: 'all 0.2s',
                                     width: '100%',
                                 }}
-                                styles={{ body: { height: '100%', padding: 12 } }}
+                                type="button"
                             >
                                 <Flex align="center" justify="space-between" style={{ height: '100%', width: '100%' }} vertical>
                                     <Flex
@@ -171,7 +176,7 @@ const MediaAspectRatioSelector: React.FC<MediaAspectRatioSelectorProps> = ({
                                         </Typography.Text>
                                     </Flex>
                                 </Flex>
-                            </Card>
+                            </button>
                         );
                     })}
                 </div>
@@ -181,4 +186,3 @@ const MediaAspectRatioSelector: React.FC<MediaAspectRatioSelectorProps> = ({
 };
 
 export default MediaAspectRatioSelector;
-

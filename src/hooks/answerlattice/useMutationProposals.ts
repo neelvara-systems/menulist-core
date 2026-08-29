@@ -48,11 +48,12 @@ interface UseMutationProposalsReturn {
     approve: (proposalId: string) => Promise<void>;
     reject: (proposalId: string) => Promise<void>;
     implement: (proposalId: string) => Promise<void>;
-    approveDraft: (proposalId: string, editedContent: DraftApprovalContent, approvedBy: string) => Promise<void>;
+    approveDraft: (proposalId: string, editedContent: DraftApprovalContent, entityIds: string[], approvedBy: string) => Promise<void>;
     regenerateDraft: (proposalId: string) => Promise<void>;
     previewImpact: (
         proposalId: string,
         editedContent?: DraftApprovalContent,
+        entityIds?: string[],
     ) => Promise<AnswerlatticeProposalImpactResponse>;
     refresh: () => Promise<void>;
 }
@@ -157,14 +158,14 @@ export function useMutationProposals(tId: number, sId: number): UseMutationPropo
         }
     }, [refresh]);
 
-    const approveDraft = useCallback(async (proposalId: string, editedContent: DraftApprovalContent, approvedBy: string) => {
+    const approveDraft = useCallback(async (proposalId: string, editedContent: DraftApprovalContent, entityIds: string[], approvedBy: string) => {
         const operationScopeKey = scopeKeyRef.current;
         if (!operationScopeKey || mutationInFlightRef.current) {
             throw new Error(ANSWERLATTICE_WORKSPACE_SCOPE_MISSING);
         }
         mutationInFlightRef.current = true;
         try {
-            await approveDraftAsCanonicalAnswer(proposalId, editedContent, tId, sId, approvedBy);
+            await approveDraftAsCanonicalAnswer(proposalId, editedContent, entityIds, tId, sId, approvedBy);
             if (scopeKeyRef.current !== operationScopeKey) {
                 throw new Error(ANSWERLATTICE_WORKSPACE_SCOPE_MISSING);
             }
@@ -212,6 +213,7 @@ export function useMutationProposals(tId: number, sId: number): UseMutationPropo
     const previewImpact = useCallback(async (
         proposalId: string,
         editedContent?: DraftApprovalContent,
+        entityIds?: string[],
     ) => {
         const operationScopeKey = scopeKeyRef.current;
         if (!operationScopeKey || mutationInFlightRef.current) {
@@ -219,7 +221,7 @@ export function useMutationProposals(tId: number, sId: number): UseMutationPropo
         }
         mutationInFlightRef.current = true;
         try {
-            const result = await checkAnswerlatticeProposalImpact(proposalId, editedContent);
+            const result = await checkAnswerlatticeProposalImpact(proposalId, editedContent, entityIds);
             if (scopeKeyRef.current !== operationScopeKey) {
                 throw new Error(ANSWERLATTICE_WORKSPACE_SCOPE_MISSING);
             }

@@ -297,6 +297,7 @@ export default function StoreCustomizationModal({
             align: 'center',
             render: (active: boolean, record) => (
                 <Switch
+                    aria-label={`Show ${record.name || labels.itemSingular}`}
                     size="small"
                     checked={active}
                     onChange={(checked) => updateItemField(record.id, record.fileUid, 'active', checked)}
@@ -315,6 +316,7 @@ export default function StoreCustomizationModal({
             align: 'center',
             render: (available: boolean, record) => (
                 <Switch
+                    aria-label={`${record.name || labels.itemSingular} in stock`}
                     size="small"
                     checked={available}
                     disabled={
@@ -375,6 +377,7 @@ export default function StoreCustomizationModal({
             align: 'center',
             render: (isBestSeller: boolean, record) => (
                 <Switch
+                    aria-label={`${record.name || labels.itemSingular} best seller`}
                     size="small"
                     checked={isBestSeller}
                     onChange={(checked) => updateItemField(record.id, record.fileUid, 'isBestSeller', checked)}
@@ -463,6 +466,7 @@ export default function StoreCustomizationModal({
             align: 'center',
             render: (active: boolean, record) => (
                 <Switch
+                    aria-label={`Active category ${record.name || ''}`.trim()}
                     size="small"
                     checked={active}
                     onChange={(checked) => updateCategoryField(record.id, record.fileUid, 'active', checked)}

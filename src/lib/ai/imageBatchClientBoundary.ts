@@ -419,6 +419,13 @@ export function shouldApplyImageBatchListenerSnapshot(
     return source === 'primary' || !primaryHasJob;
 }
 
+export function shouldIgnoreImageBatchListenerAuthTeardown(
+    errorCode: string | undefined,
+    firebaseUserPresent: boolean,
+): boolean {
+    return errorCode === 'permission-denied' && !firebaseUserPresent;
+}
+
 export function isAllowedImageBatchOwnerTransition(
     currentStatus: unknown,
     nextStatus: unknown,

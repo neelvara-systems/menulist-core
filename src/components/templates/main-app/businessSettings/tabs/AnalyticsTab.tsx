@@ -1,6 +1,7 @@
 'use client';
 
 import { Alert, Button, Card, Collapse, Form, Input, Space, Switch, Tooltip, Typography } from 'antd';
+import { normalizeGoogleAnalyticsMeasurementId, normalizeGoogleSearchConsoleVerification, normalizeMetaPixelId } from '@lib/analytics/preferences';
 import { ANALYTICS_SETTINGS_GROUPING_NOTE, ANALYTICS_TRACKING_CATEGORY_DISCLOSURES, EXTERNAL_ANALYTICS_INTEGRATION_NOTE } from '@lib/analytics/settingsDisclosure';
 import { useTranslations } from 'next-intl';
 import { memo, useState } from 'react';
@@ -88,6 +89,12 @@ const AnalyticsTab = ({ scrollRef, form }: AnalyticsTabProps) => {
                         )}
                         name={["analytics", "googleAnalyticsId"]}
                         extra={<Text type="secondary">{t('googleAnalyticsIdHelp')}</Text>}
+                        rules={[{
+                            validator: async (_, value) => {
+                                if (!String(value || '').trim() || normalizeGoogleAnalyticsMeasurementId(value)) return;
+                                throw new Error('Enter a valid GA4 Measurement ID starting with G-.');
+                            },
+                        }]}
                     >
                         <Input placeholder="G-XXXXXXXXXX" />
                     </Form.Item>
@@ -103,6 +110,12 @@ const AnalyticsTab = ({ scrollRef, form }: AnalyticsTabProps) => {
                         )}
                         name={["analytics", "googleSearchConsole"]}
                         extra={<Text type="secondary">{t('googleSearchConsoleHelp')}</Text>}
+                        rules={[{
+                            validator: async (_, value) => {
+                                if (!String(value || '').trim() || normalizeGoogleSearchConsoleVerification(value)) return;
+                                throw new Error('Enter a valid Google Search Console verification token or meta tag.');
+                            },
+                        }]}
                     >
                         <Input placeholder="<meta name='google-site-verification' content='...' />" />
                     </Form.Item>
@@ -118,6 +131,12 @@ const AnalyticsTab = ({ scrollRef, form }: AnalyticsTabProps) => {
                         )}
                         name={["analytics", "facebookPixelId"]}
                         extra={<Text type="secondary">{t('facebookPixelIdHelp')}</Text>}
+                        rules={[{
+                            validator: async (_, value) => {
+                                if (!String(value || '').trim() || normalizeMetaPixelId(value)) return;
+                                throw new Error('Enter a valid numeric Meta Pixel ID.');
+                            },
+                        }]}
                     >
                         <Input placeholder="XXXXXXXXXXXXXXXXXX" />
                     </Form.Item>
@@ -173,7 +192,7 @@ const AnalyticsTab = ({ scrollRef, form }: AnalyticsTabProps) => {
                         valuePropName="checked"
                         extra={<Text type="secondary">Tracks menu opens, item detail opens, de-duplicated search queries including no-result searches, unavailable-item taps, final menu CTA clicks, entry source, and session totals across the client menu.</Text>}
                     >
-                        <Switch />
+                        <Switch aria-label="Menu activity" />
                     </Form.Item>
 
                     <Form.Item
@@ -189,7 +208,7 @@ const AnalyticsTab = ({ scrollRef, form }: AnalyticsTabProps) => {
                         valuePropName="checked"
                         extra={<Text type="secondary">Tracks Featured section impressions and taps when Featured choices appear on the customer menu.</Text>}
                     >
-                        <Switch />
+                        <Switch aria-label="Featured section analytics" />
                     </Form.Item>
 
                     <Form.Item
@@ -205,7 +224,7 @@ const AnalyticsTab = ({ scrollRef, form }: AnalyticsTabProps) => {
                         valuePropName="checked"
                         extra={<Text type="secondary">Tracks official business page views, CTA taps, menu CTA clicks, social/review link clicks, and owner share actions.</Text>}
                     >
-                        <Switch />
+                        <Switch aria-label="Official business page activity" />
                     </Form.Item>
 
                     <Form.Item
@@ -221,7 +240,7 @@ const AnalyticsTab = ({ scrollRef, form }: AnalyticsTabProps) => {
                         valuePropName="checked"
                         extra={<Text type="secondary">Tracks customer app install prompts, installs, standalone opens, and shortcut launches.</Text>}
                     >
-                        <Switch />
+                        <Switch aria-label="Customer app activity" />
                     </Form.Item>
 
                     <Form.Item
@@ -237,7 +256,7 @@ const AnalyticsTab = ({ scrollRef, form }: AnalyticsTabProps) => {
                         valuePropName="checked"
                         extra={<Text type="secondary">Adds approximate location to analytics reports using rounded geolocation or timezone region when available.</Text>}
                     >
-                        <Switch />
+                        <Switch aria-label="Approximate location" />
                     </Form.Item>
                 </Card>
             </Space>

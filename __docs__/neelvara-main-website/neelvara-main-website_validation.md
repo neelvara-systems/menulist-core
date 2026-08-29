@@ -8,6 +8,20 @@
 
 ---
 
+## August 29, 2026 Typography And Readability Refinement
+
+- Split typography by reading task: Akshar remains the Neelvara display and interface voice, while paragraphs, lists, and legal copy use the calmer Inter/system stack at a 16px base size.
+- Reduced secondary-page hero and section-heading scale without changing the homepage brand-first hierarchy.
+- Repaired the homepage product-band contrast by pairing its pale-blue background with ink headings, muted body text, and a blue section label.
+- Made the mobile navigation panel fully opaque so its flat Products, About, and Contact list stays legible over every underlying section.
+- Replaced the duplicated hero email action with an About Neelvara action; the persistent header email action and contact directory remain the direct inquiry routes.
+- Removed the redundant Company / Operated products / Country summary strip; the hero now flows directly into the operating approach, while product identity remains clear in the hero and dedicated lineup.
+- Rendered verification at `1440x1000` and `390x844` confirmed zero summary-strip nodes, direct hero-to-operating-section flow, no horizontal overflow, and no browser warnings or errors.
+- Browser verification passed at `1440x1000` and `390x844`: no horizontal overflow, the corrected product heading/body colors resolve against the pale band, the mobile menu resolves to an opaque `rgb(247, 249, 252)` surface, and secondary-page paragraphs resolve to the Inter/system reading stack.
+- Focused ESLint, full TypeScript, scoped `git diff --check`, Neelvara logo verification, and Neelvara agent-readiness contracts pass. No browser warnings or errors were recorded.
+
+---
+
 ## August 22, 2026 Is Agentic Baseline And Agent Discovery Hardening
 
 - Created the first public Is Agentic baseline for `https://neelvara.com`: `73/100`, with 59/80 Essential, 13.3/20 Recommended, and +1 bonus point.
@@ -505,25 +519,25 @@ Owner-side launch blocker: complete a send/receive round trip for each public ro
 
 The Neelvara site was recalibrated against the approved blue-rooted Neelvara brand direction and then relaid out with the Prism glass format while preserving the company-site legal/data boundary.
 
-| Check | Status | Evidence |
-| --- | --- | --- |
-| Neelvara palette tokens present | Pass | `styles.css` defines `#071323`, `#1457D9`, `#2384FF`, `#2737C8`, `#6542E8`, `#F7F9FC`, `#EEF3FA`, and `#5D6678` |
-| Brand ratio preserved | Pass | Ice-white page canvas and pale surfaces dominate; the light product band, blue/green product accents, and blue CTAs remain controlled accents |
-| Uploaded logo applied | Pass | Header/footer, favicon metadata, manifest, Organization JSON-LD, and OG metadata use the uploaded glass-prism logo source or derivatives with no visible frame |
-| Warm palette removed | Pass | Runtime styles and public SVG assets no longer use rose, peach, amber, cyan-heavy, or pure-purple branding |
-| Mesh and grain layers present | Pass | `src/app/sites/neelvara/styles.css` defines `.nv-page-mesh` and `.nv-grain` |
-| Shared glass primitive present | Pass | `styles.css` defines `.glass` and spotlight cards reuse the same fill/stroke/blur treatment |
-| Akshar typography present | Pass | `styles.css` self-hosts Akshar and uses it as the primary font across display headings, body copy, buttons, labels, legal pages, product cards, and page chrome, with Inter only as fallback |
-| Floating glass nav present | Pass | `src/app/sites/neelvara/content.tsx` renders `nv-header-inner glass` |
-| Home page rebuilt in company-site section order | Pass | Home includes a brand-first hero, entity ledger, operating approach, relationship statement, two-product lineup, compact contact directory, and footer |
-| Secondary pages redesigned | Pass | `SecondaryPage` renders one clear hero, unframed policy rows, policy dates where needed, and one page-specific final action for About, Legal, Privacy, and Terms |
-| Custom Products page | Pass | `/products` explains the two distinct product jobs through two canonical product cards and one company/product-boundary statement, without a duplicate product map or hero summary card |
-| Custom Contact page | Pass | `/contact` uses compact inbox rows, product support links, and focused first-message guidance without a duplicate hero summary card or closing CTA |
-| Product/legal boundary preserved | Pass | No pricing, checkout, lead form, account, API route, Firebase, analytics, or owner app surface added |
-| Homepage transition | Pass | Hero leads directly into the compact entity ledger without a decorative or duplicate company-reference panel |
-| Solid CTA contrast | Pass | Primary CTA uses white text on Neel blue/indigo gradient |
-| Desktop first viewport | Pass | Rendered audit at `1440x1000` shows the hero and ledger meeting at approximately `647px`, with no horizontal overflow |
-| Mobile first viewport | Pass | Rendered audit at `390x844` shows the hero and ledger meeting at approximately `593px`; the ledger is visible without horizontal overflow |
+| Check                                           | Status | Evidence                                                                                                                                                                                     |
+| ----------------------------------------------- | ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Neelvara palette tokens present                 | Pass   | `styles.css` defines `#071323`, `#1457D9`, `#2384FF`, `#2737C8`, `#6542E8`, `#F7F9FC`, `#EEF3FA`, and `#5D6678`                                                                              |
+| Brand ratio preserved                           | Pass   | Ice-white page canvas and pale surfaces dominate; the light product band, blue/green product accents, and blue CTAs remain controlled accents                                                |
+| Uploaded logo applied                           | Pass   | Header/footer, favicon metadata, manifest, Organization JSON-LD, and OG metadata use the uploaded glass-prism logo source or derivatives with no visible frame                               |
+| Warm palette removed                            | Pass   | Runtime styles and public SVG assets no longer use rose, peach, amber, cyan-heavy, or pure-purple branding                                                                                   |
+| Mesh and grain layers present                   | Pass   | `src/app/sites/neelvara/styles.css` defines `.nv-page-mesh` and `.nv-grain`                                                                                                                  |
+| Shared glass primitive present                  | Pass   | `styles.css` defines `.glass` and spotlight cards reuse the same fill/stroke/blur treatment                                                                                                  |
+| Akshar typography present                       | Pass   | `styles.css` self-hosts Akshar and uses it as the primary font across display headings, body copy, buttons, labels, legal pages, product cards, and page chrome, with Inter only as fallback |
+| Floating glass nav present                      | Pass   | `src/app/sites/neelvara/content.tsx` renders `nv-header-inner glass`                                                                                                                         |
+| Home page rebuilt in company-site section order | Pass   | Home includes a brand-first hero, operating approach, relationship statement, two-product lineup, compact contact directory, and footer                                                      |
+| Secondary pages redesigned                      | Pass   | `SecondaryPage` renders one clear hero, unframed policy rows, policy dates where needed, and one page-specific final action for About, Legal, Privacy, and Terms                             |
+| Custom Products page                            | Pass   | `/products` explains the two distinct product jobs through two canonical product cards and one company/product-boundary statement, without a duplicate product map or hero summary card      |
+| Custom Contact page                             | Pass   | `/contact` uses compact inbox rows, product support links, and focused first-message guidance without a duplicate hero summary card or closing CTA                                           |
+| Product/legal boundary preserved                | Pass   | No pricing, checkout, lead form, account, API route, Firebase, analytics, or owner app surface added                                                                                         |
+| Homepage transition                             | Pass   | Hero leads directly into the operating approach without a duplicate company-summary strip                                                                                                    |
+| Solid CTA contrast                              | Pass   | Primary CTA uses white text on Neel blue/indigo gradient                                                                                                                                     |
+| Desktop first viewport                          | Pass   | Rendered audit at `1440x1000` shows the hero and ledger meeting at approximately `647px`, with no horizontal overflow                                                                        |
+| Mobile first viewport                           | Pass   | Rendered audit at `390x844` shows the hero and ledger meeting at approximately `593px`; the ledger is visible without horizontal overflow                                                    |
 
 Screenshots captured:
 
@@ -534,57 +548,57 @@ Screenshots captured:
 
 ## Engineering Checklist Verification
 
-| Checklist item | Status | Evidence |
-| --- | --- | --- |
-| Uses existing Next/Vercel product-site architecture | Pass | `src/app/sites/neelvara/page.tsx` |
-| Local product-site path registered | Pass | `src/constants/deploymentTargets.ts` |
-| Production domain registered | Pass | `src/constants/deploymentTargets.ts` |
-| Product-domain route entry registered | Pass | `src/constants/productDomains.ts` |
-| No Neelvara database product code | Pass | No `PRODUCT_IDS.NEELVARA` in `src/constants/product.ts` |
-| Empty Firebase project id | Pass | `neelvara` targets use `firebaseProjectId: ''` |
-| Entity strings centralized | Pass | `src/constants/neelvara/website.ts` |
-| Public relationship line centralized | Pass | `src/constants/neelvara/website.ts` |
-| Public lineup centralized | Pass | `src/constants/neelvara/website.ts` |
-| Public routes centralized for sitemap | Pass | `src/constants/neelvara/website.ts` |
-| Canonical URL helper | Pass | `src/constants/neelvara/website.ts` |
-| Global metadata in layout | Pass | `src/app/sites/neelvara/layout.tsx` |
-| JSON-LD support | Pass | `src/app/sites/neelvara/content.tsx` |
-| Header and footer shared across pages | Pass | `src/app/sites/neelvara/content.tsx` |
-| Static page chrome | Pass | Local path prefix is handled in `SiteHeaderNav.tsx`; no server header dependency remains |
-| Bare local prefix | Pass | `/__neelvara` rewrites through the Neelvara home alias instead of falling into the global 404 |
-| Sitemap route | Pass | `src/app/sites/neelvara/sitemap.xml/route.ts` |
-| Robots route | Pass | `src/app/sites/neelvara/robots.txt/route.ts` |
-| Security contact route | Pass | `src/app/sites/neelvara/.well-known/security.txt/route.ts` |
-| 404 catch-all | Pass | `src/app/sites/neelvara/[...missing]/route.ts` returns HTTP `404` |
+| Checklist item                                      | Status | Evidence                                                                                      |
+| --------------------------------------------------- | ------ | --------------------------------------------------------------------------------------------- |
+| Uses existing Next/Vercel product-site architecture | Pass   | `src/app/sites/neelvara/page.tsx`                                                             |
+| Local product-site path registered                  | Pass   | `src/constants/deploymentTargets.ts`                                                          |
+| Production domain registered                        | Pass   | `src/constants/deploymentTargets.ts`                                                          |
+| Product-domain route entry registered               | Pass   | `src/constants/productDomains.ts`                                                             |
+| No Neelvara database product code                   | Pass   | No `PRODUCT_IDS.NEELVARA` in `src/constants/product.ts`                                       |
+| Empty Firebase project id                           | Pass   | `neelvara` targets use `firebaseProjectId: ''`                                                |
+| Entity strings centralized                          | Pass   | `src/constants/neelvara/website.ts`                                                           |
+| Public relationship line centralized                | Pass   | `src/constants/neelvara/website.ts`                                                           |
+| Public lineup centralized                           | Pass   | `src/constants/neelvara/website.ts`                                                           |
+| Public routes centralized for sitemap               | Pass   | `src/constants/neelvara/website.ts`                                                           |
+| Canonical URL helper                                | Pass   | `src/constants/neelvara/website.ts`                                                           |
+| Global metadata in layout                           | Pass   | `src/app/sites/neelvara/layout.tsx`                                                           |
+| JSON-LD support                                     | Pass   | `src/app/sites/neelvara/content.tsx`                                                          |
+| Header and footer shared across pages               | Pass   | `src/app/sites/neelvara/content.tsx`                                                          |
+| Static page chrome                                  | Pass   | Local path prefix is handled in `SiteHeaderNav.tsx`; no server header dependency remains      |
+| Bare local prefix                                   | Pass   | `/__neelvara` rewrites through the Neelvara home alias instead of falling into the global 404 |
+| Sitemap route                                       | Pass   | `src/app/sites/neelvara/sitemap.xml/route.ts`                                                 |
+| Robots route                                        | Pass   | `src/app/sites/neelvara/robots.txt/route.ts`                                                  |
+| Security contact route                              | Pass   | `src/app/sites/neelvara/.well-known/security.txt/route.ts`                                    |
+| 404 catch-all                                       | Pass   | `src/app/sites/neelvara/[...missing]/route.ts` returns HTTP `404`                             |
 
 ---
 
 ## UI Checklist
 
-| Check | Status | Evidence |
-| --- | --- | --- |
-| Design tokens scoped to Neelvara site | Pass | `src/app/sites/neelvara/styles.css` |
-| Neelvara blue token values used | Pass | ice-white canvas, deep navy text, Neel blue CTA, indigo structure, restrained violet accent, and glass fill/stroke/blur tokens in `styles.css` |
-| Single fixed mesh background | Pass | `.nv-page-mesh` is the only full-page glow layer; sections do not introduce unrelated hue systems |
-| Glass surfaces use consistent primitive | Pass | Header, cards, tables, product band, and CTAs reuse the same glass fill/stroke/blur language |
-| Hero identifies brand in first viewport | Pass | Home H1 is `Neelvara Systems` |
-| Hero brand does not split mid-word | Pass | Desktop and mobile screenshots show `Neelvara` intact |
-| Hero leaves next-section signal | Pass | Home page shows the entity ledger on all tested desktop, tablet, and mobile viewports |
-| Touch targets | Pass | Visible links/buttons measured with no sub-36px hit areas after scoped brand and footer target fixes |
-| Active navigation | Pass | Header nav marks Products, About, Contact, and Legal-family pages with `aria-current="page"` |
-| Public-facing copy | Pass | Homepage no longer exposes internal UI/design critique language |
-| Text overlap guards | Pass | CSS uses `min-width: 0`, responsive clamps, and wrapping rules |
-| Mobile breakpoint coverage | Pass | Browser checks at 390px and 320px |
-| Public lineup positioning | Pass | Runtime copy shows MenuList and Answerlattice as the products currently published on Neelvara |
-| Product links | Pass | Home and Products page link only to `https://menulist.ai` and `https://answerlattice.com` |
-| Product logos | Pass | Home product cards render the MenuList and canonical Answerlattice logo marks from existing repo components |
-| Product link affordance | Pass | Linked product cards show a named visit action and external-link icon on desktop and mobile |
-| Product section visual strength | Pass | Home uses one full-width dark contrast band with an unframed section header, two equal light product cards, logo-color accents, and direct product links |
-| Reference presentation depth | Pass | Home page uses the company-routing hero mock, entity ledger, bento grid, spotlight cards, quote, product band, and contact-routing cards |
-| Viewport reveal motion | Pass | Section-level `nv-reveal` blocks appear once through a local IntersectionObserver, with reduced-motion fallback and no global smooth-scroll layer |
-| Internal alias scope | Pass | `/nv` is documented as private alias context only, not a canonical Neelvara URL or product-code alias |
-| Legal copy scope | Pass | Home and Products copy now uses entity/reference wording instead of ownership phrasing |
-| Structured data scope | Pass | Organization JSON-LD uses `knowsAbout` for the lineup and no longer uses `owns` |
+| Check                                   | Status | Evidence                                                                                                                                                 |
+| --------------------------------------- | ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Design tokens scoped to Neelvara site   | Pass   | `src/app/sites/neelvara/styles.css`                                                                                                                      |
+| Neelvara blue token values used         | Pass   | ice-white canvas, deep navy text, Neel blue CTA, indigo structure, restrained violet accent, and glass fill/stroke/blur tokens in `styles.css`           |
+| Single fixed mesh background            | Pass   | `.nv-page-mesh` is the only full-page glow layer; sections do not introduce unrelated hue systems                                                        |
+| Glass surfaces use consistent primitive | Pass   | Header, cards, tables, product band, and CTAs reuse the same glass fill/stroke/blur language                                                             |
+| Hero identifies brand in first viewport | Pass   | Home H1 is `Neelvara Systems`                                                                                                                            |
+| Hero brand does not split mid-word      | Pass   | Desktop and mobile screenshots show `Neelvara` intact                                                                                                    |
+| Hero leaves next-section signal         | Pass   | Home page continues into the operating approach without an intervening summary card                                                                      |
+| Touch targets                           | Pass   | Visible links/buttons measured with no sub-36px hit areas after scoped brand and footer target fixes                                                     |
+| Active navigation                       | Pass   | Header nav marks Products, About, Contact, and Legal-family pages with `aria-current="page"`                                                             |
+| Public-facing copy                      | Pass   | Homepage no longer exposes internal UI/design critique language                                                                                          |
+| Text overlap guards                     | Pass   | CSS uses `min-width: 0`, responsive clamps, and wrapping rules                                                                                           |
+| Mobile breakpoint coverage              | Pass   | Browser checks at 390px and 320px                                                                                                                        |
+| Public lineup positioning               | Pass   | Runtime copy shows MenuList and Answerlattice as the products currently published on Neelvara                                                            |
+| Product links                           | Pass   | Home and Products page link only to `https://menulist.ai` and `https://answerlattice.com`                                                                |
+| Product logos                           | Pass   | Home product cards render the MenuList and canonical Answerlattice logo marks from existing repo components                                              |
+| Product link affordance                 | Pass   | Linked product cards show a named visit action and external-link icon on desktop and mobile                                                              |
+| Product section visual strength         | Pass   | Home uses one full-width dark contrast band with an unframed section header, two equal light product cards, logo-color accents, and direct product links |
+| Reference presentation depth            | Pass   | Home page uses the company-routing hero mock, entity ledger, bento grid, spotlight cards, quote, product band, and contact-routing cards                 |
+| Viewport reveal motion                  | Pass   | Section-level `nv-reveal` blocks appear once through a local IntersectionObserver, with reduced-motion fallback and no global smooth-scroll layer        |
+| Internal alias scope                    | Pass   | `/nv` is documented as private alias context only, not a canonical Neelvara URL or product-code alias                                                    |
+| Legal copy scope                        | Pass   | Home and Products copy now uses entity/reference wording instead of ownership phrasing                                                                   |
+| Structured data scope                   | Pass   | Organization JSON-LD uses `knowsAbout` for the lineup and no longer uses `owns`                                                                          |
 
 ---
 
@@ -592,21 +606,21 @@ Screenshots captured:
 
 The premium redesign was checked against current public examples before the final UI pass:
 
-| Reference | Relevant lesson applied |
-| --- | --- |
-| Alphabet (`https://abc.xyz/`) | Parent entity sites can be simple, clear, and relationship-led instead of product-funnel heavy. |
-| Stripe (`https://stripe.com/`) | The first viewport needs a strong thesis and proof structure, not generic card sections. |
-| 37signals (`https://37signals.com/`) | Editorial restraint and clear convictions can carry a company site without decorative clutter. |
-| One Page Love parent-company examples (`https://onepagelove.com/tag/parent-company`) | Parent-company sites often work best with limited information and direct orientation. |
-| HTMLBurger holding-company examples (`https://htmlburger.com/blog/holding-company-website-examples/`) | Clean layout, whitespace, navigation clarity, typography, and straightforward information matter more than decoration. |
-| Supahub (`https://supahub.com/`) | Hero proof details and below-fold product-surface signals can add depth, but the purple glow/testimonial-heavy approach is not appropriate for Neelvara. |
-| Gamma (`https://gamma.app/`) | Product-mode grids and generated-output previews are useful pacing references; rendered browser review was blocked, so only public HTML structure was used. |
-| Overflow (`https://overflow.io/`) | Large cropped interface artifacts and a three-mode story pattern informed the reference artifact direction. |
-| Protoio Inc. (`https://protoioinc.com/`) | Parent-company restraint, editorial spacing, and product-lineup framing are the closest external fit. |
-| Dock (`https://www.dock.us/`) | Horizontal product selectors and cropped interface staging informed the product-surface/reference-module presentation. |
-| Outseta (`https://www.outseta.com/`) | Bordered modules with compact labels, icon squares, and row-level details informed the reference modules. |
-| Peppermint (`https://paywithpeppermint.com/`) | Single-offer hierarchy is useful; loud illustration, playful copy, and saturated palette were rejected for this company site. |
-| Front (`https://front.com/`) | Centered statement, three proof tracks, and large cropped product image informed the section pacing, not the saturated purple theme or product claims. |
+| Reference                                                                                             | Relevant lesson applied                                                                                                                                     |
+| ----------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Alphabet (`https://abc.xyz/`)                                                                         | Parent entity sites can be simple, clear, and relationship-led instead of product-funnel heavy.                                                             |
+| Stripe (`https://stripe.com/`)                                                                        | The first viewport needs a strong thesis and proof structure, not generic card sections.                                                                    |
+| 37signals (`https://37signals.com/`)                                                                  | Editorial restraint and clear convictions can carry a company site without decorative clutter.                                                              |
+| One Page Love parent-company examples (`https://onepagelove.com/tag/parent-company`)                  | Parent-company sites often work best with limited information and direct orientation.                                                                       |
+| HTMLBurger holding-company examples (`https://htmlburger.com/blog/holding-company-website-examples/`) | Clean layout, whitespace, navigation clarity, typography, and straightforward information matter more than decoration.                                      |
+| Supahub (`https://supahub.com/`)                                                                      | Hero proof details and below-fold product-surface signals can add depth, but the purple glow/testimonial-heavy approach is not appropriate for Neelvara.    |
+| Gamma (`https://gamma.app/`)                                                                          | Product-mode grids and generated-output previews are useful pacing references; rendered browser review was blocked, so only public HTML structure was used. |
+| Overflow (`https://overflow.io/`)                                                                     | Large cropped interface artifacts and a three-mode story pattern informed the reference artifact direction.                                                 |
+| Protoio Inc. (`https://protoioinc.com/`)                                                              | Parent-company restraint, editorial spacing, and product-lineup framing are the closest external fit.                                                       |
+| Dock (`https://www.dock.us/`)                                                                         | Horizontal product selectors and cropped interface staging informed the product-surface/reference-module presentation.                                      |
+| Outseta (`https://www.outseta.com/`)                                                                  | Bordered modules with compact labels, icon squares, and row-level details informed the reference modules.                                                   |
+| Peppermint (`https://paywithpeppermint.com/`)                                                         | Single-offer hierarchy is useful; loud illustration, playful copy, and saturated palette were rejected for this company site.                               |
+| Front (`https://front.com/`)                                                                          | Centered statement, three proof tracks, and large cropped product image informed the section pacing, not the saturated purple theme or product claims.      |
 
      Applied outcome: the home page now uses a Neelvara-blue company hero, entity ledger, problem-first bento grid, spotlight cards, pull quote, product band, contact-routing cards, CTA, and footer instead of a product-funnel SaaS template.
 
@@ -622,14 +636,14 @@ Additional applied outcome: the July 4 content polish replaced generic portfolio
 
 ## Security Checklist
 
-| Check | Status | Evidence |
-| --- | --- | --- |
-| No Neelvara API routes | Pass | Route files are pages plus static sitemap, robots, security.txt, and 404 responses only |
-| No forms or submissions | Pass | Contact page uses displayed email contacts |
-| No account/auth surface | Pass | No Neelvara auth routes |
-| No analytics script | Pass | No analytics package or external script |
-| Shared middleware remains generic | Pass | No Neelvara-specific middleware branch added |
-| Privacy notice scope | Pass | Privacy page identifies technical request logs, visitor-initiated email data, and product-policy exclusions |
+| Check                             | Status | Evidence                                                                                                    |
+| --------------------------------- | ------ | ----------------------------------------------------------------------------------------------------------- |
+| No Neelvara API routes            | Pass   | Route files are pages plus static sitemap, robots, security.txt, and 404 responses only                     |
+| No forms or submissions           | Pass   | Contact page uses displayed email contacts                                                                  |
+| No account/auth surface           | Pass   | No Neelvara auth routes                                                                                     |
+| No analytics script               | Pass   | No analytics package or external script                                                                     |
+| Shared middleware remains generic | Pass   | No Neelvara-specific middleware branch added                                                                |
+| Privacy notice scope              | Pass   | Privacy page identifies technical request logs, visitor-initiated email data, and product-policy exclusions |
 
 ---
 
@@ -637,15 +651,15 @@ Additional applied outcome: the July 4 content polish replaced generic portfolio
 
 Audit date: June 20, 2026.
 
-| Check | Status | Evidence |
-| --- | --- | --- |
-| Official privacy reference checked | Pass | DPDP Act and DPDP Rules official MeitY/PIB references reviewed for clear notice, purpose, and contact expectations |
-| Official e-commerce reference checked | Pass | Consumer Protection e-commerce duties reviewed; company site has no checkout, order flow, marketplace, refund path, or paid-service terms |
-| Runtime legal copy scoped | Pass | `/legal` says product policies stay on product sites and does not claim incorporation, subsidiaries, or holding-company structure |
-| Runtime privacy copy scoped | Pass | `/privacy` identifies technical request logs, visitor-initiated email data, and product-policy exclusions |
-| Runtime terms copy scoped | Pass | `/terms` keeps checkout, subscriptions, product onboarding, refunds, cancellation, payment, warranty, and service availability on product sites |
-| Runtime contact copy scoped | Pass | `/contact` warns not to send private records, secrets, customer datasets, or sensitive documents unless requested by the legal/privacy inbox |
-| Structured data scoped | Pass | Rendered JSON-LD uses `knowsAbout` for MenuList and Answerlattice and does not use `owns` |
+| Check                                 | Status | Evidence                                                                                                                                        |
+| ------------------------------------- | ------ | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| Official privacy reference checked    | Pass   | DPDP Act and DPDP Rules official MeitY/PIB references reviewed for clear notice, purpose, and contact expectations                              |
+| Official e-commerce reference checked | Pass   | Consumer Protection e-commerce duties reviewed; company site has no checkout, order flow, marketplace, refund path, or paid-service terms       |
+| Runtime legal copy scoped             | Pass   | `/legal` says product policies stay on product sites and does not claim incorporation, subsidiaries, or holding-company structure               |
+| Runtime privacy copy scoped           | Pass   | `/privacy` identifies technical request logs, visitor-initiated email data, and product-policy exclusions                                       |
+| Runtime terms copy scoped             | Pass   | `/terms` keeps checkout, subscriptions, product onboarding, refunds, cancellation, payment, warranty, and service availability on product sites |
+| Runtime contact copy scoped           | Pass   | `/contact` warns not to send private records, secrets, customer datasets, or sensitive documents unless requested by the legal/privacy inbox    |
+| Structured data scoped                | Pass   | Rendered JSON-LD uses `knowsAbout` for MenuList and Answerlattice and does not use `owns`                                                       |
 
 Targeted legal route checks on local runtime:
 
@@ -666,16 +680,16 @@ Current Chrome DevTools Protocol checks passed for `/legal`, `/privacy`, `/terms
 
 ## Firebase Cost Checklist
 
-| Check | Status | Evidence |
-| --- | --- | --- |
-| Firestore reads | Pass | 0 |
-| Firestore writes | Pass | 0 |
-| Firestore deletes | Pass | 0 |
-| Firebase Auth | Pass | 0 |
-| Cloud Functions | Pass | 0 |
-| Firebase Storage | Pass | 0 |
-| Firebase rules/indexes | Pass | No changes |
-| Firebase deploy | Pass | Not required |
+| Check                  | Status | Evidence     |
+| ---------------------- | ------ | ------------ |
+| Firestore reads        | Pass   | 0            |
+| Firestore writes       | Pass   | 0            |
+| Firestore deletes      | Pass   | 0            |
+| Firebase Auth          | Pass   | 0            |
+| Cloud Functions        | Pass   | 0            |
+| Firebase Storage       | Pass   | 0            |
+| Firebase rules/indexes | Pass   | No changes   |
+| Firebase deploy        | Pass   | Not required |
 
 ---
 
@@ -704,19 +718,19 @@ Result:
 
 Local route checks on `http://localhost:3000`:
 
-| Route | Status |
-| --- | --- |
-| `/__neelvara` | 200 |
-| `/__neelvara/products` | 200 |
-| `/__neelvara/about` | 200 |
-| `/__neelvara/contact` | 200 |
-| `/__neelvara/legal` | 200 |
-| `/__neelvara/privacy` | 200 |
-| `/__neelvara/terms` | 200 |
-| `/__neelvara/robots.txt` | 200 |
-| `/__neelvara/sitemap.xml` | 200 |
-| `/__neelvara/.well-known/security.txt` | 200 |
-| `/__neelvara/missing-page` | 404 |
+| Route                                  | Status |
+| -------------------------------------- | ------ |
+| `/__neelvara`                          | 200    |
+| `/__neelvara/products`                 | 200    |
+| `/__neelvara/about`                    | 200    |
+| `/__neelvara/contact`                  | 200    |
+| `/__neelvara/legal`                    | 200    |
+| `/__neelvara/privacy`                  | 200    |
+| `/__neelvara/terms`                    | 200    |
+| `/__neelvara/robots.txt`               | 200    |
+| `/__neelvara/sitemap.xml`              | 200    |
+| `/__neelvara/.well-known/security.txt` | 200    |
+| `/__neelvara/missing-page`             | 404    |
 
 Additional internal route checks also passed for `/sites/neelvara`, `/sites/neelvara/products`, `/sites/neelvara/about`, `/sites/neelvara/contact`, `/sites/neelvara/legal`, `/sites/neelvara/privacy`, and `/sites/neelvara/terms`.
 
@@ -734,11 +748,11 @@ Rendered product-boundary checks confirmed no exact public-page hits for private
 
 Chrome DevTools Protocol verification:
 
-| Viewport | Routes | Result |
-| --- | --- | --- |
+| Viewport          | Routes                                                               | Result                                                                                   |
+| ----------------- | -------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
 | Desktop 1440x1000 | Home, Products, About, Contact, Legal, Privacy, Terms, missing route | `scrollWidth === clientWidth`; no overflow, no old palette tokens, and no unexpected 404 |
-| Mobile 390x844 | Home, Products, About, Contact, Legal, Privacy, Terms, missing route | `scrollWidth === clientWidth`; no overflow, no old palette tokens, and no unexpected 404 |
-| Mobile 320x720 | Home, Products, About, Contact, Legal, Privacy, Terms, missing route | `scrollWidth === clientWidth`; no overflow, no old palette tokens, and no unexpected 404 |
+| Mobile 390x844    | Home, Products, About, Contact, Legal, Privacy, Terms, missing route | `scrollWidth === clientWidth`; no overflow, no old palette tokens, and no unexpected 404 |
+| Mobile 320x720    | Home, Products, About, Contact, Legal, Privacy, Terms, missing route | `scrollWidth === clientWidth`; no overflow, no old palette tokens, and no unexpected 404 |
 
 Additional measured evidence:
 
@@ -767,14 +781,14 @@ Additional measured evidence:
 
 ## Documentation Cross-Check
 
-| Check | Status | Evidence |
-| --- | --- | --- |
-| Feature README status updated | Pass | README records the restrained company-site presentation, current host boundary, and validation commands |
-| Spec no longer draft | Pass | Specification status is implemented/validated and includes current-color Prism glass presentation constraints |
-| Marketing no longer pre-redesign | Pass | Presentation direction accepts scoped Neelvara mesh/prism/glass and rejects unrelated gradient systems |
-| Help/support boundary current | Pass | Helpdoc confirms the redesign does not alter support routing or data scope |
-| Test cases include visual checks | Pass | Test cases include Neelvara mesh/glass, section order, mobile hero, and CTA contrast checks |
-| Implementation inventory current | Pass | Implementation doc lists `SpotlightCard.tsx`, Neelvara styles, and confirms no Neelvara cookie-banner mount remains |
+| Check                            | Status | Evidence                                                                                                            |
+| -------------------------------- | ------ | ------------------------------------------------------------------------------------------------------------------- |
+| Feature README status updated    | Pass   | README records the restrained company-site presentation, current host boundary, and validation commands             |
+| Spec no longer draft             | Pass   | Specification status is implemented/validated and includes current-color Prism glass presentation constraints       |
+| Marketing no longer pre-redesign | Pass   | Presentation direction accepts scoped Neelvara mesh/prism/glass and rejects unrelated gradient systems              |
+| Help/support boundary current    | Pass   | Helpdoc confirms the redesign does not alter support routing or data scope                                          |
+| Test cases include visual checks | Pass   | Test cases include Neelvara mesh/glass, section order, mobile hero, and CTA contrast checks                         |
+| Implementation inventory current | Pass   | Implementation doc lists `SpotlightCard.tsx`, Neelvara styles, and confirms no Neelvara cookie-banner mount remains |
 
 ---
 
@@ -786,3 +800,90 @@ These are owner-side or deployment-side blockers, not code blockers:
 - send/receive verification for `hello@neelvara.com`, `legal@neelvara.com`, and `privacy@neelvara.com`; authentication records already exist
 - CA/legal approval of public identity wording
 - trademark/search evidence pack
+
+---
+
+## August 29, 2026 Signal Constellation Visual QA
+
+- Desktop comparison: selected 1280x910 reference and browser implementation compared at the same 1280x910 viewport and density.
+- Mobile render: 390x844, no horizontal overflow (`scrollWidth === innerWidth === 390`).
+- Mobile navigation: hamburger opened, exposed Products/About/Contact, and Products navigated to `/__neelvara/products` before returning home.
+- Browser console: no errors in the final desktop or mobile checks.
+- Brand-fidelity correction: the generated 3D reinterpretation was removed from the rendered hero. Both the front face and faint depth layer now load `/neelvara-logo.svg` at its canonical `1135x686` geometry; depth comes only from transforms, shadow, and a logo-masked light layer.
+- Final desktop render: `1440x1000`, no horizontal overflow; both rendered logo layers reported natural dimensions `1135x686`, and the responsive stage retained the same aspect ratio.
+- Design QA authority: project-root `design-qa.md`, `final result: passed`.
+- Depth interaction: pointer movement changed the stage X/Y rotation while the canonical front image retained its own fixed `translateZ(18px)` plane; leaving the constellation reset rotation and scale, and product nodes retained a separate depth transform.
+- Mobile depth fallback: 390x844 remained stable with `scrollWidth === innerWidth === 390`; touch pointers are ignored by the component.
+- Deployment: not performed.
+
+---
+
+## August 29, 2026 Footer Aura Implementation
+
+- Reviewed the supplied ThreeUI Aura and full Brand Orbs collection as interaction references. Aura uses a Canvas 2D dot lattice; the available package contains fixed third-party brand variants rather than a custom Neelvara renderer.
+- Implemented a small local Canvas 2D component instead of adding the external package or a Three.js/WebGL dependency.
+- The point field is generated from the alpha channel of the canonical `/neelvara-logo.svg`, preserving the approved silhouette and horizontal blue-to-violet color progression.
+- The canvas is decorative, homepage-only, shares one final-stage container with the footer, caps device pixel ratio at `2`, observes resize/intersection/document visibility, and honors reduced motion.
+- The footer is absolutely anchored to the bottom of that stage with a light translucent surface; secondary pages retain the normal in-flow shared footer.
+- The aura canvas has no CSS background or divider and remains transparent. The final-stage wrapper now carries a low-opacity reuse of the site's established blue/indigo page-mesh radial language, while contact content remains outside the interactive canvas.
+- The initial dark closing surface was removed after rendered review; the aura now continues on the site's plain `--bg` canvas with only its canvas-rendered light movement.
+- The later moving light-point/background wash was also removed. The canvas clears to full transparency on every frame and applies the pulse only while drawing points sampled from the canonical logo.
+- The final motion uses a cosine pendulum sweep across the logo's horizontal span. Only sampled logo points respond; the background remains transparent and static throughout the left-right-left cycle.
+- The pendulum duration was slowed from `6.2s` to `10s` for a calmer company-site signature; pointer response and deterministic dot drift retain their existing timing.
+- Chrome inspection of the supplied Antigravity reference confirmed a continuously redrawn canvas whose visible field bends around different pointer positions. Neelvara borrows only that interaction principle: a bounded local push-and-orbit response on canonical logo points, with smooth return, no dark field, and no free background particles.
+- The initial pointer response proved too subtle in rendered screenshots, so the bounded reach/displacement was increased while staying local to the pointer, and deterministic `0.55px` idle drift was added to keep the point field visibly alive without eroding the source silhouette.
+- Scoped ESLint, full TypeScript, Neelvara logo-asset verification, agent-readiness contracts, and scoped `git diff --check` pass.
+
+---
+
+## August 29, 2026 Centered Company Hero
+
+- The split Signal Constellation hero is superseded by a centered company-statement composition.
+- The canonical right-side logo layers and floating MenuList and Answerlattice nodes are no longer rendered in the homepage hero; the interactive dotted logo remains reserved for the footer signature.
+- The established signal-field asset remains behind the hero as low-competition ambient depth.
+- The existing eyebrow, H1, operating tagline, supporting copy, Products action, and About action remain unchanged in meaning and route destination.
+- Chrome desktop verification at `1512x863` confirmed the centered hero ends at `795px`, both actions remain visible in the initial viewport, no `.nv-signal-constellation` node renders, and `scrollWidth === innerWidth === 1512`.
+- Chrome mobile verification at `390x844` confirmed a two-line H1, stacked `354px`-wide actions with 44px-plus target heights, the next section beginning at `767px`, no `.nv-signal-constellation` node, and `scrollWidth === innerWidth === 390`.
+- The final desktop and mobile checks reported no browser warnings or errors.
+
+---
+
+## August 29, 2026 Live Hero Field And Relationship Cleanup
+
+- Replaced the static signal-field image with a local Canvas 2D orbital particle field inspired by the supplied Antigravity interaction pattern without copying its visual assets or adding a package.
+- Refined the field from independent orbiting marks into a semantic data current: irregular outer inputs progressively align into coordinated inner lanes and return over the same 10-second pendulum cycle as the footer aura.
+- Hero and footer timing now come from the same `NEELVARA_PENDULUM_CYCLE_MS = 10_000` source, preventing their calm pendulum rhythm from drifting apart in later edits.
+- Pointer response now uses a local tangential eddy plus a smaller outward displacement, so particles visibly move around the pointer instead of behaving as a simple repulsion effect.
+- Kept `Neelvara Systems` on one line at desktop widths and preserved the two-line mobile lockup.
+- Removed the standalone Company relationship band and retained the same relationship truth in the company eyebrow, product lineup, and supporting company pages.
+- Chrome desktop verification at `1512x863` confirmed the H1 height matches one computed line (`94px`), `white-space: nowrap`, one live hero canvas, no relationship-band node, and `scrollWidth === innerWidth === 1512`.
+- Two desktop screenshots captured `1.8s` apart differed across `73,248` compared bytes, confirming the field continues to redraw rather than presenting a static particle image.
+- Chrome mobile verification at `390x844` confirmed the intentional two-line H1, one live hero canvas, no static signal-field image, no relationship-band node, and `scrollWidth === innerWidth === 390`.
+- The final mobile canvas remained bounded to `390x703` CSS pixels with a single backing surface and no horizontal overflow.
+- The operating approach now meets the product lineup directly with a `12px` section boundary gap at the mobile verification size; the redundant relationship band no longer interrupts the flow.
+- The final desktop and mobile checks reported no browser warnings or errors.
+- Local rendered check at `1280x720`: the footer is immediately followed by one `512px` aura, the canvas CSS size is `1280x511`, the DPR-capped backing size is `2560x1022`, and `scrollWidth === clientWidth === 1280`.
+- A second rendered frame confirmed that the light ring moves while the complete Neelvara silhouette remains legible between highlights. `/products` renders one footer and zero aura elements, confirming homepage-only placement.
+- No deployment was performed.
+
+---
+
+## August 29, 2026 Unified Cross-Page Surface Validation
+
+- Replaced the mixed band/card/row rhythm with one shared outer information plane and divider-based internal grouping across all Neelvara routes.
+- Desktop route review covered Home, Products, Contact, About, Trust, Legal, Privacy, and Terms at `1440x900`; every route reported `scrollWidth === innerWidth === 1440`.
+- Mobile route review covered the same routes plus the unmatched-route response at `390x844`; every route reported `scrollWidth === innerWidth === 390` and no interactive target below 44px.
+- Rendered full-page review covered Home, Products, Contact, and Privacy, including the longest policy flow. The pages keep one continuous light canvas, consistent outer planes, quiet internal separators, and no card-on-card hierarchy conflict.
+- Computed styling uses `24px` desktop and `20px` mobile radii for major content planes, with `18px` reserved for genuine nested product cards.
+- No copy, route, link destination, legal content, metadata, Firebase surface, analytics behavior, dependency, deployment, commit, or push changed as part of this visual consolidation.
+
+---
+
+## August 30, 2026 Viewport Motion Validation
+
+- Entry choreography is implemented through the shared `ScrollRevealController`, so Home, Products, Contact, About, Trust, Legal, Privacy, Terms, and the branded 404 use one motion contract.
+- The observer trigger uses a negative lower root margin and an 8% threshold, keeping below-fold content pending until it is meaningfully inside the viewport.
+- Initial hero content receives a painted pending frame before observation, making the hierarchy visibly arrive rather than silently appearing during hydration.
+- Nested content staggers without changing DOM order, semantics, tab order, link destinations, or the established section surface system.
+- The runtime uses only opacity and transform, observes each target once, and removes observation after entry; it does not subscribe to continuous scroll events.
+- Reduced-motion styling removes all viewport-entry animation and keeps every target readable without waiting for JavaScript motion.

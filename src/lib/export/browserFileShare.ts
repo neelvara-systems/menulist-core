@@ -33,6 +33,13 @@ export async function shareBrowserFile({
         if (error instanceof DOMException && error.name === 'AbortError') {
             return 'cancelled';
         }
+        // File generation can outlive the browser's transient user activation,
+        // and some installed browsers expose file sharing while policy-blocking
+        // the eventual handoff. In both cases the owner can still receive the
+        // generated file through the existing download fallback.
+        if (error instanceof DOMException && error.name === 'NotAllowedError') {
+            return 'unsupported';
+        }
         throw error;
     }
 }

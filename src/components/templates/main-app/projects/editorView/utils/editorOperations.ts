@@ -3,6 +3,7 @@ import {
     generateLocalItemId,
 } from "@type/multiOutlet.types";
 import { removeObjRef } from "@util/utils";
+import { labelConfirmDialog } from "@lib/accessibility/antConfirmDialog";
 import { Modal } from "antd";
 import {
     ExtractedDataCategory,
@@ -150,6 +151,8 @@ export const deleteItemById = (file: ProjectFileType, itemId: string): any => {
 // CONFIRMATION MODALS
 // ============================
 
+export { labelConfirmDialog };
+
 interface ConfirmCategoryDeleteParams {
     category: ExtractedDataCategory;
     file: ProjectFileType;
@@ -171,6 +174,7 @@ export const confirmCategoryDelete = ({
 
     Modal.confirm({
         title: "Delete Category?",
+        modalRender: labelConfirmDialog("Delete Category?"),
         content: `Customers will no longer see "${categoryName}". ${itemCount > 0 ? `This also deletes ${itemCount} item${itemCount > 1 ? "s" : ""} in this category. ` : ""}This cannot be undone.`,
         okText:
             itemCount > 0
@@ -197,6 +201,7 @@ export const confirmItemDelete = ({
 
     Modal.confirm({
         title: "Delete Item?",
+        modalRender: labelConfirmDialog("Delete Item?"),
         content: `Customers will no longer see "${itemName}". Delete this item? This cannot be undone.`,
         okText: "Delete item",
         okType: "danger",
@@ -214,6 +219,7 @@ export const confirmAttributeDelete = ({
 }: ConfirmAttributeDeleteParams) => {
     Modal.confirm({
         title: "Delete Option?",
+        modalRender: labelConfirmDialog("Delete Option?"),
         content: "Customers will no longer see this option on the item. Delete it? This cannot be undone.",
         okText: "Delete option",
         okType: "danger",

@@ -94,10 +94,9 @@ const DEFAULT_MOBILE_OWNER_MORE_SCREENS = [
   'todayHistory',
   'customerApp',
   'presenceMonitor',
-  'answerlatticeHelp',
-  'answerlatticeDocs',
-  'answerlatticeSupport',
-  'answerlatticeReleaseNotes',
+  'menuListHelp',
+  'menuListDocs',
+  'menuListContact',
 ];
 const configuredOwnerMoreScreens = (process.env.MOBILE_QA_OWNER_MORE_SCREENS || '')
   .split(',')

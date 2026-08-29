@@ -2483,7 +2483,7 @@ async function publishArticle(scope: IntakeScope, job: AnswerlatticeKnowledgeInt
         title: cleanText(item.title, 180),
         index: Number(item.sortOrder || 0),
         url: `/help/${slugify(item.title, articleDoc.id)}`,
-        content: buildTiptapDoc(text),
+        content: buildTiptapDoc(text, item.title),
         plainText: text,
         embedding: null,
         embeddingStatus: 'pending',
@@ -3271,19 +3271,176 @@ function normalizeSourceType(value: unknown): AnswerlatticeKnowledgeSource['type
     return values.includes(value as any) ? value as AnswerlatticeKnowledgeSource['type'] : ANSWERLATTICE_KNOWLEDGE_SOURCE_TYPE.PRODUCT_NOTE;
 }
 
-function buildTiptapDoc(text: string) {
-    const paragraphs = cleanLongText(text, ANSWERLATTICE_KNOWLEDGE_INTAKE_CONSTRAINTS.MAX_REVIEW_BODY_CHARS)
-        .split(/\n{2,}/)
-        .map(block => cleanLongText(block, 1200))
-        .filter(Boolean)
-        .slice(0, 30);
-    return {
-        type: 'doc',
-        content: paragraphs.map((paragraph) => ({
-            type: 'paragraph',
-            content: [{ type: 'text', text: paragraph }],
-        })),
+const ANSWERLATTICE_INTAKE_TIPTAP_MAX_NODES = 120;
+
+function buildAnswerlatticeInlineTiptapContent(value: string) {
+    const text = cleanLongText(value, 1200);
+    const nodes: Array<Record<string, unknown>> = [];
+    const tokenPattern = /(\*\*([^*]+)\*\*|`([^`]+)`|\[([^\]]+)\]\(([^)\s]+)\))/g;
+    let cursor = 0;
+    let match: RegExpExecArray | null;
+
+    const pushText = (candidate: string, marks?: Array<Record<string, unknown>>) => {
+        if (!candidate) return;
+        nodes.push({ type: 'text', text: candidate, ...(marks?.length ? { marks } : {}) });
     };
+
+    while ((match = tokenPattern.exec(text)) !== null) {
+        pushText(text.slice(cursor, match.index));
+        if (match[2]) pushText(match[2], [{ type: 'bold' }]);
+        else if (match[3]) pushText(match[3], [{ type: 'code' }]);
+        else if (match[4] && match[5]) {
+            pushText(match[4], [{ type: 'link', attrs: { href: match[5] } }]);
+        }
+        cursor = match.index + match[0].length;
+    }
+    pushText(text.slice(cursor));
+    return nodes;
+}
+
+const buildAnswerlatticeListItem = (value: string) => ({
+    type: 'listItem',
+    content: [{
+        type: 'paragraph',
+        content: buildAnswerlatticeInlineTiptapContent(value),
+    }],
+});
+
+/**
+ * Convert imported Markdown-like product material into the fixed TipTap subset
+ * accepted by the editor and public sanitizer. This keeps intake publication
+ * deterministic while preventing raw Markdown markers from leaking into
+ * hosted help and widget-related article surfaces.
+ */
+export function buildAnswerlatticeKnowledgeIntakeTiptapDoc(text: string, articleTitle?: string) {
+    const source = cleanLongText(
+        text,
+        ANSWERLATTICE_KNOWLEDGE_INTAKE_CONSTRAINTS.MAX_REVIEW_BODY_CHARS,
+    );
+    const lines = source.split(/\r?\n/);
+    const content: Array<Record<string, unknown>> = [];
+    const pushNode = (node: Record<string, unknown>) => {
+        if (content.length < ANSWERLATTICE_INTAKE_TIPTAP_MAX_NODES) content.push(node);
+    };
+
+    for (let index = 0; index < lines.length && content.length < ANSWERLATTICE_INTAKE_TIPTAP_MAX_NODES;) {
+        const rawLine = lines[index] || '';
+        const line = rawLine.trim();
+        if (!line) {
+            index += 1;
+            continue;
+        }
+
+        if (/^```/.test(line)) {
+            const codeLines: string[] = [];
+            index += 1;
+            while (index < lines.length && !/^```/.test((lines[index] || '').trim())) {
+                codeLines.push(lines[index] || '');
+                index += 1;
+            }
+            if (index < lines.length) index += 1;
+            pushNode({
+                type: 'codeBlock',
+                content: [{ type: 'text', text: cleanLongText(codeLines.join('\n'), 5000) }],
+            });
+            continue;
+        }
+
+        const heading = line.match(/^(#{1,6})\s+(.+)$/);
+        if (heading) {
+            const sourceLevel = heading[1].length;
+            const headingText = cleanLongText(heading[2], 1200);
+            const isDuplicateArticleTitle = sourceLevel === 1
+                && content.length === 0
+                && articleTitle
+                && headingText.localeCompare(cleanLongText(articleTitle, 1200), undefined, {
+                    sensitivity: 'base',
+                }) === 0;
+            if (isDuplicateArticleTitle) {
+                index += 1;
+                continue;
+            }
+            pushNode({
+                type: 'heading',
+                attrs: { level: articleTitle && sourceLevel === 1 ? 2 : sourceLevel },
+                content: buildAnswerlatticeInlineTiptapContent(headingText),
+            });
+            index += 1;
+            continue;
+        }
+
+        const listMatch = line.match(/^[-*+]\s+(.+)$/);
+        if (listMatch) {
+            const items: Array<Record<string, unknown>> = [];
+            while (index < lines.length) {
+                const item = (lines[index] || '').trim().match(/^[-*+]\s+(.+)$/);
+                if (!item) break;
+                items.push(buildAnswerlatticeListItem(item[1]));
+                index += 1;
+            }
+            pushNode({ type: 'bulletList', content: items });
+            continue;
+        }
+
+        const orderedMatch = line.match(/^\d+[.)]\s+(.+)$/);
+        if (orderedMatch) {
+            const items: Array<Record<string, unknown>> = [];
+            while (index < lines.length) {
+                const item = (lines[index] || '').trim().match(/^\d+[.)]\s+(.+)$/);
+                if (!item) break;
+                items.push(buildAnswerlatticeListItem(item[1]));
+                index += 1;
+            }
+            pushNode({ type: 'orderedList', content: items });
+            continue;
+        }
+
+        const quote = line.match(/^>\s?(.+)$/);
+        if (quote) {
+            pushNode({
+                type: 'blockquote',
+                content: [{
+                    type: 'paragraph',
+                    content: buildAnswerlatticeInlineTiptapContent(quote[1]),
+                }],
+            });
+            index += 1;
+            continue;
+        }
+
+        if (/^([-*_])\1{2,}$/.test(line)) {
+            pushNode({ type: 'horizontalRule' });
+            index += 1;
+            continue;
+        }
+
+        const paragraphLines = [line];
+        index += 1;
+        while (index < lines.length) {
+            const next = (lines[index] || '').trim();
+            if (
+                !next
+                || /^(#{1,6})\s+/.test(next)
+                || /^```/.test(next)
+                || /^[-*+]\s+/.test(next)
+                || /^\d+[.)]\s+/.test(next)
+                || /^>\s?/.test(next)
+                || /^([-*_])\1{2,}$/.test(next)
+            ) break;
+            paragraphLines.push(next);
+            index += 1;
+        }
+        pushNode({
+            type: 'paragraph',
+            content: buildAnswerlatticeInlineTiptapContent(paragraphLines.join(' ')),
+        });
+    }
+
+    return { type: 'doc', content };
+}
+
+function buildTiptapDoc(text: string, articleTitle?: string) {
+    return buildAnswerlatticeKnowledgeIntakeTiptapDoc(text, articleTitle);
 }
 
 function getKnowledgeBaseCategoriesDocId(tId?: unknown, sId?: unknown) {

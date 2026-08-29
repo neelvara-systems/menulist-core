@@ -5,8 +5,10 @@ import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 
 import { getStoresTickets, subscribeTicketById } from '@database/tickets';
+import { useClientAuthSession } from '@hook/useClientAuthSession';
 import { useAppDispatch } from '@hook/useAppDispatch';
 import { useTicketCache } from '@hook/useTicketCache';
+import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
 import TicketDetailView from '@template/platform/supportTickets/TicketDetailView';
 import { SUPPORT_TICKET_STATUS, SupportTicketType } from '@type/supportTicket';
@@ -20,6 +22,9 @@ function RunningTickets() {
     const { message: messageApi } = App.useApp();
     const t = useTranslations('HelpCenter');
     const router = useRouter();
+    const session = useClientAuthSession();
+    const supportScope = resolveAnswerlatticeSessionScope(session);
+    const supportScopeKey = supportScope ? `${supportScope.tenantId}:${supportScope.storeId}` : null;
     const { setAllItems, updateItem, cachedItems } = useTicketCache();
     const dispatch = useAppDispatch();
     const [selectedTicket, setSelectedTicket] = useState<SupportTicketType | null>(null);
@@ -37,6 +42,7 @@ function RunningTickets() {
     };
 
     const loadTicketSummary = useCallback(async () => {
+        if (!supportScopeKey) return;
         const requestId = ++loadRequestRef.current;
         setLoadFailed(false);
         dispatch(startLoader(TICKET_SUMMARY_LOADER_KEY));
@@ -53,10 +59,11 @@ function RunningTickets() {
                 dispatch(stopLoader(TICKET_SUMMARY_LOADER_KEY));
             }
         }
-    }, [dispatch, setAllItems, t]);
+    }, [dispatch, setAllItems, supportScopeKey, t]);
 
     // Landing summary only needs an initial snapshot; the full ticket tab owns live updates.
     useEffect(() => {
+        if (!supportScopeKey) return;
         if (cachedTicketsOnMountRef.current.length > 0) return;
 
         void loadTicketSummary();
@@ -65,10 +72,10 @@ function RunningTickets() {
             loadRequestRef.current += 1;
             dispatch(stopLoader(TICKET_SUMMARY_LOADER_KEY));
         };
-    }, [dispatch, loadTicketSummary]);
+    }, [dispatch, loadTicketSummary, supportScopeKey]);
 
     useEffect(() => {
-        if (!selectedTicket?.id) return;
+        if (!supportScopeKey || !selectedTicket?.id) return;
 
         let mounted = true;
         let unsubscribe: (() => void) | null = null;
@@ -106,12 +113,16 @@ function RunningTickets() {
                 unsubscribe = null;
             }
         };
-    }, [selectedTicket?.id, updateItem]);
+    }, [selectedTicket?.id, supportScopeKey, updateItem]);
 
-    const tickets = cachedItems?.filter(ticket => ticket.status !== SUPPORT_TICKET_STATUS.CLOSED).slice(0, 3) || [];
+    const tickets = supportScopeKey
+        ? cachedItems?.filter(ticket => ticket.status !== SUPPORT_TICKET_STATUS.CLOSED).slice(0, 3) || []
+        : [];
 
     // Get the latest version of selectedTicket from cache
-    const activeTicket = selectedTicket ? cachedItems?.find(t => t.id === selectedTicket.id) || selectedTicket : null;
+    const activeTicket = supportScopeKey && selectedTicket
+        ? cachedItems?.find(t => t.id === selectedTicket.id) || selectedTicket
+        : null;
 
     // Memoize styles to prevent re-renders
     const cardStyle = useMemo(() => ({ width: '100%' }), []);

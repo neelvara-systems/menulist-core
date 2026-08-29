@@ -7,6 +7,34 @@ import type { TenantDataType } from '@type/platform/tenant';
 import { Flex } from 'antd';
 import { memo, useContext } from 'react';
 
+export const createPlatformStoreDraft = (tenant: TenantDataType): StoreDataType | null => {
+    if (!Number.isSafeInteger(tenant.tenantId) || Number(tenant.tenantId) < 0) return null;
+
+    return {
+        active: true,
+        businessCategory: '',
+        businessType: tenant.businessType || '',
+        city: tenant.city || '',
+        contactPersonEmail: tenant.contactPersonEmail || '',
+        contactPersonName: tenant.contactPersonName || '',
+        contactPersonNumber: tenant.contactPersonNumber || '',
+        countryCode: tenant.countryCode || '',
+        currencyCode: tenant.currencyCode || 'INR',
+        currencySymbol: tenant.currencySymbol || '₹',
+        deleted: false,
+        email: tenant.email || '',
+        logo: '',
+        name: '',
+        phoneNumber: tenant.phoneNumber || '',
+        roles: [],
+        state: tenant.state || '',
+        storeId: undefined,
+        storeKey: '',
+        tenantId: Number(tenant.tenantId),
+        tenantName: tenant.name,
+    } as unknown as StoreDataType;
+};
+
 export type PlatformStoreModalState = {
     active: boolean;
     data: StoreDataType | null;
@@ -29,22 +57,27 @@ function StoreDetailsModal({ modalData, closeModal, fromPage = "" }: StoreDetail
             tenantData: tenantDetails,
         }
         : modalData;
+    const resolvedStoreDetails = data.data || (data.tenantData
+        ? createPlatformStoreDraft(data.tenantData)
+        : null);
 
 
     return (
         <Flex style={{ overflowX: 'auto', width: '100%' }}>
             {!fromPage ? <>
                 <DrawerElement
-                    title={modalData?.tenantData?.name + (modalData?.data?.name ? ` - Update Store` : ` - Add Store`)}
+                    title={modalData?.data?.name
+                        ? `${modalData.data.name} - Update Store`
+                        : `${modalData?.tenantData?.name || 'Tenant'} - Add Store`}
                     open={Boolean(modalData.active)}
                     onClose={() => closeModal()}
                     footerActions={[]}
                     width={"100%"}
                 >
-                    {modalData.active ? <BusinessSettings storeDetails={data.data} setStoreDetails={closeModal} tenantDetails={data.tenantData} /> : null}
+                    {modalData.active ? <BusinessSettings storeDetails={resolvedStoreDetails} setStoreDetails={closeModal} tenantDetails={data.tenantData} /> : null}
                 </DrawerElement>
             </> : <>
-                <BusinessSettings storeDetails={data.data} setStoreDetails={closeModal} tenantDetails={data.tenantData} />
+                <BusinessSettings storeDetails={resolvedStoreDetails} setStoreDetails={closeModal} tenantDetails={data.tenantData} />
             </>}
         </Flex>
     );

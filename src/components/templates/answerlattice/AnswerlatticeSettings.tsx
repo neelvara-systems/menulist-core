@@ -230,18 +230,18 @@ export default function AnswerlatticeSettings() {
                     </Button>
                 )}
             >
-                {loadingProfile || !scopeIsCurrent ? (
-                    <Skeleton active paragraph={{ rows: 6 }} />
-                ) : (
-                    <Flex vertical gap={16}>
+                <Form form={form} layout="vertical">
+                    {loadingProfile || !scopeIsCurrent ? (
+                        <Skeleton active paragraph={{ rows: 6 }} />
+                    ) : (
+                        <Flex vertical gap={16}>
                         <Alert
                             type="info"
                             showIcon
                             message="These details power setup, widget verification, and support routing."
                             description="Use Product Pages & Flows for detailed support mapping after saving the main profile."
                         />
-                        <Form form={form} layout="vertical">
-                            <Form.Item
+                        <Form.Item
                                 name="productName"
                                 label="Product name"
                                 rules={[
@@ -250,8 +250,8 @@ export default function AnswerlatticeSettings() {
                                 ]}
                             >
                                 <Input placeholder="Acme CRM" maxLength={120} />
-                            </Form.Item>
-                            <Form.Item
+                        </Form.Item>
+                        <Form.Item
                                 name="productUrl"
                                 label="Product URL"
                                 rules={[
@@ -265,8 +265,8 @@ export default function AnswerlatticeSettings() {
                                 ]}
                             >
                                 <Input placeholder="https://app.example.com" maxLength={300} />
-                            </Form.Item>
-                            <Form.Item
+                        </Form.Item>
+                        <Form.Item
                                 name="supportEmail"
                                 label="Support email"
                                 rules={[
@@ -275,18 +275,18 @@ export default function AnswerlatticeSettings() {
                                 ]}
                             >
                                 <Input placeholder="support@example.com" maxLength={160} />
-                            </Form.Item>
-                            <Form.Item name="billingModel" label="Billing model" initialValue="subscription">
-                                <Select
-                                    options={[
-                                        { value: 'subscription', label: 'Subscription' },
-                                        { value: 'usage', label: 'Usage based' },
-                                        { value: 'one_time', label: 'One-time payment' },
-                                        { value: 'not_sure', label: 'Not sure yet' },
-                                    ]}
-                                />
-                            </Form.Item>
-                            <Form.Item
+                        </Form.Item>
+                        <Form.Item name="billingModel" label="Billing model" initialValue="subscription">
+                            <Select
+                                options={[
+                                    { value: 'subscription', label: 'Subscription' },
+                                    { value: 'usage', label: 'Usage based' },
+                                    { value: 'one_time', label: 'One-time payment' },
+                                    { value: 'not_sure', label: 'Not sure yet' },
+                                ]}
+                            />
+                        </Form.Item>
+                        <Form.Item
                                 name="primarySurfaces"
                                 label="Main product pages"
                                 initialValue={['billing', 'onboarding', 'settings']}
@@ -300,19 +300,18 @@ export default function AnswerlatticeSettings() {
                                 ]}
                             >
                                 <Select mode="multiple" options={SURFACE_OPTIONS} placeholder="Select the pages users ask about most" />
-                            </Form.Item>
-                            <Form.Item name="timeZone" label="Workspace timezone" initialValue="UTC">
-                                <Select
-                                    showSearch
-                                    optionFilterProp="label"
-                                    options={TIMEZONE_OPTIONS}
-                                    placeholder="UTC"
-                                />
-                            </Form.Item>
-                            <Form.Item name="businessDayEndTime" label="Support day ends" initialValue="00:00">
-                                <Input type="time" />
-                            </Form.Item>
-                        </Form>
+                        </Form.Item>
+                        <Form.Item name="timeZone" label="Workspace timezone" initialValue="UTC">
+                            <Select
+                                showSearch
+                                optionFilterProp="label"
+                                options={TIMEZONE_OPTIONS}
+                                placeholder="UTC"
+                            />
+                        </Form.Item>
+                        <Form.Item name="businessDayEndTime" label="Support day ends" initialValue="00:00">
+                            <Input type="time" />
+                        </Form.Item>
                         {isMobile && (
                             <Button
                                 type="primary"
@@ -325,8 +324,9 @@ export default function AnswerlatticeSettings() {
                                 Save Product Details
                             </Button>
                         )}
-                    </Flex>
-                )}
+                        </Flex>
+                    )}
+                </Form>
             </Card>
 
             <Card title="Account Reference">

@@ -1,5 +1,15 @@
 # Shared Creative Editor - Validation Record
 
+## August 29, 2026 - MenuList governed embedded mode
+
+- Added product adapter controls for rail/workspace allowlists, initial drawer and selection state, embedded recovery-draft opt-in, and readiness-gated product header actions.
+- MenuList Printable Asset Templates now opens with Background, Images, Text, Styles, and Brand Kit only; the drawer is collapsed, no protected layer is selected, and only Preview remains in the optional workspace controls.
+- The MenuList overlay mounts through `document.body` at `100dvh`, guards dirty Close/browser unload, and applies the shared readiness check to Print PDF and Image. CampaignCue receives no adapter overrides and retains the full editor defaults.
+- Browser regression at 1280 x 720 verified that preview PDF/image/customize actions remain fully visible, the portal occupies the exact viewport, the MenuList rail contains five approved tools, no layer is selected initially, Layers selection keeps the header fixed, readiness reports two current issues before PDF output, and the dirty confirmation renders above the editor. Keep editing retained the document and Discard changes closed both confirmation and editor.
+- Mobile regression at 390 x 844 stayed in `MobileShell`, opened the existing preview sheet, exposed PDF/image downloads, and mounted neither Customize design nor Creative Editor.
+- Final local gates passed: `npx tsc --noEmit --incremental false --pretty false`, full `npm run lint`, `npm run verify:creative-editor-smoke` (244 checks plus Fabric/image/export boundaries), `npm run verify:printable-asset-templates`, `npm run test:creative-editor-template-registry-boundaries`, and `git diff --check`.
+- Independent cross-check reproduced a scrolled selected-layer inspector hiding the newly opened readiness heading above the visible viewport. The shared editor now resets the properties drawer to the top whenever readiness opens; the exact Layers -> Business name -> Print PDF sequence was recaptured after the fix.
+
 ## June 28, 2026 - Bounded Failure Notices
 
 ### Scope
@@ -423,7 +433,7 @@ Validated the shared editor and CampaignCue adapter after adding selected-layer 
 - Numeric rulers attach to the visible Fabric artboard scale instead of drifting across the whole stage.
 - Light and dark theme toggles update shell variables, sidebar contrast, segmented controls, and old multi-path craft-builder icons without flattening SVG paths into solid shapes.
 - Practical toolbar validation hides or disables actions that do not apply: unlock appears only for locked layers, ungroup appears only for grouped selections, distribute appears only for three-or-more unlocked selections, and locked pages/layers block destructive edits.
-- Text drawer controls mirror the expected creation flow: Add a text box, Magic Write placeholder, Brand Kit entry, default styles, business placeholders, font-combination effects, and path text.
+- Text drawer controls mirror the implemented creation flow: Add a text box, Brand Kit entry, default styles, business placeholders, font-combination effects, and path text. Unimplemented AI placeholders are not shipped as dead controls.
 - Graphics drawer exposes local stickers, popular search chips, recent insertions, and recommended assets without a network call.
 - CampaignCue supplies product metadata and placeholders through the shared adapter contract only; the shared editor remains product-neutral.
 

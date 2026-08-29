@@ -14,7 +14,7 @@ SecurityOS may read product code, docs, rules, and verifier metadata. It must no
 
 ## Phase-One Products
 
-MenuList and Answerlattice receive the first detailed surface map. CampaignCue, SignalDesk, MyCodex, and Neelvara are registered with explicit incomplete status so they cannot be silently treated as audited.
+MenuList and Answerlattice receive the first detailed surface map. MyCodex now has a focused partial map for its private founder-console and persisted platform-role boundary. CampaignCue, SignalDesk, and Neelvara remain registered with explicit incomplete status so they cannot be silently treated as audited.
 
 ## Source of Truth
 
@@ -42,7 +42,7 @@ The audit validates the registry. The planner groups related evidence for manual
 
 ## Grouped Evidence Bundles
 
-The registry currently provides seven bundles: repository baseline and configuration, two MenuList groups, one Answerlattice group, and registered-only groups for CampaignCue, SignalDesk, and MyCodex. Every bundle uses `manual-selective`; a bundle is a navigation layer, not an executable suite. Neelvara remains an explicit unknown until focused repo-native evidence exists.
+The registry currently provides seven bundles: repository baseline and configuration, two MenuList groups, one Answerlattice group, registered-only groups for CampaignCue and SignalDesk, and a focused MyCodex boundary group. Every bundle uses `manual-selective`; a bundle is a navigation layer, not an executable suite. Neelvara remains an explicit unknown until focused repo-native evidence exists.
 
 ## External Tool Rule
 

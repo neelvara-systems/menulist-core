@@ -8,7 +8,7 @@ import { AI_ACTIONS_TYPES } from '@constant/common';
 import { PERMISSIONS } from '@constant/permissions';
 import GlobalLanguagesList from '@data/languages';
 import { applyStoreBusinessAttributeDefaults, assertStoreUpdateSucceeded, updateStore } from '@database/stores';
-import { appendImageBatchProjectSelections, assertProjectUpdateSucceeded, updateProjectWithoutLoader, uploadFile } from '@database/projects';
+import { appendImageBatchProjectSelections, assertProjectUpdateSucceeded, publishProject, updateProjectWithoutLoader, uploadFile } from '@database/projects';
 import { deleteFileByUrl } from '@database/storage/deleteFromStorage';
 import { useImageBatchJobListener } from '@hook/useImageBatchJobListener';
 import useMenuProcessingJob from '@hook/useMenuProcessingJob';
@@ -51,6 +51,7 @@ import { normalizeCategoryIconValue } from '@lib/categoryIcons';
 import {
     MENULIST_ANSWERLATTICE_EVENTS,
     emitMenuListAnswerlatticeWorkflowEvent,
+    isVerifiedMenuPublishResult,
 } from '@lib/answerlattice/referenceClients/menuListGuidedResolution';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import ProjectsDataProvider from '@providers/projectsDataProvider';
@@ -460,6 +461,8 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
     const { token } = theme.useToken();
     const { isCompactHandheld } = useViewportInfo();
     const t = useTranslations('MobileMenu');
+    const tDesign = useTranslations('MobileDesignEditor');
+    const tMenuSetup = useTranslations('Dashboard.owner.menuSetup');
     const tProjectSelector = useTranslations('MobileProjectSelector');
     const tShare = useTranslations('MobileShare');
     const { storeDetails, setStoreDetails, userPermissions, isMasterUser } = useContext(PlatformGlobalDataContext);
@@ -494,6 +497,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
         PERMISSIONS.MANAGE_MENU_SHARING,
         PERMISSIONS.PUBLISH_MENU,
     ]);
+    const canPublishMenu = hasAnyPermission(userPermissions, [PERMISSIONS.PUBLISH_MENU]);
     const [searchQuery, setSearchQuery] = useState('');
     const [filters, setFilters] = useState<MobileMenuFilters>(DEFAULT_FILTERS);
     const [draftFilters, setDraftFilters] = useState<MobileMenuFilters>(DEFAULT_FILTERS);
@@ -528,6 +532,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
     const [expandedCategoryKeys, setExpandedCategoryKeys] = useState<string[]>([]);
     const [isMenuQualityExpanded, setIsMenuQualityExpanded] = useState(true);
     const [activeProcessingState, setActiveProcessingStateState] = useState<{ jobId: string; projectId: string } | null>(null);
+    const [isPublishingMenu, setIsPublishingMenu] = useState(false);
 
     useEffect(() => {
         setActiveProcessingStateState(null);
@@ -616,6 +621,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
     const menuUpdateGenerationRef = useRef(0);
     const itemImageUploadRevisionRef = useRef<Map<string, number>>(new Map());
     const projectImageAutoGenerationAttemptRef = useRef<Set<string>>(new Set());
+    const publishMenuInFlightRef = useRef(false);
     const [itemInheritanceStates, setItemInheritanceStates] = useState<Record<string, InheritanceState>>({});
     const [categoryInheritanceStates, setCategoryInheritanceStates] = useState<Record<string, InheritanceState>>({});
 
@@ -1044,6 +1050,24 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
         queueMenuPersist(updatedProject);
     }, [getPersistableMenuProjectWithLinkedOverrides, queueMenuPersist, replaceProjectInList]);
 
+    const persistExplicitMenuUpdate = useCallback(async (updatedProject: any) => {
+        const projectId = updatedProject?.projectId;
+        if (!projectId) {
+            throw new Error('mobile_menu_explicit_persist_project_required');
+        }
+
+        applyLocalMenuUpdate(updatedProject);
+        await flushPendingMenuPersist();
+        await waitForMenuPersistenceIdle();
+        if (pendingMenuRef.current?.projectId === projectId) {
+            await flushPendingMenuPersist();
+            await waitForMenuPersistenceIdle();
+        }
+        if (pendingMenuRef.current?.projectId === projectId) {
+            throw new Error('mobile_menu_explicit_persist_pending');
+        }
+    }, [applyLocalMenuUpdate, flushPendingMenuPersist, waitForMenuPersistenceIdle]);
+
     const markPriceOutlierReviewed = useCallback((itemId: string) => {
         const sourceProject = menuDataRef.current;
         if (!sourceProject?.files) return;
@@ -1167,9 +1191,9 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
         return { project: nextProject, skippedInheritedChanges };
     }, [itemInheritanceStates, outletPolicy?.availabilityOverride, outletPolicy?.priceOverride]);
 
-    const applyUndoableBulkMenuUpdate = useCallback((updatedProject: any, previousProject?: any, updatedCount?: number, successMessage?: string) => {
+    const applyUndoableBulkMenuUpdate = useCallback(async (updatedProject: any, previousProject?: any, updatedCount?: number, successMessage?: string) => {
         const linkedUpdate = applyLinkedOutletBulkOverrideDiff(updatedProject, previousProject || menuDataRef.current);
-        applyLocalMenuUpdate(linkedUpdate.project);
+        await persistExplicitMenuUpdate(linkedUpdate.project);
 
         const baseMessage = successMessage || t('itemsUpdated', { count: updatedCount || 0 });
         const displayMessage = linkedUpdate.skippedInheritedChanges
@@ -1200,14 +1224,20 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
                                     return;
                                 }
 
-                                applyLocalMenuUpdate(removeObjRef(previousProject));
-                                Toast.show({ content: t('changesUndone'), duration: 1200 });
+                                void persistExplicitMenuUpdate(removeObjRef(previousProject))
+                                    .then(() => {
+                                        Toast.show({ content: t('changesUndone'), duration: 1200 });
+                                    })
+                                    .catch(() => {
+                                        Toast.show({ content: t('bulkApplyFailed'), duration: 1800 });
+                                    });
                             }}
                             size="small"
                         >
                             {t('undo')}
                         </Button>
                         <Button
+                            aria-label={t('close')}
                             fill="none"
                             icon={<LuX size={16} />}
                             onClick={() => {
@@ -1220,7 +1250,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
             ),
             duration: 5000,
         });
-    }, [applyLinkedOutletBulkOverrideDiff, applyLocalMenuUpdate, t]);
+    }, [applyLinkedOutletBulkOverrideDiff, persistExplicitMenuUpdate, t]);
 
     useEffect(() => {
         menuDataRef.current = menuData;
@@ -2363,15 +2393,22 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
                         const selected = value === option.value;
 
                         return (
-                            <div
+                            <button
+                                type="button"
+                                aria-pressed={selected}
                                 key={option.value}
                                 onClick={() => onChange(selected ? '' : option.value)}
                                 style={{
                                     backgroundColor: selected ? token.colorPrimaryBg : token.colorBgContainer,
                                     border: `1px solid ${selected ? token.colorPrimary : token.colorBorderSecondary}`,
                                     borderRadius: 12,
+                                    color: 'inherit',
                                     cursor: 'pointer',
+                                    font: 'inherit',
+                                    minHeight: 44,
                                     padding: '12px 14px',
+                                    textAlign: 'start',
+                                    width: '100%',
                                 }}
                             >
                                 <Flex align="center" gap={12} justify="space-between">
@@ -2394,7 +2431,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
                                         {selected ? <LuCheck size={12} /> : null}
                                     </Flex>
                                 </Flex>
-                            </div>
+                            </button>
                         );
                     })}
                 </Flex>
@@ -2407,14 +2444,21 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
         selected: boolean,
         onToggle: () => void
     ) => (
-        <div
+        <button
+            type="button"
+            aria-pressed={selected}
             onClick={onToggle}
             style={{
                 backgroundColor: selected ? token.colorPrimaryBg : token.colorBgContainer,
                 border: `1px solid ${selected ? token.colorPrimary : token.colorBorderSecondary}`,
                 borderRadius: 12,
+                color: 'inherit',
                 cursor: 'pointer',
+                font: 'inherit',
+                minHeight: 44,
                 padding: '12px 14px',
+                textAlign: 'start',
+                width: '100%',
             }}
         >
             <Flex align="center" gap={12} justify="space-between">
@@ -2437,7 +2481,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
                     {selected ? <LuCheck size={12} /> : null}
                 </Flex>
             </Flex>
-        </div>
+        </button>
     ), [token]);
 
     const activeProjectSummary = useMemo(
@@ -2555,7 +2599,6 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
             return;
         }
         const presets = storeDetails?.timeSlotPresets || [];
-        const previous = menuData;
         const updated = removeObjRef(menuData);
         const targetFile = ensurePrimaryMenuFile(updated, storeDetails?.tenantId, storeDetails?.storeId);
         if (!targetFile) return;
@@ -2588,7 +2631,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
                 }))
             : undefined;
         targetData.categories.push(nextCategory);
-        applyLocalMenuUpdate(updated);
+        await persistExplicitMenuUpdate(updated);
     };
 
     const handleCategoryUpdate = async ({ id: categoryId, names, active, icon, presetIds }: { id: string; names: Record<string, string>; active: boolean; icon?: string; presetIds: string[] }) => {
@@ -2622,7 +2665,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
                 });
             });
 
-            applyLocalMenuUpdate(updated);
+            await persistExplicitMenuUpdate(updated);
             Toast.show({ content: active ? t('categoryShown') : t('categoryHidden'), duration: 1000 });
             return;
         }
@@ -2657,7 +2700,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
                 }
             });
         });
-        applyLocalMenuUpdate(updated);
+        await persistExplicitMenuUpdate(updated);
     };
 
     const handleCategoryGenerateContent = async ({ id: categoryId, mode, names }: { id?: string; mode: 'missing' | 'regenerate'; names: Record<string, string> }) => {
@@ -2781,7 +2824,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
 
             file.extractedData = deleteCategory(file, categoryId);
         });
-        applyLocalMenuUpdate(updated);
+        await persistExplicitMenuUpdate(updated);
     };
 
     const handleCategoryReorder = async (orderedCategoryIds: string[]) => {
@@ -2815,7 +2858,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
                 }
             });
         });
-        applyLocalMenuUpdate(updated);
+        await persistExplicitMenuUpdate(updated);
     };
 
     const handleCategoryItemReorder = async (categoryId: string, orderedItemIds: string[]) => {
@@ -2870,7 +2913,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
                 return nextItem || item;
             });
         });
-        applyLocalMenuUpdate(updated);
+        await persistExplicitMenuUpdate(updated);
     };
 
     const handleToggleAvailability = useCallback(async (item: MenuItemType) => {
@@ -3031,6 +3074,144 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
         });
     }, [menuPreviewUrl, tShare]);
 
+    const handlePublishMenu = useCallback(async () => {
+        if (publishMenuInFlightRef.current) return;
+        publishMenuInFlightRef.current = true;
+        let didStartPublishing = false;
+
+        try {
+            if (!canPublishMenu) {
+                Toast.show({ content: 'You do not have permission to publish this menu.', duration: 1800 });
+                return;
+            }
+
+            const confirmed = await Dialog.confirm({
+                cancelText: t('cancel'),
+                confirmText: tMenuSetup('actions.publishMenu'),
+                content: tMenuSetup('steps.menuPublished.nextDescription'),
+                title: tMenuSetup('actions.publishMenu'),
+            });
+            if (!confirmed) return;
+
+            didStartPublishing = true;
+            setIsPublishingMenu(true);
+
+            await flushPendingMenuPersist();
+            await waitForMenuPersistenceIdle();
+            if (pendingMenuRef.current?.projectId) {
+                await flushPendingMenuPersist();
+                await waitForMenuPersistenceIdle();
+            }
+            if (pendingMenuRef.current?.projectId) {
+                throw new Error('mobile_menu_publish_pending_save');
+            }
+
+            const currentProject = removeObjRef(
+                persistedMenuRef.current || rawMenuProjectRef.current || menuDataRef.current,
+            );
+            if (!currentProject?.projectId) {
+                throw new Error('mobile_menu_publish_project_required');
+            }
+
+            const projectToPublish = getPersistableMenuProjectWithLinkedOverrides(currentProject);
+            const updatedProject = await publishProject(projectToPublish, {
+                expectedModifiedOn: projectToPublish.modifiedOn,
+            });
+            assertProjectUpdateSucceeded(
+                updatedProject,
+                projectToPublish.projectId,
+                'mobile_menu_publish_project_update_rejected',
+            );
+
+            const publishedProject = removeObjRef(updatedProject);
+            syncSavedMenuProject(publishedProject);
+            applyMasterUpdateAwarenessSnapshot({
+                ...(publishedProject.lastPublishedAt ? { lastPublishedAt: publishedProject.lastPublishedAt } : {}),
+                ...(publishedProject.menuVersion !== undefined ? { menuVersion: publishedProject.menuVersion } : {}),
+            });
+            if (publishedProject.lastPublishedAt) {
+                setStoreDetails((current: any) => (
+                    current && String(current.storeId) === String(storeDetails?.storeId)
+                        ? { ...current, lastPublishedAt: publishedProject.lastPublishedAt }
+                        : current
+                ));
+            }
+
+            Toast.show({
+                content: tMenuSetup('steps.menuPublished.doneDescription'),
+                icon: 'success',
+                duration: 1800,
+            });
+            emitMenuListAnswerlatticeWorkflowEvent(MENULIST_ANSWERLATTICE_EVENTS.MENU_PUBLISH_COMPLETED);
+
+            let verificationPublicMenuUrl: string | undefined;
+            try {
+                const { verifyMenuPublish } = await import('@lib/firebase/functions');
+                const hasTenantUrl = Boolean(storeDetails?.subdomain || storeDetails?.customDomain);
+                if (hasTenantUrl && storeDetails?.storeId && storeDetails?.tenantId) {
+                    verificationPublicMenuUrl = generateProjectUrl(
+                        storeDetails.subdomain,
+                        storeDetails.customDomain,
+                        publishedProject.name || selectedProjectSummary?.name || undefined,
+                        Boolean(publishedProject.isDefault),
+                    );
+                    void verifyMenuPublish({
+                        storeId: String(storeDetails.storeId),
+                        tenantId: String(storeDetails.tenantId),
+                        publicMenuUrl: verificationPublicMenuUrl,
+                    }).then((verificationResult) => {
+                        if (isVerifiedMenuPublishResult(verificationResult)) {
+                            emitMenuListAnswerlatticeWorkflowEvent(MENULIST_ANSWERLATTICE_EVENTS.MENU_PUBLISH_VERIFIED);
+                        }
+                    }).catch((error) => {
+                        logMobileMenuFailure('mobile_menu_publish_verification_failed', error, {
+                            ...getMobileMenuProjectLogContext(publishedProject.projectId, publishedProject.masterProjectId),
+                            ...getMobileMenuStoreLogContext(storeDetails.storeId, storeDetails.tenantId),
+                            ...getBoundedMobileMenuStringContext('publicMenuUrl', verificationPublicMenuUrl),
+                            hasCustomDomain: Boolean(storeDetails.customDomain),
+                            hasStoreSlug: Boolean(storeDetails.subdomain),
+                        });
+                    });
+                }
+            } catch (error) {
+                logMobileMenuFailure('mobile_menu_publish_verification_setup_failed', error, {
+                    ...getMobileMenuProjectLogContext(publishedProject.projectId, publishedProject.masterProjectId),
+                    ...getMobileMenuStoreLogContext(storeDetails?.storeId, storeDetails?.tenantId),
+                    ...getBoundedMobileMenuStringContext('publicMenuUrl', verificationPublicMenuUrl),
+                    hasCustomDomain: Boolean(storeDetails?.customDomain),
+                    hasStoreSlug: Boolean(storeDetails?.subdomain),
+                });
+            }
+        } catch (error) {
+            const currentProject = menuDataRef.current;
+            logMobileMenuFailure('mobile_menu_publish_failed', error, {
+                ...getMobileMenuProjectLogContext(currentProject?.projectId, currentProject?.masterProjectId),
+                ...getMobileMenuStoreLogContext(storeDetails?.storeId, storeDetails?.tenantId),
+                pendingProjectPresent: Boolean(pendingMenuRef.current?.projectId),
+            });
+            Toast.show({ content: tDesign('failedToPublish'), duration: 2000 });
+        } finally {
+            publishMenuInFlightRef.current = false;
+            if (didStartPublishing) setIsPublishingMenu(false);
+        }
+    }, [
+        applyMasterUpdateAwarenessSnapshot,
+        canPublishMenu,
+        flushPendingMenuPersist,
+        getPersistableMenuProjectWithLinkedOverrides,
+        selectedProjectSummary?.name,
+        setStoreDetails,
+        storeDetails?.customDomain,
+        storeDetails?.storeId,
+        storeDetails?.subdomain,
+        storeDetails?.tenantId,
+        syncSavedMenuProject,
+        t,
+        tDesign,
+        tMenuSetup,
+        waitForMenuPersistenceIdle,
+    ]);
+
     const handleOpenMenuCardExport = useCallback(async () => {
         const projectId = menuData?.projectId || selectedProjectId;
         if (!projectId) {
@@ -3155,6 +3336,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
 
                     {menuData ? (
                         <MobileMenuSetupProgress
+                            actionLoading={isPublishingMenu}
                             onOpenMenu={() => {
                                 if (isFirstRunProject || !menuData?.files?.length) {
                                     handleOpenUploadSheet();
@@ -3165,6 +3347,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
                                 });
                             }}
                             onOpenOfficialPage={onOpenOfficialPage}
+                            onPublish={handlePublishMenu}
                             onOpenShare={onOpenShare}
                             project={menuData}
                             storeDetails={storeDetails}
@@ -3223,6 +3406,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
                                         <Flex align="center" gap={6}>
                                             <Text>{`"${searchQuery}"`}</Text>
                                             <Button
+                                                aria-label="Clear search"
                                                 fill="none"
                                                 onClick={() => setSearchQuery('')}
                                                 size="mini"
@@ -3238,6 +3422,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
                                         <Flex align="center" gap={6}>
                                             <Text>{chip.label}</Text>
                                             <Button
+                                                aria-label={`Remove ${chip.label} filter`}
                                                 fill="none"
                                                 onClick={chip.onRemove}
                                                 size="mini"
@@ -3440,6 +3625,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
                                 <StatusDot color={status.color} key={status.key} label={status.label} />
                             ))}
                             <Button
+                                aria-label="About menu statuses"
                                 fill="none"
                                 onClick={() => setIsStatusLegendSheetOpen(true)}
                                 size="mini"
@@ -3681,43 +3867,38 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
                                                                 ) : null}
                                                             </Flex>
                                                         </Flex>
-                                                        {id !== 'uncategorized' ? (
-                                                            <Flex
-                                                                align="center"
-                                                                gap={8}
-                                                                onClick={(event) => event.stopPropagation()}
-                                                                onMouseDown={(event) => event.stopPropagation()}
-                                                                onPointerDown={(event) => event.stopPropagation()}
-                                                                style={{ flexShrink: 0 }}
-                                                            >
-                                                                <Button
-                                                                    fill="outline"
-                                                                    onClick={() => {
-                                                                        setCategorySheetMode('manage');
-                                                                        setCategorySheetInitialCategoryId(id);
-                                                                        setIsCategorySheetOpen(true);
-                                                                    }}
-                                                                    size="small"
-                                                                    style={{
-                                                                        backgroundColor: token.colorBgContainer,
-                                                                        borderColor: token.colorBorderSecondary,
-                                                                        borderRadius: 12,
-                                                                        minHeight: 44,
-                                                                        minWidth: 44,
-                                                                        paddingInline: 0,
-                                                                    }}
-                                                                >
-                                                                    <LuPencil size={14} />
-                                                                </Button>
-                                                                <Switch
-                                                                    checked={categorySummaryById.get(id)?.active !== false}
-                                                                    onChange={(checked) => handleToggleCategoryActive(id, checked)}
-                                                                />
-                                                            </Flex>
-                                                        ) : null}
                                                     </Flex>
                                                 )}
                                             >
+                                                {id !== 'uncategorized' ? (
+                                                    <Flex align="center" gap={8} justify="flex-end" style={{ paddingTop: 8 }}>
+                                                        <Button
+                                                            aria-label={`${t('edit')} ${name}`}
+                                                            fill="outline"
+                                                            onClick={() => {
+                                                                setCategorySheetMode('manage');
+                                                                setCategorySheetInitialCategoryId(id);
+                                                                setIsCategorySheetOpen(true);
+                                                            }}
+                                                            size="small"
+                                                            style={{
+                                                                backgroundColor: token.colorBgContainer,
+                                                                borderColor: token.colorBorderSecondary,
+                                                                borderRadius: 12,
+                                                                minHeight: 44,
+                                                                minWidth: 44,
+                                                                paddingInline: 0,
+                                                            }}
+                                                        >
+                                                            <LuPencil size={14} />
+                                                        </Button>
+                                                        <Switch
+                                                            aria-label={`${name} availability`}
+                                                            checked={categorySummaryById.get(id)?.active !== false}
+                                                            onChange={(checked) => handleToggleCategoryActive(id, checked)}
+                                                        />
+                                                    </Flex>
+                                                ) : null}
                                                 {items.length === 0 ? (
                                                     <Flex align="center" gap={8} style={{ padding: '14px 0 6px' }} vertical>
                                                         <Text type="secondary">{t('noItemsToShow')}</Text>
@@ -3740,7 +3921,6 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
                                                             {items.map((item) => (
                                                                 <List.Item
                                                                     key={item.id}
-                                                                    onClick={() => setEditingItem(item)}
                                                                     extra={
                                                                         <Flex align="center" gap={8} wrap>
                                                                             <div
@@ -3748,9 +3928,10 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
                                                                                 onMouseDown={(event) => event.stopPropagation()}
                                                                                 onPointerDown={(event) => event.stopPropagation()}
                                                                             >
-                                                                                <Switch checked={item.available} onChange={() => handleToggleAvailability(item)} />
+                                                                                <Switch aria-label={`${item.name} availability`} checked={item.available} onChange={() => handleToggleAvailability(item)} />
                                                                             </div>
                                                                             <Button
+                                                                                aria-label={`${t('edit')} ${item.name}`}
                                                                                 fill="none"
                                                                                 onClick={(event) => {
                                                                                     event.stopPropagation();
@@ -3975,6 +4156,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
             </Popup>
 
             <Popup
+                aria-label={t('filters')}
                 bodyStyle={{ maxHeight: '72vh', overflow: 'hidden', padding: 0 }}
                 onMaskClick={() => setIsStatusLegendSheetOpen(false)}
                 visible={isStatusLegendSheetOpen}
@@ -3998,6 +4180,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
                             {t('filters')}
                         </Title>
                         <Button
+                            aria-label={t('close')}
                             fill="none"
                             onClick={() => setIsStatusLegendSheetOpen(false)}
                             style={{ minHeight: 44, minWidth: 44, paddingInline: 0 }}
@@ -4093,7 +4276,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
                     >
                         <div style={{ minHeight: 44, minWidth: 44 }} />
                         <Title level={4} style={{ lineHeight: 1.2, margin: 0, textAlign: 'center' }}>{t('findAndFix')}</Title>
-                        <Button fill="none" onClick={() => setIsFilterSheetOpen(false)} style={{ minHeight: 44, minWidth: 44, paddingInline: 0 }}>
+                        <Button aria-label={t('close')} fill="none" onClick={() => setIsFilterSheetOpen(false)} style={{ minHeight: 44, minWidth: 44, paddingInline: 0 }}>
                             <LuX size={18} />
                         </Button>
                     </Flex>
@@ -4111,7 +4294,9 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
                                         <Text type="secondary">{t('allCategories')}</Text>
                                     ) : (
                                         categoryOptions.map((option) => (
-                                            <div
+                                            <button
+                                                type="button"
+                                                aria-pressed={draftFilters.categoryIds.includes(option.id)}
                                                 key={option.id}
                                                 onClick={() => {
                                                     if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
@@ -4124,8 +4309,13 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
                                                     backgroundColor: draftFilters.categoryIds.includes(option.id) ? token.colorPrimaryBg : token.colorBgContainer,
                                                     border: `1px solid ${draftFilters.categoryIds.includes(option.id) ? token.colorPrimary : token.colorBorderSecondary}`,
                                                     borderRadius: 12,
+                                                    color: 'inherit',
                                                     cursor: 'pointer',
+                                                    font: 'inherit',
+                                                    minHeight: 44,
                                                     padding: '12px 14px',
+                                                    textAlign: 'start',
+                                                    width: '100%',
                                                 }}
                                             >
                                                 <Flex align="center" gap={12} justify="space-between">
@@ -4148,7 +4338,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
                                                         {draftFilters.categoryIds.includes(option.id) ? <LuCheck size={12} /> : null}
                                                     </Flex>
                                                 </Flex>
-                                            </div>
+                                            </button>
                                         ))
                                     )}
                                 </Flex>
@@ -4520,7 +4710,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
                                 );
                             }
                         });
-                        applyLocalMenuUpdate(updated);
+                        await persistExplicitMenuUpdate(updated);
                         Toast.show({ content: t('itemDeleted'), duration: 1000 });
                         setEditingItem(null);
                         resetCommandActionFlow();
@@ -4673,7 +4863,11 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
                                 Toast.show({ content: t('failedToSaveRefresh'), duration: 2000 });
                                 return;
                             }
-                            applyLocalMenuUpdate(updated);
+                            if (shouldUploadImage) {
+                                applyLocalMenuUpdate(updated);
+                            } else {
+                                await persistExplicitMenuUpdate(updated);
+                            }
                             if (shouldUploadImage && pendingImage) {
                                 const uploadFileId = editingItem.fileId;
                                 const uploadProjectId = updated.projectId;
@@ -4755,7 +4949,11 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
                             Toast.show({ content: t('failedToSaveRefresh'), duration: 2000 });
                             return;
                         }
-                        applyLocalMenuUpdate(updated);
+                        if (shouldUploadImage) {
+                            applyLocalMenuUpdate(updated);
+                        } else {
+                            await persistExplicitMenuUpdate(updated);
+                        }
                         Toast.show({ content: t('itemUpdated'), duration: 1000 });
                         setEditingItem(null);
                         resetCommandActionFlow();
@@ -4881,7 +5079,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
 
                         targetData.items.push(createdItem);
 
-                        applyLocalMenuUpdate(updated);
+                        await persistExplicitMenuUpdate(updated);
                         Toast.show({ content: t('itemAdded'), duration: 1000 });
                         const currentAddSheetSource = addSheetSource;
                         setIsAddSheetOpen(false);
@@ -5071,8 +5269,8 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
                 businessType={storeDetails?.businessType}
                 initialAction={bulkActionType}
                 initialSelectedIds={bulkActionInitialSelectedIds}
-                onApply={(updatedProject, context) => {
-                    applyUndoableBulkMenuUpdate(updatedProject, context?.previousProject, context?.updatedCount, context?.successMessage);
+                onApply={async (updatedProject, context) => {
+                    await applyUndoableBulkMenuUpdate(updatedProject, context?.previousProject, context?.updatedCount, context?.successMessage);
                     resetCommandActionFlow();
                 }}
                 projectData={menuData}

@@ -24,6 +24,7 @@ import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'r
 import { LuClock, LuDollarSign, LuGlobe, LuLanguages } from 'react-icons/lu';
 import { Button, Card, DotLoading, Flex, NavBar, Select, Text, Toast } from '../antd';
 import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
+import { MOBILE_BOTTOM_NAV_CLEARANCE } from '../MobileNavigation';
 import {
     getBoundedMobileOwnerStringContext,
     getMobileOwnerStoreLogContext,
@@ -257,6 +258,7 @@ function MobileLocaleSettingsScreenContent({ onBack, onOpenBusinessCopySetup }: 
                         </Flex>
                         <Text type="secondary">{tBusiness('timeZoneHelper')}</Text>
                         <Select
+                            aria-label={tBusiness('timeZone')}
                             onChange={(value: string) => setFormData((previous) => ({ ...previous, timeZone: value }))}
                             options={TIMEZONES_LIST.map((item) => ({ label: item.label, value: item.tzCode }))}
                             placeholder={tBusiness('selectTimeZone')}
@@ -273,6 +275,7 @@ function MobileLocaleSettingsScreenContent({ onBack, onOpenBusinessCopySetup }: 
                         </Flex>
                         <Text type="secondary">{tBusiness('businessDayEndTimeHelper')}</Text>
                         <Select
+                            aria-label={tBusiness('businessDayEndTime')}
                             onChange={(value: string) => setFormData((previous) => ({ ...previous, businessDayEndTime: value }))}
                             options={BUSINESS_DAY_END_OPTIONS}
                             placeholder={tBusiness('selectBusinessDayEndTime')}
@@ -286,6 +289,7 @@ function MobileLocaleSettingsScreenContent({ onBack, onOpenBusinessCopySetup }: 
                         <Text type="secondary">{tBusiness('dateFormat')}</Text>
                         <Text type="secondary">{tBusiness('dateFormatHelper')}</Text>
                         <Select
+                            aria-label={tBusiness('dateFormat')}
                             onChange={(value: string) => setFormData((previous) => ({ ...previous, dateFormat: value }))}
                             options={DATE_FORMATS.map((item) => ({ label: format.dateTime(now, item.value), value: item.label }))}
                             placeholder={tBusiness('selectDateFormat')}
@@ -299,6 +303,7 @@ function MobileLocaleSettingsScreenContent({ onBack, onOpenBusinessCopySetup }: 
                         <Text type="secondary">{tBusiness('timeFormat')}</Text>
                         <Text type="secondary">{tBusiness('timeFormatHelper')}</Text>
                         <Select
+                            aria-label={tBusiness('timeFormat')}
                             onChange={(value: string) => setFormData((previous) => ({ ...previous, timeFormat: value }))}
                             options={TIME_FORMATS.map((item) => ({ label: `${format.dateTime(now, item.value)} (${item.labelHelper})`, value: item.label }))}
                             placeholder={tBusiness('selectTimeFormat')}
@@ -316,6 +321,7 @@ function MobileLocaleSettingsScreenContent({ onBack, onOpenBusinessCopySetup }: 
                         <Text type="secondary">{tBusiness('languageSettingsDesc')}</Text>
                         <Text type="secondary">{tBusiness('languageSettingsUsageHint')}</Text>
                         <Select
+                            aria-label={tBusiness('availableLanguages')}
                             maxCount={LANGUAGE_CONSTANTS.MAX_LANGUAGES_PER_PROJECT}
                             mode="multiple"
                             onChange={handleActiveLanguagesChange}
@@ -354,6 +360,7 @@ function MobileLocaleSettingsScreenContent({ onBack, onOpenBusinessCopySetup }: 
                         </Flex>
                         <Text type="secondary">{tBusiness('defaultLanguageHelper')}</Text>
                         <Select
+                            aria-label={tBusiness('defaultLanguage')}
                             onChange={(value: string) => setFormData((previous) => ({ ...previous, defaultLanguage: value }))}
                             options={availableDefaultLanguages}
                             placeholder={tBusiness('selectDefaultLanguage')}
@@ -370,6 +377,7 @@ function MobileLocaleSettingsScreenContent({ onBack, onOpenBusinessCopySetup }: 
                         </Flex>
                         <Text type="secondary">{tBusiness('currencyHelper')}</Text>
                         <Select
+                            aria-label={t('currency')}
                             onChange={handleCurrencyChange}
                             options={currencyOptions}
                             placeholder={t('currency')}
@@ -385,7 +393,7 @@ function MobileLocaleSettingsScreenContent({ onBack, onOpenBusinessCopySetup }: 
                         backdropFilter: 'blur(10px)',
                         backgroundColor: token.colorBgContainer,
                         borderTop: `1px solid ${token.colorBorderSecondary}`,
-                        bottom: 0,
+                        bottom: MOBILE_BOTTOM_NAV_CLEARANCE,
                         marginInline: -16,
                         padding: '12px 16px',
                         position: 'sticky',

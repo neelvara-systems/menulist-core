@@ -15,6 +15,7 @@ import { useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { LuExternalLink, LuMessageCircle, LuMessageSquare, LuPencil, LuPlus, LuShare2, LuTrash, LuX } from 'react-icons/lu';
 import { Button, Card, Flex, Input, List, NavBar, Popup, Switch, Tag, Text, TextArea, Toast } from '../antd';
 import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
+import { MOBILE_BOTTOM_NAV_CLEARANCE } from '../MobileNavigation';
 import {
     getBoundedMobileOwnerStringContext,
     getMobileOwnerStoreLogContext,
@@ -275,8 +276,8 @@ function MobileAdvancedSettingsScreenContent({ onBack, mode = 'all' }: MobileAdv
         const rawValue = editingPlatformValue.trim();
         const isKnownPlatform = knownPlatformMap.has(editingPlatformKey);
 
-        if (!isKnownPlatform && !normalizedLabel) {
-            Toast.show({ content: 'Add a platform name before saving.', duration: 2500 });
+        if ((!isKnownPlatform && !normalizedLabel) || !rawValue) {
+            Toast.show({ content: !isKnownPlatform && !normalizedLabel ? 'Add a platform name before saving.' : 'Add a public link before saving.', duration: 2500 });
             return;
         }
 
@@ -680,7 +681,7 @@ function MobileAdvancedSettingsScreenContent({ onBack, mode = 'all' }: MobileAdv
                         backdropFilter: 'blur(10px)',
                         backgroundColor: token.colorBgContainer,
                         borderTop: `1px solid ${token.colorBorderSecondary}`,
-                        bottom: 0,
+                        bottom: MOBILE_BOTTOM_NAV_CLEARANCE,
                         marginInline: -16,
                         padding: '12px 16px',
                         position: 'sticky',
@@ -709,7 +710,7 @@ function MobileAdvancedSettingsScreenContent({ onBack, mode = 'all' }: MobileAdv
                 </Flex>
             </Flex>
 
-            <Popup
+            <Popup aria-label="Choose Platform"
                 bodyStyle={{ maxHeight: '80vh', overflow: 'hidden', padding: 0 }}
                 onMaskClick={() => setIsSocialPickerOpen(false)}
                 position="bottom"
@@ -768,7 +769,7 @@ function MobileAdvancedSettingsScreenContent({ onBack, mode = 'all' }: MobileAdv
                 </Flex>
             </Popup>
 
-            <Popup
+            <Popup aria-label={editingPlatform ? `Edit ${editingPlatform.label}` : 'Edit Link'}
                 bodyStyle={{ maxHeight: '80vh', overflow: 'hidden', padding: 0 }}
                 onMaskClick={() => {
                     setEditingPlatformKey(null);
@@ -786,6 +787,7 @@ function MobileAdvancedSettingsScreenContent({ onBack, mode = 'all' }: MobileAdv
                         }}
                         right={(
                             <Button
+                                aria-label="Close link editor"
                                 fill="none"
                                 onClick={() => {
                                     setEditingPlatformKey(null);

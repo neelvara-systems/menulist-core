@@ -5,7 +5,10 @@ import {
     replaceUndefined,
     type RequestBodyComposerSession,
 } from '../../src/lib/apiHelper/requestBodyComposition';
-import { normalizeAnswerlatticeSourceContext } from '../../src/lib/answerlattice/documentComposer';
+import {
+    normalizeAnswerlatticeSourceContext,
+    resolveAnswerlatticePersistenceSession,
+} from '../../src/lib/answerlattice/documentComposer';
 import { sanitizeForFirestore } from '../../src/lib/firestore/sanitizeForFirestore';
 import { rejectInvalidOrOversizedDeclaredBody } from '../../src/lib/security/boundedRequestBody';
 import { sanitizeForFirestore as sanitizeSharedFunctionValue } from '../../functions/src/lib/sanitizeForFirestore';
@@ -236,6 +239,43 @@ assert.deepEqual(normalizeAnswerlatticeSourceContext({
     email: 'owner@example.com',
 });
 assert.equal(normalizeAnswerlatticeSourceContext({ name: 'Missing identity' }), undefined);
+
+const bridgedAnswerlatticeSession = resolveAnswerlatticePersistenceSession({
+    pId: 'ML',
+    role: 'menulist-owner',
+    sId: 22,
+    tId: 11,
+    uId: 'owner-1',
+    user: {
+        id: 'owner-1',
+        name: 'Owner One',
+        productAccounts: {
+            AL: {
+                active: true,
+                role: 'owner',
+                sId: 44,
+                storeId: 44,
+                tId: 33,
+                tenantId: 33,
+            },
+        },
+    },
+} as any);
+assert.equal(bridgedAnswerlatticeSession?.pId, 'AL');
+assert.equal(bridgedAnswerlatticeSession?.tId, 33);
+assert.equal(bridgedAnswerlatticeSession?.sId, 44);
+assert.equal(bridgedAnswerlatticeSession?.role, 'owner');
+
+const composedBridgedAnswerlatticeWrite = composeRequestBody(
+    { pId: 'AL', sourceContext: { pId: 'ML', tId: 11, sId: 22 } },
+    bridgedAnswerlatticeSession,
+    { isNew: true },
+    fixedNow,
+);
+assert.equal(composedBridgedAnswerlatticeWrite.pId, 'AL');
+assert.equal(composedBridgedAnswerlatticeWrite.tId, 33);
+assert.equal(composedBridgedAnswerlatticeWrite.sId, 44);
+assert.deepEqual(composedBridgedAnswerlatticeWrite.sourceContext, { pId: 'ML', tId: 11, sId: 22 });
 assert.equal(normalizeAnswerlatticeSourceContext({
     uId: 'owner-1',
     name: 'Owner',

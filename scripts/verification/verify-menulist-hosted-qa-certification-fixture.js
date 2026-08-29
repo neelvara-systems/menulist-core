@@ -28,8 +28,20 @@ const requiredTokens = [
     "quota_project_id: QA_PROJECT_ID",
     'await rm(ephemeralAdcDirectory, { force: true, recursive: true })',
     "onboardingSource: 'RESELLER_ONBOARDING'",
+    "command === 'set-location-capacity'",
+    "command === 'seed-menu'",
+    "readArg('location-capacity')",
+    "Pass --location-capacity=<integer from 1 to 10>.",
+    "'qaCertification.locationCapacity': locationCapacity",
+    'monthlyCredits: 75 * locationCapacity',
+    'monthlyCreditsAllowance: 75 * locationCapacity',
     "manualPaymentEvidenceType: 'qa_certification_non_payment'",
     "purpose: 'menulist_hosted_release_candidate'",
+    "key.startsWith('projects.')",
+    "name === 'RC Certification Menu'",
+    "Expected exactly one RC Certification Menu created through the hosted owner UI.",
+    "qaCertificationFixture: fixtureId",
+    'storeIds: [String(storeId)]',
     "tenant.data()?.qaCertificationFixture, fixtureId",
     "store.data()?.qaCertificationFixture, fixtureId",
     "amount: 0",
@@ -54,6 +66,13 @@ assert.ok(fixtureCommand.startsWith('ts-node --compiler-options'), 'Hosted-QA fi
 assert.ok(fixtureCommand.includes('-r tsconfig-paths/register'), 'Hosted-QA fixture must load repository path aliases.');
 assert.equal(fixtureCommand.includes('tsx'), false, 'Hosted-QA fixture must not depend on an unpinned tsx binary.');
 
+const clientTestCommand = packageJson.scripts?.['test:menulist-hosted-qa-certification-client'];
+assert.equal(typeof clientTestCommand, 'string', 'Hosted-QA client test command must be registered.');
+assert.ok(clientTestCommand.startsWith('ts-node --compiler-options'), 'Hosted-QA client test must use the pinned TypeScript runner.');
+assert.ok(clientTestCommand.includes('-r tsconfig-paths/register'), 'Hosted-QA client test must load repository path aliases.');
+assert.ok(clientTestCommand.endsWith('scripts/menulist/test-hosted-qa-certification-client.ts'));
+assert.equal(clientTestCommand.includes('tsx'), false, 'Hosted-QA client test must not depend on an unpinned tsx binary.');
+
 for (const token of requiredTokens) {
     assert.ok(source.includes(token), `Missing hosted-QA fixture guard: ${token}`);
 }
@@ -69,6 +88,13 @@ assert.ok(clientSource.includes("getDoc(doc(db, 'stores'"));
 assert.ok(clientSource.includes("token.claims.platformRole, 'OWNER'"));
 assert.equal(clientSource.includes('credentials.password as string,'), true);
 assert.equal(clientSource.includes('process.stdout.write(credentials'), false);
+assert.ok(clientSource.includes("process.argv.includes('--storage-probe')"));
+assert.ok(clientSource.includes('`projects/files/${tenantId}/${storeId}/${fixtureId}-storage-probe.png`'));
+assert.ok(clientSource.includes('await uploadBytes(probeRef, onePixelPng'));
+assert.ok(clientSource.includes('await deleteObject(probeRef)'));
+assert.ok(clientSource.includes("await uploadString("));
+assert.ok(clientSource.includes("'data_url'"));
+assert.ok(clientSource.includes('await deleteObject(dataUrlProbeRef)'));
 assert.ok(subscriptionTypeSource.includes("projectId: 'menulist-qa' | 'neelvara-answerlattice-qa'"));
 assert.ok(subscriptionTypeSource.includes("purpose: 'menulist_hosted_release_candidate' | 'answerlattice_hosted_release_candidate'"));
 for (const surfacePath of billingSurfacePaths) {

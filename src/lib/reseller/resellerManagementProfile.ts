@@ -30,6 +30,22 @@ export type ResellerManagementProfilesResponse = {
     profiles: ResellerManagementProfile[];
 };
 
+export type ResellerManagementEditableDraft = {
+    active?: boolean;
+    addressLine?: string;
+    city?: string;
+    country?: string;
+    email?: string;
+    maxOfflineActivations?: number | string;
+    name?: string;
+    notes?: string;
+    password?: string;
+    phone?: string;
+    postalCode?: string;
+    state?: string;
+    username?: string;
+};
+
 const PROFILE_KEYS = new Set([
     "active", "addressLine", "city", "country", "currentActiveOfflineStores",
     "email", "id", "maxOfflineActivations", "name", "notes", "phone",
@@ -48,6 +64,30 @@ const boundedString = (value: unknown, max: number): value is string => (
 const optionalString = (value: unknown, max: number): value is string | undefined => (
     value === undefined || (typeof value === "string" && value.length <= max)
 );
+
+const normalizedDraftText = (value: unknown): string => (
+    typeof value === "string" ? value.trim() : ""
+);
+
+export const isResellerManagementDraftChanged = (
+    draft: ResellerManagementEditableDraft,
+    profile: ResellerManagementProfile,
+): boolean => {
+    if (normalizedDraftText(draft.password)) return true;
+
+    return (draft.active ?? true) !== profile.active
+        || normalizedDraftText(draft.addressLine) !== normalizedDraftText(profile.addressLine)
+        || normalizedDraftText(draft.city) !== normalizedDraftText(profile.city)
+        || normalizedDraftText(draft.country) !== normalizedDraftText(profile.country)
+        || normalizedDraftText(draft.email).toLowerCase() !== normalizedDraftText(profile.email).toLowerCase()
+        || Number(draft.maxOfflineActivations) !== profile.maxOfflineActivations
+        || normalizedDraftText(draft.name) !== normalizedDraftText(profile.name)
+        || normalizedDraftText(draft.notes) !== normalizedDraftText(profile.notes)
+        || normalizedDraftText(draft.phone) !== normalizedDraftText(profile.phone)
+        || normalizedDraftText(draft.postalCode) !== normalizedDraftText(profile.postalCode)
+        || normalizedDraftText(draft.state) !== normalizedDraftText(profile.state)
+        || normalizedDraftText(draft.username).toLowerCase() !== normalizedDraftText(profile.username).toLowerCase();
+};
 
 export const projectResellerManagementProfile = (
     value: unknown,

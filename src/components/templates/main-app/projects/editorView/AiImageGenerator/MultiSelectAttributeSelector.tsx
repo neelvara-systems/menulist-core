@@ -75,9 +75,18 @@ const MultiSelectAttributeSelector: React.FC<MultiSelectAttributeSelectorProps> 
     return (
       <Flex
         align="center"
+        aria-checked={isSelected}
         gap={10}
         key={option}
         onClick={() => toggleOption(option)}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            toggleOption(option);
+          }
+        }}
+        role="checkbox"
+        tabIndex={0}
         style={{
           background: token.colorFillAlter,
           border: `1px solid ${isSelected ? token.colorPrimary : token.colorBorderSecondary}`,
@@ -197,15 +206,17 @@ const MultiSelectAttributeSelector: React.FC<MultiSelectAttributeSelectorProps> 
                 {selectionLabel}
               </Typography.Text>
             </Flex>
-            <Button
-              onClick={(event) => {
-                event.stopPropagation();
-                setOpen(true);
+            <span
+              aria-hidden="true"
+              style={{
+                border: `1px solid ${token.colorBorder}`,
+                borderRadius: 6,
+                flex: '0 0 auto',
+                padding: '4px 12px',
               }}
-              style={{ flex: '0 0 auto' }}
             >
               Change
-            </Button>
+            </span>
           </Flex>
           {selected.length > 0 ? (
             <Flex gap={6} wrap="wrap">

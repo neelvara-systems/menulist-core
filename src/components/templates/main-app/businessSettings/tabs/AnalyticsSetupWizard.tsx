@@ -153,6 +153,7 @@ const AnalyticsSetupWizard: React.FC<AnalyticsSetupWizardProps> = ({ open, onClo
                                         <Text type="secondary">Track menu opens, item detail opens, search demand, unavailable-item demand, final menu CTA clicks, and entry source</Text>
                                     </div>
                                     <Switch
+                                        aria-label="Track menu activity"
                                         checked={analytics.trackMenuViews !== false}
                                         onChange={(checked) => form.setFieldValue(['analytics', 'trackMenuViews'], checked)}
                                     />
@@ -165,6 +166,7 @@ const AnalyticsSetupWizard: React.FC<AnalyticsSetupWizardProps> = ({ open, onClo
                                         <Text type="secondary">See when Featured choices are shown and tapped</Text>
                                     </div>
                                     <Switch
+                                        aria-label="Track featured section"
                                         checked={analytics.trackDecisionBlocks !== false}
                                         onChange={(checked) => form.setFieldValue(['analytics', 'trackDecisionBlocks'], checked)}
                                     />
@@ -177,6 +179,7 @@ const AnalyticsSetupWizard: React.FC<AnalyticsSetupWizardProps> = ({ open, onClo
                                         <Text type="secondary">See OBP views, CTA taps, social/review link clicks, owner shares, and menu conversion</Text>
                                     </div>
                                     <Switch
+                                        aria-label="Track official business page"
                                         checked={analytics.trackOfficialBusinessPage !== false}
                                         onChange={(checked) => form.setFieldValue(['analytics', 'trackOfficialBusinessPage'], checked)}
                                     />
@@ -189,6 +192,7 @@ const AnalyticsSetupWizard: React.FC<AnalyticsSetupWizardProps> = ({ open, onClo
                                         <Text type="secondary">See install prompt, install, open, and shortcut activity</Text>
                                     </div>
                                     <Switch
+                                        aria-label="Track customer app"
                                         checked={analytics.trackCustomerApp !== false}
                                         onChange={(checked) => form.setFieldValue(['analytics', 'trackCustomerApp'], checked)}
                                     />
@@ -201,6 +205,7 @@ const AnalyticsSetupWizard: React.FC<AnalyticsSetupWizardProps> = ({ open, onClo
                                         <Text type="secondary">Use rounded geolocation or timezone region, never exact GPS</Text>
                                     </div>
                                     <Switch
+                                        aria-label="Track approximate location"
                                         checked={analytics.trackLocation === true}
                                         onChange={(checked) => form.setFieldValue(['analytics', 'trackLocation'], checked)}
                                     />

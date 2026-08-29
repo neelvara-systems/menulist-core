@@ -63,4 +63,4 @@ export interface UseMenuListData {
     hasFeedbackEnabled: boolean;
 }
 
-export type PageState = 'loading' | 'no_menu' | 'not_published' | 'ready';
+export type PageState = 'loading' | 'no_menu' | 'missing_public_address' | 'not_published' | 'ready';

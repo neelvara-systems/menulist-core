@@ -11,8 +11,9 @@ import { buildVisualProfileCompletion } from '@lib/visualProfile/visualProfileCo
 import MediaImageCard from '@/components/shared/media/MediaImageCard';
 import MediaImageAdjustModal from '@/components/shared/media/MediaImageAdjustModal';
 import MediaPublicContextPreview from '@/components/shared/media/MediaPublicContextPreview';
-import { generateOBPUrl } from '@lib/obp/generateOBPUrl';
-import { App, Button, Card, Col, Divider, Flex, Form, Input, InputNumber, Row, Select, Switch, Tag, Typography, theme } from 'antd';
+import { generateConfiguredStoreOBPUrl } from '@lib/obp/generateOBPUrl';
+import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
+import { Alert, App, Button, Card, Col, Divider, Flex, Form, Input, InputNumber, Row, Select, Switch, Tag, Typography, theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import React, { forwardRef, useEffect, useMemo, useRef, useState } from 'react';
 import ShareLinkCard from '../../ShareLinkCard';
@@ -74,6 +75,8 @@ interface OfficialPageTabProps {
     onGoogleLinkDismiss?: () => void;
 }
 
+const EMPTY_PUBLIC_PRESENCE: NonNullable<OfficialPageTabProps['publicPresence']> = {};
+
 type ObpMediaDraft = {
     crop?: MediaImageCropIntent;
     fileName?: string;
@@ -92,7 +95,7 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
         photosScrollRef,
         compact = false,
         showDistributionTools = true,
-        publicPresence = {},
+        publicPresence = EMPTY_PUBLIC_PRESENCE,
         onPublicPresenceChange,
         onPhotoDeleteQueued,
         onContentLanguageChange,
@@ -105,6 +108,7 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
         const t = useTranslations('BusinessSettings');
         const form = Form.useFormInstance();
         const session = useClientAuthSession();
+        const { storeDetails: contextStoreDetails, tenantDetails } = React.useContext(PlatformGlobalDataContext);
         const { token } = theme.useToken();
         const [photoUploading, setPhotoUploading] = useState<number | null>(null);
         const [coverUploading, setCoverUploading] = useState(false);
@@ -117,7 +121,10 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
         const [adjustingPhotoIndex, setAdjustingPhotoIndex] = useState<number | null>(null);
         const componentActiveRef = useRef(true);
         const photoSlots = [...photos.filter(Boolean), ''];
-        const officialPageUrl = generateOBPUrl(subdomain, customDomain);
+        const officialPageUrl = generateConfiguredStoreOBPUrl(
+            contextStoreDetails || { customDomain, subdomain },
+            tenantDetails?.storesList,
+        );
         const localizedPresenceDrafts = Form.useWatch('__localizedPublicPresenceDrafts') || {};
         const storeContentLanguage = Form.useWatch('__storeContentLanguage');
         const activeLanguages = Form.useWatch('activeLanguages') || [];
@@ -496,17 +503,26 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                     <div style={{ marginTop: 16 }}>
                         <ShareLinkCard
                             title="Official Business Page Link"
-                            description="Share this with customers — it always shows your latest public page"
+                            description="Share this with customers — it opens your latest published public page"
                             url={officialPageUrl}
                             shortUrl={officialPageUrl.replace(/^https?:\/\//, '')}
                             sharePrefix="Here is our official business page:"
                             copySuccessLabel="Official business page link"
                         />
                     </div>
+                ) : showDistributionTools ? (
+                    <Alert
+                        description="Add a MenuList subdomain or custom domain in the Domain section before sharing this page."
+                        message="Set up your customer link"
+                        showIcon
+                        style={{ marginTop: 16 }}
+                        type="warning"
+                    />
                 ) : null}
                 {showDistributionTools ? (
                     <GoogleListingGuide
                         businessName={getLocalizedStoreValue(watchedStoreName || watchedTenantName, currentLanguage, '')}
+                        officialPageUrl={officialPageUrl}
                         subdomain={subdomain}
                         customDomain={customDomain}
                         descriptor={getLocalizedStoreValue(watchedDescriptor, currentLanguage, '')}
@@ -886,6 +902,7 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                                 }]}
                             >
                                 <InputNumber
+                                    controls={false}
                                     placeholder="2015"
                                     style={{ width: '100%' }}
                                     min={1900}
@@ -957,6 +974,7 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                                 }]}
                             >
                                 <InputNumber
+                                    controls={false}
                                     placeholder="4.5"
                                     style={{ width: '100%' }}
                                     min={1}
@@ -978,6 +996,7 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                                 }]}
                             >
                                 <InputNumber
+                                    controls={false}
                                     placeholder="320"
                                     style={{ width: '100%' }}
                                     min={0}
@@ -1085,6 +1104,7 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                                     valuePropName="checked"
                                 >
                                     <Switch
+                                        aria-label={t('showCallButton')}
                                         checkedChildren={<LuPhone size={12} />}
                                         onChange={handleToggle('showCall')}
                                     />
@@ -1097,6 +1117,7 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                                     valuePropName="checked"
                                 >
                                     <Switch
+                                        aria-label={t('showWhatsAppButton')}
                                         checkedChildren={<LuMessageSquare size={12} />}
                                         onChange={handleToggle('showWhatsApp')}
                                     />
@@ -1109,6 +1130,7 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                                     valuePropName="checked"
                                 >
                                     <Switch
+                                        aria-label={t('showDirectionsButton')}
                                         checkedChildren={<LuMapPin size={12} />}
                                         onChange={handleToggle('showDirections')}
                                     />
@@ -1121,6 +1143,7 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                                     valuePropName="checked"
                                 >
                                     <Switch
+                                        aria-label={t('showReservationButton')}
                                         checkedChildren={<LuCalendar size={12} />}
                                         onChange={handleToggle('showReservation')}
                                     />
@@ -1133,6 +1156,7 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                                     valuePropName="checked"
                                 >
                                     <Switch
+                                        aria-label={t('showOrderButton')}
                                         checkedChildren={<LuShoppingBag size={12} />}
                                         onChange={handleToggle('showOrder')}
                                     />
@@ -1145,6 +1169,7 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                                     valuePropName="checked"
                                 >
                                     <Switch
+                                        aria-label={t('showGoogleReviewButton')}
                                         checkedChildren={<LuStar size={12} />}
                                         onChange={handleToggle('showGoogleReview')}
                                     />
@@ -1157,6 +1182,7 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                                     valuePropName="checked"
                                 >
                                     <Switch
+                                        aria-label={t('showFeedbackButton')}
                                         checkedChildren={<LuMessageSquarePlus size={12} />}
                                         onChange={handleToggle('showFeedback')}
                                     />
@@ -1179,7 +1205,7 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                                         label={t('showPrivacyLink')}
                                         valuePropName="checked"
                                     >
-                                        <Switch />
+                                        <Switch aria-label={t('showPrivacyLink')} />
                                     </Form.Item>
                                 </Col>
                                 <Col {...actionCol}>
@@ -1188,7 +1214,7 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                                         label={t('showTermsLink')}
                                         valuePropName="checked"
                                     >
-                                        <Switch />
+                                        <Switch aria-label={t('showTermsLink')} />
                                     </Form.Item>
                                 </Col>
                                 <Col {...actionCol}>
@@ -1197,13 +1223,13 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                                         label={t('showRefundLink')}
                                         valuePropName="checked"
                                     >
-                                        <Switch />
+                                        <Switch aria-label={t('showRefundLink')} />
                                     </Form.Item>
                                 </Col>
                             </Row>
                             <CompliancePagesSection
-                                domain={(customDomain || subdomain)
-                                    ? generateOBPUrl(subdomain, customDomain).replace(/^https?:\/\//, '')
+                                domain={officialPageUrl
+                                    ? officialPageUrl.replace(/^https?:\/\//, '')
                                     : undefined}
                                 storeId={session.sId}
                                 tenantId={session.tId}

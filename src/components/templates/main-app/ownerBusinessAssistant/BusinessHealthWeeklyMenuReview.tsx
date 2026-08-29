@@ -41,7 +41,7 @@ export function BusinessHealthWeeklyMenuReview({
   }
 
   return (
-    <Card className={styles.analyticsStrip} bodyStyle={{ padding: 12 }}>
+    <Card className={styles.analyticsStrip} styles={{ body: { padding: 12 } }}>
       <div className={styles.analyticsStripHeader}>
         <Flex align="center" gap={8}>
           <LuCalendarDays aria-hidden size={16} />

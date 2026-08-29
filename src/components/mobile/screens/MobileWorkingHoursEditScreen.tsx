@@ -10,6 +10,7 @@ import { useTranslations } from 'next-intl';
 import { useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { Button, Card, Dialog, DotLoading, Flex, Input, NavBar, Switch, Text, Toast } from '../antd';
 import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
+import { MOBILE_BOTTOM_NAV_CLEARANCE } from '../MobileNavigation';
 import MobileSpecialHoursManager from '../components/MobileSpecialHoursManager';
 import {
     getMobileOwnerStoreLogContext,
@@ -88,7 +89,9 @@ function MobileWorkingHoursEditScreenContent({ onBack }: MobileWorkingHoursEditS
         if (found) return found;
         return schedule[key]?.isClosed ? null : schedule[key];
     }, null) || { open: '09:00', close: '22:00', isClosed: false };
-    const isDirty = JSON.stringify(schedule) !== JSON.stringify(originalSchedule);
+    const isDirty = DAYS.some(
+        ({ key }) => serializeDay(schedule[key]) !== serializeDay(originalSchedule[key]),
+    );
 
     const saveWorkingHours = useCallback(async () => {
         const expectedStoreId = Number(storeDetails?.storeId);
@@ -252,6 +255,7 @@ function MobileWorkingHoursEditScreenContent({ onBack }: MobileWorkingHoursEditS
                         </Flex>
                         <Flex gap={8}>
                             <Input
+                                aria-label={`${t('setSameHoursAllDays')}: ${t('selectOpeningTime')}`}
                                 onChange={(value) => setSchedule((previous) => {
                                     const next: Record<string, DaySchedule> = {};
                                     DAYS.forEach(({ key }) => {
@@ -263,6 +267,7 @@ function MobileWorkingHoursEditScreenContent({ onBack }: MobileWorkingHoursEditS
                                 value={allDaysTemplate.open}
                             />
                             <Input
+                                aria-label={`${t('setSameHoursAllDays')}: ${t('selectClosingTime')}`}
                                 onChange={(value) => setSchedule((previous) => {
                                     const next: Record<string, DaySchedule> = {};
                                     DAYS.forEach(({ key }) => {
@@ -290,12 +295,13 @@ function MobileWorkingHoursEditScreenContent({ onBack }: MobileWorkingHoursEditS
                                         <Text style={{ color: day.isClosed ? token.colorError : token.colorSuccess }}>
                                             {day.isClosed ? t('closed') : t('open')}
                                         </Text>
-                                        <Switch checked={!day.isClosed} onChange={() => setSchedule((previous) => ({ ...previous, [key]: { ...previous[key], isClosed: !previous[key].isClosed } }))} />
+                                        <Switch aria-label={`${localizedDayLabel || label}: ${t('open')}`} checked={!day.isClosed} onChange={() => setSchedule((previous) => ({ ...previous, [key]: { ...previous[key], isClosed: !previous[key].isClosed } }))} />
                                     </Flex>
                                 </Flex>
                                 {!day.isClosed ? (
                                     <Flex gap={8}>
                                         <Input
+                                            aria-label={`${localizedDayLabel || label}: ${t('selectOpeningTime')}`}
                                             onChange={(value) => setSchedule((previous) => ({
                                                 ...previous,
                                                 [key]: { ...previous[key], open: value },
@@ -304,6 +310,7 @@ function MobileWorkingHoursEditScreenContent({ onBack }: MobileWorkingHoursEditS
                                             value={day.open}
                                         />
                                         <Input
+                                            aria-label={`${localizedDayLabel || label}: ${t('selectClosingTime')}`}
                                             onChange={(value) => setSchedule((previous) => ({
                                                 ...previous,
                                                 [key]: { ...previous[key], close: value },
@@ -326,7 +333,7 @@ function MobileWorkingHoursEditScreenContent({ onBack }: MobileWorkingHoursEditS
                         backdropFilter: 'blur(10px)',
                         backgroundColor: token.colorBgContainer,
                         borderTop: `1px solid ${token.colorBorderSecondary}`,
-                        bottom: 0,
+                        bottom: MOBILE_BOTTOM_NAV_CLEARANCE,
                         marginInline: -16,
                         padding: '12px 16px',
                         position: 'sticky',

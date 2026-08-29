@@ -9,9 +9,9 @@ import { isPlatformEntityBlocked } from '@lib/platform/entityBlock'
 import LocalisationProvider from '@providers/localisationProvider'
 import NoSSRProvider from '@providers/noSSRProvider'
 import { ReduxStoreProvider } from '@providers/reduxProvider'
-import SessionProvider from '@providers/sessionProvider'
+import AnswerlatticeSessionProvider from '@providers/answerlatticeSessionProvider'
 import "@styles/app.scss"
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import { getServerSession } from 'next-auth'
 import { headers } from 'next/headers'
 import { getLocale } from 'next-intl/server'
@@ -25,7 +25,7 @@ export const metadata: Metadata = {
     title: 'Answerlattice — Governed Answer Infrastructure',
     description: 'The Governed Answer Infrastructure for SaaS Support',
     metadataBase: new URL('https://answerlattice.com'),
-    manifest: '/answerlattice.webmanifest',
+    manifest: '/answerlattice-app.webmanifest',
     keywords: [
         'governed answer infrastructure',
         'support knowledge infrastructure',
@@ -75,6 +75,16 @@ export const metadata: Metadata = {
     },
 }
 
+export const viewport: Viewport = {
+    width: 'device-width',
+    initialScale: 1,
+    themeColor: [
+        { media: '(prefers-color-scheme: light)', color: '#F8FAFC' },
+        { media: '(prefers-color-scheme: dark)', color: '#0A0A1A' },
+    ],
+    viewportFit: 'cover',
+}
+
 export default async function AnswerlatticeLayout({ children }: { children: React.ReactNode }) {
     const session = await getServerSession(authOptions);
     const requestHeaders = await headers();
@@ -106,7 +116,7 @@ export default async function AnswerlatticeLayout({ children }: { children: Reac
         <AntdRegistry>
             <LocalisationProvider locale={locale}>
                 <ReduxStoreProvider>
-                    <SessionProvider session={session} productContext="answerlattice">
+                    <AnswerlatticeSessionProvider session={session}>
                         <NoSSRProvider>
                             <AnswerlatticeDashboardLayout globalOverlays={<SessionExpiryMonitor loginCallbackPath={callbackPath} />}>
                                 <Suspense fallback={<ServerSidePageLoader page="Answerlattice Dashboard" brand="answerlattice" />}>
@@ -114,7 +124,7 @@ export default async function AnswerlatticeLayout({ children }: { children: Reac
                                 </Suspense>
                             </AnswerlatticeDashboardLayout>
                         </NoSSRProvider>
-                    </SessionProvider>
+                    </AnswerlatticeSessionProvider>
                 </ReduxStoreProvider>
             </LocalisationProvider>
         </AntdRegistry>

@@ -162,6 +162,7 @@ const PastActivityScreen = () => {
         <div className={styles.projectSelectorRow}>
             <Text type="secondary">Project</Text>
             <Select
+                aria-label="Project"
                 className={styles.projectSelector}
                 onChange={(value) => setSelectedProjectId(value)}
                 options={projects.map((project) => ({
@@ -200,6 +201,7 @@ const PastActivityScreen = () => {
                     <Spin size="large" />
                 </div>
                 <Drawer
+                    aria-label={PAST_ACTIVITY_GUIDE_TITLE}
                     closable={false}
                     onClose={() => setIsGuideOpen(false)}
                     open={isGuideOpen}
@@ -261,6 +263,7 @@ const PastActivityScreen = () => {
                     </Text>
                 </div>
                 <Drawer
+                    aria-label={PAST_ACTIVITY_GUIDE_TITLE}
                     closable={false}
                     onClose={() => setIsGuideOpen(false)}
                     open={isGuideOpen}
@@ -338,6 +341,7 @@ const PastActivityScreen = () => {
                 ))}
             </div>
             <Drawer
+                aria-label={PAST_ACTIVITY_GUIDE_TITLE}
                 closable={false}
                 onClose={() => setIsGuideOpen(false)}
                 open={isGuideOpen}

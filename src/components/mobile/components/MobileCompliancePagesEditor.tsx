@@ -186,7 +186,7 @@ async function loadCompliancePages(scope: OwnerComplianceScope, force = false) {
         return currentRequest;
     }
 
-    const request = fetch('/api/compliance', AUTH_BROWSER_REQUEST_POLICY)
+    const request = fetch(`/api/compliance?storeId=${encodeURIComponent(scope.storeId)}`, AUTH_BROWSER_REQUEST_POLICY)
         .then(async (response) => {
             if (!response.ok) {
                 logBusinessSettingsFailure(
@@ -327,6 +327,7 @@ export default function MobileCompliancePagesEditor({
                 body: JSON.stringify({
                     action: 'override',
                     content: customText,
+                    storeId: scope.storeId,
                     type,
                 }),
             });
@@ -378,6 +379,7 @@ export default function MobileCompliancePagesEditor({
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     action: 'reset',
+                    storeId: scope.storeId,
                     type,
                 }),
             });
@@ -435,6 +437,7 @@ export default function MobileCompliancePagesEditor({
             </Button>
 
             <Popup
+                aria-label={pageLabel}
                 bodyStyle={{ height: '100vh', maxHeight: '100vh', overflow: 'hidden', padding: 0 }}
                 onMaskClick={() => setIsOpen(false)}
                 position="bottom"
@@ -519,6 +522,7 @@ export default function MobileCompliancePagesEditor({
                                         <Flex gap={10} vertical>
                                             <Text strong>Your custom content</Text>
                                             <TextArea
+                                                aria-label={`Custom ${pageLabel.toLowerCase()} content`}
                                                 autoSize={{ minRows: 12, maxRows: 22 }}
                                                 maxLength={15000}
                                                 onChange={setCustomText}

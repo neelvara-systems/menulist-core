@@ -607,7 +607,7 @@ export default function MobileProjectSelectorSheet({
         setFormProjectImage(project.projectImage || null);
         setFormProjectImageDraft(null);
         setIsProjectImageAdjustOpen(false);
-        setFormIsDefault(false);
+        setFormIsDefault(project.isDefault === true);
         setFormActive(project.active !== false);
         setFormStartsAt(toSpecialMenuInputValue(
             project.specialMenuStartsAt,
@@ -1279,7 +1279,6 @@ export default function MobileProjectSelectorSheet({
             Toast.show({ content: 'Could not verify this location.', duration: 1800 });
             return;
         }
-
         try {
             if (!nextActive && !canDeactivateLinkedProjects && await isLinkedOutletProject(project, operationScope)) {
                 Toast.show({ content: 'Deactivating inherited menus is not enabled for this location.', duration: 1800 });
@@ -1381,7 +1380,8 @@ export default function MobileProjectSelectorSheet({
             const isCurrent = project.projectId === currentProjectId;
             const fallback = getDeleteFallbackProject(project.projectId);
             const defaultReplacement = project.isDefault ? getDeleteDefaultReplacement(project.projectId) : null;
-            const deleteResult = await deleteProject(project.projectId);
+            const deleteResult = await deleteProject(project.projectId).catch(() => null);
+            if (!deleteResult) return;
             assertProjectDeleteSucceeded(
                 deleteResult,
                 project.projectId,
@@ -1640,6 +1640,7 @@ export default function MobileProjectSelectorSheet({
     return (
         <>
             <Popup
+                aria-label={t('selectCatalog')}
                 bodyStyle={{ borderTopLeftRadius: 20, borderTopRightRadius: 20 }}
                 onMaskClick={onClose}
                 position="bottom"
@@ -1704,6 +1705,7 @@ export default function MobileProjectSelectorSheet({
             </Popup>
 
             <Popup
+                aria-label={`${resolveProjectName(managingProject?.name, t('catalogActions'))} menu actions`}
                 bodyStyle={{ borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingTop: 0 }}
                 onMaskClick={() => setManagingProjectId(null)}
                 position="bottom"
@@ -1740,7 +1742,7 @@ export default function MobileProjectSelectorSheet({
                                 </Flex>
                             ) : null}
                         </Flex>
-                        <Button fill="none" onClick={() => setManagingProjectId(null)} size="small">
+                        <Button aria-label="Close menu management" fill="none" onClick={() => setManagingProjectId(null)} size="small">
                             <LuX size={18} />
                         </Button>
                     </Flex>
@@ -1799,6 +1801,7 @@ export default function MobileProjectSelectorSheet({
             </Popup>
 
             <Popup
+                aria-label={formMode === 'create' ? t('createCatalog') : formMode === 'duplicate' ? t('duplicateCatalog') : t('editCatalog')}
                 bodyStyle={{ borderTopLeftRadius: 20, borderTopRightRadius: 20, overflowY: 'auto', paddingTop: 0 }}
                 onMaskClick={() => resetFormState()}
                 position="bottom"
@@ -1814,7 +1817,7 @@ export default function MobileProjectSelectorSheet({
                         <Title level={4} style={{ margin: 0, flex: 1 }}>
                             {formMode === 'create' ? t('createCatalog') : formMode === 'duplicate' ? t('duplicateCatalog') : t('editCatalog')}
                         </Title>
-                        <Button fill="none" onClick={() => resetFormState()} size="small">
+                        <Button aria-label="Close menu form" fill="none" onClick={() => resetFormState()} size="small">
                             <LuX size={18} />
                         </Button>
                     </Flex>
@@ -1845,7 +1848,7 @@ export default function MobileProjectSelectorSheet({
 
                             <Flex gap={6} vertical>
                                 <Text strong>{t('catalogName')}</Text>
-                                <Input autoFocus maxLength={100} onChange={handleFormNameChange} placeholder={t('catalogNamePlaceholder')} value={formName} />
+                                <Input aria-label={t('catalogName')} autoFocus maxLength={100} onChange={handleFormNameChange} placeholder={t('catalogNamePlaceholder')} value={formName} />
                                 {formSelectedLanguage !== formReferenceLanguage ? (
                                     <MobileProjectReferenceCard
                                         onUseReference={() => setFormNameDrafts((previous) => ({
@@ -1861,7 +1864,7 @@ export default function MobileProjectSelectorSheet({
 
                             <Flex gap={6} vertical>
                                 <Text strong>{t('description')}</Text>
-                                <TextArea maxLength={300} onChange={handleFormDescriptionChange} placeholder={t('descriptionPlaceholder')} rows={3} showCount value={formDescription} />
+                                <TextArea aria-label={t('description')} maxLength={300} onChange={handleFormDescriptionChange} placeholder={t('descriptionPlaceholder')} rows={3} showCount value={formDescription} />
                                 <Text type="secondary">Only for you. Customers do not see this description.</Text>
                                 {formSelectedLanguage !== formReferenceLanguage ? (
                                     <MobileProjectReferenceCard
@@ -1911,7 +1914,7 @@ export default function MobileProjectSelectorSheet({
                                         <Text strong>Active</Text>
                                         <Text type="secondary">Inactive menus stay hidden until you enable them.</Text>
                                     </Flex>
-                                    <Switch checked={formActive} onChange={setFormActive} />
+                                    <Switch aria-label="Make menu active" checked={formActive} onChange={setFormActive} />
                                 </Flex>
                             ) : null}
 
@@ -1919,7 +1922,7 @@ export default function MobileProjectSelectorSheet({
                                 <Flex gap={8} vertical>
                                     <Flex align="center" justify="space-between" gap={12}>
                                         <Text strong>Default</Text>
-                                        <Switch checked={formIsDefault} onChange={setFormIsDefault} />
+                                        <Switch aria-label="Make menu default" checked={formIsDefault} onChange={setFormIsDefault} />
                                     </Flex>
                                     <Text type="secondary">
                                         Current default {labels.offeringLower}: <strong>{currentDefaultProjectName || `No default ${labels.offeringLower} is set yet`}</strong>

@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import {
     isActiveRegularSummaryProject,
+    isCompleteSummaryProject,
     isCurrentActiveSpecialSummaryProject,
     normalizeSummaryProjectLocalizedText,
     parseSummaryProjects,
@@ -61,6 +62,9 @@ assert.deepEqual(
 );
 assert.equal(isActiveRegularSummaryProject({ active: true, deleted: false }), true);
 assert.equal(isActiveRegularSummaryProject({ active: true, isSpecialMenu: true }), false);
+assert.equal(isCompleteSummaryProject({ active: true, name: 'Menu' }), true);
+assert.equal(isCompleteSummaryProject({ active: true }), false);
+assert.equal(isCompleteSummaryProject({ name: 'Ghost menu' }), false);
 const normalizedSummaryName = normalizeSummaryProjectLocalizedText({ en: 'Menu', hi: null, fr: 5 });
 if (!normalizedSummaryName || typeof normalizedSummaryName !== 'object') {
     throw new Error('Expected a normalized localized summary name');
@@ -94,6 +98,19 @@ assert.deepEqual(buildSummaryProjectFieldPayload('project_1', 'flags.featured', 
 const deleteMarker = { __deleteSentinel: true };
 assert.deepEqual(buildSummaryProjectDeletePayload('project_1', deleteMarker), {
     'projects.project_1': deleteMarker,
+    projects: { project_1: deleteMarker },
+});
+
+assert.deepEqual(buildSummaryProjectDeletePayload('project_1', deleteMarker, {
+    'projects.project_1': { name: 'Lunch' },
+    'projects.project_1.specialMenuStatus': 'expired',
+    'projects.project_1.specialMenuDisplayName.en': 'Lunch special',
+    'projects.project_10.specialMenuStatus': 'active',
+}), {
+    'projects.project_1': deleteMarker,
+    'projects.project_1.specialMenuDisplayName.en': deleteMarker,
+    'projects.project_1.specialMenuStatus': deleteMarker,
+    projects: { project_1: deleteMarker },
 });
 assert.throws(() => buildSummaryProjectPayload('__proto__', {}));
 assert.throws(() => buildSummaryProjectPayload('project.with.dot', {}));

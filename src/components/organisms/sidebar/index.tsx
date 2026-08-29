@@ -111,7 +111,7 @@ const SidebarComponent = ({ onExpandedChange }: SidebarComponentProps) => {
                     activeSubscription,
                     storeDetails,
                     storeId: storeDetails?.storeId,
-                });
+                }) && canShowNavForPermissions(nav);
             }
             if (nav.route === NAVIGARIONS_ROUTINGS.RESELLER) {
                 return FEATURE_FLAGS.ENABLE_RESELLER_DASHBOARD

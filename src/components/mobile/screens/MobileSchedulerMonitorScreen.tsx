@@ -122,6 +122,7 @@ export default function MobileSchedulerMonitorScreen({ onBack }: MobileScheduler
         selectedStoreId,
         selectOptions,
         setSelectedStoreId,
+        stores,
     } = usePlatformStoreSummaryOptions(isPlatform);
 
     const lastRun = health?.lastRun || runs[0] || null;
@@ -134,7 +135,7 @@ export default function MobileSchedulerMonitorScreen({ onBack }: MobileScheduler
         setLoading(true);
         setLoadError(false);
         try {
-            const snapshot = await getSchedulerDashboardSnapshot({ limit: 10 }, 50);
+            const snapshot = await getSchedulerDashboardSnapshot({ limit: 10 }, stores.map((store) => store.sId), 50);
             if (!isMountedRef.current || !isPlatformRef.current || latestLoadRequestRef.current !== requestId) return;
             setHealth(snapshot.health);
             setRuns(snapshot.runHistory);
@@ -152,7 +153,7 @@ export default function MobileSchedulerMonitorScreen({ onBack }: MobileScheduler
                 setLoading(false);
             }
         }
-    }, [isPlatform]);
+    }, [isPlatform, stores]);
 
     useEffect(() => {
         isMountedRef.current = true;
@@ -164,14 +165,14 @@ export default function MobileSchedulerMonitorScreen({ onBack }: MobileScheduler
     }, []);
 
     useEffect(() => {
-        if (status === 'loading') return;
+        if (status === 'loading' || storesLoading) return;
         if (!isPlatform) {
             latestLoadRequestRef.current += 1;
             setLoading(false);
             return;
         }
         void loadData();
-    }, [isPlatform, loadData, status]);
+    }, [isPlatform, loadData, status, storesLoading]);
 
     const handleNightlyRecovery = async () => {
         if (!selectedStore || recoveryInFlightRef.current) {
@@ -290,6 +291,7 @@ export default function MobileSchedulerMonitorScreen({ onBack }: MobileScheduler
                             <Flex gap={10} vertical>
                                 <Text type="secondary">Select a store from storesSummary. Recovery runs all active projects under that store.</Text>
                                 <Select
+                                    aria-label="Store"
                                     options={selectOptions}
                                     placeholder={storesLoading ? 'Loading stores' : 'Select store'}
                                     value={selectedStoreId}

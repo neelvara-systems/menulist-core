@@ -130,7 +130,16 @@ const StyleSelector: React.FC<StyleSelectorProps> = ({ selectedStyles, stylesCat
     return (
       <div
         key={style.name}
+        aria-checked={isSelected}
         onClick={() => handleStyleToggle(style.name)}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            handleStyleToggle(style.name);
+          }
+        }}
+        role="checkbox"
+        tabIndex={0}
         style={{
           width: '100%',
           cursor: 'pointer',

@@ -60,9 +60,10 @@ const SECTIONS = [
         ],
     },
     {
-        title: 'Plans, Support Credits, and Cancellation',
+        title: 'Early Access, Plans, Support Credits, and Cancellation',
         body: [
-            'Current public onboarding offers paid monthly plans. The selected plan, currency, monthly support-credit allowance, limits, top-up price, and optional onboarding services are shown on the pricing, setup, Billing, or provider checkout flow available at the time of purchase.',
+            'Current public access is request-only. An early-access request does not create an account, workspace, entitlement, subscription, checkout, invoice, or payment. Any private invitation, commercial terms, and later billing activation are separate deliberate steps.',
+            'Pricing shown on the public website is planned public-launch pricing and is informational until checkout is explicitly opened. The selected plan, currency, support-credit allowance, limits, tax, and provider terms must be shown again before any future purchase.',
             'Support credits are used only by the charged operations identified in current product pricing and runtime accounting. Approved widget answers, deterministic checks, draft review, selected text import, publishing infrastructure, and public help browsing are not represented as per-view credit charges.',
             'A workspace owner can request subscription cancellation through Billing. After provider cancellation succeeds, recorded access remains active until the current cycle end. AnswerLattice does not publish a general automatic-refund promise; refund or billing-dispute requests require case review and any rights required by applicable law.',
         ],
@@ -108,7 +109,7 @@ export default async function AnswerlatticeTermsOfServicePage() {
                     <div className="mx-auto max-w-3xl text-center">
                         <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">Terms of Service</p>
                         <h1 className="mb-4 text-4xl font-bold sm:text-5xl">Terms of Service</h1>
-                        <p className="mb-2 text-sm text-[#6b6b8a]">Last updated: July 19, 2026</p>
+                        <p className="mb-2 text-sm text-[#6b6b8a]">Last updated: August 29, 2026</p>
                         <p className="mt-6 text-lg leading-relaxed text-[#a0a0c0]">
                             These terms describe the expected use of AnswerLattice&apos;s website, dashboard, help widget, and
                             support knowledge features.

@@ -32,6 +32,7 @@ function verifyStaffRolesRouteParity() {
   const mobileMoreScreen = read('src/components/mobile/screens/MobileMoreScreen.tsx');
   const mobileUsersScreen = read('src/components/mobile/screens/MobileUsersScreen.tsx');
   const mobileRolesScreen = read('src/components/mobile/screens/MobileRolesScreen.tsx');
+  const mobileAntd = read('src/components/mobile/antd.tsx');
   const platformGlobalDataProvider = read('src/providers/platformProviders/platformGlobalDataProvider.tsx');
   const staffClient = read('src/lib/staffManagement/client.ts');
   const staffServer = read('src/lib/staffManagement/server.ts');
@@ -40,6 +41,7 @@ function verifyStaffRolesRouteParity() {
   const staffScopeBoundary = read('src/lib/staffManagement/scopeBoundary.ts');
   const desktopUsersScreen = read('src/components/templates/main-app/users/usersList/index.tsx');
   const desktopUsersTable = read('src/components/templates/main-app/users/usersList/usersListTable.tsx');
+  const desktopSidebar = read('src/components/organisms/sidebar/index.tsx');
   const desktopUserDetails = read('src/components/templates/main-app/users/usersList/userDetailsModal.tsx');
   const desktopRoleDetails = read('src/components/templates/main-app/users/permissions/roleDetailsModal.tsx');
   const desktopRolesScreen = read('src/components/templates/main-app/users/permissions/index.tsx');
@@ -112,6 +114,11 @@ function verifyStaffRolesRouteParity() {
     'const data = await forceSignOutStaffUser',
     'userHasCurrentStore(response.user, expectedStoreId)',
     'const selectedTargetCanBeManaged = selectedUser ? canManageTarget(selectedUser) : false;',
+    'canManageStaffTargetForSession',
+    'currentUserId: activeSession?.user?.id',
+    'disabled={!selectedTargetCanBeManaged || !canAssignRoles || isUpdatingUser}',
+    'disabled={!selectedTargetCanBeManaged || (selectedUser as any).active === false}',
+    'Use your profile settings to manage your own account.',
     "Owner accounts can only be changed by someone who can assign roles.",
     'disabled={!selectedTargetCanBeManaged}',
     'assignableRoles.map',
@@ -124,9 +131,23 @@ function verifyStaffRolesRouteParity() {
     '!isMountedRef.current',
     'item.id === user.id && item === user ? response.user : item',
     'setSelectedUser((current) => current === user ?',
+    "const optionalEmailLabel = t('emailLabel').split('*', 1)[0]?.trim() || t('emailLabel');",
+    'aria-label={t(\'name\')}',
+    'aria-label={optionalEmailLabel}',
+    'aria-label={t(\'phone\')}',
+    'aria-label={t(\'addStaffMember\')}',
+    'aria-label="Staff details"',
+    "aria-label={staffLoginDetails?.title || 'Staff login details'}",
+    'aria-pressed={newUserRole === role.id}',
+    'isMountedRef.current = true;',
+    '<Text type="secondary">{optionalEmailLabel}</Text>',
   ].forEach((token) => {
     assertIncludes(mobileUsersScreen, token, 'Mobile staff screen parity');
   });
+  assert(
+    !mobileUsersScreen.includes('|| (user as any).active === false\n            || !canManageTarget(user)'),
+    'Mobile staff activation must not reject an already inactive account before the owner can reactivate it',
+  );
   assert(
     !mobileUsersScreen.includes('setUsersList([...users, data.user])'),
     'Mobile staff creation must not replace current scope truth from a captured list',
@@ -152,27 +173,45 @@ function verifyStaffRolesRouteParity() {
 
   [
     'saveRoleDefinition',
-    'deleteRoleDefinition',
     'DEFAULT_ROLE_IDS.OWNER',
     'PERMISSION_CATEGORIES_CONFIG',
     'PERMISSION_LABELS',
     "surface: 'mobile_roles'",
     'const canAssignRoles = userPermissions?.canAssignRoles === true;',
     'const response = await saveRoleDefinition',
-    'const response = await deleteRoleDefinition',
     'disabled={!canAssignRoles || selectedRole.id === DEFAULT_ROLE_IDS.OWNER}',
-    'editingRole.id !== DEFAULT_ROLE_IDS.OWNER',
-    '<Switch checked={isEnabled} onChange={() => togglePermission(permKey)} />',
+    '<Switch aria-label={PERMISSION_LABELS[permKey as PermissionKey] || permKey} checked={isEnabled} onChange={() => togglePermission(permKey)} />',
     'return <MobileRolesScreenContent key={scopeKey} {...props} />;',
     'roleMutationInFlightRef.current',
     'currentStoreDetails?.tenantId === expectedTenantId',
     'currentStoreDetails?.storeId === expectedStoreId',
     'currentStoreDetails?.roles === sourceStoreDetails.roles',
-    'currentStoreDetails?.roles === sourceRoles',
     'if (!isMountedRef.current) return;',
+    'isMountedRef.current = true;',
+    "aria-label={editingRole && roles.some((role: StoreRoleDataType) => role.id === editingRole.id) ? t('editRole') : t('newRole')}",
+    "aria-label={t('roleName')}",
+    "aria-label={`${category.label}: ${t('all')}`}",
+    "style={{ alignItems: 'center', display: 'inline-flex', minHeight: 44, minWidth: 44 }}",
+    "<span className=\"sr-only\"> — {isEnabled ? t('active') : t('inactive')}</span>",
   ].forEach((token) => {
     assertIncludes(mobileRolesScreen, token, 'Mobile roles screen parity');
   });
+  assert(
+    !mobileRolesScreen.includes('onClick={() => togglePermission(permKey)}'),
+    'Mobile role permission rows must not nest an interactive switch inside an interactive row',
+  );
+  [
+    'deleteRoleDefinition',
+    'deleteThisRole',
+    'mobile_staff_role_delete_failed',
+  ].forEach((token) => {
+    assert(!mobileRolesScreen.includes(token), `Mobile roles must not retain the misleading soft-delete control: ${token}`);
+  });
+  assertIncludes(
+    mobileAntd,
+    '<AntCheckbox aria-label={ariaLabel}',
+    'Shared mobile checkbox accessible-name forwarding',
+  );
   assert(
     !mobileRolesScreen.includes('setStoreDetails({ ...storeDetails, roles: response.roles })'),
     'Mobile roles must not replace generic captured store context after an awaited mutation',
@@ -208,6 +247,7 @@ function verifyStaffRolesRouteParity() {
   [
     'staffTargetHasOwnerAccess',
     'canManageStaffTarget',
+    'canManageStaffTargetForSession',
     'value.ownerProtected === true',
   ].forEach((token) => {
     assertIncludes(staffScopeBoundary, token, 'Owner-target permission boundary');
@@ -269,10 +309,27 @@ function verifyStaffRolesRouteParity() {
     'canManageTarget={canManageTarget}',
     'canEdit={canManageTarget(userDetailsModal.data)}',
     'if (!canManageTarget(user)) return;',
+    'canManageStaffTargetForSession',
+    'currentUserId: activeSession?.user?.id',
   ].forEach((token) => {
     assertIncludes(desktopUsersScreen, token, 'Desktop owner-target UI boundary');
   });
   assertIncludes(desktopUsersTable, 'disabled={!targetCanBeManaged || mutationPending}', 'Desktop owner-target table actions');
+  assertIncludes(
+    desktopUsersTable,
+    'disabled={!targetCanBeManaged || mutationPending || record.active === false}',
+    'Desktop inactive-staff passcode reset boundary',
+  );
+  assertIncludes(
+    desktopUsersScreen,
+    'pendingStaffActionRef.current || user.active === false || !canManageTarget(user)',
+    'Desktop inactive-staff passcode handler boundary',
+  );
+  assertIncludes(
+    desktopSidebar,
+    '}) && canShowNavForPermissions(nav);',
+    'Desktop Growth Kits navigation permission boundary',
+  );
   [
     'aria-label={`Edit ${staffName}`}',
     'aria-label={`View ${staffName} details`}',

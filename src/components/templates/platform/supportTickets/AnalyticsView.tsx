@@ -20,6 +20,21 @@ interface AnalyticsViewProps {
     tickets: SupportTicketType[];
 }
 
+const formatSupportTicketDuration = (ms: number): string => {
+    const hours = Math.floor(ms / (1000 * 60 * 60));
+    const minutes = Math.floor((ms % (1000 * 60 * 60)) / (1000 * 60));
+
+    if (hours >= 24) {
+        const days = Math.floor(hours / 24);
+        const remainingHours = hours % 24;
+        return remainingHours > 0 ? `${days}d ${remainingHours}h` : `${days}d`;
+    }
+    if (hours > 0) {
+        return minutes > 0 ? `${hours}h ${minutes}m` : `${hours}h`;
+    }
+    return `${minutes}m`;
+};
+
 function AnalyticsView({ tickets }: AnalyticsViewProps) {
     const { token } = useToken();
 
@@ -96,7 +111,7 @@ function AnalyticsView({ tickets }: AnalyticsViewProps) {
             });
 
             const avgFirstResponseTime = firstResponseTimes.length > 0
-                ? formatDuration(firstResponseTimes.reduce((a, b) => a + b, 0) / firstResponseTimes.length)
+                ? formatSupportTicketDuration(firstResponseTimes.reduce((a, b) => a + b, 0) / firstResponseTimes.length)
                 : 'N/A';
 
             // Calculate average resolution time (creation to resolved status)
@@ -119,7 +134,7 @@ function AnalyticsView({ tickets }: AnalyticsViewProps) {
             });
 
             const avgResolutionTime = resolutionTimes.length > 0
-                ? formatDuration(resolutionTimes.reduce((a, b) => a + b, 0) / resolutionTimes.length)
+                ? formatSupportTicketDuration(resolutionTimes.reduce((a, b) => a + b, 0) / resolutionTimes.length)
                 : 'N/A';
 
             // SLA Compliance Metrics
@@ -162,22 +177,6 @@ function AnalyticsView({ tickets }: AnalyticsViewProps) {
             return null;
         }
     }, [tickets]);
-
-    // Helper function to format milliseconds to human-readable duration
-    const formatDuration = (ms: number): string => {
-        const hours = Math.floor(ms / (1000 * 60 * 60));
-        const minutes = Math.floor((ms % (1000 * 60 * 60)) / (1000 * 60));
-
-        if (hours >= 24) {
-            const days = Math.floor(hours / 24);
-            const remainingHours = hours % 24;
-            return remainingHours > 0 ? `${days}d ${remainingHours}h` : `${days}d`;
-        }
-        if (hours > 0) {
-            return minutes > 0 ? `${hours}h ${minutes}m` : `${hours}h`;
-        }
-        return `${minutes}m`;
-    };
 
     if (!analyticsData) {
         return (

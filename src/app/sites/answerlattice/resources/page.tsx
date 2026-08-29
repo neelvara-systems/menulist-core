@@ -52,10 +52,10 @@ export default async function AnswerlatticeResourcesPage() {
                     <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
                         <AnswerlatticeLink
                             basePath={basePath}
-                            href="/get-started"
+                            href="/early-access"
                             className="rounded-xl bg-teal-700 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-teal-500/25 transition hover:bg-teal-800"
                         >
-                            Create workspace
+                            Request early access
                         </AnswerlatticeLink>
                         <AnswerlatticeLink
                             basePath={basePath}

@@ -10,6 +10,7 @@ import { trackOwnerControlUsage } from '@database/ownerControlUsage';
 import { useAppDispatch } from '@hook/useAppDispatch';
 import { getProjectDescriptionContentLength, getProjectDescriptionTone } from '@lib/ai/projectAIPreferences';
 import { hasAnyNonEmptyDescription } from '@lib/menu/descriptionQuality';
+import { labelConfirmDialog } from '@lib/accessibility/antConfirmDialog';
 import { getDecisionFactValue, setDecisionFactValue } from '@lib/menu/itemDecisionFacts';
 import { downloadSharableItemCard, shareSharableItemCard, type SharableItemCardInput } from '@lib/menu/sharableItemCard';
 import { getCanonicalProjectSourceLanguage } from '@lib/localization/languagePolicy';
@@ -29,7 +30,7 @@ import type { InheritanceState, OutletPolicy } from '@type/multiOutlet.types';
 import { removeObjRef } from '@util/utils';
 import { message as antdMessage, Button, Collapse, CollapseProps, Empty, Flex, Input, InputNumber, Modal, Popconfirm, Select, Slider, Switch, Tooltip, Typography } from 'antd';
 import React, { memo, useCallback, useContext, useEffect, useMemo, useState } from 'react'; // Added useCallback
-import { LuCheck, LuClock, LuDownload, LuExternalLink, LuEye, LuFileImage, LuLock, LuPlus, LuShare2, LuSparkles, LuTrendingUp, LuX } from 'react-icons/lu';
+import { LuCheck, LuClock, LuDownload, LuExternalLink, LuEye, LuFileImage, LuHelpCircle, LuLock, LuPlus, LuShare2, LuSparkles, LuTrendingUp, LuX } from 'react-icons/lu';
 import { ExtractedDataAttribute, ExtractedDataItem, ItemForDropdown, NewItemMetadataAPIParams, Project, ProjectFileType } from '../types';
 import { sanitizeUserInput } from '../utils';
 import { getBoundedMenuEditorStringContext, getMenuEditorProjectLogContext, logMenuEditorFailure } from '../utils/editorDiagnostics';
@@ -99,6 +100,7 @@ const ItemFormView = memo((
                 {isCategoryLocked ? (
                     <Tooltip title="Category is controlled by master menu and cannot be changed">
                         <Select
+                            aria-label="Category"
                             style={{ width: '100%' }}
                             value={itemData?.category}
                             disabled
@@ -108,6 +110,7 @@ const ItemFormView = memo((
                     </Tooltip>
                 ) : (
                     <Select
+                        aria-label="Category"
                         style={{ width: '100%' }}
                         value={itemData?.category}
                         onChange={(value) => setItemData(prev => ({ ...prev!, category: value }))}
@@ -220,6 +223,33 @@ const EditItemModal: React.FC<EditItemModalProps> = ({ modalData, onClose, selec
     );
     const primaryLanguage = selectedLanguages[0] || 'en';
     const sourceLanguageCode = getCanonicalProjectSourceLanguage(projectData.languages);
+    const initialDraftState = useMemo(
+        () => JSON.stringify(removeObjRef(modalData.item) ?? null),
+        [modalData.item],
+    );
+    const currentDraftState = useMemo(
+        () => JSON.stringify(removeObjRef(itemData) ?? null),
+        [itemData],
+    );
+    const hasDraftChanges = currentDraftState !== initialDraftState;
+
+    const handleClose = useCallback(() => {
+        if (!hasDraftChanges) {
+            onClose();
+            return;
+        }
+
+        Modal.confirm({
+            title: 'Discard unsaved item changes?',
+            modalRender: labelConfirmDialog('Discard unsaved item changes?'),
+            icon: <LuHelpCircle />,
+            content: 'Your unsaved item changes will be lost.',
+            okText: 'Discard Changes',
+            okType: 'danger',
+            cancelText: 'Keep Editing',
+            onOk: onClose,
+        });
+    }, [hasDraftChanges, onClose]);
 
     useEffect(() => {
         setItemData(modalData.item);
@@ -740,7 +770,7 @@ const EditItemModal: React.FC<EditItemModalProps> = ({ modalData, onClose, selec
         <Modal
             title={modalData.status == 'edit' ? `Edit Item: ${itemData?.name?.[selectedLanguages[0]] || ''}` : "Add Item"}
             open={Boolean(modalData.active)}
-            onCancel={onClose}
+            onCancel={handleClose}
             style={{ top: 20 }}
             styles={{
                 body: {
@@ -752,7 +782,7 @@ const EditItemModal: React.FC<EditItemModalProps> = ({ modalData, onClose, selec
             footer={<>
                 <Flex gap={8} vertical>
                     <Flex gap={16}>
-                        <Button icon={<LuX />} onClick={onClose}>Cancel</Button>
+                        <Button icon={<LuX />} onClick={handleClose}>Cancel</Button>
                         {canGenerateSharableCard ? (
                             <>
                                 <Button disabled={isCardWorking} icon={<LuShare2 />} onClick={handleShareCard}>Share card</Button>
@@ -796,8 +826,12 @@ const EditItemModal: React.FC<EditItemModalProps> = ({ modalData, onClose, selec
                     <Flex gap={24} wrap="wrap">
                         {/* Active toggle - show/hide item from customers */}
                         <Flex align='center' gap={8}>
-                            <Text onClick={() => setItemData(prev => ({ ...prev!, active: !Boolean(prev?.active) }))} style={{ cursor: 'pointer' }}>Show to customers</Text>
+                            <label htmlFor="edit-item-active-switch" style={{ cursor: 'pointer' }}>
+                                <Text>Show to customers</Text>
+                            </label>
                             <Switch
+                                id="edit-item-active-switch"
+                                aria-label="Show item to customers"
                                 size='small'
                                 checked={Boolean(itemData?.active)}
                                 onChange={(e) => setItemData(prev => ({ ...prev!, active: e }))}
@@ -805,13 +839,14 @@ const EditItemModal: React.FC<EditItemModalProps> = ({ modalData, onClose, selec
                         </Flex>
                         {/* Availability toggle - dynamic labels based on business type */}
                         <Flex align='center' gap={8}>
-                            <Text
-                                onClick={() => setItemData(prev => ({ ...prev!, available: prev?.available === false ? true : false }))}
-                                style={{ cursor: 'pointer', color: itemData?.available === false ? '#ef4444' : undefined }}
-                            >
-                                {itemData?.available === false ? availabilityLabels.unavailable : availabilityLabels.available}
-                            </Text>
+                            <label htmlFor="edit-item-availability-switch" style={{ cursor: 'pointer' }}>
+                                <Text style={{ color: itemData?.available === false ? '#ef4444' : undefined }}>
+                                    {itemData?.available === false ? availabilityLabels.unavailable : availabilityLabels.available}
+                                </Text>
+                            </label>
                             <Switch
+                                id="edit-item-availability-switch"
+                                aria-label="Item available"
                                 size='small'
                                 checked={itemData?.available !== false}
                                 onChange={(e) => setItemData(prev => ({ ...prev!, available: e }))}
@@ -820,13 +855,14 @@ const EditItemModal: React.FC<EditItemModalProps> = ({ modalData, onClose, selec
                         {/* Best Seller toggle - mark as store bestseller (FR-5 allowed override) */}
                         <Tooltip title="Mark this item as a bestseller at your store. Bestsellers may be highlighted in menus.">
                             <Flex align='center' gap={8}>
-                                <Text
-                                    onClick={() => setItemData(prev => ({ ...prev!, isBestSeller: !Boolean(prev?.isBestSeller) }))}
-                                    style={{ cursor: 'pointer', color: itemData?.isBestSeller ? '#f59e0b' : undefined }}
-                                >
-                                    {itemData?.isBestSeller ? '⭐ Best Seller' : 'Best Seller'}
-                                </Text>
+                                <label htmlFor="edit-item-best-seller-switch" style={{ cursor: 'pointer' }}>
+                                    <Text style={{ color: itemData?.isBestSeller ? '#f59e0b' : undefined }}>
+                                        {itemData?.isBestSeller ? '⭐ Best Seller' : 'Best Seller'}
+                                    </Text>
+                                </label>
                                 <Switch
+                                    id="edit-item-best-seller-switch"
+                                    aria-label="Best seller"
                                     size='small'
                                     checked={Boolean(itemData?.isBestSeller)}
                                     onChange={(e) => setItemData(prev => ({ ...prev!, isBestSeller: e }))}
@@ -907,6 +943,7 @@ const EditItemModal: React.FC<EditItemModalProps> = ({ modalData, onClose, selec
                                             </Flex>
                                         </Tooltip>
                                         <InputNumber
+                                            aria-label="Prep time"
                                             size='small'
                                             min={0}
                                             max={240}
@@ -927,6 +964,7 @@ const EditItemModal: React.FC<EditItemModalProps> = ({ modalData, onClose, selec
                                             </Flex>
                                         </Tooltip>
                                         <Slider
+                                            ariaLabelForHandle="Promotion"
                                             min={-20}
                                             max={20}
                                             value={itemData?.ownerBoost || 0}
@@ -970,19 +1008,19 @@ const EditItemModal: React.FC<EditItemModalProps> = ({ modalData, onClose, selec
                                                         </Tooltip>
                                                         {confirmationCopy}
                                                         <Flex gap={8} wrap="wrap">
-                                                            <InputNumber size="small" placeholder="Calories" value={nutritionInfo?.calories}
+                                                            <InputNumber aria-label="Calories" size="small" placeholder="Calories" value={nutritionInfo?.calories}
                                                                 onChange={(v) => setItemData(prev => setDecisionFactValue(prev!, 'nutritionInfo', { ...(getDecisionFactValue(prev, 'nutritionInfo') as ExtractedDataItem['nutritionInfo'] | undefined), calories: v ?? undefined }))}
                                                                 addonAfter="kcal" style={{ width: 130 }} min={0} />
-                                                            <InputNumber size="small" placeholder="Protein" value={nutritionInfo?.protein}
+                                                            <InputNumber aria-label="Protein" size="small" placeholder="Protein" value={nutritionInfo?.protein}
                                                                 onChange={(v) => setItemData(prev => setDecisionFactValue(prev!, 'nutritionInfo', { ...(getDecisionFactValue(prev, 'nutritionInfo') as ExtractedDataItem['nutritionInfo'] | undefined), protein: v ?? undefined }))}
                                                                 addonAfter="g" style={{ width: 110 }} min={0} />
-                                                            <InputNumber size="small" placeholder="Carbs" value={nutritionInfo?.carbs}
+                                                            <InputNumber aria-label="Carbs" size="small" placeholder="Carbs" value={nutritionInfo?.carbs}
                                                                 onChange={(v) => setItemData(prev => setDecisionFactValue(prev!, 'nutritionInfo', { ...(getDecisionFactValue(prev, 'nutritionInfo') as ExtractedDataItem['nutritionInfo'] | undefined), carbs: v ?? undefined }))}
                                                                 addonAfter="g" style={{ width: 110 }} min={0} />
-                                                            <InputNumber size="small" placeholder="Fat" value={nutritionInfo?.fat}
+                                                            <InputNumber aria-label="Fat" size="small" placeholder="Fat" value={nutritionInfo?.fat}
                                                                 onChange={(v) => setItemData(prev => setDecisionFactValue(prev!, 'nutritionInfo', { ...(getDecisionFactValue(prev, 'nutritionInfo') as ExtractedDataItem['nutritionInfo'] | undefined), fat: v ?? undefined }))}
                                                                 addonAfter="g" style={{ width: 110 }} min={0} />
-                                                            <Input size="small" placeholder="Serving size" value={nutritionInfo?.servingSize}
+                                                            <Input aria-label="Serving size" size="small" placeholder="Serving size" value={nutritionInfo?.servingSize}
                                                                 onChange={(e) => setItemData(prev => setDecisionFactValue(prev!, 'nutritionInfo', { ...(getDecisionFactValue(prev, 'nutritionInfo') as ExtractedDataItem['nutritionInfo'] | undefined), servingSize: e.target.value || undefined }))}
                                                                 style={{ width: 140 }} />
                                                         </Flex>
@@ -999,6 +1037,7 @@ const EditItemModal: React.FC<EditItemModalProps> = ({ modalData, onClose, selec
                                                             {confirmationCopy}
                                                         </Flex>
                                                         <Select
+                                                            aria-label={field.label}
                                                             mode="multiple" size="small" allowClear
                                                             placeholder={`Select ${field.label.toLowerCase()}`}
                                                             value={(getDecisionFactValue(itemData, field.key) as string[] | undefined) || []}
@@ -1019,6 +1058,7 @@ const EditItemModal: React.FC<EditItemModalProps> = ({ modalData, onClose, selec
                                                             {confirmationCopy}
                                                         </Flex>
                                                         <Select
+                                                            aria-label={field.label}
                                                             size="small" allowClear
                                                             placeholder={`Select`}
                                                             value={getDecisionFactValue(itemData, field.key) as string | undefined}
@@ -1102,7 +1142,16 @@ const EditItemModal: React.FC<EditItemModalProps> = ({ modalData, onClose, selec
                                 cursor: 'pointer',
                                 border: '1px solid rgba(0, 0, 0, 0.06)'
                             }}
+                            aria-label={modalData.status === 'edit' ? `Preview source file ${fileData.name || ''}`.trim() : `Preview target file ${fileData.name || ''}`.trim()}
                             onClick={() => onPreviewFile(fileData)}
+                            onKeyDown={(event) => {
+                                if (event.key === 'Enter' || event.key === ' ') {
+                                    event.preventDefault();
+                                    onPreviewFile(fileData);
+                                }
+                            }}
+                            role="button"
+                            tabIndex={0}
                             title={modalData.status === 'edit' ? "Click to preview source file" : "Click to preview target file"}
                         >
                             {fileData.url ? (

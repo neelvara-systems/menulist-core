@@ -343,6 +343,7 @@ export default function ReportLeadMonitor() {
             <Card size="small" style={{ marginBottom: 16 }}>
                 <Space wrap size={12}>
                     <Select
+                        aria-label="Filter report leads by status"
                         style={{ width: 190 }}
                         value={reportStatus}
                         options={STATUS_OPTIONS}
@@ -352,6 +353,7 @@ export default function ReportLeadMonitor() {
                         }}
                     />
                     <Select
+                        aria-label="Filter report leads by tool"
                         style={{ width: 260 }}
                         value={toolId}
                         options={toolOptions}

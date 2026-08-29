@@ -43,6 +43,7 @@ import BatchSetupView from './AiImageGenerator/batchImageGeneration';
 import BatchImageGenerationResultView from './AiImageGenerator/batchImageGeneration/BatchImageGenerationResultView';
 import BatchImageGenerationView from './AiImageGenerator/batchImageGeneration/BatchImageGenerationView';
 import UploadedImagesList from './uploadedImagesList';
+import { labelConfirmDialog } from './utils/editorOperations';
 import {
     getBoundedMenuEditorStringContext,
     getMenuEditorProjectLogContext,
@@ -659,9 +660,6 @@ const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
             align={isMobile ? 'stretch' : 'center'}
             style={{ paddingBottom: 20, marginTop: isMobile ? 0 : 20, width: '100%' }}
         >
-            {!isMobile ? (
-                <Typography.Title level={4} style={{ margin: 0 }}>How would you like to add images?</Typography.Title>
-            ) : null}
             <Button
                 size="large"
                 block
@@ -702,6 +700,7 @@ const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
             {!(itemToUpdate || from === 'item') && <Flex vertical gap={0}>
                 <Typography.Text type='secondary'>Select Item:</Typography.Text>
                 <Select
+                    aria-label="Select menu item for image"
                     showSearch
                     style={{ width: '100%', marginTop: 8 }}
                     placeholder="Select an item"
@@ -710,9 +709,20 @@ const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
                     filterOption={(input, option) =>
                         String(option?.label ?? '').toLowerCase().includes(input.toLowerCase())
                     }
+                    optionRender={(option) => {
+                        const item = items.find(
+                            candidate => buildItemImageTargetValue(candidate) === option.value,
+                        );
+                        return item ? (
+                            <Text>
+                                {item.itemName}{' '}
+                                <Text type="secondary">({item.categoryName})</Text>
+                            </Text>
+                        ) : option.label;
+                    }}
                     options={items.map(i => ({
                         value: buildItemImageTargetValue(i) || '',
-                        label: <Text>{i.itemName} <Text type='secondary'>({i.categoryName})</Text></Text>,
+                        label: `${i.itemName} (${i.categoryName})`,
                     }))}
                     disabled={Boolean(itemToUpdate)}
                 />
@@ -810,7 +820,7 @@ const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
             titleText = `Add Image for ${selectedItem?.itemName || 'Item'}`;
             onBack = handleSingleItemBack;
         } else if (modalView === 'batchSetup') {
-            titleText = '';
+            titleText = 'Select items for images';
             onBack = () => {
                 resetGenerateState();
                 setModalView('initialChoice');
@@ -819,7 +829,7 @@ const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
             titleText = 'Configure Batch Photo Generation';
             onBack = () => setModalView('batchSetup');
         } else {
-            return ''; // Default for initialChoice, no back button
+            return 'How would you like to add images?';
         }
 
         if (onBack) {
@@ -838,6 +848,16 @@ const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
             );
         }
         return titleText;
+    };
+
+    const getModalAccessibleTitle = () => {
+        if (modalView === 'singleItemSetup') {
+            return `Add Image for ${selectedItem?.itemName || 'Item'}`;
+        }
+        if (modalView === 'batchSetup') return 'Select items for images';
+        if (modalView === 'batchAIConfig') return 'Configure Batch Photo Generation';
+        if (modalView === 'batchResult') return 'Generated Images';
+        return 'How would you like to add images?';
     };
 
     const getModalFooter = () => {
@@ -933,6 +953,7 @@ const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
         <> {/* Wrap in fragment to fix JSX parent error */}
             {isMobile ? (
                 <Popup
+                    aria-label={getMobileHeaderTitle()}
                     bodyStyle={{ minHeight: '68vh', maxHeight: '90vh', overflowX: 'hidden', padding: 0 }}
                     destroyOnClose
                     onMaskClick={generationConfig.loading ? undefined : closeModal}
@@ -974,6 +995,7 @@ const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
                     title={getModalTitle()}
                     open={open}
                     onCancel={generationConfig.loading ? undefined : closeModal}
+                    modalRender={labelConfirmDialog(getModalAccessibleTitle())}
                     footer={getModalFooter()}
                     style={{ top: activeTab === 'generate' ? 20 : 48 }}
                     width={modalView === 'initialChoice' ? 500 : (activeTab === 'generate' ? 1040 : 640)}

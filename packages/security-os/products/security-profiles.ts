@@ -73,11 +73,14 @@ export const securityOsProductProfiles: SecurityOsProductProfile[] = [
     {
         id: 'mycodex',
         displayName: 'MyCodex',
-        stage: 'registered-only',
+        stage: 'phase-one',
         sourcePaths: [
             'src/app/sites/mycodex',
+            'src/components/templates/mycodex/founder-console',
+            'src/lib/mycodex',
             'src/proxy.ts',
             '__docs__/mycodex-pwa-shell',
+            '__docs__/mycodex-founder-console',
         ],
         exclusions: ['Database or Firebase scope', 'Public domain assumptions', 'Automatic patches or deployments'],
     },

@@ -12,6 +12,16 @@
 
 ## 1. Architecture Overview
 
+## August 26, 2026 - Cached Timestamp Date Parity
+
+Owner previews and public compliance pages now recognize both the live
+Firestore timestamp `seconds` shape and the `_seconds` shape produced when an
+Admin timestamp passes through the public store cache. This keeps Effective
+Date and Last Updated identical across owner and public surfaces instead of
+letting the cached public renderer fall back to the template date. The change
+adds no Firestore read, write, Storage operation, Function, provider call, or
+cache invalidation.
+
 ## August 15, 2026 - Owner Control Accessibility
 
 Desktop Privacy, Terms, and Refund selectors expose their active state through `aria-pressed` in both Official Page and Custom Domain settings. Mobile icon-only editor triggers expose the exact policy page name and retain 44px touch targets, while the expandable MenuList baseline disclosure is focusable, reports `aria-expanded`, and accepts Enter or Space as well as touch. These changes preserve the existing owner load, override, reset, cache, sanitizer, and public composition paths.
@@ -401,6 +411,17 @@ System baseline content is always regenerated from the current resolved store re
 - [x] Tenant isolation (sId scoping)
 - [x] No PII exposure beyond what store already shows publicly
 - [x] Feature flag gated
+
+### Active-store API scope
+
+Multi-location owner clients send the exact active `storeId` on compliance
+GET requests and in POST bodies. The route accepts only a bounded Firestore
+document ID, requires the target store to remain inside the authenticated
+tenant, verifies that the signed-in platform role can access that store, and
+checks compliance permission against that same target store before reading or
+writing its override document. The initial response always contains the full
+`privacy`, `refund`, and `terms` shape with `null` for unavailable pages, so a
+partially configured branch cannot leave the editor in an ambiguous state.
 
 ---
 

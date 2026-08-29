@@ -35,6 +35,54 @@ const vercelDnsRecords = read('src/lib/domains/vercelDnsRecords.ts');
 const storesDal = read('src/database/stores/index.tsx');
 const desktopDomainSettings = read('src/components/templates/main-app/businessSettings/tabs/DomainSettingsTab.tsx');
 const mobileDomainSettings = read('src/components/mobile/screens/MobileDomainSettingsScreen.tsx');
+const publicAddressInput = read('src/lib/domains/publicAddressInput.ts');
+requires(publicAddressInput, [
+  'export function isLocalCustomDomainFixture',
+  "nodeEnv === 'production'",
+  "hostname === 'localhost' || hostname.endsWith('.localhost')",
+], 'shared local custom-domain fixture boundary');
+requiresOrder(mobileDomainSettings, [
+  'if (!storeDetails?.customDomain) return;',
+  'if (isLocalCustomDomainFixture(storeDetails.customDomain))',
+  "fetch('/api/domain', AUTH_BROWSER_REQUEST_POLICY)",
+], 'mobile local custom-domain fixture before provider status request');
+requires(desktopDomainSettings, [
+  'const isLocalCustomDomainFixture = (value: unknown): value is string =>',
+  "process.env.NODE_ENV === 'production'",
+  "hostname === 'localhost' || hostname.endsWith('.localhost')",
+  'if (isLocalCustomDomainFixture(storeDetails.customDomain))',
+  'providerStatusPending: false',
+  "title={t('removeDomainConfirmTitle')}",
+  'open={removeDomainModalOpen && Boolean(activeDomain)}',
+  'onClick={() => setRemoveDomainModalOpen(true)}',
+  'onOk={() => void handleRemoveDomain()}',
+  "cancelText={common('cancel')}",
+  "okText={t('removeDomain')}",
+  'okButtonProps={{ danger: true }}',
+], 'desktop local custom-domain fixture boundary');
+assert(
+  !desktopDomainSettings.includes('onClick={() => void handleRemoveDomain()}'),
+  'desktop custom-domain removal must not execute from the first click',
+);
+requires(mobileDomainSettings, [
+  "title: t('removeDomainConfirmTitle')",
+  "content: t('removeDomainConfirmDesc', { domain: activeDomain })",
+  'onConfirm: removeDomain',
+], 'mobile custom-domain removal confirmation boundary');
+assert(publicAddressInput.includes('SUBDOMAIN_AVAILABILITY_PATTERN'), 'shared subdomain availability preflight is missing');
+assert(publicAddressInput.includes('CUSTOM_DOMAIN_AVAILABILITY_PATTERN'), 'shared custom-domain availability preflight is missing');
+for (const source of [desktopDomainSettings, mobileDomainSettings]) {
+  assert(source.includes('normalizeSubdomainAvailabilityCandidate'), 'domain settings must preflight subdomain syntax before availability requests');
+  assert(source.includes('normalizeCustomDomainAvailabilityCandidate'), 'domain settings must preflight custom-domain syntax before availability requests');
+}
+assert(
+  desktopDomainSettings.includes("t('isAvailable', { name: availability.preview ?? subdomainValue })"),
+  'desktop subdomain availability must explicitly announce the successful candidate',
+);
+assert(
+  !desktopDomainSettings.includes("t('isAvailable', { name: '' }).replace(' is available', '')"),
+  'desktop subdomain availability must not erase the success wording',
+);
 const emulatorTest = read('scripts/verification/test-custom-domain-claim.ts');
 const identityTest = read('scripts/verification/test-public-entity-identity.ts');
 const providerTest = read('scripts/verification/test-vercel-domain-provider-boundary.ts');

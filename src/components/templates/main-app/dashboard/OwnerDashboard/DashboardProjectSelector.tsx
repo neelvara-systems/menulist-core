@@ -46,7 +46,7 @@ const getInitials = (name: string) => {
 interface Props {
     selectedProjectId: string | null;
     onProjectChange: (projectId: string, projectName: string) => void;
-    onReady?: () => void;
+    onReady?: (resolvedProjectId: string | null) => void;
 }
 
 type DashboardProject = ProjectMetadata & {
@@ -163,11 +163,13 @@ export const DashboardProjectSelector: React.FC<Props> = ({
         const resolvedProject = resolveSelectableProject(projects, selectedProjectId);
         if (resolvedProject?.projectId && resolvedProject.projectId !== selectedProjectId) {
             onProjectChange(resolvedProject.projectId, resolveProjectName(resolvedProject.name, t('projectSelector.untitled')));
+            onReady?.(resolvedProject.projectId);
             return;
         }
 
-        // Session resolved + projects fetched (even if empty) — unblock dashboard
-        onReady?.();
+        // Session resolved + projects fetched (even if empty). Report the
+        // validated selection so the parent can discard a stale browser value.
+        onReady?.(resolvedProject?.projectId || null);
     }, [selectedProjectId, projects, sessionLoading, isLoading, onProjectChange, onReady, t]);
 
     const selectedProject = projects.find(p => p.projectId === selectedProjectId);

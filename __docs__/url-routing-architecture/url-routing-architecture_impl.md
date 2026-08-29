@@ -60,6 +60,14 @@ The public language parameter parse fallback lives in `src/lib/localization/publ
 
 Owner-side domain setup browser calls use `AUTH_BROWSER_REQUEST_POLICY` from `src/lib/auth/browserRequestPolicy.ts` for desktop Domain Settings, embedded Custom Domain, and Mobile Domain Settings `/api/domain` and `/api/subdomain/check` calls. The shared policy pins no-store cache, same-origin credentials, and manual redirect handling before the existing bounded response parsers and acknowledgement checks run.
 
+Desktop provider-free emulator certification may use an exact `localhost` or
+`*.localhost` custom-domain alias already present on the loaded store. In
+non-production only, Domain Settings derives that alias's displayed
+verification state from the current store and skips `/api/domain`; this avoids
+an invalid provider-status request and additional local backend work. The guard
+does not admit arbitrary loopback/IP hosts and is disabled in production, so
+hosted custom domains retain the complete authenticated provider state machine.
+
 The active desktop and mobile Domain Settings surfaces are keyed by exact tenant/store identity. A store switch destroys prior subdomain/custom-domain drafts and provider/DNS status before the new store renders. Status and availability reads use latest-request ownership, mutation completions require the originating component scope to remain current, and every parent/context merge rechecks both expected tenant and store. An already-authorized old-store server operation may finish, but its response cannot replace the current store model or show stale routing truth.
 
 ---
@@ -105,8 +113,8 @@ outletSlug?: string;  // NEW: URL path segment for outlet routing
 | `src/database/stores/index.tsx`                                    | Owner custom-domain advisory client delegates to `/api/domain?candidate=`; no browser cross-store query |
 | `src/lib/domains/vercelDomains.ts`                                  | Shared Vercel domain add/check/remove helper used by MenuList and Answerlattice hosted help |
 | `src/lib/domains/vercelDnsRecords.ts`                               | Pure provider-response mapper for apex A, project-specific CNAME, and verification challenge rows |
-| `src/components/.../businessSettings/tabs/SubdomainTab.tsx`         | Subdomain settings UI tab                                 |
-| `src/components/.../businessSettings/tabs/CustomDomainTab.tsx`      | Custom domain UI with DNS verification flow               |
+| `src/components/.../businessSettings/tabs/DomainSettingsTab.tsx`    | Active combined subdomain/custom-domain UI with DNS verification flow |
+| `src/components/.../businessSettings/tabs/CustomDomainTab.tsx`      | Guarded legacy contract source; not exported or rendered  |
 | `src/components/mobile/screens/MobileDomainSettingsScreen.tsx`      | Active combined mobile domain/subdomain UI with normalized, copyable DNS verification rows, bounded subdomain-check response parsing, and acknowledged subdomain store saves |
 | `src/app/client/obp/BrandOBPContent.tsx`                             | Multi-store brand OBP (store selector)                    |
 | `scripts/backfill-project-slugs.ts`                                 | Migration: backfill slugs on existing projects            |
@@ -126,8 +134,8 @@ outletSlug?: string;  // NEW: URL path segment for outlet routing
 | `src/app/api/onboarding/create-subscription/route.ts`  | Auto-generate subdomain, `subDomain` on tenant, `subdomain` in storesList  |
 | `src/app/api/msg-preview/[sessionId]/approve/route.ts` | **BUG FIX**: Added subdomain, slug, projectsSummary, fixed publicUrl       |
 | `src/app/client/obp/OBPContent.tsx`                    | Multi-store brand detection → BrandOBP                                     |
-| `src/components/.../businessSettings/index.tsx`        | Integrated SubdomainTab + CustomDomainTab into tab list                    |
-| `src/components/.../businessSettings/tabs/index.ts`    | Added SubdomainTab + CustomDomainTab exports                               |
+| `src/components/.../businessSettings/index.tsx`        | Renders `DomainSettingsTab` as the sole desktop domain surface             |
+| `src/components/.../businessSettings/tabs/index.ts`    | Exports the active `DomainSettingsTab`; legacy domain tabs are not exported |
 
 ---
 

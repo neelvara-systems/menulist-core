@@ -2,7 +2,7 @@
 
 > **Status:** Implemented in source
 > **Feature flag:** `ENABLE_POS_SYNC: true`
-> **Last code-truth review:** July 16, 2026
+> **Last code-truth review:** August 28, 2026
 
 ## 1. Purpose
 
@@ -10,7 +10,7 @@ External Menu Sync lets a store send MenuList's current menu truth to one truste
 
 ## 2. Admission
 
-The owner surface is shown only when the feature flag is enabled and the user has `canManageIntegrations`. Each outlet configures its own destination.
+The owner surface is shown only when the feature flag is enabled and the user has `canManageIntegrations`. Each outlet configures its own destination. When an owner selects a mapped outlet, secret reads and mutations target that selected store rather than silently falling back to the login store; tenant identity remains derived from the authenticated session and the canonical target store is re-authorized.
 
 Required setup:
 

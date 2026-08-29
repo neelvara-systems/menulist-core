@@ -16,7 +16,14 @@ interface Props {
 }
 
 const ReorderSortableItem: FC<Props> = ({ uid, label, index, isSelected, meta, onClick }) => {
-    const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: uid });
+    const {
+        attributes,
+        listeners,
+        setActivatorNodeRef,
+        setNodeRef,
+        transform,
+        transition,
+    } = useSortable({ id: uid });
     const { token } = theme.useToken();
     const style = {
         transform: CSS.Transform.toString(transform),
@@ -26,7 +33,7 @@ const ReorderSortableItem: FC<Props> = ({ uid, label, index, isSelected, meta, o
     } as const;
 
     return (
-        <div ref={setNodeRef} style={style} {...attributes}>
+        <div ref={setNodeRef} style={style}>
             <Flex
                 align="center"
                 gap={12}
@@ -38,38 +45,81 @@ const ReorderSortableItem: FC<Props> = ({ uid, label, index, isSelected, meta, o
                     borderRadius: 6,
                     padding: '8px 12px',
                     background: isSelected ? token.colorPrimaryBg : token.colorBgBase,
-                    cursor: 'pointer',
                 }}
-                onClick={onClick}
             >
                 {/* Drag Handle */}
-                <div
+                <button
+                    ref={setActivatorNodeRef}
+                    type="button"
+                    aria-label={`Reorder ${label}`}
+                    {...attributes}
                     {...listeners}
                     style={{
                         cursor: 'grab',
                         display: 'flex',
                         alignItems: 'center',
-                        padding: '0 4px',
+                        justifyContent: 'center',
+                        width: 44,
+                        height: 44,
+                        padding: 0,
+                        border: 0,
+                        borderRadius: 6,
+                        color: 'inherit',
+                        background: 'transparent',
+                        touchAction: 'none',
                     }}
                 >
-                    <LuGripVertical size={16} style={{ opacity: 0.5 }} />
-                </div>
+                    <LuGripVertical aria-hidden="true" size={16} style={{ opacity: 0.5 }} />
+                </button>
 
-                <Text type="secondary" style={{ fontSize: 12, minWidth: 24 }}>
-                    #{index + 1}
-                </Text>
-
-                <Flex vertical style={{ flex: 1 }} gap={2}>
-                    <Text style={{ fontSize: 14, fontWeight: isSelected ? 600 : 400 }}>{label}</Text>
-                    {meta && (
-                        <Text type="secondary" style={{ fontSize: 11 }}>
-                            {meta}
-                        </Text>
-                    )}
-                </Flex>
+                {onClick ? (
+                    <button
+                        type="button"
+                        aria-pressed={isSelected}
+                        onClick={onClick}
+                        style={{
+                            alignItems: 'center',
+                            display: 'flex',
+                            flex: 1,
+                            gap: 12,
+                            minHeight: 44,
+                            padding: 0,
+                            border: 0,
+                            color: 'inherit',
+                            textAlign: 'start',
+                            background: 'transparent',
+                            cursor: 'pointer',
+                        }}
+                    >
+                        <ItemContent index={index} isSelected={isSelected} label={label} meta={meta} />
+                    </button>
+                ) : (
+                    <ItemContent index={index} isSelected={isSelected} label={label} meta={meta} />
+                )}
             </Flex>
         </div>
     );
 };
+
+const ItemContent: FC<Pick<Props, 'index' | 'isSelected' | 'label' | 'meta'>> = ({
+    index,
+    isSelected,
+    label,
+    meta,
+}) => (
+    <>
+        <Text type="secondary" style={{ fontSize: 12, minWidth: 24 }}>
+            #{index + 1}
+        </Text>
+        <Flex vertical style={{ flex: 1 }} gap={2}>
+            <Text style={{ fontSize: 14, fontWeight: isSelected ? 600 : 400 }}>{label}</Text>
+            {meta && (
+                <Text type="secondary" style={{ fontSize: 11 }}>
+                    {meta}
+                </Text>
+            )}
+        </Flex>
+    </>
+);
 
 export default memo(ReorderSortableItem);

@@ -2,6 +2,12 @@
 
 Private PWA shell handling for MyCodex on local `/__mycodex`. No public MyCodex domain is active.
 
+The installed app is scoped to `/__mycodex/`, launches the Founder Console at
+`/__mycodex/operations`, allows phone/tablet/laptop rotation, and uses a
+MyCodex-only service worker without replacing MenuList's root owner worker.
+Only the offline recovery shell and reviewed logo assets are cached; private
+documents and operational responses always require the live application.
+
 ## Scope
 
 - Product: MyCodex only
@@ -33,3 +39,6 @@ Private PWA shell handling for MyCodex on local `/__mycodex`. No public MyCodex 
 | `src/app/sites/mycodex/styles.css` | Safe-area variables and mobile PWA spacing |
 | `src/app/sites/mycodex/login/page.tsx` | Safe-area login screen |
 | `src/app/sites/mycodex/offline/page.tsx` | Safe-area offline screen |
+| `public/mycodex.webmanifest` | Owner-path install identity, launch route, scope, and shortcuts |
+| `public/mycodex-sw.js` | Network-first MyCodex navigation with a scoped offline shell only |
+| `src/components/ServiceWorkerRegister.tsx` | Coexisting root MenuList and `/__mycodex/` worker registration |

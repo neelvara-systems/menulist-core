@@ -122,6 +122,7 @@ export default function StoreSwitcher() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <LuMapPin size={16} style={{ opacity: 0.6 }} />
             <Select
+                aria-label="Switch location"
                 value={currentStoreId}
                 onChange={handleSwitch}
                 options={options}

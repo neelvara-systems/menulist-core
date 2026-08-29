@@ -512,6 +512,38 @@ async function run(): Promise<void> {
         freshnessPhraseRelevance.discriminatingOverlapCount >= 1,
         'up-to-date wording must contribute direct freshness-answer evidence',
     );
+    const unrelatedPasswordRecoveryRelevance = evaluateCanonicalAnswerQueryRelevance(
+        'I forgot my password. How can I recover access to MenuList?',
+        {
+            title: 'What happens when I sign out?',
+            content: {
+                structuredSummary: 'MenuList ends the signed session and clears selected-store state. It does not delete the account.',
+                detailedExplanation: 'Signing out clears session state while account data remains.',
+            },
+        },
+        [{
+            id: 'entity_index_sign_out',
+            pId: 'AL' as const,
+            tId: 1,
+            sId: 101,
+            entityId: 'entity_sign_out',
+            canonicalName: 'Sign-out session behavior',
+            synonyms: [],
+            normalizedTokens: ['sign-out', 'session', 'behavior', 'signing', 'clears', 'account', 'data', 'remains'],
+            prefixTokens: ['sig', 'ses', 'beh'],
+            weight: 1,
+        }],
+    );
+    assert.equal(
+        unrelatedPasswordRecoveryRelevance.eligible,
+        false,
+        'shared product and account words must not authorize sign-out knowledge for password recovery',
+    );
+    assert.equal(
+        unrelatedPasswordRecoveryRelevance.entityDiscriminatingOverlapCount,
+        0,
+        'an unrelated question must have no discriminating evidence from the governed Product Topic',
+    );
     const genericInterfaceRetrievalResult = await attemptCanonicalRetrieval(
         'How do customers open or view the public menu?',
         {
@@ -890,13 +922,82 @@ async function run(): Promise<void> {
     assert.ok(survivorSearchIndexes.docs[0]?.data()?.prefixTokens?.includes('leg'));
     assert.equal((await db.collection(DB_COLLECTIONS.ANSWERLATTICE_ENTITY_SEARCH_INDEX).doc('duplicate-search-index').get()).exists, false);
 
+    const sessionEntityId = 'entity_session_access';
+    await db.collection(DB_COLLECTIONS.ANSWERLATTICE_ENTITIES).doc(sessionEntityId).set({
+        pId: 'AL',
+        tId: 1,
+        sId: 101,
+        type: 'workflow',
+        name: 'Session access',
+        slug: 'session-access',
+        description: 'Signing in, signing out, and session recovery.',
+        status: 'active',
+        currentVersion: 1_000_000,
+    });
+    const reboundProposal = await executeAnswerlatticeGovernanceAction({
+        action: 'propose_create',
+        requestId: 'governance_rebind_create_1',
+        answer: {
+            ...baseAnswer,
+            title: 'What happens when I sign out?',
+            content: {
+                structuredSummary: 'Signing out ends the current owner session.',
+                detailedExplanation: 'Use Sign out to end the current session. Sign in again to return to the same workspace.',
+            },
+        },
+    }, access);
+    assert.ok(reboundProposal.proposalId);
+    await assert.rejects(
+        executeAnswerlatticeGovernanceAction({
+            action: 'approve_proposal',
+            proposalId: reboundProposal.proposalId,
+        }, access),
+        (error: unknown) => Number((error as { status?: unknown })?.status) === 409,
+        'the original broad Product Topic must still fail closed on overlap',
+    );
+    const reboundImpact = await prepareAnswerlatticeProposalImpact({
+        access,
+        proposalId: reboundProposal.proposalId,
+        entityIds: [sessionEntityId],
+    });
+    assert.deepEqual(
+        reboundImpact.candidate.scope.entityIds,
+        [sessionEntityId],
+        'impact review must evaluate the reviewer-selected Product Topic',
+    );
+    const reboundApproval = await executeAnswerlatticeGovernanceAction({
+        action: 'approve_proposal',
+        proposalId: reboundProposal.proposalId,
+        entityIds: [sessionEntityId],
+    }, access);
+    assert.equal(reboundApproval.status, 'implemented');
+    assert.ok(reboundApproval.answerId);
+    const reboundAnswerId = reboundApproval.answerId;
+    assert.deepEqual(
+        (await db.collection(DB_COLLECTIONS.ANSWERLATTICE_CANONICAL_ANSWERS)
+            .doc(reboundAnswerId).get()).data()?.scope?.entityIds,
+        [sessionEntityId],
+        'approval must persist the reviewed Product Topic',
+    );
+    assert.deepEqual(
+        (await db.collection(DB_COLLECTIONS.ANSWERLATTICE_MUTATION_PROPOSALS)
+            .doc(reboundProposal.proposalId).get()).data()?.approvedEntityIds,
+        [sessionEntityId],
+        'the implemented proposal must retain its approved Product Topic evidence',
+    );
+    const reboundAudit = (await db.collection(DB_COLLECTIONS.ANSWERLATTICE_AUDIT_LOGS)
+        .doc(`canonical_apply_${hashValue(reboundProposal.proposalId)}`).get()).data();
+    assert.deepEqual(reboundAudit?.previousState?.proposedEntityIds, ['entity_billing']);
+    assert.deepEqual(reboundAudit?.newState?.approvedEntityIds, [sessionEntityId]);
+
     const answerAudit = await db.collection(DB_COLLECTIONS.ANSWERLATTICE_AUDIT_LOGS)
         .where('pId', '==', 'AL')
         .where('tId', '==', 1)
         .where('sId', '==', 101)
         .where('entityType', '==', 'canonicalAnswer')
         .get();
-    assert.equal(answerAudit.size, 2, 'create and fresh update must each write one canonical audit event');
+    assert.equal(answerAudit.size, 3, 'create, fresh update, and reviewed Product Topic rebinding must each write one canonical audit event');
+    await db.collection(DB_COLLECTIONS.ANSWERLATTICE_CANONICAL_ANSWERS).doc(reboundAnswerId).delete();
 
     const signalTimestamp = Timestamp.fromMillis(Date.now() + 1_000);
     await Promise.all(Array.from({ length: 5 }, (_, index) => (

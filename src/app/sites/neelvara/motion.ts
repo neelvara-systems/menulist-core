@@ -1,0 +1,1 @@
+export const NEELVARA_PENDULUM_CYCLE_MS = 10_000;

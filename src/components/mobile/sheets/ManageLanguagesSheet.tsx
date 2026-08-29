@@ -113,6 +113,8 @@ export default function ManageLanguagesSheet({
     onSaved,
 }: ManageLanguagesSheetProps) {
     const t = useTranslations('MobileMenu');
+    const tBusinessSettings = useTranslations('BusinessSettings');
+    const tMobileSettings = useTranslations('MobileSettings');
     const labels = useOfferingLabels();
     const { token } = theme.useToken();
     const { storeDetails } = useContext(PlatformGlobalDataContext);
@@ -207,6 +209,9 @@ export default function ManageLanguagesSheet({
         }
         return getAvailableLanguagesForMaster(GlobalLanguagesList, projectLanguages);
     }, [projectLanguages, storeDetails?.activeLanguages]);
+    const hasNoAddableLanguages = canTranslate
+        && canAddLanguage(projectLanguages)
+        && addableLanguages.length === 0;
 
     const handleRemove = async (languageCode: string) => {
         if (languageCode === sourceLangCode || languageCode === preferredLanguageCode) {
@@ -538,6 +543,7 @@ export default function ManageLanguagesSheet({
 
     return (
         <Popup
+            aria-label={t('manageLanguages')}
             bodyStyle={MENU_SHEET_BODY_STYLE}
             destroyOnClose
             onMaskClick={isSaving ? undefined : onClose}
@@ -674,6 +680,7 @@ export default function ManageLanguagesSheet({
                                                         <Text type="secondary">Source</Text>
                                                     ) : (
                                                         <Button
+                                                            aria-label={`${t('removeLanguage')} ${language!.name}`}
                                                             color="danger"
                                                             fill="none"
                                                             onClick={() => void handleRemove(language!.code)}
@@ -698,7 +705,8 @@ export default function ManageLanguagesSheet({
                                         </Text>
                                     </Flex>
                                     <Select
-                                        disabled={!canTranslate || !canAddLanguage(projectLanguages)}
+                                        aria-label={t('addLanguage')}
+                                        disabled={!canTranslate || !canAddLanguage(projectLanguages) || hasNoAddableLanguages}
                                         onChange={setPendingLanguageCode}
                                         options={addableLanguages.map((language) => ({
                                             label: language.nativeName !== language.name ? `${language.name} (${language.nativeName})` : language.name,
@@ -707,6 +715,11 @@ export default function ManageLanguagesSheet({
                                         placeholder={t('chooseLanguage')}
                                         value={pendingLanguageCode || undefined}
                                     />
+                                    {hasNoAddableLanguages ? (
+                                        <Text type="secondary">
+                                            {tMobileSettings('languageRegion')}: {tBusinessSettings('selectAvailableLanguages')}
+                                        </Text>
+                                    ) : null}
                                     {!canTranslate ? (
                                         <Text type="secondary">Translation access is required to add or repair languages.</Text>
                                     ) : null}

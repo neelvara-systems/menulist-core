@@ -8,6 +8,8 @@ import {
     MYCODEX_THEME_COLOR,
     getStaticMyCodexAppleStartupImages,
 } from '@lib/mycodex/pwaAssets';
+import { requirePlatformAdminRouteAccess } from '@lib/auth/platformRouteGuard';
+import { ReduxStoreProvider } from '@providers/reduxProvider';
 
 
 const inter = Inter({
@@ -76,12 +78,22 @@ export const viewport: Viewport = {
 const themeScript = `
 (function() {
   try {
-    var stored = localStorage.getItem('theme');
-    if (stored === 'dark' || (!stored && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
+    var isDark = null;
+    var persisted = localStorage.getItem('persist:nextjs');
+    if (persisted) {
+      var persistedState = JSON.parse(persisted);
+      if (typeof persistedState.clientThemeConfig === 'string') {
+        var themePreferences = JSON.parse(persistedState.clientThemeConfig);
+        if (typeof themePreferences.darkMode === 'boolean') {
+          isDark = themePreferences.darkMode;
+        }
+      }
     }
+    var stored = localStorage.getItem('theme');
+    if (isDark === null && (stored === 'dark' || stored === 'light')) isDark = stored === 'dark';
+    if (isDark === null) isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    document.documentElement.classList.toggle('dark', isDark);
+    localStorage.setItem('theme', isDark ? 'dark' : 'light');
   } catch {
     document.documentElement.classList.remove('dark');
   }
@@ -92,15 +104,22 @@ interface MyCodexLayoutProps {
     children: React.ReactNode;
 }
 
-export default function MyCodexLayout({ children }: MyCodexLayoutProps) {
+export default async function MyCodexLayout({ children }: MyCodexLayoutProps) {
+    await requirePlatformAdminRouteAccess(
+        '/unauthorized',
+        `/signin?callbackUrl=${encodeURIComponent('/__mycodex')}`,
+    );
+
     return (
-        <div
-            className={`${inter.variable} mycodex-app-shell font-sans min-h-screen flex flex-col bg-white text-zinc-900 antialiased selection:bg-purple-500/30 selection:text-purple-700 dark:bg-zinc-950 dark:text-zinc-50 dark:selection:text-purple-200`}
-        >
-            {/* Anti-FOUC: set dark class before first paint */}
-            {/* eslint-disable-next-line react/no-danger */}
-            <script dangerouslySetInnerHTML={{ __html: themeScript }} />
-            {children}
-        </div>
+        <ReduxStoreProvider>
+            <div
+                className={`${inter.variable} mycodex-app-shell font-sans min-h-screen flex flex-col bg-white text-zinc-900 antialiased selection:bg-purple-500/30 selection:text-purple-700 dark:bg-zinc-950 dark:text-zinc-50 dark:selection:text-purple-200`}
+            >
+                {/* Anti-FOUC: set dark class before first paint */}
+                {/* eslint-disable-next-line react/no-danger */}
+                <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+                {children}
+            </div>
+        </ReduxStoreProvider>
     );
 }

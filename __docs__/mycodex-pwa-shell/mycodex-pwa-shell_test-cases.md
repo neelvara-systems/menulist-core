@@ -4,7 +4,7 @@
 
 | Check | Expected |
 | --- | --- |
-| `npx next lint --file src/app/sites/mycodex/components/MyCodexClientContainer.tsx --file src/app/sites/mycodex/layout.tsx --file src/app/sites/mycodex/login/page.tsx --file src/app/sites/mycodex/offline/page.tsx --file src/app/sites/mycodex/queue/page.tsx --file src/app/sites/mycodex/favorites/page.tsx` | Pass |
+| `npx eslint src/app/sites/mycodex/components/MyCodexClientContainer.tsx src/app/sites/mycodex/layout.tsx src/app/sites/mycodex/login/page.tsx src/app/sites/mycodex/offline/page.tsx src/app/sites/mycodex/queue/page.tsx src/app/sites/mycodex/favorites/page.tsx` | Pass |
 | `npx tsc --noEmit --incremental false` | Pass |
 | Scoped `git diff --check` | Pass |
 
@@ -29,6 +29,10 @@
 | Direct document handler request without a valid session | Returns private/no-store `401`, or `503` when access configuration is incomplete. |
 | Symlink outside `__docs__` or Markdown source over 4 MiB | The source is not resolved or returned; symbolic links are absent from the document tree. |
 | Desktop reader | Layout remains unchanged. |
+| Install from the shared owner-app host | Manifest opens `/__mycodex/operations`, remains scoped to `/__mycodex/`, and does not capture MenuList or AnswerLattice routes. |
+| Install on phone or tablet | Manifest does not lock portrait orientation; the installed console remains usable in portrait and landscape. |
+| Reload a MyCodex route while offline | The scoped worker returns `/__mycodex/offline`; no private document body is stored in Cache Storage. |
+| MenuList owner worker already installed | Registering the narrower MyCodex worker preserves the MenuList root worker and reconciles only stale registrations. |
 | Direct `/sites/mycodex` or descendant request | Fixed no-store, noindex 404; internal rewrite namespace is not addressable. |
 | Save scroll progress for more than 200 documents | Only the 200 most recently updated positions persist; the next launch retains the valid record. |
 | Start favorite/queue audio, then stop or navigate before fetch completion | Pending reads abort and no old document begins speaking on the replacement page. |
@@ -41,6 +45,8 @@
 
 ```bash
 npm run verify:mycodex-pwa-assets
+npm run test:product-service-workers
+npm run test:service-worker-registration-boundary
 ```
 
 The verifier requires the direct internal namespace denial to execute before

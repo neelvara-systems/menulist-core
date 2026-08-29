@@ -884,12 +884,6 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
                                                 </Button>
                                             </>
                                         ) : null}
-                                        <Button fill="outline" onClick={fetchHistory} size="small">
-                                            <Flex align="center" gap={6}>
-                                                <LuReceipt size={14} />
-                                                <Text>{t('billingHistory')}</Text>
-                                            </Flex>
-                                        </Button>
                                     </>
                                 ) : null}
                                 {canManageSelectedSubscription && sub.status === 'paused' ? (
@@ -902,7 +896,7 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
                                                 </Flex>
                                             </Button>
                                         ) : (
-                                            <Button color="primary" onClick={() => router.push('/help-center/ticket')} size="small">
+                                            <Button color="primary" onClick={() => router.push('/help-center/contact-us')} size="small">
                                                 <Flex align="center" gap={6}>
                                                     <LuMessageCircle size={14} />
                                                     <Text>Contact support</Text>
@@ -1008,18 +1002,32 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
                     </Card>
                 </div>
 
-                <Card onClick={() => router.push('/help-center/ticket')}>
-                    <Flex align="center" gap={12}>
-                        <LuMessageCircle color={token.colorSuccess} size={20} />
-                        <Flex gap={2} vertical>
-                            <Text strong>{t('needBillingHelp')}</Text>
-                            <Text type="secondary">Open a support ticket in Help Center.</Text>
+                <button
+                    aria-label={t('needBillingHelp')}
+                    onClick={() => router.push('/help-center/contact-us')}
+                    style={{
+                        background: 'transparent',
+                        border: 0,
+                        cursor: 'pointer',
+                        padding: 0,
+                        textAlign: 'left',
+                        width: '100%',
+                    }}
+                    type="button"
+                >
+                    <Card>
+                        <Flex align="center" gap={12}>
+                            <LuMessageCircle color={token.colorSuccess} size={20} />
+                            <Flex gap={2} vertical>
+                                <Text strong>{t('needBillingHelp')}</Text>
+                                <Text type="secondary">Open MenuList support options in Help Center.</Text>
+                            </Flex>
                         </Flex>
-                    </Flex>
-                </Card>
+                    </Card>
+                </button>
             </Flex>
 
-            <Popup bodyStyle={{ maxHeight: '80vh', overflow: 'hidden', padding: 0 }} onMaskClick={() => setShowCancellationReasons(false)} position="bottom" visible={showCancellationReasons}>
+            <Popup aria-label={t('cancellationReasonTitle')} bodyStyle={{ maxHeight: '80vh', overflow: 'hidden', padding: 0 }} onMaskClick={() => setShowCancellationReasons(false)} position="bottom" visible={showCancellationReasons}>
                 <Flex style={{ height: '100%' }} vertical>
                     <NavBar backIcon={<LuX size={20} />} onBack={() => setShowCancellationReasons(false)}>
                         {t('cancellationReasonTitle')}
@@ -1043,6 +1051,7 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
                         </List>
                         {cancellationReason === CANCELLATION_REASON.OTHER ? (
                             <TextArea
+                                aria-label={t('cancellationOtherReasonPlaceholder')}
                                 maxLength={300}
                                 onChange={setCancellationReasonDetail}
                                 placeholder={t('cancellationOtherReasonPlaceholder')}
@@ -1065,7 +1074,7 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
                 </Flex>
             </Popup>
 
-            <Popup bodyStyle={{ maxHeight: '85vh', overflow: 'hidden', padding: 0 }} onMaskClick={() => setShowPlans(false)} position="bottom" visible={showPlans}>
+            <Popup aria-label={t('chooseAPlan')} bodyStyle={{ maxHeight: '85vh', overflow: 'hidden', padding: 0 }} onMaskClick={() => setShowPlans(false)} position="bottom" visible={showPlans}>
                 <Flex style={{ height: '100%' }} vertical>
                     <NavBar backIcon={<LuX size={20} />} onBack={() => setShowPlans(false)}>
                         {t('chooseAPlan')}
@@ -1112,7 +1121,7 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
                 </Flex>
             </Popup>
 
-            <Popup bodyStyle={{ maxHeight: '70vh', overflow: 'hidden', padding: 0 }} onMaskClick={() => setShowStorePicker(false)} position="bottom" visible={showStorePicker}>
+            <Popup aria-label="Billing store" bodyStyle={{ maxHeight: '70vh', overflow: 'hidden', padding: 0 }} onMaskClick={() => setShowStorePicker(false)} position="bottom" visible={showStorePicker}>
                 <Flex style={{ height: '100%' }} vertical>
                     <NavBar backIcon={<LuX size={20} />} onBack={() => setShowStorePicker(false)}>
                         Billing store
@@ -1138,7 +1147,7 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
                 </Flex>
             </Popup>
 
-            <Popup bodyStyle={{ maxHeight: '70vh', overflow: 'hidden', padding: 0 }} onMaskClick={() => setShowCredits(false)} position="bottom" visible={showCredits}>
+            <Popup aria-label={t('getMoreAiEnhancements')} bodyStyle={{ maxHeight: '70vh', overflow: 'hidden', padding: 0 }} onMaskClick={() => setShowCredits(false)} position="bottom" visible={showCredits}>
                 <Flex style={{ height: '100%' }} vertical>
                     <NavBar backIcon={<LuX size={20} />} onBack={() => setShowCredits(false)}>
                         {t('getMoreAiEnhancements')}
@@ -1173,7 +1182,7 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
                 </Flex>
             </Popup>
 
-            <Popup bodyStyle={{ maxHeight: '80vh', overflow: 'hidden', padding: 0 }} onMaskClick={() => setShowHistory(false)} position="bottom" visible={showHistory}>
+            <Popup aria-label={t('billingHistory')} bodyStyle={{ maxHeight: '80vh', overflow: 'hidden', padding: 0 }} onMaskClick={() => setShowHistory(false)} position="bottom" visible={showHistory}>
                 <Flex style={{ height: '100%' }} vertical>
                     <NavBar backIcon={<LuX size={20} />} onBack={() => setShowHistory(false)}>
                         {t('billingHistory')}

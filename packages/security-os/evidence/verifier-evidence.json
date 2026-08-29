@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "updatedAt": "2026-08-02",
+  "updatedAt": "2026-08-29",
   "evidence": [
     {
       "id": "repository.security-policy",
@@ -507,6 +507,17 @@
       "networkPolicy": "none",
       "writesProductionData": false,
       "description": "Registers the existing MyCodex PWA asset and private-auth boundary verification group."
+    },
+    {
+      "id": "mycodex.founder-console-boundary",
+      "kind": "verifier",
+      "products": ["mycodex"],
+      "path": "scripts/verification/verify-mycodex-founder-console.js",
+      "command": "npm run verify:mycodex-founder-console",
+      "executionMode": "local-read-only",
+      "networkPolicy": "none",
+      "writesProductionData": false,
+      "description": "Verifies persisted platform-role admission, exact owner-host routing, catalog coverage, responsive contracts, CampaignCue exclusion, and the database-free MyCodex shell."
     }
   ],
   "bundles": [
@@ -617,10 +628,11 @@
       "products": ["mycodex"],
       "evidenceIds": [
         "mycodex.pwa-and-auth-boundary",
-        "mycodex.auth-boundary"
+        "mycodex.auth-boundary",
+        "mycodex.founder-console-boundary"
       ],
       "selectionMode": "manual-selective",
-      "description": "Groups MyCodex static PWA and private-auth boundary evidence without claiming completed coverage."
+      "description": "Groups MyCodex PWA, legacy private-auth, and founder-console platform-role boundary evidence without claiming product-data ownership."
     }
   ]
 }

@@ -1,4 +1,5 @@
 import { useOfferingLabels } from '@hook/useOfferingLabels';
+import { labelConfirmDialog } from '@lib/accessibility/antConfirmDialog';
 import { Alert, Button, Card, Flex, Image, Modal, Progress, Tag, Tooltip, Typography, theme } from 'antd';
 import { useState } from 'react';
 import { LuCheckCircle, LuEye, LuFileText, LuSparkles, LuTrash, LuTrash2 } from 'react-icons/lu';
@@ -22,7 +23,6 @@ export function FileList({ files, onRemove, onClearAll, fileProcessingId }: File
     const { token } = useToken();
     const labels = useOfferingLabels();
     const [previewFile, setPreviewFile] = useState<ProjectFileType | null>(null);
-    const [hoveredCard, setHoveredCard] = useState<string | null>(null);
 
     const handlePreview = async (file: ProjectFileType) => {
         if (!file.url) return;
@@ -74,20 +74,17 @@ export function FileList({ files, onRemove, onClearAll, fileProcessingId }: File
                         return (
                             <Card key={file.uid} styles={{ body: { padding: 0 } }}
                                 style={{
-                                    cursor: isProcessing ? 'not-allowed' : 'pointer',
+                                    cursor: isProcessing ? 'not-allowed' : 'default',
+                                    width: 150,
                                     maxWidth: 150,
                                     position: 'relative',
                                     height: "max-content",
                                     opacity: isProcessing && file.uid !== fileProcessingId ? 0.6 : 1
                                 }}
-                                onClick={() => !isProcessing && isImage && handlePreview(file)}
                                 size="small"
-                                hoverable={!isProcessing}
-                                onMouseEnter={() => !isProcessing && setHoveredCard(file.uid)}
-                                onMouseLeave={() => setHoveredCard(null)}
                                 cover={
                                     <>
-                                        {(Boolean(file.extractedData) || (fileProcessingId === file.uid) || hoveredCard === file.uid) && (
+                                        {(Boolean(file.extractedData) || (fileProcessingId === file.uid) || !isProcessing) && (
                                             <div className='animate__animated animate__fadeIn animate__faster'
                                                 style={{
                                                     position: 'absolute',
@@ -100,13 +97,13 @@ export function FileList({ files, onRemove, onClearAll, fileProcessingId }: File
                                                     alignItems: 'center',
                                                     justifyContent: 'center',
                                                     flexDirection: 'column',
-                                                    gap: 20,
+                                                    gap: 8,
                                                     zIndex: 1
                                                 }}>
                                                 {Boolean(file.extractedData) && (
                                                     <Tooltip title={`Processed in ${processingSeconds.toFixed(1)} seconds`}>
                                                         <Flex className='animate__animated animate__fadeInLeft animate__faster' vertical align='center' justify='center' gap={10}>
-                                                            <LuCheckCircle size={40} style={{ color: token.colorSuccess }} />
+                                                            <LuCheckCircle size={32} style={{ color: token.colorSuccess }} />
                                                             <Tag color={token.colorSuccess}>{processingSeconds.toFixed(1)} s</Tag>
                                                             {/* <Tag color={token.colorPrimary}>{file.inputToken + file.inputToken} Tokens</Tag> */}
                                                         </Flex>
@@ -135,12 +132,16 @@ export function FileList({ files, onRemove, onClearAll, fileProcessingId }: File
                                                         />
                                                     </Flex>
                                                 )}
-                                                {hoveredCard === file.uid && (
+                                                {!isProcessing && (
+                                                    <Text
+                                                        ellipsis={{ tooltip: file.name }}
+                                                        style={{ color: token.colorTextLightSolid, maxWidth: 130 }}
+                                                    >
+                                                        {file.name}
+                                                    </Text>
+                                                )}
+                                                {!isProcessing && (
                                                     <Flex align='center' justify='center' gap={10}>
-                                                        {/* <Flex justify='center' align='center' gap={10} wrap className='animate__animated animate__fadeInBottom animate__faster' style={{ width: '100%', position: 'absolute', bottom: 0, left: 0, right: 0, textAlign: 'center' }}>
-                                                            <Text type='secondary'>{file.name} | {`${(file.size! / 1024 / 1024).toFixed(2)} MB`}</Text>
-                                                        </Flex> */}
-
                                                         {isImage && (
                                                             <Button
                                                                 aria-label={`Preview ${file.name}`}
@@ -225,6 +226,7 @@ export function FileList({ files, onRemove, onClearAll, fileProcessingId }: File
                     src={previewFile.url}
                     style={{ display: "none" }}
                     preview={{
+                        modalRender: labelConfirmDialog(`${previewFile.name || "Source file"} preview`),
                         onVisibleChange: (visible) => {
                             if (!visible) setPreviewFile(null)
                         },

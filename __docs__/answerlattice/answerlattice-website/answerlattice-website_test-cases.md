@@ -1,6 +1,6 @@
 # AnswerLattice Website Test Cases
 
-> **Last audited:** July 31, 2026
+> **Last audited:** August 27, 2026
 
 ## Automated Source Gate
 
@@ -22,11 +22,11 @@ The gate verifies:
 6. Forbidden claims and unsupported schema types stay out of public source.
 7. Get Started places the real workspace signup before supporting proof and fit criteria, then uses native form submission, bound labels, bounded fields, legal links, selected-surface admission, bounded responses, and safe checkout URLs.
 8. Contact uses semantic typed controls, consent links, bounded I/O, validation, abuse controls, and retention.
-9. Mobile navigation traps and restores focus and has no duplicate touch activation.
+9. Mobile navigation traps and restores focus, has no duplicate touch activation, exposes the bounded Start here and Learn and verify groups instead of the full feature inventory, and links Prepare your sources to `/pre-onboarding` before installation.
 10. Trust and Privacy render shared retention constants and preserve the Gemini no-training/zero-retention non-claim.
 11. Terms preserve the operating trade-name, customer-content, cancellation/end-of-cycle, deletion, answer-reliance, and legal-completion boundaries.
 12. Root mail uses only the `nodemailer9` alias resolved to `9.0.3`, direct root `nodemailer` remains absent for NextAuth optional-peer compatibility, and Answerlattice Functions retain their independent `9.0.3` pin.
-13. The homepage preserves the compressed support-loop sequence and actively mounts one owner-decision section while retaining the three inactive inventory mounts inside the explicit deferred JSX comment block.
+13. The homepage preserves the first-ten activation path, compressed support loop, coding-agent install path, and one focused owner-decision section while retaining the three inactive inventory mounts inside the explicit deferred JSX comment block.
 14. Homepage, Product, Support Control, Knowledge Governance, Knowledge Base, Changelog, FAQ, Updates, metadata, and system coverage use the same Daily Brief, Knowledge Map, Product Friction Evidence, release-impact, Answer Tests, and article-topic-map boundaries.
 15. Daily Brief copy contains the qualified quiet state; friction is not presented as root cause or product health; Knowledge Map is not presented as a public raw graph; release previews and tests do not claim automatic mutation or factual certainty.
 16. The widget product page keeps Guided Resolution opt-in and explicitly denies clicking controls or changing product data.
@@ -34,6 +34,8 @@ The gate verifies:
 18. The four owner-decision proof assets are registered through AssetOS, use stable 1440 x 1200 WebP files within their size budgets, and are mounted only in the matching homepage, Knowledge Governance, and Knowledge Base stories.
 19. The Operating Guide route is registered and discoverable, preserves the solo-founder first-use path, defines Start/Coordinate/Govern as guidance only, and rejects automatic maturity state plus unsupported larger-company claims.
 20. The Operating Guide remains bundled static content and introduces no Firebase import, network request, workspace mode, feature flag, or AI-provider call.
+21. The public and private AnswerLattice manifests remain separate; dashboard start URL and scope follow the request host, while the public website manifest stays at the product root.
+22. The AnswerLattice service worker is network-first, has scope-aware offline recovery, and never caches private dashboard, support, knowledge, API, or provider responses.
 
 ## Functional Cases
 
@@ -46,7 +48,7 @@ The gate verifies:
 7. Malformed, oversized, redirected, or unexpected onboarding responses use fixed failure copy.
 8. Contact rejects missing consent, short messages, invalid email/URL, oversized payloads, failed captcha, and rate-limit admission.
 9. Both demo resets and all twelve stages remain keyboard reachable and disclose sample/runtime status.
-10. Mobile drawer cycles focus, closes with Escape, and restores the trigger.
+10. Mobile drawer cycles focus, closes with Escape, restores the trigger, and keeps all nine primary hub links reachable without document-level overflow.
 11. Pricing and FAQ identify only provider fallback, full-runtime answer tests, first-ten starter generation, OCR, and transcription as charged operations.
 12. Trust and Privacy display retention values from the shared source and do not state unverified AI-provider training or zero-retention guarantees.
 13. Terms show the Neelvara Systems operating trade-name relationship, current cancellation/end-of-cycle behavior, and the explicit legal-counsel completion boundary.
@@ -58,6 +60,8 @@ The gate verifies:
 19. At 390px and 1280px widths, each new 6:5 proof asset preserves its frame, intrinsic ratio, readable alt text, and surrounding content flow without horizontal overflow.
 20. At 390px and 1280px widths, the Operating Guide sections, checklists, FAQs, related resources, and CTAs wrap without horizontal overflow and remain keyboard reachable.
 21. Founder Launch Kit reaches the Operating Guide, and the guide explains when a user should remain at Start versus adding Coordinate or Govern controls.
+22. On a product host, installing the dashboard opens `/activation`; on the shared local/platform host, it opens `/answerlattice/activation` and does not control MenuList or MyCodex routes.
+23. Offline navigation renders the themed recovery page, reconnect/retry returns to Activation, and both portrait and landscape layouts remain usable without clipping.
 
 ## External Release Evidence
 
@@ -69,6 +73,7 @@ The gate verifies:
 - strict public-contact normalization (including tag-only required text, unsafe URLs, consent, and unknown fields) plus fail-closed limiter source evidence;
 - consent accept/decline analytics network inspection;
 - mobile/desktop keyboard, screen-reader, contrast, zoom, and reduced-motion checks;
+- Android/Chromium and iOS Safari install, standalone-launch, offline-recovery, orientation, safe-area, and Cache Storage inspection;
 - legal-counsel approval of the commercial terms;
 - deployed Gemini billing tier, enabled-feature, abuse-monitoring, and zero-retention configuration evidence for any future provider data-use claim;
 - real buyer comprehension, activation, payment, and retained-use evidence.

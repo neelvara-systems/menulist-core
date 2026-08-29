@@ -275,6 +275,7 @@ export default function MobileMenuCommandSheet({
 
     return (
         <Popup
+            aria-label={t('manageAndControl', { offering: labels.offeringTitle })}
             bodyStyle={MENU_SHEET_BODY_STYLE}
             onMaskClick={onClose}
             visible={visible}

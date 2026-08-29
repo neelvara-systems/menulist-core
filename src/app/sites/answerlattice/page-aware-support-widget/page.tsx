@@ -46,7 +46,7 @@ export default async function PageAwareSupportWidgetPage() {
                     'Let users attach screenshots only when visual context helps.',
                     'Review fallback gaps and approve better answers.',
                 ]}
-                primaryCta="Create workspace"
+                primaryCta="Request early access"
             />
             <AnswerlatticeFooter basePath={basePath} />
         </>

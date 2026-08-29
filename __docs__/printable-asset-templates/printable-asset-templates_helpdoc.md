@@ -36,9 +36,11 @@ Assets gives you downloadable files for tables, counters, entrances, feedback, c
 
 ## Adjust a File on Desktop
 
-For Table Tent, Single Table / Counter Card, Counter Sticker, Entrance Poster, Feedback QR, Flyer, Gift Certificate, Business Card, ID Card, Invitation, Postcard, Product Tag, and Campaign Poster, click **Customize in editor** after opening a style.
+For Table Tent, Single Table / Counter Card, Counter Sticker, Entrance Poster, Feedback QR, Flyer, Gift Certificate, Business Card, ID Card, Invitation, Postcard, Product Tag, and Campaign Poster, click **Customize design** after opening a style.
 
-Use this when you need to move text slightly, shorten a phrase, or adjust the layout. The QR link stays protected so the printed file still opens the right page. For Business Card, the front and back print sides stay protected while you adjust editable text.
+Use Background, Images, Text, Styles, and Brand Kit when you need to move text, shorten a phrase, add an owned image, or adjust the layout. The design opens with the complete asset visible and no protected layer selected. The QR link stays protected so the printed file still opens the right page. For Business Card, the front and back print sides stay protected while you adjust editable text.
+
+MenuList keeps a recovery copy in this browser while you work. If you try to close a changed design, choose **Keep editing** or **Discard changes**. **Print PDF** and **Image** check the design first; fix the listed issues when possible, or repeat the same download action when the warning is intentional. Use **Save reusable design** only when you want the edited version to appear under Saved designs.
 
 ## Use One Style Across Files
 

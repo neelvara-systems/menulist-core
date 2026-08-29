@@ -390,7 +390,7 @@ export default function MobileTransactionsScreen({ onBack }: MobileTransactionsS
         const tx = visibleSelectedTransaction;
 
         return (
-            <Popup bodyStyle={{ maxHeight: '88vh', overflow: 'hidden', padding: 0 }} destroyOnClose onMaskClick={() => setSelectedTransaction(null)} visible={!!visibleSelectedTransaction}>
+            <Popup aria-label={t('transactionDetails')} bodyStyle={{ maxHeight: '88vh', overflow: 'hidden', padding: 0 }} destroyOnClose onMaskClick={() => setSelectedTransaction(null)} visible={!!visibleSelectedTransaction}>
                 <NavBar backIcon={<LuX size={18} />} onBack={() => setSelectedTransaction(null)}>
                     {t('transactionDetails')}
                 </NavBar>
@@ -559,7 +559,7 @@ export default function MobileTransactionsScreen({ onBack }: MobileTransactionsS
                 )}
             </Flex>
 
-            <Popup bodyStyle={{ maxHeight: '88vh', overflow: 'hidden', padding: 0 }} destroyOnClose onMaskClick={() => setFilterOpen(false)} visible={filterOpen}>
+            <Popup aria-label={t('filterTransactions')} bodyStyle={{ maxHeight: '88vh', overflow: 'hidden', padding: 0 }} destroyOnClose onMaskClick={() => setFilterOpen(false)} visible={filterOpen}>
                 <NavBar backIcon={<LuX size={18} />} onBack={() => setFilterOpen(false)}>
                     {t('filterTransactions')}
                 </NavBar>
@@ -568,11 +568,12 @@ export default function MobileTransactionsScreen({ onBack }: MobileTransactionsS
                         <Flex gap={12} vertical>
                             <Title level={5} style={{ margin: 0 }}>{t('filterByAction')}</Title>
                             <Flex gap={8} wrap="wrap">
-                                <Button color={!draftActionFilter ? 'primary' : undefined} fill={!draftActionFilter ? 'solid' : 'outline'} onClick={() => setDraftActionFilter(null)} size="small">
+                                <Button aria-pressed={!draftActionFilter} color={!draftActionFilter ? 'primary' : undefined} fill={!draftActionFilter ? 'solid' : 'outline'} onClick={() => setDraftActionFilter(null)} size="small">
                                     {t('allActions')}
                                 </Button>
                                 {actionOptions.map((option) => (
                                     <Button
+                                        aria-pressed={draftActionFilter === option.value}
                                         color={draftActionFilter === option.value ? 'primary' : undefined}
                                         fill={draftActionFilter === option.value ? 'solid' : 'outline'}
                                         key={option.value}
@@ -591,11 +592,11 @@ export default function MobileTransactionsScreen({ onBack }: MobileTransactionsS
                             <Flex gap={10} vertical>
                                 <Flex gap={6} vertical>
                                     <Text strong>{t('startDate')}</Text>
-                                    <Input onChange={setDraftStartDate} type="date" value={draftStartDate} />
+                                    <Input aria-label={t('startDate')} onChange={setDraftStartDate} type="date" value={draftStartDate} />
                                 </Flex>
                                 <Flex gap={6} vertical>
                                     <Text strong>{t('endDate')}</Text>
-                                    <Input min={draftStartDate || undefined} onChange={setDraftEndDate} type="date" value={draftEndDate} />
+                                    <Input aria-label={t('endDate')} min={draftStartDate || undefined} onChange={setDraftEndDate} type="date" value={draftEndDate} />
                                 </Flex>
                             </Flex>
                         </Flex>

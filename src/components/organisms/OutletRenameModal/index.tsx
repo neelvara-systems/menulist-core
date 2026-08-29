@@ -179,6 +179,7 @@ export default function OutletRenameModal({
                     help="Used in breadcrumbs, OBP, and the owner dashboard."
                 >
                     <Input
+                        aria-label="New outlet name"
                         value={newName}
                         onChange={(e) => setNewName(e.target.value)}
                         placeholder="e.g. Pune Central"
@@ -192,6 +193,7 @@ export default function OutletRenameModal({
                     help="Leave blank to auto-derive from the name. Lowercase letters, digits, and hyphens only."
                 >
                     <Input
+                        aria-label="New outlet URL segment"
                         value={newSlug}
                         onChange={(e) => setNewSlug(e.target.value)}
                         placeholder={currentOutletSlug || 'pune-central'}

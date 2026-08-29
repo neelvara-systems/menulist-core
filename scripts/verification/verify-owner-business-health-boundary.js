@@ -52,6 +52,8 @@ function requireOrder(source, tokens, label) {
 const packageJson = read('package.json');
 const businessHealthRoute = read('src/app/(main)/business-health/page.tsx');
 const businessHealthPage = read('src/components/templates/main-app/ownerBusinessAssistant/BusinessHealthPage.tsx');
+const businessHealthScopeSelector = read('src/components/templates/main-app/ownerBusinessAssistant/BusinessHealthProjectScopeSelector.tsx');
+const businessHealthAnalyticsStrip = read('src/components/templates/main-app/ownerBusinessAssistant/BusinessHealthAnalyticsStrip.tsx');
 const weeklyMenuReview = read('src/components/templates/main-app/ownerBusinessAssistant/BusinessHealthWeeklyMenuReview.tsx');
 const ownerAssistantPanel = read('src/components/templates/main-app/ownerBusinessAssistant/OwnerAssistantPanel.tsx');
 const ownerAssistantMessageList = read('src/components/templates/main-app/ownerBusinessAssistant/OwnerAssistantMessageList.tsx');
@@ -98,6 +100,7 @@ const threadHook = read('src/hooks/ownerBusinessAssistant/useOwnerBusinessAssist
 const locationsHook = read('src/hooks/ownerBusinessAssistant/useOwnerBusinessLocationsSummary.ts');
 const feedbackHook = read('src/hooks/ownerBusinessAssistant/useOwnerBusinessAssistantFeedback.ts');
 const platformMonitorRoute = read('src/app/api/platform/owner-business-assistant/monitor/route.ts');
+const platformMonitor = read('src/components/templates/main-app/platform/ownerBusinessAssistantMonitor/index.tsx');
 const readme = read('__docs__/owner-business-assistant/README.md');
 const businessHealthDoc = read('__docs__/owner-business-assistant/owner-business-assistant_business-health.md');
 const implDoc = read('__docs__/owner-business-assistant/owner-business-assistant_impl.md');
@@ -109,6 +112,17 @@ const inventory = read('FEATURE_SWEEP_MASTER_INVENTORY.md');
 const report = read('FEATURE_SWEEP_MASTER_REPORT.md');
 const audit = read('__docs__/audits/menulist-production-readiness-audit.md');
 const changelog = read('__docs__/changelog.md');
+
+requireToken(
+  platformMonitor,
+  '<Button href="/platform/cost-posture">Cost Posture</Button>',
+  'platform Business Health monitor platform-safe cost handoff',
+);
+forbidToken(
+  platformMonitor,
+  '<Button href="/transactions">Owner Transactions</Button>',
+  'platform Business Health monitor owner-only transaction handoff',
+);
 
 requireToken(
   packageJson,
@@ -158,6 +172,22 @@ requireToken(
 ].forEach((token) => requireToken(weeklyMenuReview, token, 'weekly menu review'));
 forbidToken(weeklyMenuReview, 'fetch(', 'weekly menu review direct network read');
 forbidToken(weeklyMenuReview, 'useOwnerBusinessAssistantAction', 'weekly menu review action hook');
+
+[
+  [businessHealthScopeSelector, 'business health scope selector'],
+  [businessHealthAnalyticsStrip, 'business health analytics strip'],
+  [weeklyMenuReview, 'weekly menu review'],
+].forEach(([source, label]) => {
+  requireToken(source, 'styles={{ body: { padding: 12 } }}', `${label} Ant Card body style`);
+  forbidToken(source, 'bodyStyle=', `${label} deprecated Ant Card bodyStyle`);
+});
+[
+  '<button',
+  'aria-haspopup="menu"',
+  "aria-label={`${t('businessHealth.scope.title')}: ${selectedName}`}",
+  'type="button"',
+].forEach((token) => requireToken(businessHealthScopeSelector, token, 'business health scope selector keyboard trigger'));
+forbidToken(businessHealthScopeSelector, '<Flex\n              align="center"\n              className={styles.scopeSelectorTrigger}', 'business health pointer-only scope trigger');
 
 [
   'export function buildLocalizedOwnerBusinessWeeklyMenuReview(',

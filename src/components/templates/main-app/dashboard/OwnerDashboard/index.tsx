@@ -22,7 +22,11 @@ import { useOBPDashboard } from '@hook/useOBPDashboard';
 import { FEATURE_FLAGS } from '@config/features';
 import { getProjectData } from '@database/projects';
 import { useOwnerBusinessHealthCurrent } from '@hook/ownerBusinessAssistant/useOwnerBusinessHealthCurrent';
-import { getStoredOwnerProjectId, setStoredOwnerProjectId } from '@lib/projects/projectSelection';
+import {
+    getOwnerProjectSelectionScopeKey,
+    getStoredOwnerProjectId,
+    setStoredOwnerProjectId,
+} from '@lib/projects/projectSelection';
 import {
     buildOwnerActionLayer,
     getOwnerConfirmedPlacementCount,
@@ -32,6 +36,7 @@ import {
 } from '@lib/ownerActions/buildOwnerActionLayer';
 import { formatDashboardRelativeUpdate } from '@lib/analytics/ownerDashboardPresentation';
 import { isPublishedMenuProject } from '@lib/menuPresence/presenceReadiness';
+import { subscribeToProjectPublication } from '@lib/projects/projectPublicationEvents';
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
 import {
     getProjectPageProjectLogContext,
@@ -83,19 +88,24 @@ const OwnerDashboard: React.FC = () => {
     const router = useRouter();
     const { storeDetails } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext);
 
-    // Derive a fallback projectId from storeDetails immediately (no SWR wait needed)
-    const fallbackProjectId = storeDetails?.storeId
-        ? `${storeDetails.tenantId}-default-${storeDetails.storeId}`
+    // A new store legitimately has no project yet. Only fetch project-scoped
+    // data after the selector has resolved an existing project; synthesizing a
+    // default ID here turns the supported first-use state into two failed reads
+    // and noisy operational errors.
+    const currentProjectScopeKey = getOwnerProjectSelectionScopeKey(
+        storeDetails?.storeId,
+        storeDetails?.tenantId,
+    );
+    const [projectSelection, setProjectSelection] = useState(() => ({
+        projectId: getStoredOwnerProjectId(storeDetails?.storeId, storeDetails?.tenantId),
+        scopeKey: currentProjectScopeKey,
+    }));
+    const selectedProjectId = projectSelection.scopeKey === currentProjectScopeKey
+        ? projectSelection.projectId
         : null;
-
-    // Project selection state — seed with fallback so dashboard can start fetching immediately
-    const [selectedProjectId, setSelectedProjectId] = useState<string | null>(() => {
-        return getStoredOwnerProjectId(storeDetails?.storeId, storeDetails?.tenantId);
-    });
     const [showHistorical, setShowHistorical] = useState(false);
 
-    // Use selector-chosen project if available, otherwise fall back to derived default
-    const activeProjectId = selectedProjectId || fallbackProjectId;
+    const activeProjectId = selectedProjectId;
     const canShowBusinessHealthDashboardCard = Boolean(
         FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_HEALTH
         && FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_HEALTH_DASHBOARD_CARD
@@ -113,23 +123,38 @@ const OwnerDashboard: React.FC = () => {
     );
 
     const handleProjectChange = useCallback((projectId: string, _projectName: string) => {
-        setSelectedProjectId(projectId);
+        setProjectSelection({ projectId, scopeKey: currentProjectScopeKey });
         setStoredOwnerProjectId(projectId, storeDetails?.storeId, storeDetails?.tenantId);
-    }, [storeDetails?.storeId, storeDetails?.tenantId]);
+    }, [currentProjectScopeKey, storeDetails?.storeId, storeDetails?.tenantId]);
 
-    const handleProjectSelectorReady = useCallback(() => {
-        // no-op — we no longer block on selector ready
-    }, []);
-
-    useEffect(() => {
-        setSelectedProjectId(getStoredOwnerProjectId(storeDetails?.storeId, storeDetails?.tenantId));
-    }, [storeDetails?.storeId, storeDetails?.tenantId]);
+    const handleProjectSelectorReady = useCallback((resolvedProjectId: string | null) => {
+        if (resolvedProjectId) return;
+        setProjectSelection({ projectId: null, scopeKey: currentProjectScopeKey });
+        setStoredOwnerProjectId(null, storeDetails?.storeId, storeDetails?.tenantId);
+    }, [currentProjectScopeKey, storeDetails?.storeId, storeDetails?.tenantId]);
 
     useEffect(() => {
-        if (selectedProjectId) {
-            setStoredOwnerProjectId(selectedProjectId, storeDetails?.storeId, storeDetails?.tenantId);
+        setProjectSelection({
+            projectId: getStoredOwnerProjectId(storeDetails?.storeId, storeDetails?.tenantId),
+            scopeKey: currentProjectScopeKey,
+        });
+    }, [currentProjectScopeKey, storeDetails?.storeId, storeDetails?.tenantId]);
+
+    useEffect(() => {
+        if (projectSelection.projectId && projectSelection.scopeKey === currentProjectScopeKey) {
+            setStoredOwnerProjectId(
+                projectSelection.projectId,
+                storeDetails?.storeId,
+                storeDetails?.tenantId,
+            );
         }
-    }, [selectedProjectId, storeDetails?.storeId, storeDetails?.tenantId]);
+    }, [
+        currentProjectScopeKey,
+        projectSelection.projectId,
+        projectSelection.scopeKey,
+        storeDetails?.storeId,
+        storeDetails?.tenantId,
+    ]);
 
     const {
         data,
@@ -154,6 +179,7 @@ const OwnerDashboard: React.FC = () => {
     const {
         data: dashboardProjectData,
         isLoading: dashboardProjectLoading,
+        mutate: revalidateDashboardProject,
     } = useSWR(
         shouldLoadDashboardProject
             ? ['ownerDashboardProjectSetup', storeDetails?.tenantId, storeDetails?.storeId, activeProjectId]
@@ -172,6 +198,22 @@ const OwnerDashboard: React.FC = () => {
         },
         { dedupingInterval: 600000, revalidateOnFocus: false }
     );
+    useEffect(() => {
+        if (!shouldLoadDashboardProject || !activeProjectId) return;
+        return subscribeToProjectPublication({
+            tId: storeDetails?.tenantId as number,
+            sId: storeDetails?.storeId as number,
+            projectId: activeProjectId,
+        }, () => {
+            void revalidateDashboardProject();
+        });
+    }, [
+        activeProjectId,
+        revalidateDashboardProject,
+        shouldLoadDashboardProject,
+        storeDetails?.storeId,
+        storeDetails?.tenantId,
+    ]);
     const dashboardProjectForChildren = dashboardProjectLoading
         ? null
         : dashboardProjectData === undefined

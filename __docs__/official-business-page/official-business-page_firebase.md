@@ -216,6 +216,13 @@ Save/unmount ordering is explicit. Mobile navigation or a tenant/store switch sk
 
 Coordinate and owner public-link admission are pure validation and add no Firebase operation. Desktop and MobileShell write canonical `addressLine`, `postalCode`, and a valid paired `geo` value through the existing store update. Public Call/WhatsApp admission and Maps coordinate range checks are render-only. Tenant outlet discovery is explicitly bounded to `MAX_OUTLETS_PER_TENANT + 1` rows per cached query; no index, collection, listener, rule, Function, or scheduler is added.
 
+Owner outlet-link inheritance is also cost-neutral. Desktop and mobile link,
+copy, QR, and Google-listing emitters resolve a selected outlet against the
+already-loaded tenant `storesList`; they do not issue a Firestore query,
+listener, write, Storage operation, Function invocation, or cache
+invalidation. The mobile body-level save-action portal is layout-only and has
+the same zero-operation boundary.
+
 ---
 
 ## API Routes & Their Firebase Impact
@@ -230,4 +237,4 @@ Coordinate and owner public-link admission are pure validation and add no Fireba
 ---
 
 **Document Signature:** Cascade (Lead Architect)  
-**Last Updated:** July 17, 2026
+**Last Updated:** August 27, 2026

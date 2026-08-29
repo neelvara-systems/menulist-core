@@ -106,10 +106,13 @@ function verifyManifest() {
 
   assert(manifest.name === 'MyCodex', 'manifest name must be MyCodex');
   assert(manifest.short_name === 'MyCodex', 'manifest short_name must be MyCodex');
-  assert(manifest.id === '/mycodex', 'manifest id must be product-specific');
-  assert(manifest.scope === '/', 'manifest scope must stay root-scoped for a private host');
-  assert(manifest.start_url === '/', 'manifest start_url must stay root for a private host');
+  assert(manifest.id === '/__mycodex', 'manifest id must match the private owner-app route');
+  assert(manifest.scope === '/__mycodex/', 'manifest scope must not overlap the MenuList owner PWA');
+  assert(manifest.start_url === '/__mycodex/operations', 'manifest must launch the founder console');
   assert(manifest.display === 'standalone', 'manifest display must be standalone');
+  assert(manifest.orientation === undefined, 'manifest must support phone, tablet, and laptop rotation');
+  assert(manifest.shortcuts.some((shortcut) => shortcut.url === '/__mycodex/operations'), 'manifest must expose the founder console shortcut');
+  assert(manifest.shortcuts.some((shortcut) => shortcut.url === '/__mycodex/'), 'manifest must expose the private documents shortcut');
   assert(Array.isArray(manifest.icons), 'manifest icons must be an array');
 
   for (const icon of manifest.icons) {
@@ -168,9 +171,11 @@ function verifyMetadataAndRegistration() {
   const productIds = read('src/constants/product.ts');
   const docsLoader = read('src/lib/mycodex/docs.ts');
   const requestHost = read('src/lib/mycodex/requestHost.ts');
+  const requestBasePath = read('src/lib/mycodex/requestBasePath.ts');
   const documentPage = read('src/app/sites/mycodex/[[...slug]]/page.tsx');
   const favoritesPage = read('src/app/sites/mycodex/favorites/page.tsx');
   const queuePage = read('src/app/sites/mycodex/queue/page.tsx');
+  const offlinePage = read('src/app/sites/mycodex/offline/page.tsx');
   const documentRoute = read('src/app/sites/mycodex/api/document/route.ts');
   const sessionRoute = read('src/app/sites/mycodex/api/session/route.ts');
   const clientContainer = read('src/app/sites/mycodex/components/MyCodexClientContainer.tsx');
@@ -191,6 +196,9 @@ function verifyMetadataAndRegistration() {
   assertNotIncludes(layout, 'catch(e) {}', 'MyCodex theme script silent catch');
   assertIncludes(serviceWorkerRegister, "const MYCODEX_SW_URL = '/mycodex-sw.js';", 'service worker registration');
   assertIncludes(serviceWorkerRegister, "resolved.productSite?.id === 'mycodex'", 'service worker registration');
+  assertIncludes(serviceWorkerRegister, "const MYCODEX_OWNER_SCOPE = '/__mycodex/';", 'MyCodex owner-app service worker scope');
+  assertIncludes(serviceWorkerRegister, 'return MYCODEX_OWNER_SW_TARGET;', 'MyCodex owner-app service worker selection');
+  assertIncludes(serviceWorkerRegister, 'return [OWNER_SW_TARGET, MYCODEX_OWNER_SW_TARGET, ANSWERLATTICE_PLATFORM_SW_TARGET];', 'coexisting owner-app service workers');
   assertIncludes(middleware, 'mycodex-sw\\\\.js', 'middleware matcher');
   assertIncludes(middleware, "const MYCODEX_INTERNAL_BASE_PATH = '/sites/mycodex';", 'MyCodex private internal route boundary');
   assertIncludes(middleware, 'pathname === MYCODEX_INTERNAL_BASE_PATH', 'MyCodex private internal route boundary');
@@ -202,6 +210,7 @@ function verifyMetadataAndRegistration() {
     'MyCodex direct internal path must fail before product rewrite routing',
   );
   assertIncludes(domainResolver, "'/mycodex-sw.js'", 'domain resolver bypass');
+  assertIncludes(offlinePage, 'href="/__mycodex/operations"', 'MyCodex offline recovery route');
   assertIncludes(productIds, "MYCODEX: 'MC'", 'MyCodex internal product code');
   assertIncludes(auth, 'MYCODEX_PRODUCT_CODE = PRODUCT_IDS.MYCODEX', 'MyCodex product code boundary');
   assertIncludes(auth, "MYCODEX_PRODUCT_SLUG = 'mycodex'", 'MyCodex route slug boundary');
@@ -220,15 +229,18 @@ function verifyMetadataAndRegistration() {
     ['MyCodex favorites page', favoritesPage],
     ['MyCodex queue page', queuePage],
   ]) {
-    assertIncludes(content, "isMyCodexLocalDevelopmentHost(host)", `${label} must use the shared MyCodex local-dev Host helper`);
+    assertIncludes(content, "getMyCodexRequestBasePath()", `${label} must use the controlled proxy base-path header`);
     assertNotIncludes(content, "host.includes('localhost')", `${label} must not classify raw Host substrings as local development`);
     assertNotIncludes(content, "host.includes('127.0.0.1')", `${label} must not classify raw Host substrings as local development`);
   }
   assertIncludes(auth, "MYCODEX_OFFLINE_PATH = '/offline'", 'MyCodex auth bypass');
   assertIncludes(sessionRoute, 'failClosedOnProviderError: true', 'MyCodex login must fail closed when distributed rate limiting is unavailable');
   assertIncludes(sessionRoute, 'isMyCodexAccessConfigured()', 'MyCodex login must fail closed when any access credential is missing');
-  assertIncludes(documentRoute, 'verifyMyCodexSessionToken(', 'MyCodex document route must enforce session auth inside the handler');
-  assertIncludes(documentRoute, "request.cookies.get(MYCODEX_SESSION_COOKIE)?.value", 'MyCodex document route must read only the dedicated session cookie');
+  assertIncludes(layout, 'requirePlatformAdminRouteAccess(', 'MyCodex pages must enforce the current persisted platform role');
+  assertIncludes(documentRoute, 'withPlatformAuth(', 'MyCodex document route must enforce exact platform session auth inside the handler');
+  assertIncludes(documentRoute, 'getCurrentPlatformUser(session)', 'MyCodex document route must re-read current persisted platform access');
+  assertNotIncludes(documentRoute, 'verifyMyCodexSessionToken(', 'MyCodex legacy cookie must not authorize document reads');
+  assertIncludes(requestBasePath, "value === MYCODEX_PATH_PREFIX", 'MyCodex routed base path must accept only the exact owner path');
   assertIncludes(docsLoader, 'MYCODEX_MARKDOWN_MAX_BYTES = 4 * 1024 * 1024', 'MyCodex filesystem reader must bound Markdown bytes');
   assertIncludes(docsLoader, 'fs.realpath(', 'MyCodex filesystem reader must verify canonical paths');
   assertIncludes(docsLoader, 'item.isSymbolicLink()', 'MyCodex docs tree must omit symbolic links');
@@ -242,6 +254,7 @@ function verifyMetadataAndRegistration() {
   assertIncludes(clientContainer, "const normalizedTargetPath = String(targetPath || '').trim();", 'MyCodex client route builder boundary');
   assertIncludes(clientContainer, "!/[\\u0000-\\u001f\\u007f\\\\]/.test(normalizedTargetPath)", 'MyCodex client route builder raw control/backslash guard');
   assertIncludes(clientContainer, "parsed.origin === baseUrl.origin", 'MyCodex client route builder same-origin guard');
+  assertIncludes(clientContainer, "return basePath ? `${basePath}", 'MyCodex client route builder must use the controlled routed base path');
   assertIncludes(clientContainer, "!decodedPathname.includes('\\\\')", 'MyCodex client route builder encoded-backslash guard');
   assertIncludes(clientContainer, 'const getLocalStorageValue = (key: string)', 'MyCodex browser storage reads must be failure-contained');
   assertIncludes(clientContainer, 'window.localStorage.getItem(key)', 'MyCodex browser storage helper must own localStorage access');
@@ -283,7 +296,7 @@ function verifyServiceWorkerPrivacy() {
   const sw = read('public/mycodex-sw.js');
 
   assertIncludes(sw, 'Do not cache document pages or markdown content.', 'MyCodex service worker privacy note');
-  assertIncludes(sw, "const MYCODEX_OFFLINE_URL = '/offline';", 'MyCodex service worker');
+  assertIncludes(sw, "const MYCODEX_OFFLINE_URL = '/__mycodex/offline';", 'MyCodex service worker');
   assertIncludes(sw, "const MYCODEX_CACHE = 'mycodex-offline-v1';", 'MyCodex service worker');
   assertIncludes(sw, "'/mycodex-logo.png'", 'MyCodex service worker');
   assertNotIncludes(sw, '__docs__', 'MyCodex service worker');

@@ -91,12 +91,12 @@ export default async function AnswerlatticeDemoPage() {
                         </AnswerlatticeLink>
                         <AnswerlatticeLink
                             basePath={basePath}
-                            href="/get-started"
+                            href="/early-access"
                             data-answerlattice-event="demo_cta_clicked"
                             data-answerlattice-label="create_workspace"
                             className="rounded-xl bg-teal-700 px-8 py-3.5 text-sm font-semibold text-white shadow-lg shadow-teal-500/25 transition-all hover:bg-teal-800"
                         >
-                            Create workspace
+                            Request early access
                         </AnswerlatticeLink>
                     </div>
                 </section>

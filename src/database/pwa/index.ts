@@ -30,7 +30,8 @@ import { STORAGE_CACHE_CONTROL } from '@lib/storage/cacheControl';
 import { generateStoragePath } from '@lib/storage/pathGenerator';
 import { summarizeStorageCleanupResults } from '@lib/storage/storageCleanupResults';
 import { getLocalizedText, getPrimaryLocalizedLanguage, isLocalizedText, LocalizedTextValue } from '@lib/localization/text';
-import { doc, getDocFromServer, updateDoc } from 'firebase/firestore';
+import { buildPWASettingsUpdatePayload } from '@lib/pwa/settingsUpdate';
+import { deleteField, doc, getDocFromServer, updateDoc } from 'firebase/firestore';
 import { ref } from 'firebase/storage';
 
 const COLLECTION = DB_COLLECTIONS.STORES;
@@ -168,25 +169,10 @@ export const updatePWASettings = async (
     return await apiCallComposer(
         async () => {
             await getRequiredPWAScope(storeId);
-            // Build a nested-key update payload so we only touch pwaSettings.*
-            // Firestore dot-notation updates merge into existing map fields.
-            const update: Record<string, unknown> = {};
-            if (typeof settings.enableInstallableApp === 'boolean') {
-                update['pwaSettings.enableInstallableApp'] = settings.enableInstallableApp;
-            }
-            if (typeof settings.promoteInstallation === 'boolean') {
-                update['pwaSettings.promoteInstallation'] = settings.promoteInstallation;
-            }
-            if (typeof settings.pwaShortName === 'string') {
-                update['pwaSettings.pwaShortName'] = settings.pwaShortName.trim().slice(0, 12);
-            } else if (isLocalizedText(settings.pwaShortName)) {
-                update['pwaSettings.pwaShortName'] = Object.fromEntries(
-                    Object.entries(settings.pwaShortName).map(([language, value]) => [
-                        language,
-                        String(value || '').trim().slice(0, 12),
-                    ]),
-                );
-            }
+            // Build a nested-key update payload so we only touch pwaSettings.*.
+            // An explicitly cleared short name deletes the override so the
+            // public manifest returns to its generated fallback.
+            const update = buildPWASettingsUpdatePayload(settings, deleteField());
             if (Object.keys(update).length === 0) return { noop: true } satisfies PWASettingsUpdateResult;
 
             await updateDoc(getDocRef(storeId), await requestBodyComposer(update, { isNew: false }));

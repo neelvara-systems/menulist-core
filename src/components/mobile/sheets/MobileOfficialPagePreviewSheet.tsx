@@ -12,6 +12,7 @@ import { Flex, NavBar, Popup, Tag, Text } from '../antd';
 
 interface MobileOfficialPagePreviewSheetProps {
     activeLanguage: string;
+    hasUnsavedChanges: boolean;
     menuInfo: ObpMenuInfo;
     onClose: () => void;
     storeDetails: StoreDataType;
@@ -20,6 +21,7 @@ interface MobileOfficialPagePreviewSheetProps {
 
 export default function MobileOfficialPagePreviewSheet({
     activeLanguage,
+    hasUnsavedChanges,
     menuInfo,
     onClose,
     storeDetails,
@@ -30,6 +32,7 @@ export default function MobileOfficialPagePreviewSheet({
 
     return (
         <Popup
+            aria-label={t('previewOfficialPageSheetTitle')}
             bodyStyle={{
                 background: token.colorBgLayout,
                 height: '100vh',
@@ -56,39 +59,41 @@ export default function MobileOfficialPagePreviewSheet({
                     {t('previewOfficialPageSheetTitle')}
                 </NavBar>
 
-                <Flex
-                    align="flex-start"
-                    gap={10}
-                    style={{
-                        background: token.colorPrimaryBg,
-                        borderBottom: `1px solid ${token.colorBorderSecondary}`,
-                        color: token.colorText,
-                        flex: '0 0 auto',
-                        padding: '10px 14px',
-                    }}
-                >
+                {hasUnsavedChanges ? (
                     <Flex
-                        align="center"
-                        justify="center"
+                        align="flex-start"
+                        gap={10}
                         style={{
-                            background: token.colorBgContainer,
-                            border: `1px solid ${token.colorBorderSecondary}`,
-                            borderRadius: 999,
-                            color: token.colorPrimary,
+                            background: token.colorPrimaryBg,
+                            borderBottom: `1px solid ${token.colorBorderSecondary}`,
+                            color: token.colorText,
                             flex: '0 0 auto',
-                            height: 30,
-                            width: 30,
+                            padding: '10px 14px',
                         }}
                     >
-                        <LuEye size={16} />
+                        <Flex
+                            align="center"
+                            justify="center"
+                            style={{
+                                background: token.colorBgContainer,
+                                border: `1px solid ${token.colorBorderSecondary}`,
+                                borderRadius: 999,
+                                color: token.colorPrimary,
+                                flex: '0 0 auto',
+                                height: 30,
+                                width: 30,
+                            }}
+                        >
+                            <LuEye size={16} />
+                        </Flex>
+                        <Flex gap={2} style={{ minWidth: 0 }} vertical>
+                            <Text strong>{t('previewSheetNoteTitle')}</Text>
+                            <Text type="secondary" style={{ fontSize: 12, lineHeight: 1.45 }}>
+                                {t('previewOfficialPageSheetNoteDesc')}
+                            </Text>
+                        </Flex>
                     </Flex>
-                    <Flex gap={2} style={{ minWidth: 0 }} vertical>
-                        <Text strong>{t('previewSheetNoteTitle')}</Text>
-                        <Text type="secondary" style={{ fontSize: 12, lineHeight: 1.45 }}>
-                            {t('previewOfficialPageSheetNoteDesc')}
-                        </Text>
-                    </Flex>
-                </Flex>
+                ) : null}
 
                 <div style={{ flex: 1, minHeight: 0, overflow: 'hidden', position: 'relative' }}>
                     <DeviceFrame

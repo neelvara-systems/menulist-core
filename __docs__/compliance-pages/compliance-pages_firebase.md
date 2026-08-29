@@ -109,6 +109,18 @@ July 5 owner store-lookup diagnostics are Firebase-cost neutral beyond the exist
 
 **Verdict:** Template generation is free and tagged caching bounds repeat reads, but exact cost depends on traffic spacing and cache hits. Do not present a single rupee estimate as guaranteed. Rejected oversized or rate-limited owner mutations do not reach compliance writes.
 
+### Multi-location owner scope
+
+The owner API resolves the explicitly requested active store only after
+validating its document ID and authenticated tenant membership. GET performs
+one target-store read and reads the compliance override only when the store has
+the required template inputs. POST performs one target-store read that is
+reused for store-access, permission, and template-input checks before the
+existing override write. This replaces the previous session-store permission
+read rather than adding another billed read; rejected cross-tenant or
+unauthorized targets do not reach the compliance document. No collection,
+listener, index, Storage operation, Function, or cache is added.
+
 ---
 
 ## Document Size Estimate

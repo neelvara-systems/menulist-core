@@ -412,12 +412,18 @@ function MobileCustomerAppScreenContent({ onBack }: Props) {
         if (!base) return null;
         return `${base.replace(/\/$/, '')}/?pwa=install`;
     }, [storeDetails]);
+    const installableReady = enableInstallableApp && Boolean(installLink);
+    const installPromptReady = installableReady && promoteInstallation;
     const readinessItems = useMemo(() => ([
         {
-            color: enableInstallableApp ? 'success' as const : 'default' as const,
-            detail: enableInstallableApp ? 'Customers can install this store app.' : 'Customer installs are currently off.',
+            color: installableReady ? 'success' as const : enableInstallableApp ? 'warning' as const : 'default' as const,
+            detail: installableReady
+                ? 'Customers can install this store app.'
+                : enableInstallableApp
+                    ? 'Add a subdomain or custom domain to make installation available.'
+                    : 'Customer installs are currently off.',
             label: 'Installable',
-            status: enableInstallableApp ? 'Active' : 'Off',
+            status: installableReady ? 'Active' : enableInstallableApp ? 'Setup' : 'Off',
         },
         {
             color: installLink ? 'success' as const : 'warning' as const,
@@ -432,12 +438,16 @@ function MobileCustomerAppScreenContent({ onBack }: Props) {
             status: currentIconUrl ? 'Custom' : 'Automatic',
         },
         {
-            color: enableInstallableApp && promoteInstallation ? 'success' as const : 'default' as const,
-            detail: enableInstallableApp && promoteInstallation ? 'Prompt can show after visit threshold.' : 'Manual install only.',
+            color: installPromptReady ? 'success' as const : 'default' as const,
+            detail: installPromptReady
+                ? 'Prompt can show after visit threshold.'
+                : enableInstallableApp && promoteInstallation && !installLink
+                    ? 'Prompt will activate after the install link is ready.'
+                    : 'Manual install only.',
             label: 'Prompt',
-            status: enableInstallableApp && promoteInstallation ? 'Active' : 'Manual',
+            status: installPromptReady ? 'Active' : enableInstallableApp && promoteInstallation ? 'Waiting' : 'Manual',
         },
-    ]), [currentIconUrl, enableInstallableApp, installLink, promoteInstallation]);
+    ]), [currentIconUrl, enableInstallableApp, installLink, installableReady, installPromptReady, promoteInstallation]);
 
     const handleCopyInstallLink = async () => {
         if (!installLink) return;
@@ -602,7 +612,7 @@ function MobileCustomerAppScreenContent({ onBack }: Props) {
                         <Text type="secondary" style={{ display: 'block', margin: '4px 0 8px', fontSize: 13 }}>
                             Short label under the icon. Max 12 characters. Blank = first word of your business name.
                         </Text>
-                        <Input
+                        <Input aria-label="Home screen name"
                             value={pwaShortName}
                             maxLength={12}
                             placeholder="e.g. Joe's"
@@ -818,6 +828,7 @@ function MobileCustomerAppScreenContent({ onBack }: Props) {
                     <NavBar
                         right={(
                             <Button
+                                aria-label="Close install guide"
                                 fill="none"
                                 onClick={() => setIsInstallGuideOpen(false)}
                                 style={{ minHeight: 44, minWidth: 44, paddingInline: 0 }}

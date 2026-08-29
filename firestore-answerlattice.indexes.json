@@ -2081,6 +2081,20 @@
           "order": "ASCENDING"
         }
       ]
+    },
+    {
+      "collectionGroup": "answerlattice_earlyAccessRequests",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "lastSubmittedAt",
+          "order": "DESCENDING"
+        }
+      ]
     }
   ],
   "fieldOverrides": [
@@ -2146,6 +2160,12 @@
     },
     {
       "collectionGroup": "answerlattice_contactEnquiries",
+      "fieldPath": "expiresAt",
+      "ttl": true,
+      "indexes": []
+    },
+    {
+      "collectionGroup": "answerlattice_earlyAccessRequests",
       "fieldPath": "expiresAt",
       "ttl": true,
       "indexes": []

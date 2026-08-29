@@ -15,7 +15,7 @@ import {
 export { ANSWERLATTICE_SITE_DESCRIPTION, ANSWERLATTICE_SUPPORTING_LINE, ANSWERLATTICE_TAGLINE } from '@constant/answerlattice/website';
 
 export const ANSWERLATTICE_SITE_URL = getProductDeploymentTarget('answerlattice').url.replace(/\/$/, '');
-export const ANSWERLATTICE_SITE_TITLE = 'AnswerLattice - Reviewed Support Layer for SaaS Products';
+export const ANSWERLATTICE_SITE_TITLE = 'AnswerLattice - Support Users Without a Support Team';
 
 export const ANSWERLATTICE_PUBLIC_PAGES: Array<{
     path: string;
@@ -260,7 +260,7 @@ export const ANSWERLATTICE_PUBLIC_PAGES: Array<{
     {
         path: '/pricing',
         title: 'Pricing | AnswerLattice',
-        description: 'Clear INR and USD pricing, paid setup, support credits, intake media processing, and AnswerLattice plans for founder-led SaaS teams.',
+        description: 'Planned INR and USD public-launch pricing for AnswerLattice. Current access is request-only and creates no checkout or payment.',
         priority: 0.85,
         changeFrequency: 'weekly',
     },
@@ -279,10 +279,10 @@ export const ANSWERLATTICE_PUBLIC_PAGES: Array<{
         changeFrequency: 'monthly',
     },
     {
-        path: '/get-started',
-        title: 'Get Started | AnswerLattice',
-        description: 'Choose an AnswerLattice paid plan, provide your billing country, create the workspace safely, add your app, pick support pages, and get a one-time widget key.',
-        priority: 0.85,
+        path: '/early-access',
+        title: 'Request Early Access | AnswerLattice',
+        description: 'Request controlled AnswerLattice early access for a founder-led SaaS product without creating an account, workspace, subscription, or payment.',
+        priority: 0.92,
         changeFrequency: 'weekly',
     },
     {

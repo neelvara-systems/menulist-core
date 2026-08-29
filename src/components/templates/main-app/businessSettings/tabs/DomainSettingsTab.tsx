@@ -7,10 +7,11 @@ import { AUTH_BROWSER_REQUEST_POLICY } from '@lib/auth/browserRequestPolicy';
 import { openIsolatedBrowserUrl } from '@lib/browser/openIsolatedBrowserUrl';
 import { renderTenantDomainCopy } from '@lib/domains/tenantDomainCopy';
 import { normalizeVercelDomainDnsRecords } from '@lib/domains/vercelDnsRecords';
+import { normalizeCustomDomainAvailabilityCandidate, normalizeSubdomainAvailabilityCandidate } from '@lib/domains/publicAddressInput';
 import { createLatestRequestGuard } from '@lib/runtime/latestRequestGuard';
 import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
 import { getBoundedErrorNumberAtPath, getBoundedErrorStatus } from '@lib/monitoring/boundedLogContext';
-import { Alert, App, Button, Card, Divider, Input, List, Space, Steps, Tag, Typography } from 'antd';
+import { Alert, App, Button, Card, Divider, Input, List, Modal, Space, Steps, Tag, Typography } from 'antd';
 import { useTranslations } from 'next-intl';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { LuCheck, LuCopy, LuExternalLink, LuGlobe, LuRefreshCw, LuSearch, LuTrash2 } from 'react-icons/lu';
@@ -21,6 +22,12 @@ const DOMAIN_SETTINGS_COPY_ERROR = 'Could not copy. Select and copy manually.';
 const DOMAIN_SETTINGS_OPEN_ERROR = 'Could not open link.';
 const DESKTOP_DOMAIN_SETTINGS_COPY_UNAVAILABLE = 'desktop_domain_settings_copy_unavailable';
 const DESKTOP_DOMAIN_SETTINGS_COPY_FALLBACK_FAILED = 'desktop_domain_settings_copy_fallback_failed';
+
+const isLocalCustomDomainFixture = (value: unknown): value is string => {
+    if (process.env.NODE_ENV === 'production' || typeof value !== 'string') return false;
+    const hostname = value.trim().toLowerCase().replace(/^https?:\/\//, '').split('/')[0]?.split(':')[0] || '';
+    return hostname === 'localhost' || hostname.endsWith('.localhost');
+};
 
 interface DomainSettingsTabProps {
     scrollRef?: React.RefObject<HTMLDivElement | null>;
@@ -211,6 +218,7 @@ async function readDesktopDomainSettingsDomainResponseJson<T>(
 function DomainSettingsTab({ scrollRef, storeDetails, onStoreStateUpdate, onStoreUpdate }: DomainSettingsTabProps) {
     const { message: messageApi } = App.useApp();
     const t = useTranslations('BusinessSettings');
+    const common = useTranslations('Common');
     const tenantDomainCopy = useCallback(
         (copy: string) => renderTenantDomainCopy(copy, MENULIST_TENANT_BASE_DOMAIN),
         [],
@@ -245,6 +253,7 @@ function DomainSettingsTab({ scrollRef, storeDetails, onStoreStateUpdate, onStor
     const [domainStatus, setDomainStatus] = useState<any>(null);
     const [copiedDnsValue, setCopiedDnsValue] = useState<string | null>(null);
     const [domainLinkCopied, setDomainLinkCopied] = useState(false);
+    const [removeDomainModalOpen, setRemoveDomainModalOpen] = useState(false);
 
     useEffect(() => {
         componentActiveRef.current = true;
@@ -260,7 +269,7 @@ function DomainSettingsTab({ scrollRef, storeDetails, onStoreStateUpdate, onStor
     const currentSubdomain = (storeDetails?.subdomain || '').trim().toLowerCase();
     const normalizedInputSubdomain = subdomainValue.trim().toLowerCase();
     const hasSubdomainChanged = normalizedInputSubdomain !== currentSubdomain;
-    const canCheckSubdomain = normalizedInputSubdomain.length >= 3 && (!storeDetails?.subdomain || hasSubdomainChanged);
+    const canCheckSubdomain = Boolean(normalizeSubdomainAvailabilityCandidate(subdomainValue)) && (!storeDetails?.subdomain || hasSubdomainChanged);
     const canSaveSubdomain = Boolean(
         availability?.available
         && availability?.normalized === normalizedInputSubdomain
@@ -270,7 +279,8 @@ function DomainSettingsTab({ scrollRef, storeDetails, onStoreStateUpdate, onStor
         ? (domainStatus.hasDomain === true && isNonEmptyString(domainStatus.domain) ? domainStatus.domain : undefined)
         : storeDetails?.customDomain;
     const normalizedDomainInput = domainInput.trim().toLowerCase();
-    const canCheckDomain = !activeDomain && normalizedDomainInput.length >= 4;
+    const validDomainInput = normalizeCustomDomainAvailabilityCandidate(domainInput);
+    const canCheckDomain = !activeDomain && Boolean(validDomainInput);
     const canConnectDomain = Boolean(
         !activeDomain
         && domainAvailability?.available
@@ -408,6 +418,17 @@ function DomainSettingsTab({ scrollRef, storeDetails, onStoreStateUpdate, onStor
 
     const refreshDomainStatus = useCallback(async () => {
         if (!storeDetails?.customDomain) return;
+        if (isLocalCustomDomainFixture(storeDetails.customDomain)) {
+            setDomainError(null);
+            setDomainStatus({
+                domain: storeDetails.customDomain,
+                hasDomain: true,
+                providerStatusPending: false,
+                refreshPending: false,
+                verified: storeDetails.domainVerified === true,
+            });
+            return;
+        }
         const requestScopeKey = domainScopeKey;
         const requestId = domainStatusGuardRef.current!.begin();
         setStatusLoading(true);
@@ -551,13 +572,13 @@ function DomainSettingsTab({ scrollRef, storeDetails, onStoreStateUpdate, onStor
     }, [domainAvailability?.normalized, domainInput, domainScopeKey, onStoreStateUpdate, storeDetails]);
 
     const handleCheckDomain = useCallback(async () => {
-        if (!normalizedDomainInput) return;
+        if (!validDomainInput) return;
         const requestScopeKey = domainScopeKey;
         const requestId = domainCheckGuardRef.current!.begin();
         setCheckingDomain(true);
         setDomainError(null);
         try {
-            const result = await checkCustomDomainAvailability(normalizedDomainInput, storeDetails?.storeId);
+            const result = await checkCustomDomainAvailability(validDomainInput, storeDetails?.storeId);
             if (
                 !domainCheckGuardRef.current!.isCurrent(requestId)
                 || !componentActiveRef.current
@@ -592,7 +613,7 @@ function DomainSettingsTab({ scrollRef, storeDetails, onStoreStateUpdate, onStor
                 setCheckingDomain(false);
             }
         }
-    }, [domainScopeKey, normalizedDomainInput, storeDetails]);
+    }, [domainScopeKey, normalizedDomainInput, storeDetails, validDomainInput]);
 
     const handleRemoveDomain = useCallback(async () => {
         const requestScopeKey = domainScopeKey;
@@ -626,6 +647,7 @@ function DomainSettingsTab({ scrollRef, storeDetails, onStoreStateUpdate, onStor
             }
             setDomainStatus(null);
             setDomainInput('');
+            setRemoveDomainModalOpen(false);
             onStoreStateUpdate?.({ customDomain: undefined, domainVerified: undefined });
             if (data.providerCleanupPending === true || data.claimReleasePending === true || data.refreshPending === true) {
                 messageApi.warning('Domain removed. Background cleanup is still finishing.');
@@ -826,7 +848,9 @@ function DomainSettingsTab({ scrollRef, storeDetails, onStoreStateUpdate, onStor
 
                                 {availability ? (
                                     <Text type={availability.available ? 'success' : 'danger'}>
-                                        {availability.available ? `${availability.preview} ${t('isAvailable', { name: '' }).replace(' is available', '')} ${t('open') ? '' : ''}` : availability.reason}
+                                        {availability.available
+                                            ? t('isAvailable', { name: availability.preview ?? subdomainValue })
+                                            : availability.reason}
                                     </Text>
                                 ) : null}
 
@@ -884,8 +908,8 @@ function DomainSettingsTab({ scrollRef, storeDetails, onStoreStateUpdate, onStor
                             <Button icon={<LuExternalLink />} onClick={handleOpenDomainLink}>
                                 {t('open')}
                             </Button>
-                            <Button danger icon={<LuTrash2 />} loading={domainLoading} onClick={() => void handleRemoveDomain()}>
-                                Remove
+                            <Button danger icon={<LuTrash2 />} onClick={() => setRemoveDomainModalOpen(true)}>
+                                {t('removeDomain')}
                             </Button>
                         </Space>
 
@@ -997,6 +1021,23 @@ function DomainSettingsTab({ scrollRef, storeDetails, onStoreStateUpdate, onStor
                     />
                 ) : null}
             </Card>
+
+            <Modal
+                title={t('removeDomainConfirmTitle')}
+                open={removeDomainModalOpen && Boolean(activeDomain)}
+                confirmLoading={domainLoading}
+                onCancel={() => {
+                    if (!domainLoading) setRemoveDomainModalOpen(false);
+                }}
+                onOk={() => void handleRemoveDomain()}
+                okText={t('removeDomain')}
+                okButtonProps={{ danger: true }}
+                cancelText={common('cancel')}
+            >
+                <Paragraph style={{ marginBottom: 0 }}>
+                    {t('removeDomainConfirmDesc', { domain: activeDomain || '' })}
+                </Paragraph>
+            </Modal>
         </Card>
     );
 }

@@ -250,6 +250,30 @@ function CreativeEditorSmokeQaProbe({
                 await waitFor(() => root.getAttribute("data-review-mode") === "false", "review mode disabled");
             });
 
+            await step("Background panel exposes status and real actions only", async () => {
+                const drawerSelector = "[data-creative-editor-asset-drawer='true']";
+                await clickTool("background");
+                const drawer = await waitFor(() => query<HTMLElement>(drawerSelector), "background drawer");
+                const status = await waitFor(() => (
+                    drawer.querySelector<HTMLElement>("[data-creative-editor-background-status='color']")
+                ), "color background status");
+                if (status.textContent?.trim() !== "Color background") {
+                    throw new Error("Background status did not describe the current color mode.");
+                }
+                if (drawer.querySelector("input[type='checkbox'][readonly]")) {
+                    throw new Error("Background drawer exposed a read-only checkbox as an action.");
+                }
+                await clickButtonByName("Add image layer", "image-layer handoff", drawerSelector);
+                await waitFor(() => (
+                    query<HTMLElement>("[data-creative-editor-root='true']")
+                        ?.getAttribute("data-creative-editor-active-tool") === "images"
+                ), "Images tool after background handoff");
+                await clickTool("background");
+                await waitFor(() => (
+                    query<HTMLElement>("[data-creative-editor-background-status='color']")
+                ), "background status after returning");
+            });
+
             await step("Rail tabs and drawer insertions create editable layers", async () => {
                 let layerCount = getLayerCount();
                 const drawerSelector = "[data-creative-editor-asset-drawer='true']";

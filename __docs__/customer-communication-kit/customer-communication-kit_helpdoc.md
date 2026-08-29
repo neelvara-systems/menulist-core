@@ -48,7 +48,7 @@ No setup needed. The messages appear automatically on your "Use MenuList" page a
 - Use "Quick Reply" during busy hours for the fastest response
 - Share the "Share with Staff" message with your team
 - Share "Staff Daily Replies" when counter or phone staff need the same details for the day
-- The menu link in every message always shows your latest, updated menu
+- The menu link in every message opens your latest published menu
 
 ## Need More Help?
 

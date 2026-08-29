@@ -120,7 +120,7 @@ export function generateMessageTemplates(input: MessageTemplateInput): MessageTe
       '',
       input.menuLink,
       '',
-      `Please share this link with any customer who asks for the ${labels.offeringLower}. This link always shows the latest version.`,
+      `Please share this link with any customer who asks for the ${labels.offeringLower}. This link opens our latest published version.`,
     ]),
   });
 

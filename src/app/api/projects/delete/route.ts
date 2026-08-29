@@ -20,6 +20,10 @@ import { getOutletSessionScope } from "@lib/multiOutlet/outletSessionScope";
 import { requireAnyStorePermissionForStoreData } from "@lib/permissions/server";
 import { checkRateLimit } from "@lib/rateLimit";
 import { readBoundedJsonBody } from "@lib/security/boundedRequestBody";
+import {
+    PROJECT_DELETE_REJECTION_CODES,
+    type ProjectDeleteRejectionCode,
+} from "@lib/errors/projectDeleteErrors";
 import { validateAPIInput } from "@lib/security/inputValidation";
 import { secureError } from "@lib/security/secureLogger";
 import { touchDigitalScreenContentVersionForStoreServer } from "@lib/screen/serverScreenInvalidation";
@@ -42,6 +46,7 @@ class ProjectDeleteRejection extends Error {
     constructor(
         readonly status: number,
         message: string,
+        readonly code: ProjectDeleteRejectionCode,
     ) {
         super(message);
     }
@@ -95,7 +100,10 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         if (bodyResult.ok === false) return bodyResult.response;
         const validation = validateAPIInput(schema, bodyResult.data);
         if (validation.success !== true) {
-            return NextResponse.json({ error: "Invalid input" }, { status: 400 });
+            return NextResponse.json({
+                code: PROJECT_DELETE_REJECTION_CODES.INVALID_INPUT,
+                error: "Invalid input",
+            }, { status: 400 });
         }
 
         const outletSessionScope = getOutletSessionScope(session);
@@ -110,7 +118,10 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             || projectScope.sId !== storeScope.numericId
             || !verifyTenantAccess(session, tenantScope.numericId, storeScope.numericId, request)
         ) {
-            return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+            return NextResponse.json({
+                code: PROJECT_DELETE_REJECTION_CODES.FORBIDDEN,
+                error: "Forbidden",
+            }, { status: 403 });
         }
 
         const rateLimit = await checkRateLimit({
@@ -119,7 +130,10 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             window: 60,
         });
         if (!rateLimit.allowed) {
-            return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+            return NextResponse.json({
+                code: PROJECT_DELETE_REJECTION_CODES.RATE_LIMITED,
+                error: "Too many requests",
+            }, { status: 429 });
         }
 
         const db = admin.firestore();
@@ -149,14 +163,22 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 tenantScope.numericId,
             );
             if (permissionError) {
-                throw new ProjectDeleteRejection(permissionError.status || 403, "Forbidden");
+                throw new ProjectDeleteRejection(
+                    permissionError.status || 403,
+                    "Forbidden",
+                    PROJECT_DELETE_REJECTION_CODES.FORBIDDEN,
+                );
             }
             if (
                 !storeSnap.exists
                 || storeData?.active === false
                 || storeData?.deleted === true
             ) {
-                throw new ProjectDeleteRejection(409, "Store state changed");
+                throw new ProjectDeleteRejection(
+                    409,
+                    "Store state changed",
+                    PROJECT_DELETE_REJECTION_CODES.STORE_STATE_CHANGED,
+                );
             }
 
             const tenantData = tenantSnap.data();
@@ -165,7 +187,11 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 || tenantData?.active === false
                 || tenantData?.deleted === true
             ) {
-                throw new ProjectDeleteRejection(409, "Tenant state changed");
+                throw new ProjectDeleteRejection(
+                    409,
+                    "Tenant state changed",
+                    PROJECT_DELETE_REJECTION_CODES.TENANT_STATE_CHANGED,
+                );
             }
             const tenantStoreIds = normalizeTenantStoreIds(
                 tenantData?.storesList,
@@ -173,7 +199,11 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 storeScope.numericId,
             );
             if (!tenantStoreIds) {
-                throw new ProjectDeleteRejection(409, "Store membership changed");
+                throw new ProjectDeleteRejection(
+                    409,
+                    "Store membership changed",
+                    PROJECT_DELETE_REJECTION_CODES.STORE_MEMBERSHIP_CHANGED,
+                );
             }
 
             const projectData = projectSnap.data();
@@ -185,13 +215,25 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                     tId: tenantScope.documentId,
                 })
             ) {
-                throw new ProjectDeleteRejection(404, "Project not found");
+                throw new ProjectDeleteRejection(
+                    404,
+                    "Project not found",
+                    PROJECT_DELETE_REJECTION_CODES.NOT_FOUND,
+                );
             }
             if (projectData?.deleted === true) {
-                throw new ProjectDeleteRejection(409, "Project is already deleted");
+                throw new ProjectDeleteRejection(
+                    409,
+                    "Project is already deleted",
+                    PROJECT_DELETE_REJECTION_CODES.ALREADY_DELETED,
+                );
             }
             if (projectData?.masterProjectId) {
-                throw new ProjectDeleteRejection(409, "Inherited outlet projects cannot be deleted");
+                throw new ProjectDeleteRejection(
+                    409,
+                    "Inherited outlet projects cannot be deleted",
+                    PROJECT_DELETE_REJECTION_CODES.INHERITED_OUTLET,
+                );
             }
 
             // Query every active tenant store inside the same transaction that
@@ -214,19 +256,28 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 throw new ProjectDeleteRejection(
                     409,
                     "This project is linked to one or more outlet menus",
+                    PROJECT_DELETE_REJECTION_CODES.LINKED_OUTLETS,
                 );
             }
 
             const summaryProjects = parseSummaryProjects(summarySnap.data());
             const currentSummary = summaryProjects[projectScope.projectId];
             if (isProtectedSpecialMenu(currentSummary)) {
-                throw new ProjectDeleteRejection(409, "End or cancel this special menu before deleting it");
+                throw new ProjectDeleteRejection(
+                    409,
+                    "End or cancel this special menu before deleting it",
+                    PROJECT_DELETE_REJECTION_CODES.PROTECTED_SPECIAL_MENU,
+                );
             }
             if (
                 Object.values(summaryProjects)
                     .some((summary) => isLiveSpecialMenuReference(summary, projectScope.projectId))
             ) {
-                throw new ProjectDeleteRejection(409, "A live special menu references this project");
+                throw new ProjectDeleteRejection(
+                    409,
+                    "A live special menu references this project",
+                    PROJECT_DELETE_REJECTION_CODES.LIVE_SPECIAL_MENU_REFERENCE,
+                );
             }
 
             const fallbackDefaultEntry = currentSummary?.isDefault === true
@@ -257,6 +308,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 ...buildSummaryProjectDeletePayload(
                     projectScope.projectId,
                     admin.firestore.FieldValue.delete(),
+                    summarySnap.data(),
                 ),
             };
             if (fallbackDefaultEntry) {
@@ -317,13 +369,16 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         });
     } catch (error) {
         if (error instanceof ProjectDeleteRejection) {
-            return NextResponse.json({ error: error.message }, { status: error.status });
+            return NextResponse.json({ code: error.code, error: error.message }, { status: error.status });
         }
         secureError("[ProjectDelete] Failed", error instanceof Error
             ? error
             : new Error("project_delete_failed"), {
             endpoint: "/api/projects/delete",
         });
-        return NextResponse.json({ error: "Project deletion failed" }, { status: 500 });
+        return NextResponse.json({
+            code: PROJECT_DELETE_REJECTION_CODES.FAILED,
+            error: "Project deletion failed",
+        }, { status: 500 });
     }
 });

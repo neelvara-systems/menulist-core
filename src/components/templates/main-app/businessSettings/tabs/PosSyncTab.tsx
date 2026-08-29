@@ -381,6 +381,15 @@ const PosSyncTab: React.FC<PosSyncTabProps> = ({
         const previousEnabled = enabled;
         const previousWebhookSecret = webhookSecret;
         let ensuredSecret = webhookSecret;
+        let normalizedWebhookUrl = webhookUrl.trim();
+        if (checked) {
+            const validation = validatePosSyncWebhookUrl(normalizedWebhookUrl);
+            if (!validation.valid || !validation.normalizedUrl) {
+                messageApi.error(validation.error || 'Enter a valid provider connection URL.');
+                return;
+            }
+            normalizedWebhookUrl = validation.normalizedUrl;
+        }
         setEnabled(checked);
 
         const updates: Record<string, any> = {
@@ -388,6 +397,7 @@ const PosSyncTab: React.FC<PosSyncTabProps> = ({
             'posSync.status': checked ? 'healthy' : 'disabled',
             'posSync.consecutiveFailures': 0,
         };
+        if (checked) updates['posSync.webhookUrl'] = normalizedWebhookUrl;
 
         if (checked && !webhookSecret) {
             setSecretLoading(true);
@@ -459,7 +469,7 @@ const PosSyncTab: React.FC<PosSyncTabProps> = ({
                 messageApi.error('Failed to save external sync settings.');
             }
         }
-    }, [enabled, webhookSecret, onStoreUpdate, storeId, tenantId]);
+    }, [enabled, messageApi, webhookSecret, webhookUrl, onStoreUpdate, storeId, tenantId]);
 
     const handleSaveUrl = useCallback(async () => {
         if (!webhookUrl.trim()) return;
@@ -1050,7 +1060,7 @@ const PosSyncTab: React.FC<PosSyncTabProps> = ({
                                     <Tooltip title={t('regenerateSecret')}>
                                         <Button
                                             aria-label={t('regenerateSecret')}
-                                            disabled={secretLoading}
+                                            disabled={!webhookSecret || secretLoading}
                                             size="small"
                                             icon={<LuRefreshCw size={14} />}
                                             onClick={handleRegenerateSecret}

@@ -45,6 +45,24 @@ The Users drawer remains the authoritative management surface for another user's
 
 No new collections, listeners, or list reads were added. Saving the self profile uses the existing authenticated profile API and writes only the current `users/{userId}` document.
 
+## 2026-08-28 Release-Candidate Hardening
+
+- The desktop profile avatar is a native, named button with visible keyboard
+  focus, `aria-expanded`, and `aria-haspopup="dialog"`; Enter and Space can
+  open the existing profile-actions surface.
+- My Profile, Appearance, Keyboard Shortcuts, and Sign Out were exercised in
+  connected Chrome. Sign Out retained its existing confirmation and Cancel
+  recovery.
+- Profile and password forms are initialized only after their respective modal
+  sections mount. This removes the Ant Design disconnected-form warning without
+  changing validation, API, authentication, or persistence behavior.
+- Required display-name validation, password required/length/mismatch recovery,
+  read-only access details, section navigation, Cancel, and modal close passed
+  locally. No profile, password, session, Firebase, or provider mutation was
+  submitted during this pass.
+- Exact-current hosted retesting remains pending the one later explicitly
+  authorized consolidated staging release.
+
 ---
 
 ## ❌ **What Was Wrong**

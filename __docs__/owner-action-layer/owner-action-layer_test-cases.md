@@ -11,6 +11,8 @@ npm run verify:owner-action-layer
 | Case | Expected result |
 | --- | --- |
 | No selected project loaded yet | Desktop action layer waits instead of showing false missing-menu state. |
+| Another owner tab publishes the selected project | The matching open dashboard performs one project re-read and replaces `Publish menu — Not live` with current publication truth without a manual reload. |
+| Another tenant, store, or project publishes | The dashboard ignores the event and performs no read. |
 | Project missing or not published | Primary action opens menu/project path. |
 | Inactive or deleted project retains historical publish time | Primary action still opens menu/project path and reports not live. |
 | Hours missing | Primary action opens hours path before placement actions. |
@@ -32,3 +34,4 @@ npm run verify:owner-action-layer
 - Existing Mobile More grouping remains.
 - No new API route exists.
 - No new Firestore collection or field exists.
+- Cross-tab publication revalidation is event-driven rather than polling or focus-driven.

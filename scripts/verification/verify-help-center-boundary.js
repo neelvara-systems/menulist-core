@@ -38,6 +38,7 @@ function verifySearchBoundary() {
   const searchResponse = read('src/lib/search/helpCenterSearchResponse.ts');
   const helpChatApi = read('src/components/templates/main-app/helpChat/api.ts');
   const aiSearchModal = read('src/components/organisms/AISearchModal/AiSearchBarComponent.tsx');
+  const helpCenterArticleEmbeddingRoute = read('src/app/api/helpCenter/article-embedding/route.ts');
   const messageBubble = read('src/components/templates/main-app/helpChat/MessageBubble.tsx');
   const heroSearchBar = read('src/components/templates/main-app/helpCenter/HeroSearchBar.tsx');
   const helpCenter = read('src/components/templates/main-app/helpCenter/index.tsx');
@@ -66,10 +67,14 @@ function verifySearchBoundary() {
   const aiSearchResultDisplay = read('src/components/organisms/AISearchModal/SearchResultDisplay.tsx');
   const messageReferences = read('src/components/templates/main-app/helpChat/MessageReferences.tsx');
   const gettingStarted = read('src/components/templates/main-app/helpCenter/onboarding/GettingStarted.tsx');
+  const menuListHelpCenter = read('src/components/templates/main-app/menuListHelpCenter/index.tsx');
+  const menuListHelpPage = read('src/app/(main)/help-center/page.tsx');
+  const menuListHelpSegmentsPage = read('src/app/(main)/help-center/[...segments]/page.tsx');
+  const answerlatticeHelpPage = read('src/app/(answerlattice)/answerlattice/help/page.tsx');
   const ownerLocale = read('public/locales/menulist.ai/en-US.json');
 
   assertIncludes(searchRoute, 'withAuth(async (request: NextRequest, session)', 'Help Center search API auth boundary');
-  assertIncludes(searchRoute, 'checkAIOperationLimit()', 'Help Center search API AI rate limit');
+  assertIncludes(searchRoute, 'checkAIOperationLimit({ session })', 'Help Center search API authenticated AI rate limit');
   assertIncludes(searchRoute, 'const HELP_CENTER_PRIVATE_RESPONSE_HEADERS = {', 'Help Center search API protected private response policy');
   assertIncludes(searchRoute, "const headers = new Headers(init.headers);", 'Help Center search API caller-header normalization');
   assertIncludes(searchRoute, "headers.set(name, value);", 'Help Center search API protected header precedence');
@@ -136,6 +141,7 @@ function verifySearchBoundary() {
   assertIncludes(aiSearchModal, '...HELP_CENTER_SEARCH_REQUEST_POLICY', 'AI Search modal request policy');
   assertIncludes(aiSearchModal, "readHelpCenterSearchResponse(response, 'ai_search_modal')", 'AI Search modal bounded response parser');
   assertIncludes(aiSearchModal, 'getHelpCenterSearchClientFailureMessage(error, AI_SEARCH_FAILED_MESSAGE)', 'AI Search modal fixed local failure copy');
+  assertIncludes(helpCenterArticleEmbeddingRoute, 'checkAIOperationLimit({ session })', 'Help Center article embedding must reuse the already authenticated route session for rate limiting');
   assertNotIncludes(aiSearchModal, 'response.json()', 'AI Search modal direct JSON parser');
 
   assertIncludes(heroSearchBar, "'contact-us': 'contact_support'", 'Help Center contact workflow context');
@@ -149,6 +155,17 @@ function verifySearchBoundary() {
   assertIncludes(mainSectionTabs, 'event.preventDefault();', 'Help Center primary card Space activation prevents page scroll');
   assertNotIncludes(tabsConfig, 'description:', 'Help Center dead hardcoded tab description metadata');
   assertNotIncludes(tabsConfig, 'title:', 'Help Center dead hardcoded tab title metadata');
+  assertIncludes(menuListHelpPage, "@template/main-app/menuListHelpCenter", 'MenuList Help root uses its product-owned surface');
+  assertIncludes(menuListHelpSegmentsPage, "@template/main-app/menuListHelpCenter", 'MenuList Help deep routes use the product-owned surface');
+  assertNotIncludes(menuListHelpPage, "@template/main-app/helpCenter", 'MenuList Help root excludes the Answerlattice Help Center');
+  assertNotIncludes(menuListHelpSegmentsPage, "@template/main-app/helpCenter", 'MenuList Help deep routes exclude the Answerlattice Help Center');
+  assertIncludes(answerlatticeHelpPage, "@template/main-app/helpCenter", 'Answerlattice retains its governed Help Center');
+  assertIncludes(menuListHelpCenter, "const SUPPORT_EMAIL = 'support@menulist.ai';", 'MenuList Help exposes the product support boundary');
+  assertIncludes(menuListHelpCenter, "value === 'ticket' || value === 'feedback' || value === 'contact-us'", 'MenuList legacy support routes recover to contact');
+  assertIncludes(menuListHelpCenter, "value === 'kb' || value === 'faq'", 'MenuList legacy documentation routes recover to FAQ');
+  for (const forbiddenToken of ['@database/feedback', '@database/tickets', '@lib/answerlattice', '@template/main-app/helpCenter', '@template/main-app/helpChat']) {
+    assertNotIncludes(menuListHelpCenter, forbiddenToken, `MenuList Help excludes cross-product dependency ${forbiddenToken}`);
+  }
   assertIncludes(helpChatDrafts, 'resolveAnswerlatticeHelpChatDraftScope', 'Help Chat workspace/user draft scope');
   assertIncludes(helpChatDrafts, 'normalizedIds.every((value) => value === firstId)', 'Help Chat consistent user identity requirement');
   assertIncludes(chatInput, 'getAnswerlatticeHelpChatDraftKeys(draftScope, sessionId)', 'Help Chat scoped draft storage keys');
@@ -177,6 +194,12 @@ function verifySearchBoundary() {
   assertIncludes(whatsNew, 'loadFailed ? (', 'Help Center changelog load failure is visible');
   assertIncludes(whatsNew, "message={t('failedToLoadChangelog')}", 'Help Center changelog persistent failure copy');
   assertIncludes(runningTickets, 'if (tickets?.length === 0 && !loadFailed)', 'Help Center ticket summary distinguishes empty from failed');
+  assertIncludes(runningTickets, 'const supportScope = resolveAnswerlatticeSessionScope(session);', 'Help Center ticket summary resolves the admitted Answerlattice support scope');
+  assertIncludes(runningTickets, 'const supportScopeKey = supportScope ? `${supportScope.tenantId}:${supportScope.storeId}` : null;', 'Help Center ticket summary uses a stable support-scope key');
+  assertIncludes(runningTickets, 'if (!supportScopeKey) return;', 'Help Center ticket summary skips the cross-product read without an admitted support scope');
+  assertIncludes(runningTickets, 'if (!supportScopeKey || !selectedTicket?.id) return;', 'Help Center ticket detail skips the cross-product subscription without an admitted support scope');
+  assertIncludes(runningTickets, 'const tickets = supportScopeKey', 'Help Center ticket summary hides cached tickets outside an admitted support scope');
+  assertIncludes(runningTickets, 'const activeTicket = supportScopeKey && selectedTicket', 'Help Center ticket detail hides stale cross-scope cache state');
   assertIncludes(runningTickets, "message={t('failedToLoadTickets')}", 'Help Center ticket summary persistent failure copy');
   assertIncludes(runningTickets, 'onClick={() => void loadTicketSummary()}', 'Help Center ticket summary retry control');
   assertIncludes(shareFeedback, 'const [latestFeedbackLoadFailed, setLatestFeedbackLoadFailed] = useState(false);', 'Help Center feedback persistent latest-read failure state');
@@ -227,18 +250,26 @@ function verifyMobileBoundary() {
 
   assertIncludes(mobileShell, 'const HELP_CENTER_TAB_TO_MORE_SCREEN', 'MobileShell Help Center route map');
   assertIncludes(mobileShell, 'const HELP_CENTER_MORE_SCREENS: MoreSubScreen[] = [', 'MobileShell Help Center recovery screen set');
-  assertIncludes(mobileShell, "return HELP_CENTER_TAB_TO_MORE_SCREEN[tab] || 'answerlatticeHelp';", 'MobileShell Help Center fallback');
+  assertIncludes(mobileShell, "return HELP_CENTER_TAB_TO_MORE_SCREEN[tab] || 'menuListHelp';", 'MobileShell Help Center fallback');
   assertIncludes(mobileShell, "normalizedPathname === '/help-center' || normalizedPathname.startsWith('/help-center/')", 'MobileShell Help Center direct route detection');
   assertIncludes(mobileShell, "const isHelpRecoveryScreen = activeTab === 'more' && HELP_CENTER_MORE_SCREENS.includes(moreScreen);", 'MobileShell Help Center recovery gate');
   assertIncludes(mobileShell, '|| isHelpRecoveryScreen', 'MobileShell unpaid Help Center access');
-  assertIncludes(mobileMoreScreen, "else if (subScreen === 'answerlatticeHelp') subScreenContent = <MobileHelpScreen", 'Mobile More Help Center entry');
-  assertIncludes(mobileMoreScreen, 'initialTab="kb"', 'Mobile More Help Center docs tab');
-  assertIncludes(mobileMoreScreen, 'initialTab="ticket"', 'Mobile More Help Center support tab');
-  assertIncludes(mobileMoreScreen, 'initialTab="changelog"', 'Mobile More Help Center release notes tab');
+  assertIncludes(mobileMoreScreen, "else if (subScreen === 'menuListHelp') subScreenContent = <MobileHelpScreen", 'Mobile More Help Center entry');
+  assertIncludes(mobileMoreScreen, 'initialTab="faq"', 'Mobile More Help Center FAQ section');
+  assertIncludes(mobileMoreScreen, 'initialTab="contact-us"', 'Mobile More Help Center contact section');
+  assertNotIncludes(mobileMoreScreen, 'answerlatticeReleaseNotes', 'Mobile More excludes the unsupported MenuList release-notes control');
+  assertIncludes(mobileShell, "changelog: 'menuListHelp'", 'Legacy MenuList changelog links recover to the product-owned Help home');
+  assertNotIncludes(mobileShell, 'answerlatticeHelp', 'MenuList Help route state excludes Answerlattice naming');
+  assertNotIncludes(mobileMoreScreen, 'answerlatticeSupport', 'MenuList More Help controls exclude Answerlattice naming');
+  assertIncludes(mobileMoreScreen, 'Email MenuList support or review common answers.', 'MenuList More contact copy matches the static product-owned support surface');
   assertIncludes(mobileHelpScreen, "const isDirectHelpCenterRoute = pathSegments[0] === 'help-center';", 'Mobile Help Center direct route awareness');
-  assertIncludes(mobileHelpScreen, 'const requestedArticleId = requestedPathTab === \'kb\'', 'Mobile Help Center article deep link');
-  assertIncludes(mobileHelpScreen, 'const requestedChangelogId = requestedPathTab === \'changelog\'', 'Mobile Help Center changelog deep link');
-  assertIncludes(mobileHelpScreen, "window.history.replaceState(null, '', '/dashboard#mobile/more');", 'Mobile Help Center shell back target');
+  assertIncludes(mobileHelpScreen, 'normalizeMenuListHelpSection(requestedTab || requestedPathTab || initialTab)', 'Mobile Help Center product-owned route normalization');
+  assertIncludes(mobileHelpScreen, '<MenuListHelpCenter initialSection={activeSection} />', 'Mobile Help Center renders the MenuList-owned surface');
+  assertNotIncludes(mobileHelpScreen, "@template/main-app/helpCenter'", 'Mobile Help Center excludes the Answerlattice Help Center');
+  assertIncludes(mobileHelpScreen, "if (isDirectHelpCenterRoute) {", 'Mobile Help Center direct-route-only canonical back target');
+  assertIncludes(mobileHelpScreen, "window.history.replaceState(null, '', '/dashboard#mobile/more');", 'Mobile Help Center direct route back target');
+  assertIncludes(mobileHelpScreen, "router.replace('/dashboard#mobile/more', { scroll: false });", 'Mobile Help Center direct route router recovery');
+  assertIncludes(mobileHelpScreen, "}\n        onBack();", 'Mobile Help Center in-shell back preserves the current shell route');
   assertIncludes(mobileHelpScreen, 'min-height: 44px;', 'Mobile Help Center touch target floor');
   assertIncludes(mobileHelpScreen, "useTranslations('MobileHelp')", 'Mobile Help Center translated header');
   assertNotIncludes(mobileHelpScreen, 'description="Search docs, check updates, and contact support."', 'Mobile Help Center hardcoded description');

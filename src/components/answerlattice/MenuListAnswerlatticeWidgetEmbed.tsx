@@ -12,6 +12,12 @@ type AnswerlatticeWidgetWindow = Window & {
     AnswerlatticeWidget?: AnswerlatticeWidgetRuntime;
 };
 
+type MenuListWidgetRole = 'owner' | 'staff';
+
+type MenuListAnswerlatticeWidgetEmbedProps = {
+    userRole: MenuListWidgetRole;
+};
+
 const BLOCKED_ROUTES = [
     '/help-center',
     '/help-center/*',
@@ -98,7 +104,7 @@ function resolveWidgetScriptSrc(): string {
     return 'https://answerlattice.com/widget/v1/answerlattice-widget.js';
 }
 
-function buildPageContext(pathname: string): AnswerlatticePageContext | null {
+function buildPageContext(pathname: string, userRole: MenuListWidgetRole): AnswerlatticePageContext | null {
     const routeSegments = pathname
         .replace(/^\/+/, '')
         .split('/')
@@ -112,25 +118,58 @@ function buildPageContext(pathname: string): AnswerlatticePageContext | null {
 
     return {
         contextVersion: 1,
-        contextKey: `menulist_owner_${contextRouteKey}${contextSuffix}`,
+        contextKey: `menulist_${userRole}_${contextRouteKey}${contextSuffix}`,
         feature: routeConfig.feature,
         page: contextRouteKey,
         workflow: routeConfig.workflow,
-        userRole: 'owner',
+        userRole,
         entityHints: routeConfig.entityHints,
     };
 }
 
-export default function MenuListAnswerlatticeWidgetEmbed() {
+function hasVisibleOwnerDialog(): boolean {
+    if (typeof document === 'undefined') return false;
+    return Array.from(document.querySelectorAll<HTMLElement>('[role="dialog"]')).some((dialog) => (
+        dialog.getAttribute('aria-hidden') !== 'true' && dialog.getClientRects().length > 0
+    ));
+}
+
+export default function MenuListAnswerlatticeWidgetEmbed({ userRole }: MenuListAnswerlatticeWidgetEmbedProps) {
     const pathname = normalizePathname(usePathname());
     const [runtimeReady, setRuntimeReady] = useState(false);
+    const [ownerDialogOpen, setOwnerDialogOpen] = useState(false);
     const scriptSrc = useMemo(() => resolveWidgetScriptSrc(), []);
-    const pageContext = useMemo(() => buildPageContext(pathname), [pathname]);
+    const pageContext = useMemo(() => buildPageContext(pathname, userRole), [pathname, userRole]);
     const blockedRoute = isBlockedRoute(pathname);
-    const shouldSuppressWidget = blockedRoute || !pageContext;
+    const shouldSuppressWidget = blockedRoute || ownerDialogOpen || !pageContext;
 
     useEffect(() => {
-        setRuntimeReady(true);
+        const updateDialogState = () => {
+            const nextDialogOpen = hasVisibleOwnerDialog();
+            setOwnerDialogOpen((currentDialogOpen) => (
+                currentDialogOpen === nextDialogOpen ? currentDialogOpen : nextDialogOpen
+            ));
+        };
+        let scheduledFrame = 0;
+        const scheduleDialogStateUpdate = () => {
+            if (scheduledFrame) return;
+            scheduledFrame = window.requestAnimationFrame(() => {
+                scheduledFrame = 0;
+                updateDialogState();
+            });
+        };
+        updateDialogState();
+        const observer = new MutationObserver(scheduleDialogStateUpdate);
+        observer.observe(document.body, {
+            attributes: true,
+            attributeFilter: ['aria-hidden', 'class', 'open', 'style'],
+            childList: true,
+            subtree: true,
+        });
+        return () => {
+            observer.disconnect();
+            if (scheduledFrame) window.cancelAnimationFrame(scheduledFrame);
+        };
     }, []);
 
     useEffect(() => {
@@ -148,19 +187,20 @@ export default function MenuListAnswerlatticeWidgetEmbed() {
         if (pageContext) widget?.page?.(pageContext);
     }, [pageContext, runtimeReady, shouldSuppressWidget]);
 
-    if (!ANSWERLATTICE_WIDGET_KEY || !runtimeReady || shouldSuppressWidget || !pageContext) return null;
+    if (!ANSWERLATTICE_WIDGET_KEY || shouldSuppressWidget || !pageContext) return null;
 
     return (
         <Script
             id="menulist-answerlattice-widget"
             src={scriptSrc}
             strategy="afterInteractive"
+            onReady={() => setRuntimeReady(true)}
             data-answerlattice-key={ANSWERLATTICE_WIDGET_KEY}
             data-context-key={pageContext.contextKey}
             data-feature={pageContext.feature}
             data-page={pageContext.page}
             data-workflow={pageContext.workflow}
-            data-user-role="owner"
+            data-user-role={userRole}
             data-entity-hints={(pageContext.entityHints || []).join(',')}
             data-blocked-routes={BLOCKED_ROUTES.join(',')}
         />

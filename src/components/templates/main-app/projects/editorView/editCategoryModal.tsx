@@ -2,6 +2,7 @@ import AIButtonIcon from '@atoms/aiButtonIcon';
 import CategoryIcon from '@atoms/CategoryIcon';
 import IconPicker from '@atoms/IconPicker';
 import { getSuggestedCategoryIcons, normalizeCategoryIconValue } from '@lib/categoryIcons';
+import { labelConfirmDialog } from '@lib/accessibility/antConfirmDialog';
 import { getCanonicalProjectSourceLanguage } from '@lib/localization/languagePolicy';
 import { isValidClockRange } from '@lib/menu/timeSlotPresetBoundary';
 import TimeSlotPresetForm, { DEFAULT_PRESET_COLORS } from '@atoms/timeSlotPresetForm';
@@ -20,7 +21,7 @@ import { removeObjRef } from '@util/utils';
 import { message as antdMessage, Button, Flex, Input, Modal, Popover, Switch, Tag, theme, Tooltip, Typography } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { LuCheck, LuClock, LuExternalLink, LuFileImage, LuLock, LuPlus, LuSparkles, LuX } from 'react-icons/lu';
+import { LuCheck, LuClock, LuExternalLink, LuFileImage, LuHelpCircle, LuLock, LuPlus, LuSparkles, LuX } from 'react-icons/lu';
 import GlobalLanguagesList from '@data/languages';
 import { CategoryTimeSlot, ExtractedDataCategory, Project, ProjectFileType } from '../types';
 import { sanitizeUserInput } from '../utils';
@@ -108,6 +109,33 @@ const EditCategoryModal = ({
     const [newPresetData, setNewPresetData] = useState({ label: '', startTime: '09:00', endTime: '17:00', color: DEFAULT_PRESET_COLORS[0] });
     const [savingPreset, setSavingPreset] = useState(false);
     const primaryLanguage = getCanonicalProjectSourceLanguage(selectedLanguages);
+    const initialDraftState = useMemo(
+        () => JSON.stringify(modalData.category ? normalizeCategoryDraft(removeObjRef(modalData.category)) : null),
+        [modalData.category],
+    );
+    const currentDraftState = useMemo(
+        () => JSON.stringify(categoryData ? normalizeCategoryDraft(removeObjRef(categoryData)) : null),
+        [categoryData],
+    );
+    const hasDraftChanges = currentDraftState !== initialDraftState;
+
+    const handleClose = useCallback(() => {
+        if (!hasDraftChanges) {
+            onClose();
+            return;
+        }
+
+        Modal.confirm({
+            title: 'Discard unsaved category changes?',
+            modalRender: labelConfirmDialog('Discard unsaved category changes?'),
+            icon: <LuHelpCircle />,
+            content: 'Your unsaved category changes will be lost.',
+            okText: 'Discard Changes',
+            okType: 'danger',
+            cancelText: 'Keep Editing',
+            onOk: onClose,
+        });
+    }, [hasDraftChanges, onClose]);
     const shouldShowGenerateTranslations = useMemo(() => {
         if (!categoryData || selectedLanguages.length <= 1) return false;
         if (!categoryData.name?.[primaryLanguage]?.trim()) return false;
@@ -387,11 +415,11 @@ const EditCategoryModal = ({
         <Modal
             title={modalData.status === 'edit' ? `Edit Category: ${categoryData?.name?.[selectedLanguages[0]] || ''}` : "Add Category"}
             open={modalData.active}
-            onCancel={onClose}
+            onCancel={handleClose}
             styles={{ body: { padding: '24px' } }}
             footer={<>
                 <Flex gap={16} style={{ width: "100%" }} justify='flex-end'>
-                    <Button icon={<LuX />} onClick={onClose}>Cancel</Button>
+                    <Button icon={<LuX />} onClick={handleClose}>Cancel</Button>
                     {shouldShowGenerateTranslations ? (
                         <AIButtonIcon
                             type="default"
@@ -420,7 +448,16 @@ const EditCategoryModal = ({
                                 cursor: 'pointer',
                                 border: '1px solid rgba(0, 0, 0, 0.06)'
                             }}
+                            aria-label={modalData.status === 'edit' ? `Preview source file ${fileData.name || ''}`.trim() : `Preview target file ${fileData.name || ''}`.trim()}
                             onClick={() => onPreviewFile(fileData)}
+                            onKeyDown={(event) => {
+                                if (event.key === 'Enter' || event.key === ' ') {
+                                    event.preventDefault();
+                                    onPreviewFile(fileData);
+                                }
+                            }}
+                            role="button"
+                            tabIndex={0}
                         >
                             {fileData.url ? (
                                 <img
@@ -462,6 +499,7 @@ const EditCategoryModal = ({
                         <Flex align="center" gap={8}>
                             <Typography.Text strong onClick={() => setCategoryData({ ...categoryData, active: !categoryData.active })} style={{ cursor: 'pointer' }}>Active / Available</Typography.Text>
                             <Switch
+                                aria-label="Active category"
                                 size='small'
                                 checked={categoryData.active}
                                 onChange={(checked) => setCategoryData({ ...categoryData, active: checked })}
@@ -525,6 +563,7 @@ const EditCategoryModal = ({
                                     Show by time
                                 </Typography.Text>
                                 <Switch
+                                    aria-label="Show category by time"
                                     size='small'
                                     checked={hasTimeSlots}
                                     onChange={handleTimeSlotToggle}

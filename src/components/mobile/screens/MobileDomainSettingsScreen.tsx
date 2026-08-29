@@ -7,6 +7,7 @@ import { AUTH_BROWSER_REQUEST_POLICY } from '@lib/auth/browserRequestPolicy';
 import { openIsolatedBrowserUrl } from '@lib/browser/openIsolatedBrowserUrl';
 import { renderTenantDomainCopy } from '@lib/domains/tenantDomainCopy';
 import { normalizeVercelDomainDnsRecords } from '@lib/domains/vercelDnsRecords';
+import { isLocalCustomDomainFixture, normalizeCustomDomainAvailabilityCandidate, normalizeSubdomainAvailabilityCandidate } from '@lib/domains/publicAddressInput';
 import { createLatestRequestGuard } from '@lib/runtime/latestRequestGuard';
 import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
@@ -227,8 +228,9 @@ function MobileDomainSettingsScreenContent({ onBack }: MobileDomainSettingsScree
     const subdomainLocked = Boolean(storeDetails?.lastPublishedAt);
     const currentSubdomain = (storeDetails?.subdomain || '').trim().toLowerCase();
     const normalizedInputSubdomain = subdomainValue.trim().toLowerCase();
+    const validInputSubdomain = normalizeSubdomainAvailabilityCandidate(subdomainValue);
     const hasSubdomainChanged = normalizedInputSubdomain !== currentSubdomain;
-    const canCheckSubdomain = !subdomainLocked && normalizedInputSubdomain.length >= 3 && (!storeDetails?.subdomain || hasSubdomainChanged);
+    const canCheckSubdomain = !subdomainLocked && Boolean(validInputSubdomain) && (!storeDetails?.subdomain || hasSubdomainChanged);
     const canSaveSubdomain = Boolean(
         !subdomainLocked
         && availability?.available
@@ -239,7 +241,8 @@ function MobileDomainSettingsScreenContent({ onBack }: MobileDomainSettingsScree
         ? (domainStatus.hasDomain === true && isNonEmptyString(domainStatus.domain) ? domainStatus.domain : undefined)
         : storeDetails?.customDomain;
     const normalizedDomainInput = domainInput.trim().toLowerCase();
-    const canCheckDomain = !activeDomain && normalizedDomainInput.length >= 4;
+    const validDomainInput = normalizeCustomDomainAvailabilityCandidate(domainInput);
+    const canCheckDomain = !activeDomain && Boolean(validDomainInput);
     const canConnectDomain = Boolean(
         !activeDomain
         && domainAvailability?.available
@@ -276,6 +279,10 @@ function MobileDomainSettingsScreenContent({ onBack }: MobileDomainSettingsScree
 
     const refreshStatus = useCallback(async () => {
         if (!storeDetails?.customDomain) return;
+        if (isLocalCustomDomainFixture(storeDetails.customDomain)) {
+            setDomainStatus({ domain: storeDetails.customDomain, hasDomain: true, providerStatusPending: false, refreshPending: false, verified: storeDetails.domainVerified === true });
+            return;
+        }
         const requestScopeKey = domainScopeKey;
         const requestId = statusRequestGuardRef.current!.begin();
         setStatusLoading(true);
@@ -560,12 +567,12 @@ function MobileDomainSettingsScreenContent({ onBack }: MobileDomainSettingsScree
     };
 
     const checkDomainAvailability = async () => {
-        if (!normalizedDomainInput) return;
+        if (!validDomainInput) return;
         const requestScopeKey = domainScopeKey;
         const requestId = domainCheckGuardRef.current!.begin();
         setCheckingDomain(true);
         try {
-            const data = await checkCustomDomainAvailability(normalizedDomainInput, storeDetails?.storeId);
+            const data = await checkCustomDomainAvailability(validDomainInput, storeDetails?.storeId);
             if (
                 !domainCheckGuardRef.current!.isCurrent(requestId)
                 || !componentActiveRef.current

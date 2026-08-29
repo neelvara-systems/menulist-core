@@ -10,10 +10,9 @@
     "minimal-ui",
     "browser"
   ],
-  "orientation": "portrait",
-  "scope": "/",
-  "start_url": "/",
-  "id": "/mycodex",
+  "scope": "/__mycodex/",
+  "start_url": "/__mycodex/operations",
+  "id": "/__mycodex",
   "dir": "auto",
   "lang": "en-US",
   "categories": [
@@ -85,10 +84,10 @@
   ],
   "shortcuts": [
     {
-      "name": "Master Index",
-      "short_name": "Index",
-      "description": "Open the MyCodex master index.",
-      "url": "/",
+      "name": "Founder Console",
+      "short_name": "Console",
+      "description": "Open the MyCodex founder console.",
+      "url": "/__mycodex/operations",
       "icons": [
         {
           "src": "/mycodex-icon-192.png",
@@ -96,6 +95,12 @@
           "type": "image/png"
         }
       ]
+    },
+    {
+      "name": "Documents",
+      "short_name": "Documents",
+      "description": "Open the private MyCodex document reader.",
+      "url": "/__mycodex/"
     }
   ]
 }

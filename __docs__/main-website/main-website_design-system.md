@@ -505,8 +505,9 @@ The floating-shell treatment is a layout refinement, not glassmorphism. Keep the
 surface opaque enough for readable light and dark themes, retain the canonical
 navigation and action hierarchy, and do not add scroll-dependent state.
 
-- Mobile hamburger navigation should not render long feature/resource lists as one always-expanded column. Use accordions for dense groups, keep `Features` open by default, keep `Resources` collapsed unless already on a resource page, and use nested Start/Publish/Operate groups for feature links.
-- Mobile drawer rows must keep 44px+ touch targets, token-based light/dark colors, visible focus states, and active-route highlighting without duplicating the same destination in both top-level and nested navigation.
+- Mobile hamburger navigation is a full-screen navigation surface, not a compressed desktop mega-menu. Use two always-visible groups: `Product` and `Resources`. Preserve every direct shortcut as a flat link; within Product, Start, Publish, and Operate are non-interactive scan labels, never nested accordions. Do not invent a third marketing group.
+- Keep account access in an unlabeled utility area below discovery links so it does not read as a third content group. Keep the theme control and primary preview CTA fixed outside the scrollable navigation so both remain reachable at practical phone heights.
+- Mobile drawer rows must keep 44px+ touch targets, one Lucide icon per route, token-based light/dark colors, visible focus/pressed states, active-route highlighting, and restrained separators between groups.
 - Header active state must use the public pathname returned after removing the current website product base path. Do not hardcode `/ml` in shared header state.
 - `WebsiteLink` and language destinations must preserve the current website product base path for FAQ, Tools, WhatsApp, Invite, and reviewed locale-prefixed Resource routes.
 - The language trigger exposes `aria-expanded` and `aria-haspopup`; the open menu closes on Escape and restores focus to that trigger.

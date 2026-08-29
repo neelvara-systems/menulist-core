@@ -1,13 +1,14 @@
 'use client'
 
-import { DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons';
 import { PricingPlan } from '@data/common';
 import { addPricingPlan, deactivatePricingPlan, getAllPricingPlans, PricingPlanMutationInput, updatePricingPlan } from '@database/pricingPlans';
+import { labelConfirmDialog } from '@lib/accessibility/antConfirmDialog';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { Button, Card, Col, Divider, Drawer, Form, Input, InputNumber, Modal, Radio, Row, Space, Switch, Table, Tag, Typography, message } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import type { Key } from 'react';
 import { useEffect, useState } from 'react';
+import { LuFilter, LuPencil, LuPlus, LuTrash2 } from 'react-icons/lu';
 
 const { Title, Text } = Typography;
 const { TextArea } = Input;
@@ -102,6 +103,7 @@ function PricingPlans() {
             okText: 'Deactivate',
             okType: 'danger',
             cancelText: 'Cancel',
+            modalRender: labelConfirmDialog(`Deactivate plan ${plan.name}?`),
             onOk: async () => {
                 try {
                     await deactivatePricingPlan(plan.id as string);
@@ -161,6 +163,7 @@ function PricingPlans() {
                 { text: 'INR', value: 'INR' },
                 { text: 'USD', value: 'USD' },
             ],
+            filterIcon: () => <LuFilter aria-label="Filter plans by currency" />,
             onFilter: (value: boolean | Key, record: PricingPlan) => record.currency === value,
             render: (currency: string) => (
                 <Tag color={currency === 'INR' ? 'purple' : 'cyan'}>
@@ -177,6 +180,7 @@ function PricingPlans() {
                 { text: 'B2C', value: 'B2C' },
                 { text: 'B2B', value: 'B2B' },
             ],
+            filterIcon: () => <LuFilter aria-label="Filter plans by type" />,
             onFilter: (value: boolean | Key, record: PricingPlan) => record.planType === value,
             render: (planType: string) => (
                 <Tag color={planType === 'B2C' ? 'green' : 'blue'}>
@@ -193,6 +197,7 @@ function PricingPlans() {
                 { text: 'Monthly', value: 'MONTH' },
                 { text: 'Yearly', value: 'YEAR' },
             ],
+            filterIcon: () => <LuFilter aria-label="Filter plans by billing cycle" />,
             onFilter: (value: boolean | Key, record: PricingPlan) => record.periodicity === value,
             render: (periodicity: string) => periodicity.charAt(0) + periodicity.slice(1).toLowerCase(),
         },
@@ -224,13 +229,15 @@ function PricingPlans() {
             render: (_: unknown, record: PricingPlan) => (
                 <Space>
                     <Button
-                        icon={<EditOutlined />}
+                        aria-label={`Edit plan ${record.name}`}
+                        icon={<LuPencil />}
                         type="text"
                         onClick={() => handleEditPlan(record)}
                     />
                     {record.active && (
                         <Button
-                            icon={<DeleteOutlined />}
+                            aria-label={`Deactivate plan ${record.name}`}
+                            icon={<LuTrash2 />}
                             type="text"
                             danger
                             onClick={() => handleDeactivatePlan(record)}
@@ -253,7 +260,7 @@ function PricingPlans() {
                 <Col>
                     <Button
                         type="primary"
-                        icon={<PlusOutlined />}
+                        icon={<LuPlus />}
                         onClick={handleCreatePlan}
                     >
                         Add New Plan
@@ -291,6 +298,7 @@ function PricingPlans() {
             </Card>
 
             <Drawer
+                aria-label={editingPlan ? `Edit plan ${editingPlan.name}` : 'Create New Plan'}
                 title={editingPlan ? `Edit ${editingPlan.name}` : 'Create New Plan'}
                 width={520}
                 open={drawerVisible}
@@ -312,7 +320,7 @@ function PricingPlans() {
                     <Form.Item
                         name="name"
                         label="Plan Name"
-                        rules={[{ required: true, message: 'Please enter plan name' }]}
+                        rules={[{ required: true, whitespace: true, message: 'Please enter plan name' }]}
                     >
                         <Input placeholder="e.g. Basic Plan" />
                     </Form.Item>
@@ -320,7 +328,7 @@ function PricingPlans() {
                     <Form.Item
                         name="description"
                         label="Plan Description"
-                        rules={[{ required: true, message: 'Please enter plan description' }]}
+                        rules={[{ required: true, whitespace: true, message: 'Please enter plan description' }]}
                     >
                         <TextArea
                             placeholder="e.g. Perfect for small businesses getting started with menu digitization"
@@ -380,7 +388,7 @@ function PricingPlans() {
                         label="Recommended Plan"
                         valuePropName="checked"
                     >
-                        <Switch />
+                        <Switch aria-label="Recommended plan" />
                     </Form.Item>
 
                     <Form.Item
@@ -407,10 +415,16 @@ function PricingPlans() {
                                                 name={name}
                                                 noStyle
                                             >
-                                                <Input placeholder="e.g. 10GB Storage" style={{ width: '400px' }} />
+                                                <Input aria-label={`Feature ${name + 1}`} placeholder="e.g. 10GB Storage" style={{ width: '400px' }} />
                                             </Form.Item>
                                             {fields.length > 1 && (
-                                                <DeleteOutlined onClick={() => remove(name)} />
+                                                <Button
+                                                    aria-label={`Remove feature ${name + 1}`}
+                                                    danger
+                                                    icon={<LuTrash2 />}
+                                                    onClick={() => remove(name)}
+                                                    type="text"
+                                                />
                                             )}
                                         </Space>
                                     </Form.Item>
@@ -420,7 +434,7 @@ function PricingPlans() {
                                         type="dashed"
                                         onClick={() => add()}
                                         block
-                                        icon={<PlusOutlined />}
+                                        icon={<LuPlus />}
                                     >
                                         Add Feature
                                     </Button>
@@ -434,7 +448,7 @@ function PricingPlans() {
                         label="Status"
                         valuePropName="checked"
                     >
-                        <Switch checkedChildren="Active" unCheckedChildren="Inactive" />
+                        <Switch aria-label="Plan active" checkedChildren="Active" unCheckedChildren="Inactive" />
                     </Form.Item>
                 </Form>
             </Drawer>

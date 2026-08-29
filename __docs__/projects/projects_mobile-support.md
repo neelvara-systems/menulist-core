@@ -1,6 +1,6 @@
 # Projects — Mobile Support
 
-**Last Updated:** August 13, 2026
+**Last Updated:** August 28, 2026
 **Decision:** ✅ MOBILE SUPPORTED — Core operational features on mobile, advanced editor desktop-only
 
 **Source gate:** `npm run verify:menu-project-editor-boundary` checks mobile menu persistence, project-list/detail recovery, first-use Menu/Share behavior, `MobileProjectSelectorSheet` project mutations, `BulkActionsSheet` handoff, `updateProjectWithoutLoader` acknowledgement guards, and the same public-cache path used by desktop editor writes. This is source/docs verification only; manual phone QA and browser/mobile editor QA remain required before release certification.
@@ -35,6 +35,7 @@
 | B2C theme customization     | `MobileDesignEditorScreen`                  | Home style, mood, layout, brand color, toggles, service note, acknowledged public-link copy, bounded output diagnostics |
 | Brand color picker          | `ColorPickerSheet`                          | 8 presets + custom hex                                       |
 | Publish design changes      | `MobileDesignEditorScreen` (Publish button) | Same `publishProject()` DAL, loaded-`modifiedOn` stale-write rejection, and bounded non-blocking post-publish verification diagnostics |
+| Publish current menu        | `MobileMenuScreen` (`Publish menu`)         | Drains pending mobile saves, asks for owner confirmation, blocks duplicate taps, uses the same guarded `publishProject()` DAL/cache path, and updates the shell only after an acknowledged publish |
 | Quick Start presets         | `MobileDesignEditorScreen` (mobile-only!)   | 3 one-tap preset bundles                                     |
 | Bulk availability/show-hide | `BulkActionsSheet`                          | Simplified Command Center                                    |
 
@@ -53,6 +54,9 @@ Menu or Share tab in a permanent loading state.
 - Menu Design withholds public-link actions when a fresh business has neither
   a subdomain nor a custom domain. It does not call the strict public URL
   builder until tenant host context exists.
+- Project Edit details initializes Active and Default from the selected
+  project's canonical summary state. A default menu must render Default as
+  checked immediately; Reset restores that exact draft state without writing.
 - These states add no Firestore reads beyond an owner-initiated retry and add
   no writes, listeners, collections, or server routes.
 
@@ -77,7 +81,7 @@ Menu or Share tab in a permanent loading state.
 
 ### Key Insight
 
-Data changes (availability, price, add/delete) are **immediately live** to customers through `updateProjectWithoutLoader` / `updateProject()` and the shared project DAL/cache path. The desktop "Publish" button only applies to DESIGN changes (theme/layout). Mobile now supports both.
+After the first owner-approved publish establishes public menu truth, daily data changes (availability, price, add/delete) are **immediately live** to customers through `updateProjectWithoutLoader` / `updateProject()` and the shared project DAL/cache path. The mobile Menu setup CTA performs the initial or explicit republish without requiring a design change; Mobile Design keeps its separate design-change publish path.
 
 ---
 

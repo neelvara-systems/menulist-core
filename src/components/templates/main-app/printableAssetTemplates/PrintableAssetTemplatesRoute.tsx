@@ -4,6 +4,7 @@ import { FEATURE_FLAGS } from '@config/features';
 import { resolveBusinessCategory } from '@data/shared/businessTypes';
 import { getExistingProjectsListWithoutLoader, getProjectDataWithoutLoader } from '@database/projects';
 import { getStoreContextName } from '@lib/businessIdentity/names';
+import { labelConfirmDialogTitle } from '@lib/accessibility/antConfirmDialog';
 import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
 import { resolveStoreBrandColor } from '@lib/menu-kit/brandTokens';
 import { getOfferingLabels } from '@lib/menu-kit/businessTypeLabels';
@@ -29,6 +30,7 @@ import {
     type CreativeEditorTemplateContext,
 } from '@lib/creative-editor/templateRegistryDal';
 import { generateOBPUrl } from '@lib/obp/generateOBPUrl';
+import { createRandomIdSegment } from '@lib/runtime/randomId';
 import { getFeedbackUrl } from '@lib/utils/feedbackQrCode';
 import { generateProjectUrl } from '@lib/utils/slugify';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
@@ -40,6 +42,7 @@ import dynamic from 'next/dynamic';
 import { useSession } from 'next-auth/react';
 import { useSearchParams } from 'next/navigation';
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { LuBadge, LuBadgePercent, LuCalendarDays, LuContact, LuDownload, LuFileText, LuGift, LuMail, LuMegaphone, LuPackage, LuPrinter, LuQrCode, LuSparkles, LuTag, LuTrash2, LuX } from 'react-icons/lu';
 import { ProjectSelectorList, ProjectSelectorTrigger, type ProjectSelectorItem } from '../../../shared/ProjectSelector';
 import NoSubscriptionView from '../billing/NoSubscriptionView';
@@ -85,6 +88,16 @@ type AssetsData = {
     storeLogo?: string | null;
     storeName: string;
 };
+
+type PendingTemplateSaveReservation = {
+    inFlight: number;
+    key: string;
+    templateId: string;
+};
+
+const createReservedTemplateId = (): string => (
+    `tpl_${Date.now().toString(36)}_${createRandomIdSegment(10)}`
+);
 
 type PageState = 'loading' | 'ready' | 'no_menu';
 
@@ -238,7 +251,11 @@ export default function PrintableAssetTemplatesRoute() {
     const [activePlatformTemplate, setActivePlatformTemplate] = useState<CreativeEditorTemplateSummary | null>(null);
     const [previewAsset, setPreviewAsset] = useState<PreviewAssetState | null>(null);
     const [previewState, setPreviewState] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
+    const [editorDirty, setEditorDirty] = useState(false);
     const editorDocumentRef = useRef<CreativeEditorDocument | null>(null);
+    const editorBaselineRef = useRef('');
+    const editorCloseConfirmOpenRef = useRef(false);
+    const pendingTemplateSaveReservationRef = useRef<PendingTemplateSaveReservation | null>(null);
     const previewRequestRef = useRef(0);
     const previewUrlRef = useRef<string | null>(null);
     const projectDataCacheRef = useRef<Record<string, any>>({});
@@ -528,17 +545,69 @@ export default function PrintableAssetTemplatesRoute() {
         setPreviewState('idle');
     };
 
-    const closeEditor = () => {
+    const resetEditor = () => {
         editorDocumentRef.current = null;
+        editorBaselineRef.current = '';
+        setEditorDirty(false);
         setEditorBusyKey(null);
         setEditorState(null);
     };
+
+    const requestCloseEditor = () => {
+        if (!editorDirty) {
+            resetEditor();
+            return;
+        }
+        if (editorCloseConfirmOpenRef.current) return;
+        editorCloseConfirmOpenRef.current = true;
+        let discardConfirmed = false;
+        const confirmationTitle = 'Discard unsaved design changes?';
+        modal.confirm({
+            afterClose: () => {
+                editorCloseConfirmOpenRef.current = false;
+                if (discardConfirmed) resetEditor();
+            },
+            cancelText: 'Keep editing',
+            content: 'These changes are not saved as a reusable design.',
+            okText: 'Discard changes',
+            okType: 'danger',
+            onOk: () => {
+                discardConfirmed = true;
+            },
+            title: labelConfirmDialogTitle(confirmationTitle),
+            zIndex: 2200,
+        });
+    };
+
+    const isEditorOpen = Boolean(editorState);
+
+    useEffect(() => {
+        if (!isEditorOpen) return undefined;
+        const htmlOverflow = document.documentElement.style.overflow;
+        const bodyOverflow = document.body.style.overflow;
+        document.documentElement.style.overflow = 'hidden';
+        document.body.style.overflow = 'hidden';
+        return () => {
+            document.documentElement.style.overflow = htmlOverflow;
+            document.body.style.overflow = bodyOverflow;
+        };
+    }, [isEditorOpen]);
+
+    useEffect(() => {
+        if (!editorDirty) return undefined;
+        const warnBeforeUnload = (event: BeforeUnloadEvent) => {
+            event.preventDefault();
+            event.returnValue = '';
+        };
+        window.addEventListener('beforeunload', warnBeforeUnload);
+        return () => window.removeEventListener('beforeunload', warnBeforeUnload);
+    }, [editorDirty]);
 
     const handleSelectAsset = (assetId: PrintableAssetTypeId) => {
         setSelectedAssetId(assetId);
         setActiveTemplateId(null);
         setActivePlatformTemplate(null);
-        closeEditor();
+        resetEditor();
         closePreviewAsset();
     };
 
@@ -552,7 +621,7 @@ export default function PrintableAssetTemplatesRoute() {
     const handleSelectProject = (projectId: string) => {
         const project = data?.allProjects.find((item) => item.projectId === projectId);
         if (!project) return;
-        closeEditor();
+        resetEditor();
         closePreviewAsset();
         setData((current) => current ? {
             ...current,
@@ -590,7 +659,7 @@ export default function PrintableAssetTemplatesRoute() {
             menuUrl: data.menuLink,
             obpBaseUrl: data.obpLink,
             projectId: data.projectId,
-            shortLink: data.menuLink.replace(/^https?:\/\//, ''),
+            shortLink: (selectedAssetId === 'feedback_qr' ? data.feedbackQrLink : data.menuLink).replace(/^https?:\/\//, ''),
             storeName: data.storeName,
             templateFamilyId,
         };
@@ -731,6 +800,14 @@ export default function PrintableAssetTemplatesRoute() {
         }
     };
 
+    const startEditorSession = (nextState: PrintAssetEditorState) => {
+        const cleanDocument = stripPrintableAssetEditorAttributionLayers(nextState.initialDocument);
+        editorDocumentRef.current = cleanDocument;
+        editorBaselineRef.current = JSON.stringify(cleanDocument);
+        setEditorDirty(false);
+        setEditorState({ ...nextState, initialDocument: cleanDocument });
+    };
+
     const openEditorForTemplate = async (templateFamilyId: PrintableTemplateFamilyId) => {
         if (!canCustomizeSelectedAsset) return;
         const busy = `customize:${selectedAssetId}:${templateFamilyId}`;
@@ -739,8 +816,7 @@ export default function PrintableAssetTemplatesRoute() {
             const input = await buildRenderInput(templateFamilyId);
             if (!input) return;
             const documentValue = stripPrintableAssetEditorAttributionLayers(buildPrintableAssetEditorDocument(input));
-            editorDocumentRef.current = documentValue;
-            setEditorState({
+            startEditorSession({
                 activePlanType: input.activePlanType,
                 assetTypeId: selectedAssetId,
                 initialDocument: documentValue,
@@ -771,8 +847,7 @@ export default function PrintableAssetTemplatesRoute() {
                 templateType: 'platform',
             });
             const documentValue = stripPrintableAssetEditorAttributionLayers(rehydratePrintableAssetEditorDocument(result.document, input));
-            editorDocumentRef.current = documentValue;
-            setEditorState({
+            startEditorSession({
                 activePlanType: input.activePlanType,
                 assetTypeId: selectedAssetId,
                 initialDocument: documentValue,
@@ -803,8 +878,7 @@ export default function PrintableAssetTemplatesRoute() {
                 templateId: template.id,
             });
             const documentValue = stripPrintableAssetEditorAttributionLayers(rehydratePrintableAssetEditorDocument(result.document, input));
-            editorDocumentRef.current = documentValue;
-            setEditorState({
+            startEditorSession({
                 activePlanType: input.activePlanType,
                 assetTypeId: selectedAssetId,
                 initialDocument: documentValue,
@@ -822,6 +896,7 @@ export default function PrintableAssetTemplatesRoute() {
     };
 
     const handleDeleteUserTemplate = (template: CreativeEditorTemplateSummary) => {
+        const confirmationTitle = `Delete "${template.title}"?`;
         modal.confirm({
             content: 'This removes the saved design. Ready generated templates stay available.',
             okText: 'Delete',
@@ -835,12 +910,14 @@ export default function PrintableAssetTemplatesRoute() {
                 setUserTemplates((current) => current.filter((item) => item.id !== template.id));
                 messageApi.success('Saved design deleted');
             },
-            title: `Delete "${template.title}"?`,
+            title: labelConfirmDialogTitle(confirmationTitle),
         });
     };
 
     const handleEditorDocumentChange = useCallback((documentValue: CreativeEditorDocument) => {
-        editorDocumentRef.current = stripPrintableAssetEditorAttributionLayers(documentValue);
+        const cleanDocument = stripPrintableAssetEditorAttributionLayers(documentValue);
+        editorDocumentRef.current = cleanDocument;
+        setEditorDirty(Boolean(editorBaselineRef.current) && JSON.stringify(cleanDocument) !== editorBaselineRef.current);
     }, []);
 
     const handleSaveEditorTemplate = useCallback(async ({ document: documentValue, previewDataUrl }: CreativeEditorTemplateSaveRequest) => {
@@ -848,20 +925,56 @@ export default function PrintableAssetTemplatesRoute() {
             throw new Error('Template saving is not available for this asset');
         }
         const cleanDocument = stripPrintableAssetEditorAttributionLayers(documentValue);
-        const template = await saveCreativeEditorTemplate({
-            ...templateRegistryContext,
-            assetTypeId: editorState.assetTypeId,
-            document: cleanDocument,
-            templateFamilyId: editorState.templateFamilyId,
-            templateId: editorState.savedTemplateId,
-            thumbnailDataUrl: previewDataUrl,
-            title: editorState.title || cleanDocument.title,
-        });
-        setEditorState((current) => current ? { ...current, savedTemplateId: template.id, title: template.title } : current);
-        setUserTemplates((current) => [template, ...current.filter((item) => item.id !== template.id)]);
-        messageApi.success('Design saved');
-        return { notice: 'Design saved under Saved designs.', template };
-    }, [canUseUserTemplates, editorState, messageApi, templateRegistryContext]);
+        const reservationKey = [
+            templateRegistryScope?.tId,
+            templateRegistryScope?.sId,
+            editorState.assetTypeId,
+            editorState.templateFamilyId,
+        ].join(':');
+        let reservation = pendingTemplateSaveReservationRef.current;
+        if (!editorState.savedTemplateId && (!reservation || reservation.key !== reservationKey)) {
+            reservation = {
+                inFlight: 0,
+                key: reservationKey,
+                templateId: createReservedTemplateId(),
+            };
+            pendingTemplateSaveReservationRef.current = reservation;
+        }
+        if (reservation && !editorState.savedTemplateId) reservation.inFlight += 1;
+        const reservedTemplateId = editorState.savedTemplateId || reservation?.templateId;
+        const documentTitle = typeof cleanDocument.title === 'string' ? cleanDocument.title.trim() : '';
+
+        setEditorBusyKey('editor-template-save');
+        try {
+            const template = await saveCreativeEditorTemplate({
+                ...templateRegistryContext,
+                assetTypeId: editorState.assetTypeId,
+                document: cleanDocument,
+                templateFamilyId: editorState.templateFamilyId,
+                templateId: reservedTemplateId,
+                thumbnailDataUrl: previewDataUrl,
+                title: documentTitle || editorState.title,
+            });
+            setEditorState((current) => current ? { ...current, savedTemplateId: template.id, title: template.title } : current);
+            setUserTemplates((current) => [template, ...current.filter((item) => item.id !== template.id)]);
+            editorDocumentRef.current = cleanDocument;
+            editorBaselineRef.current = JSON.stringify(cleanDocument);
+            setEditorDirty(false);
+            messageApi.success('Design saved');
+            return { notice: 'Design saved under Saved designs.', template };
+        } finally {
+            setEditorBusyKey(null);
+            if (reservation && !editorState.savedTemplateId) {
+                reservation.inFlight = Math.max(0, reservation.inFlight - 1);
+                if (
+                    reservation.inFlight === 0
+                    && pendingTemplateSaveReservationRef.current === reservation
+                ) {
+                    pendingTemplateSaveReservationRef.current = null;
+                }
+            }
+        }
+    }, [canUseUserTemplates, editorState, messageApi, templateRegistryContext, templateRegistryScope?.sId, templateRegistryScope?.tId]);
 
     const handleEditorDownload = async (outputFormat: Exclude<PrintableAssetOutputFormat, 'zip'>) => {
         if (!editorState) return;
@@ -1202,8 +1315,9 @@ export default function PrintableAssetTemplatesRoute() {
                                 border: `1px solid ${token.colorBorderSecondary}`,
                                 borderRadius: 12,
                                 display: 'flex',
-                                height: getPrintableActionPreviewHeight(selectedAssetId),
+                                height: `min(${getPrintableActionPreviewHeight(selectedAssetId)}px, 42vh)`,
                                 justifyContent: 'center',
+                                minHeight: 220,
                                 overflow: 'hidden',
                                 padding: 12,
                             }}
@@ -1248,7 +1362,7 @@ export default function PrintableAssetTemplatesRoute() {
                                     brandColor={storeBrandColor}
                                     family={activeTemplateFamily}
                                     instructionLabel={previewInstructionLabel}
-                                    shortLink={data.menuLink.replace(/^https?:\/\//, '')}
+                                    shortLink={(selectedAssetId === 'feedback_qr' ? data.feedbackQrLink : data.menuLink).replace(/^https?:\/\//, '')}
                                     storeLogo={data.storeLogo}
                                     storeName={data.storeName}
                                 />
@@ -1314,37 +1428,34 @@ export default function PrintableAssetTemplatesRoute() {
                                         : void openEditorForTemplate(activeTemplateFamily.id)}
                                     size="large"
                                 >
-                                    Customize in editor
+                                    Customize design
                                 </Button>
                             ) : null}
                         </Flex>
                     </Flex>
                 ) : null}
             </Modal>
-            {editorState ? (
+            {editorState && typeof document !== 'undefined' ? createPortal((
                 <div
                     aria-label="Customize print asset"
+                    aria-modal="true"
                     role="dialog"
                     style={{
                         background: token.colorBgLayout,
+                        height: '100dvh',
                         inset: 0,
+                        overflow: 'hidden',
                         position: 'fixed',
                         zIndex: 2100,
                     }}
                 >
                     <CreativeEditor
                         allowNewDesign={false}
+                        availableToolIds={['background', 'images', 'text', 'styles', 'brandKit']}
                         chromeMode="embedded"
                         disabledExportFormats={['json']}
+                        enableBrowserDrafts
                         headerActions={[
-                            {
-                                disabled: Boolean(editorBusyKey),
-                                icon: <LuDownload size={16} />,
-                                id: 'print-asset-image',
-                                label: 'Image',
-                                loading: editorBusyKey === 'editor-download:png',
-                                onClick: () => handleEditorDownload('png'),
-                            },
                             {
                                 disabled: Boolean(editorBusyKey),
                                 icon: <LuPrinter size={16} />,
@@ -1352,7 +1463,17 @@ export default function PrintableAssetTemplatesRoute() {
                                 label: 'Print PDF',
                                 loading: editorBusyKey === 'editor-download:pdf',
                                 onClick: () => handleEditorDownload('pdf'),
+                                requiresReadiness: true,
                                 tone: 'primary',
+                            },
+                            {
+                                disabled: Boolean(editorBusyKey),
+                                icon: <LuDownload size={16} />,
+                                id: 'print-asset-image',
+                                label: 'Image',
+                                loading: editorBusyKey === 'editor-download:png',
+                                onClick: () => handleEditorDownload('png'),
+                                requiresReadiness: true,
                             },
                             {
                                 ariaLabel: 'Close editor',
@@ -1360,20 +1481,23 @@ export default function PrintableAssetTemplatesRoute() {
                                 icon: <LuX size={16} />,
                                 id: 'print-asset-close',
                                 label: 'Close',
-                                onClick: closeEditor,
+                                onClick: requestCloseEditor,
                             },
                         ]}
                         initialDocument={editorState.initialDocument}
+                        initialDrawerCollapsed
+                        initialSelectedLayerId={null}
                         key={editorState.initialDocument.id}
                         onDocumentChange={handleEditorDocumentChange}
                         onTemplateSave={canUseUserTemplates ? handleSaveEditorTemplate : undefined}
                         productLabel="MenuList Assets"
                         sourceLabel="Print assets"
-                        templateSaveLabel="Save as template"
+                        templateSaveLabel="Save reusable design"
                         templateSavePreview
+                        workspaceControls={['preview']}
                     />
                 </div>
-            ) : null}
+            ), document.body) : null}
         </div>
     );
 }

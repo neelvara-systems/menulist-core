@@ -112,7 +112,13 @@ All buttons must be minimum 44px height (ICP compliance). Large, clear, one acti
 - WhatsApp Status
 - Google Maps image
 
-Print files download directly. Social files use the Web Share API when available and fall back to file download only when file sharing is unsupported. Cancelling the native share sheet does not trigger an unwanted download, analytics event, or success toast; a real share failure uses the existing failure path.
+Print files download directly. Social files use the Web Share API when available and fall back to file download when file sharing is unsupported or the browser advertises file sharing but rejects the delayed generated-file handoff with `NotAllowedError`. Cancelling the native share sheet does not trigger an unwanted download, analytics event, or success toast; other share failures use the existing failure path.
+
+Mobile Share admits only one generated-file operation at a time. A synchronous
+operation lock blocks rapid or cross-tile repeat taps before React can render
+the loading state, and the remaining download tiles stay disabled until the
+current generation/share/download handoff settles. This prevents duplicate
+files, overlapping native share sheets, and false failure diagnostics.
 
 All mobile Menu Kit and QR downloads use the same premium output tokens as desktop:
 - existing store logo when available

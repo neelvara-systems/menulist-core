@@ -2,7 +2,7 @@
 
 import { openIsolatedBrowserUrl } from '@lib/browser/openIsolatedBrowserUrl';
 
-import { calculateOfflineAmount, calculateOfflineLocationTopup, RESELLER_COMMITMENT_OPTIONS } from "@config/resellerPricing";
+import { calculateOfflineAmount, calculateOfflineLocationTopup, RESELLER_COMMITMENT_OPTIONS, RESELLER_SYSTEM_FLAGS } from "@config/resellerPricing";
 import { useResellerDashboard } from "@hook/useResellerDashboard";
 import { normalizeRazorpaySubscriptionCheckoutUrl } from "@lib/razorpay/checkoutUrl";
 import type { ResellerClientRecord } from "@lib/reseller/resellerClientRecord";
@@ -466,8 +466,8 @@ function ResellerDashboard() {
             key: 'actions',
             render: (_: unknown, record: ResellerClientRecord) => {
                 const isManual = record.paymentMode === 'offline' || record.subscriptionBillingMode === 'manual';
-                const canAddLocation = isManual && record.status === 'active';
-                const canRenew = isManual && ['active', 'expired'].includes(record.status);
+                const canAddLocation = RESELLER_SYSTEM_FLAGS.OFFLINE_MODE_ACTIVE && isManual && record.status === 'active';
+                const canRenew = RESELLER_SYSTEM_FLAGS.OFFLINE_MODE_ACTIVE && isManual && ['active', 'expired'].includes(record.status);
                 const hasPendingPaymentLink = record.paymentMode === 'online'
                     && record.status === 'pending_payment'
                     && Boolean(record.subscriptionShortUrl);
@@ -583,9 +583,11 @@ function ResellerDashboard() {
             {!isPlatform && profile && (
                 <Card size="small" style={{ marginBottom: 16 }}>
                     <Flex justify="space-between" align="center">
-                        <Text type="secondary">
-                            Offline cap: {profile.currentActiveOfflineStores} / {profile.maxOfflineActivations} used
-                        </Text>
+                        {RESELLER_SYSTEM_FLAGS.OFFLINE_MODE_ACTIVE ? (
+                            <Text type="secondary">
+                                Offline cap: {profile.currentActiveOfflineStores} / {profile.maxOfflineActivations} used
+                            </Text>
+                        ) : null}
                         <Text type="secondary">
                             Total onboarded: {profile.totalStoresOnboarded}
                         </Text>

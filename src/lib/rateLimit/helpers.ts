@@ -139,8 +139,11 @@ export async function checkAIRateLimit(
 /**
  * Convenience wrapper specifically for AI operations
  */
-export async function checkAIOperationLimit(): Promise<NextResponse | null> {
-    return checkAIRateLimit('AI_OPERATION', 'ai', { failClosedOnProviderError: true });
+export async function checkAIOperationLimit(options: AIRateLimitOptions = {}): Promise<NextResponse | null> {
+    return checkAIRateLimit('AI_OPERATION', 'ai', {
+        ...options,
+        failClosedOnProviderError: true,
+    });
 }
 
 /**

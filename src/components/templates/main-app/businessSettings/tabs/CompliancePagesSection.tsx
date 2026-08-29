@@ -201,7 +201,7 @@ export default function CompliancePagesSection({
     ): Promise<OwnerCompliancePagesState | null> => {
         if (!expectedScope) return null;
         try {
-            const response = await fetch('/api/compliance', AUTH_BROWSER_REQUEST_POLICY);
+            const response = await fetch(`/api/compliance?storeId=${encodeURIComponent(expectedScope.storeId)}`, AUTH_BROWSER_REQUEST_POLICY);
             if (!response.ok) {
                 logBusinessSettingsFailure(
                     'desktop_compliance_pages_load_failed',
@@ -280,6 +280,7 @@ export default function CompliancePagesSection({
                     type: activeTab,
                     action: 'override',
                     content: customText,
+                    storeId: expectedScope.storeId,
                 }),
             });
             const result = await readDesktopComplianceMutationResponseJson(response, activeTab, 'save', domain);
@@ -335,6 +336,7 @@ export default function CompliancePagesSection({
                 body: JSON.stringify({
                     type: activeTab,
                     action: 'reset',
+                    storeId: expectedScope.storeId,
                 }),
             });
             const result = await readDesktopComplianceMutationResponseJson(response, activeTab, 'reset', domain);

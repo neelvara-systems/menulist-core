@@ -890,6 +890,7 @@ export default function AnswerlatticeIntakeMonitor() {
                     </Text>
                     <Space wrap style={{ width: '100%' }}>
                         <Select
+                            aria-label="Answerlattice workspace"
                             allowClear
                             onChange={(value) => {
                                 if (!value) {

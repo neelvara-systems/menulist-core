@@ -2,7 +2,7 @@
 
 > **Feature:** Public marketing website for AnswerLattice product
 > **Status:** ✅ LOCAL SOURCE COMPLETE — approved-answers-first positioning, connected owner-decision proof, deterministic governance proof, plan/currency-accurate onboarding, factual trust disclosures, self-service AnswerLattice, accessible public navigation/forms, agent-readable discovery, and consent-gated website analytics
-> **Date:** 2026-07-31
+> **Date:** 2026-08-27
 > **Domain:** answerlattice.com (production) | canonica.app (Vercel custom `qa`) | localhost:3000/__answerlattice (dev)
 > **Feature Flag:** None required (static marketing site)
 > **Route Group:** `src/app/sites/answerlattice/`
@@ -60,6 +60,15 @@ The deterministic demo has no network/provider path. Get Started uses native for
 - Added fixed safe recovery guidance to existing Public API JSON errors, corrected footer heading hierarchy, and added the verified support contact point to Organization schema.
 - Kept the Public API and MCP disabled by default, preserved server-only credential/scoping rules, and did not publish an unverified company address or unsupported rating/review schema.
 - All changes remain local pending the combined three-site deployment pass.
+
+## August 27, 2026 Founder-First Conversion Pass
+
+- Kept the established headline, `Support your product users without hiring a support team.`, and rewrote the live homepage path in plain founder language.
+- Made `Build your first 10 answers` the primary activation action in the hero, first-answer section, pricing preview, header, mobile drawer, and final CTA.
+- Reduced the first-answer journey to choose material, review ten likely questions, then test, publish, and improve from real gaps.
+- Simplified owner review to three decision-useful outcomes and reframed installation as a coding-agent handoff, safe page details, and pre-launch verification.
+- Replaced the dense mobile product inventory with two short groups: Start here, and Learn and verify. Start here includes the primary human pre-onboarding route so founders can prepare source material before installation; all detailed feature routes remain discoverable through Product and Resources.
+- Kept the existing visual system, routes, static browsing boundary, human approval doctrine, fallback path, deferred homepage mounts, and zero-Firebase normal browsing contract unchanged.
 
 ## Related Strategy
 
@@ -254,6 +263,9 @@ The deterministic demo has no network/provider path. Get Started uses native for
 | `public/answerlattice-icon-*.png` | AnswerLattice square favicon/PWA icon family generated from the final SVG logo source |
 | `public/answerlattice-splash/apple-splash-*.png` | AnswerLattice iOS startup image family rendered on the PWA startup background with the transparent logo mark composited on top |
 | `public/answerlattice.webmanifest` | AnswerLattice web app manifest |
+| `src/app/answerlattice-app.webmanifest/route.ts` | Host-aware authenticated dashboard manifest with stable app identity, launch route, shortcuts, and local/product scopes |
+| `public/answerlattice-sw.js` | Network-first AnswerLattice worker with a branded offline shell and no tenant/support/knowledge caching |
+| `src/app/sites/answerlattice/offline/page.tsx` | Theme-aware, safe-area-aware AnswerLattice recovery screen |
 | `public/answerlattice-website-assets/dummy/*.png` | Public 1440 x 1200 generated product-scene PNG slots used by homepage, product preview, product-area, feature, widget, and demo screens; the directory name is retained for compatibility |
 | `public/answerlattice-{owner-decision-system,knowledge-map,release-assurance,article-topic-map}.webp` | AssetOS-governed 1440 x 1200 owner-decision proof assets used by the homepage, Knowledge Governance, and Knowledge Base feature page |
 | `packages/asset-factory/answerlattice-website-assets/dummy-sources/` | Internal source SVGs and manifest for regenerating website product-scene assets; not referenced by public pages |
@@ -368,6 +380,7 @@ See `src/constants/productDomains.ts` for the full multi-product domain registry
 | 2026-06-05 | Replaced HTML/CSS product-screen placeholders with image-backed 1440 x 1200 dummy PNG slots, added the screen-asset registry/renderer/generator, and documented the final asset replacement contract |
 | 2026-06-05 | Refined AnswerLattice website diagrams with a single soft logo ripple, removed the inner static center strip, synchronized cross-diagram logo-origin pulses, and made pulse strokes fade at route endpoints |
 | 2026-06-05 | Added AnswerLattice public-site Light/System/Dark mode end to end: scoped theme provider, mobile/footer switcher, pre-hydration preference bootstrap, light/dark browser theme colors, global light-mode compatibility rules, inline-style route updates, and all-route smoke verification |
+| 2026-08-29 | Separated website and dashboard install identities, added a host-aware dashboard launch manifest, network-first offline recovery, safe worker coexistence, and AnswerLattice dashboard browser-theme metadata without caching tenant or support data |
 | 2026-06-04 | Added a compact desktop Resources dropdown in the AnswerLattice public header, linking to the highest-priority resource articles and the resources hub without adding runtime or dashboard routes |
 | 2026-06-02 | Added a typed AnswerLattice public content module and ten explicit resource article routes with Article/FAQ structured data, resource analytics, sitemap registry coverage, LLM context, and verifier checks |
 | 2026-06-01 | Reworked the homepage from a setup-first story into a conversion-first story: clearer page-aware support-answer hero, inline sample workspace preview, new conversion proof band, earlier product proof/demo, Pre-Onboarding moved lower as a source-preparation accelerator, refreshed metadata, and final asset-preparation plan added |

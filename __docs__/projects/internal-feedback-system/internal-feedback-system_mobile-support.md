@@ -20,6 +20,10 @@ Mobile shell route-map source gate: `npm run verify:mobile-shell-route-map` must
 - The screen remounts by exact tenant/store, invalidates obsolete list/pagination requests, rejects simultaneous Load more work, and suppresses stale rows, cursors, detail state, failures, and loading settlement after a store change.
 - Public feedback links open through `openMobilePublicLink()` so owner mobile remains shell-safe.
 - Mobile copy/share flows acknowledge Clipboard API or fallback results before showing success copy.
+- The four icon-only Feedback distribution controls expose localized accessible
+  names for copy, native share, QR display, and public-link open. The shared
+  action tile requires and forwards its `aria-label`; source gates fail closed
+  if a caller or the forwarding boundary is removed.
 - `src/components/mobile/screens/MobileFeedbackDetail.tsx` passes the same captured tenant/store to `updateFeedbackStatus()` and requires an exact response-ID/status acknowledgement before local status advances. Synchronous action guards and source-item/liveness checks prevent a delayed resolve or copy result from settling after scope or detail replacement.
 - Mobile reply drafts come from `src/lib/feedback/feedbackReplyTemplates.ts`. The owner may edit a draft in browser state, copy it, or open WhatsApp; MenuList does not persist or send it. Resolve is a separate action with a loading guard.
 - Browser-local reply drafts remain capped at 500 characters. The persisted `ownerNote` DAL boundary remains 300 characters, but this mobile surface does not write drafts into that field.
@@ -38,5 +42,6 @@ Source gates:
 
 - `npm run verify:guest-feedback-boundary`
 - `npm run verify:mobile-shell-route-map`
+- `npm run verify:global-accessibility-boundary`
 
 These checks prove source/docs parity only. Physical-device QA, authenticated owner-shell visual QA, clipboard behavior on real mobile browsers, and custom-domain feedback-link smoke remain external certification gates.

@@ -10,6 +10,7 @@ import {
     getDoc,
     getDocs,
     query,
+    runTransaction,
     setDoc,
     Timestamp,
     updateDoc,
@@ -83,6 +84,17 @@ async function run(): Promise<void> {
 
         await assertSucceeds(setDoc(sessionRef, chatSession()));
         await assertSucceeds(getDoc(sessionRef));
+        const transactionalSessionRef = doc(ownerDb, 'chatSessions', 'transaction-session');
+        await assertSucceeds(runTransaction(ownerDb, async (transaction) => {
+            const existing = await transaction.get(transactionalSessionRef);
+            if (existing.exists()) throw new Error('transaction fixture must start empty');
+            transaction.set(transactionalSessionRef, chatSession({ requestId: 'transaction-message' }));
+        }));
+        await assertFails(runTransaction(noSupportDb, async (transaction) => {
+            const deniedRef = doc(noSupportDb, 'chatSessions', 'denied-transaction-session');
+            await transaction.get(deniedRef);
+            transaction.set(deniedRef, chatSession({ uId: 'viewer-1' }));
+        }));
         await assertFails(getDoc(doc(noSupportDb, 'chatSessions', 'session-1')));
         await assertSucceeds(getDoc(doc(supportDb, 'chatSessions', 'session-1')));
         await assertSucceeds(getDoc(doc(platformSupportDb, 'chatSessions', 'session-1')));

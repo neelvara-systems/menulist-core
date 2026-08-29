@@ -216,7 +216,7 @@ export default function SmartRecommendationsSheet({
                                 <Text style={{ whiteSpace: 'normal' }} type="secondary">{labels.subtitle}</Text>
                             </Flex>
                         </Flex>
-                        <Switch checked={enabled} onChange={setEnabled} />
+                        <Switch aria-label={labels.title} checked={enabled} onChange={setEnabled} />
                     </Flex>
 
                     {enabled ? (
@@ -235,6 +235,7 @@ export default function SmartRecommendationsSheet({
                             </Flex>
 
                             <Select
+                                aria-label={`${labels.title}: ${t('smartRecommendationsPinLabel')}`}
                                 onChange={(value: string) => handlePinChange(blockType, value || undefined)}
                                 options={getPickerOptions(blockType)}
                                 placeholder={t('smartRecommendationsAutoSelect')}
@@ -274,6 +275,7 @@ export default function SmartRecommendationsSheet({
     return (
         <>
             <Popup
+                aria-label={t('smartRecommendationsTitle')}
                 bodyStyle={MENU_SHEET_BODY_STYLE}
                 destroyOnClose
                 onMaskClick={onClose}

@@ -16,7 +16,7 @@ import { OUTLET_POLICY_CATEGORIES } from '@config/outletPolicy';
 import { updateOutletPolicy } from '@database/multiOutlet';
 import { getBoundedMultiOutletStringContext, logMultiOutletFailure } from '@lib/multiOutlet/diagnostics';
 import { DEFAULT_OUTLET_POLICY, OutletPolicy } from '@type/multiOutlet.types';
-import { Card, Divider, message, Space, Switch, Tag, Tooltip, Typography } from 'antd';
+import { Card, Divider, message, Space, Switch, Tag, theme, Tooltip, Typography } from 'antd';
 import { useCallback, useEffect, useState } from 'react';
 import { LuInfo } from 'react-icons/lu';
 
@@ -38,6 +38,7 @@ export default function OutletPolicyEditor({
     currentPolicy,
     onPolicyUpdate,
 }: OutletPolicyEditorProps) {
+    const { token } = theme.useToken();
     const [policy, setPolicy] = useState<OutletPolicy>(normalizeOutletPolicy(currentPolicy));
     const [saving, setSaving] = useState<string | null>(null);
 
@@ -74,7 +75,7 @@ export default function OutletPolicyEditor({
                 <Space>
                     <span>Outlet Policy</span>
                     <Tooltip title="Controls what all outlet stores can change. Staff roles still apply.">
-                        <LuInfo style={{ color: '#8c8c8c', cursor: 'help' }} />
+                        <LuInfo style={{ color: token.colorTextSecondary, cursor: 'help' }} />
                     </Tooltip>
                 </Space>
             }
@@ -103,7 +104,7 @@ export default function OutletPolicyEditor({
                                     alignItems: 'center',
                                     padding: '6px 8px',
                                     borderRadius: 6,
-                                    background: '#fafafa',
+                                    background: token.colorFillAlter,
                                 }}
                             >
                                 <div>

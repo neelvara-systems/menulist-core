@@ -55,6 +55,7 @@ const BrandColorPicker: React.FC<BrandColorPickerProps> = ({
                     <Text>Use custom theme color</Text>
                 </Flex>
                 <Switch
+                    aria-label="Use custom theme color"
                     checked={isEnabled}
                     onChange={handleToggle}
                     size="small"

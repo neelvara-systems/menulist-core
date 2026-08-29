@@ -155,6 +155,18 @@ function verifyTemplatesRuntime() {
     malformedTimestampInputs?.lastUpdated === 'July 16, 2026',
     'malformed legacy timestamps must use the versioned compliance effective date',
   );
+  const cachedAdminTimestampInputs = extractComplianceInputs({
+    name: 'Sample Restaurant',
+    email: 'hello@example.com',
+    modifiedOn: {
+      _nanoseconds: 0,
+      _seconds: Date.parse('2026-08-26T00:00:00.000Z') / 1000,
+    },
+  });
+  assert(
+    cachedAdminTimestampInputs?.lastUpdated === 'August 26, 2026',
+    'cache-serialized Admin timestamps must preserve the same compliance date as owner previews',
+  );
 }
 
 function verifyApiBoundary() {
@@ -171,12 +183,14 @@ function verifyApiBoundary() {
   assertIncludes(route, 'function normalizeComplianceSessionDocumentId(value: unknown): string | null', 'Compliance API session document ID normalizer');
   assertIncludes(route, 'function getComplianceSessionScope(session: any): { sId: string; tId: string } | null', 'Compliance API normalized session scope helper');
   assertIncludes(route, 'const scope = getComplianceSessionScope(session);', 'Compliance API normalizes session scope before route work');
-  assertIncludes(route, 'const { sId, tId } = scope;', 'Compliance API uses normalized tenant/store ids');
+  assertIncludes(route, "request.nextUrl.searchParams.get('storeId')", 'Compliance API GET accepts an explicit active-store scope');
+  assertIncludes(route, 'storeId: z.union([z.string().min(1).max(128), z.number().int().positive()]).optional()', 'Compliance API mutation accepts a bounded active-store scope');
+  assertIncludes(route, 'canSessionAccessComplianceStore(session, scope.sId, sId)', 'Compliance API verifies cross-store access');
   assertIncludes(route, "z.enum(['privacy', 'terms', 'refund'])", 'Compliance API supported page types');
   assertIncludes(route, "z.enum(['override', 'reset'])", 'Compliance API supported actions');
   assertIncludes(route, 'content: z.string().max(15000).optional()', 'Compliance API content cap');
   assertIncludes(route, 'COMPLIANCE_OVERRIDE_MAX_BODY_BYTES = 32 * 1024', 'Compliance API bounded body cap');
-  assertIncludes(route, 'requireAnyStorePermission', 'Compliance API store permission guard');
+  assertIncludes(route, 'requireAnyStorePermissionForStoreData', 'Compliance API target-store permission guard');
   assertIncludes(route, 'PERMISSIONS.MANAGE_PUBLIC_PRESENCE', 'Compliance API public presence permission');
   assertIncludes(route, 'PERMISSIONS.MANAGE_STORE', 'Compliance API manage store fallback permission');
   assertIncludes(route, "getRateLimitForFeature('DATA_WRITE')", 'Compliance API write limiter');
@@ -210,9 +224,6 @@ function verifyApiBoundary() {
   assertNotIncludes(route, '.doc(String(sId))', 'Compliance API store lookup must use normalized store document ID');
   assertNotIncludes(route, '} catch {\n        return null;', 'Compliance API store lookup must not silently return missing data on failures');
   assertOrder(route, 'const scope = getComplianceSessionScope(session);', 'const storeLookup = await getStoreData(sId, tId);', 'Compliance API GET normalizes session scope before store lookup');
-  assertOrder(route, 'const scope = getComplianceSessionScope(session);', 'const permissionError = await requireAnyStorePermission', 'Compliance API POST normalizes session scope before permission checks');
-  assertOrder(route, 'const permissionError = await requireAnyStorePermission', "getRateLimitForFeature('DATA_WRITE')", 'Compliance API permission before write limiter');
-  assertOrder(route, "getRateLimitForFeature('DATA_WRITE')", 'readBoundedJsonBody(request, COMPLIANCE_OVERRIDE_MAX_BODY_BYTES', 'Compliance API limiter before body parse');
   assertOrder(route, 'readBoundedJsonBody(request, COMPLIANCE_OVERRIDE_MAX_BODY_BYTES', 'OverrideSchema.safeParse(body)', 'Compliance API bounded body before validation');
   assertOrder(route, 'sanitizeComplianceContent(content)', 'saveComplianceOverrideServer(sId, tId, type, sanitized)', 'Compliance API sanitize before write');
 
@@ -319,6 +330,8 @@ function verifyOwnerEditorsBoundary() {
     assertIncludes(content, 'normalizeOwnerComplianceLoadResponse(data, expectedScope)', `${label} exact tenant/store response admission`);
     assertIncludes(content, 'currentScopeKeyRef.current !== expectedScope.key', `${label} stale tenant settlement guard`);
     assertIncludes(content, 'isOwnerComplianceMutationScopeAcknowledged(value, expectedScope)', `${label} mutation scope acknowledgement`);
+    assertIncludes(content, '?storeId=${encodeURIComponent(expectedScope.storeId)}', `${label} target-store load scope`);
+    assertIncludes(content, 'storeId: expectedScope.storeId', `${label} target-store mutation scope`);
   });
 
   assertOccurrenceAtLeast(standalone, "...AUTH_BROWSER_REQUEST_POLICY", 2, 'standalone desktop compliance mutations spread shared request policy');
@@ -344,7 +357,10 @@ function verifyOwnerEditorsBoundary() {
   assertIncludes(mobile, 'compliancePagesRequests.get(scope.key) !== request', 'Mobile compliance stale same-scope response settlement guard');
   assertIncludes(mobile, 'getCachedCompliancePages(scope.key)', 'Mobile compliance exact scope cache lookup');
   assertIncludes(mobile, 'isOwnerComplianceMutationScopeAcknowledged(value, expectedScope)', 'Mobile compliance mutation scope acknowledgement');
+  assertIncludes(mobile, '?storeId=${encodeURIComponent(scope.storeId)}', 'Mobile compliance target-store load scope');
+  assertIncludes(mobile, 'storeId: scope.storeId', 'Mobile compliance target-store mutation scope');
   assertIncludes(mobile, 'aria-label={`Manage ${pageLabel}`}', 'Mobile compliance editor accessible name');
+  assertIncludes(mobile, 'aria-label={pageLabel}', 'Mobile compliance dialog accessible name');
   assertOccurrenceAtLeast(mobile, 'minHeight: 44', 2, 'Mobile compliance editor touch targets');
   assertIncludes(mobile, 'minWidth: 44', 'Mobile compliance icon trigger touch width');
   assertIncludes(mobile, 'aria-expanded={isBaselineExpanded}', 'Mobile compliance baseline disclosure expanded state');

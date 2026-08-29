@@ -1,6 +1,6 @@
 'use client'
 
-import { calculateOfflineAmount, calculateOfflineLocationTopup, RESELLER_COMMITMENT_OPTIONS } from '@config/resellerPricing';
+import { calculateOfflineAmount, calculateOfflineLocationTopup, RESELLER_COMMITMENT_OPTIONS, RESELLER_SYSTEM_FLAGS } from '@config/resellerPricing';
 import { MENULIST_PLATFORM_USER_ROLE } from '@constant/user';
 import { useResellerDashboard } from '@hook/useResellerDashboard';
 import { openIsolatedBrowserUrl } from '@lib/browser/openIsolatedBrowserUrl';
@@ -243,8 +243,8 @@ function ClientCard({
     const daysLeft = getDaysLeft(transaction.validUntil);
     const statusColor = STATUS_COLORS[transaction.status] || 'default';
     const isManual = transaction.paymentMode === 'offline' || transaction.subscriptionBillingMode === 'manual';
-    const canAddLocation = isManual && transaction.status === 'active';
-    const canRenew = isManual && ['active', 'expired'].includes(transaction.status);
+    const canAddLocation = RESELLER_SYSTEM_FLAGS.OFFLINE_MODE_ACTIVE && isManual && transaction.status === 'active';
+    const canRenew = RESELLER_SYSTEM_FLAGS.OFFLINE_MODE_ACTIVE && isManual && ['active', 'expired'].includes(transaction.status);
     const hasPendingPaymentLink = transaction.paymentMode === 'online'
         && transaction.status === 'pending_payment'
         && Boolean(transaction.subscriptionShortUrl);
@@ -609,7 +609,9 @@ export default function MobileResellerDashboardScreen({
                 {!isPlatform && profile ? (
                     <Card title="Profile">
                         <Flex gap={8} vertical>
-                            <Flex justify="space-between"><Text type="secondary">Offline cap</Text><Text strong>{profile.currentActiveOfflineStores || 0} / {profile.maxOfflineActivations || 0}</Text></Flex>
+                            {RESELLER_SYSTEM_FLAGS.OFFLINE_MODE_ACTIVE ? (
+                                <Flex justify="space-between"><Text type="secondary">Offline cap</Text><Text strong>{profile.currentActiveOfflineStores || 0} / {profile.maxOfflineActivations || 0}</Text></Flex>
+                            ) : null}
                             <Flex justify="space-between"><Text type="secondary">Total onboarded</Text><Text strong>{profile.totalStoresOnboarded || 0}</Text></Flex>
                             <Flex justify="space-between"><Text type="secondary">Revenue tracked</Text><Text strong>{formatInrPaise(profile.totalRevenueCollectedPaise)}</Text></Flex>
                         </Flex>
@@ -712,6 +714,7 @@ export default function MobileResellerDashboardScreen({
                         <Flex gap={12} style={{ overflowY: 'auto', padding: 12 }} vertical>
                             <Text strong>{renewalClient.storeName || `Store ${renewalClient.storeId}`}</Text>
                             <Select
+                                aria-label="Renewal term"
                                 onChange={setRenewalMonths}
                                 options={RESELLER_COMMITMENT_OPTIONS.map((months) => ({
                                     label: `${months} months`,

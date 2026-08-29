@@ -1,8 +1,30 @@
-import type {
+import {
+    ANSWERLATTICE_KNOWLEDGE_INTAKE_STATUS,
+    type AnswerlatticeIntakeReviewItem,
+    type AnswerlatticeKnowledgeIntakeJob,
+    type AnswerlatticeKnowledgeSource,
+} from '@type/answerlattice';
+
+const ANSWERLATTICE_INTAKE_SOURCE_TERMINAL_STATUSES = new Set<AnswerlatticeKnowledgeIntakeJob['status']>([
+    ANSWERLATTICE_KNOWLEDGE_INTAKE_STATUS.PUBLISHING,
+    ANSWERLATTICE_KNOWLEDGE_INTAKE_STATUS.PUBLISHED,
+    ANSWERLATTICE_KNOWLEDGE_INTAKE_STATUS.CANCELLED,
+]);
+
+/*
+ * Keep this state helper aligned with the server-side intake mutation guard.
+ * Completed or publishing jobs remain available as evidence but cannot accept
+ * new source mutations.
+ */
+export const canAnswerlatticeKnowledgeIntakeAcceptSources = (
+    status: AnswerlatticeKnowledgeIntakeJob['status'] | null | undefined,
+): boolean => Boolean(status && !ANSWERLATTICE_INTAKE_SOURCE_TERMINAL_STATUSES.has(status));
+
+export type {
     AnswerlatticeIntakeReviewItem,
     AnswerlatticeKnowledgeIntakeJob,
     AnswerlatticeKnowledgeSource,
-} from '@type/answerlattice';
+};
 
 export type AnswerlatticeKnowledgeIntakeBundleState = {
     job: AnswerlatticeKnowledgeIntakeJob | null;

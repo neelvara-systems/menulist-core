@@ -143,6 +143,12 @@ const mobileCommunicationKit = read('src/components/mobile/components/Communicat
   'nativeShareMessageLength',
   'whatsappMessageLength',
   "withAnalyticsSource(input.menuLink, source)",
+  "const tShare = useTranslations('MobileShare');",
+  "ariaLabel={`${copied ? t('copied') : t('copy')} ${template.title}`}",
+  "ariaLabel={tShare('shareYourOffering', { offering: template.title })}",
+  "ariaLabel={`${tShare('shareWhatsApp')}: ${template.title}`}",
+  'function ActionTile({ ariaLabel, icon, iconColor, onClick }',
+  'aria-label={ariaLabel}',
   'minHeight: 48',
 ].forEach((token) => requireToken(mobileCommunicationKit, token, 'mobile communication kit'));
 forbidToken(mobileCommunicationKit, 'window.open(', 'mobile communication kit no-opener handle acknowledgement');
@@ -181,6 +187,12 @@ const mobileShare = read('src/components/mobile/screens/MobileShareScreen.tsx');
   'generateMenuKitAsset(input, assetKey)',
   'renderPrintableAssetDownloadFiles',
   'shareBlob(asset.blob, asset.filename, label)',
+  'const generatingDownloadRef = useRef<DownloadAssetKey | null>(null);',
+  'if (generatingDownloadRef.current) return;',
+  'disabled={generatingDownload !== null}',
+  'aria-label={guide?.title || undefined}',
+  "aria-label={`${common('copy')} ${label}`}",
+  "aria-label={`${common('open')} ${label}`}",
   "getBoundedMobileOwnerStringContext('copyValue'",
   "if (error instanceof DOMException && error.name === 'AbortError') return;",
   'minHeight: compact ? 86 : 94',
@@ -216,7 +228,10 @@ forbidToken(menuKitSection, '(ts as any)?.seconds', 'Menu Kit share modal timest
   'aria-label="QR background color"',
   'background: qrColor',
   'background: qrBgColor',
+  'modalRender={labelConfirmDialog(labels.shareTitle)}',
+  'openIsolatedBrowserUrl(directUrl)',
 ].forEach((token) => requireToken(projectShareModal, token, 'Project Share QR color controls'));
+forbidToken(projectShareModal, 'window.location.assign(directUrl)', 'Project Share direct link preserves owner workflow');
 
 const exportDiagnostics = read('src/lib/export/exportDiagnostics.ts');
 [
@@ -257,6 +272,7 @@ const browserFileShare = read('src/lib/export/browserFileShare.ts');
   "BrowserFileShareResult = 'shared' | 'unsupported' | 'cancelled'",
   'navigator.canShare',
   "error.name === 'AbortError'",
+  "error.name === 'NotAllowedError'",
   'throw error',
 ].forEach((token) => requireToken(browserFileShare, token, 'browser file-share boundary'));
 [

@@ -206,6 +206,7 @@ export default function MobileQrCodeSheet({
 
     return (
         <Popup
+            aria-label={title}
             bodyStyle={{ maxHeight: '94vh', overflow: 'hidden', padding: 0 }}
             onMaskClick={onClose}
             position="bottom"

@@ -249,12 +249,33 @@ function verifyMobileSettings(mobileWorkingHours, mobileHours, mobileTimeSlots, 
     'const activeScopeRef = useRef(scopeKey);',
     'const componentActiveRef = useRef(true);',
   ].forEach((token) => assertIncludes(mobileWorkingHours, token, 'Mobile full working-hours save boundary'));
+  [
+    "aria-label={`${t('setSameHoursAllDays')}: ${t('selectOpeningTime')}`}",
+    "aria-label={`${t('setSameHoursAllDays')}: ${t('selectClosingTime')}`}",
+    "aria-label={`${localizedDayLabel || label}: ${t('selectOpeningTime')}`}",
+    "aria-label={`${localizedDayLabel || label}: ${t('selectClosingTime')}`}",
+  ].forEach((token) => assertIncludes(mobileWorkingHours, token, 'Mobile working-hours accessible time input boundary'));
   assertOrder(
     mobileWorkingHours,
     ['assertStoreUpdateSucceeded(', "Toast.show({ content: t('hoursSaved'), duration: 1000 });"],
     'Mobile full working-hours acknowledgement order',
   );
   assertNotIncludes(mobileWorkingHours, 'updateStore({ ...storeDetails', 'Mobile full working-hours save must not overwrite unrelated store truth');
+  assertIncludes(
+    mobileWorkingHours,
+    'const isDirty = DAYS.some(',
+    'Mobile full working-hours dirty state must compare published day truth',
+  );
+  assertIncludes(
+    mobileWorkingHours,
+    'serializeDay(schedule[key]) !== serializeDay(originalSchedule[key])',
+    'Mobile full working-hours dirty state must ignore hidden times on closed days',
+  );
+  assertNotIncludes(
+    mobileWorkingHours,
+    'JSON.stringify(schedule) !== JSON.stringify(originalSchedule)',
+    'Mobile full working-hours dirty state must not compare irrelevant closed-day editor values',
+  );
 
   [
     'const previousHours = { ...(storeDetails.workingHours || {}) };',
@@ -276,6 +297,9 @@ function verifyMobileSettings(mobileWorkingHours, mobileHours, mobileTimeSlots, 
     'storeDetails?.specialHours,',
     'todaySpecialHours?.hours ?? storeDetails?.workingHours?.[todayKey]',
     'isValidClockRange(todayOpenTime, todayCloseTime)',
+    "aria-label={todaySpecialHours ? 'Edit Today’s Special Hours' : `Edit Regular ${todayLabel} Hours`}",
+    'aria-label={`${todayLabel} opening time`}',
+    'aria-label={`${todayLabel} closing time`}',
     'function MobileHoursScreenContent(',
     '<MobileHoursScreenContent key={scopeKey}',
     'const hoursActionInFlightRef = useRef(false);',
@@ -376,6 +400,12 @@ function verifySpecialHoursOwnerSettings(
     'const isPast = dateKey < todayKey;',
     '{!isPast ? (',
   ].forEach((token) => assertIncludes(mobileSpecialHours, token, 'Mobile special-hours owner boundary'));
+  [
+    'aria-label="Special date"',
+    'aria-label="Occasion (optional)"',
+    'aria-label="Special hours opening time"',
+    'aria-label="Special hours closing time"',
+  ].forEach((token) => assertIncludes(mobileSpecialHours, token, 'Mobile special-hours accessible input boundary'));
   assertIncludes(
     mobileWorkingHours,
     '<MobileSpecialHoursManager />',

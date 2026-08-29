@@ -80,13 +80,13 @@ export default async function AnswerlatticeResourceArticlePage({ articlePath }: 
                             </AnswerlatticeLink>
                             <AnswerlatticeLink
                                 basePath={basePath}
-                                href="/get-started"
+                                href="/early-access"
                                 data-answerlattice-event="resource_article_get_started_clicked"
                                 data-answerlattice-category={article.cluster}
                                 data-answerlattice-label={article.title}
                                 className="al-page-hero__button al-page-hero__button--secondary"
                             >
-                                Create workspace
+                                Request early access
                             </AnswerlatticeLink>
                         </div>
                     </div>

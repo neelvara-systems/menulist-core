@@ -113,9 +113,11 @@ Both share: Cache (localStorage) · Firebase listener on public-safe `screen_{st
 - `updateScreenSettings()` — Toggle owner override
 - `addPinnedSlide()` / `removePinnedSlide()` — Owner upload management (max 3)
 - `bumpScreenContentVersion()` — Invalidation trigger
-- `uploadScreenSlide()` — immutable Firebase Storage variant-ledger upload + transactional `addPinnedSlide`; duplicate content reuses existing objects, and failed persistence does not delete a path another concurrent save may reference
+- `uploadScreenSlide()` — immutable Firebase Storage variant-ledger upload + transactional `addPinnedSlide`; the strict API transport removes the client `Timestamp` and sends `validUntilMs`. A failed add is reconciled through one authoritative owner-state read: an already-committed slide returns success, confirmed absence permits cleanup, and an ambiguous read retains media. Successful slide removal commits state first and then cleans the referenced object.
 - Settings, caption update, and slide delete mutations return a typed digital-screen acknowledgement. Desktop and mobile callers must require `assertDigitalScreenMutationSucceeded()` before local screen state, pinned-slide state, or success copy changes. Slide uploads also require `assertDigitalScreenSlideUploadSucceeded()` after the outer `apiCallComposer()` result so storage/add-slide failures cannot resolve to success through fallback values.
 - Initialization, settings, add/remove/caption, and owner content-version mutations use Firestore transactions. Canonical screen state and the public-safe listener mirror commit together, concurrent updates retry from current state, exact no-op retries avoid version bumps, and a missing caption target is rejected.
+- Every owner read/mutation carries the active store ID. `/api/digital-screens` accepts only an exact positive store identifier, proves it is the login store or an authenticated mapped location, re-checks the target store's tenant and current Digital Screens permission, and keys rate limiting to that selected store. The server never accepts a client tenant identifier.
+- Highlights converts every optional slide expiry to bounded millisecond values before passing `initialData` from the Server Component to the client. Firestore `Timestamp` instances never cross the React Server Component boundary; the offline cache uses the same serializable value and still rejects expired or out-of-range entries.
 
 ### Settings UI (`src/components/.../DigitalScreenSettings/` — 4 files)
 

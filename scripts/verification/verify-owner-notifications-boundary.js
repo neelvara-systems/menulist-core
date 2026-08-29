@@ -787,6 +787,8 @@ function verifyMonitor(monitor, responseHelper) {
     'Cost-bounded monitor',
     'Current persisted platform authorization and one bounded recent-event window drive rows and counts.',
     'Read cost:',
+    'aria-label="Filter owner notifications by product"',
+    'aria-label="Filter owner notifications by status"',
   ].forEach((token) => assertIncludes(monitor, token, 'Owner notification monitor UI'));
 
   [

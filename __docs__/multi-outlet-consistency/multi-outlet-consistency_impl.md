@@ -1193,6 +1193,17 @@ export async function logMultiOutletEvent(
 
 ## 9. UI Implementation
 
+Mobile location rows are passive store summaries. Store switching uses a named
+44px `View {store}` button kept separate from the Rename and Deactivate
+buttons, so a location row is never exposed as an interactive parent that
+contains other interactive controls.
+The Add Outlet, Rename outlet URL, and Outlet Rules sheets expose programmatic
+dialog names. Their outlet-name and rename name/URL fields also carry the same
+programmatic names as their visible labels rather than relying on placeholders.
+The shared mobile static confirmation wrapper also applies the visible title as
+the dialog's accessible name, including the destructive Deactivate outlet
+confirmation used by this screen.
+
 ### 9.1 Inheritance Badges Component
 
 **File:** `src/components/atoms/InheritanceBadge/index.tsx`

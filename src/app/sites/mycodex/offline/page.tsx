@@ -30,7 +30,7 @@ export default function MyCodexOfflinePage() {
                     Reconnect to open the latest private documentation.
                 </p>
                 <a
-                    href="/"
+                    href="/__mycodex/operations"
                     className="mt-8 inline-flex min-h-12 w-full items-center justify-center rounded-xl bg-sky-600 px-4 text-sm font-bold text-white transition hover:bg-sky-500 active:scale-[0.99]"
                 >
                     Try again

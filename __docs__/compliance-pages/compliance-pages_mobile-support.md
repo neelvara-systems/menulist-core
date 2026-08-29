@@ -1,7 +1,7 @@
 # Compliance Pages — Mobile Support Assessment
 
-**Version:** 1.5
-**Date:** August 15, 2026
+**Version:** 1.6
+**Date:** August 28, 2026
 **Local Source Gate:** `npm run verify:compliance-pages-boundary`
 
 > **Launch boundary:** Not current launch certification or deploy approval. This assessment is source-gated mobile owner-editor and public-page parity evidence only. Current release approval still requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md), `npm run verify:production-readiness-local`, `npm run verify:compliance-pages-boundary`, browser custom-domain smoke for `/privacy`, `/terms`, and `/refund`, authenticated desktop/mobile owner save/reset QA, owner/legal review of final generated or custom policy text, DNS/custom-domain verification, applicable target Firebase/Vercel deploy evidence, and production-host smoke.
@@ -37,7 +37,13 @@ The compliance pages themselves are SSR HTML and render correctly on mobile brow
 ### Owner Dashboard (editing)
 `src/components/mobile/components/MobileCompliancePagesEditor.tsx` is embedded from `MobileOfficialPageScreen` for Privacy Policy, Terms & Conditions, and Refund & Cancellation Policy review/edit/reset cards. It uses the existing guarded `/api/compliance` route and does not introduce a mobile-only data path.
 
-Each icon-only editor trigger exposes the exact policy page name. The editor trigger and public-page action retain at least 44px touch height. The expandable MenuList baseline card is keyboard-focusable, reports its expanded state, and supports Enter and Space in addition to touch activation.
+Each icon-only editor trigger exposes the exact policy page name. The full-height
+Privacy, Terms, and Refund sheet also forwards that visible policy title to the
+underlying dialog, so browser and assistive-technology users can distinguish
+the three editors. The editor trigger and public-page action retain at least
+44px touch height. The expandable MenuList baseline card is keyboard-focusable,
+reports its expanded state, and supports Enter and Space in addition to touch
+activation.
 
 Failure boundary:
 
@@ -58,4 +64,4 @@ Failure boundary:
 
 Keep limited mobile support. The SSR public pages remain responsive, and the owner mobile UI is limited to the existing Official Page compliance cards backed by `/api/compliance`. Do not add a separate compliance mobile screen or mobile-specific DAL.
 
-`npm run verify:compliance-pages-boundary` checks that the mobile editor stays on the shared `/api/compliance` path, uses the authenticated browser request policy, caps response parsing, requires save/reset acknowledgement fields, exposes named keyboard-operable policy controls, uses safe preview handoff flags, and logs only bounded diagnostics.
+`npm run verify:compliance-pages-boundary` checks that the mobile editor stays on the shared `/api/compliance` path, uses the authenticated browser request policy, caps response parsing, requires save/reset acknowledgement fields, exposes named keyboard-operable policy controls and a dialog named from the exact policy title, uses safe preview handoff flags, and logs only bounded diagnostics.

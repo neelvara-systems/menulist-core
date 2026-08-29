@@ -6,7 +6,7 @@ export const ANSWERLATTICE_RESOURCE_GROUPS: AnswerlatticeResourceGroup[] = [
         description: 'Start with proof, pricing, and common buying questions.',
         items: [
             { label: 'See the demo', href: '/demo', description: 'Watch how in-app support changes by product page.', eventName: 'resource_demo_clicked' },
-            { label: 'Pricing', href: '/pricing', description: 'See the current Launch, Growth, and Studio packaging.', eventName: 'resource_pricing_clicked' },
+            { label: 'Pricing', href: '/pricing', description: 'See the planned public-launch Launch, Growth, and Studio packaging.', eventName: 'resource_pricing_clicked' },
             { label: 'ROI calculator', href: '/roi-calculator', description: 'Estimate repeated-question time saved and plan fit.', eventName: 'resource_roi_clicked' },
             { label: 'Proof pack', href: '/proof', description: 'Review example workloads for launch, release, and studio use.', eventName: 'resource_proof_clicked' },
             { label: 'FAQ', href: '/faq', description: 'Answers for setup, knowledge intake, widget context, screenshots, fallback, pricing, and data handling.', eventName: 'resource_faq_clicked' },
@@ -52,7 +52,7 @@ export const ANSWERLATTICE_RESOURCE_GROUPS: AnswerlatticeResourceGroup[] = [
         description: 'Follow updates or move into setup when the product is ready.',
         items: [
             { label: 'Updates', href: '/updates', description: 'Read recent AnswerLattice product and website changes.', eventName: 'resource_updates_clicked' },
-            { label: 'Get started', href: '/get-started', description: 'Create a workspace and begin the guided support setup.', eventName: 'resource_get_started_clicked' },
+            { label: 'Request early access', href: '/early-access', description: 'Share your product and first support problem for a controlled-access review.', eventName: 'resource_early_access_clicked' },
             { label: 'Contact', href: '/contact', description: 'Ask for setup help or partnership details.', eventName: 'resource_contact_clicked' },
         ],
     },
@@ -62,5 +62,5 @@ export const ANSWERLATTICE_RESOURCE_PATH_DETAILS = [
     'Begin with buyer proof and plan checks before moving into setup.',
     'Use fit and comparison pages to confirm the support problem matches AnswerLattice.',
     'Prepare source inputs, install boundaries, and runtime checks before implementation.',
-    'Move into workspace setup or contact once the rollout decision is clear.',
+    'Request early access or contact the team once the rollout decision is clear.',
 ] as const;

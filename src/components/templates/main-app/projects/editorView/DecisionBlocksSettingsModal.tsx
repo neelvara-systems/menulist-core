@@ -189,6 +189,7 @@ const DecisionBlocksSettingsModal = ({
                         </Flex>
                     </Flex>
                     <Switch
+                        aria-label={`Show ${blockLabels.title}`}
                         checked={enabled}
                         onChange={setEnabled}
                         checkedChildren="Show"
@@ -207,6 +208,7 @@ const DecisionBlocksSettingsModal = ({
                             </Tooltip>
                         </Flex>
                         <Select
+                            aria-label={`Select item for ${blockLabels.title}`}
                             allowClear
                             showSearch
                             placeholder="MenuList chooses automatically"
@@ -250,14 +252,20 @@ const DecisionBlocksSettingsModal = ({
             onCancel={onClose}
             afterOpenChange={(visible) => visible && handleOpen()}
             width={520}
-            footer={
+            styles={{
+                body: {
+                    maxHeight: 'calc(100vh - 260px)',
+                    overflowY: 'auto',
+                },
+            }}
+            footer={(_, { CancelBtn }) => (
                 <Flex justify="space-between">
-                    <Button onClick={onClose}>Cancel</Button>
+                    <CancelBtn />
                     <Button type="primary" onClick={handleApply} disabled={!hasChanges}>
                         Save Changes
                     </Button>
                 </Flex>
-            }
+            )}
         >
             <Flex vertical gap={16} style={{ marginTop: 16 }}>
                 {/* Info Alert */}

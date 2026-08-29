@@ -234,7 +234,7 @@ const DIFFERENCE_CARDS = [
 ];
 
 const SIGNUP_STEPS = [
-    'Create workspace',
+    'Request early access',
     'Add product details',
     'Add starter knowledge',
     'Map product pages',
@@ -652,10 +652,10 @@ function DifferenceAndSignupSections({ basePath }: { basePath: string }) {
                     <div className="mt-8 flex justify-center">
                         <AnswerlatticeLink
                             basePath={basePath}
-                            href="/get-started"
+                            href="/early-access"
                             className="al-page-hero__button al-page-hero__button--primary"
                         >
-                            Create workspace
+                            Request early access
                         </AnswerlatticeLink>
                     </div>
                 </div>
@@ -678,12 +678,12 @@ function FinalCta({ basePath }: { basePath: string }) {
                 <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
                     <AnswerlatticeLink
                         basePath={basePath}
-                        href="/get-started"
+                        href="/early-access"
                         data-answerlattice-event="product_final_cta_clicked"
                         data-answerlattice-label="create_workspace"
                         className="al-page-hero__button al-page-hero__button--primary"
                     >
-                        Create workspace
+                        Request early access
                     </AnswerlatticeLink>
                     <AnswerlatticeLink
                         basePath={basePath}
@@ -716,8 +716,8 @@ export default async function AnswerlatticeProductPage() {
                     align="left"
                     actions={[
                         {
-                            label: 'Create workspace',
-                            href: '/get-started',
+                            label: 'Request early access',
+                            href: '/early-access',
                             variant: 'primary',
                             event: 'product_hero_cta_clicked',
                             eventLabel: 'create_workspace',

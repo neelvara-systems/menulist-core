@@ -49,16 +49,16 @@ Neelvara uses a blue-rooted institutional palette expressed through the Prism gl
 
 Approved palette:
 
-| Role | Token | Hex | Use |
-| --- | --- | --- | --- |
-| Primary ink | Neelvara Navy | `#071323` | Wordmark text, headings, legal/docs presence |
-| Primary blue | Neel Blue | `#1457D9` | CTAs, links, key identity moments |
-| Gradient blue | Clear Blue | `#2384FF` | Logo-adjacent highlights and restrained accents |
-| Bridge color | Royal Indigo | `#2737C8` | Structured accents |
-| Accent violet | Controlled Violet | `#6542E8` | Rare accent use only |
-| Background | Ice White | `#F7F9FC` | Website background and decks |
-| Soft surface | Pale Blue Grey | `#EEF3FA` | Cards, panels, subtle dividers |
-| Secondary text | Slate | `#5D6678` | Body text and captions |
+| Role           | Token             | Hex       | Use                                             |
+| -------------- | ----------------- | --------- | ----------------------------------------------- |
+| Primary ink    | Neelvara Navy     | `#071323` | Wordmark text, headings, legal/docs presence    |
+| Primary blue   | Neel Blue         | `#1457D9` | CTAs, links, key identity moments               |
+| Gradient blue  | Clear Blue        | `#2384FF` | Logo-adjacent highlights and restrained accents |
+| Bridge color   | Royal Indigo      | `#2737C8` | Structured accents                              |
+| Accent violet  | Controlled Violet | `#6542E8` | Rare accent use only                            |
+| Background     | Ice White         | `#F7F9FC` | Website background and decks                    |
+| Soft surface   | Pale Blue Grey    | `#EEF3FA` | Cards, panels, subtle dividers                  |
+| Secondary text | Slate             | `#5D6678` | Body text and captions                          |
 
 Usage ratio:
 
@@ -72,7 +72,7 @@ Layout language:
 - fixed restrained mesh plus subtle grain behind the page
 - glass panels with consistent stroke, blur, and inset highlight
 - Akshar typography across display headlines, compact labels, and concise body copy, with Inter retained only as fallback
-- home page uses a brand-first split hero with an unframed source logo visual, compact company ledger, editorial operating rows, relationship statement, high-contrast product lineup, compact contact routing, and footer
+- home page uses a centered company-statement hero over a restrained live information field, followed by editorial operating rows, high-contrast product lineup, compact contact routing, and footer
 - secondary pages use one clear editorial hero; repeated right-side reference-summary cards are not used
 - `/trust` uses one maintained reference-status ledger followed by company, product-boundary, website-data, contact, and verification-note rows
 - legal, privacy, and terms sections use unframed document rows that collapse to one readable column on mobile
@@ -133,12 +133,10 @@ Purpose: establish entity identity, explain why the company exists, show the ope
 
 Required flow:
 
-1. Brand-first split hero: `Neelvara Systems` is the H1, followed by `The trusted information layer between businesses and customers.`, the supporting operating copy, `View Products`, `Email Neelvara`, and an unframed source-logo visual.
-2. Entity ledger: company, operated products, and country.
-3. Operating approach: an asymmetric editorial layout with three unframed rows for company reference, independent product surfaces, and direct inquiry routing.
-4. Company relationship statement using the canonical relationship sentence.
-5. Current products: two linked product cards with the actual MenuList and Answerlattice marks.
-6. Contact routes: business, legal, and privacy inbox rows.
+1. Centered company hero: `Neelvara Systems` is the H1, followed by `The trusted information layer between businesses and customers.`, the supporting operating copy, `View Products`, and `About Neelvara` over the live information field.
+2. Operating approach: an asymmetric editorial layout with three unframed rows for company reference, independent product surfaces, and direct inquiry routing.
+3. Current products: two linked product cards with the actual MenuList and Answerlattice marks.
+4. Contact routes: business, legal, and privacy inbox rows.
 
 The current-products introduction must state the architecture plainly: `MenuList keeps public business information official. Answerlattice keeps customer answers grounded in approved knowledge. Each product has its own website, policies, and support route.`
 
@@ -335,3 +333,12 @@ Rejected:
 - lead-generation forms, demo funnels, testimonial walls, pricing content, and growth-site conversion density
 - generic SaaS feature grids, fake dashboard scenes, and unsupported scale claims
 - copying another company website's visual identity or content structure literally
+
+---
+
+## 14. Cross-Page Presentation Contract
+
+- The site reads as one continuous light company canvas rather than a sequence of unrelated background bands.
+- Each major information group receives one consistent outer plane. Related rows inside it use spacing and a soft divider rather than a second card container.
+- The hierarchy is fixed: `24px` desktop / `20px` mobile for major planes, `18px` for genuine nested product cards, and pill geometry for actions.
+- Home, Products, Contact, About, Trust, Legal, Privacy, and Terms all inherit this presentation contract while keeping their existing information architecture and public wording.

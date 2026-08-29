@@ -57,6 +57,11 @@ Mobile covers the owner output actions that previously required desktop:
 - setup, printing, and sharing guide sheets
 - project switching for multi-project stores
 
+Each resource guide sheet must expose its visible Setup Guide, Printing Guide,
+or Sharing Guide title as the Popup's accessible dialog name. The shared source
+gate rejects an unnamed guide sheet; guide content, close behavior, and
+browser-local cost remain unchanged.
+
 Desktop and mobile are now parity for practical owner distribution actions. Desktop may still present some actions with a wider layout or modal preview, but owners should not need a laptop to deploy links, QRs, screen URLs, print files, exports, POS setup details, or staff guides.
 
 ## Branded Output Parity

@@ -200,8 +200,9 @@ export default function MobileSpecialHoursManager() {
                         Add a holiday or one-day change. Regular weekly hours stay unchanged.
                     </Text>
                 </Flex>
-                <Input min={todayKey} onChange={setDate} type="date" value={date} />
+                <Input aria-label="Special date" min={todayKey} onChange={setDate} type="date" value={date} />
                 <Input
+                    aria-label="Occasion (optional)"
                     maxLength={SPECIAL_HOURS_LABEL_MAX_LENGTH}
                     onChange={setLabel}
                     placeholder="Occasion (optional)"
@@ -218,8 +219,8 @@ export default function MobileSpecialHoursManager() {
                 />
                 {mode === 'open' ? (
                     <Flex gap={8}>
-                        <Input onChange={setStart} type="time" value={start} />
-                        <Input onChange={setEnd} type="time" value={end} />
+                        <Input aria-label="Special hours opening time" onChange={setStart} type="time" value={start} />
+                        <Input aria-label="Special hours closing time" onChange={setEnd} type="time" value={end} />
                     </Flex>
                 ) : null}
                 <Flex gap={8}>
@@ -257,7 +258,7 @@ export default function MobileSpecialHoursManager() {
                             <Flex gap={4} style={{ flexShrink: 0 }}>
                                 {!isPast ? (
                                     <Button
-                                        ariaLabel="Edit special hours"
+                                        aria-label="Edit special hours"
                                         disabled={saving}
                                         fill="none"
                                         icon={<LuPencil />}
@@ -266,7 +267,7 @@ export default function MobileSpecialHoursManager() {
                                     />
                                 ) : null}
                                 <Button
-                                    ariaLabel="Remove special date"
+                                    aria-label="Remove special date"
                                     color="danger"
                                     disabled={saving}
                                     fill="none"

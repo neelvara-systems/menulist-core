@@ -1,11 +1,16 @@
 'use client';
 
 import React, { useState, useEffect, useMemo, useRef, useCallback, type CSSProperties, type ReactNode } from 'react';
+import { signOut } from 'next-auth/react';
 import ReactMarkdown, { type Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { FEATURE_FLAGS } from '@config/features';
+import { useAppDispatch } from '@hook/useAppDispatch';
+import { useAppSelector } from '@hook/useAppSelector';
+import { projectPersistedThemeBoolean } from '@lib/antd/themeBoundary';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
+import { getDarkModeState, toggleDarkMode } from '@reduxSlices/clientThemeConfig';
 import MyCodexLogoMark from './MyCodexLogoMark';
 import { 
     LuMenu, 
@@ -41,6 +46,7 @@ import {
     LuPlay,
     LuPause,
     LuSquare
+    ,LuShieldCheck
 } from 'react-icons/lu';
 
 interface DocNode {
@@ -110,7 +116,7 @@ interface MyCodexClientContainerProps {
     currentMarkdown: string;
     currentSlug: string[];
     headings: Heading[];
-    isLocalDev: boolean;
+    basePath: string;
     sourceFilePath: string | null;
     viewMode?: 'document' | 'favorites' | 'queue';
 }
@@ -614,19 +620,20 @@ const isReaderWidth = (value: string | null): value is ReaderWidth => (
 const IS_AUDIO_READER_ENABLED = FEATURE_FLAGS.ENABLE_MYCODEX_AUDIO_READER;
 
 export default function MyCodexClientContainer({
+    basePath,
     docsTree,
     currentMarkdown,
     currentSlug,
     headings,
-    isLocalDev,
     sourceFilePath,
     viewMode = 'document',
 }: MyCodexClientContainerProps) {
+    const dispatch = useAppDispatch();
+    const isDark = projectPersistedThemeBoolean(useAppSelector(getDarkModeState));
     const [searchQuery, setSearchQuery] = useState('');
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [expandedFolders, setExpandedFolders] = useState<Record<string, boolean>>({});
     const [showScrollTop, setShowScrollTop] = useState(false);
-    const [isDark, setIsDark] = useState<boolean | null>(null);
     const [readerFontSize, setReaderFontSize] = useState(DEFAULT_READER_FONT_SIZE);
     const [readerWidth, setReaderWidth] = useState<ReaderWidth>('standard');
     const [sidebarPinned, setSidebarPinned] = useState(true);
@@ -706,12 +713,9 @@ export default function MyCodexClientContainer({
         }, SETTINGS_DRAWER_TRANSITION_MS);
     }, [clearSettingsAnimationHandles]);
 
-    // Read theme from localStorage / system pref on mount
+    // Hydrate reader-only preferences. Theme is shared through Redux so every
+    // MyCodex surface and embedded operational screen uses one source of truth.
     useEffect(() => {
-        const stored = getLocalStorageValue('theme');
-        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-        setIsDark(stored ? stored === 'dark' : prefersDark);
-
         const storedFontSizeValue = getLocalStorageValue(READER_FONT_SIZE_STORAGE_KEY);
         const storedFontSize = storedFontSizeValue === null ? Number.NaN : Number(storedFontSizeValue);
         if (Number.isFinite(storedFontSize)) {
@@ -802,20 +806,14 @@ export default function MyCodexClientContainer({
         setReaderSettingsHydrated(true);
     }, []);
 
-    // Apply dark class to <html> and persist
+    // Keep Tailwind's root class and the legacy pre-paint key synchronized with
+    // the persisted application theme used by Ant Design operational screens.
     useEffect(() => {
-        if (isDark === null || !readerSettingsHydrated) return;
-        const root = document.documentElement;
-        if (isDark) {
-            root.classList.add('dark');
-            setLocalStorageValue('theme', 'dark');
-        } else {
-            root.classList.remove('dark');
-            setLocalStorageValue('theme', 'light');
-        }
-    }, [isDark, readerSettingsHydrated]);
+        document.documentElement.classList.toggle('dark', isDark);
+        setLocalStorageValue('theme', isDark ? 'dark' : 'light');
+    }, [isDark]);
 
-    const toggleTheme = () => setIsDark((prev) => !prev);
+    const toggleTheme = () => dispatch(toggleDarkMode(!isDark));
 
     useEffect(() => {
         if (!readerSettingsHydrated) return;
@@ -1117,8 +1115,8 @@ export default function MyCodexClientContainer({
                 cleanPath = '/';
             }
         }
-        return isLocalDev ? `/__mycodex${cleanPath === '/' ? '' : cleanPath}` : cleanPath;
-    }, [isLocalDev]);
+        return basePath ? `${basePath}${cleanPath === '/' ? '' : cleanPath}` : cleanPath;
+    }, [basePath]);
 
     const documentEntries = useMemo(() => {
         const entries: ReaderDocEntry[] = [{
@@ -3098,12 +3096,10 @@ export default function MyCodexClientContainer({
                                         <LuRotateCcw className="h-4 w-4" />
                                         <span>Reset text</span>
                                     </button>
-                                    {isDark !== null && (
-                                        <button type="button" onClick={toggleTheme} className={documentActionButtonClass}>
-                                            {isDark ? <LuSun className="h-4 w-4" /> : <LuMoon className="h-4 w-4" />}
-                                            <span>{isDark ? 'Light mode' : 'Dark mode'}</span>
-                                        </button>
-                                    )}
+                                    <button type="button" onClick={toggleTheme} className={documentActionButtonClass}>
+                                        {isDark ? <LuSun className="h-4 w-4" /> : <LuMoon className="h-4 w-4" />}
+                                        <span>{isDark ? 'Light mode' : 'Dark mode'}</span>
+                                    </button>
                                 </div>
 
                                 <div className="hidden grid-cols-2 gap-2 lg:grid">
@@ -3266,15 +3262,21 @@ export default function MyCodexClientContainer({
                                     <LuSearch className="h-4 w-4" />
                                     <span>Search documents</span>
                                 </button>
-                                <form method="post" action={buildUrl('/api/logout')}>
-                                    <button
-                                        type="submit"
-                                        className="flex min-h-11 w-full items-center justify-center gap-2 rounded-lg border border-zinc-200 bg-white px-3 text-sm font-semibold text-zinc-700 transition-colors hover:border-sky-300 hover:text-sky-700 active:scale-[0.98] dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-200 dark:hover:border-sky-700 dark:hover:text-sky-300"
-                                    >
-                                        <LuLogOut className="h-4 w-4" />
-                                        <span>Sign out</span>
-                                    </button>
-                                </form>
+                                <a
+                                    href={buildUrl('/operations')}
+                                    className="flex min-h-11 w-full items-center justify-center gap-2 rounded-lg border border-purple-200 bg-purple-50 px-3 text-sm font-semibold text-purple-700 transition-colors hover:border-purple-300 active:scale-[0.98] dark:border-purple-900/70 dark:bg-purple-500/10 dark:text-purple-200"
+                                >
+                                    <LuShieldCheck className="h-4 w-4" />
+                                    <span>Founder Console</span>
+                                </a>
+                                <button
+                                    type="button"
+                                    onClick={() => void signOut({ callbackUrl: '/signin' })}
+                                    className="flex min-h-11 w-full items-center justify-center gap-2 rounded-lg border border-zinc-200 bg-white px-3 text-sm font-semibold text-zinc-700 transition-colors hover:border-sky-300 hover:text-sky-700 active:scale-[0.98] dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-200 dark:hover:border-sky-700 dark:hover:text-sky-300"
+                                >
+                                    <LuLogOut className="h-4 w-4" />
+                                    <span>Sign out</span>
+                                </button>
                             </section>
 
                             {visibleFavoriteDocs.length > 0 && (

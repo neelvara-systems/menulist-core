@@ -94,6 +94,10 @@ import {
     extractUiErrorMessage,
     getSafeUiErrorMessage,
 } from '../../src/lib/errors/uiErrorMessages';
+import {
+    PROJECT_DELETE_REJECTION_CODES,
+    isProjectDeleteRejectionResponse,
+} from '../../src/lib/errors/projectDeleteErrors';
 import { findCurrentRoute } from '../../src/utils/navigation';
 import {
     ValidateEmail,
@@ -238,6 +242,25 @@ assert.equal(
     }, 'Something went wrong', { allowTrustedPlainText: true }),
     'Something went wrong',
 );
+assert.equal(
+    getSafeUiErrorMessage({
+        code: PROJECT_DELETE_REJECTION_CODES.LINKED_OUTLETS,
+        message: 'arbitrary server text must not render',
+    }, 'Something went wrong'),
+    'This menu is used by another location and cannot be deleted. Contact MenuList support if it must be removed.',
+);
+assert.equal(
+    getSafeUiErrorMessage({ code: 'untrusted_code', message: 'arbitrary server text' }, 'Something went wrong'),
+    'Something went wrong',
+);
+assert.equal(isProjectDeleteRejectionResponse({
+    code: PROJECT_DELETE_REJECTION_CODES.LINKED_OUTLETS,
+    error: 'This project is linked to one or more outlet menus',
+}), true);
+assert.equal(isProjectDeleteRejectionResponse({
+    code: 'project_delete_untrusted',
+    error: 'arbitrary',
+}), false);
 
 assert.equal(
     buildCanonicalItemUrl('HTTPS://example.menulist.online/menu', 'item / 1', ' hi '),

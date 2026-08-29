@@ -95,6 +95,7 @@ assertCheck(
 
 assertCheck(FEATURE_FLAGS.ENABLE_ITEM_PHOTO_CAPTURE_ASSIST === true, 'Item Photo Capture Assist remains enabled');
 assertCheck(imageUploadModal.includes('<ItemPhotoCaptureAssist'), 'Shared item-image modal mounts capture assistance');
+assertCheck(itemPhotoCapture.includes('aria-pressed={mode === entry.id}'), 'Item photo framing choices expose selected state');
 assertCheck(imageUploadModal.includes("prepareMediaImage(file, 'menuItem')"), 'Captured item photos reuse menuItem preparation');
 assertCheck(imageUploadModal.includes('assessItemPhotoReadiness(prepared)'), 'Captured item photos receive browser-local readiness feedback');
 assertCheck(

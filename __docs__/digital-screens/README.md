@@ -129,7 +129,7 @@ scripts/backfill-digital-screen-private-controls.ts # Guarded canonical-token to
 
 **Content management:** Owner edits menu in Projects/Editor. A saved public-output change refreshes the screen path through cache invalidation and the screen content-version listener. No separate screen content management.
 
-**Upload acknowledgement:** Custom slide uploads only show success after the DAL returns a shaped owner-upload slide. Storage or add-slide fallback values route to the existing failed-upload message.
+**Upload acknowledgement:** Custom slide uploads only show success after the DAL returns a shaped owner-upload slide. The strict request sends expiry as serializable milliseconds and carries the active store ID; the server re-validates that location against the authenticated tenant and mapped stores. If an add response is lost, one authoritative owner-state read recovers an already-committed slide, permits cleanup only after confirmed absence, and retains media when the commit remains ambiguous. Successful deletion removes canonical state before cleaning the referenced Storage object.
 
 ---
 

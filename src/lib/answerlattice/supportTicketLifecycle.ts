@@ -279,6 +279,7 @@ export const parseAnswerlatticeSupportTicketDocument = (params: {
     const escalationContext = parseAnswerlatticeEscalationContext(params.value.escalationContext);
     const platformTags = z.array(z.enum(PLATFORM_SUPPORT_TICKET_TAG_OPTIONS)).max(20)
         .safeParse(params.value.platformTags ?? []);
+    const platformNotes = params.value.platformNotes ?? '';
     const contextKeys = z.array(
         z.string().trim().min(1).max(140).regex(/^[A-Za-z0-9_.:/-]+$/),
     ).max(20).safeParse(params.value.contextKeys ?? []);
@@ -299,8 +300,8 @@ export const parseAnswerlatticeSupportTicketDocument = (params: {
         || !documents.every(isTicketDocument)
         || typeof params.value.message !== 'string'
         || params.value.message.length > 2000
-        || typeof params.value.platformNotes !== 'string'
-        || params.value.platformNotes.length > 4000
+        || typeof platformNotes !== 'string'
+        || platformNotes.length > 4000
         || !platformTags.success
         || !contextKeys.success
         || (clientDetails !== null && !clientDetails.success)
@@ -333,7 +334,7 @@ export const parseAnswerlatticeSupportTicketDocument = (params: {
         ...(escalationContext ? { escalationContext } : {}),
         ...(clientDetails?.success ? { clientDetails: clientDetails.data } : {}),
         contextKeys: contextKeys.data,
-        platformNotes: params.value.platformNotes,
+        platformNotes,
         platformTags: platformTags.data,
     } as SupportTicketType;
 };

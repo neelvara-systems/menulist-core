@@ -41,6 +41,10 @@ const registerSource = readFileSync(
 assert.ok(registerSource.includes('const pathname = usePathname();'));
 assert.ok(registerSource.includes('}, [pathname]);'));
 assert.ok(registerSource.includes('serviceWorkerReconciliationQueue'));
-assert.ok(registerSource.includes('isExactServiceWorkerRegistration(reg, absoluteTargetUrl, absoluteTargetScope)'));
+assert.ok(registerSource.includes('matchesTarget(reg, allowedTarget)'));
+assert.ok(registerSource.includes("scope: MYCODEX_OWNER_SCOPE"));
+assert.ok(registerSource.includes("scope: ANSWERLATTICE_PLATFORM_SCOPE"));
+assert.ok(registerSource.includes('return [OWNER_SW_TARGET, MYCODEX_OWNER_SW_TARGET, ANSWERLATTICE_PLATFORM_SW_TARGET]'));
+assert.ok(registerSource.includes("updateViaCache: 'none'"));
 
 console.log('Service-worker registration boundary tests passed.');

@@ -506,8 +506,9 @@ export default function MobileResellerOnboardingScreen({ onBack }: { onBack: () 
                     <Card title="Business details">
                         <Flex gap={10} vertical>
                             <Input onChange={(value) => updateDraft('businessName', value)} placeholder="Business name" value={draft.businessName} />
-                            <Select onChange={(value: string) => updateDraft('businessType', value)} options={businessTypeOptions} placeholder="Business type" value={draft.businessType} />
+                            <Select aria-label="Business type" onChange={(value: string) => updateDraft('businessType', value)} options={businessTypeOptions} placeholder="Business type" value={draft.businessType} />
                             <Select
+                                aria-label="Country code"
                                 onChange={(value: string) => {
                                     updateDraft('ownerCountryCode', value);
                                     updateDraft('ownerDialCode', getDialCodeForCountry(value));
@@ -528,7 +529,7 @@ export default function MobileResellerOnboardingScreen({ onBack }: { onBack: () 
                             <Input onChange={(value) => updateDraft('billingAddressLine1', value)} placeholder="Billing address" value={draft.billingAddressLine1} />
                             <Input onChange={(value) => updateDraft('billingAddressLine2', value)} placeholder="Address line 2 (optional)" value={draft.billingAddressLine2} />
                             <Input onChange={(value) => updateDraft('billingCity', value)} placeholder="City" value={draft.billingCity} />
-                            <Select onChange={(value: string) => updateDraft('billingIndianStateCode', value)} options={INDIAN_GST_STATES.map((state) => ({ label: state.name, value: state.code }))} placeholder="Billing state" value={draft.billingIndianStateCode} />
+                            <Select aria-label="Billing state" onChange={(value: string) => updateDraft('billingIndianStateCode', value)} options={INDIAN_GST_STATES.map((state) => ({ label: state.name, value: state.code }))} placeholder="Billing state" value={draft.billingIndianStateCode} />
                             <Input onChange={(value) => updateDraft('billingPostalCode', value)} placeholder="Postal code" value={draft.billingPostalCode} />
                             <Input onChange={(value) => updateDraft('billingGstin', value.toUpperCase())} placeholder="GSTIN (optional)" value={draft.billingGstin} />
                         </Flex>
@@ -541,6 +542,7 @@ export default function MobileResellerOnboardingScreen({ onBack }: { onBack: () 
                             <Flex gap={10} vertical>
                                 {tiers.map((tier) => (
                                     <Card
+                                        aria-pressed={draft.pricingTier === tier.id}
                                         key={tier.id}
                                         onClick={() => updateDraft('pricingTier', tier.id)}
                                         style={{
@@ -567,6 +569,7 @@ export default function MobileResellerOnboardingScreen({ onBack }: { onBack: () 
                         <Card title="Locations included">
                             <Flex gap={8} vertical>
                                 <Input
+                                    aria-label="Locations included"
                                     inputMode="numeric"
                                     onChange={(value) => updateDraft('locationCount', value.replace(/[^0-9]/g, ''))}
                                     placeholder="1"
@@ -580,7 +583,7 @@ export default function MobileResellerOnboardingScreen({ onBack }: { onBack: () 
                         <Card title="Billing interval">
                             <Flex gap={10}>
                                 {(['MONTH', 'YEAR'] as BillingInterval[]).map((interval) => (
-                                    <Button key={interval} block fill={draft.billingInterval === interval ? 'solid' : 'outline'} onClick={() => updateDraft('billingInterval', interval)} style={{ minHeight: 44 }}>
+                                    <Button aria-pressed={draft.billingInterval === interval} key={interval} block fill={draft.billingInterval === interval ? 'solid' : 'outline'} onClick={() => updateDraft('billingInterval', interval)} style={{ minHeight: 44 }}>
                                         {interval === 'MONTH' ? 'Monthly' : 'Yearly'}
                                     </Button>
                                 ))}
@@ -588,11 +591,11 @@ export default function MobileResellerOnboardingScreen({ onBack }: { onBack: () 
                         </Card>
                         <Card title="Commitment period">
                             <Flex gap={10} wrap="wrap">
-                                <Button fill={!draft.commitmentMonths ? 'solid' : 'outline'} onClick={() => updateDraft('commitmentMonths', '')} style={{ minHeight: 44 }}>
+                                <Button aria-pressed={!draft.commitmentMonths} fill={!draft.commitmentMonths ? 'solid' : 'outline'} onClick={() => updateDraft('commitmentMonths', '')} style={{ minHeight: 44 }}>
                                     Optional
                                 </Button>
                                 {RESELLER_COMMITMENT_OPTIONS.map((months) => (
-                                    <Button key={months} fill={draft.commitmentMonths === String(months) ? 'solid' : 'outline'} onClick={() => updateDraft('commitmentMonths', String(months))} style={{ minHeight: 44 }}>
+                                    <Button aria-pressed={draft.commitmentMonths === String(months)} key={months} fill={draft.commitmentMonths === String(months) ? 'solid' : 'outline'} onClick={() => updateDraft('commitmentMonths', String(months))} style={{ minHeight: 44 }}>
                                         {months} months
                                     </Button>
                                 ))}

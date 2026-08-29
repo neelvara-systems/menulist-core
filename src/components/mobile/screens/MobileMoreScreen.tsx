@@ -229,10 +229,9 @@ export type MoreSubScreen =
     | 'todayHistory'
     | 'customerApp'
     | 'presenceMonitor'
-    | 'answerlatticeHelp'
-    | 'answerlatticeDocs'
-    | 'answerlatticeSupport'
-    | 'answerlatticeReleaseNotes'
+    | 'menuListHelp'
+    | 'menuListDocs'
+    | 'menuListContact'
     | 'platformHub'
     | 'answerlatticeHub'
     | 'resellerHub'
@@ -537,7 +536,7 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
         if (['domainSettings', 'businessCopySetup', 'seoSettings', 'integrations', 'presenceMonitor'].includes(currentScreen)) {
             return 'searchDiscoveryHub';
         }
-        if (['answerlatticeHelp', 'answerlatticeDocs', 'answerlatticeSupport', 'answerlatticeReleaseNotes'].includes(currentScreen)) {
+        if (['menuListHelp', 'menuListDocs', 'menuListContact'].includes(currentScreen)) {
             return 'main';
         }
         if (answerlatticeInternalScreens.includes(currentScreen as MobilePlatformInternalScreenKey)) {
@@ -725,6 +724,7 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
         if (screen === 'businessHealth') return canViewAnalytics && FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_HEALTH;
         if (screen === 'aiMenuManager') return canManageMenu && FEATURE_FLAGS.ENABLE_AI_MENU_MANAGER && FEATURE_FLAGS.ENABLE_AI_MENU_MANAGER_MOBILE;
         if (screen === 'printAssets') return canManageDailyActions && (FEATURE_FLAGS.ENABLE_PRINTABLE_ASSET_TEMPLATES || FEATURE_FLAGS.ENABLE_PRINT_ASSETS_ROUTE);
+        if (screen === 'printMenu') return canManageDailyActions && FEATURE_FLAGS.ENABLE_MENU_CARD_EXPORT;
         if (screen === 'analyticsSettings') return canManageStore;
         if (screen === 'feedback' || screen === 'feedbackSettings') return canManageFeedback;
         if (screen === 'designEditor') return canManageMenuDesign;
@@ -737,7 +737,7 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
         if (screen === 'assetTemplates') return isPlatformAdmin && FEATURE_FLAGS.ENABLE_PLATFORM_ASSET_TEMPLATE_MANAGER;
         if (screen === 'answerlatticeIntake') return isPlatformAdmin && FEATURE_FLAGS.ENABLE_ANSWERLATTICE_INTAKE_PLATFORM_MONITOR;
         if (isPlatformAdmin && (isPlatformInternalScreen(screen) || ['platformHub', 'opsControlRoom', 'extractionMonitor', 'schedulerMonitor'].includes(screen))) return true;
-        if (['answerlatticeHelp', 'answerlatticeDocs', 'answerlatticeSupport', 'answerlatticeReleaseNotes'].includes(screen)) return true;
+        if (['menuListHelp', 'menuListDocs', 'menuListContact'].includes(screen)) return true;
         return false;
     }, [
         canAccessBilling,
@@ -790,12 +790,12 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
     ];
 
     const accountAdminItems = [
-        ...pickItems(businessIdentityItems, ['users', 'roles', 'locations', 'locale', 'timeSlots']),
+        ...pickItems(businessIdentityItems, ['notificationSettings', 'users', 'roles', 'locations', 'locale', 'timeSlots']),
         ...pickItems(moduleItems, ['billing', 'transactions']),
     ];
 
     const advancedOwnerItems = [
-        ...pickItems(businessPresenceItems, ['analyticsSettings', 'posSync']),
+        ...pickItems([...businessPresenceItems, ...searchDiscoveryHubItems], ['analyticsSettings', 'posSync', 'integrations']),
     ];
 
     const itemSections = useMemo(() => ([
@@ -919,7 +919,12 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
     else if (subScreen === 'designEditor') subScreenContent = <MobileDesignEditorScreen onBack={() => setSubScreen('main')} />;
     else if (subScreen === 'businessAttributes') subScreenContent = <MobileBusinessAttributesScreen onBack={() => setSubScreen(getBackTarget('businessAttributes'))} />;
     else if (subScreen === 'feedbackSettings') subScreenContent = <MobileAdvancedSettingsScreen mode="feedback" onBack={() => setSubScreen('main')} />;
-    else if (subScreen === 'officialPage') subScreenContent = <MobileOfficialPageScreen onBack={() => setSubScreen(getBackTarget('officialPage'))} />;
+    else if (subScreen === 'officialPage') subScreenContent = (
+        <MobileOfficialPageScreen
+            onBack={() => setSubScreen(getBackTarget('officialPage'))}
+            onOpenDomainSettings={() => setSubScreen('domainSettings')}
+        />
+    );
     else if (subScreen === 'businessCopySetup') subScreenContent = <MobileBusinessCopySetupScreen onBack={() => setSubScreen(getBackTarget('businessCopySetup'))} />;
     else if (subScreen === 'seoSettings') subScreenContent = <MobileSeoAnalyticsScreen mode="seo" onBack={() => setSubScreen(getBackTarget('seoSettings'))} />;
     else if (subScreen === 'analyticsSettings') subScreenContent = <MobileSeoAnalyticsScreen mode="analytics" onBack={() => setSubScreen('main')} />;
@@ -935,10 +940,9 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
     }
     else if (subScreen === 'customerApp') subScreenContent = <MobileCustomerAppScreen onBack={() => setSubScreen(getBackTarget('customerApp'))} />;
     else if (subScreen === 'presenceMonitor') subScreenContent = <MobilePresenceMonitorScreen onBack={() => setSubScreen(getBackTarget('presenceMonitor'))} />;
-    else if (subScreen === 'answerlatticeHelp') subScreenContent = <MobileHelpScreen onBack={() => setSubScreen('main')} />;
-    else if (subScreen === 'answerlatticeDocs') subScreenContent = <MobileHelpScreen initialTab="kb" onBack={() => setSubScreen('main')} />;
-    else if (subScreen === 'answerlatticeSupport') subScreenContent = <MobileHelpScreen initialTab="ticket" onBack={() => setSubScreen('main')} />;
-    else if (subScreen === 'answerlatticeReleaseNotes') subScreenContent = <MobileHelpScreen initialTab="changelog" onBack={() => setSubScreen('main')} />;
+    else if (subScreen === 'menuListHelp') subScreenContent = <MobileHelpScreen onBack={() => setSubScreen('main')} />;
+    else if (subScreen === 'menuListDocs') subScreenContent = <MobileHelpScreen initialTab="faq" onBack={() => setSubScreen('main')} />;
+    else if (subScreen === 'menuListContact') subScreenContent = <MobileHelpScreen initialTab="contact-us" onBack={() => setSubScreen('main')} />;
     else if (subScreen === 'opsControlRoom') subScreenContent = <MobileOpsControlRoomScreen onBack={() => setSubScreen(getBackTarget('opsControlRoom'))} />;
     else if (subScreen === 'extractionMonitor') subScreenContent = <MobileExtractionMonitorScreen onBack={() => setSubScreen(getBackTarget('extractionMonitor'))} />;
     else if (subScreen === 'schedulerMonitor') subScreenContent = <MobileSchedulerMonitorScreen onBack={() => setSubScreen(getBackTarget('schedulerMonitor'))} />;
@@ -988,31 +992,24 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
             <List>
                 <List.Item
                     arrow
-                    description={<Text type="secondary">Search docs, tickets, updates, and support in one place.</Text>}
-                    onClick={() => openSubScreen('answerlatticeHelp')}
+                    description={<Text type="secondary">Read common answers or contact MenuList support.</Text>}
+                    onClick={() => openSubScreen('menuListHelp')}
                     prefix={<LuHelpCircle color={token.colorPrimary} size={20} />}
                     title={<Text strong>{t('helpCenter')}</Text>}
                 />
                 <List.Item
                     arrow
-                    description={<Text type="secondary">Browse MenuList docs and guides.</Text>}
-                    onClick={() => openSubScreen('answerlatticeDocs')}
+                    description={<Text type="secondary">Read MenuList FAQs and setup answers.</Text>}
+                    onClick={() => openSubScreen('menuListDocs')}
                     prefix={<LuBookOpen color={token.colorPrimary} size={20} />}
                     title={<Text strong>Documentation</Text>}
                 />
                 <List.Item
                     arrow
-                    description={<Text type="secondary">Create or track support tickets.</Text>}
-                    onClick={() => openSubScreen('answerlatticeSupport')}
+                    description={<Text type="secondary">Email MenuList support or review common answers.</Text>}
+                    onClick={() => openSubScreen('menuListContact')}
                     prefix={<LuTicket color={token.colorWarning} size={20} />}
-                    title={<Text strong>Support Tickets</Text>}
-                />
-                <List.Item
-                    arrow
-                    description={<Text type="secondary">See recent product changes and fixes.</Text>}
-                    onClick={() => openSubScreen('answerlatticeReleaseNotes')}
-                    prefix={<LuReceipt color={token.colorInfo} size={20} />}
-                    title={<Text strong>Release Notes</Text>}
+                    title={<Text strong>Contact Support</Text>}
                 />
             </List>
         </Card>
@@ -1049,6 +1046,7 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
                             </Flex>
                         </Flex>
                         <Select
+                            aria-label="Branch"
                             disabled={isSwitchingStore}
                             onChange={handleStoreDropdownChange}
                             options={storeSwitchOptions}
@@ -1340,7 +1338,7 @@ function MobileAccountProfileScreen({
                 </div>
             </Flex>
 
-            <Popup bodyStyle={{ maxHeight: '78vh', overflow: 'hidden', padding: 0 }} destroyOnClose onMaskClick={saving ? undefined : () => setEditOpen(false)} visible={editOpen}>
+            <Popup aria-label="Edit profile" bodyStyle={{ maxHeight: '78vh', overflow: 'hidden', padding: 0 }} destroyOnClose onMaskClick={saving ? undefined : () => setEditOpen(false)} visible={editOpen}>
                 <Flex style={{ height: '100%' }} vertical>
                     <NavBar backIcon={<LuX size={20} />} onBack={() => setEditOpen(false)}>
                         Edit profile
@@ -1349,7 +1347,7 @@ function MobileAccountProfileScreen({
                         <Card>
                             <Flex gap={8} vertical>
                                 <Text type="secondary">Name</Text>
-                                <Input onChange={setDraftName} placeholder="Your name" value={draftName} />
+                                <Input aria-label="Name" onChange={setDraftName} placeholder="Your name" value={draftName} />
                             </Flex>
                         </Card>
                         <Card>
@@ -1360,13 +1358,14 @@ function MobileAccountProfileScreen({
                                         ? 'Optional contact email. Staff ID remains the sign-in ID.'
                                         : 'This updates the profile email shown in MenuList.'}
                                 </Text>
-                                <Input onChange={setDraftEmail} placeholder="name@example.com" type="email" value={draftEmail} />
+                                <Input aria-label="Email" onChange={setDraftEmail} placeholder="name@example.com" type="email" value={draftEmail} />
                             </Flex>
                         </Card>
                         <Card>
                             <Flex gap={8} vertical>
                                 <Text type="secondary">Phone</Text>
                                 <Select
+                                    aria-label="Country code"
                                     onChange={(value: string) => {
                                         setDraftCountryCode(value);
                                         setDraftDialCode(getDialCodeForCountry(value));
@@ -1379,7 +1378,7 @@ function MobileAccountProfileScreen({
                                     placeholder="Country code"
                                     value={draftCountryCode}
                                 />
-                                <Input onChange={setDraftPhone} placeholder="Phone number" type="tel" value={draftPhone} />
+                                <Input aria-label="Phone" onChange={setDraftPhone} placeholder="Phone number" type="tel" value={draftPhone} />
                             </Flex>
                         </Card>
                         <Flex gap={8}>
@@ -1481,6 +1480,7 @@ function MobileAccountAccessScreen({
                 <Card title="Change password">
                     <Flex gap={12} vertical>
                         <Input
+                            aria-label="Current password or passcode"
                             autoComplete="current-password"
                             onChange={setCurrentPassword}
                             placeholder="Current password or passcode"
@@ -1488,6 +1488,7 @@ function MobileAccountAccessScreen({
                             value={currentPassword}
                         />
                         <Input
+                            aria-label="New password"
                             autoComplete="new-password"
                             onChange={setNewPassword}
                             placeholder="New password"
@@ -1495,6 +1496,7 @@ function MobileAccountAccessScreen({
                             value={newPassword}
                         />
                         <Input
+                            aria-label="Confirm new password"
                             autoComplete="new-password"
                             onChange={setConfirmPassword}
                             placeholder="Confirm new password"

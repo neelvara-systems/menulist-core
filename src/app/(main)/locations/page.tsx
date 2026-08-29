@@ -26,6 +26,7 @@ import {
     MULTI_OUTLET_ACTION_RESPONSE_JSON_MAX_BYTES,
 } from '@lib/multiOutlet/outletActionResponseGuards';
 import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
+import { labelConfirmDialog } from '@lib/accessibility/antConfirmDialog';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { DEFAULT_OUTLET_POLICY } from '@type/multiOutlet.types';
 import { Badge, Button, Card, Empty, message, Modal, Space, Table, Tag, Typography } from 'antd';
@@ -158,6 +159,7 @@ export default function LocationsPage() {
         const confirmationScopeKey = locationScopeKey;
         modal.confirm({
             title: 'Deactivate outlet?',
+            modalRender: labelConfirmDialog('Deactivate outlet?'),
             content: `This turns off ${record.name || `Store ${record.storeId}`} and removes it from normal store switching. Billing quantity is reduced when billing removal is enabled.`,
             okText: 'Deactivate',
             okButtonProps: { danger: true },

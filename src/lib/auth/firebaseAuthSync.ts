@@ -15,6 +15,7 @@ import { readJsonResponseWithLimit } from "@lib/security/boundedResponseBody";
 import { shouldUseSharedAnswerlatticeFirebase } from "@lib/firebase/answerlatticeConfig";
 import { signInWithCustomToken, type IdTokenResult } from "firebase/auth";
 import { AUTH_BROWSER_REQUEST_POLICY } from "./browserRequestPolicy";
+import { createFirebaseAuthMutationQueue } from "./firebaseAuthMutationQueue";
 
 type FirebaseAuthSyncResult = {
     ready: boolean;
@@ -23,6 +24,7 @@ type FirebaseAuthSyncResult = {
 
 let syncRequest: Promise<FirebaseAuthSyncResult> | null = null;
 let syncRequestKey = "";
+const runFirebaseAuthMutation = createFirebaseAuthMutationQueue();
 
 const FIREBASE_AUTH_NETWORK_RETRY_CODES = new Set(['auth/network-request-failed']);
 const FIREBASE_AUTH_RETRY_DELAYS_MS = [750, 1500];
@@ -329,7 +331,7 @@ async function runFirebaseAuthSync(session: any): Promise<FirebaseAuthSyncResult
     return { ready: true, claims: refreshedToken?.claims };
 }
 
-export async function refreshFirebaseAuthClaims(targetStoreId?: number | null): Promise<FirebaseAuthSyncResult> {
+async function refreshFirebaseAuthClaimsCore(targetStoreId?: number | null): Promise<FirebaseAuthSyncResult> {
     if (typeof window === "undefined") return { ready: true };
     if (!firebaseAuth?.currentUser) {
         throw createFirebaseBootstrapError(
@@ -429,6 +431,10 @@ export async function refreshFirebaseAuthClaims(targetStoreId?: number | null): 
     return { ready: true, claims: refreshedToken?.claims };
 }
 
+export function refreshFirebaseAuthClaims(targetStoreId?: number | null): Promise<FirebaseAuthSyncResult> {
+    return runFirebaseAuthMutation(() => refreshFirebaseAuthClaimsCore(targetStoreId));
+}
+
 export async function syncAnswerlatticePlatformAuthForStore(
     targetStoreId: number,
 ): Promise<FirebaseAuthSyncResult> {
@@ -500,11 +506,23 @@ export function ensureFirebaseAuthForSession(session: any): Promise<FirebaseAuth
         return syncRequest;
     }
 
+    const request = runFirebaseAuthMutation(() => runFirebaseAuthSync(effectiveSession));
     syncRequestKey = nextKey;
-    syncRequest = runFirebaseAuthSync(effectiveSession).finally(() => {
-        syncRequest = null;
-        syncRequestKey = "";
-    });
+    syncRequest = request;
+    void request.then(
+        () => {
+            if (syncRequest === request) {
+                syncRequest = null;
+                syncRequestKey = "";
+            }
+        },
+        () => {
+            if (syncRequest === request) {
+                syncRequest = null;
+                syncRequestKey = "";
+            }
+        },
+    );
 
-    return syncRequest;
+    return request;
 }

@@ -212,7 +212,9 @@ export default function ColorPresetsDrawer({ open, onClose, onColorSelect, color
                                             </Typography.Title>
                                             <Flex wrap="wrap" gap={8}>
                                                 {group.colors.map((color, colorIndex) => (
-                                                    <div
+                                                    <button
+                                                        type="button"
+                                                        aria-label={`Select ${color} background color`}
                                                         key={colorIndex}
                                                         onClick={() => handleSolidColorSelect(color)}
                                                         style={{
@@ -224,6 +226,7 @@ export default function ColorPresetsDrawer({ open, onClose, onColorSelect, color
                                                             transition: 'transform 0.2s ease',
                                                             position: 'relative',
                                                             border: '1px solid rgba(0,0,0,0.1)',
+                                                            padding: 0,
                                                             boxShadow: token.boxShadowTertiary
                                                         }}
                                                         onMouseEnter={(e) => {
@@ -247,7 +250,9 @@ export default function ColorPresetsDrawer({ open, onClose, onColorSelect, color
                             children: (
                                 <Flex wrap="wrap" gap={16}>
                                     {filteredGradients.map((gradient, index) => (
-                                        <div
+                                        <button
+                                            type="button"
+                                            aria-label={`Select ${gradient.name} gradient`}
                                             className='animate__animated animate__fadeIn animate__faster'
                                             key={index}
                                             onClick={() => handleGradientSelect(gradient)}
@@ -260,6 +265,7 @@ export default function ColorPresetsDrawer({ open, onClose, onColorSelect, color
                                                 transition: 'transform 0.2s ease',
                                                 position: 'relative',
                                                 overflow: 'hidden',
+                                                padding: 0,
                                                 boxShadow: token.boxShadowTertiary
                                             }}
                                             onMouseEnter={(e) => {
@@ -270,7 +276,8 @@ export default function ColorPresetsDrawer({ open, onClose, onColorSelect, color
                                             }}
                                             title={gradient.name}
                                         >
-                                            <div style={{
+                                            <span style={{
+                                                display: 'block',
                                                 position: 'absolute',
                                                 bottom: 0,
                                                 left: 0,
@@ -281,8 +288,8 @@ export default function ColorPresetsDrawer({ open, onClose, onColorSelect, color
                                                 fontSize: '12px'
                                             }}>
                                                 {gradient.name}
-                                            </div>
-                                        </div>
+                                            </span>
+                                        </button>
                                     ))}
                                 </Flex>
                             ),

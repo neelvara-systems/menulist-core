@@ -1,3 +1,5 @@
+import './styles.css';
+import './scroll-reveal.css';
 import { Metadata } from 'next';
 import { headers } from 'next/headers';
 import { getStaticAnswerlatticeAppleStartupImages } from '@lib/answerlattice/pwaAssets';

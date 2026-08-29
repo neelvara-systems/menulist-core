@@ -2,6 +2,11 @@ import assert from 'node:assert/strict';
 
 import { DEFAULT_DARK_COLOR, DEFAULT_LIGHT_COLOR } from '../../src/constants/common';
 import {
+    DEFAULT_ANTD_LOCALE,
+    hasLazyAntdLocale,
+    loadAntdLocale,
+} from '../../src/lib/antd/antdLocaleLoader';
+import {
     projectPersistedThemeBoolean,
     projectPersistedThemeColor,
     resolveAntdLocaleKey,
@@ -21,4 +26,15 @@ assert.equal(resolveAntdLocaleKey('pt_BR'), 'pt-BR');
 assert.equal(resolveAntdLocaleKey('ar'), 'ar-SA');
 assert.equal(resolveAntdLocaleKey({ toString: () => 'ar-SA' }), 'en-US');
 
-console.log('Ant Design persisted theme boundary tests passed.');
+async function verifyLocaleLoading(): Promise<void> {
+    assert.equal(hasLazyAntdLocale('fr-FR'), true);
+    assert.equal(hasLazyAntdLocale('en-US'), false);
+    assert.equal(hasLazyAntdLocale('unsupported'), false);
+
+    assert.equal(await loadAntdLocale('en-US'), DEFAULT_ANTD_LOCALE);
+    assert.equal(await loadAntdLocale('unsupported'), DEFAULT_ANTD_LOCALE);
+}
+
+void verifyLocaleLoading().then(() => {
+    console.log('Ant Design persisted theme and lazy locale boundary tests passed.');
+});

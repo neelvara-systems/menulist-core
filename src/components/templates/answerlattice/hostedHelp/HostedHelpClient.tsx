@@ -1,6 +1,7 @@
 'use client';
 
 import { FEATURE_FLAGS } from '@config/features';
+import { ANSWERLATTICE_HOSTED_HELP_DEV_PREFIX } from '@constant/answerlattice/hostedHelp';
 import type { KnowledgeBaseArticleMeta, KnowledgeBaseCategoriesType } from '@type/knowledgeBase';
 import type { AnswerlatticePublicArticleOutlineNode } from '@lib/answerlattice/publicRichText';
 import { buildHostedHelpArticlePath } from '@lib/answerlattice/hostedHelpRequest';
@@ -62,9 +63,14 @@ type HostedHelpClientProps = {
     site: HostedHelpSiteView;
     unavailableReason?: string | null;
     view: HostedHelpView;
+    developmentDomain?: string | null;
 };
 
-const pathFor = (path: string) => path;
+const pathFor = (path: string, developmentDomain?: string | null) => {
+    if (!developmentDomain) return path;
+    const normalizedPath = path === '/' ? '' : path;
+    return `${ANSWERLATTICE_HOSTED_HELP_DEV_PREFIX}${normalizedPath}?domain=${encodeURIComponent(developmentDomain)}`;
+};
 
 function getArticles(categories: KnowledgeBaseCategoriesType | null): ArticleSearchItem[] {
     if (!categories?.categories) return [];
@@ -86,8 +92,11 @@ function getArticles(categories: KnowledgeBaseCategoriesType | null): ArticleSea
     return Array.from(new Map(articles.map(article => [article.id, article])).values());
 }
 
-function articleHref(article: Pick<KnowledgeBaseArticleMeta, 'id' | 'url'>) {
-    return pathFor(buildHostedHelpArticlePath(article.url || article.id) || '/docs');
+function articleHref(
+    article: Pick<KnowledgeBaseArticleMeta, 'id' | 'url'>,
+    developmentDomain?: string | null,
+) {
+    return pathFor(buildHostedHelpArticlePath(article.url || article.id) || '/docs', developmentDomain);
 }
 
 function entryText(entry: HostedHelpChangelogEntry) {
@@ -109,6 +118,7 @@ export default function HostedHelpClient({
     site,
     unavailableReason,
     view,
+    developmentDomain,
 }: HostedHelpClientProps) {
     const { token } = theme.useToken();
     const [query, setQuery] = useState('');
@@ -131,8 +141,8 @@ export default function HostedHelpClient({
                     || left.title.localeCompare(right.title);
             })
             .slice(0, 6)
-            .map(item => ({ id: item.id, href: articleHref(item), title: item.title }));
-    }, [article, articles]);
+            .map(item => ({ id: item.id, href: articleHref(item, developmentDomain), title: item.title }));
+    }, [article, articles, developmentDomain]);
     useEffect(() => {
         setArticleMode('article');
     }, [article?.id]);
@@ -177,7 +187,7 @@ export default function HostedHelpClient({
             ].filter(Boolean).join(' ').toLowerCase().includes(normalized))
             .slice(0, 8)
             .map(item => ({
-                href: articleHref(item),
+                href: articleHref(item, developmentDomain),
                 label: item.title,
                 meta: [item.categoryTitle, item.sectionTitle].filter(Boolean).join(' / ') || 'Article',
             }));
@@ -186,7 +196,7 @@ export default function HostedHelpClient({
             .filter(item => `${item.question} ${item.answer}`.toLowerCase().includes(normalized))
             .slice(0, 5)
             .map(item => ({
-                href: '/faq',
+                href: pathFor('/faq', developmentDomain),
                 label: item.question,
                 meta: 'FAQ',
             }));
@@ -195,19 +205,19 @@ export default function HostedHelpClient({
             .filter(item => `${item.title} ${entryText(item)}`.toLowerCase().includes(normalized))
             .slice(0, 4)
             .map(item => ({
-                href: '/changelog',
+                href: pathFor('/changelog', developmentDomain),
                 label: item.title,
                 meta: 'Update',
             }));
 
         return [...articleResults, ...faqResults, ...changelogResults].slice(0, 10);
-    }, [articles, faqs, latestChangelog, query]);
+    }, [articles, developmentDomain, faqs, latestChangelog, query]);
 
     const nav = [
-        { href: '/', label: 'Home', active: view === 'home' },
-        { href: '/docs', label: 'Docs', active: view === 'docs' || view === 'article' },
-        ...(site.config.showFaqs ? [{ href: '/faq', label: 'FAQ', active: view === 'faq' }] : []),
-        ...(site.config.showChangelog ? [{ href: '/changelog', label: "What's New", active: view === 'changelog' }] : []),
+        { href: pathFor('/', developmentDomain), label: 'Home', active: view === 'home' },
+        { href: pathFor('/docs', developmentDomain), label: 'Docs', active: view === 'docs' || view === 'article' },
+        ...(site.config.showFaqs ? [{ href: pathFor('/faq', developmentDomain), label: 'FAQ', active: view === 'faq' }] : []),
+        ...(site.config.showChangelog ? [{ href: pathFor('/changelog', developmentDomain), label: "What's New", active: view === 'changelog' }] : []),
     ];
 
     return (
@@ -319,12 +329,12 @@ export default function HostedHelpClient({
                     <section className={styles.section}>
                         <div className={styles.sectionHeader}>
                             <h2 className={styles.sectionTitle}>Guides</h2>
-                            {view === 'home' ? <Link href="/docs">View all</Link> : null}
+                            {view === 'home' ? <Link href={pathFor('/docs', developmentDomain)}>View all</Link> : null}
                         </div>
                         {articles.length > 0 ? (
                             <div className={styles.grid}>
                                 {articles.slice(0, view === 'home' ? 9 : 200).map(item => (
-                                    <Link className={styles.card} href={articleHref(item)} key={item.id}>
+                                    <Link className={styles.card} href={articleHref(item, developmentDomain)} key={item.id}>
                                         <h3 className={styles.cardTitle}>{item.title}</h3>
                                         <p className={styles.muted}>{[item.categoryTitle, item.sectionTitle].filter(Boolean).join(' / ') || 'Article'}</p>
                                     </Link>
@@ -340,7 +350,7 @@ export default function HostedHelpClient({
                     <section className={styles.section}>
                         <div className={styles.sectionHeader}>
                             <h2 className={styles.sectionTitle}>FAQ</h2>
-                            {view === 'home' ? <Link href="/faq">View all</Link> : null}
+                            {view === 'home' ? <Link href={pathFor('/faq', developmentDomain)}>View all</Link> : null}
                         </div>
                         {faqs.length > 0 ? (
                             <div className={styles.list}>
@@ -361,7 +371,7 @@ export default function HostedHelpClient({
                     <section className={styles.section}>
                         <div className={styles.sectionHeader}>
                             <h2 className={styles.sectionTitle}>What&apos;s New</h2>
-                            {view === 'home' ? <Link href="/changelog">View all</Link> : null}
+                            {view === 'home' ? <Link href={pathFor('/changelog', developmentDomain)}>View all</Link> : null}
                         </div>
                         {latestChangelog.length > 0 ? (
                             <div className={styles.list}>

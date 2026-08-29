@@ -107,6 +107,7 @@ const MenuBar: React.FC<MenuBarProps> = ({ editor }) => {
         <Tooltip title={label}>
             <Button
                 aria-label={label}
+                aria-pressed={options.active === undefined ? undefined : options.active}
                 size="small"
                 type={options.active ? 'primary' : 'text'}
                 danger={options.danger}

@@ -413,7 +413,9 @@ const widgetEmbed = fs.existsSync(widgetEmbedPath) ? fs.readFileSync(widgetEmbed
     "'/reseller/*'",
     "const contextRouteKey = routeKey === 'qrCode' ? 'qr-code' : routeKey;",
     "const contextSuffix = routeSegments.length > 1 ? '_detail' : '';",
-    'contextKey: `menulist_owner_${contextRouteKey}${contextSuffix}`',
+    'contextKey: `menulist_${userRole}_${contextRouteKey}${contextSuffix}`',
+    'userRole,',
+    'data-user-role={userRole}',
     'if (!routeConfig) return null;',
 ].forEach((fragment) => {
     if (!widgetEmbed.includes(fragment)) fail(`MenuList widget safety contract is missing: ${fragment}`);

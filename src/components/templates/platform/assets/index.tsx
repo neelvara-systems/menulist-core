@@ -152,7 +152,7 @@ function AssetsUploader() {
                     <Button className={styles.deleteBtn} size="large" ghost danger type="primary" icon={<MdOutlineDelete />} />
                 </Popconfirm>} */}
             </Badge>
-            {isActive && <Button onClick={() => setShowDetailsModal({ active: true, data: item, type })} shape="circle" className={styles.action} icon={<LuPen />} />}
+            {isActive && <Button aria-label={`Edit ${type} ${item.name}`} onClick={() => setShowDetailsModal({ active: true, data: item, type })} shape="circle" className={styles.action} icon={<LuPen />} />}
         </Flex>
     }
 
@@ -163,7 +163,7 @@ function AssetsUploader() {
                     <Flex className={styles.listWrap} vertical style={{ borderColor: token.colorBorder }} gap={10}>
                         <Flex justify="space-between" align="center">
                             <Text style={{ borderBottom: `1px dashed ${token.colorBorder}`, paddingBottom: 5 }} strong>Category</Text>
-                            <Button style={{ minWidth: "max-content" }} onClick={() => setShowDetailsModal({ active: true, data: null, type: "Category" })} icon={<LuPlus />} shape="circle" />
+                            <Button aria-label="Add asset category" style={{ minWidth: "max-content" }} onClick={() => setShowDetailsModal({ active: true, data: null, type: "Category" })} icon={<LuPlus />} shape="circle" />
                         </Flex>
                         <Flex vertical gap={10}>
                             {Boolean(categories.length) ? <>
@@ -181,7 +181,7 @@ function AssetsUploader() {
                     <Flex className={`${styles.listWrap} ${styles.itemListWrap}`} vertical gap={10}>
                         <Flex justify="space-between" align="center">
                             <Text style={{ borderBottom: `1px dashed ${token.colorBorder}`, paddingBottom: 5 }} strong>Items</Text>
-                            {Boolean(activeCategory.id) && (!Boolean(activeCategory.subCategories?.length) || Boolean(activeSubCategory?.id)) && <Button style={{ minWidth: "max-content" }} onClick={() => setShowDetailsModal({ active: true, data: null, type: "Item" })} icon={<LuPlus />} shape="circle" />}
+                            {Boolean(activeCategory.id) && (!Boolean(activeCategory.subCategories?.length) || Boolean(activeSubCategory?.id)) && <Button aria-label="Add asset item" style={{ minWidth: "max-content" }} onClick={() => setShowDetailsModal({ active: true, data: null, type: "Item" })} icon={<LuPlus />} shape="circle" />}
                         </Flex>
                         {Boolean(activeCategory?.id) ? <Flex gap={10} className={styles.items}>
                             {(Boolean(activeCategory.items?.length) || Boolean(activeSubCategory.items?.length)) ? <>

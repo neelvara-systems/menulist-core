@@ -44,6 +44,7 @@ const IconPicker = ({
     const [searchQuery, setSearchQuery] = useState('');
     const [activeMode, setActiveMode] = useState<'icons' | 'emoji'>('icons');
     const resolvedIconSize = iconSize ?? (buttonSize === 'small' ? 16 : buttonSize === 'middle' ? 18 : 22);
+    const searchLabel = activeMode === 'icons' ? 'Search icon for category...' : 'Search emoji for category...';
 
     const handleSelect = (selectedValue: string) => {
         onChange?.(selectedValue);
@@ -80,6 +81,7 @@ const IconPicker = ({
                     }}
                 >
                     <Button
+                        aria-pressed={activeMode === 'icons'}
                         onClick={() => setActiveMode('icons')}
                         size="small"
                         style={{
@@ -98,6 +100,7 @@ const IconPicker = ({
                         Icons
                     </Button>
                     <Button
+                        aria-pressed={activeMode === 'emoji'}
                         onClick={() => setActiveMode('emoji')}
                         size="small"
                         style={{
@@ -118,10 +121,11 @@ const IconPicker = ({
                 </Flex>
                 <Input
                     allowClear
+                    aria-label={searchLabel}
                     className="icon-picker-header-search"
                     maxLength={80}
                     onChange={(event) => setSearchQuery(event.target.value)}
-                    placeholder={activeMode === 'icons' ? 'Search icon for category...' : 'Search emoji for category...'}
+                    placeholder={searchLabel}
                     prefix={<LuSearch size={16} />}
                     size="middle"
                     style={{

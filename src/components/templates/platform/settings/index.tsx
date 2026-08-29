@@ -52,7 +52,7 @@ function PlatformSettings({ initialTab = '' }: { initialTab?: string } = {}) {
                 return <FontPresets />
             default:
                 return <Flex vertical gap={10}>
-                    <Text strong >Change your app apperance and settings</Text>
+                    <Text strong>Change your app appearance and settings</Text>
 
                     <LanguageSwitcher />
 
@@ -65,12 +65,15 @@ function PlatformSettings({ initialTab = '' }: { initialTab?: string } = {}) {
                         <Flex gap={10}>
                             {colorsList[isDarkMode ? "dark" : "light"].map((color: any, i: number) => {
                                 const rgbaColors: any = convertRGBtoOBJ(hexToRgbA(color));
+                                const isSelected = isDarkMode ? darkThemeColor == color : lightThemeColor == color;
                                 return <Fragment key={i}>
                                     <Button
+                                        aria-label={`Theme color ${color}`}
+                                        aria-pressed={isSelected}
                                         onClick={() => updateThemeColor(color)}
                                         style={{ background: `rgba(${rgbaColors.r}, ${rgbaColors.g}, ${rgbaColors.b}, ${0.6})`, borderColor: color }}>
-                                        <SelectedItemCheck active={isDarkMode ? (darkThemeColor == color) : (lightThemeColor == color)} />
-                                        <span style={{ background: color, borderRadius: isDarkMode ? (darkThemeColor == color ? "4px" : "15px") : (lightThemeColor == color ? "4px" : "15px") }}></span>
+                                        <SelectedItemCheck active={isSelected} />
+                                        <span style={{ background: color, borderRadius: isSelected ? "4px" : "15px" }}></span>
                                     </Button>
                                 </Fragment>
                             })}

@@ -726,6 +726,7 @@ function verifyClientBoundaries(files) {
     'normalizedTargetStoreId === currentStoreId',
     'getStoreSummaryId(store) === normalizedTargetStoreId && store.active !== false',
     'data.billingReductionPending',
+    "modalRender: labelConfirmDialog('Deactivate outlet?')",
     '<AddOutletModal',
     '<OutletRenameModal',
     '<OutletPolicyEditor',
@@ -753,6 +754,8 @@ function verifyClientBoundaries(files) {
     'desktop_location_rename_response_invalid',
     'slugify(raw)',
     'currentOutletSlug',
+    'aria-label="New outlet name"',
+    'aria-label="New outlet URL segment"',
   ].forEach((token) => assertIncludes(outletRenameModal, token, 'Desktop Outlet Rename boundary'));
 
   [
@@ -786,6 +789,14 @@ function verifyClientBoundaries(files) {
     'expectedTenantId: String(expectedTenantId)',
     'storeKey: data.storeKey',
     'onOpenBilling',
+    'aria-label={`View ${storeName}`}',
+    'onClick={() => void handleSwitchStore(store.storeId)}',
+    "aria-label={t('addNewOutlet')}",
+    "aria-label={t('outletName')}",
+    'aria-label="Rename outlet URL"',
+    'aria-label="New outlet name"',
+    'aria-label="New outlet URL segment"',
+    "aria-label={t('outletPolicy')}",
     'style={{ minHeight: 44 }}',
     'return <MobileLocationsScreenContent key={scopeKey} {...props} />;',
     'locationActionInFlightRef.current',
@@ -798,6 +809,10 @@ function verifyClientBoundaries(files) {
     'previous.outletPolicy === sourcePolicy',
     'store.storeDetails?.outletPolicy === sourcePolicy',
   ].forEach((token) => assertIncludes(mobileLocations, token, 'Mobile Locations boundary'));
+  assert(
+    !/<List\.Item[\s\S]{0,240}onClick=\{\(\) => handleSwitchStore\(store\.storeId\)\}/.test(mobileLocations),
+    'Mobile Locations store rows must not be composite buttons containing Rename or Deactivate buttons',
+  );
   assertNotIncludes(
     mobileLocations,
     'setTenantDetails({ ...tenantDetails, storesList: updatedStoresList })',
@@ -1334,6 +1349,7 @@ function verifyMultiLocationBoundary() {
   };
   const files = {
     outletSessionScope: read('src/lib/multiOutlet/outletSessionScope.ts'),
+    outletSessionRefresh: read('src/lib/multiOutlet/outletSessionRefresh.ts'),
     projectIdBoundary: read('src/lib/multiOutlet/projectIdBoundary.ts'),
     resolver: read('src/lib/multiOutlet/resolveProject.ts'),
     actionGuards: read('src/lib/multiOutlet/outletActionResponseGuards.ts'),
@@ -1351,6 +1367,7 @@ function verifyMultiLocationBoundary() {
     addOutletModal: read('src/components/organisms/AddOutletModal/index.tsx'),
     outletRenameModal: read('src/components/organisms/OutletRenameModal/index.tsx'),
     outletPolicyEditor: read('src/components/organisms/OutletPolicyEditor/index.tsx'),
+    storeSwitcher: read('src/components/molecules/StoreSwitcher/index.tsx'),
     mobileLocations: read('src/components/mobile/screens/MobileLocationsScreen.tsx'),
     mobileShell: read('src/components/mobile/MobileShell.tsx'),
     mobileMore: read('src/components/mobile/screens/MobileMoreScreen.tsx'),
@@ -1358,6 +1375,10 @@ function verifyMultiLocationBoundary() {
   };
 
   assertIncludes(files.outletPolicyEditor, 'aria-label={item.label}', 'Desktop outlet policy switch accessible name');
+  assertIncludes(files.outletPolicyEditor, 'const { token } = theme.useToken();', 'Desktop outlet policy theme token boundary');
+  assertIncludes(files.outletPolicyEditor, 'background: token.colorFillAlter', 'Desktop outlet policy dark-mode row contrast');
+  assertNotIncludes(files.outletPolicyEditor, "background: '#fafafa'", 'Desktop outlet policy hard-coded light row background');
+  assertIncludes(files.storeSwitcher, 'aria-label="Switch location"', 'Desktop store switcher accessible name');
   assertIncludes(files.desktopLocations, "import { formatCurrency } from '@util/formatters';", 'Desktop location billing minor-unit formatter');
   assertIncludes(files.desktopLocations, 'formatCurrency(amount, currency)', 'Desktop per-store billing minor-unit display');
   assertIncludes(files.desktopLocations, 'formatCurrency(totalCost, currency)', 'Desktop total billing minor-unit display');
@@ -1370,6 +1391,13 @@ function verifyMultiLocationBoundary() {
   assertIncludes(files.addOutletModal, "createdOutletPendingSession ? 'Sync Access' : 'Add Outlet'", 'Desktop outlet creation exposes session-sync recovery without duplicate creation');
   assertIncludes(files.mobileLocations, 'refreshCreatedOutletSessionAccess(', 'Mobile outlet creation refreshes durable session membership');
   assertIncludes(files.mobileLocations, "createdOutletPendingSession ? 'Sync Access' : t('addOutlet')", 'Mobile outlet creation exposes session-sync recovery without duplicate creation');
+  assertIncludes(files.outletSessionRefresh, "await import('@lib/auth/firebaseAuthSync')", 'Created-outlet recovery refreshes Firebase claims after the durable session');
+  assertIncludes(files.outletSessionRefresh, 'return refreshFirebaseAuthClaims();', 'Created-outlet recovery refreshes all claim memberships without switching the active store');
+  assertIncludes(files.outletSessionRefresh, 'allowPlatformAllStores: false', 'Created-outlet recovery verifies explicit Firebase membership');
+  assertIncludes(files.outletSessionRefresh, 'sessionHasAccess', 'Created-outlet recovery verifies the durable session before Firebase claims');
+  assertIncludes(files.projectsDal, 'shouldPropagateProjectAfterSourceSave({', 'Master project propagation waits for the first canonical source');
+  assertIncludes(files.projectsDal, 'project_outlet_propagation_source_ready_failed', 'First-source propagation failures remain observable');
+  assertNotIncludes(files.projectsDal, 'project_outlet_propagation_create_failed', 'Empty project creation avoids a guaranteed denied propagation transaction');
 
   [
     'parseMasterOperationalState',
@@ -1465,6 +1493,11 @@ function verifyMultiLocationBoundary() {
     'transaction.set(outletProjectRef',
     'transaction.set(summaryRef',
   ].forEach((token) => assertIncludes(projectPropagation, token, 'Atomic master-only project propagation boundary'));
+  [
+    'sourceStore.isMaster === false',
+    'return { propagated: 0, failed: 0 };',
+    'Outlet-local projects are intentionally isolated',
+  ].forEach((token) => assertIncludes(projectPropagation, token, 'Outlet-local project propagation no-op boundary'));
   [
     'Date.now().toString(36)',
     'await setDoc(outletProjectRef',

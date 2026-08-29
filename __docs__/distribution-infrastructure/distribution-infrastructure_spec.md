@@ -393,7 +393,7 @@ Your official menu is now live at {store}.menulist.online/{slug}
 Use this QR for tables & counter:
 {qr_download_link}
 
-Customers always see latest menu. No reprinting needed.
+The same QR opens your latest published menu.
 ```
 
 **Tone:** Calm, factual, infrastructure (not marketing)
@@ -406,7 +406,7 @@ Customers always see latest menu. No reprinting needed.
 
 **Message template:**
 ```
-Quick reminder — placing your menu QR helps customers always see latest items.
+Quick reminder — place your menu QR so customers can open your latest published items.
 
 Download again: {qr_download_link}
 ```

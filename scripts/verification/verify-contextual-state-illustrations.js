@@ -38,13 +38,15 @@ const approvedConsumers = new Map([
   ['src/components/mobile/screens/MobileDigitalScreensScreen.tsx', { count: 1, softHaloCount: 1, variant: 'uploadContext' }],
   ['src/components/mobile/screens/MobileFeedbackScreen.tsx', { count: 1, softHaloCount: 0, variant: 'feedbackContext' }],
   ['src/components/mobile/screens/MobileMenuScreen.tsx', { count: 4, softHaloCount: 2, variants: ['photoErrorContext', 'photoSuccessContext', 'serverErrorContext', 'uploadContext'] }],
+  ['src/components/mobile/screens/MobileOfficialPageScreen.tsx', { count: 1, softHaloCount: 1, variant: 'emptyWorkspace' }],
   ['src/components/mobile/screens/MobileResellerOnboardingScreen.tsx', { count: 1, softHaloCount: 1, variant: 'onboardingSuccessContext' }],
   ['src/components/mobile/screens/MobileRolesScreen.tsx', { count: 1, softHaloCount: 1, variant: 'roleStructureContext' }],
-  ['src/components/mobile/screens/MobileShareScreen.tsx', { count: 2, softHaloCount: 1, variants: ['serverErrorContext', 'uploadContext'] }],
+  ['src/components/mobile/screens/MobileShareScreen.tsx', { count: 3, softHaloCount: 2, variants: ['emptyWorkspace', 'serverErrorContext', 'uploadContext'] }],
   ['src/components/mobile/screens/MobileSpecialMenuScreen.tsx', { count: 1, softHaloCount: 1, variant: 'scheduleContext' }],
   ['src/components/mobile/screens/MobileTimeSlotsScreen.tsx', { count: 1, softHaloCount: 1, variant: 'scheduleContext' }],
   ['src/components/mobile/screens/MobileUsersScreen.tsx', { count: 1, softHaloCount: 1, variant: 'teamContext' }],
   ['src/components/mobile/sheets/MenuUploadSheet.tsx', { count: 1, softHaloCount: 0, variant: 'photoErrorContext' }],
+  ['src/app/sites/answerlattice/early-access/EarlyAccessForm.tsx', { count: 1, softHaloCount: 0, variant: 'onboardingSuccessContext' }],
   ['src/components/templates/answerlattice/AnswerlatticeTeamAccess.tsx', { count: 2, softHaloCount: 2, variants: ['roleStructureContext', 'teamContext'] }],
   ['src/components/templates/answerlattice/answerTests/AnswerlatticeAnswerTests.tsx', { count: 2, softHaloCount: 2, variants: ['analyticsContext', 'feedbackContext'] }],
   ['src/components/templates/answerlattice/content/AnswerlatticeSurfaceReadinessMatrix.tsx', { count: 1, softHaloCount: 1, variant: 'roleStructureContext' }],
@@ -57,6 +59,7 @@ const approvedConsumers = new Map([
   ['src/components/templates/answerlattice/knowledgeIntake/AnswerlatticeKnowledgeIntake.tsx', { count: 1, softHaloCount: 1, variant: 'uploadContext' }],
   ['src/components/templates/answerlattice/productSurfaces/AnswerlatticeProductSurfaces.tsx', { count: 1, softHaloCount: 1, variant: 'roleStructureContext' }],
   ['src/components/templates/answerlattice/weeklyDigest/AnswerlatticeWeeklyDigest.tsx', { count: 1, softHaloCount: 1, variant: 'analyticsContext' }],
+  ['src/components/templates/answerlattice/platform/AnswerlatticeEarlyAccessDashboard.tsx', { count: 1, softHaloCount: 1, variant: 'analyticsContext' }],
   ['src/components/templates/campaigncue/CampaignCueVideoStudio.tsx', { count: 1, softHaloCount: 1, variant: 'emptyWorkspace' }],
   ['src/components/templates/campaigncue/CampaignCueWorkspaceApp.tsx', { count: 6, softHaloCount: 6, variants: ['emptyWorkspace', 'feedbackContext', 'scheduleContext', 'uploadContext'] }],
   ['src/components/templates/main-app/aiMenuManager/AiMenuManagerRoute.tsx', { count: 3, softHaloCount: 3, variants: ['emptyWorkspace', 'serverErrorContext'] }],
@@ -76,6 +79,7 @@ const approvedConsumers = new Map([
   ['src/components/templates/main-app/settings/DigitalScreenSettings/OwnerUploads.tsx', { count: 1, softHaloCount: 1, variant: 'uploadContext' }],
   ['src/components/templates/main-app/users/permissions/index.tsx', { count: 1, softHaloCount: 1, variant: 'roleStructureContext' }],
   ['src/components/templates/main-app/users/usersList/index.tsx', { count: 1, softHaloCount: 1, variant: 'teamContext' }],
+  ['src/components/templates/main-app/useMenuList/index.tsx', { count: 1, softHaloCount: 1, variant: 'emptyWorkspace' }],
   ['src/components/templates/platform/assetTemplates/index.tsx', { count: 2, softHaloCount: 0, variants: ['accessDeniedContext', 'warningContext'] }],
 ]);
 const expectedResultRenderCounts = new Map([
@@ -143,9 +147,9 @@ const expectedMyCodexStateLikeJsxText = new Map([
   ['No documents match your query', 1],
   ['No India voice is installed in this browser. MyCodex will use the device default until an Indian English, Hindi, or other India voice is available.', 1],
 ]);
-const expectedGlobalAntEmptyRenderCount = 160;
+const expectedGlobalAntEmptyRenderCount = 161;
 const expectedGlobalAntEmptyFileCount = 111;
-const expectedGlobalAntEmptyInventoryFingerprint = '90887344b84ddd520a375531b0b4c47ac5fb50ab85a481e914defc41438b9eee';
+const expectedGlobalAntEmptyInventoryFingerprint = 'bd884ce3c5096a4ab2cf85eff09d48fd89d709d317b7785ec19ca60a28836f50';
 const codexIllustrationRulePath = '.codex/rules/CONTEXTUAL_STATE_ILLUSTRATION_RULES.md';
 const cascadeIllustrationRulePath = '.cascade/rules/CONTEXTUAL_STATE_ILLUSTRATION_RULES.md';
 
@@ -521,12 +525,12 @@ assert(
 );
 
 assert(
-  contextualIllustrationAudit.length === 74,
-  `Expected 74 reviewed contextual illustration renders, found ${contextualIllustrationAudit.length}`,
+  contextualIllustrationAudit.length === 79,
+  `Expected 79 reviewed contextual illustration renders, found ${contextualIllustrationAudit.length}`,
 );
 assert(
-  contextualIllustrationAudit.filter(({ treatment }) => treatment === 'softHalo').length === 54,
-  'Expected 54 positive, first-use, or spacious recovery illustrations to use the branded soft halo',
+  contextualIllustrationAudit.filter(({ treatment }) => treatment === 'softHalo').length === 58,
+  'Expected 58 positive, first-use, or spacious recovery illustrations to use the branded soft halo',
 );
 
 const actualResultRenderCounts = new Map();
@@ -642,4 +646,4 @@ assert(
   'State illustrations must not be exposed as a public asset library',
 );
 
-console.log('Cross-product contextual state boundary verified (74 illustrations; MenuList Result, Answerlattice Empty, CampaignCue, SignalDesk, and MyCodex inventories reviewed).');
+console.log('Cross-product contextual state boundary verified (79 illustrations; MenuList Result, Answerlattice Empty, CampaignCue, SignalDesk, and MyCodex inventories reviewed).');

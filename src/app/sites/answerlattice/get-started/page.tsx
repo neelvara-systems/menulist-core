@@ -1,176 +1,28 @@
 import { Metadata } from 'next';
 import { headers } from 'next/headers';
-import { LuArrowRight, LuFileInput } from 'react-icons/lu';
-import AnswerlatticeLink from '../components/AnswerlatticeLink';
-import AnswerlatticeFooter from '../components/Footer';
-import AnswerlatticeHeader from '../components/Header';
-import AnswerlatticePageStructuredData from '../components/PageStructuredData';
-import PageProofStrip from '../components/PageProofStrip';
-import OnboardingForm from './OnboardingForm';
+import { redirect } from 'next/navigation';
 
 export const metadata: Metadata = {
-    title: 'Get Started',
-    description: 'Preview the first support checks for your product, then choose a monthly plan, create your AnswerLattice workspace safely, and continue governed setup.',
-    alternates: { canonical: '/get-started' },
+    title: 'Request Early Access',
+    description: 'AnswerLattice is currently available through controlled early access. Request a product-fit review without creating an account or payment.',
+    robots: { index: false, follow: true },
 };
 
 async function getBasePath(): Promise<string> {
     try {
-        const h = (await headers());
+        const h = await headers();
         const aliasBasePath = h.get('x-product-base-path') || '';
         if (aliasBasePath) return aliasBasePath;
-
         const host = h.get('host') || '';
-        return (h.get('x-product-id') && (host.startsWith('localhost') || host.startsWith('127.0.0.1'))) ? '/__answerlattice' : '';
-    } catch { return ''; }
+        return h.get('x-product-id') && (host.startsWith('localhost') || host.startsWith('127.0.0.1'))
+            ? '/__answerlattice'
+            : '';
+    } catch {
+        return '';
+    }
 }
 
-const CRITERIA = [
-    { label: 'Your SaaS app is live, beta, or close to launch', description: 'A working product with billing, onboarding, settings, release notes, or other user-facing flows to support.' },
-    { label: 'You know the first support questions', description: 'The same setup, billing, role, release, or error questions already appear, or are predictable before launch.' },
-    { label: 'Your support knowledge is scattered', description: 'Docs, FAQs, changelogs, support notes, screenshots, recordings, common answers, or founder replies exist but are not yet organized.' },
-    { label: 'You can install one script', description: 'You can add the widget, allow exact app origins, hide it on selected routes, and pass safe page context.' },
-    { label: 'You want answer approval', description: 'You want to approve answers before they become official support guidance.' },
-];
-
-const FIRST_SESSION = [
-    'Add company and product name',
-    'Create your AnswerLattice workspace',
-    'Invite the first team members or confirm owner-only access',
-    'Get your widget key',
-    'Add the first product pages where users need help',
-    'Turn scattered links, docs, FAQs, screenshots, recordings, support macros, or repeated replies into structured support knowledge',
-    'Verify widget install and page context',
-    'Review and approve the first answers',
-];
-
-type AnswerlatticeGetStartedPageProps = {
-    searchParams?: Promise<Record<string, string | string[] | undefined>>;
-};
-
-const readSingleSearchParam = (value: string | string[] | undefined): string => (
-    Array.isArray(value) ? String(value[0] || '') : String(value || '')
-);
-
-export default async function AnswerlatticeGetStartedPage(props: AnswerlatticeGetStartedPageProps) {
-    const searchParams = await props.searchParams;
+export default async function AnswerlatticeGetStartedRedirect() {
     const basePath = await getBasePath();
-    const requestedPlanId = readSingleSearchParam(searchParams?.plan);
-    const initialPlanId = ['answerlattice_launch', 'answerlattice_growth', 'answerlattice_studio'].includes(requestedPlanId)
-        ? requestedPlanId
-        : 'answerlattice_launch';
-
-    return (
-        <>
-            <AnswerlatticePageStructuredData path="/get-started" />
-            <AnswerlatticeHeader basePath={basePath} />
-            <main className="al-page-flow">
-                <section className="px-6 pb-20 pt-16">
-                    <div className="mx-auto w-full max-w-3xl">
-                        <div className="text-center">
-                            <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">Get Started</p>
-                            <h1 className="mb-4 max-w-full text-4xl font-bold sm:text-5xl">
-                                See your launch path before you choose a plan.
-                            </h1>
-                            <p className="mb-8 max-w-full text-lg leading-relaxed text-[#a0a0c0]">
-                                Sign in with Google, select the product areas customers ask about, and preview your first support checks. Then choose a paid plan and create the workspace.
-                            </p>
-                        </div>
-
-                        <div
-                            className="mx-auto mb-10 max-w-xl"
-                            data-answerlattice-activation-primary="workspace-signup"
-                        >
-                            <OnboardingForm
-                                basePath={basePath}
-                                initialPlanId={initialPlanId}
-                            />
-                        </div>
-
-                        <PageProofStrip
-                            className="mb-10"
-                            items={[
-                                { label: 'Before payment', value: 'Product-specific starter questions and launch path' },
-                                { label: 'Best input', value: 'Scattered docs, FAQs, owner notes, screenshots, recordings, recurring questions' },
-                                { label: 'Go-live rule', value: 'Review answers and verify widget context before relying on live support' },
-                            ]}
-                        />
-
-                        <div className="mb-10 rounded-[1.5rem] border border-teal-300/20 bg-teal-400/[0.055] p-5">
-                            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                                <div className="flex gap-3">
-                                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-teal-200/15 bg-teal-300/[0.08] text-teal-100">
-                                        <LuFileInput aria-hidden size={20} />
-                                    </span>
-                                    <div>
-                                        <h2 className="text-base font-semibold text-white">Have product knowledge scattered across a repo, docs, website, screenshots, or owner notes?</h2>
-                                        <p className="mt-1 text-sm leading-relaxed text-[#d6d6ef]">
-                                            Run pre-onboarding first so AnswerLattice starts with cleaner, structured product material.
-                                        </p>
-                                    </div>
-                                </div>
-                                <AnswerlatticeLink
-                                    basePath={basePath}
-                                    href="/pre-onboarding"
-                                    className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-teal-700 px-4 py-3 text-sm font-semibold text-white transition hover:bg-teal-800"
-                                >
-                                    Prepare inputs
-                                    <LuArrowRight aria-hidden size={15} />
-                                </AnswerlatticeLink>
-                            </div>
-                        </div>
-
-                        <div>
-                            <h2 className="mb-6 text-xl font-semibold">AnswerLattice is a good fit when</h2>
-                            <div className="grid gap-4 sm:grid-cols-2">
-                                {CRITERIA.map((item, i) => (
-                                    <div key={i} className="flex items-start gap-3 rounded-xl border border-white/[0.06] bg-white/[0.02] p-4">
-                                        <span className="mt-1 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-teal-500/10 text-[10px] text-teal-300">
-                                            {i + 1}
-                                        </span>
-                                        <div>
-                                            <div className="text-sm font-medium text-white">{item.label}</div>
-                                            <div className="mt-1 text-xs leading-relaxed text-[#6b6b8a]">{item.description}</div>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    </div>
-                </section>
-
-                <section className="border-t border-white/[0.06] px-6 py-16">
-                    <div className="mx-auto max-w-3xl">
-                        <h2 className="mb-3 text-xl font-semibold">What you need before signup</h2>
-                        <p className="mb-6 text-sm leading-relaxed text-[#a0a0c0]">
-                            You do not need a full help center to start. Bring the scattered material you already use to explain your product: notes, recurring questions, setup instructions, release updates, screenshots, short support recordings, and repeated replies. The Pre-Onboarding Kit organizes those sources before you upload them.
-                        </p>
-                        <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-5">
-                            <div className="mb-4 text-xs font-semibold uppercase tracking-widest text-teal-300">First session checklist</div>
-                            <div className="grid gap-3 sm:grid-cols-2">
-                                {FIRST_SESSION.map((item, index) => (
-                                    <div key={item} className="flex items-start gap-3 rounded-xl border border-white/[0.06] bg-[#101028] p-3">
-                                        <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-teal-500/10 text-[11px] font-bold text-teal-200">
-                                            {index + 1}
-                                        </span>
-                                        <span className="text-sm leading-relaxed text-[#d6d6ef]">{item}</span>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    </div>
-                </section>
-
-                <section className="border-t border-white/[0.06] px-6 py-16 text-center">
-                    <p className="text-sm text-[#6b6b8a]">
-                        Not ready to apply?{' '}
-                        <AnswerlatticeLink basePath={basePath} href="/product" className="inline-flex min-h-11 items-center justify-center text-teal-300 hover:text-teal-200">
-                            Learn more about how AnswerLattice works
-                        </AnswerlatticeLink>
-                    </p>
-                </section>
-            </main>
-            <AnswerlatticeFooter basePath={basePath} />
-        </>
-    );
+    redirect(`${basePath}/early-access`);
 }

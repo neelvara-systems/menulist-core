@@ -371,6 +371,7 @@ export default function MobileOpsControlRoomScreen({ onBack }: MobileOpsControlR
                                 <Flex gap={8} vertical>
                                     <Text strong>Force Republish</Text>
                                     <Select
+                                        aria-label="Store"
                                         options={selectOptions}
                                         placeholder={storesLoading ? 'Loading stores' : 'Select store'}
                                         value={selectedStoreId}

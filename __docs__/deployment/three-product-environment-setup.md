@@ -1047,6 +1047,10 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
 NEXTAUTH_URL=http://localhost:3000
 NEXT_PUBLIC_USE_EMULATORS=true
 NEXT_PUBLIC_USE_FIREBASE_EMULATORS=true
+# Optional when concurrent product emulators already own the default ports.
+NEXT_PUBLIC_MENULIST_FIREBASE_AUTH_EMULATOR_PORT=9099
+NEXT_PUBLIC_MENULIST_FIREBASE_FIRESTORE_EMULATOR_PORT=8080
+NEXT_PUBLIC_MENULIST_FIREBASE_STORAGE_EMULATOR_PORT=9199
 FUNCTIONS_EMULATOR=true
 FIRESTORE_EMULATOR_HOST=127.0.0.1:8080
 FIREBASE_STORAGE_EMULATOR_HOST=127.0.0.1:9199
@@ -1054,7 +1058,10 @@ FIREBASE_AUTH_EMULATOR_HOST=127.0.0.1:9099
 ```
 
 Keep these values off in Vercel. Emulator use does not create a third deployed
-environment.
+environment. The three product-scoped browser port overrides accept only whole
+numbers from 1 through 65535, retain the existing 9099/8080/9199 defaults when
+blank, and let an isolated MenuList browser session coexist with another
+product's emulator process without stopping or reusing its Auth namespace.
 
 ### 2. Production Vercel scope
 
@@ -1107,7 +1114,7 @@ from.
 | Cloud Tasks | Root/Vercel: reuse `NEXT_PUBLIC_MENULIST_FIREBASE_PROJECT_ID`, plus `MENULIST_FIREBASE_PROJECT_LOCATION`, `MENULIST_BATCH_IMAGE_GENERATION_WORKER_URL`, `MENULIST_BATCH_IMAGE_GENERATION_QUEUE_ID`, `MENULIST_BATCH_IMAGE_GENERATION_WORKER_SECRET` | Google Cloud Tasks |
 | Analytics/maps | `GA_CLIENT_EMAIL`, `GA_PRIVATE_KEY`, `GA_PROJECT_ID`, `NEXT_PUBLIC_GA_MEASUREMENT_ID`, `NEXT_PUBLIC_CLARITY_ID`, `NEXT_PUBLIC_GOOGLE_MAPS_EMBED_API_KEY` | GA4, Clarity, Maps |
 | Sentry | `NEXT_PUBLIC_SENTRY_DSN`, `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, `SENTRY_PROJECT`, `SENTRY_RELEASE`, `SENTRY_ENABLED_IN_EMULATOR`; Firebase Functions use project-local `SENTRY_DSN` Secret Manager | Sentry |
-| App Check and emulators | `NEXT_PUBLIC_RECAPTCHA_SITE_KEY`, `NEXT_PUBLIC_MENULIST_FIREBASE_APPCHECK_DEBUG_TOKEN`, `NEXT_PUBLIC_USE_EMULATORS`, `FUNCTIONS_EMULATOR`, `FIRESTORE_EMULATOR_HOST`, `FIREBASE_STORAGE_EMULATOR_HOST`, `FIREBASE_AUTH_EMULATOR_HOST` | reCAPTCHA/App Check and local emulator settings |
+| App Check and emulators | `NEXT_PUBLIC_RECAPTCHA_SITE_KEY`, `NEXT_PUBLIC_MENULIST_FIREBASE_APPCHECK_DEBUG_TOKEN`, `NEXT_PUBLIC_USE_EMULATORS`, `NEXT_PUBLIC_USE_FIREBASE_EMULATORS`, optional local-only `NEXT_PUBLIC_MENULIST_FIREBASE_AUTH_EMULATOR_PORT`, `NEXT_PUBLIC_MENULIST_FIREBASE_FIRESTORE_EMULATOR_PORT`, `NEXT_PUBLIC_MENULIST_FIREBASE_STORAGE_EMULATOR_PORT`, plus server SDK `FUNCTIONS_EMULATOR`, `FIRESTORE_EMULATOR_HOST`, `FIREBASE_STORAGE_EMULATOR_HOST`, `FIREBASE_AUTH_EMULATOR_HOST` | reCAPTCHA/App Check and isolated local emulator settings; keep all emulator values false/blank in Vercel |
 | Email and alerts | Root/Vercel: `MENULIST_SMTP_HOST`, `MENULIST_SMTP_PORT`, `MENULIST_SMTP_USER`, `MENULIST_SMTP_PASS`, `MENULIST_TELEGRAM_BOT_TOKEN`, `MENULIST_TELEGRAM_CHAT_ID`, plus the shared notification rows; Functions Secret Manager: `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` | SMTP provider, Telegram, Slack |
 | WhatsApp and OTP | Root app: optional `MENULIST_WHATSAPP_PHONE_NUMBER_ID`, `MENULIST_WHATSAPP_ACCESS_TOKEN`, `MENULIST_WHATSAPP_OTP_TEMPLATE_NAME`, `MENULIST_WHATSAPP_OTP_TEMPLATE_LANGUAGE`, `MENULIST_WHATSAPP_OTP_ALLOW_TEXT_FALLBACK`, plus phone dev controls and `NEXT_PUBLIC_MSG_PREVIEW_BASE_URL`. Firebase Functions: project-local `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_APP_SECRET`, `WHATSAPP_VERIFY_TOKEN` Secret Manager values and messaging-onboarding flags in the product Functions env file | Meta WhatsApp and internal OTP policy; do not duplicate Functions-only values into root/Vercel env |
 | External Answerlattice widget client | `NEXT_PUBLIC_ANSWERLATTICE_WIDGET_KEY`, `NEXT_PUBLIC_MENULIST_ANSWERLATTICE_WIDGET_SCRIPT_SRC` | Answerlattice widget setup; the key name is client-generic while the optional script override remains scoped to this MenuList deployment |

@@ -90,6 +90,8 @@ Desktop and mobile install-link copied feedback must wait for Clipboard API succ
 
 Settings saves must also require explicit DAL acknowledgements. `updatePWASettings()` must return a valid settings acknowledgement before desktop or mobile updates local draft baselines. `updatePWAIconOverride()` must return `success: true` and `pwaIconUpdatedAt` before desktop or mobile updates the local icon state. The pwaShortName business-copy metadata side write must be checked before the UI reports the save as complete.
 
+Clearing the localized home-screen name is an explicit override deletion, not a no-op. The DAL deletes `pwaSettings.pwaShortName`, invalidates the existing public-client cache, and allows the manifest to return immediately to its generated store-name fallback.
+
 Desktop and mobile settings are keyed by exact tenant/store identity. A store switch remounts the surface before prior localized short-name/icon drafts can render. Save operations capture their originating tenant/store for settings, business-copy metadata and icon lifecycle work; delayed completion may finish the already-authorized old-store sequence but cannot merge metadata/icon truth, loading state or success/error copy into the newly selected store.
 
 The desktop Enable Customer App and Show install prompt switches expose explicit accessible names. The mobile settings toggle wrapper uses its visible label as the switch accessible name and forwards the disabled state to the underlying control, so the prompt switch is both visibly and semantically disabled when the Customer App master setting is off.

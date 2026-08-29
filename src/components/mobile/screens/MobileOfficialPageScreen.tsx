@@ -17,9 +17,10 @@ import { prepareMediaImage, type MediaImageCropIntent, type PreparedMediaImage }
 import MediaImageCard from '@/components/shared/media/MediaImageCard';
 import MediaImageAdjustModal from '@/components/shared/media/MediaImageAdjustModal';
 import { getMenuSpecialNoteSuggestions } from '@lib/menu/specialNoteSuggestions';
+import ContextualStateIllustration from '@atoms/contextualStateIllustration';
 import { buildBusinessCopyManualOverrideMeta } from '@services/ai/businessCopy/metadata';
 import { buildQrCodeFilename } from '@lib/utils/qrCode';
-import { generateOBPUrl } from '@lib/obp/generateOBPUrl';
+import { generateConfiguredStoreOBPUrl } from '@lib/obp/generateOBPUrl';
 import { normalizeOwnerPublicPresenceLinks } from '@lib/obp/ownerPublicPresenceBoundary';
 import { buildVisualProfileCompletion } from '@lib/visualProfile/visualProfileCompletion';
 import { getStoreDeepDifference } from '@lib/store/storeNestedUpdateProjection';
@@ -30,6 +31,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { InputNumber, theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import dynamic from 'next/dynamic';
+import { createPortal } from 'react-dom';
 import type { ChangeEvent, CSSProperties, ReactNode } from 'react';
 import type { StoreDataType } from '@type/platform/store';
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
@@ -55,6 +57,7 @@ import {
     LuTrash2,
 } from 'react-icons/lu';
 import { Button, Card, DotLoading, Flex, Input, NavBar, Popup, Switch, Tag, Text, TextArea, Toast } from '../antd';
+import { MOBILE_BOTTOM_NAV_CLEARANCE } from '../MobileNavigation';
 import MobileCompliancePagesEditor from '../components/MobileCompliancePagesEditor';
 import MobileLocalizedLanguageSelector from '../components/MobileLocalizedLanguageSelector';
 import MobileLinkCard from '../components/MobileLinkCard';
@@ -83,6 +86,7 @@ interface MobileOfficialPageScreenProps {
     onEmbeddedLanguageChange?: (language: string) => void;
     onEmbeddedStoreDetailsChange?: (storeDetails: StoreDataType) => void;
     onBack: () => void;
+    onOpenDomainSettings?: () => void;
 }
 
 type PresenceFormData = ReturnType<typeof getInitialPresenceForm>;
@@ -533,6 +537,7 @@ function MobileOfficialPageScreenContent({
     onEmbeddedPhotoDeleteQueueChange,
     onEmbeddedStoreDetailsChange,
     onBack,
+    onOpenDomainSettings,
 }: MobileOfficialPageScreenProps) {
     const t = useTranslations('BusinessSettings');
     const tMobile = useTranslations('MobileSettings');
@@ -541,7 +546,7 @@ function MobileOfficialPageScreenContent({
     const { token } = theme.useToken();
     const { isCompactHandheld } = useViewportInfo();
     const session = useClientAuthSession();
-    const { storeDetails: contextStoreDetails, setStoreDetails } = useContext(PlatformGlobalDataContext);
+    const { storeDetails: contextStoreDetails, setStoreDetails, tenantDetails } = useContext(PlatformGlobalDataContext);
     const storeDetails = embeddedStoreDetails || contextStoreDetails;
     const mobileProjects = useMobileProjects();
     const projectsList = embedded ? (embeddedProjectsList || []) : mobileProjects.projectsList;
@@ -571,8 +576,8 @@ function MobileOfficialPageScreenContent({
     const componentActiveRef = useRef(true);
     const presenceSaveInFlightRef = useRef(false);
     const officialPageUrl = useMemo(
-        () => generateOBPUrl(storeDetails?.subdomain || '', storeDetails?.customDomain),
-        [storeDetails?.customDomain, storeDetails?.subdomain]
+        () => generateConfiguredStoreOBPUrl(storeDetails, tenantDetails?.storesList),
+        [storeDetails, tenantDetails?.storesList]
     );
     const buildMobileOfficialPageLinkLogContext = useCallback((
         flow: string,
@@ -1291,7 +1296,11 @@ function MobileOfficialPageScreenContent({
                     title={t('officialPage')}
                 />
             ) : null}
-            <Flex gap={12} style={{ padding: embedded ? '0 0 24px' : 16 }} vertical>
+            <Flex
+                gap={12}
+                style={{ padding: embedded ? '0 0 24px' : '16px 16px calc(env(safe-area-inset-bottom) + 264px)' }}
+                vertical
+            >
                 <MobileLocalizedLanguageSelector
                     helperText="Choose which public-content language you want to edit. Links, toggles, ratings, and photos stay shared for all languages."
                     languages={managedLanguages}
@@ -1321,6 +1330,26 @@ function MobileOfficialPageScreenContent({
                         onShowQr={() => setIsQrSheetOpen(true)}
                         value={officialPageUrl}
                     />
+                ) : !embedded ? (
+                    <Card>
+                        <Flex align="center" gap={10} style={{ textAlign: 'center' }} vertical>
+                            <ContextualStateIllustration
+                                color={token.colorPrimary}
+                                size={88}
+                                treatment="softHalo"
+                                variant="emptyWorkspace"
+                            />
+                            <Text strong>Set up your customer link</Text>
+                            <Text type="secondary">
+                                Add a MenuList subdomain or custom domain before copying, sharing, opening, or creating a QR for this page.
+                            </Text>
+                            {onOpenDomainSettings ? (
+                                <Button color="primary" onClick={onOpenDomainSettings} size="large">
+                                    Open Domain settings
+                                </Button>
+                            ) : null}
+                        </Flex>
+                    </Card>
                 ) : null}
 
                 {FEATURE_FLAGS.ENABLE_VISUAL_PROFILE_COMPLETION ? (
@@ -1507,6 +1536,7 @@ function MobileOfficialPageScreenContent({
                     <Flex gap={10} vertical>
                         <Text strong>{t('shortDescriptor')}</Text>
                         <Input
+                            aria-label={t('shortDescriptor')}
                             maxLength={40}
                             onChange={(value) => setLocalizedDrafts((previous) => ({
                                 ...previous,
@@ -1539,6 +1569,7 @@ function MobileOfficialPageScreenContent({
                     <Flex gap={10} vertical>
                         <Text strong>{t('knownFor')}</Text>
                         <Input
+                            aria-label={t('knownFor')}
                             maxLength={40}
                             onChange={(value) => setLocalizedDrafts((previous) => ({
                                 ...previous,
@@ -1570,7 +1601,7 @@ function MobileOfficialPageScreenContent({
                 <Card>
                     <Flex gap={10} vertical>
                         <Text strong>{t('whatsappNumber')}</Text>
-                        <Input onChange={(value) => setFormData((previous) => ({ ...previous, whatsappNumber: value }))} placeholder="+91 98765 43210" value={formData.whatsappNumber} />
+                        <Input aria-label={t('whatsappNumber')} onChange={(value) => setFormData((previous) => ({ ...previous, whatsappNumber: value }))} placeholder="+91 98765 43210" value={formData.whatsappNumber} />
                         <Text type="secondary">{t('whatsappNumberHelp')}</Text>
                     </Flex>
                 </Card>
@@ -1579,6 +1610,7 @@ function MobileOfficialPageScreenContent({
                     <Flex gap={10} vertical>
                         <Text strong>{t('googleMapsLink')}</Text>
                         <TextArea
+                            aria-label={t('googleMapsLink')}
                             autoSize={{ minRows: 2, maxRows: 4 }}
                             onChange={(value) => setFormData((previous) => ({ ...previous, googleMapsUrl: value }))}
                             placeholder="https://maps.google.com/..."
@@ -1625,6 +1657,8 @@ function MobileOfficialPageScreenContent({
                     <Flex gap={10} vertical>
                         <Text strong>{t('establishedYear')}</Text>
                         <InputNumber
+                            aria-label={t('establishedYear')}
+                            controls={false}
                             max={new Date().getFullYear()}
                             min={1900}
                             onChange={(value) => setFormData((previous) => ({ ...previous, establishedYear: typeof value === 'number' ? value : undefined }))}
@@ -1640,6 +1674,7 @@ function MobileOfficialPageScreenContent({
                     <Flex gap={10} vertical>
                         <Text strong>{t('reservationUrl')}</Text>
                         <TextArea
+                            aria-label={t('reservationUrl')}
                             autoSize={{ minRows: 2, maxRows: 4 }}
                             onChange={(value) => setFormData((previous) => ({ ...previous, reservationUrl: value }))}
                             placeholder="https://..."
@@ -1653,6 +1688,7 @@ function MobileOfficialPageScreenContent({
                     <Flex gap={10} vertical>
                         <Text strong>{t('orderUrl')}</Text>
                         <TextArea
+                            aria-label={t('orderUrl')}
                             autoSize={{ minRows: 2, maxRows: 4 }}
                             onChange={(value) => setFormData((previous) => ({ ...previous, orderUrl: value }))}
                             placeholder="https://..."
@@ -1666,6 +1702,7 @@ function MobileOfficialPageScreenContent({
                     <Flex gap={10} vertical>
                         <Text strong>{t('googleReviewUrl')}</Text>
                         <TextArea
+                            aria-label={t('googleReviewUrl')}
                             autoSize={{ minRows: 2, maxRows: 4 }}
                             onChange={(value) => setFormData((previous) => ({ ...previous, googleReviewUrl: value }))}
                             placeholder={t('googleReviewUrlPlaceholder')}
@@ -1679,6 +1716,8 @@ function MobileOfficialPageScreenContent({
                     <Flex gap={10} vertical>
                         <Text strong>{t('googleRating')}</Text>
                         <InputNumber
+                            aria-label={t('googleRating')}
+                            controls={false}
                             max={5}
                             min={1}
                             onChange={(value) => setFormData((previous) => ({ ...previous, googleRating: typeof value === 'number' ? value : undefined }))}
@@ -1696,6 +1735,8 @@ function MobileOfficialPageScreenContent({
                     <Flex gap={10} vertical>
                         <Text strong>{t('googleReviewCount')}</Text>
                         <InputNumber
+                            aria-label={t('googleReviewCount')}
+                            controls={false}
                             min={0}
                             onChange={(value) => setFormData((previous) => ({ ...previous, googleReviewCount: typeof value === 'number' ? value : undefined }))}
                             placeholder="320"
@@ -1918,6 +1959,7 @@ function MobileOfficialPageScreenContent({
 
                 <SectionCard title={t('officialPageSpecialNote')} subtitle={t('officialPageSpecialNoteHelp')}>
                     <TextArea
+                        aria-label={t('officialPageSpecialNote')}
                         autoSize={{ minRows: 2, maxRows: 4 }}
                         maxLength={140}
                         onChange={(value) => setLocalizedDrafts((previous) => ({
@@ -1967,18 +2009,19 @@ function MobileOfficialPageScreenContent({
                     ) : null}
                 </SectionCard>
 
-                {!embedded ? (
+                {!embedded && typeof document !== 'undefined' ? createPortal((
                     <Flex
                         gap={8}
                         style={{
                             backdropFilter: 'blur(10px)',
                             backgroundColor: token.colorBgContainer,
                             borderTop: `1px solid ${token.colorBorderSecondary}`,
-                            bottom: 0,
-                            marginInline: -16,
+                            bottom: MOBILE_BOTTOM_NAV_CLEARANCE,
+                            left: 0,
                             padding: '12px 16px calc(12px + env(safe-area-inset-bottom))',
-                            position: 'sticky',
-                            zIndex: 20,
+                            position: 'fixed',
+                            right: 0,
+                            zIndex: 1100,
                         }}
                         vertical
                     >
@@ -2007,11 +2050,12 @@ function MobileOfficialPageScreenContent({
                             </Button>
                         </Flex>
                     </Flex>
-                ) : null}
+                ), document.body) : null}
             </Flex>
             {previewStoreDetails ? (
                 <MobileOfficialPagePreviewSheet
                     activeLanguage={selectedLanguage}
+                    hasUnsavedChanges={isDirty}
                     menuInfo={previewMenuInfo}
                     onClose={() => setIsPreviewSheetOpen(false)}
                     storeDetails={previewStoreDetails as any}
@@ -2033,6 +2077,7 @@ function MobileOfficialPageScreenContent({
                 type="file"
             />
             <Popup
+                aria-label={activePhotoIndex != null ? t('photoLabel', { index: activePhotoIndex + 1 }) : t('businessPhotos')}
                 bodyStyle={{ maxHeight: '90vh', padding: 0 }}
                 destroyOnClose
                 onMaskClick={() => setActivePhotoIndex(null)}

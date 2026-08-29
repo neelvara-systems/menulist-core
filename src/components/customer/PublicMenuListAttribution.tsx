@@ -1,10 +1,15 @@
-import { getPublicBaseUrl } from '@constant/urls';
+'use client';
+
+import {
+    getHydrationStablePublicBaseUrl,
+    getPublicBaseUrl,
+} from '@constant/urls';
 import {
     PUBLIC_SURFACE_GROWTH_ATTRIBUTION,
     appendGrowthAcquisitionToUrl,
 } from '@lib/growth/acquisitionAttribution';
 import { resolveMenuListAttributionPolicy } from '@lib/platform/menuListBranding';
-import type { CSSProperties } from 'react';
+import { useEffect, useState, type CSSProperties } from 'react';
 
 interface PublicMenuListAttributionProps {
     activePlanType?: string | null;
@@ -72,13 +77,22 @@ export default function PublicMenuListAttribution({
     accentColor = '#111',
     containerStyle,
 }: PublicMenuListAttributionProps) {
-    if (!resolveMenuListAttributionPolicy({ activePlanType }).showAttribution) {
+    const showAttribution = resolveMenuListAttributionPolicy({ activePlanType }).showAttribution;
+    const [appUrl, setAppUrl] = useState(getHydrationStablePublicBaseUrl);
+
+    useEffect(() => {
+        const runtimeBaseUrl = getPublicBaseUrl();
+        setAppUrl((currentBaseUrl) => (
+            currentBaseUrl === runtimeBaseUrl ? currentBaseUrl : runtimeBaseUrl
+        ));
+    }, []);
+
+    if (!showAttribution) {
         return null;
     }
 
     const isCompact = mode === 'compact';
     const markHeight = isCompact ? 12 : 14;
-    const appUrl = getPublicBaseUrl();
     const poweredByHref = appendGrowthAcquisitionToUrl(
         `${appUrl}/create-menu`,
         PUBLIC_SURFACE_GROWTH_ATTRIBUTION,

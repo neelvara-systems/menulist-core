@@ -89,7 +89,6 @@ export default function KeyboardShortcutsHelp({ open, onClose }: KeyboardShortcu
                     styles={{ body: { padding: '12px 16px' } }}
                 >
                     <Flex gap={8} align="flex-start">
-                        <Text style={{ fontSize: 16 }}>�</Text>
                         <Flex vertical gap={8}>
                             <Text strong style={{ fontSize: 13 }}>
                                 How Selection Works

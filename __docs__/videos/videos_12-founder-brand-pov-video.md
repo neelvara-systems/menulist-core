@@ -13,7 +13,7 @@
 
 ## Shared Positioning
 
-MenuList must be shown as public-business truth infrastructure for SMBs, not as a standalone QR menu app, generic AI restaurant software, or flashy SaaS dashboard.
+Internal production category: MenuList is public-business truth infrastructure for SMBs. Do not speak or render that phrase for non-technical owners. Show the owner problem and outcome instead: old or conflicting menu versions become one owner-approved customer link. Do not frame MenuList as a standalone QR menu app, generic AI restaurant software, or flashy SaaS dashboard.
 
 Core line:
 

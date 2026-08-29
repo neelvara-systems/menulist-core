@@ -40,6 +40,8 @@ Excluded:
 - Drag/move/resize controls.
 - Forced route navigation to desktop pages.
 
+The MenuList embedded Fabric editor is intentionally not mounted on mobile. Mobile keeps the faster template preview and PDF/image download flow, using the same document renderer and protected-layer output rules as desktop. Desktop-only recovery drafts, layer tools, and dirty-editor confirmation therefore do not create a second mobile state model.
+
 ## Shell Contract
 
 Owner mobile PWA screens reached from Today, Menu, Share, or More must stay inside `MobileShell`.

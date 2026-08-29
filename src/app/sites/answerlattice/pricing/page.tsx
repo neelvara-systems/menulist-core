@@ -11,7 +11,7 @@ import SectionHeader from '../components/SectionHeader';
 
 export const metadata: Metadata = {
     title: 'Pricing',
-    description: 'Clear INR and USD pricing, paid setup, support credits, intake media processing, and AnswerLattice plans for founder-led SaaS teams.',
+    description: 'Planned public-launch pricing for AnswerLattice. Current access is request-only and does not create a checkout or payment.',
     alternates: { canonical: '/pricing' },
 };
 
@@ -101,15 +101,15 @@ export default async function AnswerlatticePricingPage() {
             <main className="al-page-flow">
                 <section className="px-6 py-24 text-center">
                     <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">Pricing</p>
-                    <h1 className="text-4xl font-bold sm:text-5xl">Choose capacity when support volume is real.</h1>
+                    <h1 className="text-4xl font-bold sm:text-5xl">Planned pricing for when public access opens.</h1>
                     <p className="mx-auto mt-4 max-w-lg text-lg text-[#a0a0c0]">
-                        Choose a paid plan, create the workspace, install the widget, and prove the support loop with bounded capacity.
+                        AnswerLattice is currently onboarding a small early-access group. These prices show the intended public-launch structure; requesting access does not start a checkout.
                     </p>
                     <PageProofStrip
                         className="mx-auto mt-8 max-w-6xl text-left"
                         items={[
-                            { label: 'Setup path', value: 'Create the workspace and verify support before users depend on it' },
-                            { label: 'Paid capacity', value: 'Plans add monthly support credits and higher support volume' },
+                            { label: 'Current access', value: 'Human-reviewed early access before any workspace or billing state' },
+                            { label: 'Planned capacity', value: 'Public plans are expected to add monthly support credits and higher support volume' },
                             { label: 'Credit use', value: 'Provider fallback, full-runtime tests, starter generation, OCR, and transcription' },
                             { label: 'Not charged for', value: 'Approved widget answers, draft review, selected text import, and help browsing' },
                         ]}
@@ -120,20 +120,20 @@ export default async function AnswerlatticePricingPage() {
                     <div className="mx-auto max-w-6xl rounded-2xl border border-teal-500/25 bg-teal-500/[0.07] p-6">
                         <div className="grid gap-4 md:grid-cols-[1.2fr_0.8fr] md:items-center">
                             <div>
-                                <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-teal-200">Paid setup</p>
-                                <h2 className="text-2xl font-bold text-white">Start with Launch. Upgrade when support volume is real.</h2>
+                                <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-teal-200">Early access</p>
+                                <h2 className="text-2xl font-bold text-white">Join the controlled testing group before public checkout opens.</h2>
                                 <p className="mt-3 text-sm leading-relaxed text-[#a0a0c0]">
-                                    Workspace setup creates your AnswerLattice account, chosen monthly subscription, selected product pages, and one-time widget key. Manage plans and top-ups from AnswerLattice Billing through Razorpay.
+                                    Share your product stage and first support problem. We review each request before a private setup invitation; no account, subscription, or payment is created by the form.
                                 </p>
                             </div>
                             <AnswerlatticeLink
                                 basePath={basePath}
-                                href="/get-started"
-                                data-answerlattice-event="pricing_paid_setup_clicked"
+                                href="/early-access"
+                                data-answerlattice-event="pricing_early_access_clicked"
                                 data-answerlattice-label="launch_setup_banner"
                                 className="rounded-xl bg-teal-700 px-6 py-3 text-center text-sm font-semibold text-white shadow-lg shadow-teal-500/25 transition-all hover:bg-teal-800"
                             >
-                                Create workspace
+                                Request early access
                             </AnswerlatticeLink>
                         </div>
                     </div>
@@ -161,6 +161,7 @@ export default async function AnswerlatticePricingPage() {
                                         </span>
                                     )}
                                 </div>
+                                <div className="mb-2 text-xs font-semibold uppercase tracking-widest text-teal-300">Planned public-launch price</div>
                                 <div className="mb-1 text-4xl font-bold">{formatPrice(plan.priceINR.price)}</div>
                                 <p className="mb-1 text-sm text-[#b7b7d2]">or {formatUsdPrice(plan.priceUSD.price)} per month</p>
                                 <p className="mb-1 text-xs leading-relaxed text-[#6b6b8a]">
@@ -172,7 +173,7 @@ export default async function AnswerlatticePricingPage() {
                                 </div>
                                 <AnswerlatticeLink
                                     basePath={basePath}
-                                    href={`/get-started?plan=${encodeURIComponent(plan.planId)}`}
+                                    href="/early-access"
                                     data-answerlattice-event="pricing_plan_cta_clicked"
                                     data-answerlattice-label={plan.planId}
                                     className={`mb-6 block w-full rounded-xl py-3 text-center text-sm font-semibold transition-colors ${
@@ -181,7 +182,7 @@ export default async function AnswerlatticePricingPage() {
                                             : 'border border-white/[0.12] bg-white/[0.03] text-[#d6d6ef] hover:border-white/[0.24]'
                                     }`}
                                 >
-                                    Create workspace
+                                    Request early access
                                 </AnswerlatticeLink>
 
                                 <ul className="space-y-3">
@@ -251,22 +252,22 @@ export default async function AnswerlatticePricingPage() {
                         </div>
                     </div>
                     <p className="mx-auto mt-8 max-w-2xl text-center text-sm leading-relaxed text-[#6b6b8a]">
-                        Plans are available monthly or yearly. Billing country determines INR or USD checkout. Usage limits protect infrastructure, but Answerlattice is not priced as a punishment for successful support deflection.
+                        Planned public plans may be available monthly or yearly when checkout opens. Final currency, tax, plan terms, and availability will be shown before any future payment.
                     </p>
                 </section>
                 <section className="border-b border-white/[0.06] px-6 py-16 text-center">
                     <h2 className="text-3xl font-bold">Not sure which plan fits?</h2>
                     <p className="mx-auto mt-4 max-w-2xl text-lg text-[#a0a0c0]">
-                        Start with the setup path before launch or early support volume. Upgrade when users, pages, and support questions grow.
+                        Request early access and tell us what users need help with first. We will review fit before any setup or billing step.
                     </p>
                     <AnswerlatticeLink
                         basePath={basePath}
-                        href="/get-started"
+                        href="/early-access"
                         data-answerlattice-event="pricing_final_cta_clicked"
                         data-answerlattice-label="create_workspace"
                         className="mt-8 inline-block rounded-xl bg-teal-700 px-8 py-3.5 text-sm font-semibold text-white shadow-lg shadow-teal-500/25 transition-all hover:bg-teal-800"
                     >
-                        Create workspace
+                        Request early access
                     </AnswerlatticeLink>
                 </section>
             </main>

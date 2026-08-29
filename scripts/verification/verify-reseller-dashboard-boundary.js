@@ -1000,6 +1000,9 @@ function verifyDesktopSurfaces(dashboard, management, onboarding) {
     'data.transactionId === expected.operationId',
     "const operationIntentKey = `renew:${renewalClient.subscriptionId}:${renewalClient.pricingTier}:${renewalMonths}`",
     'Confirm prepaid renewal',
+    "RESELLER_SYSTEM_FLAGS.OFFLINE_MODE_ACTIVE && isManual && record.status === 'active'",
+    "RESELLER_SYSTEM_FLAGS.OFFLINE_MODE_ACTIVE && isManual && ['active', 'expired'].includes(record.status)",
+    'RESELLER_SYSTEM_FLAGS.OFFLINE_MODE_ACTIVE ? (',
     'invalidClientRowCount > 0',
     'monthlySummary.invalidRowCount > 0',
   ].forEach((token) => assertIncludes(dashboard, token, 'Desktop reseller dashboard'));
@@ -1018,6 +1021,11 @@ function verifyDesktopSurfaces(dashboard, management, onboarding) {
     'invalid reseller profile',
     'isExpectedResellerManagementSaveResponse(result, editingProfile?.id)',
     'hasExpectedProfileId',
+    'isResellerManagementDraftChanged(values, editingProfile)',
+    "messageApi.info('No reseller changes to save')",
+    'aria-label={editingProfile ? `Edit reseller ${editingProfile.name}` : \'Add New Reseller\'}',
+    'aria-label={`Edit reseller ${record.name}`}',
+    '...(normalizedPassword ? { password: normalizedPassword } : {})',
   ].forEach((token) => assertIncludes(management, token, 'Desktop reseller management'));
 
   [
@@ -1027,6 +1035,12 @@ function verifyDesktopSurfaces(dashboard, management, onboarding) {
     'readJsonResponseWithLimit<unknown>',
     'isResellerOnboardingResponse(data, operationId)',
     'normalizePhoneNumberForStorage({',
+    'if (!value) return;',
+    'showSearch optionFilterProp="label" options={INDIAN_GST_STATES.map',
+    "{ title: 'Confirm & Create Link' }",
+    "? 'Client activated successfully!'",
+    ": 'Client setup created. Payment is pending.'",
+    "title={result.status === 'active' ? 'Client Activated Successfully!' : 'Client Setup Created'}",
     'ownerPassword: values.ownerPassword',
     "getResellerOperationIntentKey('onboard-client'",
     'getOrCreateResellerOperationId(operationIntentKey)',
@@ -1035,7 +1049,24 @@ function verifyDesktopSurfaces(dashboard, management, onboarding) {
     'copyResellerTextToClipboard(copyValue)',
     'hasResellerClipboardWrite()',
     'hasResellerCopyFallback()',
+    'const selectedTier = tiers.find(t => t.id === values.pricingTier);',
+    'const billingInterval = values.billingInterval;',
+    'const locationCount = Number(values.locationCount || 1);',
+    '{values.commitmentMonths && (',
+    '<Col span={16}><Text>{values.commitmentMonths} months</Text></Col>',
   ].forEach((token) => assertIncludes(onboarding, token, 'Desktop reseller onboarding'));
+
+  [
+    "{ title: 'Confirm & Activate' }",
+    "messageApi.success('Client onboarded successfully!')",
+    'title="Client Onboarded Successfully!"',
+  ].forEach((token) => assertNotIncludes(onboarding, token, 'Desktop reseller onboarding truthful state'));
+
+  [
+    "form.getFieldValue('pricingTier')",
+    "form.getFieldValue('billingInterval')",
+    "form.getFieldValue('locationCount')",
+  ].forEach((token) => assertNotIncludes(onboarding, token, 'Desktop reseller onboarding render lifecycle'));
 
   [
     dashboard,
@@ -1072,6 +1103,9 @@ function verifyMobileSurfaces(dashboard, management, onboarding, mobileShell, mo
     'data.transactionId === expected.operationId',
     "const operationIntentKey = `renew:${renewalClient.subscriptionId}:${renewalClient.pricingTier}:${renewalMonths}`",
     'Renew manual access',
+    "RESELLER_SYSTEM_FLAGS.OFFLINE_MODE_ACTIVE && isManual && transaction.status === 'active'",
+    "RESELLER_SYSTEM_FLAGS.OFFLINE_MODE_ACTIVE && isManual && ['active', 'expired'].includes(transaction.status)",
+    'RESELLER_SYSTEM_FLAGS.OFFLINE_MODE_ACTIVE ? (',
     'invalidClientRowCount > 0',
     'monthlySummary.invalidRowCount > 0',
   ].forEach((token) => assertIncludes(dashboard, token, 'Mobile reseller dashboard'));
@@ -1088,6 +1122,12 @@ function verifyMobileSurfaces(dashboard, management, onboarding, mobileShell, mo
     'profileEvidence?.isPartial',
     'invalid reseller profile',
     'isExpectedMobileResellerManagementSaveResponse(data, editingProfile?.id)',
+    'const [editorOpen, setEditorOpen] = useState(false)',
+    'setEditorOpen(true)',
+    'if (editorOpen)',
+    'isResellerManagementDraftChanged(draft, editingProfile)',
+    "Toast.show({ content: 'No reseller changes to save.'",
+    'aria-label={`Edit reseller ${profile.name}`}',
     'if (!isPlatform) {',
     'Only platform admins can use this screen.',
     'style={{ minHeight: 44',
@@ -1106,6 +1146,11 @@ function verifyMobileSurfaces(dashboard, management, onboarding, mobileShell, mo
     'operationId,',
     'copyMobileResellerOnboardingText(link)',
     'navigator.share({ text: link, title, url: link })',
+    'aria-pressed={draft.pricingTier === tier.id}',
+    'aria-label="Locations included"',
+    'aria-pressed={draft.billingInterval === interval}',
+    'aria-pressed={!draft.commitmentMonths}',
+    'aria-pressed={draft.commitmentMonths === String(months)}',
     'style={{ minHeight: 44',
   ].forEach((token) => assertIncludes(onboarding, token, 'Mobile reseller onboarding'));
 
@@ -1151,6 +1196,15 @@ function verifyMobileSurfaces(dashboard, management, onboarding, mobileShell, mo
     token,
     'Reseller duplicated profile response boundary',
   ));
+}
+
+function verifyResellerDashboardRouteIsolation(mainLayout) {
+  [
+    "const requestPath = (await headers()).get('x-menulist-owner-request-path');",
+    'const currentUser = await getCurrentUser(session);',
+    "if (currentUser.userData.platformRole === RESELLER_USER_ROLE && requestPath === '/dashboard')",
+    "redirect('/reseller')",
+  ].forEach((token) => assertIncludes(mainLayout, token, 'Reseller dashboard route isolation'));
 }
 
 function verifyOnboardingResponseBoundary(boundary, test, route) {
@@ -1407,6 +1461,9 @@ const files = {
   desktopDashboard: read('src/components/templates/main-app/reseller/ResellerDashboard.tsx'),
   desktopManagement: read('src/components/templates/main-app/reseller/ResellerManagement.tsx'),
   desktopOnboarding: read('src/components/templates/main-app/reseller/OnboardingWizard.tsx'),
+  resellerManagePage: read('src/app/(main)/reseller/manage/page.tsx'),
+  resellerManageLayout: read('src/app/(main)/reseller/manage/layout.tsx'),
+  mainLayout: read('src/app/(main)/layout.tsx'),
   mobileDashboard: read('src/components/mobile/screens/MobileResellerDashboardScreen.tsx'),
   mobileManagement: read('src/components/mobile/screens/MobileResellerManagementScreen.tsx'),
   mobileOnboarding: read('src/components/mobile/screens/MobileResellerOnboardingScreen.tsx'),
@@ -1485,6 +1542,17 @@ verifyReadRoutes(
 );
 verifyHookAndDiagnostics(files.hook, files.diagnostics);
 verifyDesktopSurfaces(files.desktopDashboard, files.desktopManagement, files.desktopOnboarding);
+assertIncludes(
+  files.resellerManagePage,
+  "redirect('/reseller')",
+  'Reseller management role-aware fallback',
+);
+assertIncludes(
+  files.resellerManageLayout,
+  "requirePlatformAdminRouteAccess('/reseller')",
+  'Reseller management server guard fallback',
+);
+verifyResellerDashboardRouteIsolation(files.mainLayout);
 verifyMobileSurfaces(
   files.mobileDashboard,
   files.mobileManagement,

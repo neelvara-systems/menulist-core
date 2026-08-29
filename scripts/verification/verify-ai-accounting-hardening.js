@@ -3883,6 +3883,9 @@ assert(ownerTransactionsPage.includes("t('noCreditActions')"), 'desktop owner tr
 assert(ownerTransactionsPage.includes('getExistingProjectsListWithoutLoader'), 'desktop owner transaction page uses read-only project summary lookup');
 assert(!ownerTransactionsPage.includes('getMetadataProjectsList'), 'desktop owner transaction page does not use project lookup that can create defaults');
 assert(ownerTransactionsPage.includes("aria-label={t('filterByAction')}"), 'desktop owner transaction action filter has a localized accessible name');
+assert(ownerTransactionsPage.includes('htmlFor="transaction-start-date"'), 'desktop owner transaction start date has an associated localized label');
+assert(ownerTransactionsPage.includes('htmlFor="transaction-end-date"'), 'desktop owner transaction end date has an associated localized label');
+assert(ownerTransactionsPage.includes("id={{ start: 'transaction-start-date', end: 'transaction-end-date' }}"), 'desktop owner transaction date inputs retain stable label targets');
 assert(ownerTransactionsPage.includes("aria-label={`${t('details')}: ${formatAiOperationActionLabel(record.action, t)}`}"), 'desktop owner transaction detail actions have localized row-specific accessible names');
 [
   'ai_transactions_page_load_failed',
@@ -3941,6 +3944,12 @@ assert(mobileTransactionsPage.includes('const visibleTransactions = transactionS
 assert(mobileTransactionsPage.includes('const visibleSelectedTransaction = transactionScopeKey === sessionScopeKey ? selectedTransaction : null;'), 'mobile transaction detail refuses a prior-scope selection');
 assert(mobileTransactionsPage.includes('requestGuardRef.current?.invalidate();'), 'mobile transaction effect cleanup invalidates in-flight page work');
 assert(!mobileTransactionsPage.includes('{transactions.map((tx)'), 'mobile transaction list must not render unpartitioned rows');
+assert(mobileTransactionsPage.includes("aria-label={t('startDate')}"), 'mobile transaction start date has a stable accessible name');
+assert(mobileTransactionsPage.includes("aria-label={t('endDate')}"), 'mobile transaction end date has a stable accessible name');
+assert(mobileTransactionsPage.includes("<Popup aria-label={t('filterTransactions')}"), 'mobile transaction filter sheet has the visible filter title as its accessible dialog name');
+assert(mobileTransactionsPage.includes("<Popup aria-label={t('transactionDetails')}"), 'mobile transaction details sheet has the visible details title as its accessible dialog name');
+assert(mobileTransactionsPage.includes('aria-pressed={!draftActionFilter}'), 'mobile transaction all-actions filter exposes selected state');
+assert(mobileTransactionsPage.includes('aria-pressed={draftActionFilter === option.value}'), 'mobile transaction action filters expose selected state');
 
 const operationPresentation = read('src/lib/ai/operationPresentation.ts');
 assert(operationPresentation.includes('formatAiOperationActionLabel'), 'AI operation presentation helper centralizes owner action labels');

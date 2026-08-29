@@ -207,6 +207,8 @@ assertIncludes(opsControlRoom, 'href="/ops/report-leads"', 'Ops Control Room Rep
   'requestIdRef.current + 1',
   'requestId !== requestIdRef.current',
   'setSnapshot(null)',
+  'aria-label="Filter report leads by status"',
+  'aria-label="Filter report leads by tool"',
   "messageApi.error('Failed to load report leads')",
   'copyRuntimeTextToClipboard(record.suggestedReply)',
   'hasRuntimeClipboardWrite()',

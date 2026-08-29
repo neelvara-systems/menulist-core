@@ -111,7 +111,7 @@ unknown persisted fields are not retained.
 
 ### Secret route
 
-`GET` accepts strict query IDs and returns the current secret to an authorized integration manager. Compact and nested authenticated tenant/store aliases must agree with the requested scope. The secret transaction reads the current tenant as well as the store and secret, rejecting inactive, deleted, blocked, or tenant-mismatched scope before reveal, migration, ensure, or rotation. `POST` accepts a bounded strict body:
+`GET` accepts strict query IDs and returns the current secret to an authorized integration manager. Compact and nested authenticated tenant/store aliases must agree on the login scope. The requested tenant must equal that authenticated tenant; the requested store must be either the login store or an explicitly mapped accessible outlet. The route then rechecks the canonical target-store document and `MANAGE_INTEGRATIONS` permission. Unmapped, malformed, cross-tenant, inactive, deleted, blocked, or persisted tenant-mismatched scope fails closed before reveal, migration, ensure, or rotation. `POST` uses the same selected-store boundary and accepts a bounded strict body:
 
 ```json
 {

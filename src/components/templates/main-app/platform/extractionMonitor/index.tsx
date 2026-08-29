@@ -29,7 +29,7 @@ import { Alert, Button, Card, Empty, notification, Spin, Statistic, Table, Tag, 
 import type { ColumnsType } from 'antd/es/table';
 import { useSession } from 'next-auth/react';
 import { useCallback, useEffect, useState } from 'react';
-import { LuActivity, LuAlertTriangle, LuCheckCircle, LuClock, LuEye, LuRefreshCw, LuXCircle } from 'react-icons/lu';
+import { LuActivity, LuAlertTriangle, LuCheckCircle, LuClock, LuEye, LuFilter, LuRefreshCw, LuXCircle } from 'react-icons/lu';
 import useSWR from 'swr';
 import CostMonitor from './CostMonitor';
 import JobInspector from './JobInspector';
@@ -191,6 +191,7 @@ export default function ExtractionMonitor() {
                 { text: 'Processing', value: 'processing' },
                 { text: 'Preview Ready', value: 'preview_ready' },
             ],
+            filterIcon: () => <LuFilter aria-label="Filter extraction status" />,
             onFilter: (value, record) => record.status === value,
         },
         {

@@ -172,6 +172,28 @@ const widgetEmbedSource = fs.readFileSync(
     path.join(ROOT, 'src/components/answerlattice/MenuListAnswerlatticeWidgetEmbed.tsx'),
     'utf8',
 );
+const localBrowserFixtureSource = fs.readFileSync(
+    path.join(ROOT, 'scripts/answerlattice/seed-local-browser-fixture.ts'),
+    'utf8',
+);
+assert.ok(
+    localBrowserFixtureSource.includes('existingUser = await auth.getUserByEmail(email);')
+        && localBrowserFixtureSource.includes('userId = existingUser.uid;'),
+    'the disposable first-client fixture must reuse an existing emulator identity with the same email',
+);
+for (const localWidgetOrigin of [
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',
+    'http://localhost:3014',
+    'http://127.0.0.1:3014',
+    'http://localhost:3020',
+    'http://127.0.0.1:3020',
+]) {
+    assert.ok(
+        localBrowserFixtureSource.includes(`'${localWidgetOrigin}'`),
+        `the disposable first-client fixture must admit its exact local widget origin: ${localWidgetOrigin}`,
+    );
+}
 assert.ok(
     widgetEmbedSource.includes("url.protocol !== 'https:'"),
     'MenuList widget script overrides must require HTTPS',
@@ -185,6 +207,16 @@ for (const credentialField of ['url.username', 'url.password', 'url.hash']) {
 assert.ok(
     widgetEmbedSource.includes('normalizeConfiguredWidgetScriptSrc(CONFIGURED_SCRIPT_SRC)'),
     'MenuList widget must validate the configured script override before use',
+);
+assert.ok(
+    widgetEmbedSource.includes('onReady={() => setRuntimeReady(true)}')
+        && widgetEmbedSource.includes('if (!ANSWERLATTICE_WIDGET_KEY || shouldSuppressWidget || !pageContext) return null;'),
+    'MenuList widget must render its script first and mark the runtime ready only after Next Script reports readiness',
+);
+assert.equal(
+    widgetEmbedSource.includes('setRuntimeReady(true);\n    }, []);'),
+    false,
+    'MenuList widget must not assume the asynchronous runtime is ready merely because the host component mounted',
 );
 for (const routeContext of [
     "dashboard: { feature: 'today', workflow: 'review_daily_business'",
@@ -212,8 +244,8 @@ assert.ok(
     'nested MenuList owner routes must use generic detail context',
 );
 assert.ok(
-    widgetEmbedSource.includes('contextKey: `menulist_owner_${contextRouteKey}${contextSuffix}`'),
-    'MenuList widget context keys must use the safe route key and generic detail suffix',
+    widgetEmbedSource.includes('contextKey: `menulist_${userRole}_${contextRouteKey}${contextSuffix}`'),
+    'MenuList widget context keys must use the safe role, route key, and generic detail suffix',
 );
 assert.equal(
     widgetEmbedSource.includes('contextKey: `menulist_owner_${routeKey}${secondSegment'),
@@ -223,6 +255,25 @@ assert.equal(
 assert.ok(
     widgetEmbedSource.includes('if (!routeConfig) return null;'),
     'unknown MenuList routes must be suppressed instead of becoming widget context',
+);
+assert.ok(
+    widgetEmbedSource.includes("type MenuListWidgetRole = 'owner' | 'staff';")
+        && widgetEmbedSource.includes('userRole,')
+        && widgetEmbedSource.includes('data-user-role={userRole}'),
+    'MenuList widget context must distinguish owner and restricted staff sessions',
+);
+assert.ok(
+    widgetEmbedSource.includes("document.querySelectorAll<HTMLElement>('[role=\"dialog\"]')")
+        && widgetEmbedSource.includes('ownerDialogOpen || !pageContext')
+        && widgetEmbedSource.includes('new MutationObserver(scheduleDialogStateUpdate)')
+        && widgetEmbedSource.includes('window.requestAnimationFrame'),
+    'MenuList must hide and close the help widget while an owner-app dialog is visible',
+);
+const mainLayoutSource = fs.readFileSync(path.join(ROOT, 'src/app/(main)/layout.tsx'), 'utf8');
+assert.ok(
+    mainLayoutSource.includes("const helpWidgetRole = session.role === 'owner' ? 'owner' : 'staff';")
+        && mainLayoutSource.includes('<MenuListAnswerlatticeWidgetEmbed userRole={helpWidgetRole} />'),
+    'the authenticated MenuList role must be mapped to a bounded help-widget role',
 );
 assert.equal(
     widgetEmbedSource.includes('MOBILE_WIDGET_MEDIA_QUERY'),

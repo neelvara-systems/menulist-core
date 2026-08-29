@@ -129,7 +129,7 @@ export function AdvancedMetricsCards({
                 height: '100%',
                 borderLeft: `4px solid ${metric.color}`,
               }}
-              bodyStyle={{ padding: 20 }}
+              styles={{ body: { padding: 20 } }}
               loading={loading}
             >
               <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>

@@ -1,5 +1,6 @@
 'use client'
 import { StoreDataType } from '@type/platform/store';
+import { normalizeMetaPixelId } from '@lib/analytics/preferences';
 import Script from 'next/script';
 
 declare global {
@@ -21,15 +22,8 @@ interface FacebookPixelProps {
     storeDetails?: StoreDataType;
 }
 
-const META_PIXEL_ID_PATTERN = /^\d{5,32}$/;
-
-const getSafeMetaPixelId = (value?: string | null): string | null => {
-    const normalized = String(value || '').trim();
-    return META_PIXEL_ID_PATTERN.test(normalized) ? normalized : null;
-};
-
 const FacebookPixel = ({ storeDetails }: FacebookPixelProps) => {
-    const pixelId = getSafeMetaPixelId(storeDetails?.analytics?.facebookPixelId);
+    const pixelId = normalizeMetaPixelId(storeDetails?.analytics?.facebookPixelId);
 
     if (!pixelId) return null;
 

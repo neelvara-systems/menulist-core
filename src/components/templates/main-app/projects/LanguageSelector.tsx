@@ -35,6 +35,18 @@ export function LanguageSelector({
         ? getAvailableLanguagesForOutlet(GlobalLanguagesList, storeActiveLanguages, selectedLanguages)
         : getAvailableLanguagesForMaster(GlobalLanguagesList, selectedLanguages);
 
+    const removeLanguage = (languageCode: string) => {
+        const updatedLanguages = [...selectedLanguages];
+        const languageIndex = updatedLanguages.indexOf(languageCode);
+        if (languageIndex < 0) return;
+        if (updatedLanguages.length <= 1) {
+            messageApi.warning(t('atLeastOneRequired'));
+            return;
+        }
+        updatedLanguages.splice(languageIndex, 1);
+        onLanguageToggle(updatedLanguages);
+    };
+
     return (
         <Flex vertical style={{ ...style }}>
             {title && <Text strong>{title}</Text>}
@@ -45,19 +57,14 @@ export function LanguageSelector({
                     return (
                         <Tag
                             key={idx}
-                            onClick={() => {
-                                const newSelected = [...selectedLanguages];
-                                const langIndex = newSelected.indexOf(lang);
-                                if (langIndex > -1) {
-                                    if (newSelected.length <= 1) {
-                                        messageApi.warning(t('atLeastOneRequired'));
-                                        return;
-                                    }
-                                    newSelected.splice(langIndex, 1);
-                                } else {
-                                    newSelected.push(lang);
-                                }
-                                onLanguageToggle(newSelected);
+                            role="button"
+                            tabIndex={0}
+                            aria-label={`Remove ${langData?.name ?? lang} language`}
+                            onClick={() => removeLanguage(lang)}
+                            onKeyDown={(event) => {
+                                if (event.key !== 'Enter' && event.key !== ' ') return;
+                                event.preventDefault();
+                                removeLanguage(lang);
                             }}
                             style={{
                                 padding: '6px 12px',
@@ -78,11 +85,12 @@ export function LanguageSelector({
 
                 {selectedLanguages.length < LANGUAGE_CONSTANTS.MAX_LANGUAGES_PER_PROJECT && (
                     <Select<string>
+                        aria-label={t('addLanguagePlaceholder')}
                         style={{ width: 200 }}
                         placeholder={t('addLanguagePlaceholder')}
                         showSearch
                         optionFilterProp="label"
-                        value={undefined}
+                        value={null}
                         suffixIcon={<LuPlus />}
                         onChange={(value) => {
                             const newLanguage = GlobalLanguagesList.find(lang => lang.code === value);

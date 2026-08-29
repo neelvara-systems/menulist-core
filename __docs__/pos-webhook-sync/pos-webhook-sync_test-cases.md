@@ -1,6 +1,6 @@
 # External Menu Sync — Test Cases
 
-> **Last reviewed:** July 16, 2026
+> **Last reviewed:** August 28, 2026
 
 ## Automated source gate
 
@@ -39,6 +39,8 @@ Expected cases:
 - payload includes approved public fields;
 - payload excludes internal provenance, aliases, review metadata, and unsafe localized keys;
 - malformed input is normalized without leaking internal data.
+- login store and explicitly mapped selected outlet are admitted;
+- unmapped, whitespace-expanded, conflicting-session-alias, and cross-tenant store scopes fail closed before Firestore or secret work;
 
 ## Firestore emulator cases
 
@@ -62,6 +64,7 @@ Expected cases:
 
 - 401 unauthenticated;
 - 403 wrong tenant/store or missing integration permission;
+- 200 for an explicitly session-mapped selected outlet after canonical target-store permission recheck;
 - 400 malformed/ambiguous IDs;
 - 404 no secret;
 - 429 limit exceeded;

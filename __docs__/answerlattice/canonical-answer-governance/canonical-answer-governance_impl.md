@@ -5,7 +5,7 @@
 | Layer | Current implementation |
 | --- | --- |
 | Route and screen | Governance routes load the canonical answer editor and review surfaces. |
-| Editor | `CanonicalAnswerEditor` captures entity, plan, role, state, version, content, and status inputs. |
+| Editor | `CanonicalAnswerEditor` captures entity, plan, role, state, version, content, and status inputs. `MutationProposalReview` lets a reviewer correct a generated draft's Product Topic before approval. |
 | Hooks | `useCanonicalAnswers` and `useMutationProposals` coordinate owner actions and surface bounded governance errors. |
 | Browser DAL | `canonicalAnswers.ts` and `mutationProposals.ts` call the governed API; they do not write canonical truth. |
 | API | `POST /api/answerlattice/governance/actions` enforces session scope, flag, rate limit, permission, bounded JSON, and Zod validation. |
@@ -27,6 +27,7 @@
 10. Identity-bearing proposal, answer, entity, evidence, and request IDs are validated exactly; surrounding whitespace is rejected instead of being normalized into another mutation target or idempotency key.
 11. Canonical scope arrays reject duplicate entity, plan, role, and state identifiers before proposal persistence.
 12. The shared product-binding schema rejects validation versions before introduction and applicability windows whose end precedes their start, so API, stored-proposal, and server candidate checks share one contract.
+13. Draft approval accepts an optional bounded Product Topic selection. Impact review uses the same selection; final approval revalidates every entity in the workspace, rejects deprecated entities and active overlaps, and records proposed versus approved bindings in the audit event.
 
 ## Data precedence on approval
 

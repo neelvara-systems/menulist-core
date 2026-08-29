@@ -47,6 +47,7 @@ function verifySmokeRoute() {
   assertIncludes(client, "Shortcut dialog traps focus", "Smoke client shortcut focus regression");
   assertIncludes(client, "Preview export opens as a PNG", "Smoke client export visual regression");
   assertIncludes(client, "Top-bar toggles keep the viewport stable", "Smoke client top-bar toggle regression");
+  assertIncludes(client, "Background panel exposes status and real actions only", "Smoke client background action regression");
   assertIncludes(client, "Rail tabs and drawer insertions create editable layers", "Smoke client rail and drawer regression");
   assertIncludes(client, "Keyboard creation shortcuts use normal history", "Smoke client keyboard creation regression");
   assertIncludes(client, "Floating toolbar stays below selection border", "Smoke client floating toolbar bottom-anchor regression");
@@ -73,13 +74,17 @@ function verifySmokeRoute() {
 
 function verifyEditorQaHooks() {
   const editor = read("src/modules/creative-editor/CreativeEditor.tsx");
+  const editorStyles = read("src/modules/creative-editor/CreativeEditor.module.scss");
 
+  assertNotIncludes(editor, "Magic Write", "Editor excludes unimplemented interactive placeholders");
+  assertNotIncludes(editor, "product-owned AI contract", "Editor excludes unimplemented interactive placeholders");
   assertIncludes(editor, "shortcutButtonRef", "Editor shortcut focus restore ref");
   assertIncludes(editor, "previewButtonRef", "Editor preview focus restore ref");
   assertIncludes(editor, "trapDialogFocus", "Editor dialog focus trap");
   assertIncludes(editor, "closeShortcutPanel", "Editor shortcut close helper");
   assertIncludes(editor, "closePreviewPanel", "Editor preview close helper");
   assertIncludes(editor, "data-creative-editor-root", "Editor root QA selector");
+  assertIncludes(editor, "data-creative-editor-selected-layer-id", "Editor selected-layer QA selector");
   assertIncludes(editor, "data-creative-editor-active-tool", "Editor active tool QA selector");
   assertIncludes(editor, "data-creative-editor-body", "Editor body QA selector");
   assertIncludes(editor, "data-creative-editor-canvas", "Editor canvas QA selector");
@@ -97,9 +102,89 @@ function verifyEditorQaHooks() {
   assertIncludes(editor, "data-creative-layer-id", "Editor layer row QA selector");
   assertIncludes(editor, "data-creative-editor-field=\"selected-text\"", "Editor text field QA selector");
   assertIncludes(editor, "data-creative-editor-field=\"selected-font-size\"", "Editor text size field QA selector");
+  assertIncludes(
+    editor,
+    "if ((patch.from || patch.to) && !patch.stops) {",
+    "Editor preserves explicit gradient-stop patches while synchronizing endpoint-only color changes",
+  );
+  for (const accessibleAction of [
+    'aria-label={selectedLayerFrameLocked ? "Selected layer is protected" : selectedLayerLocked ? "Unlock selected layer" : "Lock selected layer"}',
+    'aria-label="Duplicate selected layer"',
+    'aria-label="Delete selected layer"',
+    'aria-label="Align selected layer to left edge"',
+    'aria-label="Center selected layer horizontally"',
+    'aria-label="Align selected layer to right edge"',
+    'aria-label="Center selected layer on background"',
+    'aria-label="Align selected layer to top edge"',
+    'aria-label="Center selected layer vertically"',
+    'aria-label="Align selected layer to bottom edge"',
+    'aria-label="Close download check"',
+    'aria-label={`Remove gradient stop ${index + 1}`}',
+    'aria-label="Bold"',
+    'aria-label="Italic"',
+    'aria-label="Underline"',
+    'aria-label="Strikethrough"',
+  ]) {
+    assertIncludes(editor, accessibleAction, `Editor inspector action is named: ${accessibleAction}`);
+  }
+  for (const textStyleState of [
+    'aria-pressed={selectedElement.fontWeight === "bold" || selectedElement.fontWeight === "800"}',
+    'aria-pressed={selectedElement.fontStyle === "italic"}',
+    'aria-pressed={Boolean(selectedElement.underline)}',
+    'aria-pressed={Boolean(selectedElement.linethrough)}',
+  ]) {
+    assertIncludes(editor, textStyleState, `Editor text style exposes pressed state: ${textStyleState}`);
+  }
+  assert(
+    editor.split('onClick={() => updateSelected({ fontWeight: selectedElement.fontWeight === "bold" || selectedElement.fontWeight === "800" || selectedElement.fontWeight === "700" ? "normal" : "bold" } as Partial<CreativeEditorElement>)}').length - 1 === 2,
+    "Editor inspector bold toggles deactivate every weight rendered as pressed",
+  );
+  assertIncludes(editor, 'aria-label="Image filter"', "Editor names the priority image-filter selector");
+  assertIncludes(editor, 'aria-label="Image filter adjustments"', "Editor names the advanced image-filter selector");
+  assertIncludes(editor, "onClick={runReadinessCheck}", "Editor exposes the governed readiness check action");
+  assert(
+    editor.split('className={styles.contextualToolbar} onMouseDown={(event) => event.stopPropagation()} role="toolbar"').length - 1 === 5,
+    "Editor contextual toolbars retain the active Fabric selection during pointer interaction",
+  );
+  assertIncludes(editorStyles, ".contextualToolbar {\n  position: relative;\n  z-index: 5;\n  grid-column: 1;\n  grid-row: 1;", "Editor contextual toolbar stays above the full-grid Fabric stage for pointer interaction");
+  const hiddenFileInputs = [...editor.matchAll(/<input\s+accept=[\s\S]*?className=\{styles\.hiddenFileInput\}[\s\S]*?\/>/g)];
+  assert(hiddenFileInputs.length === 3, "Editor keeps exactly three programmatic file inputs");
+  for (const [index, match] of hiddenFileInputs.entries()) {
+    assertIncludes(match[0], 'aria-hidden="true"', `Editor hidden file input ${index + 1} is absent from the accessibility tree`);
+    assertIncludes(match[0], "\n                hidden\n", `Editor hidden file input ${index + 1} is not visually or semantically exposed`);
+    assertIncludes(match[0], "tabIndex={-1}", `Editor hidden file input ${index + 1} is absent from keyboard traversal`);
+  }
+  assertNotIncludes(editor, '<input checked readOnly type="checkbox" />', "Editor excludes the false Show background checkbox");
+  assertIncludes(editor, "Color background", "Editor exposes current background type as status text");
+  assertIncludes(editor, 'data-creative-editor-background-status="color"', "Editor exposes background status QA semantics");
+  assertIncludes(editor, "Add image layer", "Editor names the image-layer navigation action truthfully");
+  assertIncludes(editor, "const SEARCHABLE_EDITOR_TOOL_IDS = new Set<EditorToolId>([", "Editor declares the bounded searchable-drawer contract");
+  for (const searchableTool of [
+    '"templates"',
+    '"illustrations"',
+    '"graphics"',
+    '"characters"',
+    '"images"',
+    '"text"',
+    '"styles"',
+    '"shapes"',
+    '"myStuff"',
+    '"brandKit"',
+  ]) {
+    assertIncludes(editor, searchableTool, `Editor searchable-drawer contract includes ${searchableTool}`);
+  }
+  assertIncludes(editor, "hidden={!SEARCHABLE_EDITOR_TOOL_IDS.has(activeTool)}", "Editor hides inert search fields on non-searchable drawers");
+  assertIncludes(editor, '["Sale", "New", "Offer", "Callout", "Graphic", "Sticker"]', "Editor popular graphic searches resolve current approved assets");
+  assertNotIncludes(editor, '["Frame", "Shape", "Line", "Rectangle", "Arrow", "Sticker"]', "Editor excludes obsolete empty-result graphic searches");
+  assertIncludes(editor, 'setNotice(`Applied ${template?.label || "template"} template.`)', "Editor acknowledges the template that replaced the active page");
   assertIncludes(editor, 'chromeMode?: "embedded" | "full"', "Editor exposes explicit chrome mode contract");
   assertIncludes(editor, 'chromeMode = "full"', "Editor defaults to full product chrome");
-  assertIncludes(editor, 'const browserDraftsEnabled = chromeMode === "full"', "Editor disables browser drafts in embedded mode");
+  assertIncludes(editor, 'const browserDraftsEnabled = enableBrowserDrafts ?? chromeMode === "full"', "Editor lets product adapters opt embedded flows into browser draft recovery");
+  assertIncludes(editor, 'availableToolIds?: CreativeEditorToolId[]', "Editor exposes a product-scoped tool allowlist");
+  assertIncludes(editor, 'initialSelectedLayerId?: string | null', "Editor lets product adapters start without selecting a protected layer");
+  assertIncludes(editor, 'requiresReadiness?: boolean', "Editor header actions can enforce the shared download readiness gate");
+  assertIncludes(editor, 'inspectorRef.current.scrollTop = 0', "Editor reveals the readiness panel after switching from a scrolled inspector state");
+  assertIncludes(editor, 'workspaceControls?: CreativeEditorWorkspaceControl[]', "Editor lets embedded products reduce generic workspace controls");
   assertIncludes(editor, "getCreativeEditorDraftStorageKey({", "Editor constructs collision-safe browser draft keys");
   assertIncludes(editor, "creativeEditorDocumentSchema.safeParse(value)", "Editor validates imported and browser draft documents at runtime");
   assertIncludes(editor, "const validated = parseCreativeEditorDocument(stamped);", "Editor validates every document mutation before committing it");
@@ -148,6 +233,62 @@ function verifyEditorQaHooks() {
   assertIncludes(editor, "margin: 4", "Editor QR defaults use four-module quiet-zone margin");
   assertIncludes(editor, 'lightColor: "#ffffff"', "Editor QR action cards preserve white QR panels");
   assertIncludes(editor, "Reset white scan panel", "Editor can repair legacy non-white QR scan panels");
+  assertIncludes(editor, 'preset.label.toLowerCase().endsWith("style") ? "" : " style"', "Editor style feedback avoids duplicate style wording");
+  assertNotIncludes(editor, '`${preset.label} style applied.`', "Editor excludes duplicate brand style feedback");
+  assertIncludes(editor, "Select text, a shape, a line, or a QR code before applying a brand color.", "Editor explains unsupported Brand Kit color targets");
+  assertIncludes(editor, "setNotice(`${historyLabel}.`)", "Editor confirms successful inspector property changes instead of retaining stale status");
+  assertIncludes(editor, '"Layer flipped horizontally."', "Editor confirms horizontal flip actions");
+  assertIncludes(editor, '"Layer flipped vertically."', "Editor confirms vertical flip actions");
+  for (const layerMoveNotice of [
+    "Layer moved forward.",
+    "Layer moved to front.",
+    "Layer moved backward.",
+    "Layer moved to back.",
+  ]) assertIncludes(editor, layerMoveNotice, `Editor confirms layer order action: ${layerMoveNotice}`);
+  for (const layerAlignmentNotice of [
+    "Layer aligned left.",
+    "Layer centered horizontally.",
+    "Layer aligned right.",
+    "Layer centered on background.",
+    "Layer aligned top.",
+    "Layer centered vertically.",
+    "Layer aligned bottom.",
+  ]) assertIncludes(editor, layerAlignmentNotice, `Editor confirms layer alignment action: ${layerAlignmentNotice}`);
+  assertIncludes(editor, 'Visible watermark ${patch.enabled ? "enabled" : "disabled"}.', "Editor confirms visible-watermark enablement changes");
+  assertIncludes(editor, '"Visible watermark updated."', "Editor confirms visible-watermark property changes");
+  for (const inspectorMutation of [
+    'updateSelectedShadow({ blur: Number(event.target.value) })',
+    'updateSelectedShadow({ offsetX: Number(event.target.value) })',
+    'updateSelectedShadow({ offsetY: Number(event.target.value) })',
+    'updateImageAdjustment(adjustment.key, Number(event.target.value))',
+    'updateImageAdjustment("grayscaleMode", event.target.value',
+    'updateImageAdjustment("gammaRed", Number(event.target.value))',
+    'updateImageAdjustment("gammaGreen", Number(event.target.value))',
+    'updateImageAdjustment("gammaBlue", Number(event.target.value))',
+    'updateSelected({ outlineEnabled: event.target.checked }',
+    'updateSelected({ outlineWidth: Number(event.target.value) }',
+    'updateSelected({ outlineOnly: event.target.checked }',
+    'updateSelected({ strokeStyle: event.target.value',
+    'updateSelected({ strokeLineCap: event.target.value',
+    'updateSelected({ strokeWidth: Number(event.target.value) }',
+  ]) assertIncludes(editor, inspectorMutation, `Editor advanced inspector control uses governed selected-property history: ${inspectorMutation}`);
+  for (const repeatedDetailMutation of [
+    'updateSelected({ x: Number(event.target.value) })',
+    'updateSelected({ y: Number(event.target.value) })',
+    'updateSelected({ width: Number(event.target.value) })',
+    'updateSelected({ height: Number(event.target.value) })',
+    'updateSelected({ opacity: Number(event.target.value) })',
+  ]) assert(
+    editor.split(repeatedDetailMutation).length - 1 >= 2,
+    `Editor exposes both priority and detail inspector mutations for ${repeatedDetailMutation}`,
+  );
+  for (const imageNotice of [
+    "Image set to crop.",
+    "Image fit inside frame.",
+    "Image flipped horizontally.",
+    "Image filled the frame.",
+    "Image enlarged.",
+  ]) assertIncludes(editor, imageNotice, `Editor confirms image action: ${imageNotice}`);
   assertIncludes(editor, "copyRuntimeTextToClipboard(suggestionValue.text)", "Editor AI suggestion copy uses acknowledged text clipboard helper");
   assertIncludes(editor, "copyRuntimeTextToClipboard(dataUrl)", "Editor base64 copy uses acknowledged text clipboard helper");
   assertIncludes(editor, "hasClipboardWrite: hasRuntimeClipboardWrite()", "Editor text-copy diagnostics include Clipboard API support");

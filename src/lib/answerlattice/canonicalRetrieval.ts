@@ -346,6 +346,16 @@ const RETRIEVAL_DOMAIN_GENERIC_TERMS = new Set([
     'open', 'page', 'product', 'public', 'support', 'user', 'view', 'website',
 ]);
 
+// Answer text repeats a few nouns that remain useful for locating a Product
+// Topic but are not specific enough to prove that the answer addresses the
+// user's intent. For example, "account" can select an account-related topic,
+// but password recovery must not inherit an unrelated sign-out answer merely
+// because both mention an account.
+const RETRIEVAL_ANSWER_GENERIC_TERMS = new Set([
+    ...Array.from(RETRIEVAL_DOMAIN_GENERIC_TERMS),
+    'account',
+]);
+
 const expandRetrievalToken = (token: string): string[] => {
     const variants = new Set<string>();
     const addVariant = (value: string) => {
@@ -443,7 +453,8 @@ const getLongestCommonRetrievalSequenceLength = (
  * Entity matches identify candidate product topics, but broad shared terms such
  * as "menu", "customer", or "public" must not make an unrelated governed
  * answer authoritative. Require the query and answer to share at least two
- * ordered, meaningful terms before specificity metadata may rank the answer.
+ * ordered, meaningful terms, including one discriminating term from the
+ * answer's governed Product Topic, before specificity metadata may rank it.
  * A single-token answer title remains eligible only when that exact distinctive
  * title is present in both the query and answer.
  */
@@ -464,7 +475,7 @@ export const evaluateCanonicalAnswerQueryRelevance = (
     const overlapCount = Array.from(querySet).filter(term => answerSet.has(term)).length;
     const titleOverlapCount = titleTerms.filter(term => querySet.has(term)).length;
     const discriminatingOverlapCount = Array.from(querySet).filter(term => (
-        answerSet.has(term) && !RETRIEVAL_DOMAIN_GENERIC_TERMS.has(term)
+        answerSet.has(term) && !RETRIEVAL_ANSWER_GENERIC_TERMS.has(term)
     )).length;
     const entityTerms = new Set(scopedSearchIndex.flatMap(entry => (
         Array.from(getIndexEntryRetrievalTerms(entry))
@@ -483,6 +494,7 @@ export const evaluateCanonicalAnswerQueryRelevance = (
                 overlapCount >= CANONICAL_QUERY_MIN_OVERLAP
                 && sequenceLength >= CANONICAL_QUERY_MIN_SEQUENCE
                 && discriminatingOverlapCount >= 1
+                && entityDiscriminatingOverlapCount >= 1
             ),
         overlapCount,
         sequenceLength,

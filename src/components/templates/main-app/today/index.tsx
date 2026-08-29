@@ -306,6 +306,7 @@ const TodayScreen = () => {
 
     const renderGuideDrawer = () => (
         <Drawer
+            aria-label={TODAY_FEATURE_GUIDE_TITLE}
             closable={false}
             onClose={() => setIsGuideOpen(false)}
             open={isGuideOpen}

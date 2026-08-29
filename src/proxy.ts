@@ -23,6 +23,14 @@
 
 import { CSP_ALLOWLIST, CSP_DEV_SETTINGS, buildCSPDirective } from '@config/csp-allowlist';
 import {
+    buildMenuListEmulatorConnectSources,
+    resolveMenuListEmulatorPorts,
+} from '@lib/firebase/menuListEmulatorPorts';
+import {
+    buildAnswerlatticeEmulatorConnectSources,
+    resolveAnswerlatticeEmulatorPorts,
+} from '@lib/firebase/answerlatticeEmulatorPorts';
+import {
     ANSWERLATTICE_PRODUCT_PASSTHROUGH_PATHS,
     getAnswerlatticeDashboardRewritePath,
 } from '@constant/answerlattice/domains';
@@ -180,7 +188,21 @@ function applySecurityHeaders(request: NextRequest, response: NextResponse): Nex
 
     // Content Security Policy (CSP) - A03: Injection Prevention
     const connectSources = isDev
-        ? [...CSP_ALLOWLIST.connectSources, ...CSP_DEV_SETTINGS.connectSources]
+        ? Array.from(new Set([
+            ...CSP_ALLOWLIST.connectSources,
+            ...CSP_DEV_SETTINGS.connectSources,
+            ...buildMenuListEmulatorConnectSources(resolveMenuListEmulatorPorts({
+                auth: process.env.NEXT_PUBLIC_MENULIST_FIREBASE_AUTH_EMULATOR_PORT,
+                firestore: process.env.NEXT_PUBLIC_MENULIST_FIREBASE_FIRESTORE_EMULATOR_PORT,
+                storage: process.env.NEXT_PUBLIC_MENULIST_FIREBASE_STORAGE_EMULATOR_PORT,
+            })),
+            ...buildAnswerlatticeEmulatorConnectSources(resolveAnswerlatticeEmulatorPorts({
+                auth: process.env.NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_AUTH_EMULATOR_PORT,
+                firestore: process.env.NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_FIRESTORE_EMULATOR_PORT,
+                functions: process.env.NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_FUNCTIONS_EMULATOR_PORT,
+                storage: process.env.NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_STORAGE_EMULATOR_PORT,
+            })),
+        ]))
         : CSP_ALLOWLIST.connectSources;
     const cspDirectivesCurrent = [
         "default-src 'self'",
@@ -585,6 +607,7 @@ const MYCODEX_PRODUCT_ALIAS_ROUTES: Array<{
 ];
 
 const MYCODEX_INTERNAL_BASE_PATH = '/sites/mycodex';
+const MYCODEX_OWNER_BASE_PATH = '/__mycodex';
 
 const SIGNALDESK_HOST_PASSTHROUGH_PATHS = [
     '/forgot-password',
@@ -765,6 +788,7 @@ function buildMenuListRedirectDomainResponse(hostname: string | null, request: N
 }
 
 const MENULIST_OWNER_APP_PATH_PREFIXES = [
+    MYCODEX_OWNER_BASE_PATH,
     '/signin',
     '/forgot-password',
     '/unauthorized',
@@ -896,6 +920,29 @@ export async function proxy(request: NextRequest) {
     const menulistOwnerAppResponse = buildMenuListOwnerAppResponse(hostname, request);
     if (menulistOwnerAppResponse) {
         return applySecurityHeaders(request, menulistOwnerAppResponse);
+    }
+
+    // The private founder console and document reader live on the canonical
+    // MenuList owner-app host so they can reuse the one operator session. This
+    // is routing only: the MyCodex server layout performs a fresh persisted
+    // PLATFORM-role check before rendering any content.
+    if (
+        isActiveMenuListOwnerAppHost(hostname)
+        && (pathname === MYCODEX_OWNER_BASE_PATH || pathname.startsWith(`${MYCODEX_OWNER_BASE_PATH}/`))
+    ) {
+        const myCodexProduct = getProductSiteById(MYCODEX_PRODUCT_SLUG);
+        if (!myCodexProduct?.enabled) {
+            return applySecurityHeaders(request, new NextResponse(null, { status: 404 }));
+        }
+        const url = request.nextUrl.clone();
+        const strippedPath = pathname.slice(MYCODEX_OWNER_BASE_PATH.length) || '/';
+        url.pathname = `${MYCODEX_INTERNAL_BASE_PATH}${strippedPath === '/' ? '' : strippedPath}`;
+        return applySecurityHeaders(
+            request,
+            setMyCodexResponseHeaders(
+                rewriteWithProductHeaders(request, url, myCodexProduct, MYCODEX_OWNER_BASE_PATH),
+            ),
+        );
     }
 
     if (
@@ -1270,6 +1317,8 @@ export const config = {
         '/serwist/:path*',
         '/sw.js',
         '/sw-customer.js',
+        '/mycodex-sw.js',
+        '/answerlattice-sw.js',
         /*
          * Match all request paths except:
          * - _next/static (static files)
@@ -1277,6 +1326,6 @@ export const config = {
          * - favicon.ico (favicon file)
          * - public folder files
          */
-        '/((?!_next/static|_next/image|favicon.ico|serwist(?:/|$)|sw\\.js|sw-customer\\.js|mycodex-sw\\.js|workbox-.*\\.js|manifest\\.json|swe-worker-.*\\.js|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|woff|woff2|ttf|eot|webmanifest)$).*)',
+        '/((?!_next/static|_next/image|favicon.ico|serwist(?:/|$)|sw\\.js|sw-customer\\.js|mycodex-sw\\.js|answerlattice-sw\\.js|workbox-.*\\.js|manifest\\.json|swe-worker-.*\\.js|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|woff|woff2|ttf|eot|webmanifest)$).*)',
     ],
 };

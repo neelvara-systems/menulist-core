@@ -179,6 +179,7 @@ function MobileMessageCard({
     whatsappMessage: string;
 }) {
     const t = useTranslations('MobileCommunicationKit');
+    const tShare = useTranslations('MobileShare');
     const { token } = theme.useToken();
     const [copied, setCopied] = useState(false);
     const [supportsNativeShare, setSupportsNativeShare] = useState(false);
@@ -261,16 +262,19 @@ function MobileMessageCard({
                 </Card>
                 <Flex gap={10}>
                     <ActionTile
+                        ariaLabel={`${copied ? t('copied') : t('copy')} ${template.title}`}
                         icon={copied ? <LuCheck size={18} /> : <LuCopy size={18} />}
                         onClick={() => void handleCopy()}
                     />
                     {supportsNativeShare ? (
                         <ActionTile
+                            ariaLabel={tShare('shareYourOffering', { offering: template.title })}
                             icon={<LuShare2 size={18} />}
                             onClick={() => void handleShare()}
                         />
                     ) : null}
                     <ActionTile
+                        ariaLabel={`${tShare('shareWhatsApp')}: ${template.title}`}
                         iconColor={token.colorSuccess}
                         icon={<LuMessageCircle size={18} />}
                         onClick={handleWhatsAppOpen}
@@ -281,11 +285,12 @@ function MobileMessageCard({
     );
 }
 
-function ActionTile({ icon, iconColor, onClick }: { icon: React.ReactNode; iconColor?: string; onClick: () => void }) {
+function ActionTile({ ariaLabel, icon, iconColor, onClick }: { ariaLabel: string; icon: React.ReactNode; iconColor?: string; onClick: () => void }) {
     const { token } = theme.useToken();
 
     return (
         <Button
+            aria-label={ariaLabel}
             fill="outline"
             onClick={onClick}
             size="small"

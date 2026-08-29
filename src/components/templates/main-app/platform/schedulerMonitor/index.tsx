@@ -3,6 +3,7 @@
 import { getSchedulerDashboardSnapshot } from '@database/ops/scheduler';
 import { usePlatformStoreSummaryOptions } from '@hook/usePlatformStoreSummaryOptions';
 import { getBoundedOpsStringContext, logOpsFailure } from '@lib/ops/opsDiagnostics';
+import { labelConfirmDialog } from '@lib/accessibility/antConfirmDialog';
 import { normalizeSchedulerRecoveryResponse, normalizeSchedulerRecoveryRunLogId } from '@lib/ops/schedulerRecoveryResponse';
 import type { SchedulerHealthSummary, SchedulerRunFilter, SchedulerRunLog, SchedulerRunStatus, SchedulerSettlementSummary, SchedulerTaskResult, SchedulerTrigger } from '@lib/ops/schedulerTypes';
 import { formatDateTime, type DateLike, type IntlFormatter } from '@util/dateTime';
@@ -157,6 +158,7 @@ function SchedulerMonitor() {
         selectedStoreId,
         selectOptions,
         setSelectedStoreId,
+        stores,
     } = usePlatformStoreSummaryOptions(isPlatform);
 
     // Gate: superadmin only
@@ -178,7 +180,7 @@ function SchedulerMonitor() {
             if (filterStatus) filter.status = filterStatus;
             if (filterTrigger) filter.trigger = filterTrigger;
 
-            const snapshot = await getSchedulerDashboardSnapshot(filter, 50);
+            const snapshot = await getSchedulerDashboardSnapshot(filter, stores.map((store) => store.sId), 50);
             if (!isMountedRef.current || !isPlatformRef.current || latestLoadRequestRef.current !== requestId) return;
             setHealth(snapshot.health);
             setRunHistory(snapshot.runHistory);
@@ -202,7 +204,7 @@ function SchedulerMonitor() {
                 setLoading(false);
             }
         }
-    }, [filterStatus, filterTrigger, isPlatform]);
+    }, [filterStatus, filterTrigger, isPlatform, stores]);
 
     useEffect(() => {
         isMountedRef.current = true;
@@ -214,14 +216,14 @@ function SchedulerMonitor() {
     }, []);
 
     useEffect(() => {
-        if (sessionStatus === 'loading') return;
+        if (sessionStatus === 'loading' || storesLoading) return;
         if (!isPlatform) {
             latestLoadRequestRef.current += 1;
             setLoading(false);
             return;
         }
         void loadData();
-    }, [isPlatform, loadData, sessionStatus]);
+    }, [isPlatform, loadData, sessionStatus, storesLoading]);
 
     const changeStatusFilter = useCallback((value: SchedulerRunStatus | undefined) => {
         if (value === filterStatus) return;
@@ -247,6 +249,7 @@ function SchedulerMonitor() {
 
         Modal.confirm({
             title: 'Run Store Nightly Recovery',
+            modalRender: labelConfirmDialog('Run Store Nightly Recovery'),
             content: (
                 <div>
                     <p>This runs the store-level nightly scheduler path for {recoveryStore.name || `store ${recoveryStore.sId}`}.</p>
@@ -365,6 +368,7 @@ function SchedulerMonitor() {
                 </Text>
                 <div style={{ display: 'grid', gridTemplateColumns: 'minmax(240px, 1fr) auto', gap: 12, marginBottom: 12 }}>
                     <Select
+                        aria-label="Store for nightly recovery"
                         showSearch
                         loading={storesLoading}
                         placeholder="Select store"
@@ -596,6 +600,7 @@ function SchedulerMonitor() {
                 <Title level={5} style={{ margin: 0 }}>Run History</Title>
                 <div style={{ display: 'flex', gap: 8 }}>
                     <Select
+                        aria-label="Run status"
                         placeholder="Status"
                         allowClear
                         style={{ width: 120 }}
@@ -611,6 +616,7 @@ function SchedulerMonitor() {
                         size="small"
                     />
                     <Select
+                        aria-label="Run trigger"
                         placeholder="Trigger"
                         allowClear
                         style={{ width: 120 }}

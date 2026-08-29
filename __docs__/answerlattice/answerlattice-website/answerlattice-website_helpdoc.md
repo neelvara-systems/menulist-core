@@ -1,7 +1,7 @@
 # AnswerLattice Public Website Help
 
 > **Audience:** Prospective buyer or new founder account
-> **Last audited:** July 29, 2026
+> **Last audited:** August 27, 2026
 
 ## Public Positioning
 
@@ -9,10 +9,11 @@ AnswerLattice's short public description is: **The governed source behind custom
 
 ## Evaluate Before Signup
 
-1. Open **Demo** to inspect the seeded source-conflict, approval, release-drift, fallback, correction, and audit loop.
-2. Open **Install** to check whether your app can add one script, exact allowed origins, blocked routes, and safe page context.
-3. Open **Pricing** to compare Launch, Growth, and Studio monthly capacity in INR and USD.
-4. Open **Trust and Data Handling**, **Security**, **Privacy**, and **Terms** before sending support material or starting checkout.
+1. Choose **Build your first 10 answers** to see the real setup path and likely starter questions before plan selection.
+2. Open **Demo** to inspect the seeded approved-answer, fallback, review, and improvement loop.
+3. Open **Install** to copy setup into your coding agent and understand the pre-launch verification path.
+4. Open **Pricing** to compare Launch, Growth, and Studio monthly capacity in INR and USD.
+5. Open **Trust and Data Handling**, **Security**, **Privacy**, and **Terms** before sending support material or starting checkout.
 
 The demo is a deterministic sample. It does not use your product data, Firebase, or an AI provider and does not prove a customer outcome.
 
@@ -31,7 +32,7 @@ These views do not publish, release, or mutate support truth automatically. The 
 
 ## Create A Workspace
 
-1. Select a plan on Pricing or open **Create workspace**.
+1. Select a plan on Pricing or open **Build your first 10 answers**.
 2. Sign in with Google.
 3. Enter a company name.
 4. Optionally add product name, HTTP(S) product URL, support email, and billing model.

@@ -243,10 +243,12 @@ Assets
   left: asset type rail
   right: template grid
   click template: action modal with generated output preview
-  optional desktop action: Customize in editor
+  optional desktop action: Customize design
 ```
 
-Template cards do not persist a separate selected state. Clicking a template opens a modal, immediately shows a preview, and shows **Download PDF** plus **Download image** for single assets. Business Card image action downloads front and back PNG files. Complete Menu Kit shows **Download ZIP** only. For editor-renderable assets, desktop also shows **Customize in editor**, which opens the generated `CreativeEditorDocument` in a fullscreen overlay. The overlay keeps the editor mounted independently of the Assets page so the page does not resize or flicker. This route mounts the shared editor in embedded mode only; the asset route owns Image, Print PDF, close, and optional Save as template actions, while CampaignCue-only AI Tools, Design Cue handlers, and asset registration stay out of this flow.
+Template cards do not persist a separate selected state. Clicking a template opens a modal, immediately shows a preview, and shows **Download PDF** plus **Download image** for single assets. The preview height is viewport-bounded so both download actions and **Customize design** stay reachable at 1280 x 720. Business Card image action downloads front and back PNG files. Complete Menu Kit shows **Download ZIP** only.
+
+For editor-renderable assets, desktop **Customize design** opens the generated `CreativeEditorDocument` in a `document.body` portal with fixed `100dvh` geometry. This isolates the editor from dashboard transforms and scrolling. The MenuList adapter passes `chromeMode="embedded"`, limits the rail to Background, Images, Text, Styles, and Brand Kit, exposes Preview as the only optional workspace control, opts into browser-local recovery drafts, starts with the drawer collapsed and no selected layer, and owns Image, Print PDF, Close, and **Save reusable design** actions. Both output actions declare `requiresReadiness`, so the shared readiness scan pauses the first output attempt when actionable issues exist. The asset route compares the clean current document with its session baseline, warns before dirty Close/browser unload, and resets the baseline after a successful reusable-design save. CampaignCue defaults remain unchanged and its AI Tools, Design Cue handlers, full tool rail, and asset registration stay outside this flow.
 
 ## Mobile Route
 
@@ -356,4 +358,38 @@ git diff --check
 
 - Disable `ENABLE_PRINTABLE_ASSET_TEMPLATES`.
 - Keep existing `/use-menulist/print-assets` route and Menu Kit generation untouched.
-- No Firebase cleanup needed because no generated files are stored.
+- No generated preview/download artifact cleanup is needed. Explicit owner
+  Saved designs remain governed registry records and must be retained unless a
+  separate owner-authorized cleanup is performed.
+
+### Raster-backed PDF size boundary
+
+Generated raster-backed PDFs use jsPDF stream compression plus its lossless
+`FAST` PNG compression mode. This applies to generated Table Tent, Entrance
+Poster, Single Table Card, generic PNG-to-PDF conversion, and Creative Editor
+PDF export. The correction preserves print dimensions and PNG/QR fidelity while
+preventing Complete Menu Kit archives from carrying raw multi-megabyte raster
+streams.
+
+### Counter Sticker QR and Saved design recovery boundaries
+
+- Counter Sticker identity, call-to-action, and QR layers occupy separate
+  vertical regions. Every current template family must keep the call-to-action
+  bounding box at or above the QR bounding box; no text may enter live modules.
+- A new Saved design reserves one tenant/store/asset/family-scoped template ID
+  for the complete in-flight save lifecycle. Repeated activation or an editor
+  remount cannot allocate a second record while that lifecycle is unresolved.
+- The editor exposes the parent save as a busy header action, disables Close
+  while the save is pending, and retains the explicit wait acknowledgement.
+- Saved design titles prefer the trimmed edited-document title. The generated
+  platform-template title is only a fallback.
+- Static Saved design delete confirmations must be named from their visible
+  destructive title through the shared mounted confirmation-title bridge.
+- Embedded-editor inspector icon actions must expose their exact purpose:
+  lock/protected state, duplicate, delete, each horizontal/vertical background
+  alignment, and indexed gradient-stop removal. Visual icon state alone is not
+  sufficient.
+- The Background panel must not render a read-only checkbox or handler-free
+  button as an owner action. Color background is status; Add image layer is the
+  explicit Images-tool handoff; Solid and Gradient remain the actual background
+  mode actions.

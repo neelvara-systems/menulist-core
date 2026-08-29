@@ -398,6 +398,7 @@ const LanguageSelectorModal: React.FC<LanguageSelectorModalProps> = ({
                             ) : (
                                 <>
                                     <Select
+                                        aria-label={isMasterLinked ? "Activate menu language" : "Add menu language"}
                                         disabled={!canTranslate}
                                         style={{ width: '100%' }}
                                         placeholder={isMasterLinked

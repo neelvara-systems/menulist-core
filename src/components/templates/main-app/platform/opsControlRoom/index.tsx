@@ -1,6 +1,7 @@
 'use client'
 
 import { getOpsControlRoomSnapshot } from '@database/ops';
+import { NAVIGARIONS_ROUTINGS } from '@constant/navigations';
 import { usePlatformStoreSummaryOptions } from '@hook/usePlatformStoreSummaryOptions';
 import {
     OPS_CONTROL_ROOM_REQUEST_POLICY,
@@ -10,6 +11,7 @@ import {
     readOpsControlRoomSafeModeResponse,
 } from '@lib/ops/opsControlRoomClientResponse';
 import { getBoundedOpsStringContext, logOpsFailure } from '@lib/ops/opsDiagnostics';
+import { labelConfirmDialog } from '@lib/accessibility/antConfirmDialog';
 import type { AdoptionPulse, IntegritySignals, OpsAlert, SystemState } from '@lib/ops/types';
 import { formatDateTime } from '@util/dateTime';
 import { Alert, Button, Card, Divider, Modal, Select, Spin, Tag, Typography, App, theme } from 'antd';
@@ -133,6 +135,7 @@ function OpsControlRoom() {
 
         Modal.confirm({
             title: action === 'activate' ? 'Enable SAFE_MODE' : 'Disable SAFE_MODE',
+            modalRender: labelConfirmDialog(action === 'activate' ? 'Enable SAFE_MODE' : 'Disable SAFE_MODE'),
             content: confirmMsg,
             okText: action === 'activate' ? 'Enable SAFE_MODE' : 'Disable SAFE_MODE',
             okButtonProps: { danger: action === 'activate' },
@@ -185,6 +188,7 @@ function OpsControlRoom() {
         const republishStore = selectedStore;
         Modal.confirm({
             title: 'Force Republish',
+            modalRender: labelConfirmDialog('Force Republish'),
             content: `This will force republish all active menu projects for ${republishStore.name || `store ${republishStore.sId}`}. Continue?`,
             onCancel: () => {
                 republishInFlightRef.current = false;
@@ -283,6 +287,7 @@ function OpsControlRoom() {
                     <Button type="default" href="/ops/extraction">Extraction Monitor</Button>
                     <Button type="default" href="/platform/cost-posture">Cost Posture</Button>
                     <Button type="default" href="/platform/owner-business-assistant">Business Health Monitor</Button>
+                    <Button type="default" href={NAVIGARIONS_ROUTINGS.PLATFORM_ANSWERLATTICE_EARLY_ACCESS}>Answerlattice Early Access</Button>
                     <Button type="default" href="/ops/messaging-onboarding">Messaging Onboarding</Button>
                     <Button type="default" href="/ops/website-enquiries">Website Enquiries</Button>
                     <Button type="default" href="/ops/report-leads">Report Leads</Button>
@@ -421,6 +426,7 @@ function OpsControlRoom() {
                 <Text strong style={{ display: 'block', marginBottom: 8 }}>Force Republish</Text>
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
                     <Select
+                        aria-label="Store to force republish"
                         showSearch
                         loading={storesLoading}
                         placeholder="Select store"

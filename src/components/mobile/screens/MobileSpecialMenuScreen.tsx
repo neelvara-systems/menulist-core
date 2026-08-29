@@ -71,14 +71,14 @@ function resolveStoreProjectScope(
         : null;
 }
 
-function formatDate(iso: string, formatter: IntlFormatter): string {
+function formatDate(iso: string, formatter: IntlFormatter, timeZone?: string): string {
     if (!iso) return '';
-    return formatDateTime(iso, 'date', formatter);
+    return formatDateTime(iso, 'date', formatter, timeZone);
 }
 
-function formatScheduleRange(startsAt: string, endsAt: string, formatter: IntlFormatter): string {
+function formatScheduleRange(startsAt: string, endsAt: string, formatter: IntlFormatter, timeZone?: string): string {
     if (!startsAt || !endsAt) return '';
-    return formatDateTimeRange(startsAt, endsAt, formatter, '');
+    return formatDateTimeRange(startsAt, endsAt, formatter, '', timeZone);
 }
 
 function toInputValue(
@@ -252,6 +252,11 @@ function CreateSpecialMenuSheet({
 
     useEffect(() => {
         if (!open) return;
+        setBaseProjectId((current) => current || defaultBaseProjectId);
+    }, [defaultBaseProjectId, open]);
+
+    useEffect(() => {
+        if (!open) return;
         setStartsAt(toInputValue(
             new Date().toISOString(),
             capabilities.allowTimeScheduling,
@@ -283,8 +288,11 @@ function CreateSpecialMenuSheet({
         };
     }, [baseProjectId, open, resolveProjectDetails, storeDetails]);
 
-    useEffect(() => () => {
-        isMountedRef.current = false;
+    useEffect(() => {
+        isMountedRef.current = true;
+        return () => {
+            isMountedRef.current = false;
+        };
     }, []);
 
     const handleClose = () => {
@@ -435,6 +443,7 @@ function CreateSpecialMenuSheet({
 
     return (
         <Popup
+            aria-label={t('createTitle')}
             bodyStyle={{
                 maxHeight: '92vh',
                 minHeight: '60vh',
@@ -455,6 +464,7 @@ function CreateSpecialMenuSheet({
                                 <Text strong>{t('baseMenuLabel')}</Text>
                                 <Text type="secondary">Choose which existing menu this special menu should start from.</Text>
                                 <Select
+                                    aria-label={t('baseMenuLabel')}
                                     onChange={setBaseProjectId}
                                     options={baseProjectOptions}
                                     showSearch={false}
@@ -483,6 +493,7 @@ function CreateSpecialMenuSheet({
                                     </Button>
                                 ) : null}
                                 <Input
+                                    aria-label={t('nameLabel')}
                                     maxLength={100}
                                     onChange={(value) => setDisplayNameDrafts((previous) => ({
                                         ...previous,
@@ -500,6 +511,7 @@ function CreateSpecialMenuSheet({
                                         This controls what customers see when the special menu is live: replace the regular menu completely, or show it as an extra section alongside the regular menu.
                                     </Text>
                                     <Select
+                                        aria-label={t('modeLabel')}
                                         onChange={(value: string) => {
                                             if (value === 'replace' || value === 'overlay') {
                                                 setMode(value);
@@ -537,7 +549,7 @@ function CreateSpecialMenuSheet({
                                             Turn this on to make the special menu active immediately. Turn it off to keep it scheduled.
                                         </Text>
                                     </Flex>
-                                    <Switch checked={isActiveToggleOn} onChange={handleLifecycleToggle} />
+                                    <Switch aria-label="Active now" checked={isActiveToggleOn} onChange={handleLifecycleToggle} />
                                 </Flex>
                             </Card>
 
@@ -545,6 +557,7 @@ function CreateSpecialMenuSheet({
                                 <Text strong>{`${t('startsLabel')} ${capabilities.allowTimeScheduling ? 'Date & Time' : 'Date'}`}</Text>
                                 <Text type="secondary">Choose when this special menu should start appearing.</Text>
                                 <Input
+                                    aria-label={`${t('startsLabel')} ${capabilities.allowTimeScheduling ? 'Date & Time' : 'Date'}`}
                                     onChange={setStartsAt}
                                     type={capabilities.allowTimeScheduling ? 'datetime-local' : 'date'}
                                     value={startsAt}
@@ -555,6 +568,7 @@ function CreateSpecialMenuSheet({
                                 <Text strong>{`${t('endsLabel')} ${capabilities.allowTimeScheduling ? 'Date & Time' : 'Date'}`}</Text>
                                 <Text type="secondary">Choose when this special menu should stop appearing automatically.</Text>
                                 <Input
+                                    aria-label={`${t('endsLabel')} ${capabilities.allowTimeScheduling ? 'Date & Time' : 'Date'}`}
                                     onChange={setEndsAt}
                                     type={capabilities.allowTimeScheduling ? 'datetime-local' : 'date'}
                                     value={endsAt}
@@ -700,8 +714,11 @@ function EditSpecialMenuSheet({
         };
     }, [capabilities.allowTimeScheduling, item, resolveProjectDetails, storeDetails?.timeZone]);
 
-    useEffect(() => () => {
-        isMountedRef.current = false;
+    useEffect(() => {
+        isMountedRef.current = true;
+        return () => {
+            isMountedRef.current = false;
+        };
     }, []);
 
     const resetForm = () => {
@@ -930,6 +947,7 @@ function EditSpecialMenuSheet({
 
     return (
         <Popup
+            aria-label={`${t('editAction')} ${item.displayName}`}
             bodyStyle={{
                 maxHeight: '92vh',
                 minHeight: '60vh',
@@ -944,6 +962,7 @@ function EditSpecialMenuSheet({
                 <NavBar
                     right={(
                         <Button
+                            aria-label="Close special menu"
                             fill="none"
                             onClick={handleClose}
                             style={{ minHeight: 44, minWidth: 44, paddingInline: 0 }}
@@ -979,6 +998,7 @@ function EditSpecialMenuSheet({
                                     </Button>
                                 ) : null}
                                 <Input
+                                    aria-label={t('nameLabel')}
                                     maxLength={100}
                                     onChange={(value) => setDisplayNameDrafts((previous) => ({
                                         ...previous,
@@ -1004,6 +1024,7 @@ function EditSpecialMenuSheet({
                                 <Text strong>{tProjectSelector('description')}</Text>
                                 <Text type="secondary">Optional short note to explain what is included or why this menu is special.</Text>
                                 <TextArea
+                                    aria-label={tProjectSelector('description')}
                                     maxLength={300}
                                     onChange={(value) => setDescriptionDrafts((previous) => ({
                                         ...previous,
@@ -1035,7 +1056,7 @@ function EditSpecialMenuSheet({
                                             Turn this on to make the special menu active immediately. Turn it off to keep it scheduled.
                                         </Text>
                                     </Flex>
-                                    <Switch checked={isActiveToggleOn} onChange={handleLifecycleToggle} />
+                                    <Switch aria-label="Activate now" checked={isActiveToggleOn} onChange={handleLifecycleToggle} />
                                 </Flex>
                             </Card>
 
@@ -1043,6 +1064,7 @@ function EditSpecialMenuSheet({
                                 <Text strong>{`${t('startsLabel')} ${capabilities.allowTimeScheduling ? 'Date & Time' : 'Date'}`}</Text>
                                 <Text type="secondary">This controls when customers first see the special menu.</Text>
                                 <Input
+                                    aria-label={`${t('startsLabel')} ${capabilities.allowTimeScheduling ? 'Date & Time' : 'Date'}`}
                                     onChange={setStartsAt}
                                     type={capabilities.allowTimeScheduling ? 'datetime-local' : 'date'}
                                     value={startsAt}
@@ -1053,6 +1075,7 @@ function EditSpecialMenuSheet({
                                 <Text strong>{`${t('endsLabel')} ${capabilities.allowTimeScheduling ? 'Date & Time' : 'Date'}`}</Text>
                                 <Text type="secondary">This controls when the special menu automatically stops showing.</Text>
                                 <Input
+                                    aria-label={`${t('endsLabel')} ${capabilities.allowTimeScheduling ? 'Date & Time' : 'Date'}`}
                                     onChange={setEndsAt}
                                     type={capabilities.allowTimeScheduling ? 'datetime-local' : 'date'}
                                     value={endsAt}
@@ -1120,6 +1143,7 @@ function SpecialMenuItem({
 }) {
     const t = useTranslations('MobileSpecialMenu');
     const formatter = useFormatter();
+    const { storeDetails } = useContext(PlatformGlobalDataContext);
     const { token } = theme.useToken();
     const [isWorking, setIsWorking] = useState(false);
     const isMountedRef = useRef(true);
@@ -1130,8 +1154,11 @@ function SpecialMenuItem({
         borderRadius: 999,
     };
 
-    useEffect(() => () => {
-        isMountedRef.current = false;
+    useEffect(() => {
+        isMountedRef.current = true;
+        return () => {
+            isMountedRef.current = false;
+        };
     }, []);
 
     const handleEdit = async () => {
@@ -1172,7 +1199,10 @@ function SpecialMenuItem({
         const confirmed = await Dialog.confirm({
             cancelText: t('keepScheduled'),
             confirmText: t('cancelAction'),
-            content: t('cancelConfirm', { date: formatDate(item.startsAt, formatter), name: item.displayName }),
+            content: t('cancelConfirm', {
+                date: formatDate(item.startsAt, formatter, storeDetails?.timeZone),
+                name: item.displayName,
+            }),
         });
         if (!confirmed || !isMountedRef.current || actionInFlightRef.current) return;
 
@@ -1208,7 +1238,12 @@ function SpecialMenuItem({
                         <Flex align="center" gap={6} style={{ minWidth: 0 }}>
                             <LuCalendar color={token.colorTextTertiary} size={13} />
                             <Text style={{ color: token.colorTextSecondary, fontSize: 13 }}>
-                                {formatScheduleRange(item.startsAt, item.endsAt, formatter)}
+                                {formatScheduleRange(
+                                    item.startsAt,
+                                    item.endsAt,
+                                    formatter,
+                                    storeDetails?.timeZone,
+                                )}
                             </Text>
                         </Flex>
 
@@ -1294,8 +1329,11 @@ function MobileSpecialMenuScreenContent({ onBack, onOpenMenuTab }: MobileSpecial
         && currentScopeRef.current?.sId === expectedScope.sId
     ), []);
 
-    useEffect(() => () => {
-        isMountedRef.current = false;
+    useEffect(() => {
+        isMountedRef.current = true;
+        return () => {
+            isMountedRef.current = false;
+        };
     }, []);
 
     const capabilities = useMemo(
@@ -1351,8 +1389,16 @@ function MobileSpecialMenuScreenContent({ onBack, onOpenMenuTab }: MobileSpecial
     const handleOpenSpecialProject = async (
         projectId: string,
         expectedScope: ProjectExpectedScope,
+        projectSummary: Record<string, unknown> & { name: string | Record<string, string> },
     ) => {
         if (!isExpectedScope(expectedScope)) return;
+        const projectDetails = await getProjectDataWithoutLoader(projectId, expectedScope);
+        if (!projectDetails || !isExpectedScope(expectedScope)) return;
+        upsertCachedProject({
+            ...projectDetails,
+            ...projectSummary,
+            projectId,
+        });
         await selectProject(projectId);
         if (isExpectedScope(expectedScope)) {
             onOpenMenuTab?.();
@@ -1406,7 +1452,17 @@ function MobileSpecialMenuScreenContent({ onBack, onOpenMenuTab }: MobileSpecial
 
         setIsCreateOpen(false);
         Toast.show({ content: t('specialMenuCreated'), icon: 'success', duration: 1600 });
-        await handleOpenSpecialProject(result.projectId, expectedScope);
+        await handleOpenSpecialProject(result.projectId, expectedScope, {
+            active: true,
+            description: `Special menu: ${payload.displayName}`,
+            isSpecialMenu: true,
+            name: payload.localizedDisplayName || payload.displayName,
+            specialMenuBaseProjectId: payload.baseProjectId,
+            specialMenuDisplayName: payload.localizedDisplayName || payload.displayName,
+            specialMenuEndsAt: payload.endsAt,
+            specialMenuMode: payload.mode,
+            specialMenuStartsAt: payload.startsAt,
+        });
     };
 
     const handleOpenEditSheet = (item: SpecialMenuListItem) => {
@@ -1432,6 +1488,25 @@ function MobileSpecialMenuScreenContent({ onBack, onOpenMenuTab }: MobileSpecial
             return;
         }
 
+        const cachedProject = projectsById[payload.projectId];
+        if (cachedProject) {
+            const nextName = payload.localizedDisplayName || payload.displayName;
+            const nextDescription = payload.localizedDescription || payload.description;
+            upsertCachedProject({
+                ...cachedProject,
+                name: nextName,
+                ...(nextDescription ? { description: nextDescription } : {}),
+                _specialMenu: {
+                    ...(cachedProject._specialMenu || {}),
+                    displayName: nextName,
+                    endsAt: payload.endsAt,
+                    startsAt: payload.startsAt,
+                    ...(result.status ? { status: result.status } : {}),
+                },
+                projectId: payload.projectId,
+            });
+        }
+
         setEditingMenu(null);
         Toast.show({ content: tProjectSelector('catalogUpdated'), icon: 'success', duration: 1600 });
     };
@@ -1439,9 +1514,26 @@ function MobileSpecialMenuScreenContent({ onBack, onOpenMenuTab }: MobileSpecial
     const handleDeactivate = async (projectId: string) => {
         const expectedScope = currentScopeRef.current;
         if (!expectedScope || !isExpectedScope(expectedScope)) return;
+        const targetMenu = specialMenus.find((menu) => menu.projectId === projectId);
         const result = await deactivateMenu(projectId);
         if (!isExpectedScope(expectedScope)) return;
         if (result.success) {
+            const cachedProject = projectsById[projectId];
+            if (cachedProject) {
+                upsertCachedProject({
+                    ...cachedProject,
+                    _specialMenu: {
+                        ...(cachedProject._specialMenu || {}),
+                        status: 'expired',
+                    },
+                    projectId,
+                    specialMenuStatus: 'expired',
+                });
+            }
+            if (selectedProjectId === projectId) {
+                await selectProject(targetMenu?.baseProjectId || defaultBaseProjectId || null);
+                if (!isExpectedScope(expectedScope)) return;
+            }
             Toast.show({ content: t('specialMenuEnded'), icon: 'success', duration: 1500 });
             return;
         }
@@ -1451,9 +1543,26 @@ function MobileSpecialMenuScreenContent({ onBack, onOpenMenuTab }: MobileSpecial
     const handleCancel = async (projectId: string) => {
         const expectedScope = currentScopeRef.current;
         if (!expectedScope || !isExpectedScope(expectedScope)) return;
+        const targetMenu = specialMenus.find((menu) => menu.projectId === projectId);
         const result = await cancelMenu(projectId);
         if (!isExpectedScope(expectedScope)) return;
         if (result.success) {
+            const cachedProject = projectsById[projectId];
+            if (cachedProject) {
+                upsertCachedProject({
+                    ...cachedProject,
+                    _specialMenu: {
+                        ...(cachedProject._specialMenu || {}),
+                        status: 'cancelled',
+                    },
+                    projectId,
+                    specialMenuStatus: 'cancelled',
+                });
+            }
+            if (selectedProjectId === projectId) {
+                await selectProject(targetMenu?.baseProjectId || defaultBaseProjectId || null);
+                if (!isExpectedScope(expectedScope)) return;
+            }
             Toast.show({ content: t('specialMenuCancelled'), icon: 'success', duration: 1500 });
             return;
         }

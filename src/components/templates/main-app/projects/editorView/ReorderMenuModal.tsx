@@ -1,9 +1,10 @@
 import { DndContext, DragEndEvent, DragOverlay, rectIntersection } from '@dnd-kit/core';
 import { SortableContext, arrayMove, rectSortingStrategy } from '@dnd-kit/sortable';
+import { labelConfirmDialog } from '@lib/accessibility/antConfirmDialog';
 import { getProjectDefaultLanguage } from '@lib/localization/projectContent';
 import { getUID, removeObjRef } from '@util/utils';
 import { Button, Flex, Modal, Tag, Typography, theme } from 'antd';
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { LuHelpCircle } from 'react-icons/lu';
 import { ExtractedDataCategory, ExtractedDataItem, Project, ProjectFileType } from '../types';
 import ReorderSortableItem from './ReorderSortableItem';
@@ -86,20 +87,31 @@ const ReorderMenuModal = ({ open, projectData, onClose, onApply }: ReorderMenuMo
     const [initialItemRows, setInitialItemRows] = useState<ItemRow[]>([]);
 
     // Initialize data when modal opens
-    const handleOpen = () => {
+    const initializeOpenState = useCallback(() => {
         const cats = buildAllCategoryRows(projectData.files || [], activeLang);
         setCategoryRows(cats);
         setInitialCategoryRows([...cats]); // Store initial state
+        setDraggingCategory(null);
+        setDraggingItem(null);
 
         // Auto-select first category
-        if (cats.length > 0 && !selectedCategoryId) {
+        if (cats.length > 0) {
             const firstCat = cats[0];
             setSelectedCategoryId(firstCat.id);
             const items = buildItemsForCategory(projectData.files || [], firstCat.id, activeLang);
             setItemRows(items);
             setInitialItemRows([...items]); // Store initial state
+        } else {
+            setSelectedCategoryId(null);
+            setItemRows([]);
+            setInitialItemRows([]);
         }
-    };
+    }, [activeLang, projectData.files]);
+
+    useEffect(() => {
+        if (!open) return;
+        initializeOpenState();
+    }, [initializeOpenState, open]);
 
     // When category is clicked, load its items
     const handleCategoryClick = (categoryId: string) => {
@@ -125,6 +137,7 @@ const ReorderMenuModal = ({ open, projectData, onClose, onApply }: ReorderMenuMo
         if (hasChanges) {
             Modal.confirm({
                 title: 'Unsaved Changes',
+                modalRender: labelConfirmDialog('Unsaved Changes'),
                 icon: <LuHelpCircle />,
                 content: 'You have unsaved order changes. Are you sure you want to close?',
                 okText: 'Discard Changes',
@@ -163,6 +176,8 @@ const ReorderMenuModal = ({ open, projectData, onClose, onApply }: ReorderMenuMo
 
     // Apply changes to project
     const handleApply = () => {
+        if (!hasChanges) return;
+
         const updatedProject = removeObjRef(projectData);
 
         // Update category orders per file
@@ -234,9 +249,6 @@ const ReorderMenuModal = ({ open, projectData, onClose, onApply }: ReorderMenuMo
             }
             open={open}
             onCancel={handleClose}
-            afterOpenChange={(visible) => {
-                if (visible) handleOpen();
-            }}
             closable={true}
             maskClosable={false}
             styles={{ mask: { backdropFilter: 'blur(6px)' } }}
@@ -251,7 +263,7 @@ const ReorderMenuModal = ({ open, projectData, onClose, onApply }: ReorderMenuMo
                             Reset
                         </Button>
                         <Button onClick={handleClose}>Cancel</Button>
-                        <Button type="primary" disabled={!canReorder} onClick={handleApply}>
+                        <Button type="primary" disabled={!canReorder || !hasChanges} onClick={handleApply}>
                             Update order
                         </Button>
                     </Flex>
@@ -436,7 +448,6 @@ const ReorderMenuModal = ({ open, projectData, onClose, onApply }: ReorderMenuMo
                                                 label={item.label}
                                                 index={index}
                                                 uid={item.uid}
-                                                onClick={() => { }} // Items don't need click action
                                             />
                                         ))}
                                     </Flex>

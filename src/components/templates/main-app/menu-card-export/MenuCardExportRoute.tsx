@@ -251,15 +251,15 @@ function DesktopMenuCardExportRoute() {
                     <Flex vertical gap={8}>
                         <Flex align="center" justify="space-between" className={styles.toggleRow}>
                             <Text>Include descriptions</Text>
-                            <Switch checked={settings.includeDescriptions} onChange={(checked) => updateToggle('includeDescriptions', checked)} />
+                            <Switch aria-label="Include descriptions" checked={settings.includeDescriptions} onChange={(checked) => updateToggle('includeDescriptions', checked)} />
                         </Flex>
                         <Flex align="center" justify="space-between" className={styles.toggleRow}>
                             <Text>Include QR</Text>
-                            <Switch checked={settings.includeQr} onChange={(checked) => updateToggle('includeQr', checked)} />
+                            <Switch aria-label="Include QR" checked={settings.includeQr} onChange={(checked) => updateToggle('includeQr', checked)} />
                         </Flex>
                         <Flex align="center" justify="space-between" className={styles.toggleRow}>
                             <Text>Include contact block</Text>
-                            <Switch checked={settings.includeContactBlock} onChange={(checked) => updateToggle('includeContactBlock', checked)} />
+                            <Switch aria-label="Include contact block" checked={settings.includeContactBlock} onChange={(checked) => updateToggle('includeContactBlock', checked)} />
                         </Flex>
                     </Flex>
                 </Card>

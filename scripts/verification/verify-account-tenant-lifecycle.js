@@ -58,6 +58,10 @@ for (const token of [
 
 assert(!websiteHeader.includes('import { signOut,'), 'website header must use shared sign-out lifecycle');
 includes(websiteHeader, 'signOutSession("/")', 'website header shared sign-out');
+assert(
+  websiteHeader.indexOf('router.replace("/")') > websiteHeader.indexOf('signOutSession("/")'),
+  'website header must complete its promised home redirect after authenticated browser cleanup',
+);
 includes(profileActions, "dispatch(showErrorToast(t('logoutFailed')))", 'logout failure presentation');
 assert(!profileActions.includes("dispatch(showSuccessToast(t('logoutFailed')))"), 'logout failure must not be shown as success');
 

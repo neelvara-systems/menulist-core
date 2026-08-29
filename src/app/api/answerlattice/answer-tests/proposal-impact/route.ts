@@ -140,6 +140,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 access: permission.access,
                 proposalId: parsed.data.proposalId,
                 editedContent: parsed.data.editedContent,
+                entityIds: parsed.data.entityIds,
             }),
             loadAnswerlatticeAnswerTestSummary(scope),
         ]);

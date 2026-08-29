@@ -63,6 +63,7 @@ export const DB_COLLECTIONS = {
     WHATSAPP_OS_WEBHOOK_RECEIPTS: 'answerlattice_whatsappOsWebhookReceipts',
     WHATSAPP_OS_CONSENT_EVENTS: 'answerlattice_whatsappOsConsentEvents',
     ANSWERLATTICE_CONTACT_ENQUIRIES: 'answerlattice_contactEnquiries',
+    ANSWERLATTICE_EARLY_ACCESS_REQUESTS: 'answerlattice_earlyAccessRequests',
     ANSWERLATTICE_SUPPORT_BOARD_CARDS: 'answerlattice_supportBoardCards',
     ANSWERLATTICE_KNOWLEDGE_INTAKE_JOBS: 'answerlattice_knowledgeIntakeJobs',
     ANSWERLATTICE_KNOWLEDGE_SOURCES: 'answerlattice_knowledgeSources',

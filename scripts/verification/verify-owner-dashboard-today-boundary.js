@@ -276,6 +276,9 @@ forbidToken(ownerActionMarkDoneRoute, 'await dashboardRef.update(updates);', 'ow
 ].forEach((token) => forbidToken(ownerDashboardGraph, token, 'owner dashboard graph mode must not copy sales report controls'));
 
 [
+  'getOwnerProjectSelectionScopeKey',
+  'projectSelection.scopeKey === currentProjectScopeKey',
+  'setProjectSelection({ projectId, scopeKey: currentProjectScopeKey })',
   'const [showHistorical, setShowHistorical] = useState(false);',
   'useOwnerDashboard({',
   'loadHistorical: showHistorical,',
@@ -312,12 +315,15 @@ requireOrder(
   'StaffPromptSection staffPrompt={staffPrompt}',
 ].forEach((token) => requireToken(desktopToday, token, 'desktop Today screen'));
 [
+  'aria-label={TODAY_FEATURE_GUIDE_TITLE}',
   'aria-label="Close Today guide"',
   'style={{ minHeight: 44 }}',
   'onClick={() => setIsGuideOpen(false)}',
 ].forEach((token) => requireToken(desktopToday, token, 'desktop Today guide close control'));
 requireToken(desktopPastActivity, 'aria-label="Close Past activity guide"', 'desktop Past activity guide close control');
 requireToken(desktopPastActivity, 'style={{ minHeight: 44 }}', 'desktop Past activity guide close target');
+requireToken(desktopPastActivity, 'aria-label={PAST_ACTIVITY_GUIDE_TITLE}', 'desktop Past activity guide dialog name');
+requireToken(desktopPastActivity, 'aria-label="Project"', 'desktop Past activity project selector name');
 forbidToken(desktopToday, 'closeIcon={<span', 'desktop Today guide non-Lucide close icon');
 forbidToken(desktopToday, 'if (result?.today)', 'desktop Today optional success acknowledgement');
 

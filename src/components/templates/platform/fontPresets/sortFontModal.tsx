@@ -62,6 +62,7 @@ function SortFontModal({ showSortModal, setShowSortModal, setFontsList }: SortFo
 
     return (
         <Modal
+            aria-label="Update Font Sequencing"
             centered
             destroyOnHidden
             title="Update Font Sequencing"
@@ -70,7 +71,7 @@ function SortFontModal({ showSortModal, setShowSortModal, setFontsList }: SortFo
             styles={{ mask: { backdropFilter: 'blur(6px)' } }}
             footer={<Flex align="center" justify="flex-end" style={{ marginTop: 30 }}>
                 <Button type="default" onClick={() => setShowSortModal({ active: false, data: [] })}>Cancel</Button>
-                <Button type="primary" onClick={onSubmit}>Update</Button>
+                <Button disabled={fontsList.length < 2} type="primary" onClick={onSubmit}>Update</Button>
             </Flex>}
             closeIcon={<LuX />}
             width={400}

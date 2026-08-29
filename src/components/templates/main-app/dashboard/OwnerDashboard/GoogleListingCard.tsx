@@ -17,12 +17,13 @@ import { openIsolatedBrowserUrl } from '@lib/browser/openIsolatedBrowserUrl';
 
 import { FEATURE_FLAGS } from '@config/features';
 import { getBoundedStoreStringContext, logStoreDataFailure } from '@database/stores/storeDiagnostics';
-import { generateOBPUrl } from '@lib/obp/generateOBPUrl';
+import { generateConfiguredStoreOBPUrl } from '@lib/obp/generateOBPUrl';
+import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { StoreDataType } from '@type/platform/store';
 import { assertStoreUpdateSucceeded, updateStore } from '@database/stores';
 import { Button, Card, Flex, Typography, App, theme } from 'antd';
 import { useTranslations } from 'next-intl';
-import { useState } from 'react';
+import { useContext, useState } from 'react';
 import { LuCheck, LuCopy, LuExternalLink, LuStore } from 'react-icons/lu';
 
 const { Text } = Typography;
@@ -92,11 +93,12 @@ export default function GoogleListingCard({ storeDetails, onStoreUpdate }: Googl
     const [saving, setSaving] = useState(false);
     const { token } = theme.useToken();
     const t = useTranslations('Dashboard.owner');
+    const { tenantDetails } = useContext(PlatformGlobalDataContext);
 
     if (!FEATURE_FLAGS.ENABLE_OBP) return null;
     if (FEATURE_FLAGS.ENABLE_GBP_SYNC) return null;
 
-    const obpUrl = generateOBPUrl(storeDetails?.subdomain, storeDetails?.customDomain);
+    const obpUrl = generateConfiguredStoreOBPUrl(storeDetails, tenantDetails?.storesList);
     if (!obpUrl) return null;
 
     const isUpdated = storeDetails?.publicPresence?.googleLinkUpdated === true;

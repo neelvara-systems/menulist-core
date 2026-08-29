@@ -1,9 +1,15 @@
 import assert from 'node:assert/strict';
 import {
+    getOwnerProjectSelectionScopeKey,
     getStoredOwnerProjectId,
     resolveSelectableProject,
     setStoredOwnerProjectId,
 } from '../../src/lib/projects/projectSelection';
+
+assert.equal(getOwnerProjectSelectionScopeKey(7, 11), 'mobileSelectedProjectId:11:7');
+assert.equal(getOwnerProjectSelectionScopeKey(7, 22), 'mobileSelectedProjectId:22:7');
+assert.equal(getOwnerProjectSelectionScopeKey('2:3', 1), null);
+assert.equal(getOwnerProjectSelectionScopeKey(3, '1:2'), null);
 
 class MemoryStorage {
     private readonly values = new Map<string, string>();

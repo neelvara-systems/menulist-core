@@ -985,6 +985,7 @@ function MobileHoursScreenContent({ onOpenDashboard, onOpenHistory, onOpenMenuTa
             </Card>
 
             <Popup
+                aria-label={todaySpecialHours ? 'Edit Today’s Special Hours' : `Edit Regular ${todayLabel} Hours`}
                 bodyStyle={{ maxHeight: '75vh', overflow: 'hidden', padding: 0 }}
                 onMaskClick={() => {
                     if (isSavingTodayHours) return;
@@ -1006,6 +1007,7 @@ function MobileHoursScreenContent({ onOpenDashboard, onOpenHistory, onOpenMenuTa
                     >
                         <Text strong>{todaySpecialHours ? 'Edit Today’s Special Hours' : `Edit Regular ${todayLabel} Hours`}</Text>
                         <Button
+                            aria-label={t('close')}
                             fill="none"
                             onClick={() => {
                                 if (isSavingTodayHours) return;
@@ -1038,11 +1040,11 @@ function MobileHoursScreenContent({ onOpenDashboard, onOpenHistory, onOpenMenuTa
                         <Flex align="center" gap={8}>
                             <Flex style={{ flex: 1 }} vertical>
                                 <Text type="secondary">Open</Text>
-                                <Input onChange={setTodayOpenTime} type="time" value={todayOpenTime} />
+                                <Input aria-label={`${todayLabel} opening time`} onChange={setTodayOpenTime} type="time" value={todayOpenTime} />
                             </Flex>
                             <Flex style={{ flex: 1 }} vertical>
                                 <Text type="secondary">Close</Text>
-                                <Input onChange={setTodayCloseTime} type="time" value={todayCloseTime} />
+                                <Input aria-label={`${todayLabel} closing time`} onChange={setTodayCloseTime} type="time" value={todayCloseTime} />
                             </Flex>
                         </Flex>
                     </Flex>
@@ -1190,7 +1192,7 @@ function MobileHoursScreenContent({ onOpenDashboard, onOpenHistory, onOpenMenuTa
                                 <Text type="secondary">{nudgeMessage}</Text>
                             </Flex>
                         </Flex>
-                        <Button fill="none" onClick={handleDismissNudge} size="small" style={{ minHeight: 44, minWidth: 44, paddingInline: 6 }}>
+                        <Button aria-label="Dismiss hours reminder" fill="none" onClick={handleDismissNudge} size="small" style={{ minHeight: 44, minWidth: 44, paddingInline: 6 }}>
                             <LuX size={14} />
                         </Button>
                     </Flex>
@@ -1317,6 +1319,7 @@ function MobileHoursScreenContent({ onOpenDashboard, onOpenHistory, onOpenMenuTa
                     <Flex align="center" justify="space-between">
                         <Text strong>{TODAY_FEATURE_GUIDE_TITLE}</Text>
                         <Button
+                            aria-label={t('close')}
                             fill="none"
                             onClick={() => setIsTodayGuideOpen(false)}
                             size="small"

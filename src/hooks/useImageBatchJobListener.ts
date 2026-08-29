@@ -7,7 +7,9 @@ import {
     normalizeImageBatchJobForClient,
     selectLatestOwnerVisibleImageBatchJob,
     shouldApplyImageBatchListenerSnapshot,
+    shouldIgnoreImageBatchListenerAuthTeardown,
 } from '@lib/ai/imageBatchClientBoundary';
+import { firebaseAuth } from '@lib/firebase/firebaseClient';
 import { message } from 'antd';
 import { onSnapshot, type DocumentData, type QuerySnapshot } from "firebase/firestore";
 import { useContext, useEffect, useRef } from "react";
@@ -86,7 +88,15 @@ export const useImageBatchJobListener = ({ project, setActiveBatchImageJob }: Us
 
             const sessionScope = { tId: tenantId, sId: storeId };
             let listenerActive = true;
+            let listenerErrorTimer: ReturnType<typeof setTimeout> | null = null;
             let primaryHasJob = false;
+            const notifyActiveListenerFailure = () => {
+                if (listenerErrorTimer) clearTimeout(listenerErrorTimer);
+                listenerErrorTimer = setTimeout(() => {
+                    listenerErrorTimer = null;
+                    if (listenerActive) message.error("Failed to listen to batch job updates.");
+                }, 150);
+            };
             const applySnapshot = (
                 querySnapshot: QuerySnapshot<DocumentData>,
                 source: 'legacy' | 'primary',
@@ -150,6 +160,19 @@ export const useImageBatchJobListener = ({ project, setActiveBatchImageJob }: Us
                         dispatch(stopLoader("Listening to batch jobs for project: " + projectId));
                     },
                     (error) => {
+                        if (!listenerActive) return;
+                        if (shouldIgnoreImageBatchListenerAuthTeardown(
+                            error.code,
+                            Boolean(firebaseAuth.currentUser),
+                        )) {
+                            logHookDiagnostic(
+                                'image_batch_job_legacy_listener_auth_teardown_ignored',
+                                getImageBatchJobListenerLogContext(projectId, tenantId, storeId),
+                                { developmentOnly: true },
+                            );
+                            dispatch(stopLoader("Listening to batch jobs for project: " + projectId));
+                            return;
+                        }
                         logHookFailure('image_batch_job_legacy_listener_snapshot_failed', error, getImageBatchJobListenerLogContext(projectId, tenantId, storeId));
                     },
                 );
@@ -175,8 +198,21 @@ export const useImageBatchJobListener = ({ project, setActiveBatchImageJob }: Us
                     dispatch(stopLoader("Listening to batch jobs for project: " + projectId));
                 },
                 (error) => {
+                    if (!listenerActive) return;
+                    if (shouldIgnoreImageBatchListenerAuthTeardown(
+                        error.code,
+                        Boolean(firebaseAuth.currentUser),
+                    )) {
+                        logHookDiagnostic(
+                            'image_batch_job_listener_auth_teardown_ignored',
+                            getImageBatchJobListenerLogContext(projectId, tenantId, storeId),
+                            { developmentOnly: true },
+                        );
+                        dispatch(stopLoader("Listening to batch jobs for project: " + projectId));
+                        return;
+                    }
                     logHookFailure('image_batch_job_listener_snapshot_failed', error, getImageBatchJobListenerLogContext(projectId, tenantId, storeId));
-                    message.error("Failed to listen to batch job updates.");
+                    notifyActiveListenerFailure();
                     dispatch(stopLoader("Listening to batch jobs for project: " + projectId));
                 }
             );
@@ -186,6 +222,10 @@ export const useImageBatchJobListener = ({ project, setActiveBatchImageJob }: Us
 
             return () => {
                 listenerActive = false;
+                if (listenerErrorTimer) {
+                    clearTimeout(listenerErrorTimer);
+                    listenerErrorTimer = null;
+                }
                 logHookDiagnostic('image_batch_job_listener_cleanup', getBoundedHookStringContext('projectId', projectId), { developmentOnly: true });
                 if (unsubscribeRef.current) {
                     unsubscribeRef.current();

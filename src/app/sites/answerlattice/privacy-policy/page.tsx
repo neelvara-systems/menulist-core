@@ -33,6 +33,7 @@ const SECTIONS = [
             'Knowledge intake sources can include selected public URLs, pasted support text, starter answers, and supported document text. Customers should avoid importing unnecessary personal data.',
             'Page context should describe the product page, route, feature, workflow, role, or plan needed to answer support questions. It should not include passwords, payment card data, secrets, private tokens, or unrelated personal information.',
             'During signup, a customer may optionally select a closed-list source describing where they first heard about AnswerLattice. The field does not accept free text.',
+            'An early-access request includes a name, work email, product URL, product stage, first support area, current or expected support questions, an optional feature request or idea, and contact consent. Submitting the form does not create an account or payment.',
         ],
     },
     {
@@ -41,6 +42,7 @@ const SECTIONS = [
             'AnswerLattice uses workspace and support content to power help centers, hosted docs, approved answers, widget responses, ticket fallback, changelog relevance, readiness summaries, and support-gap review queues.',
             'Operational logs and ticket debugging context are used to keep the service reliable, investigate reported failures, protect the service from abuse, and understand whether support knowledge is stale or incomplete.',
             'Optional self-reported signup sources are used to compare broad acquisition channels, including AI assistants, search, communities, and referrals.',
+            'Early-access details are used to review product fit, plan controlled onboarding, understand requested support workflows, and contact the applicant about the request. Feature ideas may inform product decisions but do not create a delivery commitment.',
         ],
     },
     {
@@ -71,7 +73,7 @@ const SECTIONS = [
         title: 'Retention and Security',
         body: [
             'AnswerLattice keeps data for as long as it is needed to provide the service, support the customer workspace, meet operational needs, or satisfy legal requirements.',
-            `Implemented windows include ${ANSWERLATTICE_RETENTION_DAYS.queryEmbeddings} days for query embedding cache, ${ANSWERLATTICE_RETENTION_DAYS.aiSearchHistory} days for raw answer/search history, ${ANSWERLATTICE_RETENTION_DAYS.notificationLogs} days for selected operational logs, ${ANSWERLATTICE_RETENTION_DAYS.ownerNotificationRateLimits} days for notification rate-limit counters, ${ANSWERLATTICE_RETENTION_DAYS.contactEnquiries} days for public contact enquiries, ${ANSWERLATTICE_RETENTION_DAYS.signalEvents} days for raw signal events, and 90 days for friction daily statistics.`,
+            `Implemented windows include ${ANSWERLATTICE_RETENTION_DAYS.queryEmbeddings} days for query embedding cache, ${ANSWERLATTICE_RETENTION_DAYS.aiSearchHistory} days for raw answer/search history, ${ANSWERLATTICE_RETENTION_DAYS.notificationLogs} days for selected operational logs, ${ANSWERLATTICE_RETENTION_DAYS.ownerNotificationRateLimits} days for notification rate-limit counters, ${ANSWERLATTICE_RETENTION_DAYS.contactEnquiries} days for public contact enquiries, ${ANSWERLATTICE_RETENTION_DAYS.earlyAccessRequests} days for early-access requests and submitted feature ideas, ${ANSWERLATTICE_RETENTION_DAYS.signalEvents} days for raw signal events, and 90 days for friction daily statistics.`,
             'Imported source metadata and capped extracted text stay with the intake job so owners can review drafts and lineage. Raw file retention is not required for day-one browser-extracted intake.',
             'Access controls, tenant separation, validation, and bounded payload handling are used to reduce accidental exposure and protect support data.',
         ],
@@ -96,7 +98,7 @@ export default async function AnswerlatticePrivacyPolicyPage() {
                     <div className="mx-auto max-w-3xl text-center">
                         <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">Privacy Policy</p>
                         <h1 className="mb-4 text-4xl font-bold sm:text-5xl">Privacy Policy</h1>
-                        <p className="mb-2 text-sm text-[#6b6b8a]">Last updated: August 13, 2026</p>
+                        <p className="mb-2 text-sm text-[#6b6b8a]">Last updated: August 29, 2026</p>
                         <p className="mt-6 text-lg leading-relaxed text-[#a0a0c0]">
                             This policy explains how AnswerLattice handles information for its public website, product dashboard,
                             help widget, and support knowledge features.

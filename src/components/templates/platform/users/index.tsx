@@ -12,10 +12,10 @@ import {
     isCreateStaffCompatibilityVerificationResponse,
     readCreateStaffCompatibilityResponse,
 } from '@lib/staffManagement/client';
+import { getStoreDeepDifference } from '@lib/store/storeNestedUpdateProjection';
 import { showErrorToast, showSuccessToast, showWarningToast } from '@reduxSlices/toast';
 import { StoreDataType } from '@type/platform/store';
 import { TenantDataType } from '@type/platform/tenant';
-import { getObjectDifferance } from '@util/deepMerge';
 import { removeObjRef } from '@util/utils';
 import { Button, Card, Flex, Select, Switch, Table, Tag, Typography } from 'antd'; // Import Ant Design components
 import type { TableColumnsType } from 'antd';
@@ -119,7 +119,13 @@ function PlatformUsers() {
             title: 'Action',
             key: 'action',
             render: (_: unknown, record: PlatformUserRecord) => (
-                <Button type="primary">Edit</Button> // Edit button
+                <Button
+                    aria-label={`Edit user ${record.name || record.email}`}
+                    onClick={() => onClickUser(record)}
+                    type="primary"
+                >
+                    Edit
+                </Button>
             ),
         },
     ];
@@ -148,7 +154,10 @@ function PlatformUsers() {
             dispatch(showErrorToast("Could not update user. Please try again."));
             return;
         }
-        const updatedChanges: Partial<PlatformUserRecord> & { id?: string } = getObjectDifferance(updated, originalUser);
+        const updatedChanges = getStoreDeepDifference(
+            updated as unknown as Record<string, unknown>,
+            originalUser as unknown as Record<string, unknown>,
+        ) as Partial<PlatformUserRecord> & { id?: string };
 
         // we need to check if the user has multiple store permission or not
         // if the user has multiple store permission then we should update the storeId and stores array
@@ -326,6 +335,7 @@ function PlatformUsers() {
             <Card>
                 <Flex gap={20} align="center" wrap="wrap">
                     <Select
+                        aria-label="Filter users by tenant"
                         style={{ flex: '1 1 220px', minWidth: 0 }}
                         placeholder="Select Tenant"
                         value={filterTenant}
@@ -340,6 +350,7 @@ function PlatformUsers() {
                         allowClear
                     />
                     <Select
+                        aria-label="Filter users by store"
                         style={{ flex: '1 1 220px', minWidth: 0 }}
                         placeholder="Select Store"
                         value={filterStore}
@@ -368,9 +379,7 @@ function PlatformUsers() {
                     pagination={false}
                     dataSource={usersList}
                     columns={columns}
-                    onRow={(record: PlatformUserRecord) => ({
-                        onClick: () => onClickUser(record), // Handle row click
-                    })} />
+                />
             </Flex>
             <DrawerElement
                 title="Update user"
@@ -399,6 +408,7 @@ function PlatformUsers() {
                     <Flex>
                         <Text style={{ minWidth: 150 }}>Active</Text>
                         <Switch
+                            aria-label="User active"
                             defaultChecked={userModal?.active || false}
                             value={userModal?.active || false}
                             onChange={() => onChangeValue('active', !Boolean(userModal?.active))}
@@ -406,8 +416,9 @@ function PlatformUsers() {
                     </Flex>
 
                     <Flex>
-                        <Text style={{ minWidth: 150 }}>Platofrm Role</Text>
+                        <Text style={{ minWidth: 150 }}>Platform Role</Text>
                         <Select
+                            aria-label="Platform role"
                             defaultValue={userModal?.platformRole || ""}
                             value={userModal?.platformRole || ""}
                             style={{ width: "100%" }}
@@ -424,6 +435,7 @@ function PlatformUsers() {
                     <Flex>
                         <Text style={{ minWidth: 150 }}>Tenant</Text>
                         <Select
+                            aria-label="User tenant"
                             value={userModal?.tenantId}
                             style={{ width: "100%" }}
                             placeholder="Search and select tenant"
@@ -441,12 +453,13 @@ function PlatformUsers() {
                         <Text style={{ minWidth: 150 }}>Stores Assigned to User <Tag color='blue'>{userModal?.stores?.length}</Tag></Text>
 
                         {userModal?.stores?.map((mappedStore, index) => {
-                            return <Fragment key={index}>
+                            return <Fragment key={mappedStore.storeId}>
                                 <Card>
                                     <Flex vertical gap={10} key={index}>
                                         <Flex>
                                             <Text style={{ minWidth: 100 }}>Store</Text>
                                             <Select
+                                                aria-label={`Store mapping ${index + 1}`}
                                                 defaultValue={mappedStore?.storeId}
                                                 value={mappedStore?.storeId}
                                                 style={{ width: "100%" }}
@@ -463,6 +476,7 @@ function PlatformUsers() {
                                         <Flex>
                                             <Text style={{ minWidth: 100 }}>Role</Text>
                                             <Select
+                                                aria-label={`Store role ${index + 1}`}
                                                 allowClear
                                                 style={{ width: '100%' }}
                                                 placeholder="Please select role"
@@ -476,7 +490,15 @@ function PlatformUsers() {
                                         </Flex>
 
                                         <Flex justify='flex-end'>
-                                            <Button danger type='text' icon={<LuTrash />} onClick={() => onClickDeleteStore(index)}>Delete Store Mapping</Button>
+                                            <Button
+                                                aria-label={`Delete store mapping ${mappedStore.name || mappedStore.storeId}`}
+                                                danger
+                                                type='text'
+                                                icon={<LuTrash />}
+                                                onClick={() => onClickDeleteStore(index)}
+                                            >
+                                                Delete Store Mapping
+                                            </Button>
                                         </Flex>
                                     </Flex>
                                 </Card>
@@ -491,6 +513,7 @@ function PlatformUsers() {
                     <Flex>
                         <Text style={{ minWidth: 150 }}>Default Store</Text>
                         <Select
+                            aria-label="Default store"
                             defaultValue={userModal?.storeId}
                             value={userModal?.storeId}
                             style={{ width: "100%" }}
@@ -499,7 +522,7 @@ function PlatformUsers() {
                             options={userModal?.stores?.map((s) => ({ label: s.name, value: s.storeId }))}
                         />
                     </Flex>
-                    <Tag color='yellow'>Default store used when user loggedin then landing page is of this store</Tag>
+                    <Tag color='yellow'>The user lands in this store after signing in.</Tag>
                 </Flex>
             </DrawerElement>
         </Flex>

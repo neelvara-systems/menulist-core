@@ -39,7 +39,7 @@ export default async function VibeCodedSaasUseCasePage() {
                 'Install the in-app widget and pass safe page context.',
                 'Review repeated misses before publishing official answers.',
             ]}
-            primaryCta="Create workspace"
+            primaryCta="Request early access"
             secondaryCta="See 60-sec demo"
         />
     );

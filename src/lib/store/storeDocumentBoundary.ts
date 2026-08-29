@@ -6,10 +6,14 @@ export const isReadableStoreDocument = (
 ): value is StoreDataType => {
     if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
     const store = value as Partial<StoreDataType>;
+    const legacyStoreId = (store as Partial<StoreDataType> & { sId?: unknown }).sId;
+    const legacyTenantId = (store as Partial<StoreDataType> & { tId?: unknown }).tId;
     return Number.isSafeInteger(store.storeId)
         && store.storeId === expectedStoreId
         && Number.isSafeInteger(store.tenantId)
         && Number(store.tenantId) > 0
+        && (legacyStoreId === undefined || legacyStoreId === null || Number(legacyStoreId) === expectedStoreId)
+        && (legacyTenantId === undefined || legacyTenantId === null || Number(legacyTenantId) === Number(store.tenantId))
         && typeof store.storeKey === 'string'
         && typeof store.tenantName === 'string'
         && typeof store.active === 'boolean'

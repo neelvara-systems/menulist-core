@@ -154,7 +154,8 @@ function verifyComplianceBrowserRequestPolicyBoundary() {
   complianceCallers.forEach(([relativePath, label]) => {
     const content = read(relativePath);
     assert(content.includes('AUTH_BROWSER_REQUEST_POLICY'), `${label} must use the shared authenticated browser request policy`);
-    assertOccurrenceAtLeast(content, "fetch('/api/compliance'", 3, `${label} compliance API calls`);
+    assertOccurrenceAtLeast(content, "fetch('/api/compliance'", 2, `${label} compliance mutation calls`);
+    assert(content.includes('api/compliance?storeId=${encodeURIComponent('), `${label} compliance load must carry the active store scope`);
     assertOccurrenceAtLeast(content, 'AUTH_BROWSER_REQUEST_POLICY', 4, `${label} shared authenticated browser request policy use`);
     assertOccurrenceAtLeast(content, '...AUTH_BROWSER_REQUEST_POLICY', 2, `${label} compliance mutations must spread shared request policy`);
     assert(!content.includes("fetch('/api/compliance', {\n                cache: 'no-store'"), `${label} must not reintroduce inline compliance request policy`);
@@ -2344,8 +2345,9 @@ function verifySessionScopedPublicTruthRoutes() {
       'function normalizeComplianceSessionDocumentId(value: unknown): string | null',
       'function getComplianceSessionScope(session: any): { sId: string; tId: string } | null',
       'const scope = getComplianceSessionScope(session);',
-      'const { sId, tId } = scope;',
-      'requireAnyStorePermission(',
+      "request.nextUrl.searchParams.get('storeId')",
+      'canSessionAccessComplianceStore(session, scope.sId, sId)',
+      'requireAnyStorePermissionForStoreData(',
       '[PERMISSIONS.MANAGE_PUBLIC_PRESENCE, PERMISSIONS.MANAGE_STORE]',
       "getRateLimitForFeature('DATA_WRITE')",
       'failClosedOnProviderError: true',
@@ -3336,23 +3338,22 @@ function verifyPublicTruthMutationBoundedBodies() {
     'custom domain limiter and bounded body before authorization, claim, provider, or store work',
   );
 
-  assertOrder(
-    'src/app/api/compliance/route.ts',
-    [
-      'const scope = getComplianceSessionScope(session);',
-      'const { sId, tId } = scope;',
-      'const permissionError = await requireAnyStorePermission(',
-      "const rateLimitConfig = getRateLimitForFeature('DATA_WRITE');",
-      'const userRateLimitHash = hashPublicRateLimitValue(session.uId || session.user?.id || \'unknown\');',
-      'const storeRateLimitHash = hashPublicRateLimitValue(sId);',
-      'key: `compliance:${userRateLimitHash}:${storeRateLimitHash}`',
-      'const bodyResult = await readBoundedJsonBody(request, COMPLIANCE_OVERRIDE_MAX_BODY_BYTES',
-      'const validation = OverrideSchema.safeParse(body);',
-      'sanitizeComplianceContent(content)',
-      'await saveComplianceOverrideServer(sId, tId, type, sanitized);',
-    ],
-    'compliance override permission, limiter, and bounded body ordering',
-  );
+  const complianceRouteSource = read('src/app/api/compliance/route.ts');
+  const compliancePostRoute = complianceRouteSource.slice(complianceRouteSource.indexOf('export const POST = withAuth'));
+  const compliancePostOrder = [
+    'const bodyResult = await readBoundedJsonBody(request, COMPLIANCE_OVERRIDE_MAX_BODY_BYTES',
+    'const validation = OverrideSchema.safeParse(body);',
+    'const permissionError = await requireAnyStorePermissionForStoreData(',
+    "const rateLimitConfig = getRateLimitForFeature('DATA_WRITE');",
+    'sanitizeComplianceContent(content)',
+    'await saveComplianceOverrideServer(sId, tId, type, sanitized);',
+  ];
+  let compliancePostOffset = -1;
+  compliancePostOrder.forEach((token) => {
+    const nextOffset = compliancePostRoute.indexOf(token);
+    assert(nextOffset > compliancePostOffset, `compliance override target-scope ordering missing or out of order: ${token}`);
+    compliancePostOffset = nextOffset;
+  });
 
   assertOrder(
     'src/app/api/store/temp-status/route.ts',
@@ -5663,10 +5664,10 @@ function verifyOwnerUtilitySecureLogging() {
     'Mobile More brand settings route must use MobileBasicSettingsScreen',
   );
   assert(
-    mobileMore.includes("subScreen === 'answerlatticeDocs') subScreenContent = <MobileHelpScreen initialTab=\"kb\"")
-      && mobileMore.includes("subScreen === 'answerlatticeSupport') subScreenContent = <MobileHelpScreen initialTab=\"ticket\"")
-      && mobileMore.includes("subScreen === 'answerlatticeReleaseNotes') subScreenContent = <MobileHelpScreen initialTab=\"changelog\""),
-    'Mobile More Answerlattice help routes must use MobileHelpScreen tabs',
+    mobileMore.includes("subScreen === 'menuListDocs') subScreenContent = <MobileHelpScreen initialTab=\"faq\"")
+      && mobileMore.includes("subScreen === 'menuListContact') subScreenContent = <MobileHelpScreen initialTab=\"contact-us\"")
+      && !mobileMore.includes('answerlatticeReleaseNotes'),
+    'Mobile More MenuList help routes must use product-owned MobileHelpScreen sections only',
   );
   [
     ['Mobile Basic Settings', mobileBasicSettings],
@@ -10783,13 +10784,16 @@ function verifyStaffClientDiagnostics() {
   assert(mobileRoles.includes('currentStoreDetails?.tenantId === expectedTenantId'), 'Mobile Roles must scope response settlement to the admitted tenant');
   assert(mobileRoles.includes('currentStoreDetails?.storeId === expectedStoreId'), 'Mobile Roles must scope response settlement to the admitted store');
   assert(mobileRoles.includes('currentStoreDetails?.roles === sourceStoreDetails.roles'), 'Mobile role saves must not overwrite newer same-store role truth');
-  assert(mobileRoles.includes('currentStoreDetails?.roles === sourceRoles'), 'Mobile role deletes must not overwrite newer same-store role truth');
+  assert(!mobileRoles.includes('Delete This Role'), 'Mobile Roles must not expose the misleading duplicate soft-delete path');
   assert(!mobileRoles.includes('setStoreDetails({ ...storeDetails, roles: response.roles })'), 'Mobile Roles must not replace captured generic context after awaited mutations');
   assert(mobileUsers.includes('return <MobileUsersScreenContent key={scopeKey} {...props} />;'), 'Mobile Users must remount local staff state on exact tenant/store changes');
   assert(mobileUsers.includes('staffMutationInFlightRef.current'), 'Mobile Users must synchronously reject duplicate staff mutations');
   assert(mobileUsers.includes('latestLoadRequestRef.current'), 'Mobile Users must invalidate obsolete staff list requests');
   assert(mobileUsers.includes('isExpectedStaffScope(expectedTenantId, expectedStoreId)'), 'Mobile Users must scope response settlement to the admitted tenant/store');
   assert((mobileUsers.match(/!isMountedRef\.current/g) || []).length >= 6, 'Every Mobile Users mutation must reject admission after its mounted scope is obsolete');
+  assert(mobileUsers.includes('isMountedRef.current = true;'), 'Mobile Users must re-arm mounted settlement after React Strict Mode effect replay');
+  assert(mobileUsers.includes('aria-label={t(\'addStaffMember\')}'), 'Mobile Users add form must expose a stable dialog name');
+  assert(mobileUsers.includes('aria-pressed={newUserRole === role.id}'), 'Mobile Users role choices must expose selected state');
   assert(mobileUsers.includes('item.id === user.id && item === user ? response.user : item'), 'Mobile Users must preserve newer same-store user truth');
   assert(!mobileUsers.includes('setUsersList([...users, data.user])'), 'Mobile Users must not replace current staff truth from a captured create list');
   assert(!mobileUsers.includes('setUsersList(users.map('), 'Mobile Users must not replace current staff truth from captured mutation lists');
@@ -10877,7 +10881,6 @@ function verifyStaffClientDiagnostics() {
   assert(mobileUsers.includes('hasCopyFallback: hasStaffLoginCopyFallback()'), 'mobile users login details copy failures must include fallback support metadata');
   [
     'mobile_staff_role_save_failed',
-    'mobile_staff_role_delete_failed',
   ].forEach((failureCode) => {
     assert(mobileRoles.includes(failureCode), `mobile roles must log ${failureCode}`);
   });

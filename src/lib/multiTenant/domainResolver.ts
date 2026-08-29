@@ -265,6 +265,7 @@ export function shouldBypassDomainRouting(pathname: string): boolean {
         '/serwist/',
         '/sw-customer.js',
         '/mycodex-sw.js',
+        '/answerlattice-sw.js',
         '/workbox-',
     ];
 

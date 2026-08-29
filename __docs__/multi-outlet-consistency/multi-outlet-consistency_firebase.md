@@ -194,7 +194,7 @@ Assumption for INR estimate: ₹83/USD.
 | Read tenant list for rename  | `tenants/{tId}`                | POST /api/outlets/rename tx  | 1         | `src/app/api/outlets/rename/route.ts`        |
 | Outlet sub fallback          | `tenants/{tId}`                | Outlet loads billing         | 1         | `src/database/subscriptions/index.ts:127`    |
 | Master sub fetch (fallback)  | `subscriptions` (query)        | Outlet loads billing         | 1-2       | `src/database/subscriptions/index.ts:137`    |
-| Get storesList (propagation) | `tenants/{tId}`                | Master creates project       | 1         | `src/database/multiOutlet/propagation.ts`; filters active non-master outlets only. |
+| Get storesList (propagation) | `tenants/{tId}`                | First successful empty-to-one-source master save | 1 | `src/database/multiOutlet/propagation.ts`; empty menu creation and ordinary later saves do not invoke propagation; active non-master outlets only. |
 | Master delete linked-outlet guard | `tenants/{tId}` + active outlet project collections | Master project delete | 1 + active outlet count | `src/database/multiOutlet/index.ts`; inactive outlets are skipped to avoid stale cleanup blockers and extra reads. |
 
 June 30 switch-store browser request-policy hardening is Firebase-cost neutral. Desktop header, desktop Billing, desktop Locations, mobile More, mobile Billing, and mobile Locations now call the existing `/api/auth/switch-store` route with no-store cache policy, same-origin credentials, and manual redirect handling before existing rejected-response handling and Firebase claim refresh. This changes no route reads/writes, Firebase Auth operations beyond existing claim refresh attempts, Firestore rules/indexes, Cloud Functions, owner settings, Firebase deploy requirement, or Vercel deploy action.
@@ -204,6 +204,19 @@ July 1 switch-store target eligibility hardening adds one canonical `stores/{tar
 July 11 Switch-store scope document ID boundary follow-up: the same boundary now applies to every derived membership input, not only document refs. `src/lib/multiOutlet/storeSwitchAccess.ts` admits only canonical positive safe integers before constructing mapped-store sets or filtering tenant summaries; `/api/auth/switch-store` uses exact tenant-list IDs; and the permission helper uses exact mapped-store IDs before selecting a role. Whitespace, leading-zero, signed, exponent, decimal and unsafe representations no longer alias a valid store. Valid switch attempts keep the same three reads and no writes, Firebase Auth operations, Cloud Functions, rules, indexes, cache invalidations, Firebase deploy requirement, or Vercel deploy action.
 
 July 11 creator store-access boundary follow-up: `/api/outlets/create` validates the session user document ID before billing/provider or Firestore mutation work and uses `users/{normalizedUserId}` inside the existing creation transaction. `buildUserStoreAccessUpdate()` admits only canonical positive safe-integer current store IDs, omits malformed coercive aliases, trims the new canonical outlet name and preserves one mapping per store. The exported fallback grant helper now re-reads and writes the user in one transaction rather than performing an out-of-transaction array overwrite. Valid outlet creation keeps the same one creator-user read/write and adds no rule, index, Function or deploy requirement.
+
+August 27 first-source propagation correction: the former `addProject()` path
+attempted propagation while the master project still had `files: []`. The
+existing Firestore rule correctly denies an inherited project unless its master
+has exactly one source, so every new menu in a multi-location tenant incurred a
+guaranteed failed target transaction attempt and its prerequisite reads. Empty
+menu creation now performs zero propagation reads or writes. The first
+successful empty-to-one-source master save invokes the existing bounded
+propagation once; linked outlet saves and ordinary later master saves invoke
+zero propagation work. This preserves the single-source contract, public-truth
+freshness, retry identity, and per-target atomic project/summary write. It adds
+no collection, index, rule, Function, cache, Firebase deployment, or Vercel
+deployment requirement.
 
 Failed onboarding compensation now applies the same exact persisted tenant/store identity contract when removing the failed store from `users.stores[]/storeIds[]` or clearing the user's default scope. Canonical numeric and canonical-string legacy IDs match; leading-zero, exponent, decimal and unsafe aliases are preserved for explicit repair instead of being coerced into the failed scope. Valid compensation keeps the same transaction reads/writes and adds no Firebase infrastructure change.
 
@@ -230,8 +243,8 @@ Failed onboarding compensation now applies the same exact persisted tenant/store
 | Rename outlet (in tx)          | `stores/{outletSId}`                   | POST /api/outlets/rename     | 1                    | `src/app/api/outlets/rename/route.ts`     |
 | Sync renamed outlet (in tx)    | `platformSummary/storesSummary`        | POST /api/outlets/rename     | 1                    | `src/app/api/outlets/rename/route.ts`     |
 | Update renamed storesList (in tx) | `tenants/{tId}`                     | POST /api/outlets/rename     | 1                    | `src/app/api/outlets/rename/route.ts`     |
-| Propagate project              | `projects/{tId}/{outletSId}/{id}`      | Verified master creates project | 1 per eligible outlet | `propagation.ts`; active, unblocked, non-master outlets only. The project and summary share one client transaction and deterministic retry identity. |
-| Sync propagated summary        | `platformSummary/projects_{outletSId}` | Verified master creates project | 1 per eligible outlet | Same transaction as the inherited project. One compatible legacy summary-linked ID is reused; ambiguous/conflicting identity fails closed. |
+| Propagate project              | `projects/{tId}/{outletSId}/{id}`      | Verified master's first source save | 1 per eligible outlet | `propagation.ts`; active, unblocked, non-master outlets only. The project and summary share one client transaction and deterministic retry identity. |
+| Sync propagated summary        | `platformSummary/projects_{outletSId}` | Verified master's first source save | 1 per eligible outlet | Same transaction as the inherited project. One compatible legacy summary-linked ID is reused; ambiguous/conflicting identity fails closed. |
 | Set isMaster (onboarding)      | `stores/{sId}` + `tenants/{tId}`       | Onboarding                   | 2                    | `onboarding/create-subscription/route.ts` |
 | Set sub quantity               | `subscriptions/{subId}`                | Subscription creation        | 1                    | Onboarding creates `quantity=1`; `/api/razorpay/create-subscription` accepts `quantity` for plan changes and paid-location replacement checkouts. |
 

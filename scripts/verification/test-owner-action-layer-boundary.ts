@@ -1,7 +1,32 @@
 import assert from 'node:assert/strict';
 import { buildOwnerActionLayer } from '@lib/ownerActions/buildOwnerActionLayer';
+import { normalizeProjectPublicationEventDetail } from '@lib/projects/projectPublicationEvents';
 
 const now = new Date('2026-07-29T12:00:00.000Z');
+
+assert.deepEqual(normalizeProjectPublicationEventDetail({
+    projectId: '101-default-202',
+    recordedAt: 1_753_699_200_000,
+    sId: 202,
+    tId: 101,
+}), {
+    projectId: '101-default-202',
+    recordedAt: 1_753_699_200_000,
+    sId: '202',
+    tId: '101',
+});
+assert.equal(normalizeProjectPublicationEventDetail({
+    projectId: '999-default-202',
+    recordedAt: 1_753_699_200_000,
+    sId: 202,
+    tId: 101,
+}), null, 'cross-tenant publication events must fail closed');
+assert.equal(normalizeProjectPublicationEventDetail({
+    projectId: '101-default-202',
+    recordedAt: Number.NaN,
+    sId: 202,
+    tId: 101,
+}), null, 'malformed publication event timestamps must fail closed');
 
 const valid = buildOwnerActionLayer({
     now,

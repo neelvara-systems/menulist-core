@@ -347,12 +347,19 @@
           .brandTitleText {
             display: inline;
           }
+          .cardBrandButton {
+            padding: 0;
+            border: 0;
+            background: transparent;
+            color: inherit;
+            cursor: pointer;
+            font: inherit;
+          }
           .heading {
             font-weight: 500;
             margin-top: 0;
             cursor: default;
             &.title {
-              cursor: pointer;
               font-weight: 700;
               // padding: 0 10px;
               background-image: linear-gradient(

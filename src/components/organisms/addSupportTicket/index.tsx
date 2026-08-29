@@ -95,12 +95,14 @@ const AddSupportTicket: React.FC<AddTicketModalProps> = ({ visible = false, onCl
                         remark: String(values.message || 'Ticket created by admin.').slice(0, 2000),
                     },
                 ],
-                clientDetails: {
-                    tenantName: storeDetails?.tenantName,
-                    storeName: storeDetails?.name,
-                    email: storeDetails?.email,
-                    phone: storeDetails?.phoneNumber,
-                },
+                ...(storeDetails ? {
+                    clientDetails: {
+                        tenantName: String(storeDetails.tenantName || ''),
+                        storeName: String(storeDetails.name || ''),
+                        email: String(storeDetails.email || session.user.email || ''),
+                        phone: String(storeDetails.phoneNumber || ''),
+                    },
+                } : {}),
             };
             const newTicket = await addTicket(payload);
             assertSupportTicketCreateSucceeded(

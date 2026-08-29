@@ -1,3 +1,4 @@
+import './styles.css';
 import type { Metadata, Viewport } from 'next';
 import {
     NEELVARA_BUSINESS_DESCRIPTION,

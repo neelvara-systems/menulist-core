@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import {
+    canAnswerlatticeKnowledgeIntakeAcceptSources,
     markAnswerlatticeKnowledgeIntakeItemsPublished,
     upsertAnswerlatticeKnowledgeIntakeJob,
     upsertAnswerlatticeKnowledgeIntakeReviewItem,
@@ -18,6 +19,22 @@ const item = (id: string, status: AnswerlatticeIntakeReviewItem['status']) => ({
     id,
     status,
 } as AnswerlatticeIntakeReviewItem);
+
+for (const status of ['draft', 'collecting', 'reviewing', 'failed'] as const) {
+    assert.equal(
+        canAnswerlatticeKnowledgeIntakeAcceptSources(status),
+        true,
+        `${status} intake jobs should accept source mutations`,
+    );
+}
+for (const status of ['publishing', 'published', 'cancelled'] as const) {
+    assert.equal(
+        canAnswerlatticeKnowledgeIntakeAcceptSources(status),
+        false,
+        `${status} intake jobs must remain read-only`,
+    );
+}
+assert.equal(canAnswerlatticeKnowledgeIntakeAcceptSources(null), false);
 
 assert.deepEqual(
     upsertAnswerlatticeKnowledgeIntakeJob([job('older'), job('current')], job('current')).map(value => value.id),

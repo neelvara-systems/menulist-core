@@ -164,6 +164,27 @@ assert.equal(bulkPreview.itemsAffected, 1);
 assert.equal(bulkPreview.itemsSkipped, 2);
 assert.equal(bulkPreview.allChanges[0]?.oldPrice, 1299);
 
+const unchangedFixedPreview = computePricingPreview([
+    {
+        ...bulkItems[0],
+        price: '₹80',
+    },
+], { method: 'setFixed', value: 80 });
+assert.equal(unchangedFixedPreview.itemsAffected, 0);
+assert.equal(unchangedFixedPreview.allChanges.length, 0);
+
+const attributeOnlyFixedPreview = computePricingPreview([
+    {
+        ...bulkItems[0],
+        price: '₹80',
+        attributes: [{ id: 'large', name: 'Large', price: '₹100' }],
+    },
+], { method: 'setFixed', value: 80 });
+assert.equal(attributeOnlyFixedPreview.itemsAffected, 1);
+assert.equal(attributeOnlyFixedPreview.allChanges.length, 1);
+assert.equal(attributeOnlyFixedPreview.allChanges[0]?.isAttribute, true);
+assert.equal(attributeOnlyFixedPreview.allChanges[0]?.newPrice, 80);
+
 const bulkProject = {
     files: [{
         extractedData: {

@@ -4,7 +4,7 @@ import ContextualStateIllustration from '@atoms/contextualStateIllustration';
 import { createStaffUser, fetchStaffUsers, forceSignOutStaffUser, removeStaffFromStore, requestStaffPasswordReset, updateStaffUser } from '@lib/staffManagement/client';
 import { DEFAULT_ROLE_IDS } from '@data/shared/defaultRoles';
 import { getBoundedStaffStringContext, logStaffClientFailure } from '@lib/staffManagement/diagnostics';
-import { canManageStaffTarget } from '@lib/staffManagement/scopeBoundary';
+import { canManageStaffTargetForSession } from '@lib/staffManagement/scopeBoundary';
 import { OWNER_ACCESS_NOT_TRANSFER_COPY } from '@lib/staffManagement/ownershipTransferBoundary';
 import { getBoundedErrorCode } from '@lib/monitoring/boundedLogContext';
 import type { StaffStoreOption, StaffUserSummary } from '@lib/staffManagement/types';
@@ -20,6 +20,7 @@ import {
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
+import { useSession } from 'next-auth/react';
 import { useContext, useEffect, useRef, useState } from 'react';
 import { LuCopy, LuKeyRound, LuLogOut, LuMail, LuMessageCircle, LuPhone, LuPlus, LuShare2, LuTrash2, LuUser, LuUserCheck, LuUserX, LuX } from 'react-icons/lu';
 import { Avatar, Button, Card, Dialog, DotLoading, Flex, Input, List, NavBar, Popup, Tag, Text, Title, Toast } from '../antd';
@@ -66,6 +67,7 @@ function StaffLoginCopyRow({
                 <Text strong copyable={false} ellipsis style={{ fontSize: 17 }}>{value}</Text>
             </Flex>
             <Button
+                aria-label={`Copy ${label}`}
                 fill="none"
                 onClick={onCopy}
                 style={{ minHeight: 44, minWidth: 44, paddingInline: 0 }}
@@ -195,7 +197,9 @@ function StaffLoginDetailsPanel({
 }
 
 function MobileUsersScreenContent({ onBack }: MobileUsersScreenProps) {
+    const { data: activeSession } = useSession();
     const t = useTranslations('MobileUsers');
+    const optionalEmailLabel = t('emailLabel').split('*', 1)[0]?.trim() || t('emailLabel');
     const { token } = theme.useToken();
     const { usersList, setUsersList, storeDetails, userPermissions } = useContext(PlatformGlobalDataContext);
     const [showAddUser, setShowAddUser] = useState(false);
@@ -240,9 +244,10 @@ function MobileUsersScreenContent({ onBack }: MobileUsersScreenProps) {
         && currentScopeRef.current.tenantId === expectedTenantId
         && currentScopeRef.current.storeId === expectedStoreId
     );
-    const canManageTarget = (target: unknown) => canManageStaffTarget({
+    const canManageTarget = (target: unknown) => canManageStaffTargetForSession({
         canAssignRoles,
         canManageUsers,
+        currentUserId: activeSession?.user?.id,
         target,
     });
     const selectedTargetCanBeManaged = selectedUser ? canManageTarget(selectedUser) : false;
@@ -262,9 +267,12 @@ function MobileUsersScreenContent({ onBack }: MobileUsersScreenProps) {
         ...metadata,
     });
 
-    useEffect(() => () => {
-        isMountedRef.current = false;
-        latestLoadRequestRef.current += 1;
+    useEffect(() => {
+        isMountedRef.current = true;
+        return () => {
+            isMountedRef.current = false;
+            latestLoadRequestRef.current += 1;
+        };
     }, []);
 
     useEffect(() => {
@@ -728,7 +736,7 @@ function MobileUsersScreenContent({ onBack }: MobileUsersScreenProps) {
                 <Text type="secondary">{t('desktopNote')}</Text>
             </Flex>
 
-            <Popup bodyStyle={{ maxHeight: '70vh', overflow: 'hidden', padding: 0 }} destroyOnClose onMaskClick={() => setSelectedUser(null)} visible={!!selectedUser}>
+            <Popup aria-label="Staff details" bodyStyle={{ maxHeight: '70vh', overflow: 'hidden', padding: 0 }} destroyOnClose onMaskClick={() => setSelectedUser(null)} visible={!!selectedUser}>
                 {selectedUser ? (
                     <Flex style={{ height: '100%' }} vertical>
                         <NavBar backIcon={<LuX size={20} />} onBack={() => setSelectedUser(null)}>
@@ -758,7 +766,8 @@ function MobileUsersScreenContent({ onBack }: MobileUsersScreenProps) {
                                 <Flex gap={8} wrap>
                                     {roles.map((role: any) => (
                                         <Button
-                                            disabled={!canAssignRoles || isUpdatingUser}
+                                            aria-pressed={getUserRoleName(selectedUser) === role.name || selectedUser.stores?.some((store) => store.storeId === storeDetails?.storeId && store.role === role.id)}
+                                            disabled={!selectedTargetCanBeManaged || !canAssignRoles || isUpdatingUser}
                                             fill={getUserRoleName(selectedUser) === role.name || selectedUser.stores?.some((store) => store.storeId === storeDetails?.storeId && store.role === role.id) ? 'solid' : 'outline'}
                                             key={role.id}
                                             onClick={() => void handleChangeRole(selectedUser, role.id)}
@@ -776,13 +785,17 @@ function MobileUsersScreenContent({ onBack }: MobileUsersScreenProps) {
                                 ) : null}
                             </Card>
 
-                            {!selectedTargetCanBeManaged && (selectedUser as any).ownerProtected ? (
-                                <Text type="secondary">Owner accounts can only be changed by someone who can assign roles.</Text>
+                            {!selectedTargetCanBeManaged ? (
+                                <Text type="secondary">
+                                    {selectedUser.id === activeSession?.user?.id
+                                        ? 'Use your profile settings to manage your own account.'
+                                        : 'Owner accounts can only be changed by someone who can assign roles.'}
+                                </Text>
                             ) : null}
 
                             <Button
                                 block
-                                disabled={!selectedTargetCanBeManaged}
+                                disabled={!selectedTargetCanBeManaged || (selectedUser as any).active === false}
                                 color={(selectedUser as any).active ? 'danger' : undefined}
                                 fill="outline"
                                 loading={isUpdatingUser}
@@ -882,7 +895,7 @@ function MobileUsersScreenContent({ onBack }: MobileUsersScreenProps) {
                 ) : null}
             </Popup>
 
-            <Popup bodyStyle={{ maxHeight: '78vh', overflow: 'hidden', padding: 0 }} destroyOnClose onMaskClick={() => setStaffLoginDetails(null)} visible={!!staffLoginDetails} zIndex={2800}>
+            <Popup aria-label={staffLoginDetails?.title || 'Staff login details'} bodyStyle={{ maxHeight: '78vh', overflow: 'hidden', padding: 0 }} destroyOnClose onMaskClick={() => setStaffLoginDetails(null)} visible={!!staffLoginDetails} zIndex={2800}>
                 {staffLoginDetails ? (
                     <Flex style={{ height: '100%' }} vertical>
                         <Flex
@@ -895,6 +908,7 @@ function MobileUsersScreenContent({ onBack }: MobileUsersScreenProps) {
                         >
                             <Title level={4} style={{ margin: 0 }}>{staffLoginDetails.title}</Title>
                             <Button
+                                aria-label="Close staff login details"
                                 fill="none"
                                 onClick={() => setStaffLoginDetails(null)}
                                 style={{ minHeight: 44, minWidth: 44, paddingInline: 0 }}
@@ -916,7 +930,7 @@ function MobileUsersScreenContent({ onBack }: MobileUsersScreenProps) {
                 ) : null}
             </Popup>
 
-            <Popup bodyStyle={{ maxHeight: '80vh', overflow: 'hidden', padding: 0 }} destroyOnClose onMaskClick={isAdding ? undefined : () => setShowAddUser(false)} visible={showAddUser}>
+            <Popup aria-label={t('addStaffMember')} bodyStyle={{ maxHeight: '80vh', overflow: 'hidden', padding: 0 }} destroyOnClose onMaskClick={isAdding ? undefined : () => setShowAddUser(false)} visible={showAddUser}>
                 <Flex style={{ height: '100%' }} vertical>
                     <NavBar backIcon={<LuX size={20} />} onBack={() => setShowAddUser(false)}>
                         {t('addStaffMember')}
@@ -926,21 +940,21 @@ function MobileUsersScreenContent({ onBack }: MobileUsersScreenProps) {
                             <Flex gap={8} vertical>
                                 <Text type="secondary">{t('name')}</Text>
                                 <Text type="secondary">Enter the staff member&apos;s real name so owners can identify the account later.</Text>
-                                <Input onChange={setNewUserName} placeholder={t('staffName')} value={newUserName} />
+                                <Input aria-label={t('name')} onChange={setNewUserName} placeholder={t('staffName')} value={newUserName} />
                             </Flex>
                         </Card>
                         <Card>
                             <Flex gap={8} vertical>
-                                <Text type="secondary">{t('emailLabel')}</Text>
+                                <Text type="secondary">{optionalEmailLabel}</Text>
                                 <Text type="secondary">Leave blank to create a staff ID and passcode.</Text>
-                                <Input onChange={setNewUserEmail} placeholder={t('emailPlaceholder')} type="email" value={newUserEmail} />
+                                <Input aria-label={optionalEmailLabel} onChange={setNewUserEmail} placeholder={t('emailPlaceholder')} type="email" value={newUserEmail} />
                             </Flex>
                         </Card>
                         <Card>
                             <Flex gap={8} vertical>
                                 <Text type="secondary">{t('phone')}</Text>
                                 <Text type="secondary">Optional, but useful for contact and account recovery context.</Text>
-                                <Input onChange={setNewUserPhone} placeholder={t('phonePlaceholder')} type="tel" value={newUserPhone} />
+                                <Input aria-label={t('phone')} onChange={setNewUserPhone} placeholder={t('phonePlaceholder')} type="tel" value={newUserPhone} />
                             </Flex>
                         </Card>
                         {assignableRoles.length > 0 ? (
@@ -948,7 +962,7 @@ function MobileUsersScreenContent({ onBack }: MobileUsersScreenProps) {
                                 <Text type="secondary">Choose the permission set this staff member should start with.</Text>
                                 <Flex gap={8} wrap>
                                     {assignableRoles.map((role: any) => (
-                                        <Button key={role.id} fill={newUserRole === role.id ? 'solid' : 'outline'} onClick={() => setNewUserRole(role.id)} size="small">
+                                        <Button aria-pressed={newUserRole === role.id} key={role.id} fill={newUserRole === role.id ? 'solid' : 'outline'} onClick={() => setNewUserRole(role.id)} size="small">
                                             {role.name}
                                         </Button>
                                     ))}

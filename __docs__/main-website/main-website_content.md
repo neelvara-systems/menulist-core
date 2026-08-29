@@ -136,7 +136,7 @@ The `/resources` layer is an evergreen MenuList public website surface, not a ch
 
 **Content rule:** Each resource page needs a visible quick answer, practical checklist/comparison/worksheet where relevant, owner-readable caveats, related-resource links, and one intent-matched CTA. Resource copy must not promise ranking, citation, AI answer placement, Google refresh timing, revenue lift, or automatic external-platform sync. Checklist copy controls are allowed only where the page already renders visible checklist content; downloadable template CTAs must stay absent until a real asset exists.
 
-**Navigation rule:** Header navigation is product-led: Features, How it works, Multi-location, Pricing, Resources. Desktop Resources opens a compact dropdown for MenuList Tools, Menu Engineering, QR Menu Guide, Digital Menu vs PDF, Google Menu Guide, Restaurant Menu SEO, AI Search & Menu Discovery, Official Menu Source, and All Resources. Mobile navigation exposes the same resource links under the Resources entry, with MenuList Tools opening the canonical `/tools` index.
+**Navigation rule:** Header navigation is product-led: Features, How it works, Multi-location, Pricing, Resources. Desktop Resources opens a compact dropdown for MenuList Tools, Menu Engineering, QR Menu Guide, Digital Menu vs PDF, Google Menu Guide, Restaurant Menu SEO, AI Search & Menu Discovery, Official Menu Source, and All Resources. Mobile navigation keeps two visual groups and preserves every direct shortcut. Product begins with Feature overview, How it works, Multi-location, and Pricing, followed by all feature links under non-interactive Start, Publish, and Operate scan labels. Resources exposes the complete shared Resources list. Nothing inside either group requires a nested accordion.
 
 **Homepage resource placement:** `ResourcesSection` is no longer mounted on the compressed homepage. Keep resource depth on `/resources`, the Resources dropdown, footer links, and the `/tools` hub so the homepage stays focused on the preview-first conversion path. If a resources bridge is reintroduced later, keep it compact and use the approved eight-card cluster: Menu engineering, QR menu setup, Digital menu vs PDF, Google menu source, Restaurant menu SEO, AI search discovery, Official menu source, and Multi-location control. Keep Menu Source Audit as a high-intent resource page and hub/tool card, not as a homepage card.
 
@@ -1011,7 +1011,7 @@ Key FAQ topics:
 
 The desktop `Features` label is a menu trigger, not a direct route. The `/features` route is reached through the top `Feature overview` row inside the dropdown. This prevents accidental navigation when an owner is trying to open a feature link.
 
-On mobile, the hamburger keeps `Features` open by default because feature discovery is the largest navigation job, but Start, Publish, and Operate collapse as nested accordions so the drawer stays scannable. `Resources` stays collapsed unless the visitor is already browsing resources. Do not duplicate AI Menu Manager as a separate top-level mobile row while it is already listed inside the Operate feature group.
+On mobile, the hamburger favors immediate route recognition over nested controls. It renders the existing Product and Resources destinations as two labeled, always-visible link groups, then a separate account area. The theme selector and private-preview CTA stay fixed below the scrollable navigation. Account is a utility boundary, not a third navigation group.
 
 1. Menu Import — `/features/menu-import`
 2. Menu Content Prep — `/features/menu-content-prep`
@@ -1897,6 +1897,12 @@ Chat-style sequence:
 - Pricing → `/pricing`
 - Login (subtle sign-in button; no pricing detour)
 - Create customer link → `/create-menu` (primary button)
+
+**Mobile hamburger groups:**
+
+- Product → Feature overview, How It Works, AI Menu Manager, Multi-Location, Pricing
+- Resources → MenuList Tools, Menu Engineering, QR Menu Guide, Digital Menu vs PDF, Google Menu Guide, Restaurant Menu SEO, AI Search & Menu Discovery, Official customer link, All Resources
+- Account utility (unlabeled) → Login, or the authenticated dashboard/logout actions
 
 ---
 

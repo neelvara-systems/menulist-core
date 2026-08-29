@@ -75,7 +75,7 @@ import { DEFAULT_OUTLET_POLICY, type OutletPolicy } from '@type/multiOutlet.type
 import MasterUpdateBanner from '@organisms/MasterUpdateBanner';
 import { lazy, Suspense, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { LuArrowRight, LuFileImage, LuFilePlus, LuFileText, LuGlobe2, LuInfo, LuRefreshCw, LuRocket, LuSparkles, LuUpload, LuZap } from 'react-icons/lu';
-import useSWR from 'swr';
+import useSWR, { useSWRConfig } from 'swr';
 import { useSearchParams } from 'next/navigation';
 import NoSubscriptionView from '../billing/NoSubscriptionView';
 import PreviewModal from './b2cView/previewModal';
@@ -149,6 +149,11 @@ const PENDING_QUALITY_ACTION_MAX_AGE_MS = 5 * 60 * 1000;
 type ProjectsListData = {
     lastDoc: unknown | null;
     projects: ProjectMetadata[];
+};
+
+type SpecialMenusCacheData = {
+    activeMenuId: string | null;
+    specialMenus: Array<{ projectId: string; [key: string]: unknown }>;
 };
 
 const normalizeProjectsList = (projects: unknown): ProjectMetadata[] => {
@@ -284,6 +289,7 @@ const { useToken } = theme;
 
 function ProjectsPage() {
     const { message: messageApi } = App.useApp();
+    const { mutate: mutateSharedCache } = useSWRConfig();
     const { token } = useToken();
     const searchParams = useSearchParams();
     const labels = useOfferingLabels();
@@ -381,6 +387,7 @@ function ProjectsPage() {
     const [isTranslatingProjectPublicContent, setIsTranslatingProjectPublicContent] = useState(false);
     const [confirmActionVisible, setConfirmActionVisible] = useState(false);
     const [confirmActionType, setConfirmActionType] = useState<'reset' | 'delete' | null>(null);
+    const [projectConfirmationPending, setProjectConfirmationPending] = useState(false);
     const [isFirstTime, setIsFirstTime] = useState(false);
     const [failedFiles, setFailedFiles] = useState<FailedFile[]>([]);
     const [isGuideModalOpen, setIsGuideModalOpen] = useState(false);
@@ -1504,6 +1511,7 @@ function ProjectsPage() {
                 return;
             }
             try {
+                setProjectConfirmationPending(true);
                 if (!canDeactivateLinkedProjects && await isLinkedOutletProject(editingProject, operationScope)) {
                     messageApi.info("Removing inherited menus is not enabled for this store.");
                     return;
@@ -1511,7 +1519,8 @@ function ProjectsPage() {
 
                 dispatch(startLoader("Deleting project"))
                 if (!editingProject.projectId) throw new Error('Project identity is unavailable.');
-                const deleteResult = await deleteProject(editingProject.projectId);
+                const deleteResult = await deleteProject(editingProject.projectId).catch(() => null);
+                if (!deleteResult) return;
                 assertProjectDeleteSucceeded(
                     deleteResult,
                     editingProject.projectId,
@@ -1543,58 +1552,70 @@ function ProjectsPage() {
             } finally {
                 dispatch(stopLoader("Deleting project"))
                 endProjectMutation(mutationToken);
+                setProjectConfirmationPending(false);
             }
         }
     };
 
     const handleReset = async () => {
-        if (selectedProject && activeProject) {
-            const operationScope = currentProjectScopeRef.current;
+        const resetTarget = projectFormSourceData || editingProject;
+        const resetProjectId = editingProject?.projectId;
+        if (resetTarget && resetProjectId) {
+            const operationScope = projectFormScope;
             const mutationToken = beginProjectMutation('reset', operationScope);
             if (!operationScope || !mutationToken) {
                 messageApi.error(`Could not verify this ${labels.offeringPhrase} location.`);
                 return;
             }
+            const resetTargetsActiveProject = selectedProject?.projectId === resetProjectId
+                && activeProject?.projectId === resetProjectId;
             try {
+                setProjectConfirmationPending(true);
                 dispatch(startLoader("Resetting project"))
-                const isLinkedProject = Boolean(activeProject.masterProjectId)
-                    || await isLinkedOutletProject(activeProject, operationScope);
+                const isLinkedProject = Boolean(resetTarget.masterProjectId)
+                    || await isLinkedOutletProject(resetTarget, operationScope);
                 const resetPatch = {
-                    projectId: selectedProject.projectId,
+                    projectId: resetProjectId,
                     files: [],
                     ...(isLinkedProject ? { overrides: { items: {}, categories: {}, attributes: {} } } : {}),
                 } as Partial<Project>;
-                // Optimistically update cache
-                mutateProject({ ...activeProject, ...resetPatch }, false);
-                setCurrentView(1);
+                if (resetTargetsActiveProject) {
+                    mutateProject({ ...activeProject, ...resetPatch }, false);
+                    setCurrentView(1);
+                }
                 const resetResult = await updateProjectWithoutLoader(resetPatch, {
                     expectedScope: operationScope,
                 });
                 assertProjectUpdateSucceeded(
                     resetResult,
-                    selectedProject.projectId,
+                    resetProjectId,
                     'projects_page_reset_project_update_rejected',
                 );
                 // Revalidate cache after mutation
                 if (isCurrentProjectMutation(mutationToken, operationScope)) {
-                    mutateProject();
+                    setProjectFormSourceData({ ...resetTarget, ...resetPatch });
+                    if (resetTargetsActiveProject) {
+                        mutateProject();
+                    }
                     messageApi.success(`${offeringName} has been reset`);
                 }
             } catch (error) {
                 logProjectPageFailure('projects_page_project_reset_failed', error, {
-                    ...getProjectPageProjectLogContext(selectedProject.projectId, activeProject.masterProjectId),
+                    ...getProjectPageProjectLogContext(resetProjectId, resetTarget.masterProjectId),
                     ...getProjectPageStoreLogContext(storeDetails?.storeId, storeDetails?.tenantId),
-                    isLinkedProject: Boolean(activeProject.masterProjectId),
-                    fileCount: activeProject.files?.length ?? 0,
+                    isLinkedProject: Boolean(resetTarget.masterProjectId),
+                    fileCount: resetTarget.files?.length ?? 0,
                 });
                 if (isCurrentProjectMutation(mutationToken, operationScope)) {
                     messageApi.error(`Failed to reset ${labels.offeringPhrase}`);
-                    // Revert on error
-                    mutateProject();
+                    if (resetTargetsActiveProject) {
+                        mutateProject();
+                    }
                 }
             } finally {
                 dispatch(stopLoader("Resetting project"))
                 endProjectMutation(mutationToken);
+                setProjectConfirmationPending(false);
             }
             if (projectPageScopesMatch(operationScope, currentProjectScopeRef.current)) {
                 onCloseModal();
@@ -1710,7 +1731,6 @@ function ProjectsPage() {
             messageApi.error(`Could not verify this ${labels.offeringPhrase} location.`);
             return;
         }
-
         try {
             if (!canDeactivateLinkedProjects && await isLinkedOutletProject(project, operationScope)) {
                 messageApi.info("Removing inherited menus is not enabled for this store.");
@@ -1718,7 +1738,8 @@ function ProjectsPage() {
             }
 
             dispatch(startLoader("Deleting project"));
-            const deleteResult = await deleteProject(project.projectId);
+            const deleteResult = await deleteProject(project.projectId).catch(() => null);
+            if (!deleteResult) return;
             assertProjectDeleteSucceeded(
                 deleteResult,
                 project.projectId,
@@ -1734,6 +1755,18 @@ function ProjectsPage() {
                 } : current,
                 { revalidate: false }
             );
+
+            if ((project as { isSpecialMenu?: boolean }).isSpecialMenu === true) {
+                await mutateSharedCache<SpecialMenusCacheData>(
+                    ["special-menus-list", String(operationScope.tId), String(operationScope.sId)],
+                    (current) => current ? {
+                        ...current,
+                        activeMenuId: current.activeMenuId === project.projectId ? null : current.activeMenuId,
+                        specialMenus: current.specialMenus.filter((menu) => menu.projectId !== project.projectId),
+                    } : current,
+                    { revalidate: false },
+                );
+            }
 
             const projectName = getLocalizedText(project.name, undefined, getPrimaryLocalizedLanguage(project.name, 'en'), 'Untitled');
             messageApi.success(`"${projectName}" deleted successfully`);
@@ -1762,6 +1795,7 @@ function ProjectsPage() {
         const defaultLanguage = storeDetails?.defaultLanguage || DefaultLanguage;
         setConfirmActionVisible(false);
         setConfirmActionType(null);
+        setProjectConfirmationPending(false);
         setIsModalOpen(false);
         setProjectFormLanguages([defaultLanguage]);
         setProjectFormSelectedLanguage(defaultLanguage);
@@ -1771,6 +1805,12 @@ function ProjectsPage() {
         setProjectImagePreparedForSave(null);
         setProjectFormScope(null);
     }
+
+    const onCloseProjectConfirmation = () => {
+        if (projectConfirmationPending) return;
+        setConfirmActionVisible(false);
+        setConfirmActionType(null);
+    };
 
     const openModal = async (project?: ProjectMetadata) => {
         const openingScope = currentProjectScopeRef.current;
@@ -2712,12 +2752,18 @@ function ProjectsPage() {
                 if (!file.url && file.originFileObj && file.type?.startsWith('image/')) {
                     // Get base64 first
                     const rawBase64 = await getBase64(file.originFileObj);
+                    let preparedName = file.name;
+                    let preparedSize = file.size;
+                    let preparedType = file.type;
 
                     // Optimize image: resize to max 1500px and compress to 70% JPEG
                     // This reduces upload time and storage costs while maintaining OCR quality
                     try {
                         const optimized = await optimizeImage(rawBase64, MENU_IMAGE_CONFIG);
                         file.url = optimized.dataUrl;
+                        preparedName = file.name.replace(/\.[^.]+$/, '') + '.jpg';
+                        preparedSize = optimized.optimizedSize;
+                        preparedType = 'image/jpeg';
 
                         if (optimized.wasResized) {
                             logMenuProcessingFailure('menu_upload_image_optimization_resized', undefined, {
@@ -2741,9 +2787,9 @@ function ProjectsPage() {
 
                     newFileList.push({
                         uid: file.uid,
-                        name: file.name,
-                        size: file.size,
-                        type: file.type,
+                        name: preparedName,
+                        size: preparedSize,
+                        type: preparedType,
                         url: file.url || ""
                     })
                 }
@@ -2889,7 +2935,7 @@ function ProjectsPage() {
             status: 'done' as UploadFileStatus,
             url: file.url,
         })),
-        accept: '.pdf,.jpg,.jpeg,.png',
+        accept: '.pdf,.jpg,.jpeg,.png,.webp',
         beforeUpload: async (file, fileList) => {
             // Check if user has cancelled PDF processing (use ref for immediate access)
             if (cancelPdfRef.current) {
@@ -2945,6 +2991,7 @@ function ProjectsPage() {
                 </Typography.Text>
             ) : null}
             <Input
+                aria-label="Menu link URL"
                 disabled={!canUseMenuExtraction || menuLinkImporting || Boolean(activeProcessingJobId) || hasPendingLocalUploadFiles}
                 onChange={(event) => {
                     setMenuLinkUrl(event.target.value);
@@ -3084,7 +3131,17 @@ function ProjectsPage() {
                     <Flex vertical style={{ width: '100%' }} align='center' justify='center'>
 
                         {currentView == 1 && projectsList.length > 0 && <>
-                            <Flex gap={20} vertical align='center' justify='center' style={{ width: '100%', maxWidth: 900 }}>
+                            <Flex
+                                gap={20}
+                                vertical
+                                align='center'
+                                justify='center'
+                                style={{
+                                    width: '100%',
+                                    maxWidth: 900,
+                                    paddingBottom: (activeProject?.files?.length || 0) > 0 ? 88 : undefined,
+                                }}
+                            >
 
                                 {/* When NO files: Show big prominent upload area */}
                                 {!activeProject?.files?.length && (
@@ -3114,15 +3171,26 @@ function ProjectsPage() {
                                                         </span>
                                                     </Tooltip>
                                                 </Flex>
-                                                <Button
-                                                    type="primary"
-                                                    ghost
-                                                    size="large"
-                                                    icon={<LuUpload size={20} />}
-                                                    style={{ paddingLeft: 32, paddingRight: 32, height: 48, fontSize: '16px', fontWeight: 500, marginTop: 8, borderRadius: 12 }}
+                                                <span
+                                                    aria-hidden="true"
+                                                    style={{
+                                                        alignItems: 'center',
+                                                        border: `1px solid ${token.colorPrimary}`,
+                                                        borderRadius: 12,
+                                                        color: token.colorPrimary,
+                                                        display: 'inline-flex',
+                                                        fontSize: '16px',
+                                                        fontWeight: 500,
+                                                        gap: 8,
+                                                        height: 48,
+                                                        marginTop: 8,
+                                                        paddingLeft: 32,
+                                                        paddingRight: 32,
+                                                    }}
                                                 >
+                                                    <LuUpload aria-hidden="true" size={20} />
                                                     Choose Files to Upload
-                                                </Button>
+                                                </span>
                                             </Flex>
                                             <Typography.Text type="secondary" style={{ fontSize: '13px', display: 'block', textAlign: 'center', padding: '16px 0 12px 0' }}>
                                                 Upload multiple files at once • Maximum 10MB per file
@@ -3585,10 +3653,11 @@ function ProjectsPage() {
                 <ProjectConfirmModal
                     isOpen={confirmActionVisible}
                     actionType={confirmActionType}
+                    pending={projectConfirmationPending}
                     onDelete={handleDelete}
                     onReset={handleReset}
-                    onCancel={onCloseModal}
-                    fileCount={activeProject?.files?.length || 0}
+                    onCancel={onCloseProjectConfirmation}
+                    fileCount={(projectFormSourceData || editingProject)?.files?.length || 0}
                     projectName={editingProject ? getLocalizedText(editingProject.name, undefined, getPrimaryLocalizedLanguage(editingProject.name, 'en'), 'Untitled') : undefined}
                 />
                 <WelcomeModal

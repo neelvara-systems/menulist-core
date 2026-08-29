@@ -32,6 +32,7 @@ export const ProjectDuplicateModal = ({ open, project, onCancel, onDuplicate }: 
     const [selectedLanguage, setSelectedLanguage] = useState('en');
     const [nameDrafts, setNameDrafts] = useState<Record<string, string>>({});
     const [descriptionDrafts, setDescriptionDrafts] = useState<Record<string, string>>({});
+    const [nameError, setNameError] = useState('');
     const { token } = useToken();
     const tBusiness = useTranslations('BusinessSettings');
     const labels = useOfferingLabels();
@@ -59,6 +60,7 @@ export const ProjectDuplicateModal = ({ open, project, onCancel, onDuplicate }: 
             setSelectedLanguage(nextSelectedLanguage);
             setNameDrafts(nextNameDrafts);
             setDescriptionDrafts(nextDescriptionDrafts);
+            setNameError('');
         }
     }, [open, project]);
 
@@ -69,6 +71,7 @@ export const ProjectDuplicateModal = ({ open, project, onCancel, onDuplicate }: 
         const localizedDescription = applyLocalizedProjectDraftMap(undefined, descriptionDrafts);
 
         if (!nameValue || !localizedName) {
+            setNameError(`Enter a ${labels.offeringPhrase} name.`);
             return;
         }
 
@@ -141,14 +144,25 @@ export const ProjectDuplicateModal = ({ open, project, onCancel, onDuplicate }: 
                     ) : null}
                     <Typography.Text strong>{`New ${offeringName} Name`}</Typography.Text>
                     <Input
+                        aria-describedby={nameError ? 'duplicate-project-name-error' : undefined}
+                        aria-invalid={Boolean(nameError)}
                         maxLength={100}
-                        onChange={(event) => setNameDrafts((previous) => ({
-                            ...previous,
-                            [selectedLanguage]: event.target.value,
-                        }))}
+                        onChange={(event) => {
+                            setNameDrafts((previous) => ({
+                                ...previous,
+                                [selectedLanguage]: event.target.value,
+                            }));
+                            if (nameError) setNameError('');
+                        }}
                         placeholder={`Enter new ${labels.offeringPhrase} name`}
+                        status={nameError ? 'error' : undefined}
                         value={nameValue}
                     />
+                    {nameError ? (
+                        <Typography.Text id="duplicate-project-name-error" role="alert" type="danger">
+                            {nameError}
+                        </Typography.Text>
+                    ) : null}
                     {selectedLanguage !== referenceLanguage ? (
                         <ReferenceCard
                             onUseReference={() => setNameDrafts((previous) => ({

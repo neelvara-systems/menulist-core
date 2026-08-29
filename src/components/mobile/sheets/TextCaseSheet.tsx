@@ -59,6 +59,7 @@ export default function TextCaseSheet({
 
     return (
         <Popup
+            aria-label={t('fixTextCase')}
             bodyStyle={MENU_SHEET_BODY_STYLE}
             destroyOnClose
             onMaskClick={onClose}
@@ -83,15 +84,22 @@ export default function TextCaseSheet({
                                     const selected = caseMode === option.value;
 
                                     return (
-                                        <div
+                                        <button
+                                            type="button"
+                                            aria-pressed={selected}
                                             key={option.value}
                                             onClick={() => setCaseMode(option.value)}
                                             style={{
                                                 backgroundColor: token.colorBgContainer,
                                                 border: `1px solid ${selected ? token.colorPrimary : token.colorBorderSecondary}`,
                                                 borderRadius: 12,
+                                                color: 'inherit',
                                                 cursor: 'pointer',
+                                                font: 'inherit',
+                                                minHeight: 44,
                                                 padding: '12px 14px',
+                                                textAlign: 'start',
+                                                width: '100%',
                                             }}
                                         >
                                             <Flex align="center" gap={12} justify="space-between">
@@ -116,7 +124,7 @@ export default function TextCaseSheet({
                                                     {selected ? '•' : null}
                                                 </Flex>
                                             </Flex>
-                                        </div>
+                                        </button>
                                     );
                                 })}
                             </Flex>
@@ -134,7 +142,7 @@ export default function TextCaseSheet({
                             ].map((entry) => (
                                 <Flex align="center" justify="space-between" key={entry.label}>
                                     <Text>{entry.label}</Text>
-                                    <Switch checked={entry.checked} onChange={entry.onChange} />
+                                    <Switch aria-label={entry.label} checked={entry.checked} onChange={entry.onChange} />
                                 </Flex>
                             ))}
                         </Flex>

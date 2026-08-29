@@ -43,7 +43,6 @@ interface MobileDigitalScreensScreenProps {
 
 type AdjustableUploadedFile = UserUploadedFileType & {
     crop?: MediaImageCropIntent;
-    prepared?: PreparedMediaImage;
     sourceDataUrl?: string;
     sourceName?: string;
 };
@@ -126,7 +125,7 @@ function MobileScreenLinkCard({
                             <Text type="secondary">{description}</Text>
                         </Flex>
                     </Flex>
-                    <Button fill="none" onClick={onOpen} size="small" style={{ minHeight: 44, minWidth: 44, paddingInline: 0 }}>
+                    <Button aria-label={`Open ${title}`} fill="none" onClick={onOpen} size="small" style={{ minHeight: 44, minWidth: 44, paddingInline: 0 }}>
                         <LuExternalLink size={17} />
                     </Button>
                 </Flex>
@@ -370,7 +369,7 @@ export default function MobileDigitalScreensScreen({ onBack }: MobileDigitalScre
                 mediaVariant: prepared.primaryVariant,
                 mediaVersion: prepared.version,
                 name: toPreparedUploadName(file.name, prepared.mimeType, file.name),
-                prepared,
+                preparedMedia: prepared,
                 size: prepared.sizeBytes,
                 sourceDataUrl: prepared.sourceDataUrl,
                 sourceName: prepared.sourceName,
@@ -434,20 +433,20 @@ export default function MobileDigitalScreensScreen({ onBack }: MobileDigitalScre
         }
     };
 
-    const handleDeleteSlide = async (slideId: string) => {
+    const handleDeleteSlide = async (slide: ScreenSlide) => {
         try {
-            const deleteResult = await removePinnedSlide(slideId);
+            const deleteResult = await removePinnedSlide(slide.id, slide.imageUrl);
             assertDigitalScreenMutationSucceeded(
                 deleteResult,
                 'mobile_digital_screen_slide_delete_rejected',
             );
-            setPinnedSlides((previous) => previous.filter((slide) => slide.id !== slideId));
+            setPinnedSlides((previous) => previous.filter((candidate) => candidate.id !== slide.id));
             setContentVersion(deleteResult.screen.contentVersion);
             setScreenSeenByMode(deleteResult.screen.screenSeenByMode);
             Toast.show({ content: 'Slide removed', duration: 1500 });
         } catch (error) {
             logScreenSettingsFailure('mobile_digital_screen_slide_delete_failed', error, buildMobileDigitalScreenLogContext('slide_delete', {
-                ...getBoundedScreenStringContext('slideId', slideId),
+                ...getBoundedScreenStringContext('slideId', slide.id),
             }));
             Toast.show({ content: t('failedToUpdate'), duration: 2000 });
         }
@@ -664,6 +663,7 @@ export default function MobileDigitalScreensScreen({ onBack }: MobileDigitalScre
                                             )}
                                             {editingSlideId === slide.id ? null : (
                                                 <Button
+                                                    aria-label={`Edit ${normalizeOwnerSlideCaption(slide.caption)}`}
                                                     fill="none"
                                                     onClick={() => {
                                                         setEditingSlideId(slide.id);
@@ -676,6 +676,7 @@ export default function MobileDigitalScreensScreen({ onBack }: MobileDigitalScre
                                                 </Button>
                                             )}
                                             <Button
+                                                aria-label={`Delete ${normalizeOwnerSlideCaption(slide.caption)}`}
                                                 color="danger"
                                                 fill="none"
                                                 onClick={() => {
@@ -683,7 +684,7 @@ export default function MobileDigitalScreensScreen({ onBack }: MobileDigitalScre
                                                         cancelText: 'Cancel',
                                                         confirmText: 'Delete slide',
                                                         content: `Delete "${normalizeOwnerSlideCaption(slide.caption)}" from Highlights? It will stop showing after the screen refreshes.`,
-                                                        onConfirm: () => void handleDeleteSlide(slide.id),
+                                                        onConfirm: () => void handleDeleteSlide(slide),
                                                     });
                                                 }}
                                                 size="small"
@@ -837,7 +838,7 @@ export default function MobileDigitalScreensScreen({ onBack }: MobileDigitalScre
                         mediaVariant: prepared.primaryVariant,
                         mediaVersion: prepared.version,
                         name: prepared.sourceName || current.name,
-                        prepared,
+                        preparedMedia: prepared,
                         size: prepared.sizeBytes,
                         sourceDataUrl: prepared.sourceDataUrl || current.sourceDataUrl,
                         sourceName: prepared.sourceName || current.sourceName,

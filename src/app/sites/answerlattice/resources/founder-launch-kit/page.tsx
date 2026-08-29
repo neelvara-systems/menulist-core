@@ -62,8 +62,8 @@ export default async function AnswerlatticeFounderLaunchKitPage() {
                         <AnswerlatticeLink basePath={basePath} href="/pre-onboarding" className="rounded-xl border border-white/[0.1] px-6 py-3 text-sm font-semibold text-[#d6d6ef] transition hover:border-white/[0.2] hover:text-white">
                             Prepare product inputs
                         </AnswerlatticeLink>
-                        <AnswerlatticeLink basePath={basePath} href="/get-started" className="rounded-xl bg-teal-700 px-6 py-3 text-sm font-semibold text-white transition hover:bg-teal-800">
-                            Create workspace
+                        <AnswerlatticeLink basePath={basePath} href="/early-access" className="rounded-xl bg-teal-700 px-6 py-3 text-sm font-semibold text-white transition hover:bg-teal-800">
+                            Request early access
                         </AnswerlatticeLink>
                     </div>
                     <PageProofStrip

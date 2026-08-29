@@ -160,8 +160,8 @@ export default async function AnswerlatticeQuickstartsPage() {
                         <AnswerlatticeLink basePath={basePath} href="/install" className="rounded-xl border border-white/[0.12] px-6 py-3 text-sm font-semibold text-[#d6d6ef] hover:border-white/[0.24]">
                             View install guide
                         </AnswerlatticeLink>
-                        <AnswerlatticeLink basePath={basePath} href="/get-started" className="rounded-xl bg-teal-700 px-6 py-3 text-sm font-semibold text-white hover:bg-teal-800">
-                            Create workspace
+                        <AnswerlatticeLink basePath={basePath} href="/early-access" className="rounded-xl bg-teal-700 px-6 py-3 text-sm font-semibold text-white hover:bg-teal-800">
+                            Request early access
                         </AnswerlatticeLink>
                     </div>
                 </section>

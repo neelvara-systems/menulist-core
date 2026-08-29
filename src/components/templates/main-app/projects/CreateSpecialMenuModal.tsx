@@ -74,15 +74,37 @@ export default function CreateSpecialMenuModal({
     });
     const [selectedLanguage, setSelectedLanguage] = useState(referenceLanguage);
     const [displayNameDrafts, setDisplayNameDrafts] = useState<Record<string, string>>({ [referenceLanguage]: '' });
+    const [displayNameError, setDisplayNameError] = useState<string | null>(null);
     const [isTranslatingPublicContent, setIsTranslatingPublicContent] = useState(false);
     const submitInFlightRef = useRef(false);
 
     const capabilities = getSpecialMenuCapabilities(storeDetails?.businessType, storeDetails?.businessCategory);
 
+    const resetDraft = () => {
+        form.resetFields();
+        setDisplayNameDrafts({ [referenceLanguage]: '' });
+        setDisplayNameError(null);
+        setSelectedLanguage(referenceLanguage);
+    };
+
+    const handleClose = () => {
+        if (loading || submitInFlightRef.current) return;
+        resetDraft();
+        onClose();
+    };
+
     const handleSubmit = async () => {
         if (submitInFlightRef.current) return;
+        const displayName = (displayNameDrafts[selectedLanguage] || '').trim();
+        const localizedDisplayName = applyLocalizedProjectDraftMap(undefined, displayNameDrafts);
+        const nextDisplayNameError = !displayName || !localizedDisplayName
+            ? 'Enter a special menu name'
+            : null;
+        setDisplayNameError(nextDisplayNameError);
+
         try {
             const values = await form.validateFields();
+            if (nextDisplayNameError) return;
             if (submitInFlightRef.current) return;
             submitInFlightRef.current = true;
             setLoading(true);
@@ -94,10 +116,7 @@ export default function CreateSpecialMenuModal({
             const endsAt = capabilities.allowTimeScheduling
                 ? fromNativeDateTimeInputValue(values.endsAt.format("YYYY-MM-DDTHH:mm"), storeTimeZone)
                 : fromNativeDateInputValue(values.endsAt.format("YYYY-MM-DD"), storeTimeZone);
-            const localizedDisplayName = applyLocalizedProjectDraftMap(undefined, displayNameDrafts);
-            const displayName = (displayNameDrafts[selectedLanguage] || '').trim();
-
-            if (!displayName || !localizedDisplayName || !startsAt || !endsAt) {
+            if (!startsAt || !endsAt) {
                 setLoading(false);
                 return;
             }
@@ -119,9 +138,7 @@ export default function CreateSpecialMenuModal({
                         ? `"${displayName}" created and active.`
                         : `"${displayName}" created. It will switch within a few minutes of the scheduled time.`,
                 );
-                form.resetFields();
-                setDisplayNameDrafts({ [referenceLanguage]: '' });
-                setSelectedLanguage(referenceLanguage);
+                resetDraft();
                 onClose();
             } else {
                 messageApi.error("Could not create special menu.");
@@ -191,7 +208,7 @@ export default function CreateSpecialMenuModal({
         <Modal
             title="Create Special Menu"
             open={open}
-            onCancel={onClose}
+            onCancel={handleClose}
             onOk={handleSubmit}
             okText="Create Special Menu"
             confirmLoading={loading}
@@ -212,6 +229,8 @@ export default function CreateSpecialMenuModal({
             >
                 <Form.Item
                     label="Special Menu Name"
+                    validateStatus={displayNameError ? 'error' : undefined}
+                    help={displayNameError}
                 >
                     <div style={{ display: 'grid', gap: 12 }}>
                         {managedLanguages.length > 1 ? (
@@ -237,11 +256,16 @@ export default function CreateSpecialMenuModal({
                             </>
                         ) : null}
                         <Input
+                            aria-invalid={displayNameError ? true : undefined}
                             maxLength={100}
-                            onChange={(event) => setDisplayNameDrafts((previous) => ({
-                                ...previous,
-                                [selectedLanguage]: event.target.value,
-                            }))}
+                            onChange={(event) => {
+                                const nextValue = event.target.value;
+                                setDisplayNameDrafts((previous) => ({
+                                    ...previous,
+                                    [selectedLanguage]: nextValue,
+                                }));
+                                if (nextValue.trim()) setDisplayNameError(null);
+                            }}
                             placeholder="e.g., Diwali Menu, Sunday Brunch, IPL Night"
                             value={displayNameDrafts[selectedLanguage] || ''}
                         />

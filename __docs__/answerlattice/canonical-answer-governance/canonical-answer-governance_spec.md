@@ -23,8 +23,8 @@ Plan, role, and state applicability uses the runtime context identifier, current
 1. A user with `canManageGovernance` opens the canonical answer editor.
 2. The user binds at least one entity and optionally narrows plan, role, state, and version applicability.
 3. Create or update submits a mutation proposal. It does not edit canonical truth.
-4. A reviewer inspects the proposal and may edit the answer content.
-5. Approval validates stored data, tenant scope, entity bindings, version values, and active-answer overlap.
+4. A reviewer inspects the proposal, may edit the answer content, and may correct its Product Topic binding using existing in-scope ontology entities.
+5. Approval validates stored data, tenant scope, the reviewer-selected entity bindings, version values, and active-answer overlap.
 6. For updates, the proposal base fingerprint must match the current approved answer.
 7. The transaction writes canonical truth, proposal state, audit snapshot, canonical cache version, compiled source version, and stale bundle manifest together.
 8. Retrieval consumers observe the new answer after normal cache/source-version refresh behavior.
@@ -34,6 +34,7 @@ Plan, role, and state applicability uses the runtime context identifier, current
 - Browser clients cannot create, update, or delete canonical answers.
 - Canonical changes require the mutation pipeline.
 - Reviewer edits override proposed content during approval.
+- Reviewer-selected Product Topics are evaluated by impact checks and recorded in the implemented proposal and canonical audit snapshot.
 - A legacy manual update without revision protection is rejected and must be resubmitted.
 - A legacy non-manual update without a fingerprint is accepted only when timestamp evidence shows the answer has not changed since proposal creation.
 - A fingerprinted update is rejected if approved truth changed after proposal creation.

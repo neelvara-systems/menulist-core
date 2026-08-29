@@ -90,10 +90,11 @@ const normalizeAssetCategory = (
 ): AssetsCategoryType | null => {
     if (!isRecord(value)) return null;
     const previewType = value.previewType;
+    const name = typeof value.name === 'string' ? value.name.trim() : '';
     if (
         typeof value.active !== 'boolean'
-        || typeof value.name !== 'string'
-        || value.name.length > 160
+        || !name
+        || name.length > 160
         || typeof value.preview !== 'string'
         || value.preview.length > 4096
         || typeof value.tags !== 'string'
@@ -108,7 +109,7 @@ const normalizeAssetCategory = (
     return {
         ...(id !== undefined ? { id } : {}),
         active: value.active,
-        name: value.name,
+        name,
         preview: value.preview,
         previewType: previewType as AssetsCategoryType['previewType'],
         tags: value.tags,
@@ -177,8 +178,10 @@ const normalizeAssetCategoryPatch = (value: AssetMutationInput): AssetMutationIn
         patch.active = value.active;
     }
     if (value.name !== undefined) {
-        if (typeof value.name !== 'string' || value.name.length > 160) throw new Error('static_asset_name_invalid');
-        patch.name = value.name;
+        if (typeof value.name !== 'string') throw new Error('static_asset_name_invalid');
+        const name = value.name.trim();
+        if (!name || name.length > 160) throw new Error('static_asset_name_invalid');
+        patch.name = name;
     }
     if (value.tags !== undefined) {
         if (typeof value.tags !== 'string' || value.tags.length > 2000) throw new Error('static_asset_tags_invalid');
@@ -267,6 +270,12 @@ const prepareAssetPreview = async (
     input: AssetMutationInput,
 ): Promise<PreparedAssetMutation> => {
     const data: AssetMutationInput = { ...input };
+    if (data.name !== undefined) {
+        if (typeof data.name !== 'string') throw new Error('static_asset_name_invalid');
+        const name = data.name.trim();
+        if (!name || name.length > 160) throw new Error('static_asset_name_invalid');
+        data.name = name;
+    }
     const previousPreview = isFirebaseStorageReference(data.preview) ? data.preview : null;
     const newPreview = typeof data.newPreview === 'string' ? data.newPreview : '';
     delete data.newPreview;

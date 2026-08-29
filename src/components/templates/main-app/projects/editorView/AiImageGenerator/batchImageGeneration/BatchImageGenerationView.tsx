@@ -94,6 +94,7 @@ const BatchImageGenerationView: React.FC<BatchImageGenerationViewProps> = ({ gen
                                     </Flex>
                                 </Flex>
                                 <Switch
+                                    aria-label="Use recommended defaults"
                                     checked={useRecommendedDefaults}
                                     onChange={setUseRecommendedDefaults}
                                 />

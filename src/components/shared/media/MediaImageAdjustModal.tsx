@@ -10,7 +10,7 @@ import {
     type PreparedMediaImage,
 } from '@lib/media/prepareMediaImage';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
-import { Button, Flex, Modal, Typography, message, theme } from 'antd';
+import { App, Button, Flex, Modal, Typography, theme } from 'antd';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { LuCheck, LuMaximize2, LuQrCode, LuRefreshCcw, LuRotateCcw, LuRotateCw, LuX } from 'react-icons/lu';
 
@@ -64,6 +64,7 @@ const MediaImageAdjustModal: React.FC<MediaImageAdjustModalProps> = ({
     open,
     sourceDataUrl,
 }) => {
+    const { message } = App.useApp();
     const { token } = theme.useToken();
     const { isMobile } = useDeviceType();
     const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -397,7 +398,7 @@ const MediaImageAdjustModal: React.FC<MediaImageAdjustModalProps> = ({
                         Right
                     </Button>
                     <Button icon={<LuRefreshCcw size={16} />} onClick={() => setCrop(DEFAULT_CROP)}>
-                        Reset
+                        Reset framing
                     </Button>
                 </Flex>
             </Flex>
@@ -409,13 +410,14 @@ const MediaImageAdjustModal: React.FC<MediaImageAdjustModalProps> = ({
     if (isMobile) {
         return (
             <Popup
+                aria-label="Adjust image"
                 bodyStyle={{ height: '88vh', maxHeight: '88vh', padding: 0 }}
                 destroyOnClose
                 onMaskClick={isApplying ? undefined : onClose}
                 visible={open}
             >
                 <MobileFlex style={{ height: '100%' }} vertical>
-                    <NavBar right={<MobileButton disabled={isApplying} fill="none" onClick={onClose} style={{ minHeight: 40, minWidth: 40, paddingInline: 0 }}><LuX size={18} /></MobileButton>}>
+                    <NavBar right={<MobileButton aria-label="Close image adjustment" disabled={isApplying} fill="none" onClick={onClose} style={{ minHeight: 40, minWidth: 40, paddingInline: 0 }}><LuX size={18} /></MobileButton>}>
                         Adjust image
                     </NavBar>
                     <MobileFlex flex={1} gap={14} style={{ minHeight: 0, overflowY: 'auto', padding: 16 }} vertical>
@@ -423,7 +425,7 @@ const MediaImageAdjustModal: React.FC<MediaImageAdjustModalProps> = ({
                     </MobileFlex>
                     <MobileFlex gap={10} style={{ borderTop: `1px solid ${token.colorBorderSecondary}`, padding: 16 }}>
                         <MobileButton block disabled={isApplying} fill="outline" onClick={() => setCrop(DEFAULT_CROP)}>
-                            Reset
+                            Reset all
                         </MobileButton>
                         <MobileButton block disabled={Boolean(loadError) || !sourceDataUrl} loading={isApplying} onClick={() => void handleApply()}>
                             <MobileFlex align="center" gap={6} justify="center">

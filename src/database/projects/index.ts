@@ -87,6 +87,7 @@ import {
 } from "@lib/localization/languagePolicy";
 import { logger } from "@lib/monitoring/logger";
 import { isPlatformEntityBlocked } from "@lib/platform/entityBlock";
+import { emitProjectPublicationEvent } from "@lib/projects/projectPublicationEvents";
 import {
     appendImageBatchSelectionsToProject,
     normalizeImageBatchProjectSelections,
@@ -98,9 +99,13 @@ import {
     buildSummaryProjectFieldPayload,
     buildSummaryProjectPayload,
 } from "@lib/firestore/summaryProjectsWriter";
-import { parseSummaryProjects } from "@lib/firestore/parseSummaryProjects";
+import {
+    isCompleteSummaryProject,
+    parseSummaryProjects,
+} from "@lib/firestore/parseSummaryProjects";
 import { sanitizeForFirestore } from "@lib/firestore/sanitizeForFirestore";
 import { revalidatePublicClientCacheForProject } from "@lib/cache/publicClientCache";
+import { shouldPropagateProjectAfterSourceSave } from "@lib/multiOutlet/projectPropagationBoundary";
 import { getMenuDesignPresetPatch, getRecommendedMenuDesignPresets } from "@lib/menu/menuDesignPresets";
 import {
     getMenuSnapshotPayloadSizeBytes,
@@ -133,6 +138,10 @@ import {
 import { buildProjectUploadObjectId } from "@lib/menu/projectUploadIdentity";
 import { validateProjectUploadDataUrl } from "@lib/menu/projectUploadPayload";
 import { readJsonResponseWithLimit } from "@lib/security/boundedResponseBody";
+import {
+    PROJECT_DELETE_REJECTION_CODES,
+    isProjectDeleteRejectionResponse,
+} from "@lib/errors/projectDeleteErrors";
 import {
     normalizeTimeSlotPreset,
     normalizeTimeSlotPresetId,
@@ -723,6 +732,10 @@ const extractProjectsSummaryMap = (
     const parsed = parseSummaryProjects(summaryDocData);
     const result = Object.create(null) as Record<string, ProjectSummaryData>;
     for (const [projectId, projectData] of Object.entries(parsed)) {
+        // A complete summary row always carries the required name and active
+        // fields. Ignore field-only remnants from historical mixed-shape
+        // deletes instead of presenting them as selectable "Untitled" menus.
+        if (!isCompleteSummaryProject(projectData)) continue;
         result[projectId] = normalizeParsedProjectSummaryData(projectData);
     }
     return result;
@@ -1085,7 +1098,10 @@ export const removeProjectFromSummary = async (projectId: string) => {
             );
             const summaryDocRef = doc(firebaseClient, PLATFORM_SUMMARY, `projects_${scope.sId}`);
             await runTransaction(firebaseClient, async (transaction) => {
-                const projectDoc = await transaction.get(projectDocRef);
+                const [projectDoc, summaryDoc] = await Promise.all([
+                    transaction.get(projectDocRef),
+                    transaction.get(summaryDocRef),
+                ]);
                 if (
                     !projectDoc.exists()
                     || projectDoc.data().deleted !== true
@@ -1095,7 +1111,7 @@ export const removeProjectFromSummary = async (projectId: string) => {
                 }
                 transaction.set(summaryDocRef, {
                     lastUpdated: serverTimestamp(),
-                    ...buildSummaryProjectDeletePayload(projectId, deleteField()),
+                    ...buildSummaryProjectDeletePayload(projectId, deleteField(), summaryDoc.data()),
                 }, { merge: true });
             });
             await revalidatePublicClientCacheForProject(projectId, "removeProjectFromSummary");
@@ -1325,29 +1341,8 @@ export const addProject = async (data: Partial<ProjectMetadata> & {
                     summaryMutation,
                 };
             });
-            const { created, summaryData, summaryMutation } = transactionResult;
+            const { summaryData, summaryMutation } = transactionResult;
             await revalidateProjectSummaryMutation(projectId, summaryMutation.handoff.projectIds, summaryOptions);
-
-            // Propagation hook (Feature #4C): Auto-create outlet projects
-            if (created && FEATURE_FLAGS.ENABLE_PROJECT_PROPAGATION) {
-                try {
-                    const { propagateNewProjectToOutlets } = await import(
-                        "@database/multiOutlet/propagation"
-                    );
-                    await propagateNewProjectToOutlets(
-                        operationScope.tId,
-                        operationScope.sId,
-                        projectId,
-                        resolvedName,
-                    );
-                } catch (e) {
-                    // Non-blocking: log but don't fail project creation
-                    logProjectPersistenceFailure('project_outlet_propagation_create_failed', e, {
-                        ...getProjectPersistenceProjectLogContext(projectId),
-                        ...getBoundedProjectPersistenceStringContext('projectName', resolvedName),
-                    });
-                }
-            }
 
             return { projectId, projectData: transactionResult.projectData, summaryData };
         },
@@ -2006,6 +2001,36 @@ const runUpdateProject = async (data: Partial<Project>, options: ProjectUpdateOp
         });
     }
 
+    // Firestore admits a linked outlet only after the master has exactly one
+    // canonical source file. New menus start empty, so propagating from
+    // addProject() is guaranteed to be denied. Reconcile once at the first
+    // empty -> single-source transition instead.
+    if (
+        FEATURE_FLAGS.ENABLE_PROJECT_PROPAGATION
+        && data.projectId
+        && shouldPropagateProjectAfterSourceSave({
+            currentFiles: savedProject.files,
+            masterProjectId: savedProject.masterProjectId,
+            previousFiles: previousProject.files,
+        })
+    ) {
+        try {
+            const { propagateNewProjectToOutlets } = await import(
+                "@database/multiOutlet/propagation"
+            );
+            await propagateNewProjectToOutlets(
+                operationScope.tId,
+                operationScope.sId,
+                data.projectId,
+                resolveProjectSummaryName(savedProject.name, 'Untitled'),
+            );
+        } catch (e) {
+            logProjectPersistenceFailure('project_outlet_propagation_source_ready_failed', e, {
+                ...getProjectPersistenceProjectLogContext(data.projectId),
+            });
+        }
+    }
+
     // Public menu and OBP pages share Vercel Data Cache tags. Invalidate after
     // every owner-side project save, including local/dev, so refreshes do not
     // keep showing stale public content.
@@ -2648,6 +2673,7 @@ export const publishProject = async (
                             ...getProjectPersistenceProjectLogContext(operationProjectId, storedMasterProjectId),
                         });
                     }
+                    emitProjectPublicationEvent(projectScope);
                     return result.project;
                 }
 
@@ -2758,6 +2784,7 @@ export const publishProject = async (
                     operationScope,
                 );
 
+                emitProjectPublicationEvent(projectScope);
                 return publishedProject;
             } catch (error) {
                 if (uploadedProjectFileUrls.length && !persistenceCommitted && !persistenceOutcomeAmbiguous) {
@@ -3233,15 +3260,13 @@ export const deleteProject = async (projectId: string) => {
                 PROJECT_DELETE_RESPONSE_MAX_BYTES,
             );
             if (!response.ok) {
-                const message = responseBody && typeof responseBody === "object"
-                    && !Array.isArray(responseBody)
-                    && typeof (responseBody as { error?: unknown }).error === "string"
-                    ? (responseBody as { error: string }).error
-                    : "Project deletion failed";
+                const rejectionCode = isProjectDeleteRejectionResponse(responseBody)
+                    ? responseBody.code
+                    : PROJECT_DELETE_REJECTION_CODES.FAILED;
                 throw createProjectPersistenceStatusError(
-                    "project_delete_rejected",
+                    rejectionCode,
                     response.status,
-                    message,
+                    rejectionCode,
                 );
             }
             if (!isProjectDeleteResult(responseBody, projectId)) {

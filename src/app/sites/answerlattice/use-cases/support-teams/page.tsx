@@ -39,7 +39,7 @@ export default async function SupportTeamsUseCasePage() {
                 'Let tickets capture safe context when fallback is needed.',
                 'Use Support Board for selected follow-up and the support-gap queue to prioritize recurring questions.',
             ]}
-            primaryCta="Create workspace"
+            primaryCta="Request early access"
             secondaryCta="See 60-sec demo"
         />
     );

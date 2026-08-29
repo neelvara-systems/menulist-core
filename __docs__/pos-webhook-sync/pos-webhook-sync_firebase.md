@@ -1,7 +1,7 @@
 # External Menu Sync — Firebase and Cost Contract
 
 > **Status:** Implemented in source
-> **Last code-truth review:** July 25, 2026
+> **Last code-truth review:** August 28, 2026
 
 ## Data model
 
@@ -122,7 +122,7 @@ The preservation exception prevents an unrelated owner store update from breakin
 
 ## Deployment dependency and current status
 
-Rules and app must be released in the documented order. The legacy secret boundary is not safe to deploy ahead of a compatible secret API/UI because the prior UI writes the legacy field. The July 21 delivery-history rule is backward-compatible with that boundary and was attempted as a scoped MenuList QA rules-only deploy after emulator validation. Firebase CLI stopped before upload with `Failed to authenticate, have you run firebase login?`; QA therefore retains the prior rules until an authorized login and rerun. No Vercel deploy was authorized or performed.
+Rules and app must be released in the documented order. The legacy secret boundary is not safe to deploy ahead of a compatible secret API/UI because the prior UI writes the legacy field. Firebase CLI access for the single human operator was reauthenticated and read-only project discovery confirmed `menulist-qa` and `menulist-prod` on August 28. That removes the former login blocker but does not authorize publication: no Rules, Functions, Vercel, or other deployment was performed in this local certification continuation. Active deployed-rule parity remains governed by the release-certification and Git operations ledgers.
 
 ## Verification
 

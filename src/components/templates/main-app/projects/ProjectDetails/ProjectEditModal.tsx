@@ -299,7 +299,7 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                                             valuePropName="checked"
                                             style={{ marginBottom: 0 }}
                                         >
-                                            <Switch checkedChildren="Active" unCheckedChildren="Inactive" />
+                                            <Switch aria-label="Active menu" checkedChildren="Active" unCheckedChildren="Inactive" />
                                         </Form.Item>
                                         <Typography.Text type="secondary">
                                             Inactive menus stay hidden until you enable them.
@@ -318,7 +318,7 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                                             valuePropName="checked"
                                             style={{ marginBottom: 0 }}
                                         >
-                                            <Switch checkedChildren="Default" unCheckedChildren="Regular" />
+                                            <Switch aria-label="Default menu" checkedChildren="Default" unCheckedChildren="Regular" />
                                         </Form.Item>
                                         <Flex gap={4} vertical>
                                             <Typography.Text type="secondary">

@@ -45,5 +45,20 @@ for (const requiredField of [
 
 assert.equal(isReadableStoreDocument(readableOutlet, 203), false);
 assert.equal(isReadableStoreDocument({ ...readableOutlet, deleted: 'false' }, 202), false);
+assert.equal(
+    isReadableStoreDocument({ ...readableOutlet, sId: 0 }, 202),
+    false,
+    'a conflicting legacy store alias must be rejected before downstream authorization disagrees',
+);
+assert.equal(
+    isReadableStoreDocument({ ...readableOutlet, tId: 0 }, 202),
+    false,
+    'a conflicting legacy tenant alias must be rejected before downstream authorization disagrees',
+);
+assert.equal(
+    isReadableStoreDocument({ ...readableOutlet, sId: 202, tId: 101 }, 202),
+    true,
+    'matching legacy scope aliases remain readable',
+);
 
 console.log('Outlet store document boundary tests passed.');

@@ -162,7 +162,24 @@ function StoresDashboard({ tenantsList, setTenantsList }: StoresDashboardProps) 
                 const colorMap: Record<string, string> = { OK: 'green', WARNING: 'orange', FAILED: 'red' };
                 return <Tag color={colorMap[health.status] || 'default'}>{health.status}</Tag>;
             },
-        }
+        },
+        {
+            title: 'Actions',
+            key: 'actions',
+            render: (_: unknown, record: PlatformStoreRecord) => (
+                <Button
+                    aria-label={`Edit store ${record.name || record.storeId}`}
+                    onClick={() => setStoreModal({
+                        active: true,
+                        data: record,
+                        tenantData: tenantsList.find((tenant) => tenant.tenantId === record.tenantId) || null,
+                    })}
+                    type="link"
+                >
+                    Edit
+                </Button>
+            ),
+        },
     ];
 
     const onCloseStoreModal = (updatedStore?: StoreDataType | null) => {
@@ -209,6 +226,7 @@ function StoresDashboard({ tenantsList, setTenantsList }: StoresDashboardProps) 
                     <Flex gap={20} align="center">
                         <Typography.Text>Filter by Tenant</Typography.Text>
                         <Select
+                            aria-label="Filter stores by tenant"
                             style={{ width: 200 }}
                             placeholder="Select Tenant"
                             value={filterTenant}
@@ -233,16 +251,9 @@ function StoresDashboard({ tenantsList, setTenantsList }: StoresDashboardProps) 
             </Card>
             <Card title="Stores List">
                 <Table
-                    rowKey={(record: StoreDataType) => record.storeId || `${record.tenantId}-${record.name}`}
+                    rowKey={(record: StoreDataType) => String(record.storeId)}
                     dataSource={storesList}
                     columns={columns}
-                    onRow={(record: StoreDataType) => ({
-                        onClick: () => setStoreModal({
-                            active: true,
-                            data: record,
-                            tenantData: tenantsList.find(t => t.tenantId === record.tenantId) || null
-                        })
-                    })}
                 />
             </Card>
             <StoreDetailsModal modalData={storeModal} closeModal={onCloseStoreModal} />

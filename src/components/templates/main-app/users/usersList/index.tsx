@@ -4,13 +4,14 @@ import ContextualStateIllustration from "@atoms/contextualStateIllustration";
 import TextElement from "@antdComponent/textElement";
 import { fetchStaffUsers, forceSignOutStaffUser, removeStaffFromStore, requestStaffPasswordReset } from "@lib/staffManagement/client";
 import { getBoundedStaffStringContext, logStaffClientFailure } from "@lib/staffManagement/diagnostics";
-import { canManageStaffTarget } from "@lib/staffManagement/scopeBoundary";
+import { canManageStaffTargetForSession } from "@lib/staffManagement/scopeBoundary";
 import type { StaffFormUser, StaffMutationResponse, StaffStoreOption, StaffUserSummary } from "@lib/staffManagement/types";
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from "@providers/platformProviders/platformGlobalDataProvider";
 import { showErrorToast, showSuccessToast } from "@reduxSlices/toast";
 import { Alert, Button, Card, Flex, Input, Modal, Space, Spin, theme } from "antd";
 import { useContext, useEffect, useRef, useState } from "react";
 import { LuPlus } from "react-icons/lu";
+import { useSession } from "next-auth/react";
 import { useAppDispatch } from "src/hooks/useAppDispatch";
 import StaffLoginDetailsContent from "../StaffLoginDetailsContent";
 import UserDetailsModal from "./userDetailsModal";
@@ -77,13 +78,15 @@ function UsersListPage() {
     const [userDetailsModal, setUserDetailsModal] = useState<StaffModalState>({ active: false, data: null });
     const [userFormModal, setUserFormModal] = useState<StaffModalState>({ active: false, data: null });
     const dispatch = useAppDispatch();
+    const { data: activeSession } = useSession();
     const { token } = theme.useToken();
     const { storeDetails, userPermissions, usersList, setUsersList } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext)
     const canManageUsers = userPermissions?.canManageUsers === true;
     const canAssignRoles = userPermissions?.canAssignRoles === true;
-    const canManageTarget = (user: unknown) => canManageStaffTarget({
+    const canManageTarget = (user: unknown) => canManageStaffTargetForSession({
         canAssignRoles,
         canManageUsers,
+        currentUserId: activeSession?.user?.id,
         target: user,
     });
     const buildDesktopUsersLogContext = (flow: string, user?: StaffUserSummary, metadata: StaffClientLogContext = {}): StaffClientLogContext => ({
@@ -225,7 +228,7 @@ function UsersListPage() {
     }
 
     const onResetPassword = async (user: StaffUserSummary) => {
-        if (pendingStaffActionRef.current || !canManageTarget(user) || !user.id || !storeDetails?.tenantId || !storeDetails?.storeId) return;
+        if (pendingStaffActionRef.current || user.active === false || !canManageTarget(user) || !user.id || !storeDetails?.tenantId || !storeDetails?.storeId) return;
         pendingStaffActionRef.current = `reset:${user.id}`;
         setPendingStaffUserId(user.id);
         try {

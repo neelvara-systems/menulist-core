@@ -29,8 +29,9 @@ import type {
 } from '@lib/ops/schedulerTypes';
 import {
   collection,
-  documentId,
+  doc,
   getCountFromServer,
+  getDoc,
   getDocs,
   limit,
   orderBy,
@@ -379,9 +380,13 @@ export async function getSchedulerRunDetails(runId: string): Promise<SchedulerRu
 
 /**
  * Get recent per-store analytics settlement state.
- * Firestore reads: 1 query over platformSummary/nightlyState_* docs.
+ * Firestore reads: one exact read per admitted store, bounded by maxResults.
+ * Exact reads preserve the platformSummary private-document list boundary.
  */
-async function getSchedulerSettlementSummary(maxResults: number = 50): Promise<SchedulerSettlementSummary> {
+async function getSchedulerSettlementSummary(
+  storeIds: readonly string[],
+  maxResults: number = 50,
+): Promise<SchedulerSettlementSummary> {
   const settlementLimit = boundedPositiveInteger(maxResults, 50, SCHEDULER_SETTLEMENT_LIMIT);
   const summary: SchedulerSettlementSummary = {
     states: [],
@@ -393,22 +398,23 @@ async function getSchedulerSettlementSummary(maxResults: number = 50): Promise<S
   };
 
   try {
-    const summaryRef = collection(firebaseClient, DB_COLLECTIONS.PLATFORM_SUMMARY);
-    const statesQuery = query(
-      summaryRef,
-      where(documentId(), '>=', 'nightlyState_'),
-      where(documentId(), '<=', 'nightlyState_~'),
-      orderBy(documentId()),
-      limit(settlementLimit),
-    );
-    const snap = await getDocs(statesQuery);
+    const admittedStoreIds = Array.from(new Set(storeIds
+      .map((storeId) => String(storeId).trim())
+      .filter((storeId) => isValidFirestoreDocumentId(storeId))))
+      .slice(0, settlementLimit);
+    const snapshots = await Promise.all(admittedStoreIds.map((storeId) => getDoc(doc(
+      firebaseClient,
+      DB_COLLECTIONS.PLATFORM_SUMMARY,
+      `nightlyState_${storeId}`,
+    ))));
 
     const today = new Date();
     const twoDaysAgo = new Date(today.getTime() - 2 * 24 * 60 * 60 * 1000);
     const staleCutoff = twoDaysAgo.toISOString().split('T')[0];
 
-    summary.states = snap.docs
-      .map((document) => normalizeSchedulerSettlementState(document.id, document.data()))
+    summary.states = snapshots
+      .filter((snapshot) => snapshot.exists())
+      .map((snapshot) => normalizeSchedulerSettlementState(snapshot.id, snapshot.data()))
       .filter((state): state is SchedulerSettlementState => state !== null);
 
     summary.totalTrackedStores = summary.states.length;
@@ -452,6 +458,7 @@ async function getSchedulerRunsLast7Days(): Promise<number> {
  */
 export async function getSchedulerDashboardSnapshot(
   filter?: SchedulerRunFilter,
+  storeIds: readonly string[] = [],
   settlementLimit: number = 50,
 ): Promise<SchedulerDashboardSnapshot> {
   await assertCurrentPlatformAccess();
@@ -462,7 +469,7 @@ export async function getSchedulerDashboardSnapshot(
   if (!hasHistoryFilter) {
     const [runHistory, settlement, runsLast7Days] = await Promise.all([
       getSchedulerRunHistory({ ...filter, limit: Math.max(historyLimit, 10) }),
-      getSchedulerSettlementSummary(boundedSettlementLimit),
+      getSchedulerSettlementSummary(storeIds, boundedSettlementLimit),
       getSchedulerRunsLast7Days(),
     ]);
 
@@ -476,7 +483,7 @@ export async function getSchedulerDashboardSnapshot(
   const [health, runHistory, settlement] = await Promise.all([
     getSchedulerHealthSummary(),
     getSchedulerRunHistory(filter),
-    getSchedulerSettlementSummary(boundedSettlementLimit),
+    getSchedulerSettlementSummary(storeIds, boundedSettlementLimit),
   ]);
 
   return { health, runHistory, settlement };

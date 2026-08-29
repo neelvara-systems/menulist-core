@@ -34,6 +34,7 @@ export const ANSWERLATTICE_DB_COLLECTIONS = {
     OWNER_NOTIFICATION_DELIVERIES: 'ownerNotificationDeliveries',
     OWNER_NOTIFICATION_RATE_LIMITS: 'ownerNotificationRateLimits',
     ANSWERLATTICE_CONTACT_ENQUIRIES: 'answerlattice_contactEnquiries',
+    ANSWERLATTICE_EARLY_ACCESS_REQUESTS: 'answerlattice_earlyAccessRequests',
     ANSWERLATTICE_INTEGRATION_EVENTS: 'answerlattice_integrationEvents',
     ANSWERLATTICE_INTEGRATION_DELIVERY_LOGS: 'answerlattice_integrationDeliveryLogs',
     ANSWERLATTICE_INTEGRATION_RATE_LIMITS: 'answerlattice_integrationRateLimits',

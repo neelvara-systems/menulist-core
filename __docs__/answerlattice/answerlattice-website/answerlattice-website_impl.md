@@ -1,7 +1,7 @@
 # AnswerLattice Website — Implementation
 
-> **Version:** 1.3.12
-> **Last Updated:** 2026-08-14
+> **Version:** 1.3.13
+> **Last Updated:** 2026-08-27
 > **Audience:** Developers
 
 ## August 22, 2026 Agent-Readable Discovery Hardening
@@ -11,6 +11,16 @@
 - Generated LLM context now includes explicit when-to-use guidance and the OpenAPI route. The developer page keeps this server integration secondary and account-gated.
 - Public API errors add fixed safe resolution guidance. Footer navigation headings now follow the page hierarchy, and Organization schema uses the verified support email as a ContactPoint while retaining the no-unverified-address boundary.
 - No Firebase rule, index, Function, credential, rollout flag, provider, dependency, or deployed environment changed.
+
+## August 27, 2026 Founder-First Conversion Simplification
+
+- Kept the established headline and Verdigris visual system while moving the primary action to `Build your first 10 answers` across the live homepage and public header.
+- Reduced the first-answer workflow to three plain steps and kept the known-answer, safe-fallback, owner-review, and improvement proof directly after it.
+- Reduced the homepage owner-decision list from six product-system explanations to three buyer outcomes. Deeper capability names remain on Product and feature routes.
+- Replaced six framework cards with one coding-agent install path: copy the prepared packet, connect safe page details, and verify before launch.
+- Replaced the mobile drawer's full product inventory with Start here and Learn and verify hub groups, added the primary human pre-onboarding route before installation, and preserved focus containment, Escape, backdrop close, body-scroll lock, safe-area spacing, and route discovery through Product and Resources.
+- Updated the source verifier to enforce the first-ten CTA, plain-language path, bounded mobile navigation, unchanged deferred mounts, approval boundary, and static website contract.
+- This pass adds no route, Firebase operation, provider call, dependency, entitlement change, or deployment requirement.
 
 ## August 20, 2026 Focused Presentation Refinement
 
@@ -38,11 +48,11 @@
 
 ## August 11, 2026 Whole-Site Content And Route Audit
 
-- The public source now contains 77 `page.tsx` files: 75 routes in `ANSWERLATTICE_PUBLIC_PAGES` and two explicit aliases, `/home` and `/use-cases/vibe-coded-saas`.
+- The public source now contains 79 `page.tsx` files: 75 routes in `ANSWERLATTICE_PUBLIC_PAGES`, three explicit aliases (`/home`, `/get-started`, and `/use-cases/vibe-coded-saas`), and the bounded `/offline` PWA recovery utility.
 - Shared capability, feature, SEO, resource, use-case, navigation, footer, proof, and concept-illustration content now follows one public transformation: scattered founder material becomes reviewed support structure, then familiar support destinations, then owner-approved official guidance.
 - Buyer-facing labels were translated from internal terms such as governance, canonical retrieval, ontology, control plane, qualification, and generic surface language where those terms did not identify an exact technical contract.
 - Exact implemented names remain where specificity matters, including Support Truth Export, Knowledge Map, Product Friction Evidence, Answer Tests, and canonical-only Answer Tests.
-- `scripts/verification/verify-answerlattice-public-website.js` now discovers every public `page.tsx`, rejects unregistered pages, admits only the two declared aliases, and verifies the revised category, route-family, and shared-copy contracts.
+- `scripts/verification/verify-answerlattice-public-website.js` discovers every public `page.tsx`, rejects unregistered pages, admits only the declared aliases and bounded `/offline` utility, and verifies the revised category, route-family, and shared-copy contracts.
 - This pass changes static public content and source verification only. It adds no Firebase operation, provider call, dependency, route runtime, tenant data, or billing behavior.
 
 ## August 11, 2026 Homepage Positioning And Motion Correction
@@ -139,6 +149,17 @@ Public copy uses `AnswerLattice` as the standalone brand. Internal file paths an
 AnswerLattice website and dashboard metadata use `src/lib/answerlattice/pwaAssets.ts` for iOS startup image declarations. The generated startup PNGs live in `public/answerlattice-splash/apple-splash-*.png` and are produced by `npm run generate:answerlattice-splash` from the transparent `public/answerlattice-logo-mark-wide.png` source mark. Logo PNGs, favicons, PWA icons, and the OpenGraph logo embed are produced by `node scripts/website-assets/generate-answerlattice-logo-assets.js`. The splash renderer owns the full startup background before compositing the unchanged source mark so the logo itself never carries a separate rectangle.
 
 The root app layout defines default startup images in `metadata.appleWebApp.startupImage`; AnswerLattice child layouts override that metadata with `getStaticAnswerlatticeAppleStartupImages()` so AnswerLattice install/splash contexts use AnswerLattice-specific startup images.
+
+The public website and authenticated dashboard use separate stable manifest
+identities. `public/answerlattice.webmanifest` keeps the website rooted at `/`,
+while `src/app/answerlattice-app.webmanifest/route.ts` emits a host-aware
+dashboard manifest: dedicated AnswerLattice hosts launch `/activation` at root
+scope and the local shared app launches `/answerlattice/activation` at
+`/answerlattice/` scope. `public/answerlattice-sw.js` is network-first and
+caches only the AnswerLattice offline recovery page and immutable logo assets;
+tenant pages, APIs, support content, and knowledge data are never cached. The
+dashboard layout owns AnswerLattice light/dark browser theme colors and safe-area
+viewport metadata instead of inheriting MenuList blue.
 
 `src/app/loading.tsx` exposes `brand="answerlattice"` for explicit AnswerLattice fallback loaders and auto-detects `x-product-id: answerlattice` for root streamed loading payloads. The Redux overlay loader in `src/components/organisms/loader/index.tsx` detects AnswerLattice runtime routes and swaps to the shared `AnswerlatticeLoaderLogo` atom. Static logo UI and loaders now share `src/components/atoms/answerlatticeLogoMark/index.tsx`, which follows the MenuList inline SVG-path pattern and carries the final logo paths, gradients, filters, stroke widths, and transparent background directly. `AnswerlatticeLoaderLogo` only adds path classes for the same 3-second stroke-draw cycle as the MenuList global loader without changing final color or shape output. Loader surfaces must not add CSS blur or drop-shadow to the AnswerLattice logo; any path shadow/effect must come only from the SVG-native design filters.
 

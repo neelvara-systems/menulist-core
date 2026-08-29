@@ -5,14 +5,14 @@ import { PermissionKey } from '@constant/permissions';
 import { DEFAULT_ROLE_IDS } from '@data/defaultRoles';
 import RolesPermissionInitialData, { PERMISSION_CATEGORIES_CONFIG, PERMISSION_LABELS } from '@data/rolesPermissionsInitialData';
 import { getBoundedStaffStringContext, logStaffClientFailure } from '@lib/staffManagement/diagnostics';
-import { deleteRoleDefinition, saveRoleDefinition } from '@lib/staffManagement/client';
+import { saveRoleDefinition } from '@lib/staffManagement/client';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { StoreRoleDataType } from '@type/platform/roles';
 import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useContext, useEffect, useRef, useState } from 'react';
-import { LuCheck, LuPencil, LuPlus, LuShield, LuTrash2, LuX } from 'react-icons/lu';
-import { Button, Card, Checkbox, Dialog, Empty, Flex, Input, List, NavBar, Popup, Switch, Tag, Text, TextArea, Title, Toast } from '../antd';
+import { LuCheck, LuPencil, LuPlus, LuShield, LuX } from 'react-icons/lu';
+import { Button, Card, Checkbox, Empty, Flex, Input, List, NavBar, Popup, Switch, Tag, Text, TextArea, Title, Toast } from '../antd';
 import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
 
 interface MobileRolesScreenProps {
@@ -118,62 +118,11 @@ function MobileRolesScreenContent({ onBack }: MobileRolesScreenProps) {
         }
     };
 
-    const handleDeleteRole = (role: StoreRoleDataType) => {
-        const sourceStoreDetails = storeDetails;
-        const sourceRoles = roles;
-        const expectedTenantId = sourceStoreDetails?.tenantId;
-        const expectedStoreId = sourceStoreDetails?.storeId;
-        Dialog.confirm({
-            title: t('deleteRole'),
-            content: t('deleteRoleConfirm', { name: role.name }),
-            confirmText: t('delete'),
-            cancelText: t('cancel'),
-            onConfirm: async () => {
-                if (
-                    !canAssignRoles
-                    || !expectedTenantId
-                    || !expectedStoreId
-                    || roleMutationInFlightRef.current
-                ) {
-                    return;
-                }
-                roleMutationInFlightRef.current = true;
-                if (isMountedRef.current) {
-                    setIsSaving(true);
-                }
-                try {
-                    const response = await deleteRoleDefinition({
-                        roleId: role.id,
-                        storeId: expectedStoreId,
-                        tenantId: expectedTenantId,
-                    });
-                    if (!isMountedRef.current) return;
-                    setStoreDetails((currentStoreDetails: typeof storeDetails) => (
-                        currentStoreDetails?.tenantId === expectedTenantId
-                        && currentStoreDetails?.storeId === expectedStoreId
-                        && currentStoreDetails?.roles === sourceRoles
-                            ? { ...currentStoreDetails, roles: response.roles }
-                            : currentStoreDetails
-                    ));
-                    if (selectedRole?.id === role.id) setSelectedRole(null);
-                    Toast.show({ content: t('roleDeleted'), duration: 1000 });
-                } catch (err) {
-                    logStaffClientFailure('mobile_staff_role_delete_failed', err, buildMobileRoleLogContext('delete_role', role));
-                    if (isMountedRef.current) {
-                        Toast.show({ content: t('failedToDelete'), duration: 2000 });
-                    }
-                } finally {
-                    roleMutationInFlightRef.current = false;
-                    if (isMountedRef.current) {
-                        setIsSaving(false);
-                    }
-                }
-            },
-        });
-    };
-
-    useEffect(() => () => {
-        isMountedRef.current = false;
+    useEffect(() => {
+        isMountedRef.current = true;
+        return () => {
+            isMountedRef.current = false;
+        };
     }, []);
 
     const togglePermission = (permKey: string) => {
@@ -194,6 +143,7 @@ function MobileRolesScreenContent({ onBack }: MobileRolesScreenProps) {
 
     const editRoleSheet = (
         <Popup
+            aria-label={editingRole && roles.some((role: StoreRoleDataType) => role.id === editingRole.id) ? t('editRole') : t('newRole')}
             bodyStyle={{ maxHeight: '92vh', overflow: 'hidden', padding: 0 }}
             destroyOnClose
             onMaskClick={isSaving ? undefined : () => setIsEditSheetOpen(false)}
@@ -221,6 +171,7 @@ function MobileRolesScreenContent({ onBack }: MobileRolesScreenProps) {
                                     <Text strong>{t('roleName')}</Text>
                                     <Text type="secondary">Use a clear staff-facing name like Cashier, Floor Manager, or Kitchen Lead.</Text>
                                     <Input
+                                        aria-label={t('roleName')}
                                         onChange={(value) => setEditingRole({ ...editingRole, name: value })}
                                         placeholder={t('roleNamePlaceholder')}
                                         value={editingRole.name || ''}
@@ -231,6 +182,7 @@ function MobileRolesScreenContent({ onBack }: MobileRolesScreenProps) {
                                     <Text strong>{t('description')}</Text>
                                     <Text type="secondary">Write what this role is responsible for so owners know when to assign it.</Text>
                                     <TextArea
+                                        aria-label={t('description')}
                                         onChange={(value) => setEditingRole({ ...editingRole, description: value })}
                                         placeholder={t('descriptionPlaceholder')}
                                         rows={2}
@@ -242,6 +194,7 @@ function MobileRolesScreenContent({ onBack }: MobileRolesScreenProps) {
                                     <Flex align="center" justify="space-between">
                                         <Text strong>{t('active')}</Text>
                                         <Switch
+                                            aria-label={t('active')}
                                             checked={editingRole.active || false}
                                             onChange={(value) => setEditingRole({ ...editingRole, active: value })}
                                         />
@@ -270,7 +223,11 @@ function MobileRolesScreenContent({ onBack }: MobileRolesScreenProps) {
                                     title={
                                         <Flex align="center" justify="space-between">
                                             <Text strong>{`${category.icon} ${category.label}`}</Text>
-                                            <Checkbox checked={allEnabled} onChange={(value) => toggleCategoryAll(category.permissions, value)}>
+                                            <Checkbox
+                                                aria-label={`${category.label}: ${t('all')}`}
+                                                checked={allEnabled}
+                                                onChange={(value) => toggleCategoryAll(category.permissions, value)}
+                                            >
                                                 <Text>{t('all')}</Text>
                                             </Checkbox>
                                         </Flex>
@@ -283,11 +240,10 @@ function MobileRolesScreenContent({ onBack }: MobileRolesScreenProps) {
                                                 <List.Item
                                                     key={permKey}
                                                     extra={(
-                                                        <span onClick={(event) => event.stopPropagation()}>
-                                                            <Switch checked={isEnabled} onChange={() => togglePermission(permKey)} />
+                                                        <span style={{ alignItems: 'center', display: 'inline-flex', minHeight: 44, minWidth: 44 }}>
+                                                            <Switch aria-label={PERMISSION_LABELS[permKey as PermissionKey] || permKey} checked={isEnabled} onChange={() => togglePermission(permKey)} />
                                                         </span>
                                                     )}
-                                                    onClick={() => togglePermission(permKey)}
                                                     title={<Text>{PERMISSION_LABELS[permKey as PermissionKey] || permKey}</Text>}
                                                 />
                                             );
@@ -297,23 +253,6 @@ function MobileRolesScreenContent({ onBack }: MobileRolesScreenProps) {
                             );
                         })}
 
-                        {roles.some((role: StoreRoleDataType) => role.id === editingRole.id) && editingRole.id !== DEFAULT_ROLE_IDS.OWNER ? (
-                            <Button
-                                block
-                                color="danger"
-                                fill="outline"
-                                onClick={() => {
-                                    setIsEditSheetOpen(false);
-                                    setTimeout(() => handleDeleteRole(editingRole), 300);
-                                }}
-                                size="large"
-                            >
-                                <Flex align="center" gap={6} justify="center">
-                                    <LuTrash2 size={14} />
-                                    <Text>{t('deleteThisRole')}</Text>
-                                </Flex>
-                            </Button>
-                        ) : null}
                     </Flex>
                 </Flex>
             ) : null}
@@ -358,7 +297,12 @@ function MobileRolesScreenContent({ onBack }: MobileRolesScreenProps) {
                                         <List.Item
                                             key={permKey}
                                             prefix={isEnabled ? <LuCheck color={token.colorSuccess} size={16} /> : <LuX color={token.colorTextTertiary} size={16} />}
-                                            title={<Text>{PERMISSION_LABELS[permKey as PermissionKey] || permKey}</Text>}
+                                            title={(
+                                                <Text>
+                                                    {PERMISSION_LABELS[permKey as PermissionKey] || permKey}
+                                                    <span className="sr-only"> — {isEnabled ? t('active') : t('inactive')}</span>
+                                                </Text>
+                                            )}
                                         />
                                     );
                                 })}

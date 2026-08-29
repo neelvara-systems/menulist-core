@@ -8,8 +8,12 @@ import { redirect } from 'next/navigation';
 export async function requirePlatformRoleRouteAccess(
     allowedPlatformRoles: readonly string[],
     redirectPath = '/unauthorized',
+    unauthenticatedRedirectPath = redirectPath,
 ) {
     const session = await getServerSession(authOptions);
+    if (!session) {
+        redirect(unauthenticatedRedirectPath);
+    }
     const sessionPlatformRole = resolveExactSessionPlatformRole(session);
 
     if (!sessionPlatformRole || !allowedPlatformRoles.includes(sessionPlatformRole)) {
@@ -26,6 +30,13 @@ export async function requirePlatformRoleRouteAccess(
     return session;
 }
 
-export async function requirePlatformAdminRouteAccess(redirectPath = '/unauthorized') {
-    return requirePlatformRoleRouteAccess([MENULIST_PLATFORM_USER_ROLE], redirectPath);
+export async function requirePlatformAdminRouteAccess(
+    redirectPath = '/unauthorized',
+    unauthenticatedRedirectPath = redirectPath,
+) {
+    return requirePlatformRoleRouteAccess(
+        [MENULIST_PLATFORM_USER_ROLE],
+        redirectPath,
+        unauthenticatedRedirectPath,
+    );
 }

@@ -4,6 +4,7 @@ import { authOptions } from '@lib/auth'
 import { getCurrentUser } from '@lib/auth/currentPlatformUser'
 import { APP_THEME_COLOR } from '@constant/common'
 import { PRODUCT_IDS } from '@constant/product'
+import { RESELLER_USER_ROLE } from '@constant/user'
 import { isPlatformEntityBlocked } from '@lib/platform/entityBlock'
 import LocalisationProvider from '@providers/localisationProvider'
 import NoSSRProvider from '@providers/noSSRProvider'
@@ -41,9 +42,9 @@ export const viewport: Viewport = {
 
 export default async function MainLayout({ children }: { children: React.ReactNode }) {
 
+  const requestPath = (await headers()).get('x-menulist-owner-request-path');
   const session = await getServerSession(authOptions);
   if (!session) {
-    const requestPath = (await headers()).get('x-menulist-owner-request-path');
     const callbackPath = requestPath
       && requestPath.startsWith('/')
       && !requestPath.startsWith('//')
@@ -62,6 +63,10 @@ export default async function MainLayout({ children }: { children: React.ReactNo
   if (!currentUser) {
     redirect("/unauthorized");
   }
+  if (currentUser.userData.platformRole === RESELLER_USER_ROLE && requestPath === '/dashboard') {
+    redirect('/reseller');
+  }
+  const helpWidgetRole = session.role === 'owner' ? 'owner' : 'staff';
 
   // Get locale for internationalization
   const locale = await getLocale();
@@ -78,7 +83,7 @@ export default async function MainLayout({ children }: { children: React.ReactNo
                     {/* Monitor session expiry and show friendly modal when session expires */}
                     <SessionExpiryMonitor />
                     <OwnerAppUpdatePrompt />
-                    <MenuListAnswerlatticeWidgetEmbed />
+                    <MenuListAnswerlatticeWidgetEmbed userRole={helpWidgetRole} />
                   </>
                 )}
               >

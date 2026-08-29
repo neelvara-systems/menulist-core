@@ -37,6 +37,13 @@ const forbidText = (source, token, message) => {
     if (source.includes(token)) failures.push(message);
 };
 
+requireText(desktopCreateModal, "const [displayNameError, setDisplayNameError] = useState<string | null>(null);", 'desktop special-menu creation must own visible name validation state');
+requireText(desktopCreateModal, "? 'Enter a special menu name'", 'desktop special-menu creation must explain a missing name');
+requireText(desktopCreateModal, "validateStatus={displayNameError ? 'error' : undefined}", 'desktop special-menu name validation must render beside the field');
+requireText(desktopCreateModal, 'aria-invalid={displayNameError ? true : undefined}', 'desktop special-menu name validation must expose invalid state');
+requireText(desktopCreateModal, 'onCancel={handleClose}', 'desktop special-menu cancellation must discard its draft');
+requireText(desktopCreateModal, 'resetDraft();\n        onClose();', 'desktop special-menu cancellation must reset every draft field before closing');
+
 requireText(clientLifecycle, 'runTransaction(params.db', 'client lifecycle must use a Firestore transaction');
 requireText(clientLifecycle, "let shouldReadStore = params.action !== 'cancel';", 'cancel must preserve missing-store compatibility');
 requireText(clientLifecycle, 'const storeSnapshot = shouldReadStore ? await transaction.get(storeRef) : null;', 'cancel must repair readable store lifecycle state');
@@ -69,6 +76,15 @@ requireText(clientHook, '["special-menus-list", tId, sId]', 'special-menu SWR ca
 requireText(clientHook, 'return getSpecialMenus(expectedScope);', 'special-menu SWR fetchers must bind the cache key scope to the DAL read');
 requireText(clientHook, 'dalCreate(data, expectedScope)', 'special-menu creates must retain hook scope');
 requireText(clientHook, 'dalUpdate(data, expectedScope)', 'special-menu updates must retain hook scope');
+requireText(clientHook, 'return { success: true, status: nextStatus };', 'special-menu updates must return their authoritative lifecycle status to mobile cache owners');
+requireText(clientHook, 'const mutateOwnerProjectsCache = useCallback(async (', 'special-menu mutations must converge the shared desktop project cache');
+requireText(clientHook, '`projects-${tId}-${sId}`', 'special-menu project-cache convergence must retain exact tenant/store scope');
+requireText(clientHook, '{ revalidate: false }', 'special-menu project-cache convergence must not add a Firestore list read');
+requireText(clientHook, 'await mutateOwnerProjectsCache(result.projectId, result.summaryData, true);', 'special-menu creation must enter the shared desktop project cache');
+requireText(clientHook, 'await mutateOwnerProjectsCache(projectId, { specialMenuStatus: "cancelled" });', 'special-menu cancellation must converge terminal desktop state immediately');
+requireText(desktopSpecialMenuCard, 'specialMenus.length > 0', 'desktop special-menu history must derive from the scoped lifecycle cache');
+requireText(read('src/components/templates/main-app/projects/index.tsx'), '["special-menus-list", String(operationScope.tId), String(operationScope.sId)]', 'terminal special-menu deletion must update the exact scoped lifecycle cache');
+requireText(read('src/components/templates/main-app/projects/index.tsx'), 'specialMenus: current.specialMenus.filter((menu) => menu.projectId !== project.projectId)', 'terminal special-menu deletion must disappear immediately without a billed refetch');
 requireText(clientHook, 'dalDeactivate(projectId, expectedScope)', 'special-menu deactivation must retain hook scope');
 requireText(clientHook, 'dalCancel(projectId, expectedScope)', 'special-menu cancellation must retain hook scope');
 forbidText(clientHook, 'enabled ? "special-menus-list" : null', 'global special-menu SWR cache key must not return');
@@ -79,8 +95,10 @@ requireText(mobileProjectsProvider, 'getProjectsListWithoutLoader(true, expected
 requireText(mobileProjectsProvider, 'getProjectDataWithoutLoader(nextProjectId, expectedScope)', 'mobile project detail DAL calls must retain expected scope');
 requireText(mobileProjectsProvider, 'hydratedScopeKeyRef.current === `${currentScope.tId}:${currentScope.sId}`', 'mobile project output must be masked until exact tenant/store hydration');
 requireText(ownerProjectSelection, '`${OWNER_SELECTED_PROJECT_KEY}:${tenantScope}:${storeScope}`', 'owner project selection storage must be tenant/store partitioned');
-requireText(ownerDashboard, '[storeDetails?.storeId, storeDetails?.tenantId]', 'owner dashboard project-selection callbacks must refresh when either tenant or store changes');
-requireText(ownerDashboard, '[selectedProjectId, storeDetails?.storeId, storeDetails?.tenantId]', 'owner dashboard project selection persistence must retain current tenant/store');
+requireText(ownerDashboard, 'setProjectSelection({ projectId, scopeKey: currentProjectScopeKey });', 'owner dashboard project changes must retain the initiating tenant/store scope');
+requireText(ownerDashboard, '[currentProjectScopeKey, storeDetails?.storeId, storeDetails?.tenantId]', 'owner dashboard project-selection callbacks must refresh when either tenant or store changes');
+requireText(ownerDashboard, 'projectSelection.scopeKey === currentProjectScopeKey', 'owner dashboard project selection must reject stale tenant/store state');
+requireText(ownerDashboard, 'projectSelection.projectId,\n        projectSelection.scopeKey,\n        storeDetails?.storeId,\n        storeDetails?.tenantId,', 'owner dashboard project selection persistence must retain current tenant/store');
 
 requireText(scheduler, 'parseSummaryProjects(summaryDoc.data())', 'scheduler must parse flat and nested summary shapes');
 requireText(scheduler, 'transitionScheduledSpecialMenu({', 'scheduler must use the Admin transaction helper');
@@ -112,12 +130,29 @@ requireText(mobileProjectSelector, "specialMenuCapabilities.allowTimeScheduling 
 forbidText(mobileProjectSelector, '_specialMenu: {\n                            displayName: localizedName,', 'alternate mobile edit path must not partially overwrite lifecycle metadata');
 requireText(mobileSpecialMenuScreen, 'Adjust the dates so only one special menu can be active.', 'mobile scheduling must enforce the one-active non-overlap boundary');
 requireText(mobileSpecialMenuScreen, 'return <MobileSpecialMenuScreenContent key={scopeKey} {...props} />;', 'mobile special-menu drafts must remount on exact tenant/store changes');
+requireText(mobileSpecialMenuScreen, "aria-label={t('createTitle')}", 'mobile special-menu create dialog must expose its visible purpose');
+requireText(mobileSpecialMenuScreen, "aria-label={`${t('editAction')} ${item.displayName}`}", 'mobile special-menu edit dialog must expose its menu identity');
+requireText(mobileSpecialMenuScreen, "aria-label={t('nameLabel')}", 'mobile special-menu public-name inputs must be named');
+requireText(mobileSpecialMenuScreen, "aria-label={`${t('startsLabel')} ${capabilities.allowTimeScheduling ? 'Date & Time' : 'Date'}`}", 'mobile special-menu start controls must be named');
+requireText(mobileSpecialMenuScreen, "aria-label={`${t('endsLabel')} ${capabilities.allowTimeScheduling ? 'Date & Time' : 'Date'}`}", 'mobile special-menu end controls must be named');
 requireText(mobileSpecialMenuScreen, 'getProjectDataWithoutLoader(projectId, expectedScope)', 'mobile special-menu project reads must retain expected scope');
+requireText(mobileSpecialMenuScreen, 'upsertCachedProject({\n            ...projectDetails,\n            ...projectSummary,\n            projectId,', 'new mobile special menus must enter the shared project cache before selection');
+requireText(mobileSpecialMenuScreen, 'name: payload.localizedDisplayName || payload.displayName,', 'new mobile special menus must enter the shared cache with their public name');
+requireText(mobileSpecialMenuScreen, 'const cachedProject = projectsById[payload.projectId];', 'mobile special-menu edits must update the shared project cache');
+requireText(mobileSpecialMenuScreen, '...(result.status ? { status: result.status } : {}),', 'mobile special-menu cache updates must retain the authoritative lifecycle result');
+requireText(mobileSpecialMenuScreen, "specialMenuStatus: 'expired'", 'mobile special-menu end must update the shared project cache');
+requireText(mobileSpecialMenuScreen, "specialMenuStatus: 'cancelled'", 'mobile special-menu cancellation must update the shared project cache');
+requireText(mobileSpecialMenuScreen, 'await selectProject(targetMenu?.baseProjectId || defaultBaseProjectId || null);', 'terminal mobile special-menu transitions must return a selected owner to the regular menu');
 requireText(mobileSpecialMenuScreen, 'if (!isExpectedScope(expectedScope)) return;', 'mobile special-menu async settlement must require its initiating scope');
 requireText(mobileSpecialMenuScreen, 'submitInFlightRef.current', 'mobile special-menu sheets must reject duplicate submissions synchronously');
 requireText(mobileSpecialMenuScreen, 'translationInFlightRef.current', 'mobile special-menu sheets must reject duplicate translations synchronously');
+if ((mobileSpecialMenuScreen.match(/isMountedRef\.current = true;/g) || []).length < 4) {
+    failures.push('every mobile special-menu async owner must reset its mounted guard when React Strict Mode replays effects');
+}
 requireText(mobileSpecialMenuScreen, "type={capabilities.allowTimeScheduling ? 'datetime-local' : 'date'}", 'mobile special-menu schedule controls must match the business scheduling capability');
 requireText(mobileSpecialMenuScreen, 'toIsoValue(startsAt, capabilities.allowTimeScheduling, storeDetails?.timeZone)', 'mobile schedule persistence must use capability-aware store-timezone conversion');
+requireText(mobileSpecialMenuScreen, 'setBaseProjectId((current) => current || defaultBaseProjectId);', 'mobile create drafts must adopt the hydrated default base menu');
+requireText(mobileSpecialMenuScreen, '[defaultBaseProjectId, open]', 'mobile base-menu hydration must not reset an owner schedule draft');
 requireText(mobileSpecialMenuScreen, '[capabilities.allowTimeScheduling, open, storeDetails?.timeZone]', 'mobile create drafts must reinitialize after schedule capability or timezone hydration');
 forbidText(mobileSpecialMenuScreen, 'Continue anyway?', 'mobile scheduling must not bypass the one-active boundary');
 forbidText(desktopCreateModal, 'values.displayName', 'desktop create success copy must use the controlled localized name');
@@ -125,10 +160,15 @@ requireText(desktopCreateModal, "projects_page_special_menu_create_failed", 'des
 requireText(desktopCreateModal, 'fromNativeDateTimeInputValue(values.startsAt.format("YYYY-MM-DDTHH:mm"), storeTimeZone)', 'desktop creation must interpret owner schedule input in the store timezone');
 requireText(desktopCreateModal, 'submitInFlightRef.current', 'desktop special-menu creation must reject duplicate submissions synchronously');
 requireText(desktopScheduleModal, 'fromNativeDateTimeInputValue(values.startsAt, timeZone)', 'desktop schedule editing must interpret owner input in the store timezone');
+requireText(desktopScheduleModal, 'const hasScheduleChanges = Boolean(', 'desktop schedule editing must detect semantic no-op submissions');
+requireText(desktopScheduleModal, 'if (!item || !hasScheduleChanges || submitInFlightRef.current) return;', 'desktop schedule editing must reject no-op and duplicate submissions before the DAL');
+requireText(desktopScheduleModal, 'okButtonProps={{ disabled: !hasScheduleChanges }}', 'desktop schedule editing must visibly disable no-op saves');
 requireText(desktopScheduleModal, 'fromNativeDateInputValue(values.startsAt, timeZone)', 'desktop schedule editing must preserve date-only scheduling capability');
 requireText(desktopScheduleModal, 'type={capabilities.allowTimeScheduling ? "datetime-local" : "date"}', 'desktop schedule controls must match the business scheduling capability');
 requireText(desktopScheduleModal, 'Adjust the schedule so only one special menu is active.', 'desktop schedule editing must explain overlap conflicts');
-requireText(desktopSpecialMenuCard, 'formatDateTimeRange(item.startsAt, item.endsAt', 'desktop owner card must show the full date-time window');
+requireText(desktopSpecialMenuCard, 'formatDateTimeRange(\n                            item.startsAt,\n                            item.endsAt,', 'desktop owner card must show the full date-time window');
+requireText(desktopSpecialMenuCard, 'storeDetails?.timeZone', 'desktop owner card must render its schedule in the store timezone');
+requireText(mobileSpecialMenuScreen, 'formatScheduleRange(\n                                    item.startsAt,\n                                    item.endsAt,\n                                    formatter,\n                                    storeDetails?.timeZone,', 'mobile owner card must render its schedule in the store timezone');
 requireText(desktopSpecialMenuCard, 'Edit schedule', 'desktop owner flow must expose schedule editing for active and scheduled menus');
 requireText(desktopProjectEditModal, 'End or cancel this menu from Special Menus.', 'generic desktop edit must not expose lifecycle-breaking active controls');
 requireText(desktopProjectSelector, "project.specialMenuStatus === 'expired'", 'desktop selector must hide generic delete until persisted special-menu state is terminal');

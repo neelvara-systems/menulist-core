@@ -46,9 +46,18 @@ const tiptapConfigSource = fs.readFileSync(
     path.join(process.cwd(), 'src/config/tiptap.ts'),
     'utf8',
 );
+const menuBarSource = fs.readFileSync(
+    path.join(process.cwd(), 'src/components/atoms/TiptapEditor/MenuBar.tsx'),
+    'utf8',
+);
 assert.match(tiptapConfigSource, /isAllowedUri: \(url\) => Boolean\(normalizeTiptapLinkUrl\(url\)\)/);
 assert.match(tiptapConfigSource, /const src = normalizeTiptapImageUrl\(HTMLAttributes\.src\)/);
 assert.match(tiptapConfigSource, /const color = normalizeTiptapTextColor\(attributes\.color\)/);
 assert.match(tiptapConfigSource, /const textAlign = normalizeTiptapTextAlign\(attributes\.textAlign\)/);
+assert.match(
+    menuBarSource,
+    /aria-pressed=\{options\.active === undefined \? undefined : options\.active\}/,
+    'Tiptap toggle controls must expose their active state to assistive technology',
+);
 
 process.stdout.write('Tiptap slash-command navigation boundary tests passed.\n');

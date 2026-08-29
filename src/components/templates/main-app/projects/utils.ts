@@ -104,13 +104,20 @@ export const handleUpdateValue = (file: any, id: string, newValue: string) => {
     const extractedData = { ...file.extractedData };
 
     if (id.startsWith('category-')) {
-        // Handle category name updates
-        const [_, categoryId, lang] = id.split('-');
+        const categories = extractedData?.data?.categories || [];
+        const categoryMatch = categories
+            .map((candidate: any) => ({ candidate, prefix: `category-${candidate.id}-` }))
+            .filter(({ prefix }: { prefix: string }) => id.startsWith(prefix))
+            .sort((left: { prefix: string }, right: { prefix: string }) => right.prefix.length - left.prefix.length)[0];
+        if (!categoryMatch) return { ...file, extractedData };
+        const category = categoryMatch.candidate;
+        const lang = id.slice(categoryMatch.prefix.length);
+        if (!lang) return { ...file, extractedData };
         const safeValue = sanitizeUserInput(newValue, false);
         extractedData.data = {
             ...extractedData.data,
-            categories: extractedData?.data?.categories?.map((cat: any) => {
-                if (cat.id == categoryId) {
+            categories: categories.map((cat: any) => {
+                if (cat.id === category.id) {
                     return {
                         ...cat,
                         name: {
@@ -123,91 +130,77 @@ export const handleUpdateValue = (file: any, id: string, newValue: string) => {
             })
         };
     } else if (id.startsWith('item-')) {
-        if (id.includes('-attr-')) {
-            // Handle item attribute updates
-            const parts = id.split('-');
-            const itemId = parts[2];
-            const attrId = parts[4];
-            const isPrice = parts[5] === 'price';
-            const lang = parts[5] !== 'price' ? parts[5] : '';
+        const items = extractedData?.data?.items || [];
+        const itemMatch = items
+            .map((candidate: any) => ({ candidate, prefix: `item-${candidate.category}-${candidate.id}-` }))
+            .filter(({ prefix }: { prefix: string }) => id.startsWith(prefix))
+            .sort((left: { prefix: string }, right: { prefix: string }) => right.prefix.length - left.prefix.length)[0];
+        if (!itemMatch) return { ...file, extractedData };
+        const item = itemMatch.candidate;
+        const itemField = id.slice(itemMatch.prefix.length);
 
-            extractedData.data = {
-                ...extractedData.data,
-                items: extractedData.data.items.map((item: any) => {
-                    if (item.id == itemId) {
-                        return {
-                            ...item,
-                            attributes: item.attributes.map((attr: any) => {
-                                if (attr.id == attrId) {
-                                    if (isPrice) {
-                                        return {
-                                            ...attr,
-                                            price: newValue
-                                        };
-                                    } else {
-                                        const safeAttrName = sanitizeUserInput(newValue, false);
-                                        return {
-                                            ...attr,
-                                            name: {
-                                                ...attr.name,
-                                                [lang]: safeAttrName
-                                            }
-                                        };
-                                    }
-                                }
-                                return attr;
-                            })
-                        };
-                    }
-                    return item;
-                })
-            };
-        } else if (id.includes('-price')) {
-            // Handle item price updates
-            const [_, categoryId, itemId] = id.split('-');
-            extractedData.data = {
-                ...extractedData.data,
-                items: extractedData.data.items.map((item: any) => {
-                    if (item.id == itemId) {
-                        return {
-                            ...item,
-                            price: newValue
-                        };
-                    }
-                    return item;
-                })
-            };
-        } else {
-            // Handle item name or description updates
-            const [_, categoryId, itemId, type, lang] = id.split('-');
-            extractedData.data = {
-                ...extractedData.data,
-                items: extractedData.data.items.map((item: any) => {
-                    if (item.id == itemId) {
-                        if (type == 'desc') {
-                            const safeDescription = sanitizeUserInput(newValue, true);
+        extractedData.data = {
+            ...extractedData.data,
+            items: items.map((candidate: any) => {
+                if (candidate.id !== item.id || candidate.category !== item.category) return candidate;
+
+                if (itemField === 'price') {
+                    return { ...candidate, price: newValue };
+                }
+
+                if (itemField.startsWith('attr-')) {
+                    const attributes = candidate.attributes || [];
+                    const attributeMatch = attributes
+                        .map((attr: any) => ({ attr, prefix: `attr-${attr.id}-` }))
+                        .filter(({ prefix }: { prefix: string }) => itemField.startsWith(prefix))
+                        .sort((left: { prefix: string }, right: { prefix: string }) => right.prefix.length - left.prefix.length)[0];
+                    if (!attributeMatch) return candidate;
+                    const attribute = attributeMatch.attr;
+                    const attributeField = itemField.slice(attributeMatch.prefix.length);
+                    return {
+                        ...candidate,
+                        attributes: attributes.map((attr: any) => {
+                            if (attr.id !== attribute.id) return attr;
+                            if (attributeField === 'price') return { ...attr, price: newValue };
+                            if (!attributeField) return attr;
                             return {
-                                ...item,
-                                description: {
-                                    ...item.description,
-                                    [lang]: safeDescription
-                                }
-                            };
-                        } else {
-                            const safeName = sanitizeUserInput(newValue, false);
-                            return {
-                                ...item,
+                                ...attr,
                                 name: {
-                                    ...item.name,
-                                    [lang]: safeName
-                                }
+                                    ...attr.name,
+                                    [attributeField]: sanitizeUserInput(newValue, false),
+                                },
                             };
-                        }
-                    }
-                    return item;
-                })
-            };
-        }
+                        }),
+                    };
+                }
+
+                if (itemField.startsWith('desc-')) {
+                    const lang = itemField.slice('desc-'.length);
+                    if (!lang) return candidate;
+                    return {
+                        ...candidate,
+                        description: {
+                            ...candidate.description,
+                            [lang]: sanitizeUserInput(newValue, true),
+                        },
+                    };
+                }
+
+                if (itemField.startsWith('name-')) {
+                    const lang = itemField.slice('name-'.length);
+                    if (!lang) return candidate;
+                    return {
+                        ...candidate,
+                        name: {
+                            ...candidate.name,
+                            [lang]: sanitizeUserInput(newValue, false),
+                        },
+                    };
+                }
+
+                return candidate;
+            }),
+        };
     }
 
     return ({ ...file, extractedData });

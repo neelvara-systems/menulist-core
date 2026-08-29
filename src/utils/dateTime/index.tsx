@@ -197,11 +197,29 @@ export const formatDateTime = (
     value?: DateLike,
     mode: DateTimeDisplayMode = 'date',
     formatter?: IntlFormatter,
+    specificTimezone?: string,
 ): string => {
     if (value === null || value === undefined || value === '') return 'N/A';
 
     const dateObj = toDate(value as any);
     if (isNaN(dateObj.getTime())) return 'N/A';
+
+    if (specificTimezone) {
+        const timeZone = normalizeTimeZone(specificTimezone, getUserTimezone());
+        const locale = resolveLocalePreference();
+        const dateLabel = new Intl.DateTimeFormat(locale, {
+            ...getUserDateFormatOptions(),
+            timeZone,
+        }).format(dateObj);
+        const timeLabel = new Intl.DateTimeFormat(locale, {
+            ...getUserTimeFormatOptions(),
+            timeZone,
+        }).format(dateObj);
+
+        if (mode === 'time') return timeLabel;
+        if (mode === 'datetime') return `${dateLabel} ${timeLabel}`;
+        return dateLabel;
+    }
 
     if (!formatter) {
         const locale = resolveLocalePreference();
@@ -246,11 +264,12 @@ export const formatDateTimeRange = (
     end?: DateLike,
     formatter?: IntlFormatter,
     fallback = 'N/A',
+    specificTimezone?: string,
 ): string => {
-    const startDate = formatDateTime(start, 'date', formatter);
-    const startTime = formatDateTime(start, 'time', formatter);
-    const endDate = formatDateTime(end, 'date', formatter);
-    const endTime = formatDateTime(end, 'time', formatter);
+    const startDate = formatDateTime(start, 'date', formatter, specificTimezone);
+    const startTime = formatDateTime(start, 'time', formatter, specificTimezone);
+    const endDate = formatDateTime(end, 'date', formatter, specificTimezone);
+    const endTime = formatDateTime(end, 'time', formatter, specificTimezone);
 
     if (startDate === 'N/A' && endDate === 'N/A') return fallback;
     if (startDate === 'N/A') return `${endDate} ${endTime}`;

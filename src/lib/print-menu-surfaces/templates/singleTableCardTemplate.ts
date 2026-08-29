@@ -76,11 +76,12 @@ export async function generatePrintMenuSingleTableCard(input: PrintMenuSingleTab
     const canvas = await renderPrintMenuSingleTableCardCanvas(input);
     const imgDataUrl = canvas.toDataURL('image/png');
     const doc = new jsPDF({
+        compress: true,
         orientation: 'portrait',
         unit: 'mm',
         format: [CARD_W_MM, CARD_H_MM],
     });
-    doc.addImage(imgDataUrl, 'PNG', 0, 0, CARD_W_MM, CARD_H_MM);
+    doc.addImage(imgDataUrl, 'PNG', 0, 0, CARD_W_MM, CARD_H_MM, undefined, 'FAST');
 
     return doc.output('blob');
 }

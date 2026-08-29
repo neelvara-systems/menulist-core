@@ -140,6 +140,7 @@ function RoleDetailsModal({ storeDetails, modalData, onClose }: RoleDetailsModal
                 <Flex gap={8} align="center">
                     <Text style={{ minWidth: 110 }}>Active</Text>
                     <Switch
+                        aria-label="Active role"
                         checked={roleData?.active !== false}
                         onChange={(checked) => onChangeValue('active', checked)}
                     />

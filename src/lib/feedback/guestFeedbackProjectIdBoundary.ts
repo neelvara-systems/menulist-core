@@ -7,6 +7,14 @@ export type GuestFeedbackNumericDocumentId = {
     documentId: string;
 };
 
+export type GuestFeedbackProjectSummary = {
+    active?: boolean;
+    deleted?: boolean;
+    isDefault?: boolean;
+    isSpecialMenu?: boolean;
+    projectId?: string | null;
+};
+
 export function normalizeGuestFeedbackProjectId(value: unknown): string | null {
     if (typeof value !== 'string') return null;
     const documentId = value.trim();
@@ -15,6 +23,30 @@ export function normalizeGuestFeedbackProjectId(value: unknown): string | null {
         && isValidFirestoreDocumentId(documentId)
         ? documentId
         : null;
+}
+
+export function resolveGuestFeedbackOwnerProjectId(
+    projects: GuestFeedbackProjectSummary[],
+    preferredProjectId?: unknown,
+): string | null {
+    const preferred = normalizeGuestFeedbackProjectId(preferredProjectId);
+    const selectable = projects.flatMap((project) => {
+        const projectId = normalizeGuestFeedbackProjectId(project.projectId);
+        return projectId
+            && project.active !== false
+            && project.deleted !== true
+            && project.isSpecialMenu !== true
+            ? [{ ...project, projectId }]
+            : [];
+    });
+
+    if (preferred && selectable.some((project) => project.projectId === preferred)) {
+        return preferred;
+    }
+
+    return selectable.find((project) => project.isDefault)?.projectId
+        || selectable[0]?.projectId
+        || null;
 }
 
 export function normalizeGuestFeedbackNumericDocumentId(value: unknown): GuestFeedbackNumericDocumentId | null {

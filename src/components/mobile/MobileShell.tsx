@@ -18,7 +18,7 @@ import BrandedPageLoader from '@atoms/brandedPageLoader';
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { LuCreditCard, LuLogOut } from 'react-icons/lu';
 import { Button, Card, Flex, MobileAntdAppBridge, Text, Title } from './antd';
-import MobileNavigation, { type MobileTab } from './MobileNavigation';
+import MobileNavigation, { MOBILE_BOTTOM_NAV_CLEARANCE, type MobileTab } from './MobileNavigation';
 import MobileProjectsProvider from './providers/MobileProjectsProvider';
 import type { MoreSubScreen } from './screens/MobileMoreScreen';
 
@@ -33,7 +33,6 @@ const MobileBusinessHealthScreen = dynamic(() => import('./screens/MobileBusines
 const StarterActivationBanner = dynamic(() => import('../onboarding/StarterActivationBanner'), { ssr: false });
 
 const MOBILE_ROUTE_HASH_PREFIX = '#mobile/';
-const MOBILE_BOTTOM_NAV_CLEARANCE = 'calc(env(safe-area-inset-bottom) + 88px)';
 type MobileRouteState = { tab: MobileTab; todayScreen: 'main' | 'dashboard' | 'history'; moreScreen: MoreSubScreen };
 const MOBILE_ROUTE_DEFAULT: MobileRouteState = { tab: 'today', todayScreen: 'main', moreScreen: 'main' };
 const OWNER_FEATURE_TO_MOBILE_ROUTE = {
@@ -101,15 +100,17 @@ const RESELLER_PATH_TO_MORE_SCREEN: Record<string, MoreSubScreen> = {
     '/reseller/onboard': 'resellerOnboarding',
 };
 const HELP_CENTER_TAB_TO_MORE_SCREEN: Record<string, MoreSubScreen> = {
-    kb: 'answerlatticeDocs',
-    ticket: 'answerlatticeSupport',
-    changelog: 'answerlatticeReleaseNotes',
+    kb: 'menuListDocs',
+    faq: 'menuListDocs',
+    ticket: 'menuListContact',
+    feedback: 'menuListContact',
+    'contact-us': 'menuListContact',
+    changelog: 'menuListHelp',
 };
 const HELP_CENTER_MORE_SCREENS: MoreSubScreen[] = [
-    'answerlatticeHelp',
-    'answerlatticeDocs',
-    'answerlatticeSupport',
-    'answerlatticeReleaseNotes',
+    'menuListHelp',
+    'menuListDocs',
+    'menuListContact',
 ];
 const PLATFORM_MORE_SCREENS: MoreSubScreen[] = [
     'platformHub',
@@ -165,7 +166,7 @@ function getHelpCenterMoreScreen(pathname: string, search: string) {
     const segments = normalizePathname(pathname).split('/').filter(Boolean);
     const pathTab = segments[0] === 'help-center' ? segments[1] || '' : '';
     const tab = new URLSearchParams(search).get('tab') || pathTab;
-    return HELP_CENTER_TAB_TO_MORE_SCREEN[tab] || 'answerlatticeHelp';
+    return HELP_CENTER_TAB_TO_MORE_SCREEN[tab] || 'menuListHelp';
 }
 
 function parseMobileRouteHash(hash: string): MobileRouteState {
@@ -607,7 +608,7 @@ export default function MobileShell() {
                     )
         )
         : activeTab === 'share'
-            ? <MobileShareScreen onOpenDigitalScreens={handleOpenDigitalScreens} onOpenDesignEditor={handleOpenDesignEditor} onOpenMenuTab={handleOpenMenuTab} onOpenOfficialPage={() => handleOpenMoreScreen('officialPage')} onOpenPosSync={handleOpenPosSync} onOpenPrintAssets={handleOpenPrintAssets} onOpenPrintMenu={handleOpenPrintMenu} />
+            ? <MobileShareScreen onOpenDomainSettings={() => handleOpenMoreScreen('domainSettings')} onOpenDigitalScreens={handleOpenDigitalScreens} onOpenDesignEditor={handleOpenDesignEditor} onOpenMenuTab={handleOpenMenuTab} onOpenOfficialPage={() => handleOpenMoreScreen('officialPage')} onOpenPosSync={handleOpenPosSync} onOpenPrintAssets={handleOpenPrintAssets} onOpenPrintMenu={handleOpenPrintMenu} />
         : activeTab === 'aiMenuManager'
             ? <MobileAiMenuManagerScreen />
         : activeTab === 'more' && moreScreen === 'businessHealth'

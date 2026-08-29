@@ -433,6 +433,7 @@ export default function PlatformFounderMonitor() {
           </Paragraph>
           <Space wrap>
             <Select
+              aria-label="Reporting window"
               onChange={setDays}
               options={[
                 { label: 'Last 7 days', value: 7 },
@@ -446,7 +447,7 @@ export default function PlatformFounderMonitor() {
             <Button loading={loading} onClick={() => void loadData()}>Refresh</Button>
             <Button href="/platform/cost-posture">Cost Posture</Button>
             <Button href="/platform/owner-business-assistant">Business Health Monitor</Button>
-            <Button href="/platform/support-tickets">Support Tickets</Button>
+            <Button href="/ops/platform-notifications">Platform Notifications</Button>
             <Button href="/platform/stores">Stores</Button>
           </Space>
           <Text type="secondary">Generated {formatTimestamp(data.generatedAt)}. Reads are bounded and manual-refresh only.</Text>

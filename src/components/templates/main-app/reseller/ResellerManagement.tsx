@@ -13,6 +13,7 @@ import { useSession } from "next-auth/react";
 import { redirect } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import {
+    isResellerManagementDraftChanged,
     isResellerManagementProfilesResponse,
     type ResellerManagementProfile,
     type ResellerManagementProfilesResponse,
@@ -207,11 +208,24 @@ function ResellerManagement() {
     }, [loadMonthlySummary, loadProfiles, platformRole]);
 
     const handleCreateOrUpdate = async (values: ResellerManagementFormValues) => {
+        if (editingProfile && !isResellerManagementDraftChanged(values, editingProfile)) {
+            messageApi.info('No reseller changes to save');
+            return;
+        }
         setSaving(true);
         try {
+            const normalizedPassword = values.password?.trim();
+            const { password: _password, ...profileValues } = values;
             const payload = editingProfile
-                ? { ...values, profileId: editingProfile.id }
-                : values;
+                ? {
+                    ...profileValues,
+                    ...(normalizedPassword ? { password: normalizedPassword } : {}),
+                    profileId: editingProfile.id,
+                }
+                : {
+                    ...profileValues,
+                    password: normalizedPassword,
+                };
 
             const res = await fetch('/api/reseller/manage', {
                 ...RESELLER_REQUEST_POLICY,
@@ -352,7 +366,7 @@ function ResellerManagement() {
             title: 'Actions',
             key: 'actions',
             render: (_: unknown, record: ResellerManagementProfile) => (
-                <Button size="small" icon={<LuPencil />} onClick={() => openEditDrawer(record)}>
+                <Button aria-label={`Edit reseller ${record.name}`} size="small" icon={<LuPencil />} onClick={() => openEditDrawer(record)}>
                     Edit
                 </Button>
             ),
@@ -508,6 +522,7 @@ function ResellerManagement() {
 
             {/* Create/Edit Drawer */}
             <Drawer
+                aria-label={editingProfile ? `Edit reseller ${editingProfile.name}` : 'Add New Reseller'}
                 title={editingProfile ? `Edit: ${editingProfile.name}` : 'Add New Reseller'}
                 open={drawerOpen}
                 onClose={() => { setDrawerOpen(false); setEditingProfile(null); }}
@@ -521,13 +536,13 @@ function ResellerManagement() {
                 <Form form={form} layout="vertical" onFinish={handleCreateOrUpdate}>
                     <Title level={5}>Personal Details</Title>
 
-                    <Form.Item name="name" label="Full Name" rules={[{ required: true, min: 2 }]}>
+                    <Form.Item name="name" label="Full Name" rules={[{ required: true, whitespace: true, min: 2 }]}>
                         <Input prefix={<LuUser />} placeholder="e.g., Rahul Sharma" />
                     </Form.Item>
 
                     <Row gutter={16}>
                         <Col span={12}>
-                            <Form.Item name="phone" label="Phone" rules={[{ required: true, min: 10 }]}>
+                            <Form.Item name="phone" label="Phone" rules={[{ required: true, whitespace: true, min: 10 }]}>
                                 <Input prefix={<LuPhone />} placeholder="9876543210" />
                             </Form.Item>
                         </Col>
@@ -540,12 +555,12 @@ function ResellerManagement() {
 
                     <Row gutter={16}>
                         <Col span={12}>
-                            <Form.Item name="username" label="Username" rules={[{ required: true, min: 3 }]}>
+                            <Form.Item name="username" label="Username" rules={[{ required: true, whitespace: true, min: 3 }]}>
                                 <Input placeholder="reseller_rahul" />
                             </Form.Item>
                         </Col>
                         <Col span={12}>
-                            <Form.Item name="password" label="Password" rules={[{ required: !editingProfile, min: 6 }]}>
+                            <Form.Item name="password" label="Password" rules={[{ required: !editingProfile, whitespace: true, min: 6 }]}>
                                 <Input.Password placeholder="Min 6 characters" />
                             </Form.Item>
                         </Col>
@@ -593,7 +608,7 @@ function ResellerManagement() {
                         </Col>
                         <Col span={12}>
                             <Form.Item name="active" label="Active" valuePropName="checked">
-                                <Switch checkedChildren="Active" unCheckedChildren="Inactive" />
+                                <Switch aria-label="Active reseller" checkedChildren="Active" unCheckedChildren="Inactive" />
                             </Form.Item>
                         </Col>
                     </Row>

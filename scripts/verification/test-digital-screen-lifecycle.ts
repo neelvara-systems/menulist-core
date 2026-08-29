@@ -30,6 +30,7 @@ import { getDigitalScreenSeenWriteDecision } from '../../src/lib/screen/screenSe
 import {
     getDigitalScreenManagementClientError,
     isDigitalScreenManagementResponse,
+    serializeDigitalScreenOwnerSlideForMutation,
 } from '../../src/lib/screen/screenManagementContracts';
 import {
     extractScreenMenuItemsFromProject,
@@ -37,6 +38,7 @@ import {
     normalizeCachedScreenSlides,
     normalizeScreenTags,
     resolveScreenText,
+    serializeScreenSlidesForClient,
 } from '../../src/lib/screen/screenContent';
 import { generatePrivateScreenToken } from '../../src/lib/screen/privateScreenControl';
 import { resolvePrivateScreenControlInput } from '../backfill-digital-screen-private-controls';
@@ -58,6 +60,18 @@ const now = Date.now();
 const expired = slide('expired', now - 60_000);
 const activeA = slide('active-a', now + 60_000);
 const activeB = slide('active-b', now + 120_000);
+
+const mutationTransport = serializeDigitalScreenOwnerSlideForMutation(activeA, now + 60_000);
+assert.equal('validUntil' in mutationTransport, false, 'strict add-slide transport must omit the client Timestamp');
+assert.equal(mutationTransport.validUntilMs, now + 60_000, 'strict add-slide transport must preserve expiry milliseconds');
+
+const publicSlides = serializeScreenSlidesForClient([activeA]);
+assert.equal(publicSlides[0]?.validUntil, now + 60_000, 'public slide transport must serialize expiry to milliseconds');
+assert.equal(
+    typeof publicSlides[0]?.validUntil,
+    'number',
+    'public slide transport must not cross the RSC boundary with a Timestamp instance',
+);
 
 const validManagementResponse = {
     screen: {

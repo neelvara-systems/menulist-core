@@ -31,6 +31,9 @@ function requireToken(source, token, label) {
   'src/lib/printable-asset-templates/templateFamilies.ts',
   'src/lib/printable-asset-templates/templateStyles.ts',
   'src/lib/printable-asset-templates/renderPrintableAsset.ts',
+  'src/lib/print-menu-surfaces/templates/tableTentTemplate.ts',
+  'src/lib/print-menu-surfaces/templates/singleTableCardTemplate.ts',
+  'src/lib/menu-kit/templates/entrancePosterTemplate.ts',
   'src/lib/creative-editor/templateRegistryDal.ts',
   'src/lib/validation/creativeEditorTemplateSchemas.ts',
   'src/modules/creative-editor/export.ts',
@@ -174,6 +177,20 @@ const renderer = read('src/lib/printable-asset-templates/renderPrintableAsset.ts
   'mapPrintableTemplateToMenuCardStyle',
 ].forEach((token) => requireToken(renderer, token, 'printable asset renderer'));
 
+[
+  'src/lib/printable-asset-templates/renderPrintableAsset.ts',
+  'src/lib/printable-asset-templates/editorDocumentAdapter.ts',
+  'src/lib/print-menu-surfaces/templates/tableTentTemplate.ts',
+  'src/lib/print-menu-surfaces/templates/singleTableCardTemplate.ts',
+  'src/lib/menu-kit/templates/entrancePosterTemplate.ts',
+].forEach((file) => {
+  const source = read(file);
+  requireToken(source, 'compress: true', `${file} raster PDF compression`);
+  if (!/addImage\([\s\S]*?undefined,\s*["']FAST["']\)/.test(source)) {
+    failures.push(`${file} must use FAST lossless raster-image compression for PDF export`);
+  }
+});
+
 const editorAdapter = read('src/lib/printable-asset-templates/editorDocumentAdapter.ts');
 [
   'EDITOR_RENDERABLE_ASSETS',
@@ -301,6 +318,7 @@ const mobileShare = read('src/components/mobile/screens/MobileShareScreen.tsx');
   'templateRowPreviewHeight',
   'aria-pressed={active}',
   'brandColor: storeBrandColor',
+  "shortLink: (assetTypeId === 'feedback_qr' ? data.feedbackQrLink : data.menuLink).replace",
 ].forEach((token) => requireToken(mobileShare, token, 'mobile assets screen'));
 
 const useMenuList = read('src/components/templates/main-app/useMenuList/index.tsx');
@@ -329,7 +347,7 @@ const desktopAssetsRoute = read('src/components/templates/main-app/printableAsse
   "return 'png';",
   'Ready-to-print assets',
   'Use this style',
-  'Customize in editor',
+  'Customize design',
   'CreativeEditor',
   'chromeMode="embedded"',
   'productLabel="MenuList Assets"',
@@ -343,8 +361,24 @@ const desktopAssetsRoute = read('src/components/templates/main-app/printableAsse
   'setPreviewAsset',
   'Saved designs',
   'shouldShowSavedDesigns',
-  'Save as template',
-  'templateSaveLabel="Save as template"',
+  'Save reusable design',
+  'templateSaveLabel="Save reusable design"',
+  "availableToolIds={['background', 'images', 'text', 'styles', 'brandKit']}",
+  'enableBrowserDrafts',
+  'initialDrawerCollapsed',
+  'initialSelectedLayerId={null}',
+  "workspaceControls={['preview']}",
+  'requiresReadiness: true',
+  'requestCloseEditor',
+  'Discard unsaved design changes?',
+  'zIndex: 2200',
+  "createPortal((",
+  'pendingTemplateSaveReservationRef',
+  'createReservedTemplateId()',
+  'reservation.inFlight += 1',
+  'templateId: reservedTemplateId',
+  'title: documentTitle || editorState.title',
+  "setEditorBusyKey('editor-template-save')",
   'templateSavePreview',
   'thumbnailDataUrl: previewDataUrl',
   'stripPrintableAssetEditorAttributionLayers',
@@ -354,6 +388,7 @@ const desktopAssetsRoute = read('src/components/templates/main-app/printableAsse
   'saveCreativeEditorTemplate',
   'getCreativeEditorTemplate',
   'deleteCreativeEditorTemplate',
+  'title: labelConfirmDialogTitle(confirmationTitle)',
   'resolveCreativeEditorTemplateScope',
   'templateRegistryScope',
   'selectedPlatformTemplates',
@@ -367,6 +402,7 @@ const desktopAssetsRoute = read('src/components/templates/main-app/printableAsse
   'platformTemplateRegistryContext',
   'businessCategory: platformBusinessCategory',
   'secondaryLabel: project.url.replace',
+  "shortLink: (selectedAssetId === 'feedback_qr' ? data.feedbackQrLink : data.menuLink).replace",
 ].forEach((token) => requireToken(desktopAssetsRoute, token, 'desktop assets route'));
 [
   'normalizeTemplateThumbnailUrl(template.thumbnailUrl)',

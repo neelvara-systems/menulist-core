@@ -17,7 +17,7 @@ const OPERATOR_EMAIL = 'admin@neelvara.com';
 const FIXTURE_PREFIX = 'ml-hosted-qa-certification';
 const MAX_LEASE_HOURS = 72;
 
-type Command = 'prepare' | 'repair-shape' | 'verify' | 'cleanup';
+type Command = 'prepare' | 'repair-shape' | 'seed-menu' | 'set-location-capacity' | 'verify' | 'cleanup';
 
 type FirebaseCliAccount = {
     tokens: { refresh_token?: string };
@@ -41,10 +41,17 @@ function readArg(name: string): string | null {
 
 function readCommand(): Command {
     const command = process.argv[2];
-    if (command === 'prepare' || command === 'repair-shape' || command === 'verify' || command === 'cleanup') return command;
+    if (
+        command === 'prepare'
+        || command === 'repair-shape'
+        || command === 'seed-menu'
+        || command === 'set-location-capacity'
+        || command === 'verify'
+        || command === 'cleanup'
+    ) return command;
     throw new Error(
-        `Usage: hosted-qa-certification-fixture.ts <prepare|repair-shape|verify|cleanup> --confirm-project=${QA_PROJECT_ID}`
-        + ' [--fixture-id=<id>] [--credential-output=/absolute/path]',
+        `Usage: hosted-qa-certification-fixture.ts <prepare|repair-shape|seed-menu|set-location-capacity|verify|cleanup> --confirm-project=${QA_PROJECT_ID}`
+        + ' [--fixture-id=<id>] [--credential-output=/absolute/path] [--location-capacity=<1-10>]',
     );
 }
 
@@ -116,6 +123,15 @@ function normalizeFixtureId(value: string | null): string {
         throw new Error(`Pass --fixture-id=${FIXTURE_PREFIX}-<10 lowercase letters or digits>.`);
     }
     return value;
+}
+
+function readLocationCapacity(): number {
+    const raw = readArg('location-capacity');
+    const capacity = Number(raw);
+    if (!Number.isSafeInteger(capacity) || capacity < 1 || capacity > 10) {
+        throw new Error('Pass --location-capacity=<integer from 1 to 10>.');
+    }
+    return capacity;
 }
 
 async function prepare(): Promise<void> {
@@ -288,6 +304,7 @@ async function prepare(): Promise<void> {
             platformRole: 'OWNER',
             role: getOwnerRoleId(),
             storeId: String(storeId),
+            storeIds: [String(storeId)],
             tenantId: String(tenantId),
             uId: authUser.uid,
         });
@@ -370,13 +387,45 @@ async function verify(): Promise<void> {
     assert.equal(store.data()?.qaCertificationFixture, fixtureId);
     assert.equal(user.data()?.tenantId, markerData.tenantId);
     assert.equal(user.data()?.storeId, markerData.storeId);
+    const tenantStores = Array.isArray(tenant.data()?.storesList)
+        ? tenant.data()!.storesList.filter((entry: unknown): entry is Record<string, unknown> => (
+            Boolean(entry) && typeof entry === 'object' && !Array.isArray(entry)
+        ))
+        : [];
+    const activeStoreIds = tenantStores.flatMap((entry: Record<string, unknown>) => {
+        const candidate = Number(entry.storeId);
+        return entry.active !== false && Number.isSafeInteger(candidate) && candidate > 0
+            ? [candidate]
+            : [];
+    });
+    const userStoreIds = Array.isArray(user.data()?.storeIds)
+        ? user.data()!.storeIds.map(Number).filter((candidate: number) => Number.isSafeInteger(candidate) && candidate > 0)
+        : [];
+    const userStoreMappings = Array.isArray(user.data()?.stores)
+        ? user.data()!.stores.flatMap((entry: unknown) => {
+            if (!entry || typeof entry !== 'object' || Array.isArray(entry)) return [];
+            const candidate = Number((entry as Record<string, unknown>).storeId);
+            return Number.isSafeInteger(candidate) && candidate > 0 ? [candidate] : [];
+        })
+        : [];
+    const claimStoreIds = Array.isArray(authUser.customClaims?.storeIds)
+        ? authUser.customClaims.storeIds.map(Number).filter((candidate: number) => Number.isSafeInteger(candidate) && candidate > 0)
+        : [];
+    for (const activeStoreId of activeStoreIds) {
+        assert.ok(userStoreIds.includes(activeStoreId), `User storeIds is missing active store ${activeStoreId}.`);
+        assert.ok(userStoreMappings.includes(activeStoreId), `User stores mapping is missing active store ${activeStoreId}.`);
+        assert.ok(claimStoreIds.includes(activeStoreId), `Firebase claims storeIds is missing active store ${activeStoreId}.`);
+    }
     process.stdout.write(JSON.stringify({
+        activeStoreCount: activeStoreIds.length,
+        firebaseClaimStoreCount: claimStoreIds.length,
         email: markerData.email,
         expiresAt: subscriptionData.cycleEndDate.toDate().toISOString(),
         fixtureId,
         projectId: QA_PROJECT_ID,
         scope: { storeId: markerData.storeId, tenantId: markerData.tenantId },
         status: 'verified',
+        userStoreAccessCount: userStoreIds.length,
     }, null, 2) + '\n');
 }
 
@@ -424,6 +473,110 @@ async function repairShape(): Promise<void> {
     }, null, 2) + '\n');
 }
 
+async function setLocationCapacity(): Promise<void> {
+    const fixtureId = normalizeFixtureId(readArg('fixture-id'));
+    const locationCapacity = readLocationCapacity();
+    const { markerData } = await readFixture(fixtureId);
+    const markerRef = db.collection('platformSummary').doc(`${fixtureId}-marker`);
+    const subscriptionRef = db.collection('subscriptions').doc(fixtureId);
+    await db.runTransaction(async transaction => {
+        const [marker, subscription] = await Promise.all([
+            transaction.get(markerRef),
+            transaction.get(subscriptionRef),
+        ]);
+        assert.equal(marker.data()?.fixtureType, 'menulist_hosted_qa_certification_fixture');
+        assert.equal(marker.data()?.tenantId, markerData.tenantId);
+        assert.equal(subscription.data()?.qaCertification?.fixture, true);
+        assert.equal(subscription.data()?.manualPaymentEvidenceType, 'qa_certification_non_payment');
+        assert.equal(subscription.data()?.amount, 0);
+        assert.equal(subscription.data()?.monthlyCredits, subscription.data()?.monthlyCreditsAllowance);
+        const issuedAt = Timestamp.now();
+        transaction.update(subscriptionRef, {
+            monthlyCredits: 75 * locationCapacity,
+            monthlyCreditsAllowance: 75 * locationCapacity,
+            quantity: locationCapacity,
+            'qaCertification.locationCapacity': locationCapacity,
+            updatedOn: issuedAt,
+        });
+        transaction.update(markerRef, {
+            locationCapacity,
+            updatedOn: issuedAt,
+        });
+    });
+    process.stdout.write(JSON.stringify({
+        fixtureId,
+        locationCapacity,
+        projectId: QA_PROJECT_ID,
+        scope: { storeId: markerData.storeId, tenantId: markerData.tenantId },
+        status: 'location-capacity-set',
+    }, null, 2) + '\n');
+}
+
+async function seedMenu(): Promise<void> {
+    const fixtureId = normalizeFixtureId(readArg('fixture-id'));
+    const { markerData } = await readFixture(fixtureId);
+    const projectCollection = db.collection('projects')
+        .doc(String(markerData.tenantId))
+        .collection(String(markerData.storeId));
+    const summary = await db.collection('platformSummary').doc(`projects_${String(markerData.storeId)}`).get();
+    assert.equal(summary.exists, true, 'Hosted owner menu summary is missing.');
+    const matchingProjectIds = Object.entries(summary.data() || {}).flatMap(([key, value]) => {
+        if (!key.startsWith('projects.') || !value || typeof value !== 'object' || Array.isArray(value)) return [];
+        const localizedName = (value as Record<string, unknown>).name;
+        const name = localizedName && typeof localizedName === 'object' && !Array.isArray(localizedName)
+            ? (localizedName as Record<string, unknown>).en
+            : localizedName;
+        return name === 'RC Certification Menu' ? [key.slice('projects.'.length)] : [];
+    });
+    assert.equal(matchingProjectIds.length, 1, 'Expected exactly one RC Certification Menu created through the hosted owner UI.');
+    const [projectDocumentId] = matchingProjectIds;
+    assert.ok(projectDocumentId, 'Hosted owner menu identity is missing.');
+    const project = await projectCollection.doc(projectDocumentId).get();
+    assert.equal(project.exists, true, 'Hosted owner menu document is missing.');
+    const projectData = project.data();
+    assert.ok(projectData, 'Hosted owner menu data is missing.');
+    assert.equal(Number(projectData.tenantId ?? projectData.tId), Number(markerData.tenantId));
+    assert.equal(Number(projectData.storeId ?? projectData.sId), Number(markerData.storeId));
+    assert.equal(projectData.pId, 'ML');
+    const seededAt = Timestamp.now();
+    await project.ref.update({
+        config: { design: { menu: { showItemPrices: true } } },
+        files: [{
+            extractedData: {
+                data: {
+                    categories: [{ active: true, id: 'rc-hot-drinks', name: { en: 'Hot Drinks' } }],
+                    items: [{
+                        active: true,
+                        available: true,
+                        category: 'rc-hot-drinks',
+                        description: { en: 'Disposable hosted QA fixture item.' },
+                        id: 'rc-filter-coffee',
+                        name: { en: 'Filter Coffee' },
+                        price: '80',
+                    }],
+                    languages: [{ code: 'en', isPrimary: true, name: 'English' }],
+                },
+            },
+            index: 0,
+            name: 'hosted-qa-certification-menu.json',
+            size: 1024,
+            type: 'application/json',
+            uid: `${fixtureId}-menu`,
+            url: 'https://example.invalid/hosted-qa-certification-menu.json',
+        }],
+        languages: ['en'],
+        modifiedOn: seededAt,
+        qaCertificationFixture: fixtureId,
+    });
+    process.stdout.write(JSON.stringify({
+        fixtureId,
+        projectDocumentId: project.id,
+        projectId: QA_PROJECT_ID,
+        scope: { storeId: markerData.storeId, tenantId: markerData.tenantId },
+        status: 'menu-seeded',
+    }, null, 2) + '\n');
+}
+
 async function cleanup(): Promise<void> {
     const fixtureId = normalizeFixtureId(readArg('fixture-id'));
     const { markerData } = await readFixture(fixtureId);
@@ -456,6 +609,8 @@ async function main(): Promise<void> {
     await initializeServices();
     if (command === 'prepare') await prepare();
     else if (command === 'repair-shape') await repairShape();
+    else if (command === 'seed-menu') await seedMenu();
+    else if (command === 'set-location-capacity') await setLocationCapacity();
     else if (command === 'verify') await verify();
     else await cleanup();
 }

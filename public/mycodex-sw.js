@@ -4,10 +4,10 @@
  * Private docs policy:
  * - Do not cache document pages or markdown content.
  * - Cache only the offline fallback and static MyCodex logo assets.
- * - Navigation is network-first; offline shows /offline.
+ * - Navigation is network-first; offline shows /__mycodex/offline.
  */
 
-const MYCODEX_OFFLINE_URL = '/offline';
+const MYCODEX_OFFLINE_URL = '/__mycodex/offline';
 const MYCODEX_CACHE = 'mycodex-offline-v1';
 const MYCODEX_NAVIGATION_TIMEOUT_MS = 8000;
 const MYCODEX_STATIC_ASSETS = [

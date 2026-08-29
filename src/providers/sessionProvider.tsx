@@ -25,6 +25,7 @@ import {
 import {
     getAnswerlatticeScopedSession,
     isAnswerlatticeRuntimeRoute,
+    isAnswerlatticeSupportClientRoute,
     resolveAnswerlatticeSessionScope,
 } from '@lib/answerlattice/sessionScope';
 import { startLogCapture } from '@lib/localLogs/localLogsTracker';
@@ -157,6 +158,11 @@ export default function SessionProvider({ children, session, productContext }: P
         || isAnswerlatticeRuntimeRoute(normalizedPathname, currentHostname);
     const authenticatedSession = clientProviderSession ?? session;
     const answerlatticeScope = isAnswerlatticeRoute ? resolveAnswerlatticeSessionScope(authenticatedSession) : null;
+    const answerlatticeSupportClientScope = !isAnswerlatticeRoute
+        && isAnswerlatticeSupportClientRoute(normalizedPathname)
+        ? resolveAnswerlatticeSessionScope(authenticatedSession)
+        : null;
+    const isAnswerlatticeSupportClient = Boolean(answerlatticeSupportClientScope);
     const effectiveSession = isAnswerlatticeRoute
         ? getAnswerlatticeScopedSession(authenticatedSession as LoginUserType | null)
         : authenticatedSession;
@@ -186,6 +192,8 @@ export default function SessionProvider({ children, session, productContext }: P
     const isResellerSession = session?.user?.platformRole === RESELLER_USER_ROLE;
     const isStoreIndependentRoute =
         normalizedPathname === '/help-center'
+        || normalizedPathname === '/__mycodex'
+        || normalizedPathname.startsWith('/__mycodex/')
         || normalizedPathname === '/platform'
         || normalizedPathname.startsWith('/platform/')
         || normalizedPathname === '/ops'
@@ -195,11 +203,16 @@ export default function SessionProvider({ children, session, productContext }: P
         || normalizedPathname.startsWith('/reseller/');
     const canRenderBeforeStoreData = Boolean(session) && (
         (isAnswerlatticeRoute && Boolean(answerlatticeScope))
+        || isAnswerlatticeSupportClient
         || (isPlatformSession && isAnswerlatticeRoute)
         || (isPlatformSession && isStoreIndependentRoute)
         || (isResellerSession && (normalizedPathname === '/reseller' || normalizedPathname.startsWith('/reseller/')))
     );
-    const canRenderBeforeFirebaseAuth = canRenderBeforeStoreData;
+    // Linked MenuList Help Centre routes use the Answerlattice client and its
+    // product-scoped claims. They may skip unrelated MenuList store bootstrap,
+    // but must still wait for the Answerlattice Firebase auth scope before any
+    // governed chat/history reads run.
+    const canRenderBeforeFirebaseAuth = canRenderBeforeStoreData && !isAnswerlatticeSupportClient;
 
     // Reference to store previous session key for comparison
     const prevSessionKeyRef = useRef<string | undefined>(undefined);
@@ -434,7 +447,17 @@ export default function SessionProvider({ children, session, productContext }: P
         }
         providerSessionScopeKeyRef.current = currentProviderScopeKey;
 
-        if (isAnswerlatticeRoute) {
+        if (isAnswerlatticeRoute || isAnswerlatticeSupportClient) {
+            setActiveSubscriptionLoading(false);
+            return;
+        }
+
+        // Founder-console and legacy platform/ops surfaces authenticate the
+        // platform actor, but they do not operate as the actor's selected
+        // MenuList store. Avoid unrelated tenant, store, and subscription
+        // bootstrap reads while keeping Firebase Auth claim sync available to
+        // embedded platform tools that use client-side DAL access.
+        if (isPlatformSession && isStoreIndependentRoute) {
             setActiveSubscriptionLoading(false);
             return;
         }
@@ -462,7 +485,7 @@ export default function SessionProvider({ children, session, productContext }: P
         let cancelled = false;
 
         // Check if the session exists and store details have not been fetched yet
-        if (session && (session.user?.platformRole == MENULIST_PLATFORM_USER_ROLE ? true : Boolean(session.user?.storeId)) && !Boolean(storeDetails?.storeId)) {
+        if (session && Boolean(session.user?.storeId) && !Boolean(storeDetails?.storeId)) {
             setActiveSubscriptionLoading(Boolean(session.user?.storeId));
 
             const bootstrapStoreContext = async () => {
@@ -605,7 +628,10 @@ export default function SessionProvider({ children, session, productContext }: P
         clientProviderSession,
         fetchActiveSubscriptionForStore,
         firebaseAuthReady,
+        isAnswerlatticeSupportClient,
         isAnswerlatticeRoute,
+        isPlatformSession,
+        isStoreIndependentRoute,
         resetScopedProviderState,
         session,
         activeSubscriptionRetryNonce,

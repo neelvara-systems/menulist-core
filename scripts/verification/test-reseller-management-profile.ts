@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import {
+    isResellerManagementDraftChanged,
     isResellerManagementProfilesResponse,
     projectResellerManagementProfile,
 } from "../../src/lib/reseller/resellerManagementProfile";
@@ -29,6 +30,29 @@ const projected = projectResellerManagementProfile(persisted);
 assert(projected);
 assert.equal("password" in projected, false);
 assert.equal("authUserId" in projected, false);
+assert.equal(isResellerManagementDraftChanged({
+    active: true,
+    addressLine: "",
+    city: "",
+    country: "",
+    email: " RESELLER@EXAMPLE.TEST ",
+    maxOfflineActivations: "20",
+    name: " Example Reseller ",
+    notes: " Founder note ",
+    password: "",
+    phone: "919999999999",
+    postalCode: "",
+    state: "",
+    username: " EXAMPLE_RESELLER ",
+}, projected), false, "equivalent desktop/mobile drafts must not enter the reseller write path");
+assert.equal(isResellerManagementDraftChanged({
+    ...projected,
+    password: "new-password",
+}, projected), true, "a replacement password remains a material reseller change");
+assert.equal(isResellerManagementDraftChanged({
+    ...projected,
+    active: false,
+}, projected), true, "lifecycle changes remain writable");
 assert.equal(projectResellerManagementProfile({ ...persisted, totalTransactions: -1 }), null);
 assert.equal(projectResellerManagementProfile({ ...persisted, totalRevenueCollectedPaise: 1.5 }), null);
 assert.equal(projectResellerManagementProfile({ ...persisted, maxOfflineActivations: "20" }), null);

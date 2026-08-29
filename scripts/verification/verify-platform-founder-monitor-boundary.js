@@ -607,11 +607,12 @@ function verifyDesktop(component) {
     'Source Coverage',
     '<Button href="/platform/cost-posture">Cost Posture</Button>',
     '<Button href="/platform/owner-business-assistant">Business Health Monitor</Button>',
-    '<Button href="/platform/support-tickets">Support Tickets</Button>',
+    '<Button href="/ops/platform-notifications">Platform Notifications</Button>',
     'Reads are bounded and manual-refresh only.',
   ].forEach((token) => assertIncludes(component, token, 'Founder Monitor desktop surface'));
 
   [
+    '<Button href="/platform/support-tickets">Support Tickets</Button>',
     'fetch(',
     'response.json()',
     '.json().catch',

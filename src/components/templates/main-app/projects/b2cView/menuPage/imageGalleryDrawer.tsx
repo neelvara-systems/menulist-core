@@ -118,7 +118,9 @@ export default function ImageGalleryDrawer({ open, onClose, onImageSelect, uploa
                     }}>
                         {filteredImages.map((imageData: AssetsCategoryType) => {
                             return (
-                                <div
+                                <button
+                                    type="button"
+                                    aria-label={`Select ${imageData.name || imageData.tags || 'gallery image'} as background`}
                                     key={String(imageData.id || imageData.preview)}
                                     onClick={() => onImageSelect(imageData.preview)}
                                     style={{
@@ -130,10 +132,11 @@ export default function ImageGalleryDrawer({ open, onClose, onImageSelect, uploa
                                         width: '100%',
                                         display: 'flex',
                                         alignItems: 'center',
-                                        justifyContent: 'center'
+                                        justifyContent: 'center',
+                                        padding: 0,
                                     }}
                                 >
-                                    <div style={{
+                                    <span style={{
                                         position: 'relative',
                                         width: '100%',
                                         height: '100%',
@@ -155,8 +158,8 @@ export default function ImageGalleryDrawer({ open, onClose, onImageSelect, uploa
                                             height={300}
                                             unoptimized
                                         />
-                                    </div>
-                                </div>
+                                    </span>
+                                </button>
                             );
                         })}
                     </div>

@@ -70,4 +70,47 @@ assert.ok(headerSource.includes('aria-label="Sign in"'));
 assert.ok(!headerSource.includes('useState<any>(session?.user)'));
 assert.ok(!headerSource.includes("objectNullCheck(userData, 'email')"));
 
+const websiteHeaderSource = readFileSync(
+    resolve(process.cwd(), 'src/components/website/Header.tsx'),
+    'utf8',
+);
+const websiteCssSource = readFileSync(
+    resolve(process.cwd(), 'src/styles/website.css'),
+    'utf8',
+);
+const websiteEnglishLocale = JSON.parse(readFileSync(
+    resolve(process.cwd(), 'public/locales/menulist.ai/en-US.json'),
+    'utf8',
+));
+const websiteHindiLocale = JSON.parse(readFileSync(
+    resolve(process.cwd(), 'public/locales/menulist.ai/hi-IN.json'),
+    'utf8',
+));
+
+assert.ok(websiteHeaderSource.includes('const mobileNavigationGroups = ['));
+assert.ok(websiteHeaderSource.includes('key: "mobileProductLabel"'));
+assert.ok(websiteHeaderSource.includes('key: "mobileLearnLabel"'));
+assert.ok(websiteHeaderSource.includes('className="ws-mobile-account"'));
+assert.ok(!websiteHeaderSource.includes('<p className="ws-mobile-nav-group__label">{t("Header.mobileAccountLabel")}</p>'));
+assert.ok(websiteHeaderSource.includes('<WebsiteThemeSwitcher />'));
+assert.ok(!websiteHeaderSource.includes('ws-mobile-accordion'));
+assert.ok(!websiteHeaderSource.includes('openMobileSections'));
+assert.ok(websiteCssSource.includes('.ws-mobile-nav-link:focus-visible'));
+assert.ok(websiteCssSource.includes('min-height: 3.25rem;'));
+
+for (const locale of [websiteEnglishLocale, websiteHindiLocale]) {
+    assert.ok(locale.Website.Header.mobileNavigationLabel);
+    assert.ok(locale.Website.Header.mobileProductLabel);
+    assert.ok(locale.Website.Header.mobileLearnLabel);
+    assert.ok(locale.Website.Header.mobileAccountLabel);
+}
+
+assert.equal(websiteEnglishLocale.Website.Header.mobileProductLabel, 'Product');
+assert.equal(websiteEnglishLocale.Website.Header.mobileLearnLabel, 'Resources');
+assert.ok(websiteHeaderSource.includes('links: resourceDropdownLinks'));
+assert.ok(websiteHeaderSource.includes('className="ws-mobile-feature-sections"'));
+assert.ok(websiteHeaderSource.includes('websiteFeatureNavGroups.map((featureGroup)'));
+assert.ok(websiteHeaderSource.includes('featureGroup.links.map((featureLink)'));
+assert.ok(!websiteHeaderSource.includes('mobileFeatureShortcutsOpen'));
+
 console.log('Header navigation boundary tests passed.');

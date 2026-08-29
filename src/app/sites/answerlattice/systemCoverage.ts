@@ -5,7 +5,7 @@ export const ANSWERLATTICE_SYSTEM_COVERAGE = [
         items: [
             {
                 title: 'Workspace activation',
-                detail: 'Onboarding creates the AnswerLattice workspace, subscription summary, product profile, team access layer, and first launch proof.',
+                detail: 'After a controlled invitation, onboarding creates the AnswerLattice workspace, product profile, team access layer, and first launch proof.',
             },
             {
                 title: 'Team access',
@@ -25,7 +25,7 @@ export const ANSWERLATTICE_SYSTEM_COVERAGE = [
             },
             {
                 title: 'Billing and credits',
-                detail: 'Paid setup starts with Launch; plans, invoices, transactions, and support credit top-ups live inside AnswerLattice billing.',
+                detail: 'Planned public plans, invoices, transactions, and support-credit top-ups remain inside AnswerLattice Billing after commercial access is deliberately enabled.',
             },
         ],
     },

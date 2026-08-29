@@ -122,7 +122,20 @@ function TenantsDashboard({ tenantsList, setTenantsList }: TenantsDashboardProps
                     {record.deleted ? <Tag color='red'>Deleted</Tag> : <Tag color='warning'>Not deleted</Tag>}
                 </>
             ),
-        }
+        },
+        {
+            title: 'Actions',
+            key: 'actions',
+            render: (_: unknown, record: PlatformTenantRecord) => (
+                <Button
+                    aria-label={`Edit tenant ${record.name || record.tenantId}`}
+                    onClick={() => setTenantModal({ active: true, data: record })}
+                    type="link"
+                >
+                    Edit
+                </Button>
+            ),
+        },
     ];
 
     const updateLocalPlatformSummary = (type: keyof PlatformCounterSnapshot, allocatedId: number) => {
@@ -198,10 +211,7 @@ function TenantsDashboard({ tenantsList, setTenantsList }: TenantsDashboardProps
     return (
         <Flex style={{ overflowX: 'auto', width: '100%' }}>
             <Card title="Tenants " extra={<Button icon={<LuPlus />} type="primary" onClick={() => setTenantModal({ active: true, data: null })}>Add Tenant</Button>}>
-                <Table rowKey={(record) => String(record.tenantId ?? record.tenantKey)} dataSource={tenantsList} columns={columns}
-                    onRow={(record: PlatformTenantRecord) => ({
-                        onClick: () => setTenantModal({ active: true, data: record }), // Handle row click
-                    })} />
+                <Table rowKey={(record) => String(record.tenantId ?? record.tenantKey)} dataSource={tenantsList} columns={columns} />
             </Card>
             <TenantDetailsModal modalData={tenantModal} closeModal={onCloseModal} platformSummary={platformSummary} setStoreModal={setStoreModal} />
             <StoreDetailsModal modalData={storeModal} closeModal={onCloseStoreModal} />

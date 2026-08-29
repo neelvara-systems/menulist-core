@@ -17,7 +17,7 @@ import { openIsolatedBrowserUrl } from '@lib/browser/openIsolatedBrowserUrl';
 
 import { FEATURE_FLAGS } from '@config/features';
 import { getBoundedStoreStringContext, logStoreDataFailure } from '@database/stores/storeDiagnostics';
-import { generateOBPUrl } from '@lib/obp/generateOBPUrl';
+import { generateConfiguredOBPUrl } from '@lib/obp/generateOBPUrl';
 import { Alert, App, Button, Card, Divider, Flex, Steps, Typography, theme } from 'antd';
 import { useState } from 'react';
 import { LuCheck, LuCopy, LuExternalLink, LuGlobe, LuStore } from 'react-icons/lu';
@@ -84,6 +84,7 @@ interface GoogleListingGuideProps {
     descriptor?: string;
     googleLinkUpdated?: boolean;
     knownFor?: string;
+    officialPageUrl?: string;
     onMarkDone: () => void;
     onDismiss: () => void;
 }
@@ -95,11 +96,13 @@ export default function GoogleListingGuide({
     descriptor,
     googleLinkUpdated,
     knownFor,
+    officialPageUrl,
     onMarkDone,
     onDismiss,
 }: GoogleListingGuideProps) {
     const { message: messageApi } = App.useApp();
     const [copied, setCopied] = useState(false);
+    const [dismissed, setDismissed] = useState(false);
     const [profileKitCopied, setProfileKitCopied] = useState(false);
     const { token } = theme.useToken();
 
@@ -109,8 +112,8 @@ export default function GoogleListingGuide({
     // Hide if OBP is not enabled
     if (!FEATURE_FLAGS.ENABLE_OBP) return null;
 
-    const obpUrl = generateOBPUrl(subdomain, customDomain);
-    if (!obpUrl) return null;
+    const obpUrl = officialPageUrl || generateConfiguredOBPUrl(subdomain, customDomain);
+    if (!obpUrl || dismissed) return null;
     const menuUrl = `${obpUrl.replace(/\/$/, '')}/menu`;
     const profileKitRows = [
         businessName?.trim() ? { label: 'Business name', value: businessName.trim() } : null,
@@ -178,6 +181,11 @@ export default function GoogleListingGuide({
             }));
             messageApi.error('Could not open Google Business Profile');
         }
+    };
+
+    const handleDismiss = () => {
+        setDismissed(true);
+        onDismiss();
     };
 
     // Already confirmed — show compact success state
@@ -346,7 +354,7 @@ export default function GoogleListingGuide({
                 <Button onClick={onMarkDone}>
                     Done updating
                 </Button>
-                <Button type="text" size="small" onClick={onDismiss}>
+                <Button type="text" size="small" onClick={handleDismiss}>
                     Remind me later
                 </Button>
             </Flex>

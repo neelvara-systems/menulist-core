@@ -220,6 +220,7 @@ export default function SelectionContext({
                                 label: (
                                     <Flex align="center" gap={6}>
                                         <Checkbox
+                                            aria-label={`Select all items in ${catName}`}
                                             checked={allCatSelected}
                                             indeterminate={someCatSelected}
                                             onChange={(e) => handleToggleCategory(catName, e.target.checked)}
@@ -247,6 +248,7 @@ export default function SelectionContext({
                                                 }}
                                             >
                                                 <Checkbox
+                                                    aria-label={`Select ${item.name}`}
                                                     checked={selectedIds.has(item.id)}
                                                     onChange={(e) => handleToggleItem(item.id, e.target.checked)}
                                                     onClick={(e) => e.stopPropagation()}

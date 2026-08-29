@@ -46,6 +46,13 @@ Current intentional auto-create callers:
 - `src/components/templates/main-app/projects/index.tsx`
 - `src/components/mobile/providers/MobileProjectsProvider.tsx`
 
+The desktop empty-menu recovery renders `ProcessGuideModal` as a named
+`How It Works` dialog. Its explanatory body is bounded to the dynamic viewport
+and scrollable, the existing `Got It, Let's Start!` action remains in an
+always-visible footer, and tips collapse to one column below the existing `md`
+breakpoint. This preserves pointer, keyboard, and reduced-width completion
+without changing project or upload data paths.
+
 ### Read-Only Reads
 
 `getExistingProjectsListWithoutLoader()` reads the same summary doc but never writes. It must be used where an empty project list is a valid empty state.
@@ -102,7 +109,11 @@ Project file data URLs pass through `projectUploadPayload.ts`, which verifies de
 
 `setProjectActive()` validates the exact project scope and existence inside one transaction, checks inherited-project deactivation policy when applicable, and writes project plus summary state together. It cannot create an active-only phantom document after a stale UI action.
 
-`deleteProject()` performs linked-outlet preflight before a transaction re-reads project and summary truth. The transaction rejects missing, mismatched, already deleted, inherited, or actively referenced base projects; captures the latest summary tombstone; removes the summary entry; and promotes the latest eligible fallback default atomically. Cache revalidation covers both the deleted project and any promoted fallback.
+`deleteProject()` delegates deletion authority to `/api/projects/delete`. Its Admin transaction reads the scoped project, summary, store, tenant, and every active tenant outlet's exact linked-master query before writing, so a concurrent link cannot race the tombstone. It rejects missing, mismatched, already deleted, inherited, protected special-menu, live-reference, or linked-master state; captures the latest summary tombstone; removes the summary entry; and promotes the latest eligible fallback default atomically. Cache revalidation covers both the deleted project and any promoted fallback.
+
+Every expected rejection returns a stable `project_delete_*` code plus bounded server copy. The browser accepts only the shared whitelisted response shape and maps the code to static owner text through `getSafeUiErrorMessage()`; it never displays arbitrary response text. The shared DAL composer owns the one request-rejection toast and treats only those whitelisted policy codes as expected outcomes rather than error-level diagnostics. Desktop and mobile project selectors stop after that handled rejection without logging it a second time, while unknown DAL failures and post-request project failures retain bounded error logging.
+
+Desktop Reset Menu binds its destructive identity, file count, scope, write payload, diagnostics, and post-write form state to the project currently being edited. Selected/active project state changes only when that same project is also selected. While reset or modal deletion is pending, the nested confirmation disables close, mask/keyboard dismissal, Cancel, and repeat submission until the acknowledged mutation finishes.
 
 ## Diagnostics Contract
 
@@ -133,6 +144,8 @@ Editor-adjacent translation repairs that mirror translated project name, descrip
 Editor helper direct-save fallbacks must follow the same acknowledgement rule. `uploadedImagesList.tsx` and `descriptionGeneration.shared.ts` require `assertProjectUpdateSucceeded()` before local active-project state, generated-description persistence, or success copy changes when they save through `updateProject()` without a parent `onProjectDataUpdate` / `persistProject` callback. Rejected acknowledgement codes are `menu_editor_item_image_delete_project_update_rejected` and `menu_editor_description_generation_project_update_rejected`. Item-photo deletion persists the project without the image first and only then performs best-effort Storage cleanup; a failed project write therefore cannot leave durable menu truth pointing at a deleted object, while cleanup failure logs `menu_editor_item_image_storage_cleanup_failed` without rolling back the committed project. Batch image review is stricter: `BatchImageGenerationResultView.tsx` delegates selected rows to required `onBatchImagesPersist`, and desktop/mobile parents call `appendImageBatchProjectSelections()` so current project truth is read and appended transactionally instead of saving a stale full-project snapshot. Active or pending editor saves must drain before that append. `descriptionGeneration.shared.ts` also routes service-layer returned-error diagnostics through `menu_editor_description_generation_returned_error_message` with bounded project/file/result-message/message-type metadata instead of raw logger warnings.
 
 Design publish surfaces must require `assertProjectUpdateSucceeded()` before local published state, cached project state, success copy, or post-publish verification setup changes. `src/components/templates/main-app/projects/b2cView/index.tsx` uses `projects_b2c_publish_project_update_rejected`; `src/components/mobile/screens/MobileDesignEditorScreen.tsx` uses `mobile_design_publish_project_update_rejected`.
+
+The Mobile Menu setup `Publish menu` action is a real publish boundary, not a navigation label. `MobileMenuScreen` blocks duplicate confirmation/publish attempts, requires `PUBLISH_MENU`, drains and acknowledges any pending debounced menu save, calls the same `publishProject()` DAL with the loaded `modifiedOn` precondition, requires `assertProjectUpdateSucceeded()` before updating mobile/store state or showing success, and uses the existing bounded post-publish verification handoff. Failure leaves the menu recoverable and records only bounded `mobile_menu_publish_*` diagnostics. `MenuSetupProgress` routes `open_publish` to this explicit callback; when a host does not provide one, its existing Menu handoff remains unchanged.
 
 Generated project-image saves persist only `{ projectImage }` through transactional `updateProjectMetadata()` and require `assertProjectUpdateSucceeded()` before returning an image URL. They no longer reconstruct/write a stale full summary. A failed metadata save preserves the deterministic prepared-media object because another retry or record may already reference that same content-addressed URL; later cleanup must be retention-based and reference-aware. Acknowledgement failure uses `project_image_generation_metadata_update_rejected`.
 

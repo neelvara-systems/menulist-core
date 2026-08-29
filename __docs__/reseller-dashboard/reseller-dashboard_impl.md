@@ -5,8 +5,28 @@
 **Feature:** Assisted Onboarding Portal for Authorized Resellers  
 **Status:** Implemented - reseller boundary source gate added July 2, 2026
 **Created:** February 27, 2026  
-**Last Updated:** July 25, 2026
+**Last Updated:** August 28, 2026
 **Audience:** Developers
+
+August 28, 2026 local browser and route-parity corrections:
+
+- Mobile tier cards, billing choices, and commitment choices expose selected
+  state with `aria-pressed`; location count has a stable accessible name. The
+  shared mobile Card wrapper forwards pressed state to its rendered control.
+- Desktop onboarding no longer reads `Form` values during the component's
+  initial disconnected render. Confirmation derives plan values only when the
+  connected confirm step renders, eliminating the Ant Design `useForm`
+  console warning.
+- Desktop confirmation now includes the selected commitment period, matching
+  mobile confirmation and the submitted tracking contract.
+- The authenticated main layout reuses its existing current-user read to send
+  a reseller opening `/dashboard` to `/reseller`; it adds no duplicate
+  Firestore lookup. Normal owners remain redirected away from `/reseller` by
+  the reseller server layout.
+- Connected Chrome completed mobile and desktop onboarding through the final
+  pre-provider confirmation with deterministic emulator fixtures. Neither
+  submit control was invoked; the fixture and its private credential file were
+  removed and absence was verified afterward.
 
 August 1, 2026 onboarding authority and recovery corrections:
 

@@ -94,7 +94,7 @@ SecurityOS maps its repository security audit, Storage isolation, governance aut
 
 ### Registered-only products
 
-CampaignCue, SignalDesk, and MyCodex have registered-only evidence bundles without a pass claim. Neelvara is visible but remains unknown because no focused verifier is registered.
+CampaignCue and SignalDesk have registered-only evidence bundles without a pass claim. MyCodex has focused partial boundary evidence without claiming ownership or certification of the MenuList and Answerlattice product APIs it presents. Neelvara is visible but remains unknown because no focused verifier is registered.
 
 ## Acceptance Criteria
 

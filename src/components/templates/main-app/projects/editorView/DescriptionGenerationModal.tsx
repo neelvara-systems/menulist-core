@@ -262,9 +262,12 @@ const DescriptionGenerationModal: React.FC<DescriptionGenerationModalProps> = ({
                                 <Text strong style={{ display: 'block', marginBottom: 10, fontSize: 14 }}>Description length</Text>
                             <Flex gap={8}>
                                 {DESCRIPTION_LENGTH_OPTIONS.map((option) => (
-                                    <div
+                                    <button
+                                        type="button"
+                                        aria-pressed={contentLength === option.value}
+                                        disabled={isProcessing}
                                         key={option.value}
-                                        onClick={() => !isProcessing && setContentLength(option.value)}
+                                        onClick={() => setContentLength(option.value)}
                                         style={{
                                             flex: 1,
                                             padding: '12px 14px',
@@ -274,7 +277,9 @@ const DescriptionGenerationModal: React.FC<DescriptionGenerationModalProps> = ({
                                             cursor: isProcessing ? 'not-allowed' : 'pointer',
                                             opacity: isProcessing ? 0.6 : 1,
                                             transition: 'all 0.2s ease',
-                                            textAlign: 'center'
+                                            textAlign: 'center',
+                                            color: 'inherit',
+                                            font: 'inherit',
                                         }}
                                     >
                                         <Text strong style={{ color: contentLength === option.value ? token.colorPrimary : token.colorText, display: 'block' }}>
@@ -283,7 +288,7 @@ const DescriptionGenerationModal: React.FC<DescriptionGenerationModalProps> = ({
                                         <Text type="secondary" style={{ fontSize: 11 }}>
                                             {option.description}
                                         </Text>
-                                    </div>
+                                    </button>
                                 ))}
                             </Flex>
                         </div>
@@ -291,9 +296,12 @@ const DescriptionGenerationModal: React.FC<DescriptionGenerationModalProps> = ({
                             <Text strong style={{ display: 'block', marginBottom: 10, fontSize: 14 }}>Writing style</Text>
                             <Flex gap={8}>
                                 {DESCRIPTION_TONE_OPTIONS.map((option) => (
-                                    <div
+                                    <button
+                                        type="button"
+                                        aria-pressed={descriptionTone === option.value}
+                                        disabled={isProcessing}
                                         key={option.value}
-                                        onClick={() => !isProcessing && setDescriptionTone(option.value)}
+                                        onClick={() => setDescriptionTone(option.value)}
                                         style={{
                                             flex: 1,
                                             padding: '12px 14px',
@@ -303,7 +311,9 @@ const DescriptionGenerationModal: React.FC<DescriptionGenerationModalProps> = ({
                                             cursor: isProcessing ? 'not-allowed' : 'pointer',
                                             opacity: isProcessing ? 0.6 : 1,
                                             transition: 'all 0.2s ease',
-                                            textAlign: 'center'
+                                            textAlign: 'center',
+                                            color: 'inherit',
+                                            font: 'inherit',
                                         }}
                                     >
                                         <Text strong style={{ color: descriptionTone === option.value ? token.colorPrimary : token.colorText, display: 'block' }}>
@@ -312,7 +322,7 @@ const DescriptionGenerationModal: React.FC<DescriptionGenerationModalProps> = ({
                                         <Text type="secondary" style={{ fontSize: 11 }}>
                                             {option.description}
                                         </Text>
-                                    </div>
+                                    </button>
                                 ))}
                             </Flex>
                         </div>

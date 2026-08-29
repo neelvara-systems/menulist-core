@@ -119,7 +119,7 @@ Both are wired through `src/database/stores/uploadOBPPhoto.ts` and `src/database
 
 `deleteOBPPhotos()` keeps cleanup best-effort after the related store save succeeds. New uploads and replaced/removed objects enter the same set of retryable cleanup candidates. Every desktop/mobile/embedded caller passes final saved `publicPresence` references; the helper deduplicates the queue and excludes any URL still used by `businessCover` or `photos[]`. Reset, store switch, or unmount can remove abandoned immediate uploads without deleting committed media. The helper returns only failed URLs so callers retain them for retry. Failed cleanup uses bounded Storage diagnostics with counts and URL length metadata only; raw Storage URLs and provider errors are not direct-console logged.
 
-Desktop `LocationInfoTab` binds `addressLine` and `postalCode`, while initial values read `address` and `pincode` only as legacy fallbacks. `normalizeGeoCoordinateDraft()` is shared by desktop, MobileShell, and public Maps embedding: both coordinates are required together, ranges are enforced, zero remains valid, and an empty pair clears geo. `normalizeOwnerPublicPresenceLinks()` applies the same HTTPS/Google allowlists before desktop, standalone mobile, or embedded B2C persistence that public rendering applies again. Public Call and WhatsApp admission also requires the shared phone helper to produce a real destination.
+Desktop `LocationInfoTab` binds `addressLine` and `postalCode`, while initial values read `address` and `pincode` only as legacy fallbacks. `normalizeGeoCoordinateDraft()` is shared by desktop, MobileShell, and public Maps embedding: both coordinates are required together, ranges are enforced, zero remains valid, and an empty pair clears geo. `normalizeOwnerPublicPresenceLinks()` applies the same HTTPS/Google allowlists before desktop, standalone mobile, or embedded B2C persistence that public rendering applies again. Public Call and WhatsApp admission also requires the shared phone helper to produce a real destination with 7–15 international digits; dial-code-only and all-zero placeholder values remain stored owner input but do not become customer actions.
 
 When an authorized owner saves or removes `publicPresence.googleMapsUrl`, the shared `updateStore()` mutation mirrors or removes the internal `externalLocationIdentity.bindings.google_maps` URI binding in the same store write. The binding records only the normalized provider URI and owner-confirmation metadata; it does not expose provider IDs on OBP, change canonical address/hours, add a Firestore operation, or propagate a master location's identity to outlets. A Maps-grounded Place-ID candidate uses the separate explicit-confirmation boundary documented under `__docs__/menulist-tools/maps-place-check/`.
 
@@ -133,6 +133,10 @@ and its visible LocalBusiness location links; one outlet's address or hours is
 never projected as brand-wide truth.
 
 Desktop and mobile public-output failures use the same bounded boundary. `OBPLinkCard` logs `obp_link_card_default_project_load_failed`, `obp_link_card_copy_failed`, `obp_link_card_copy_message_failed`, `obp_link_card_whatsapp_open_failed`, `obp_link_card_open_failed`, `obp_link_card_qr_download_failed`, and `obp_link_card_share_tracking_failed` with store/tenant, OBP/menu URL presence-length metadata, QR type, message lengths, fixed share method values, and clipboard/fallback support booleans only. Its Copy Link and Copy Message success feedback plus `copy_link`/`copy_message` share tracking run only after Clipboard API success or acknowledged textarea fallback success, so failed browser handoffs do not record false owner share actions. `GoogleListingGuide` logs `google_listing_guide_link_copy_failed`, `google_listing_guide_profile_kit_copy_failed`, and `google_listing_guide_open_failed` with subdomain/custom-domain/OBP URL presence-length metadata, profile-kit line count, owner-text presence booleans, and clipboard/fallback support booleans only; link and profile-kit copy success feedback waits for Clipboard API success or acknowledged textarea fallback success. The legacy Custom Domain tab logs `desktop_custom_domain_open_failed`, `desktop_custom_domain_link_copy_failed`, and `desktop_custom_domain_dns_copy_failed` with bounded domain, copy URL, DNS record metadata, and clipboard/fallback support booleans only; active-domain and DNS copied feedback waits for Clipboard API success or acknowledged textarea fallback success. Business Settings marks the Google listing as updated only after `updateStore()` acknowledgement; rejected writes use `desktop_official_page_google_link_store_update_rejected` and route through `desktop_official_page_google_link_update_failed`. The embedded Business Settings Presence Monitor logs `business_settings_presence_screen_links_load_failed` with bounded store, tenant, subdomain/custom-domain, OBP URL, and menu-presence metadata only; official-link copy is owned by the shared Presence Monitor instead of an embedded direct-copy fallback. Owner Dashboard official-link cards use the same store diagnostic boundary: `GoogleListingCard` logs `owner_dashboard_google_listing_copy_failed`, `owner_dashboard_google_listing_open_failed`, and `owner_dashboard_google_listing_mark_done_failed`, waits for acknowledged official-link copy before copied feedback, and requires `owner_dashboard_google_listing_store_update_rejected` acknowledgement before local updated state or save success copy. Official-link adoption guidance is embedded in existing Dashboard and Share surfaces; there is no separate nudge card, dismissal storage, or associated diagnostic path. These desktop paths must not log raw generated public URLs, owner-entered business text, generated share messages, DNS/domain values, analytics payloads, store IDs, tenant IDs, or browser exception text.
+
+The desktop Business Settings `Remind me later` action dismisses its Google
+profile guide for the current mounted session only. It performs no Firestore
+write, creates no dismissal record, and returns after a later route refresh.
 
 July 30, 2026 server failure-truth hardening: `src/app/client/obp/OBPContent.tsx` retains the same 60-second public cache tags, retry policy, and bounded diagnostics, but exhausted menu-summary or active-store-count reads now throw into `src/app/client/error.tsx`. An infrastructure failure must not become an authoritative "menu coming soon" state or a false single-location render. OBP server fallback diagnostics log `public_obp_menu_info_lookup_failed`, `public_obp_menu_info_resolution_failed`, and `public_obp_store_count_lookup_failed` through bounded runtime diagnostics. Diagnostics remain bounded to store, tenant, tenant-type, active-special-menu, and operation presence-length metadata plus normalized source error metadata; raw IDs, public domains, menu names, project slugs, provider payloads, and exception text are not logged. Source gates: `npm run verify:official-business-page-boundary` and `npm run verify:public-business-truth`.
 
@@ -845,7 +849,21 @@ Mobile unmount cleanup does not run while an admitted store save is unresolved. 
 
 The page-level Reset action restores every parent-controlled draft from the
 current persisted store model, including social profile URLs, regular weekly
-hours, Guest Feedback settings, and the review URL. It also clears the weekly
+hours, Guest Feedback settings, the review URL, and every governed Business
+Attribute key. Optional Business Profile, Official Page, and external analytics
+identifier fields are included as explicit persisted value-or-undefined keys,
+so Ant does not retain an unsaved scalar merely because the stored document
+omits that field. Search Console legacy/current normalization is completed
+before that explicit projection. Initial load and Reset also share one locale
+default projection for country, currency, timezone, business-day end, date
+format, and time format. Computed/cookie defaults therefore cannot be replaced
+by a cancelled draft merely because the persisted store omits the field. The
+attribute projection replaces the nested form value in one
+atomic field update. This clears persisted-absent switches without Ant's merge
+retaining a changed draft and avoids the circular-reference diagnostic caused
+by repeated nested field writes. The normal load/save projection is unchanged,
+so Reset itself writes no false defaults and performs no Firebase mutation.
+It also clears the weekly
 hours dirty/day tracking so a later unrelated Save cannot carry cancelled
 hours or social-profile changes. Independently persisted panels such as
 External Menu Sync, special hours, and time-slot presets retain their own save
@@ -882,7 +900,27 @@ colour cannot remain as hidden owner truth. This is still the existing single
 store update and cache invalidation; no collection, rule, index, Function, or
 additional Firebase operation is introduced.
 
+### Multi-location owner-link resolution
+
+Every owner-facing Official Business Page link emitter resolves the selected
+store from the already-loaded tenant store list. A store with its own verified
+custom domain or subdomain keeps that direct address. An active outlet without
+its own host inherits the active master store host and appends its validated
+`outletSlug`. Unsafe or missing outlet slugs fail closed instead of producing a
+misleading link. The multi-location master root remains the brand/location
+selector; the inherited outlet link is the canonical direct page for the
+selected branch.
+
+### Mobile save-action clearance
+
+The mobile editor portals its Reset and Save action bar to `document.body` and
+positions it above the shared bottom-navigation clearance. This keeps the
+owner action reachable at narrow phone heights and prevents a Save tap from
+being intercepted by an underlying navigation tab. The editor reserves
+matching bottom scroll space so the final fields remain visible above both
+fixed surfaces.
+
 ---
 
 **Document Signature:** Cascade (Lead Architect)  
-**Last Updated:** August 15, 2026 (owner social-link admission and accessibility boundary)
+**Last Updated:** August 27, 2026 (outlet-link resolution and mobile action clearance)

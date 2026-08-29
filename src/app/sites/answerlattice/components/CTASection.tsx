@@ -6,20 +6,20 @@ export default function CTASection({ basePath = '' }: { basePath?: string }) {
         <section className="al-final-cta">
             <div className="al-final-cta__panel mx-auto max-w-4xl text-center" data-answerlattice-reveal>
                 <h2>
-                    Give your product users support they can trust.
+                    Start with the 10 questions your users will ask first.
                 </h2>
                 <p>
-                    Launch with an in-app support widget, hosted help, and approved answers before fallback. Missing coverage becomes tickets, feedback, and review work so support knowledge keeps improving without pretending to run on autopilot.
+                    Bring the product material you already have. Review the first answers, verify the user experience, and improve from real missed questions.
                 </p>
                 <div className="al-final-cta__actions">
                     <AnswerlatticeLink
                         basePath={basePath}
-                        href="/get-started"
+                        href="/early-access"
                         data-answerlattice-event="final_cta_clicked"
-                        data-answerlattice-label="create_workspace"
+                        data-answerlattice-label="build_first_10_answers"
                         className="al-final-cta__button al-final-cta__button--primary"
                     >
-                        Create workspace
+                        Request early access
                         <LuArrowRight aria-hidden size={16} />
                     </AnswerlatticeLink>
                     <AnswerlatticeLink
@@ -34,7 +34,7 @@ export default function CTASection({ basePath = '' }: { basePath?: string }) {
                     </AnswerlatticeLink>
                 </div>
                 <span>
-                    Built for solo founders, small SaaS teams, and studios managing multiple launches.
+                    Built for vibe coders, solo founders, small SaaS teams, and studios.
                 </span>
             </div>
         </section>

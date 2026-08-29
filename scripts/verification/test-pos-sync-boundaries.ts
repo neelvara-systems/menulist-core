@@ -11,6 +11,7 @@ import { buildMenuSnapshot } from '../../src/lib/posSync/payloadFormatter';
 import { createPosSyncPinnedLookup } from '../../src/lib/posSync/pinnedWebhookRequest';
 import { isPosSyncSecretScopeCurrent } from '../../src/lib/posSync/secretScope';
 import { projectPosSyncSecretDocument } from '../../src/lib/posSync/secretDocumentBoundary';
+import { resolvePosSyncSelectedStoreScope } from '../../src/lib/posSync/selectedStoreScope';
 import {
     isBlockedPosSyncNetworkTarget,
     validatePosSyncWebhookUrl,
@@ -47,6 +48,46 @@ assert.equal(isBlockedPosSyncNetworkTarget('2002::1'), true);
 assert.equal(isBlockedPosSyncNetworkTarget('3fff::1'), true);
 assert.equal(isBlockedPosSyncNetworkTarget('8.8.8.8'), false);
 assert.equal(isBlockedPosSyncNetworkTarget('2606:4700:4700::1111'), false);
+
+const multiStoreSession = {
+    sId: 101,
+    tId: 1,
+    user: {
+        storeId: 101,
+        storeIds: [101, 102],
+        stores: [
+            { role: 'owner', storeId: 101 },
+            { role: 'owner', storeId: 102 },
+        ],
+        tenantId: 1,
+    },
+};
+assert.deepEqual(resolvePosSyncSelectedStoreScope(multiStoreSession, 101, 1), {
+    ok: true,
+    storeScope: { documentId: '101', numericId: 101 },
+    tenantScope: { documentId: '1', numericId: 1 },
+});
+assert.deepEqual(resolvePosSyncSelectedStoreScope(multiStoreSession, 102, 1), {
+    ok: true,
+    storeScope: { documentId: '102', numericId: 102 },
+    tenantScope: { documentId: '1', numericId: 1 },
+});
+assert.deepEqual(resolvePosSyncSelectedStoreScope(multiStoreSession, 103, 1), {
+    ok: false,
+    reason: 'forbidden',
+});
+assert.deepEqual(resolvePosSyncSelectedStoreScope(multiStoreSession, ' 102', 1), {
+    ok: false,
+    reason: 'invalid_request',
+});
+assert.deepEqual(resolvePosSyncSelectedStoreScope(multiStoreSession, 102, 2), {
+    ok: false,
+    reason: 'forbidden',
+});
+assert.deepEqual(resolvePosSyncSelectedStoreScope({ ...multiStoreSession, storeId: 102 }, 102, 1), {
+    ok: false,
+    reason: 'not_onboarded',
+});
 
 assert.equal(isPosSyncSecretScopeCurrent({
     store: { active: true, tenantId: 7 },

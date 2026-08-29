@@ -9,6 +9,19 @@
  */
 
 import { appendPublicPath, getTenantBaseUrl } from '@constant/urls';
+import { normalizePublicOutletSlug } from '@lib/publicRouting/pathSegments';
+
+type ConfiguredOBPStoreAddress = {
+    customDomain?: unknown;
+    isMaster?: unknown;
+    outletSlug?: unknown;
+    storeDetails?: unknown;
+    subdomain?: unknown;
+};
+
+const getConfiguredAddressValue = (value: unknown): string => (
+    typeof value === 'string' ? value.trim() : ''
+);
 
 /**
  * Generate the OBP URL for a store
@@ -18,6 +31,61 @@ export function generateOBPUrl(
     customDomain?: string,
 ): string {
     return getTenantBaseUrl(subdomain, customDomain);
+}
+
+/**
+ * Generate an owner-shareable OBP URL only after the store has a configured
+ * public address. `generateOBPUrl()` intentionally retains its platform-origin
+ * fallback for public routing internals; owner distribution controls must not
+ * treat that fallback as the store's customer link.
+ */
+export function generateConfiguredOBPUrl(
+    subdomain?: string,
+    customDomain?: string,
+): string {
+    return subdomain?.trim() || customDomain?.trim()
+        ? generateOBPUrl(subdomain, customDomain)
+        : '';
+}
+
+/**
+ * Resolve the shareable OBP URL for a selected store.
+ *
+ * Outlet documents intentionally do not own the tenant host. Their public OBP
+ * inherits the active master store's configured host and appends the validated
+ * outlet slug. This keeps owner copy/share/QR controls aligned with the public
+ * router without adding a store or tenant read.
+ */
+export function generateConfiguredStoreOBPUrl(
+    store?: ConfiguredOBPStoreAddress | null,
+    tenantStores?: readonly unknown[] | null,
+): string {
+    if (!store) return '';
+
+    const directUrl = generateConfiguredOBPUrl(
+        getConfiguredAddressValue(store.subdomain),
+        getConfiguredAddressValue(store.customDomain),
+    );
+    if (directUrl) return directUrl;
+
+    const outletSlug = normalizePublicOutletSlug(store.outletSlug);
+    if (!outletSlug || !Array.isArray(tenantStores)) return '';
+
+    const masterEntry = tenantStores.find((value) => (
+        Boolean(value)
+        && typeof value === 'object'
+        && (value as ConfiguredOBPStoreAddress).isMaster === true
+    )) as ConfiguredOBPStoreAddress | undefined;
+    const nestedMaster = masterEntry?.storeDetails;
+    const masterStore = nestedMaster && typeof nestedMaster === 'object'
+        ? nestedMaster as ConfiguredOBPStoreAddress
+        : masterEntry;
+    const masterUrl = generateConfiguredOBPUrl(
+        getConfiguredAddressValue(masterStore?.subdomain),
+        getConfiguredAddressValue(masterStore?.customDomain),
+    );
+
+    return masterUrl ? appendPublicPath(masterUrl, outletSlug) : '';
 }
 
 /**

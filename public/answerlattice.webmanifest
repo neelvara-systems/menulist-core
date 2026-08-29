@@ -2,6 +2,7 @@
   "name": "AnswerLattice",
   "short_name": "AnswerLattice",
   "description": "Page-aware support knowledge infrastructure for small SaaS teams.",
+  "id": "/answerlattice-website",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

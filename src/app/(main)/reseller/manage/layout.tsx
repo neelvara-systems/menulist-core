@@ -6,7 +6,7 @@ type ResellerManageLayoutProps = {
 };
 
 export default async function ResellerManageLayout({ children }: ResellerManageLayoutProps) {
-    await requirePlatformAdminRouteAccess('/dashboard');
+    await requirePlatformAdminRouteAccess('/reseller');
 
     return <>{children}</>;
 }

@@ -1,5 +1,4 @@
 import JsonLdScript from '@/components/seo/JsonLdScript';
-import { getAnswerlatticePlanById } from '@data/answerlattice/plans';
 import {
     buildAnswerlatticeUrl,
     ANSWERLATTICE_PUBLIC_PAGES,
@@ -13,7 +12,6 @@ function buildAnswerlatticePageId(path: string): string {
 }
 
 export default function AnswerlatticeStructuredData() {
-    const launchPlan = getAnswerlatticePlanById('answerlattice_launch', 'MONTH');
     const graph = {
         '@context': 'https://schema.org',
         '@graph': [
@@ -56,13 +54,6 @@ export default function AnswerlatticeStructuredData() {
                 operatingSystem: 'Web',
                 url: ANSWERLATTICE_SITE_URL,
                 description: ANSWERLATTICE_SITE_DESCRIPTION,
-                offers: launchPlan ? {
-                    '@type': 'Offer',
-                    price: String(launchPlan.priceINR.price / 100),
-                    priceCurrency: 'INR',
-                    category: 'Subscription',
-                    url: `${ANSWERLATTICE_SITE_URL}/pricing`,
-                } : undefined,
             },
             {
                 '@type': 'WebPage',

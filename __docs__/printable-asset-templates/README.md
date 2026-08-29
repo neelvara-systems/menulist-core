@@ -2,8 +2,8 @@
 
 > **Feature:** Printable Asset Templates  
 > **Status:** Implemented - desktop and mobile route live behind feature flag  
-> **Last Updated:** June 25, 2026
-> **Version:** 1.6
+> **Last Updated:** August 29, 2026
+> **Version:** 1.7
 
 ---
 
@@ -29,7 +29,7 @@
 
 **Problem Solved:** SMB owners care deeply about printed table cards and menu files because customers see those before they talk to staff. The current files are functional, but the owner still needs stronger choice and polish without hiring a designer or learning a design tool.
 
-**Solution:** MenuList provides a governed template catalog with complete style families. The owner selects an asset type on the left, chooses a supported template on the right, sees the output preview immediately in the modal or sheet, and downloads the file as PDF or image. Non-menu printable assets are generated from shared Creative Editor documents so desktop owners can open a governed fullscreen editor, adjust copy/layout, save the edited design as a reusable template, and download the edited print PDF/image without breaking the QR link. The system fills store name, branch, logo, color, menu URL, feedback URL, business type copy, currency, and MenuList branding policy automatically.
+**Solution:** MenuList provides a governed template catalog with complete style families. The owner selects an asset type on the left, chooses a supported template on the right, sees the output preview immediately in the modal or sheet, and downloads the file as PDF or image. Non-menu printable assets are generated from shared Creative Editor documents so desktop owners can open a MenuList-scoped fullscreen editor, adjust background, owned images, text, styles, and Brand Kit values, save the edited design as a reusable template, and download the edited print PDF/image without breaking the QR link. The editor starts with the full asset visible, keeps protected QR/link/frame layers out of the default selection, preserves a browser-local recovery draft, warns before discarding changes, and checks PDF/image readiness before download. The system fills store name, branch, logo, color, menu URL, feedback URL, business type copy, currency, and MenuList branding policy automatically.
 
 Branded QR action templates are handled inside this same governed catalog. The brand, CTA, short link, and visual frame can change by template; the QR pattern remains scan-safe and protected unless a future scan-regression suite admits constrained QR styling.
 
@@ -99,6 +99,7 @@ The existing `ENABLE_PRINT_ASSETS_ROUTE`, `ENABLE_PRINT_MENU_SURFACES`, `ENABLE_
 
 | Version | Date | Changes |
 | --- | --- | --- |
+| 1.7 | August 29, 2026 | Hardened the MenuList embedded editor with a product-scoped tool set, clean initial canvas, full-viewport portal, browser-local recovery, unsaved-change protection, and readiness-gated PDF/image actions. |
 | 1.6 | June 25, 2026 | Added four-module QR quiet-zone hardening and trust-cue boundary for editor-backed printable assets. |
 | 1.6.1 | June 25, 2026 | Added Branded QR Action Templates alignment: standard branded frames are allowed, measured WhatsApp campaigns are separate, and artistic QR patterns remain rejected until scan-regression coverage exists. |
 | 1.5 | June 21, 2026 | Added Business Card print-frame guardrails so protected generated layers cannot be edited and front/back PNG export stays aligned after customization. |

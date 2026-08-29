@@ -181,6 +181,7 @@ export default function AIDefaultsSheet({
     return (
         <>
             <Popup
+                aria-label="Generation defaults"
                 bodyStyle={MENU_SHEET_BODY_STYLE}
                 destroyOnClose
                 onMaskClick={onClose}
@@ -222,15 +223,22 @@ export default function AIDefaultsSheet({
                                         const isSelected = descriptionLength === option.value;
 
                                         return (
-                                            <div
+                                            <button
+                                                type="button"
+                                                aria-pressed={isSelected}
                                                 key={option.value}
                                                 onClick={() => setDescriptionLength(option.value)}
                                                 style={{
                                                     backgroundColor: token.colorBgContainer,
                                                     border: `1px solid ${isSelected ? token.colorPrimary : token.colorBorderSecondary}`,
                                                     borderRadius: 12,
+                                                    color: 'inherit',
                                                     cursor: 'pointer',
+                                                    font: 'inherit',
+                                                    minHeight: 44,
                                                     padding: '12px 14px',
+                                                    textAlign: 'start',
+                                                    width: '100%',
                                                 }}
                                             >
                                                 <Flex align="center" gap={12} justify="space-between">
@@ -253,7 +261,7 @@ export default function AIDefaultsSheet({
                                                         {isSelected ? <LuCheck size={12} /> : null}
                                                     </Flex>
                                                 </Flex>
-                                            </div>
+                                            </button>
                                         );
                                     })}
                                 </Flex>
@@ -263,15 +271,22 @@ export default function AIDefaultsSheet({
                                         const isSelected = descriptionTone === option.value;
 
                                         return (
-                                            <div
+                                            <button
+                                                type="button"
+                                                aria-pressed={isSelected}
                                                 key={option.value}
                                                 onClick={() => setDescriptionTone(option.value)}
                                                 style={{
                                                     backgroundColor: token.colorBgContainer,
                                                     border: `1px solid ${isSelected ? token.colorPrimary : token.colorBorderSecondary}`,
                                                     borderRadius: 12,
+                                                    color: 'inherit',
                                                     cursor: 'pointer',
+                                                    font: 'inherit',
+                                                    minHeight: 44,
                                                     padding: '12px 14px',
+                                                    textAlign: 'start',
+                                                    width: '100%',
                                                 }}
                                             >
                                                 <Flex align="center" gap={12} justify="space-between">
@@ -294,7 +309,7 @@ export default function AIDefaultsSheet({
                                                         {isSelected ? <LuCheck size={12} /> : null}
                                                     </Flex>
                                                 </Flex>
-                                            </div>
+                                            </button>
                                         );
                                     })}
                                 </Flex>
@@ -417,6 +432,7 @@ export default function AIDefaultsSheet({
                                             <Text type="secondary">Use this when you want the generated image without a background.</Text>
                                         </Flex>
                                         <Switch
+                                            aria-label="Use transparent image backgrounds"
                                             checked={imagePreferences.transparentBg || false}
                                             onChange={(transparentBg) => setImagePreferences((current) => ({ ...current, transparentBg }))}
                                         />
@@ -496,6 +512,7 @@ export default function AIDefaultsSheet({
                                         <Text strong>Exclude from image</Text>
                                         <Text type="secondary">Save words the image generator should avoid by default, like text, watermark, blur, or low quality.</Text>
                                         <TextArea
+                                            aria-label="Exclude from image"
                                             autoSize={{ minRows: 2, maxRows: 4 }}
                                             onChange={(value) => setImagePreferences((current) => ({ ...current, negativePrompt: value }))}
                                             placeholder="e.g. text, watermark, blur, low quality"

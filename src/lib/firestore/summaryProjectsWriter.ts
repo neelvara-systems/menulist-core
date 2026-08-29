@@ -92,13 +92,34 @@ export function buildSummaryProjectPayload(
 export function buildSummaryProjectDeletePayload(
     projectId: string,
     deleteValue: unknown,
+    summaryDocData?: unknown,
 ): Record<string, unknown> {
     assertSafeSummaryProjectId(projectId);
 
-    if (WRITE_NESTED) {
-        return { projects: { [projectId]: deleteValue } };
+    const payload: Record<string, unknown> = WRITE_NESTED
+        ? { projects: { [projectId]: deleteValue } }
+        : {
+            [`projects.${projectId}`]: deleteValue,
+            // Readers support the nested summary shape as well as legacy
+            // literal dotted keys. Delete both so a migrated or mixed-shape
+            // document cannot keep a ghost project entry.
+            projects: { [projectId]: deleteValue },
+        };
+
+    if (!summaryDocData || typeof summaryDocData !== 'object' || Array.isArray(summaryDocData)) {
+        return payload;
     }
-    return { [`projects.${projectId}`]: deleteValue };
+
+    // Field-level legacy writes are stored as literal root keys such as
+    // `projects.<id>.specialMenuStatus`. Deleting only the full project key
+    // leaves those fields behind; the tolerant reader then reconstructs an
+    // unnamed ghost project. Remove every exact legacy key for this project.
+    const legacyFieldPrefix = `projects.${projectId}.`;
+    for (const key of Object.keys(summaryDocData)) {
+        if (key.startsWith(legacyFieldPrefix)) payload[key] = deleteValue;
+    }
+
+    return payload;
 }
 
 /**

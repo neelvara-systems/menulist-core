@@ -329,6 +329,7 @@ function verifyDesktopAndMobileParity(desktopPosSync, mobilePosSync, testRespons
 
   [
     'validatePosSyncWebhookUrl(trimmedWebhookUrl)',
+    'if (enabled) {',
     'webhookUrl: normalizedWebhookUrl',
     "lastError: enabled && !connectionChanged && currentPosSync.lastError ? POS_SYNC_CONNECTION_ISSUE_MESSAGE : ''",
     'updateStore({',
@@ -343,8 +344,14 @@ function verifyDesktopAndMobileParity(desktopPosSync, mobilePosSync, testRespons
     "action: 'read'",
     "action: 'ensure'",
     "action: 'rotate'",
+    '}) || (enabled && !webhookSecret);',
+    'disabled={!webhookSecret || secretLoading}',
+    'disabled={!isDirty || isSaving || (enabled && !webhookUrl.trim())}',
     'disabled={!enabled || !webhookUrl.trim() || !webhookSecret || secretLoading}',
   ].forEach((token) => assertIncludes(mobilePosSync, token, 'Mobile POS sync boundary'));
+  assertIncludes(desktopPosSync, 'disabled={!webhookSecret || secretLoading}', 'Desktop POS sync must not offer regeneration before a first secret exists');
+  assertIncludes(desktopPosSync, 'if (checked) {\n            const validation = validatePosSyncWebhookUrl(normalizedWebhookUrl);', 'Desktop POS sync must validate the provider URL before enabling');
+  assertIncludes(desktopPosSync, "if (checked) updates['posSync.webhookUrl'] = normalizedWebhookUrl;", 'Desktop POS sync enablement must persist the validated provider URL with the state transition');
   assertNotIncludes(mobilePosSync, 'webhookSecret: storeDetails?.posSync?.webhookSecret', 'Mobile POS sync client secret hydration');
   assertNotIncludes(mobilePosSync, 'webhookSecret,\n            consecutiveFailures', 'Mobile POS sync client secret persistence');
 
@@ -480,10 +487,8 @@ function verifyServerOwnedSecretBoundary(secretRoute, secretStore, firestoreRule
     "export const GET = withAuth(async (request: NextRequest, session) => {",
     "export const POST = withAuth(async (request: NextRequest, session) => {",
     "action: z.enum(['ensure', 'rotate'])",
-    'verifyTenantAccess(session, tenantScope.numericId, storeScope.numericId, request)',
-    'const sessionScope = resolveStorePermissionSessionScope(session);',
-    'sessionScope.tenantScope.numericId !== tenantScope.numericId',
-    'sessionScope.storeScope.numericId !== storeScope.numericId',
+    'resolvePosSyncSelectedStoreScope(session, storeId, tenantId)',
+    "if ('response' in scope) return scope.response;",
     'const actorId = resolveCurrentSessionUserDocumentId(session);',
     '`${actorId}:${tenantScope.documentId}:${storeScope.documentId}:${action}`',
     'failClosedOnProviderError: true',
@@ -692,6 +697,7 @@ function verifyPosSyncBoundary() {
   const secretResponse = read('src/lib/posSync/secretResponse.ts');
   const secretStore = read('src/lib/posSync/serverSecretStore.ts');
   const secretScope = read('src/lib/posSync/secretScope.ts');
+  const selectedStoreScope = read('src/lib/posSync/selectedStoreScope.ts');
   const secretRoute = read('src/app/api/pos-sync/secret/route.ts');
   const firestoreRules = read('firestore.rules');
   const databaseConstants = read('src/constants/database.ts');
@@ -730,9 +736,27 @@ function verifyPosSyncBoundary() {
   assertIncludes(desktopPosSync, "aria-label={t('copySecret')}", 'Desktop POS sync copy-secret accessible name');
   assertIncludes(desktopPosSync, "aria-label={t('regenerateSecret')}", 'Desktop POS sync regenerate-secret accessible name');
   assertIncludes(desktopPosSync, "aria-label={secretVisible ? 'Hide secret' : 'Reveal secret'}", 'Desktop POS sync reveal-secret accessible name');
+  assertIncludes(businessSettings, 'const canRenderOwnerPosSync = isOwnerAccount && FEATURE_FLAGS.ENABLE_POS_SYNC;', 'Desktop POS sync owner-only surface admission');
+  assertIncludes(businessSettings, '...(canRenderOwnerPosSync ? [{', 'Desktop POS sync owner-only tab rendering');
   verifyDebouncedDeliveryBoundary(eventBuilder, projectDal, platformProvider, editor);
   verifyDeliveryFailureThreshold(deliverRoute, testRoute, deliveryState, posSyncTypes, storeTypes, desktopPosSync, mobilePosSync, secretRoute);
   verifyServerOwnedSecretBoundary(secretRoute, secretStore, firestoreRules, databaseConstants, posSyncTypes, storeTypes);
+  [
+    'resolvePosSyncSelectedStoreScope(session, storeId, tenantId)',
+    "request.nextUrl.searchParams.get('storeId')",
+    "request.nextUrl.searchParams.get('tenantId')",
+    'resolveRequestScope(session, validation.data.storeId, validation.data.tenantId)',
+    'requireAnyStorePermissionForStoreData(',
+  ].forEach((token) => assertIncludes(secretRoute, token, 'POS secret selected-store API scope'));
+  [
+    'resolveStorePermissionSessionScope(session)',
+    'normalizeStorePermissionScopeDocumentId(requestedStoreId)',
+    'normalizeStorePermissionScopeDocumentId(requestedTenantId)',
+    'tenantScope.numericId !== sessionScope.tenantScope.numericId',
+    'canUserAccessStore({',
+    'session?.user?.storeIds || session?.storeIds',
+    'session?.user?.stores || session?.stores',
+  ].forEach((token) => assertIncludes(selectedStoreScope, token, 'POS secret selected-store session scope'));
   [
     'resolvePosSyncNumericDocumentIdAliases([',
     'store.tenantId,',

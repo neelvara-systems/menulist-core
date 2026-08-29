@@ -6,6 +6,7 @@ export const ANSWERLATTICE_RETENTION_DAYS = {
     ownerNotificationDeliveries: 90,
     ownerNotificationRateLimits: 2,
     contactEnquiries: 365,
+    earlyAccessRequests: 365,
     queryEmbeddings: 30,
     aiSearchHistory: 90,
     contentFeedback: 365,

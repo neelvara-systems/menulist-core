@@ -15,7 +15,6 @@ import type {
 import type { TextCasePreview } from '../textCase.shared';
 
 const { Text } = Typography;
-const { Panel } = Collapse;
 
 interface ImpactPreviewProps {
     activeAction: CommandCenterAction | null;
@@ -259,6 +258,23 @@ export default function ImpactPreview({
             return acc;
         }, {} as Record<string, PriceChangePreview[]>);
 
+        if (pricingPreview.allChanges.length === 0) {
+            return (
+                <Flex
+                    vertical
+                    align="center"
+                    justify="center"
+                    gap={4}
+                    style={{ height: '100%', padding: 16, textAlign: 'center' }}
+                >
+                    <Text strong>No price changes needed</Text>
+                    <Text type="secondary" style={{ fontSize: 12 }}>
+                        The selected prices already match this update.
+                    </Text>
+                </Flex>
+            );
+        }
+
         return (
             <Flex vertical gap={12} style={{ padding: 16, height: '100%', overflowY: 'auto' }}>
                 {/* Header */}
@@ -339,27 +355,20 @@ export default function ImpactPreview({
                         size="small"
                         activeKey={expandedCategories}
                         onChange={(keys) => setExpandedCategories(keys as string[])}
-                        style={{
-                            border: `1px solid ${token.colorBorderSecondary}`,
-                            borderRadius: 8,
-                            backgroundColor: token.colorBgContainer,
-                        }}
-                    >
-                        {Object.entries(changesByCategory).map(([categoryName, changes]) => (
-                            <Panel
-                                key={categoryName}
-                                header={
-                                    <Flex justify="space-between" align="center" style={{ width: '100%' }}>
-                                        <Text strong style={{ fontSize: 12 }}>{categoryName}</Text>
-                                        <Tag color="blue" style={{ fontSize: 9 }}>
-                                            {changes.length} items
-                                        </Tag>
-                                    </Flex>
-                                }
-                                style={{
-                                    borderBottom: `1px solid ${token.colorBorderSecondary}`,
-                                }}
-                            >
+                        items={Object.entries(changesByCategory).map(([categoryName, changes]) => ({
+                            key: categoryName,
+                            label: (
+                                <Flex justify="space-between" align="center" style={{ width: '100%' }}>
+                                    <Text strong style={{ fontSize: 12 }}>{categoryName}</Text>
+                                    <Tag color="blue" style={{ fontSize: 9 }}>
+                                        {changes.length} items
+                                    </Tag>
+                                </Flex>
+                            ),
+                            style: {
+                                borderBottom: `1px solid ${token.colorBorderSecondary}`,
+                            },
+                            children: (
                                 <Flex vertical gap={2} style={{ padding: '4px 0' }}>
                                     {changes.map((change) => (
                                         <Flex
@@ -401,9 +410,14 @@ export default function ImpactPreview({
                                         </Flex>
                                     ))}
                                 </Flex>
-                            </Panel>
-                        ))}
-                    </Collapse>
+                            ),
+                        }))}
+                        style={{
+                            border: `1px solid ${token.colorBorderSecondary}`,
+                            borderRadius: 8,
+                            backgroundColor: token.colorBgContainer,
+                        }}
+                    />
                 </Flex>
             </Flex>
         );
@@ -481,33 +495,26 @@ export default function ImpactPreview({
                             size="small"
                             activeKey={expandedCategories}
                             onChange={(keys) => setExpandedCategories(keys as string[])}
-                            style={{
-                                border: `1px solid ${token.colorBorderSecondary}`,
-                                borderRadius: 8,
-                                backgroundColor: token.colorBgContainer,
-                            }}
-                        >
-                            {Object.entries(
+                            items={Object.entries(
                                 selectedItems.reduce((acc, item) => {
                                     if (!acc[item.categoryName]) acc[item.categoryName] = [];
                                     acc[item.categoryName].push(item);
                                     return acc;
                                 }, {} as Record<string, SelectedItemInfo[]>)
-                            ).map(([categoryName, items]) => (
-                                <Panel
-                                    key={categoryName}
-                                    header={
-                                        <Flex justify="space-between" align="center" style={{ width: '100%' }}>
-                                            <Text strong style={{ fontSize: 12 }}>{categoryName}</Text>
-                                            <Tag color="blue" style={{ fontSize: 9 }}>
-                                                {items.length} items
-                                            </Tag>
-                                        </Flex>
-                                    }
-                                    style={{
-                                        borderBottom: `1px solid ${token.colorBorderSecondary}`,
-                                    }}
-                                >
+                            ).map(([categoryName, items]) => ({
+                                key: categoryName,
+                                label: (
+                                    <Flex justify="space-between" align="center" style={{ width: '100%' }}>
+                                        <Text strong style={{ fontSize: 12 }}>{categoryName}</Text>
+                                        <Tag color="blue" style={{ fontSize: 9 }}>
+                                            {items.length} items
+                                        </Tag>
+                                    </Flex>
+                                ),
+                                style: {
+                                    borderBottom: `1px solid ${token.colorBorderSecondary}`,
+                                },
+                                children: (
                                     <Flex vertical gap={2} style={{ padding: '4px 0' }}>
                                         {items.map((item) => (
                                             <Flex
@@ -528,9 +535,14 @@ export default function ImpactPreview({
                                             </Flex>
                                         ))}
                                     </Flex>
-                                </Panel>
-                            ))}
-                        </Collapse>
+                                ),
+                            }))}
+                            style={{
+                                border: `1px solid ${token.colorBorderSecondary}`,
+                                borderRadius: 8,
+                                backgroundColor: token.colorBgContainer,
+                            }}
+                        />
                     </Flex>
                 )}
             </Flex>
@@ -621,33 +633,26 @@ export default function ImpactPreview({
                             size="small"
                             activeKey={expandedCategories}
                             onChange={(keys) => setExpandedCategories(keys as string[])}
-                            style={{
-                                border: `1px solid ${token.colorBorderSecondary}`,
-                                borderRadius: 8,
-                                backgroundColor: token.colorBgContainer,
-                            }}
-                        >
-                            {Object.entries(
+                            items={Object.entries(
                                 selectedItems.reduce((acc, item) => {
                                     if (!acc[item.categoryName]) acc[item.categoryName] = [];
                                     acc[item.categoryName].push(item);
                                     return acc;
                                 }, {} as Record<string, SelectedItemInfo[]>)
-                            ).map(([categoryName, items]) => (
-                                <Panel
-                                    key={categoryName}
-                                    header={
-                                        <Flex justify="space-between" align="center" style={{ width: '100%' }}>
-                                            <Text strong style={{ fontSize: 12 }}>{categoryName}</Text>
-                                            <Tag color="blue" style={{ fontSize: 9 }}>
-                                                {items.length} items
-                                            </Tag>
-                                        </Flex>
-                                    }
-                                    style={{
-                                        borderBottom: `1px solid ${token.colorBorderSecondary}`,
-                                    }}
-                                >
+                            ).map(([categoryName, items]) => ({
+                                key: categoryName,
+                                label: (
+                                    <Flex justify="space-between" align="center" style={{ width: '100%' }}>
+                                        <Text strong style={{ fontSize: 12 }}>{categoryName}</Text>
+                                        <Tag color="blue" style={{ fontSize: 9 }}>
+                                            {items.length} items
+                                        </Tag>
+                                    </Flex>
+                                ),
+                                style: {
+                                    borderBottom: `1px solid ${token.colorBorderSecondary}`,
+                                },
+                                children: (
                                     <Flex vertical gap={2} style={{ padding: '4px 0' }}>
                                         {items.map((item) => (
                                             <Flex
@@ -668,9 +673,14 @@ export default function ImpactPreview({
                                             </Flex>
                                         ))}
                                     </Flex>
-                                </Panel>
-                            ))}
-                        </Collapse>
+                                ),
+                            }))}
+                            style={{
+                                border: `1px solid ${token.colorBorderSecondary}`,
+                                borderRadius: 8,
+                                backgroundColor: token.colorBgContainer,
+                            }}
+                        />
                     </Flex>
                 )}
             </Flex>
@@ -749,33 +759,26 @@ export default function ImpactPreview({
                             size="small"
                             activeKey={expandedCategories}
                             onChange={(keys) => setExpandedCategories(keys as string[])}
-                            style={{
-                                border: `1px solid ${token.colorBorderSecondary}`,
-                                borderRadius: 8,
-                                backgroundColor: token.colorBgContainer,
-                            }}
-                        >
-                            {Object.entries(
+                            items={Object.entries(
                                 selectedItems.reduce((acc, item) => {
                                     if (!acc[item.categoryName]) acc[item.categoryName] = [];
                                     acc[item.categoryName].push(item);
                                     return acc;
                                 }, {} as Record<string, SelectedItemInfo[]>)
-                            ).map(([categoryName, items]) => (
-                                <Panel
-                                    key={categoryName}
-                                    header={
-                                        <Flex justify="space-between" align="center" style={{ width: '100%' }}>
-                                            <Text strong style={{ fontSize: 12 }}>{categoryName}</Text>
-                                            <Tag color="blue" style={{ fontSize: 9 }}>
-                                                {items.length} items
-                                            </Tag>
-                                        </Flex>
-                                    }
-                                    style={{
-                                        borderBottom: `1px solid ${token.colorBorderSecondary}`,
-                                    }}
-                                >
+                            ).map(([categoryName, items]) => ({
+                                key: categoryName,
+                                label: (
+                                    <Flex justify="space-between" align="center" style={{ width: '100%' }}>
+                                        <Text strong style={{ fontSize: 12 }}>{categoryName}</Text>
+                                        <Tag color="blue" style={{ fontSize: 9 }}>
+                                            {items.length} items
+                                        </Tag>
+                                    </Flex>
+                                ),
+                                style: {
+                                    borderBottom: `1px solid ${token.colorBorderSecondary}`,
+                                },
+                                children: (
                                     <Flex vertical gap={2} style={{ padding: '4px 0' }}>
                                         {items.map((item) => (
                                             <Flex
@@ -796,9 +799,14 @@ export default function ImpactPreview({
                                             </Flex>
                                         ))}
                                     </Flex>
-                                </Panel>
-                            ))}
-                        </Collapse>
+                                ),
+                            }))}
+                            style={{
+                                border: `1px solid ${token.colorBorderSecondary}`,
+                                borderRadius: 8,
+                                backgroundColor: token.colorBgContainer,
+                            }}
+                        />
                     </Flex>
                 )}
             </Flex>

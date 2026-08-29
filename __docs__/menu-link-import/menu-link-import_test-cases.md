@@ -11,6 +11,11 @@
 - Missing permission confirmation returns 400.
 - Invalid URL returns 400.
 - `file:`, `ftp:`, `data:`, and `javascript:` URLs are rejected.
+- Mobile keeps Import disabled for those invalid schemes even after permission
+  is checked, shows an announced safe validation message, and performs no
+  missing-project creation or protected request.
+- Mobile names the URL input from its visible import purpose rather than the
+  example URL placeholder.
 - `localhost`, `127.0.0.1`, `10.0.0.0/8`, `192.168.0.0/16`, `169.254.169.254`, and metadata hostnames are rejected.
 - Redirect to unsafe target is rejected.
 - IPv6 literals across the full `fe80::/10` link-local range, including

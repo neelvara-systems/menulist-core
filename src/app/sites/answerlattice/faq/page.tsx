@@ -172,7 +172,7 @@ const FAQS = [
     },
     {
         question: 'Is pricing per resolved question?',
-        answer: 'No. Setup starts on a paid plan. Your billing country determines whether checkout uses INR or USD, and plan changes, invoices, credit notes, and support-credit top-ups stay in AnswerLattice Billing. Usage limits protect infrastructure without charging for normal help browsing or approved answers.',
+        answer: 'Not during the current early-access period. Requesting access does not create an account, workspace, subscription, checkout, or payment. Planned public-launch pricing remains visible for evaluation, and any future payment terms will be shown before checkout opens.',
     },
     {
         question: 'Does widget context decide workspace identity?',
@@ -278,10 +278,10 @@ export default async function AnswerlatticeFaqPage() {
                             </AnswerlatticeLink>
                             <AnswerlatticeLink
                                 basePath={basePath}
-                                href="/get-started"
+                                href="/early-access"
                                 className="rounded-xl border border-teal-300/20 bg-teal-400/[0.055] px-6 py-3 text-sm font-semibold text-teal-100 transition hover:border-teal-300/35 hover:bg-teal-400/[0.08]"
                             >
-                                Create workspace
+                                Request early access
                             </AnswerlatticeLink>
                         </div>
                     </div>

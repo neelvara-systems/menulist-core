@@ -664,6 +664,7 @@ export const buildAnswerlatticeCandidateFromProposal = (
     actor: GovernanceActor,
     editedContent?: AnswerlatticeGovernanceEditedContent,
     validationTimestamp: unknown = FieldValue.serverTimestamp(),
+    entityIdsOverride?: string[],
 ) => {
     const suggested = proposal.suggestedChange || {};
     const currentContent = currentAnswer?.content || {};
@@ -713,9 +714,29 @@ export const buildAnswerlatticeCandidateFromProposal = (
         ...proposedBinding,
         lastValidatedInVersion: Math.max(Number(proposedBinding.lastValidatedInVersion || 0), latestVersion),
     };
-    const scope = suggested.proposedScope || currentAnswer?.scope || {
+    const baseScope = suggested.proposedScope || currentAnswer?.scope || {
         entityIds: normalizeAnswerlatticeResolvedEntityIds(proposal.relatedEntityIds, 25),
     };
+    const normalizedEntityIdsOverride = entityIdsOverride === undefined
+        ? undefined
+        : normalizeAnswerlatticeResolvedEntityIds(entityIdsOverride, 25);
+    if (
+        entityIdsOverride !== undefined
+        && (
+            normalizedEntityIdsOverride === undefined
+            || normalizedEntityIdsOverride.length === 0
+            || normalizedEntityIdsOverride.length !== entityIdsOverride.length
+        )
+    ) {
+        throw new AnswerlatticeGovernanceError(
+            'canonical_entity_selection_invalid',
+            400,
+            'Choose at least one valid Product Topic before publishing.',
+        );
+    }
+    const scope = normalizedEntityIdsOverride !== undefined
+        ? { ...baseScope, entityIds: normalizedEntityIdsOverride }
+        : baseScope;
     const status = suggested.proposedStatus || currentAnswer?.status || 'active';
     const evidenceSource = suggested.proposedEvidence || currentAnswer?.evidence || { sourceIds: [], citations: [] };
     const evidence = normalizeCanonicalEvidence({
@@ -802,10 +823,12 @@ const buildProposalImpactAnswerSummary = (
 export async function prepareAnswerlatticeProposalImpact({
     access,
     editedContent,
+    entityIds,
     proposalId: rawProposalId,
 }: {
     access: AnswerlatticeGovernanceAccess;
     editedContent?: AnswerlatticeGovernanceEditedContent;
+    entityIds?: string[];
     proposalId: string;
 }): Promise<AnswerlatticePreparedProposalImpact> {
     const db = getDb();
@@ -884,6 +907,7 @@ export async function prepareAnswerlatticeProposalImpact({
         actor,
         editedContent,
         Timestamp.now(),
+        entityIds,
     );
     assertCanonicalCandidate(candidateRecord);
     const answerId = targetAnswerId || `canonical_${hashValue(proposalId)}`;
@@ -1124,6 +1148,8 @@ async function approveProposal(
             latestVersion,
             actor,
             action.editedContent,
+            FieldValue.serverTimestamp(),
+            action.entityIds,
         );
         const entityIds = normalizeAnswerlatticeResolvedEntityIds(candidate.scope?.entityIds, 25);
         await assertEntityBindings(transaction, scope, entityIds, candidate.status === 'active');
@@ -1160,6 +1186,7 @@ async function approveProposal(
         transaction.set(answerRef, answerWrite, { merge: Boolean(targetAnswerId) });
         transaction.update(proposalRef, {
             status: 'implemented',
+            approvedEntityIds: entityIds,
             implementedOn: now,
             impactTracked: false,
             reviewedBy: actor.label,
@@ -1177,8 +1204,17 @@ async function approveProposal(
             entityId: answerId,
             previousState: currentAnswer
                 ? { answerSnapshot: buildAnswerSnapshot(currentAnswer), proposalStatus: proposal.status }
-                : { proposalId, proposalStatus: proposal.status },
-            newState: { answerSnapshot: buildAnswerSnapshot(answerWrite), proposalId, status: 'implemented' },
+                : {
+                    proposalId,
+                    proposalStatus: proposal.status,
+                    proposedEntityIds: proposal.relatedEntityIds,
+                },
+            newState: {
+                answerSnapshot: buildAnswerSnapshot(answerWrite),
+                proposalId,
+                status: 'implemented',
+                approvedEntityIds: entityIds,
+            },
             performedBy: actor.label,
             timestamp: now,
             createdOn: now,

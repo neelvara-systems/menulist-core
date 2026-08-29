@@ -47,7 +47,7 @@
 
 1. MenuList evidence does not prove Answerlattice behavior.
 2. Answerlattice evidence does not prove MenuList behavior.
-3. CampaignCue, SignalDesk, MyCodex, and Neelvara remain incomplete in Phase one.
+3. CampaignCue, SignalDesk, and Neelvara remain incomplete in Phase one; MyCodex remains partial and limited to its private-console boundary.
 4. MyCodex receives no Firebase scope.
 5. Answerlattice audit work cannot publish canonical answers or knowledge.
 

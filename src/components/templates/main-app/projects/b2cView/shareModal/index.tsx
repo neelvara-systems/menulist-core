@@ -15,6 +15,7 @@ import { resolveMenuKitBrandTokens } from '@lib/menu-kit/brandTokens';
 import { buildQrCodeFilename, downloadQrCode, generateBrandedQrCodeDataUrl } from '@lib/utils/qrCode';
 import type { ExtractedDataCategory, ExtractedDataItem } from '@template/main-app/projects/types/extractedData.types';
 import { downloadMenuData } from '@template/main-app/projects/utils/excelUtils';
+import { labelConfirmDialog } from '../../editorView/utils/editorOperations';
 import { generateProjectUrl } from '@lib/utils/slugify';
 import { toDate, type DateLike } from '@util/dateTime';
 import {
@@ -254,7 +255,7 @@ function ShareModal({
         const directUrl = withEntrySource(shareUrl, 'direct');
         try {
             emitMenuListAnswerlatticeWorkflowEvent(MENULIST_ANSWERLATTICE_EVENTS.MENU_PUBLIC_LINK_OPENED);
-            window.location.assign(directUrl);
+            openIsolatedBrowserUrl(directUrl);
         } catch (error) {
             logExportFailure('project_share_direct_open_failed', error, getShareModalLogContext('direct_open', {
                 directUrlLength: directUrl.length,
@@ -383,6 +384,7 @@ function ShareModal({
             onCancel={onClose}
             footer={null}
             width={480}
+            modalRender={labelConfirmDialog(labels.shareTitle)}
         >
             <Flex vertical gap={24} style={{ maxHeight: '70vh', overflow: 'auto', paddingRight: 8 }}>
                 {/* Header */}

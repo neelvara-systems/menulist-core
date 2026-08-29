@@ -486,7 +486,15 @@ service cloud.firestore {
     }
 
     match /chatSessions/{docId} {
-      allow read: if isAnswerlatticeScopedReadWithSupportControl();
+      // The client uses a deterministic first-message id and reads that
+      // not-yet-created document inside a transaction before creating it.
+      // Permit only that empty read for an authenticated support-capable
+      // workspace actor; existing documents remain data-scoped below.
+      allow get: if (
+          !exists(/databases/$(database)/documents/chatSessions/$(docId))
+          && isAnswerlatticeCurrentWorkspaceSupportController()
+        ) || isAnswerlatticeScopedReadWithSupportControl();
+      allow list: if isAnswerlatticeScopedReadWithSupportControl();
       allow create: if isAnswerlatticeScopedCreateWithSupportControl()
         && isValidAnswerlatticeChatActor(request.resource.data)
         && isValidAnswerlatticeChatSessionDocument(request.resource.data);
@@ -2889,6 +2897,22 @@ service cloud.firestore {
 
     function hasAnswerlatticeSupportBoardPermission() {
       return hasAnswerlatticePermission('canManageSupport');
+    }
+
+    function isAnswerlatticeCurrentWorkspaceSupportController() {
+      return isAuthenticated()
+        && (
+          isPlatformSupportOperator()
+          || (
+            request.auth.token.get('tenantId', null) != null
+            && request.auth.token.get('storeId', null) != null
+            && isAnswerlatticeActiveWorkspace(
+              request.auth.token.get('tenantId', null),
+              request.auth.token.get('storeId', null)
+            )
+            && hasAnswerlatticeSupportControlPermission()
+          )
+        );
     }
 
     function isAnswerlatticeFeedbackSelfActor(data) {

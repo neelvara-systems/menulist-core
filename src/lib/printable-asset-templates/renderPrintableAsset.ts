@@ -107,11 +107,12 @@ async function wrapImageBlobInPdf(
     const page = getImagePdfPage(assetTypeId, dimensions.width, dimensions.height);
     const { jsPDF } = await import('jspdf');
     const doc = new jsPDF({
+        compress: true,
         orientation: page.widthMm >= page.heightMm ? 'landscape' : 'portrait',
         unit: 'mm',
         format: [page.widthMm, page.heightMm],
     });
-    doc.addImage(dataUrl, 'PNG', 0, 0, page.widthMm, page.heightMm);
+    doc.addImage(dataUrl, 'PNG', 0, 0, page.widthMm, page.heightMm, undefined, 'FAST');
 
     return {
         blob: doc.output('blob'),

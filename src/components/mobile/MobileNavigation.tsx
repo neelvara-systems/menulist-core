@@ -17,6 +17,8 @@ interface MobileNavigationProps {
     visibleTabs?: MobileTab[];
 }
 
+export const MOBILE_BOTTOM_NAV_CLEARANCE = '124px';
+
 const tabs = [
     { key: 'today' as MobileTab, titleKey: 'today', icon: <LuCalendarCheck size={20} /> },
     { key: 'menu' as MobileTab, titleKey: 'menu', icon: <LuUtensilsCrossed size={20} /> },

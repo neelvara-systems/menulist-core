@@ -31,6 +31,7 @@
 ## Rendering
 
 - `OwnerDashboard` uses one SWR selected-project load and passes the same result to Menu Setup Progress and Menu Quality.
+- Dashboard project selection is bound to the exact tenant/store scope during outlet switching. A project selected for the prior outlet is suppressed before any read and cannot be persisted under the new outlet key while React settles the new store context.
 - `MobileMenuScreen` and `MobileShareScreen` use selected project data from `MobileProjectsProvider`.
 - `MobileMoreScreen` waits for project-provider loading, computes the same summary, checks destination permission, and calls Menu/Share/Official Page shell callbacks.
 - Desktop and mobile cards show only the current next step, its plain-language explanation, and one destination action. They do not render percentages, completed-step pills, or optional-work checklists.

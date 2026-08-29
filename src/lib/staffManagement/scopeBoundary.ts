@@ -59,3 +59,27 @@ export const canManageStaffTarget = ({
 }): boolean => (
     canManageUsers && (canAssignRoles || !staffTargetHasOwnerAccess(target))
 );
+
+export const canManageStaffTargetForSession = ({
+    canAssignRoles,
+    canManageUsers,
+    currentUserId,
+    target,
+}: {
+    canAssignRoles: boolean;
+    canManageUsers: boolean;
+    currentUserId: unknown;
+    target: unknown;
+}): boolean => {
+    const normalizedCurrentUserId = typeof currentUserId === 'string' ? currentUserId.trim() : '';
+    const normalizedTargetUserId = isStaffUnknownRecord(target) && typeof target.id === 'string'
+        ? target.id.trim()
+        : '';
+
+    return Boolean(
+        normalizedCurrentUserId
+        && normalizedTargetUserId
+        && normalizedCurrentUserId !== normalizedTargetUserId
+        && canManageStaffTarget({ canAssignRoles, canManageUsers, target }),
+    );
+};

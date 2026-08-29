@@ -32,6 +32,11 @@ const ResolvedEntityIdSchema = FirestoreDocumentIdSchema.refine(
 
 const uniqueIds = (values: string[]) => new Set(values).size === values.length;
 
+export const AnswerlatticeGovernanceEntitySelectionSchema = z.array(ResolvedEntityIdSchema)
+    .min(1)
+    .max(25)
+    .refine(uniqueIds, 'Entity ids must be unique');
+
 const OptionalScopeIdsSchema = z.array(ResolvedEntityIdSchema)
     .max(50)
     .refine(uniqueIds, 'Scope ids must be unique')
@@ -270,6 +275,7 @@ export type AnswerlatticeGovernanceAction =
         action: 'approve_proposal';
         proposalId: string;
         editedContent?: AnswerlatticeGovernanceEditedContent;
+        entityIds?: string[];
     }
     | { action: 'reject_proposal'; proposalId: string }
     | { action: 'mark_implemented'; proposalId: string }
@@ -293,6 +299,7 @@ const AnswerlatticeGovernanceActionBaseSchema = z.discriminatedUnion('action', [
         action: z.literal('approve_proposal'),
         proposalId: MutationProposalIdSchema,
         editedContent: AnswerlatticeGovernanceEditedContentSchema.optional(),
+        entityIds: AnswerlatticeGovernanceEntitySelectionSchema.optional(),
     }).strict(),
     z.object({
         action: z.literal('reject_proposal'),

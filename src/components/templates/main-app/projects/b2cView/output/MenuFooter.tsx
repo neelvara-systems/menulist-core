@@ -34,6 +34,7 @@ import {
 } from '@lib/localization/publicCustomerMessages';
 import { buildTelHref, buildWhatsAppPhoneParam } from '@lib/phone/phoneNumber';
 import { resolveMenuListAttributionPolicy } from '@lib/platform/menuListBranding';
+import { normalizeOBPFreshnessDate } from '@lib/obp/freshnessTimestamp';
 import {
     normalizeOBPExternalHttpsUrl,
     normalizeOBPGoogleMapsUrl,
@@ -145,11 +146,8 @@ function resolveMenuFooterDate(
     failureType: MenuFooterFreshnessFailureType,
 ): Date | null {
     try {
-        const value = typeof (timestamp as { toDate?: unknown } | null | undefined)?.toDate === 'function'
-            ? (timestamp as { toDate: () => unknown }).toDate()
-            : timestamp;
-        const date = value instanceof Date ? value : new Date(value as string | number | Date);
-        if (!Number.isFinite(date.getTime())) {
+        const date = normalizeOBPFreshnessDate(timestamp);
+        if (!date) {
             throw new Error('invalid_last_published_at');
         }
         return date;

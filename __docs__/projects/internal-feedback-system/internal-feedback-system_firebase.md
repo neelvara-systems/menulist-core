@@ -1,7 +1,7 @@
 # Internal Feedback System - Firebase Contract
 
 **Status:** Implemented
-**Last Updated:** July 23, 2026
+**Last Updated:** August 28, 2026
 **Audience:** Developers, Firebase operators, production readiness reviewers
 
 ---
@@ -32,6 +32,8 @@ Guest Feedback target document-ID admission is cost-neutral for valid submission
 Guest feedback writes do not invalidate public menu/OBP cache because feedback is private owner workflow data and does not change public menu, store, outlet, Official Business Page, or screen-display truth packets.
 
 Owner inbox reads and status writes carry a caller-captured tenant/store into the client DAL. The DAL still derives authority from the signed active session and rejects disagreement before Firestore work. Normal operation costs are unchanged: desktop keeps one list plus one aggregate count on initial/filter loads, mobile keeps one list read, pagination keeps its cursor read plus bounded query, and status remains one transaction. If a newer desktop list replaces the source row while a status transaction commits, the client performs one list/count reconciliation instead of projecting over newer state. Runtime result guards reject cross-scope rows, duplicate IDs, incoherent cursors, fractional counts, and wrong-row status acknowledgements before UI state changes.
+
+Desktop Feedback distribution project resolution adds zero reads when the already-loaded store has a valid `primaryProjectId` or the component receives a valid explicit project. A legacy store without either performs at most one exact tenant/store-scoped project-summary read on first Feedback navigation; SWR deduplicates it for one hour and disables focus/reconnect revalidation. The selector rejects inactive, deleted, special, and malformed projects before creating a public Feedback URL. Copy, open, WhatsApp handoff, QR generation, and PNG download remain browser-local and add no Firestore write, listener, Storage operation, Function invocation, analytics event, payment, or provider send.
 
 Feedback nudge storage diagnostics: the public menu inline feedback nudge uses browser-local sessionStorage only to avoid repeating the nudge in one tab session. Failed read/write paths log bounded `public_menu_feedback_nudge_storage_read_failed` / `public_menu_feedback_nudge_storage_write_failed` diagnostics only and add no Firestore read/write/delete, analytics write, Storage operation, Cloud Function, API route, cache invalidation, rule, index, or deploy requirement.
 

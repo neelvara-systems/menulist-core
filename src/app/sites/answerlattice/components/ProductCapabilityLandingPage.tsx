@@ -136,12 +136,12 @@ export default function ProductCapabilityLandingPage({
                         <div className="al-page-hero__actions">
                             <AnswerlatticeLink
                                 basePath={basePath}
-                                href="/get-started"
+                                href="/early-access"
                                 data-answerlattice-event="product_area_cta_clicked"
                                 data-answerlattice-label={`${activeTab.toLowerCase().replace(/[^a-z0-9]+/g, '_')}_create_workspace`}
                                 className="al-page-hero__button al-page-hero__button--primary"
                             >
-                                Create workspace
+                                Request early access
                             </AnswerlatticeLink>
                             <AnswerlatticeLink
                                 basePath={basePath}
@@ -308,10 +308,10 @@ export default function ProductCapabilityLandingPage({
                         </AnswerlatticeLink>
                         <AnswerlatticeLink
                             basePath={basePath}
-                            href="/get-started"
+                            href="/early-access"
                             className="rounded-xl bg-teal-700 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-teal-500/25 transition hover:bg-teal-800"
                         >
-                            Create workspace
+                            Request early access
                         </AnswerlatticeLink>
                     </div>
                 </div>

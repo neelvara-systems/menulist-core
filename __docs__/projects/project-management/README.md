@@ -23,6 +23,7 @@ Runtime behavior is source-of-truth. The active model is not the older `projects
 | `src/lib/menu/projectSlugOwnership.ts` | Current/redirect slug ownership, recent-deletion reservation validation, and deterministic collision resolution. |
 | `src/lib/menu/projectDocumentScope.ts` | Runtime project ID, tenant, and store identity validation for scoped and legacy reads. |
 | `src/components/templates/main-app/projects/index.tsx` | Desktop project management and menu builder shell. |
+| `src/components/templates/main-app/projects/ProcessGuideModal.tsx` | Named, viewport-bounded first-use guide with an always-visible primary action and compact single-column tips. |
 | `src/components/mobile/providers/MobileProjectsProvider.tsx` | Mobile project state provider. |
 | `src/components/mobile/components/MobileProjectSelectorSheet.tsx` | Mobile project metadata, duplicate, deactivate, and delete actions. |
 | `src/components/templates/main-app/useMenuList/index.tsx` | Read-only output hub; reads existing projects without creating defaults. |
@@ -39,10 +40,15 @@ Runtime behavior is source-of-truth. The active model is not the older `projects
 | `updateProjectMetadata()` | Transactionally merges summary fields, rejects missing/cross-store identities and unnormalized, active, redirect, reserved, or recently deleted slug conflicts, supports atomic default handoff, and revalidates public cache. |
 | `updateProject()` / `updateProjectWithoutLoader()` | Saves full project data, runs optional correctness hooks, and revalidates public cache. |
 | `publishProject()` | Rejects a stale desktop/mobile snapshot, saves publish data transactionally, increments menu version, creates optional snapshots/events, and revalidates public cache. Linked-outlet publish forwards the same modification-version precondition to the guarded server transaction. |
-| `deleteProject()` | Transactionally soft-deletes the scoped project, stores a `deletedSummary` tombstone, removes the summary entry, promotes a current fallback default when needed, and revalidates both affected project contexts. |
+| `deleteProject()` | Calls the server-authoritative transaction to soft-delete the scoped project, stores a `deletedSummary` tombstone, removes the summary entry, promotes a current fallback default when needed, revalidates both affected project contexts, and exposes only whitelisted stable rejection codes to owner UI. Expected policy rejections produce one safe recovery message without duplicate error diagnostics; unknown failures remain error-logged. |
 | `restoreProject()` | Transactionally restores lifecycle flags and rebuilds summary from `deletedSummary` without creating a second default. |
 | `duplicateProject()` | Transactionally clones a current regular project and its summary, strips special-menu/deletion metadata, and allocates a unique slug. |
 | `setProjectActive()` | Transactionally changes project and summary active state after exact scope/existence and linked-outlet policy validation. |
+
+The empty-menu setup guide preserves its four-step explanation without
+trapping the owner: the dialog is programmatically named `How It Works`, its
+content scrolls within the viewport, and the existing primary action remains in
+the modal footer. At compact widths the tips use one column.
 
 ## Related Documents
 

@@ -96,13 +96,13 @@ assert(
   'public monthly plan, currency, and credit packaging must match the Answerlattice plan source',
 );
 assert(
-  ANSWERLATTICE_SITE_TITLE === 'AnswerLattice - Reviewed Support Layer for SaaS Products',
-  'public site title must keep the reviewed-support category instead of an uptime-style category claim',
+  ANSWERLATTICE_SITE_TITLE === 'AnswerLattice - Support Users Without a Support Team',
+  'public site title must keep the founder-facing support outcome',
 );
 assert(
   ANSWERLATTICE_SITE_DESCRIPTION ===
-    'AnswerLattice turns scattered docs, tickets, releases, screenshots, recordings, notes, and repeated replies into reviewed support knowledge for your widget, help center, FAQs, fallback, and future AI agents.',
-  'public site description must explain the scattered-inputs-to-reviewed-support transformation',
+    'AnswerLattice helps founders turn scattered product knowledge into reviewed answers, in-app help, hosted help, and visible support gaps before hiring a support team.',
+  'public site description must explain the founder-facing support transformation',
 );
 
 const expectedAnswerlatticeCreditCosts = new Map([
@@ -131,6 +131,9 @@ const onboardingProofSource = read('src/lib/answerlattice/onboardingProof.ts');
 const starterQuestionsSource = read('src/lib/answerlattice/firstTrustedAnswerStarterQuestions.ts');
 const onboardingResponse = read('src/lib/answerlattice/onboardingResponse.ts');
 const onboardingPage = read(`${WEBSITE_ROOT}/get-started/page.tsx`);
+const earlyAccessPage = read(`${WEBSITE_ROOT}/early-access/page.tsx`);
+const earlyAccessForm = read(`${WEBSITE_ROOT}/early-access/EarlyAccessForm.tsx`);
+const publicAccess = read('src/constants/answerlattice/publicAccess.ts');
 const billingPlans = read('src/lib/billing/productBillingPlans.ts');
 const structuredData = read(`${WEBSITE_ROOT}/components/StructuredData.tsx`);
 const footer = read(`${WEBSITE_ROOT}/components/Footer.tsx`);
@@ -241,9 +244,8 @@ assertIncludes(
   'onboarding server-derived billing currency',
 );
 assertIncludes(billingPlans, 'getAnswerlatticePlans()', 'Billing plan source');
-assertIncludes(structuredData, "getAnswerlatticePlanById('answerlattice_launch', 'MONTH')", 'structured-data plan source');
-assertIncludes(structuredData, 'launchPlan.priceINR.price / 100', 'structured-data price conversion');
-assertNotIncludes(structuredData, "price: '999'", 'hard-coded structured-data price');
+assertNotIncludes(structuredData, "'@type': 'Offer'", 'closed public checkout structured-data boundary');
+assertNotIncludes(structuredData, 'offers:', 'closed public checkout purchase availability boundary');
 for (const [content, label] of [
   [pricing, 'public pricing'],
   [faq, 'public FAQ'],
@@ -263,16 +265,13 @@ assertNotIncludes(faq, 'AI-assisted answers, fallback handling, and review work'
 assertIncludes(billingPlans, 'provider fallback answers', 'Billing credit-pack fallback wording');
 assertNotIncludes(billingPlans, 'widget chat, intake media, and review credits', 'stale Billing credit-pack wording');
 
-assertIncludes(onboardingPage, 'basePath={basePath}', 'onboarding public alias base path');
-assertIncludes(onboardingPage, 'data-answerlattice-activation-primary="workspace-signup"', 'onboarding primary activation marker');
-assert(
-  onboardingPage.indexOf('<OnboardingForm') < onboardingPage.indexOf('<PageProofStrip'),
-  'workspace signup must appear before supporting proof content',
-);
-assert(
-  onboardingPage.indexOf('<OnboardingForm') < onboardingPage.indexOf('CRITERIA.map'),
-  'workspace signup must appear before fit criteria',
-);
+assertIncludes(publicAccess, "ANSWERLATTICE_PUBLIC_ACCESS_MODE = 'early_access'", 'public early-access release gate');
+assertIncludes(publicAccess, "href: '/early-access'", 'public early-access primary CTA');
+assertIncludes(onboardingPage, 'redirect(`${basePath}/early-access`)', 'retired public signup redirect');
+assertIncludes(earlyAccessPage, '<EarlyAccessForm basePath={basePath} />', 'public early-access request form');
+assertIncludes(earlyAccessPage, 'A request is not an account', 'public early-access lifecycle disclosure');
+assertIncludes(earlyAccessForm, 'featureIdea', 'public feature request field');
+assertIncludes(earlyAccessForm, 'No account, workspace, subscription, or payment has been created.', 'public post-submit boundary');
 assertIncludes(onboarding, '<form style={styles.card} onSubmit={handlePreviewProof}>', 'onboarding semantic product-details form');
 assertIncludes(onboarding, '<form style={styles.card} onSubmit={handleCreateAccount}>', 'onboarding semantic paid workspace form');
 assertIncludes(onboarding, 'event.preventDefault()', 'onboarding form submission boundary');
@@ -328,7 +327,11 @@ assert(ANSWERLATTICE_ONBOARDING_SURFACE_OPTIONS.length === 6, 'onboarding proof 
 const registeredPaths = ANSWERLATTICE_PUBLIC_PAGES.map((page) => page.path);
 const publicRouteAliases = new Map([
   ['/home', '/'],
+  ['/get-started', '/early-access'],
   ['/use-cases/vibe-coded-saas', '/use-cases/ai-built-saas'],
+]);
+const publicUtilityRoutes = new Set([
+  '/offline',
 ]);
 assert(
   new Set(registeredPaths).size === registeredPaths.length,
@@ -344,8 +347,8 @@ const publicRouteFiles = listFiles(WEBSITE_ROOT, /^page\.tsx$/);
 const discoveredPublicPaths = publicRouteFiles.map(publicPageFileToPath);
 for (const publicPath of discoveredPublicPaths) {
   assert(
-    registeredPaths.includes(publicPath) || publicRouteAliases.has(publicPath),
-    `public route ${publicPath} must be registered or declared as an intentional alias`,
+    registeredPaths.includes(publicPath) || publicRouteAliases.has(publicPath) || publicUtilityRoutes.has(publicPath),
+    `public route ${publicPath} must be registered, an intentional alias, or a bounded utility route`,
   );
 }
 for (const [aliasPath, canonicalPath] of publicRouteAliases) {
@@ -353,8 +356,8 @@ for (const [aliasPath, canonicalPath] of publicRouteAliases) {
   assert(registeredPaths.includes(canonicalPath), `public alias ${aliasPath} targets unregistered ${canonicalPath}`);
 }
 assert(
-  discoveredPublicPaths.length === registeredPaths.length + publicRouteAliases.size,
-  'every Answerlattice page.tsx must be either one canonical public route or one intentional alias',
+  discoveredPublicPaths.length === registeredPaths.length + publicRouteAliases.size + publicUtilityRoutes.size,
+  'every Answerlattice page.tsx must be one canonical public route, intentional alias, or bounded utility route',
 );
 
 const sitemap = read(`${WEBSITE_ROOT}/sitemap.xml/route.ts`);
@@ -407,16 +410,16 @@ const productCapabilityLandingPage = read(`${WEBSITE_ROOT}/components/ProductCap
 const productFeatureLandingPage = read(`${WEBSITE_ROOT}/components/ProductFeatureLandingPage.tsx`);
 const updatesPage = read(`${WEBSITE_ROOT}/updates/page.tsx`);
 const websiteStyles = read(`${WEBSITE_ROOT}/styles.css`);
-assertIncludes(homepage, 'Scattered product knowledge into structured support', 'homepage whole-product eyebrow');
+assertIncludes(homepage, 'Support built for founders who ship fast', 'homepage founder-facing eyebrow');
 assertIncludes(
   homepage,
-  'Turn scattered product knowledge into reviewed support for your widget, help center, docs, search, and AI-assisted surfaces.',
-  'homepage buyer-facing transformation',
+  'Start with the questions your users will ask first.',
+  'homepage first-ten buyer path',
 );
 assertIncludes(
   homepage,
-  'Approved answers come first; missing coverage becomes visible review work.',
-  'homepage approved-answer and missing-coverage boundary',
+  'turn every missed question into a visible fix.',
+  'homepage missing-answer improvement boundary',
 );
 assertNotIncludes(
   homepage,
@@ -424,27 +427,29 @@ assertNotIncludes(
   'homepage retired long-form source inventory',
 );
 for (const surface of [
-  'In-app widget',
-  'Hosted help center',
-  'Docs and FAQs',
-  'Changelog',
+  'In-app help',
+  'Hosted help',
   'Ticket fallback',
-  'Feedback review',
   'Approved answers',
 ]) {
   assertIncludes(homepage, `'${surface}'`, `homepage ${surface} surface`);
 }
-assertIncludes(homepage, 'Run deterministic checks', 'homepage deterministic Answer Test boundary');
+assertIncludes(homepage, 'Request early access', 'homepage controlled-access primary CTA');
+assertIncludes(homepage, 'href="/early-access"', 'homepage controlled-access route');
+assertNotIncludes(homepage, 'Build your first 10 answers', 'homepage retired public-signup CTA');
+assertIncludes(homepage, 'Test, publish, and improve', 'homepage tested first-ten journey');
 assertNotIncludes(homepage, 'Run free checks first', 'homepage unsupported free-tier implication');
 assertIncludes(homepage, 'Answer what is known. Catch what is missing. Improve it once.', 'homepage support-loop focus');
 assertIncludes(homepage, 'Why this answer is trusted', 'homepage trusted-answer proof');
 assertIncludes(homepage, '<FounderReviewSection basePath={basePath} />', 'homepage active owner-decision section');
 assertIncludes(homepage, 'id="owner-decision-system"', 'homepage owner-decision anchor');
-assertIncludes(homepage, 'Review the support decisions that actually need you.', 'homepage founder-review promise');
+assertIncludes(homepage, 'See what needs your attention today.', 'homepage founder-review promise');
 assertIncludes(homepage, 'ANSWERLATTICE_OWNER_DECISION_ASSET', 'homepage owner-decision proof asset');
 assertIncludes(homepage, 'assetSlotId="home.owner-decision-system"', 'homepage owner-decision AssetOS slot');
-assertIncludes(homepage, 'Help readers scan long guides', 'homepage public article-navigation outcome');
-assertIncludes(homepage, 'They never publish answers, activate releases, or create a second task system.', 'homepage owner-decision mutation boundary');
+assertIncludes(homepage, 'Quiet days stay quiet.', 'homepage focused review boundary');
+assertIncludes(homepage, 'They never publish an answer or change your product without your approval.', 'homepage owner-decision mutation boundary');
+assertIncludes(homepage, 'Add support with your coding agent.', 'homepage plain-language install path');
+assertIncludes(homepage, 'Made for founders who shipped fast.', 'homepage vibe-coder audience path');
 
 const heroMotionEnd = websiteStyles.indexOf('.al-site-footer {');
 const heroMotionStart = websiteStyles.lastIndexOf('.al-home-hero-title__word {', heroMotionEnd);
@@ -559,11 +564,13 @@ assertIncludes(
   "{ label: 'Operating Guide', href: '/resources/answerlattice-operating-guide', icon: LuBookOpen }",
   'desktop Operating Guide navigation',
 );
-assertIncludes(
-  header,
-  "{ label: 'Operating Guide', href: '/resources/answerlattice-operating-guide' }",
-  'mobile Operating Guide navigation',
-);
+assertIncludes(header, 'const MOBILE_PRIMARY_LINKS = [', 'mobile primary navigation registry');
+assertIncludes(header, 'const MOBILE_LEARN_LINKS = [', 'mobile learning navigation registry');
+assertIncludes(header, "{ label: 'Prepare your sources', href: '/pre-onboarding' }", 'mobile pre-onboarding navigation');
+assertIncludes(header, "{ label: 'Common questions', href: '/faq' }", 'mobile FAQ navigation');
+assertIncludes(header, 'Request early access', 'mobile and desktop controlled-access CTA');
+assertIncludes(header, 'href="/early-access"', 'mobile and desktop controlled-access route');
+assertNotIncludes(header, 'MOBILE_OTHER_LINKS', 'retired dense mobile navigation registry');
 assertNotIncludes(footer, 'The first 24/7 support layer', 'unsupported public category superlative');
 assertIncludes(footer, 'A reviewed support layer for founder-led SaaS.', 'public footer category');
 assertIncludes(footer, '/resources/answerlattice-operating-guide', 'footer Operating Guide navigation');
@@ -626,6 +633,7 @@ const publicClaimFiles = [
 const publicClaimSource = publicClaimFiles.map(read).join('\n');
 const publicClaimCopy = publicClaimSource.toLowerCase();
 const answerlatticeManifest = JSON.parse(read('public/answerlattice.webmanifest'));
+assert(answerlatticeManifest.id === '/answerlattice-website', 'AnswerLattice website manifest must keep a stable identity separate from the dashboard app');
 assert(answerlatticeManifest.start_url === '/', 'AnswerLattice manifest start_url must remain same-origin across preview and production domains');
 assert(answerlatticeManifest.scope === '/', 'AnswerLattice manifest scope must remain same-origin across preview and production domains');
 assert(!/\bCanonica\b/.test(publicClaimSource), 'public copy must not use Canonica as a standalone brand');

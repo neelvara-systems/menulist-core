@@ -129,6 +129,8 @@ requireTokens(opsMonitor, [
   'requestIdRef.current + 1',
   'requestId !== requestIdRef.current',
   'setSnapshot(null)',
+  'aria-label="Filter website enquiries by type"',
+  'aria-label="Filter website enquiries by topic"',
   'Manual refresh only',
   'Open email reply',
 ], 'website enquiry operator UI');

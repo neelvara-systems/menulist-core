@@ -244,6 +244,12 @@ Distribution compounds only after one version is authoritative.
 
 ### FPP-C011 — Public snapshots
 
+**Execution packet:** Original X post from
+`https://x.com/proofandstate` on Saturday, August 29, 2026,
+11:00-11:15 AM Asia/Kolkata.
+
+**Exact text (261 characters):**
+
 ```text
 For a read-heavy public surface, an immutable snapshot can be cheaper and faster than rebuilding the view from live records on every request.
 
@@ -251,6 +257,21 @@ The trade-off is not free.
 
 You must make freshness, invalidation, failure recovery, and the source of truth explicit.
 ```
+
+**Why this now:** It is a practical weekend architecture lesson for builders
+working on public, read-heavy systems. It extends the cache-invalidation post
+with the explicit consistency trade-off rather than repeating the same claim.
+
+**Evidence and boundary:** Generalized architecture pattern; cost is stated as
+a conditional trade-off, not a measured claim. No product, traffic volume,
+schema, customer data, cache key, or private implementation detail is exposed.
+
+**Native checks:** Text only; 261 characters; no link, media, hashtag, product
+name, or disclosure required. Preview the exact line breaks before posting.
+
+**Missed-window rule:** If August 29, 11:00-11:15 AM IST is missed, do not post
+later impulsively. Report `BLOCKED timing window missed`; re-slot after a fresh
+review.
 
 ### FPP-C005 — Correct answers become stale
 

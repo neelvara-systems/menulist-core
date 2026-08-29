@@ -2,7 +2,7 @@
 
 **Feature:** Staff management and permissions
 **Status:** Local source complete; release/operator evidence pending
-**Last Updated:** July 16, 2026
+**Last Updated:** August 27, 2026
 
 ---
 
@@ -45,6 +45,10 @@ This verification covered the end-to-end staff and permissions flow from the cur
 | Self-service password/passcode change | `/api/auth/change-password` used manual session lookup and inline validation instead of the protected route contract. | Route now uses `withAuth()`, Zod validation, `AUTH_SENSITIVE` rate limiting, secure logging, Firebase Auth current-password verification, Firebase Auth password update, and `passwordChangedAt` metadata write. |
 | Mobile role edit sheet | Editing from role details could defer the edit sheet until the details screen closed. | Edit sheet is mounted in both list and details render branches. |
 | Mobile permission switch | Tapping the switch row and the switch itself could double-toggle a permission. | Switch click propagation is stopped while row tap remains available. |
+| Mobile Staff Strict Mode lifecycle | Effect cleanup permanently marked the screen unmounted during React Strict Mode replay, allowing every later mutation response to be silently discarded. | Re-arm the mounted ref on every effect setup and retain cleanup invalidation for real unmounts. |
+| Mobile Staff dialog and role semantics | Add Staff, Staff details, and one-time credential popups were unnamed; selected role state was conveyed only by colour. | Give all three popups stable accessible names and expose role selection with `aria-pressed`. |
+| Inactive staff reactivation | The shared active-state handler rejected `active === false` before calculating the next state, so the rendered Activate action was a no-op. | Remove only the contradictory inactive-state admission check while preserving scope, authority, liveness, and duplicate-mutation guards. |
+| Mobile role soft-delete copy | **Delete This Role** called the role-deactivation endpoint, announced deletion, and then left the same row visible as Off. | Remove the contradictory duplicate mobile action. Reversible role deactivation/reactivation remains available through the editor's explicit Active switch; the server and desktop contracts are unchanged. |
 | WhatsApp Web sharing | `countryCode` was passed but not used when `dialCode` was absent. | WhatsApp phone formatting now falls back from country code to the shared country dial-code list before opening WhatsApp Web. |
 | Firebase cost docs | Staff login sharing and self-service password change were not fully reflected in cost docs. | Firebase doc now lists client-only copy/share as zero reads/writes and self-service password change as one user metadata write plus Firebase Auth update. |
 
@@ -74,6 +78,7 @@ This verification covered the end-to-end staff and permissions flow from the cur
 | Staff client response boundary | Passed by source verifier: shared staff/role client responses are capped at 256KB, parse failures and invalid successful envelopes have bounded diagnostic codes, and direct `response.json().catch(() => ({}))` parsing is absent. |
 | Staff mutation identity boundary | Passed by source verifier: create/update/remove/reset/sign-out acknowledgements require returned `user.id` to match returned `userId` before desktop or mobile staff state can advance. |
 | Staff/Roles route parity source gate | Passed by source verifier: `npm run verify:staff-roles-route-parity` locks desktop aliases, mobile More permission gates, shared client usage, and docs/audit parity. |
+| Mobile Staff provider-free lifecycle | Passed locally at 390x844 against isolated Auth/Firestore emulators: name-only create, role change/restore, force sign-out, passcode reset, deactivate, reactivate, and remove. One-time credentials and generated staff identifiers were not retained in evidence. |
 | Staff scope/taxonomy source test | Passed: `env -u GOOGLE_APPLICATION_CREDENTIALS npm run verify:staff-scope-boundary` covers exact scope normalization, 29 unique permissions, category/label/default-role completeness, and Owner-target helpers. Local Upstash warnings are expected when target credentials are intentionally absent. |
 | Staff concurrency source gate | Passed: `npm run verify:staff-concurrency-boundary` locks deterministic creation, owner preservation, transactional role repair, Auth-binding upsert/compensation, and post-commit token ordering. |
 | Staff concurrency emulator | Passed: `env -u GOOGLE_APPLICATION_CREDENTIALS npm run test:staff-concurrency:emulator` covers concurrent adds, Auth-binding upsert, deterministic create, last-owner races, blocked owners, role assignment/deactivation, and concurrent role edits. |

@@ -151,21 +151,21 @@ export default function OwnerUploads({
         }
     };
 
-    const handleDelete = async (slideId: string) => {
+    const handleDelete = async (slide: ScreenSlide) => {
         try {
             // Delete via DAL (follows existing pattern)
-            const deleteResult = await removePinnedSlide(slideId);
+            const deleteResult = await removePinnedSlide(slide.id, slide.imageUrl);
             assertDigitalScreenMutationSucceeded(
                 deleteResult,
                 'desktop_digital_screen_slide_delete_rejected',
             );
 
             messageApi.success('Slide removed');
-            onSlideDeleted(slideId);
+            onSlideDeleted(slide.id);
 
         } catch (error) {
             logScreenSettingsFailure('desktop_digital_screen_slide_delete_failed', error, {
-                ...getBoundedScreenStringContext('slideId', slideId),
+                ...getBoundedScreenStringContext('slideId', slide.id),
             });
             messageApi.error('Failed to remove slide');
         }
@@ -250,7 +250,7 @@ export default function OwnerUploads({
                                         key="delete"
                                         title="Delete this custom slide?"
                                         description={`"${normalizeOwnerSlideCaption(slide.caption)}" will be removed from Highlights after the screen refreshes.`}
-                                        onConfirm={() => handleDelete(slide.id)}
+                                        onConfirm={() => handleDelete(slide)}
                                         okText="Delete slide"
                                         cancelText="Cancel"
                                     >

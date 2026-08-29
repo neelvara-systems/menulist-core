@@ -6,7 +6,11 @@ import { checkRateLimit } from "@lib/rateLimit";
 import { getRateLimitForFeature } from "@lib/rateLimit/configs";
 import { resolveCurrentSessionUserDocumentId } from "@lib/auth/sessionUserDocumentId";
 import { readBoundedJsonBody } from "@lib/security/boundedRequestBody";
-import { requireAnyStorePermission, resolveStorePermissionSessionScope } from "@lib/permissions/server";
+import {
+    requireAnyStorePermissionForStore,
+} from "@lib/permissions/server";
+import { getPrivateScreenTokenCacheTag } from "@lib/screen/privateScreenControl";
+import { resolveDigitalScreenSelectedStoreScope } from "@lib/screen/screenManagementAccess";
 import { mutateDigitalScreenOwnerStateServer } from "@lib/screen/screenManagementServer";
 import {
     FIRESTORE_TIMESTAMP_MAX_MILLISECONDS,
@@ -15,6 +19,7 @@ import {
 } from "@lib/screen/screenManagementContracts";
 import { logRuntimeFailure } from "@lib/runtime/runtimeDiagnostics";
 import { NextRequest, NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { z } from "zod";
 import { withAuth } from "../../../middleware/auth";
 import { hashPublicRateLimitValue } from "../../../middleware/publicApi";
@@ -34,23 +39,28 @@ const SlideSchema = z.object({
 const MutationSchema = z.discriminatedUnion("action", [
     z.object({
         action: z.literal("initialize"),
+        targetStoreId: z.number().int().positive().safe(),
     }).strict(),
     z.object({
         action: z.literal("update_settings"),
         ownerOverrideEnabled: z.boolean(),
+        targetStoreId: z.number().int().positive().safe(),
     }).strict(),
     z.object({
         action: z.literal("add_slide"),
         slide: SlideSchema,
+        targetStoreId: z.number().int().positive().safe(),
     }).strict(),
     z.object({
         action: z.literal("remove_slide"),
         slideId: z.string().trim().min(1).max(128),
+        targetStoreId: z.number().int().positive().safe(),
     }).strict(),
     z.object({
         action: z.literal("update_caption"),
         caption: z.string().max(48),
         slideId: z.string().trim().min(1).max(128),
+        targetStoreId: z.number().int().positive().safe(),
     }).strict(),
 ]);
 
@@ -79,26 +89,33 @@ type DigitalScreenAuthorization =
     | { ok: false; response: NextResponse }
     | { ok: true; scope: { storeId: string; tenantId: string } };
 
-async function authorize(request: NextRequest, session: any): Promise<DigitalScreenAuthorization> {
-    const sessionScope = resolveStorePermissionSessionScope(session);
-    if (!sessionScope) {
+async function authorize(
+    request: NextRequest,
+    session: any,
+    requestedStoreId: unknown,
+): Promise<DigitalScreenAuthorization> {
+    const selectedStore = resolveDigitalScreenSelectedStoreScope(session, requestedStoreId);
+    if (!selectedStore.ok) {
+        const forbidden = selectedStore.reason === "forbidden";
         return {
             ok: false,
-            response: NextResponse.json({ error: "Not onboarded" }, { status: 400 }),
+            response: NextResponse.json(
+                { error: forbidden ? "Forbidden" : selectedStore.reason === "not_onboarded" ? "Not onboarded" : "Invalid request" },
+                { status: forbidden ? 403 : 400 },
+            ),
         };
     }
-    const scope = {
-        storeId: sessionScope.storeScope.documentId,
-        tenantId: sessionScope.tenantScope.documentId,
-    };
+    const { scope } = selectedStore;
     const rateLimitResponse = await applyDigitalScreenRateLimit(request, session, scope);
     if (rateLimitResponse) return { ok: false, response: rateLimitResponse };
 
-    const permissionResponse = await requireAnyStorePermission(
+    const permissionResponse = await requireAnyStorePermissionForStore(
         request,
         session,
         [PERMISSIONS.MANAGE_DIGITAL_SCREENS],
         "Digital Screens",
+        scope.storeId,
+        scope.tenantId,
     );
     if (permissionResponse) return { ok: false, response: permissionResponse };
 
@@ -110,7 +127,8 @@ const getHandler = withAuth(async (request: NextRequest, session) => {
         return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
-    const authorization = await authorize(request, session);
+    const requestedStoreId = request.nextUrl.searchParams.get("storeId");
+    const authorization = await authorize(request, session, requestedStoreId ?? undefined);
     if ("response" in authorization) return authorization.response;
 
     try {
@@ -130,9 +148,6 @@ const postHandler = withAuth(async (request: NextRequest, session) => {
         return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
-    const authorization = await authorize(request, session);
-    if ("response" in authorization) return authorization.response;
-
     const bodyResult = await readBoundedJsonBody(request, MAX_BODY_BYTES, {
         invalidJsonMessage: "Invalid request",
         invalidRequestMessage: "Invalid request",
@@ -145,11 +160,18 @@ const postHandler = withAuth(async (request: NextRequest, session) => {
         return NextResponse.json({ error: "Invalid request" }, { status: 400 });
     }
 
+    const authorization = await authorize(request, session, parsed.data.targetStoreId);
+    if ("response" in authorization) return authorization.response;
+
     try {
+        const { targetStoreId: _targetStoreId, ...mutation } = parsed.data;
         const screen = await mutateDigitalScreenOwnerStateServer(
             authorization.scope,
-            parsed.data as DigitalScreenManagementMutation,
+            mutation as DigitalScreenManagementMutation,
         );
+        if (screen?.screenToken) {
+            revalidateTag(getPrivateScreenTokenCacheTag(screen.screenToken), { expire: 0 });
+        }
         return NextResponse.json({ screen, success: true });
     } catch (error) {
         logRuntimeFailure("digital_screen_management_mutation_failed", error, {

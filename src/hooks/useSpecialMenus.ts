@@ -20,9 +20,9 @@ import {
 import { getLocalizedText, getPrimaryLocalizedLanguage } from "@lib/localization/text";
 import { PlatformGlobalDataContext, type PlatformGlobalDataProviderType } from "@providers/platformProviders/platformGlobalDataProvider";
 import { getBoundedHookStringContext, logHookFailure } from "./hookDiagnostics";
-import type { SpecialMenuMode, SpecialMenuStatus } from "@template/main-app/projects/types";
+import type { ProjectSummaryData, SpecialMenuMode, SpecialMenuStatus } from "@template/main-app/projects/types";
 import { useCallback, useContext, useMemo } from "react";
-import useSWR from "swr";
+import useSWR, { useSWRConfig } from "swr";
 
 export interface SpecialMenuListItem {
     projectId: string;
@@ -147,7 +147,7 @@ export interface UseSpecialMenusReturn {
         localizedDisplayName?: Record<string, string>;
         startsAt: string;
         endsAt: string;
-    }) => Promise<{ success: boolean; error?: string }>;
+    }) => Promise<{ success: boolean; status?: SpecialMenuStatus; error?: string }>;
     activateMenu: (projectId: string) => Promise<{ success: boolean; error?: string }>;
     deactivateMenu: (projectId: string) => Promise<{ success: boolean; error?: string }>;
     cancelMenu: (projectId: string) => Promise<{ success: boolean; error?: string }>;
@@ -155,6 +155,7 @@ export interface UseSpecialMenusReturn {
 
 export function useSpecialMenus(): UseSpecialMenusReturn {
     const enabled = FEATURE_FLAGS.ENABLE_SPECIAL_MENU_SWITCHING;
+    const { mutate: mutateSharedCache } = useSWRConfig();
     const { storeDetails } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext);
     const expectedScope = useMemo(() => {
         const tenantId = Number(storeDetails?.tenantId);
@@ -208,6 +209,35 @@ export function useSpecialMenus(): UseSpecialMenusReturn {
         [mutate],
     );
 
+    const mutateOwnerProjectsCache = useCallback(async (
+        projectId: string,
+        patch: Partial<ProjectSummaryData>,
+        appendIfMissing = false,
+    ) => {
+        if (!tId || !sId) return;
+        await mutateSharedCache(
+            `projects-${tId}-${sId}`,
+            (current: unknown) => {
+                if (!isRecord(current) || !Array.isArray(current.projects)) return current;
+                const existingProjects = current.projects.filter(isRecord);
+                const hasProject = existingProjects.some((project) => project.projectId === projectId);
+                return {
+                    ...current,
+                    projects: hasProject
+                        ? existingProjects.map((project) => (
+                            project.projectId === projectId
+                                ? { ...project, ...patch, projectId }
+                                : project
+                        ))
+                        : appendIfMissing
+                            ? [...existingProjects, { ...patch, projectId }]
+                            : existingProjects,
+                };
+            },
+            { revalidate: false },
+        );
+    }, [mutateSharedCache, sId, tId]);
+
     const createSpecialMenu = useCallback(
         async (data: {
             baseProjectId: string;
@@ -252,6 +282,7 @@ export function useSpecialMenus(): UseSpecialMenusReturn {
                         nextMenu,
                     ],
                 }));
+                await mutateOwnerProjectsCache(result.projectId, result.summaryData, true);
                 return { success: true, projectId: result?.projectId };
             } catch (error) {
                 logHookFailure('special_menu_create_failed', error, {
@@ -263,7 +294,7 @@ export function useSpecialMenus(): UseSpecialMenusReturn {
                 return { success: false, error: SPECIAL_MENU_CREATE_FAILED_MESSAGE };
             }
         },
-        [expectedScope, mutateSpecialMenus],
+        [expectedScope, mutateOwnerProjectsCache, mutateSpecialMenus],
     );
 
     const updateSpecialMenu = useCallback(
@@ -304,7 +335,15 @@ export function useSpecialMenus(): UseSpecialMenusReturn {
                                 : menu
                     )),
                 }));
-                return { success: true };
+                await mutateOwnerProjectsCache(data.projectId, {
+                    description: data.description,
+                    name: data.localizedDisplayName || data.displayName,
+                    specialMenuDisplayName: data.localizedDisplayName || data.displayName,
+                    specialMenuEndsAt: data.endsAt,
+                    specialMenuStartsAt: data.startsAt,
+                    specialMenuStatus: nextStatus,
+                });
+                return { success: true, status: nextStatus };
             } catch (error) {
                 logHookFailure('special_menu_update_failed', error, {
                     ...getBoundedHookStringContext('projectId', data.projectId),
@@ -315,7 +354,7 @@ export function useSpecialMenus(): UseSpecialMenusReturn {
                 return { success: false, error: SPECIAL_MENU_UPDATE_FAILED_MESSAGE };
             }
         },
-        [expectedScope, mutateSpecialMenus],
+        [expectedScope, mutateOwnerProjectsCache, mutateSpecialMenus],
     );
 
     const activateMenu = useCallback(
@@ -334,6 +373,7 @@ export function useSpecialMenus(): UseSpecialMenusReturn {
                                 : menu
                     )),
                 }));
+                await mutateOwnerProjectsCache(projectId, { specialMenuStatus: "active" });
                 return { success: true };
             } catch (error) {
                 logHookFailure('special_menu_activate_failed', error, {
@@ -342,7 +382,7 @@ export function useSpecialMenus(): UseSpecialMenusReturn {
                 return { success: false, error: SPECIAL_MENU_ACTIVATE_FAILED_MESSAGE };
             }
         },
-        [expectedScope, mutateSpecialMenus],
+        [expectedScope, mutateOwnerProjectsCache, mutateSpecialMenus],
     );
 
     const deactivateMenu = useCallback(
@@ -359,6 +399,7 @@ export function useSpecialMenus(): UseSpecialMenusReturn {
                             : menu
                     )),
                 }));
+                await mutateOwnerProjectsCache(projectId, { specialMenuStatus: "expired" });
                 return { success: true };
             } catch (error) {
                 logHookFailure('special_menu_deactivate_failed', error, {
@@ -367,7 +408,7 @@ export function useSpecialMenus(): UseSpecialMenusReturn {
                 return { success: false, error: SPECIAL_MENU_DEACTIVATE_FAILED_MESSAGE };
             }
         },
-        [expectedScope, mutateSpecialMenus],
+        [expectedScope, mutateOwnerProjectsCache, mutateSpecialMenus],
     );
 
     const cancelMenu = useCallback(
@@ -384,6 +425,7 @@ export function useSpecialMenus(): UseSpecialMenusReturn {
                             : menu
                     )),
                 }));
+                await mutateOwnerProjectsCache(projectId, { specialMenuStatus: "cancelled" });
                 return { success: true };
             } catch (error) {
                 logHookFailure('special_menu_cancel_failed', error, {
@@ -392,7 +434,7 @@ export function useSpecialMenus(): UseSpecialMenusReturn {
                 return { success: false, error: SPECIAL_MENU_CANCEL_FAILED_MESSAGE };
             }
         },
-        [expectedScope, mutateSpecialMenus],
+        [expectedScope, mutateOwnerProjectsCache, mutateSpecialMenus],
     );
 
     return {

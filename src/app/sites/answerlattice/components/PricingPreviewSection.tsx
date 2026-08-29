@@ -4,9 +4,9 @@ import AnswerlatticeLink from './AnswerlatticeLink';
 import SectionHeader from './SectionHeader';
 
 const PLAN_FIT: Record<string, string> = {
-    answerlattice_launch: 'Best for one SaaS app preparing its first support layer.',
-    answerlattice_growth: 'Best for active SaaS apps that need weekly review and higher capacity.',
-    answerlattice_studio: 'Best for studios or agencies launching multiple SaaS products.',
+    answerlattice_launch: 'For one product building its first reviewed support answers.',
+    answerlattice_growth: 'For a growing product with more questions and review work.',
+    answerlattice_studio: 'For studios supporting several products from separate workspaces.',
 };
 
 const formatPrice = (paise: number) => `₹${Math.round(paise / 100).toLocaleString('en-IN')}`;
@@ -21,8 +21,8 @@ export default function PricingPreviewSection({ basePath = '' }: { basePath?: st
             <div className="mx-auto max-w-6xl">
                 <SectionHeader
                     eyebrow="Pricing preview"
-                    title="Start small. Upgrade when support volume grows."
-                    description="Launch is for one SaaS product building its first governed support layer. Growth is for live products with real support volume. Studio is for agencies and multi-product teams."
+                    title="Start with one product. Grow only when support grows."
+                    description="Choose by the number of products and the amount of support work—not by technical features you do not need yet."
                 />
                 <div className="al-pricing-preview__grid">
                     {plans.map((plan) => (
@@ -60,12 +60,12 @@ export default function PricingPreviewSection({ basePath = '' }: { basePath?: st
                     </AnswerlatticeLink>
                     <AnswerlatticeLink
                         basePath={basePath}
-                        href="/get-started"
+                        href="/early-access"
                         data-answerlattice-event="homepage_pricing_clicked"
-                        data-answerlattice-label="start_launch_from_pricing_preview"
+                        data-answerlattice-label="build_first_10_from_pricing_preview"
                         className="al-pricing-preview__button al-pricing-preview__button--primary"
                     >
-                        Create workspace
+                        Request early access
                         <LuArrowRight aria-hidden size={15} />
                     </AnswerlatticeLink>
                 </div>

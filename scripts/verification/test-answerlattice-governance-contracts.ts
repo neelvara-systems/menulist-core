@@ -242,6 +242,7 @@ assert.equal(
     AnswerlatticeGovernanceActionSchema.safeParse({
         action: 'approve_proposal',
         proposalId: 'proposal_123',
+        entityIds: ['entity_billing_recovery'],
         editedContent: {
             title: 'Billing failed',
             structuredSummary: 'Check the failed invoice.',
@@ -254,6 +255,24 @@ assert.equal(
     }).success,
     true,
     'reviewers must be able to approve bounded public citations explicitly',
+);
+assert.equal(
+    AnswerlatticeGovernanceActionSchema.safeParse({
+        action: 'approve_proposal',
+        proposalId: 'proposal_123',
+        entityIds: ['entity_billing_recovery', 'entity_billing_recovery'],
+    }).success,
+    false,
+    'approval Product Topics must be unique',
+);
+assert.equal(
+    AnswerlatticeGovernanceActionSchema.safeParse({
+        action: 'approve_proposal',
+        proposalId: 'proposal_123',
+        entityIds: [],
+    }).success,
+    false,
+    'approval must not clear every Product Topic',
 );
 
 const validResult = AnswerlatticeGovernanceActionResultSchema.safeParse({
@@ -406,11 +425,13 @@ for (const indexPath of ['firestore.indexes.json', 'firestore-answerlattice.inde
     };
     const mergeIndex = (manifest.indexes || []).find(index => (
         index.collectionGroup === 'kb_articles'
-        && (index.fields || []).length === 4
+        && (index.fields || []).length >= 4
+        && (index.fields || []).length <= 5
         && (index.fields || []).some(field => field.fieldPath === 'entityIds' && field.arrayConfig === 'CONTAINS')
         && ['pId', 'tId', 'sId'].every(
             fieldPath => (index.fields || []).some(field => field.fieldPath === fieldPath && field.order === 'ASCENDING'),
         )
+        && (index.fields || []).every(field => ['pId', 'tId', 'sId', 'entityIds', '__name__'].includes(field.fieldPath || ''))
     ));
     assert(mergeIndex, `${indexPath} must include the scoped entity-merge article index.`);
 }

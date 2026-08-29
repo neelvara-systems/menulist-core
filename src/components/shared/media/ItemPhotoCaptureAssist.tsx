@@ -221,6 +221,7 @@ const ItemPhotoCaptureAssist: React.FC<ItemPhotoCaptureAssistProps> = ({
                 <Flex gap={6} wrap="wrap">
                     {ITEM_PHOTO_CAPTURE_MODES.map((entry) => (
                         <Button
+                            aria-pressed={mode === entry.id}
                             disabled={disabled || isCapturing}
                             key={entry.id}
                             onClick={() => setMode(entry.id)}

@@ -15,6 +15,8 @@ It exists so every marketing decision, research source, ChatGPT input, consultan
 
 MenuList must be marketed as the official customer-facing source for business information, not as a QR menu utility, generic AI generator, or restaurant website builder.
 
+`Public-business truth infrastructure` remains internal category language for doctrine, architecture, partners, investors, and ecosystem positioning. It is not the lead phrase for non-technical owners. Owner-facing acquisition should name the immediate problem and outcome: old menus, conflicting prices, scattered PDFs or links, and one owner-approved customer link for the latest version the owner publishes.
+
 The current operating promise is:
 
 > Upload your current menu or service list. Get one official customer link for QR, WhatsApp, Google, screens, and repeat customers.
@@ -24,6 +26,8 @@ The priority India wedge is now:
 > Send your current list on WhatsApp. MenuList turns it into one official customer link.
 
 This is a campaign and product-readiness track, not permission to claim automatic WhatsApp sync or official WhatsApp partnership.
+
+Do not use `always current`, `customers always see the current version`, or `update once everywhere`. Scope propagation to supported MenuList outputs and keep the owner review and publish action visible.
 
 This follows the existing MenuList marketing strategy: transformation must be visible, early subsidy is acceptable only when it creates public proof, and activation means a published business shared on two or more customer surfaces within seven days.
 

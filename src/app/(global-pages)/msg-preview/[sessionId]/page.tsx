@@ -336,6 +336,14 @@ export default function MsgPreviewPage() {
         <div style={styles.card}>
           <h2 style={styles.errorTitle}>Preview Unavailable</h2>
           <p style={styles.errorText}>{error}</p>
+          <p style={styles.errorRecoveryText}>
+            Open the newest preview link from your WhatsApp conversation. If
+            this link expired, send your menu photos again to start a new
+            preview.
+          </p>
+          <a href="/" style={styles.errorRecoveryLink}>
+            Go to MenuList
+          </a>
         </div>
       </div>
     );
@@ -444,10 +452,11 @@ export default function MsgPreviewPage() {
       <div style={styles.card}>
         <h2 style={styles.sectionTitle}>Business Details</h2>
         <div style={styles.fieldGroup}>
-          <label style={styles.label}>Business Name</label>
+          <label htmlFor="msg-preview-business-name" style={styles.label}>Business Name</label>
           {editingName ? (
             <div style={styles.editRow}>
               <input
+                id="msg-preview-business-name"
                 type="text"
                 value={businessName}
                 onChange={(e) => setBusinessName(e.target.value)}
@@ -456,6 +465,7 @@ export default function MsgPreviewPage() {
                 autoFocus
               />
               <button
+                aria-label="Save business name"
                 onClick={() => setEditingName(false)}
                 style={styles.saveBtn}
               >
@@ -466,6 +476,7 @@ export default function MsgPreviewPage() {
             <div style={styles.editRow}>
               <span style={styles.fieldValue}>{businessName}</span>
               <button
+                aria-label="Edit business name"
                 onClick={() => setEditingName(true)}
                 style={styles.editBtn}
               >
@@ -475,10 +486,11 @@ export default function MsgPreviewPage() {
           )}
         </div>
         <div style={styles.fieldGroup}>
-          <label style={styles.label}>Business Type</label>
+          <label htmlFor="msg-preview-business-type" style={styles.label}>Business Type</label>
           {editingType ? (
             <div style={styles.editRow}>
               <select
+                id="msg-preview-business-type"
                 value={businessType}
                 onChange={(e) => setBusinessType(e.target.value)}
                 style={styles.input}
@@ -489,6 +501,7 @@ export default function MsgPreviewPage() {
                 ))}
               </select>
               <button
+                aria-label="Save business type"
                 onClick={() => setEditingType(false)}
                 style={styles.saveBtn}
               >
@@ -499,6 +512,7 @@ export default function MsgPreviewPage() {
             <div style={styles.editRow}>
               <span style={styles.fieldValue}>{businessType}</span>
               <button
+                aria-label="Edit business type"
                 onClick={() => setEditingType(true)}
                 style={styles.editBtn}
               >
@@ -514,10 +528,11 @@ export default function MsgPreviewPage() {
           </div>
         )}
         <div style={styles.fieldGroup}>
-          <label style={styles.label}>Address</label>
+          <label htmlFor="msg-preview-address" style={styles.label}>Address</label>
           {editingAddress ? (
             <div style={styles.editRow}>
               <input
+                id="msg-preview-address"
                 type="text"
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
@@ -526,6 +541,7 @@ export default function MsgPreviewPage() {
                 autoFocus
               />
               <button
+                aria-label="Save address"
                 onClick={() => setEditingAddress(false)}
                 style={styles.saveBtn}
               >
@@ -536,6 +552,7 @@ export default function MsgPreviewPage() {
             <div style={styles.editRow}>
               <span style={styles.fieldValue}>{address || "Not provided"}</span>
               <button
+                aria-label="Edit address"
                 onClick={() => setEditingAddress(true)}
                 style={styles.editBtn}
               >
@@ -601,6 +618,7 @@ export default function MsgPreviewPage() {
           <div style={styles.issueList}>
             {FIX_ISSUES.map((issue) => (
               <button
+                aria-pressed={selectedIssues.includes(issue.value)}
                 key={issue.value}
                 onClick={() => toggleIssue(issue.value)}
                 style={{
@@ -610,7 +628,7 @@ export default function MsgPreviewPage() {
                     : {}),
                 }}
               >
-                {selectedIssues.includes(issue.value) ? "✓ " : ""}
+                {selectedIssues.includes(issue.value) ? <span aria-hidden="true">✓ </span> : null}
                 {issue.label}
               </button>
             ))}
@@ -957,6 +975,26 @@ const styles: Record<string, React.CSSProperties> = {
     color: "#666",
     textAlign: "center",
     margin: 0,
+  },
+  errorRecoveryText: {
+    fontSize: 14,
+    color: "#555",
+    lineHeight: 1.5,
+    textAlign: "center",
+    margin: "12px 0 16px",
+  },
+  errorRecoveryLink: {
+    alignItems: "center",
+    background: "#111",
+    borderRadius: 8,
+    color: "#fff",
+    display: "flex",
+    fontSize: 14,
+    fontWeight: 600,
+    justifyContent: "center",
+    minHeight: 44,
+    padding: "0 16px",
+    textDecoration: "none",
   },
   successIcon: {
     width: 56,

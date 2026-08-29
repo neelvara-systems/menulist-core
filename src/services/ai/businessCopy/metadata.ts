@@ -112,3 +112,22 @@ export function getBusinessCopyFieldKeysFromUpdate(update: unknown): string[] {
 
     return Array.from(fieldKeys);
 }
+
+export function applyBusinessCopyManualOverrideMetaToUpdate({
+    existingMeta,
+    update,
+}: {
+    existingMeta?: BusinessCopyMeta;
+    update: Record<string, unknown>;
+}): Record<string, unknown> {
+    const fieldKeys = getBusinessCopyFieldKeysFromUpdate(update);
+    if (fieldKeys.length === 0) return update;
+
+    return {
+        ...update,
+        businessCopyMeta: buildBusinessCopyManualOverrideMeta({
+            existingMeta,
+            fieldKeys,
+        }),
+    };
+}

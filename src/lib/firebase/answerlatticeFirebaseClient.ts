@@ -28,6 +28,7 @@ import {
     functions,
 } from "./firebaseClient";
 import { logFirebaseBootstrapFailure } from './firebaseDiagnostics';
+import { resolveAnswerlatticeEmulatorPorts } from './answerlatticeEmulatorPorts';
 
 const ANSWERLATTICE_APP_NAME = 'answerlattice';
 
@@ -54,6 +55,12 @@ const answerlatticeAuth = answerlatticeApp ? (shouldUseSharedAnswerlatticeFireba
 const answerlatticeStorage = answerlatticeApp ? (shouldUseSharedAnswerlatticeFirebase ? firebaseStorage : getStorage(answerlatticeApp)) : null as any;
 const answerlatticeFunctions = answerlatticeApp ? (shouldUseSharedAnswerlatticeFirebase ? functions : getFunctions(answerlatticeApp)) : null as any;
 const useFirebaseEmulators = process.env.NEXT_PUBLIC_USE_FIREBASE_EMULATORS === 'true';
+const answerlatticeEmulatorPorts = resolveAnswerlatticeEmulatorPorts({
+    auth: process.env.NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_AUTH_EMULATOR_PORT,
+    firestore: process.env.NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_FIRESTORE_EMULATOR_PORT,
+    functions: process.env.NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_FUNCTIONS_EMULATOR_PORT,
+    storage: process.env.NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_STORAGE_EMULATOR_PORT,
+});
 
 const isFirebaseEmulatorAlreadyConfigured = (error: unknown): boolean => {
     const code = typeof error === 'object' && error && 'code' in error
@@ -82,19 +89,19 @@ if (
     process.env.NODE_ENV === 'development'
 ) {
     connectAnswerlatticeEmulator(
-        () => connectAuthEmulator(answerlatticeAuth, 'http://127.0.0.1:9099', { disableWarnings: true }),
+        () => connectAuthEmulator(answerlatticeAuth, `http://127.0.0.1:${answerlatticeEmulatorPorts.auth}`, { disableWarnings: true }),
         'auth',
     );
     connectAnswerlatticeEmulator(
-        () => connectFirestoreEmulator(answerlatticeFirebaseClient, '127.0.0.1', 8080),
+        () => connectFirestoreEmulator(answerlatticeFirebaseClient, '127.0.0.1', answerlatticeEmulatorPorts.firestore),
         'firestore',
     );
     connectAnswerlatticeEmulator(
-        () => connectFunctionsEmulator(answerlatticeFunctions, '127.0.0.1', 5001),
+        () => connectFunctionsEmulator(answerlatticeFunctions, '127.0.0.1', answerlatticeEmulatorPorts.functions),
         'functions',
     );
     connectAnswerlatticeEmulator(
-        () => connectStorageEmulator(answerlatticeStorage, '127.0.0.1', 9199),
+        () => connectStorageEmulator(answerlatticeStorage, '127.0.0.1', answerlatticeEmulatorPorts.storage),
         'storage',
     );
 }

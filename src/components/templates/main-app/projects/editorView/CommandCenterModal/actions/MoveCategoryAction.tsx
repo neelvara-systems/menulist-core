@@ -54,6 +54,7 @@ export default function MoveCategoryAction({
             <Flex vertical gap={8}>
                 <Text strong style={{ fontSize: 13 }}>Move to category</Text>
                 <Select
+                    aria-label="Select destination category"
                     value={destinationId}
                     onChange={(val) => setDestinationId(val)}
                     placeholder="Select destination category"

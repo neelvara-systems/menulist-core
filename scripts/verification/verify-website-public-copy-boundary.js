@@ -21,6 +21,7 @@ const BLOCKED_PUBLIC_CLAIMS = [
   { label: 'automatic optimization', pattern: /\bautomatic optimization\b/i },
   { label: 'revolutionary', pattern: /\brevolutionary\b/i },
   { label: 'game-changing', pattern: /\bgame[- ]changing\b/i },
+  { label: 'public-business truth infrastructure', pattern: /\bpublic[- ]business truth infrastructure\b/i },
 ];
 
 const BLOCKED_PRICING_COPY_CLAIMS = [
@@ -36,6 +37,8 @@ const BLOCKED_LOCALE_FRESHNESS_COPY_CLAIMS = [
   'Always reflects your current menu.',
   'Your menu, everywhere your customers look.',
   'All surfaces read from the same official version. Once published, your menu appears wherever customers look.',
+  'Customers always see the current version.',
+  'Update once. Your customers always see the current version.',
 ];
 
 const BLOCKED_LOCALE_OBP_CORRECTNESS_COPY_CLAIMS = [
@@ -356,8 +359,9 @@ function verifyCrossProductTaglineBoundary() {
 
   assertIncludes(answerlatticeConstants, 'The governed source behind customer answers.', 'AnswerLattice tagline source');
   assertIncludes(answerlatticeConstants, 'structured, reviewable, and current across support, docs, search, and AI-assisted surfaces.', 'AnswerLattice supporting line source');
-  assertIncludes(answerlatticeHome, 'ANSWERLATTICE_TAGLINE', 'AnswerLattice homepage tagline binding');
-  assertIncludes(answerlatticeHome, 'Approved answers come first; missing coverage becomes visible review work.', 'AnswerLattice bounded homepage description');
+  assertIncludes(answerlatticeHome, 'Reviewed support for fast-moving products', 'AnswerLattice plain-language homepage category');
+  assertIncludes(answerlatticeHome, 'Start with the questions your users will ask first.', 'AnswerLattice first-ten homepage description');
+  assertIncludes(answerlatticeHome, 'turn every missed question into a visible fix.', 'AnswerLattice bounded homepage improvement loop');
   assertIncludes(answerlatticeFooter, 'ANSWERLATTICE_SUPPORTING_LINE', 'AnswerLattice footer supporting-line binding');
   assertIncludes(answerlatticeFooter, 'al-site-footer__category', 'AnswerLattice footer category hierarchy');
   assertIncludes(answerlatticeFooter, 'al-site-footer__tagline', 'AnswerLattice footer tagline hierarchy');
@@ -453,6 +457,36 @@ function verifyLocaleAndDiscoveryCopy() {
 
   assertNoBlockedClaims('public/llms.txt', read('public/llms.txt'));
   assertNoBlockedClaims('public/llms-full.txt', read('public/llms-full.txt'));
+}
+
+function verifyOwnerLanguageTranslationBoundary() {
+  const officialPageTab = read('src/components/templates/main-app/businessSettings/tabs/OfficialPageTab.tsx');
+  const messageTemplates = read('src/lib/communication/messageTemplates.ts');
+  const languageGovernance = read('__docs__/constitution/02-language-governance.md');
+  const videoStandard = read('__docs__/videos/videos_founder-approved-production-standard.md');
+
+  assertIncludes(
+    officialPageTab,
+    'it opens your latest published public page',
+    'Official Business Page owner-facing published-version copy',
+  );
+  assertNotIncludes(officialPageTab, 'it always shows your latest public page', 'Official Business Page absolute freshness claim');
+  assertIncludes(
+    messageTemplates,
+    'This link opens our latest published version.',
+    'Staff share latest-published-version copy',
+  );
+  assertNotIncludes(messageTemplates, 'This link always shows the latest version.', 'Staff share absolute freshness claim');
+  assertIncludes(
+    languageGovernance,
+    '`Public-business truth infrastructure` is internal category language',
+    'Language governance internal-category boundary',
+  );
+  assertIncludes(
+    videoStandard,
+    'Do not speak it or render it in owner-acquisition',
+    'Video standard owner-language translation boundary',
+  );
 }
 
 function verifyOperationalProofPlacementBoundary() {
@@ -1830,6 +1864,7 @@ if (process.argv.includes('--operational-proof-only')) {
   verifyWebsiteThemeStorageBoundary();
   verifyMountedHomepageBoundary();
   verifyLocaleAndDiscoveryCopy();
+  verifyOwnerLanguageTranslationBoundary();
   verifyOperationalProofPlacementBoundary();
   verifyWhatsAppOnboardingFailClosedBoundary();
   verifyMenuListLaunchAssetPackBoundary();

@@ -1,8 +1,7 @@
 'use client'
 
-import HelpCenter from '@template/main-app/helpCenter';
-import { HELP_CENTER_TABS, HOME_TAB_KEY } from '@template/main-app/helpCenter/tabsConfig';
 import { helpCenterTabRouting } from '@constant/navigations';
+import MenuListHelpCenter, { normalizeMenuListHelpSection } from '@template/main-app/menuListHelpCenter';
 import { theme } from 'antd';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
@@ -16,12 +15,6 @@ interface MobileHelpScreenProps {
     onBack: () => void;
 }
 
-const VALID_HELP_CENTER_TABS = new Set([HOME_TAB_KEY, ...HELP_CENTER_TABS.map((tab) => tab.key)]);
-
-function normalizeHelpCenterTab(tab?: string | null) {
-    return tab && VALID_HELP_CENTER_TABS.has(tab) ? tab : HOME_TAB_KEY;
-}
-
 export default function MobileHelpScreen({ initialTab, onBack }: MobileHelpScreenProps) {
     const t = useTranslations('MobileHelp');
     const router = useRouter();
@@ -32,28 +25,28 @@ export default function MobileHelpScreen({ initialTab, onBack }: MobileHelpScree
     const pathSegments = useMemo(() => (pathname ?? '').split('/').filter(Boolean), [pathname]);
     const isDirectHelpCenterRoute = pathSegments[0] === 'help-center';
     const requestedPathTab = pathSegments[0] === 'help-center' ? pathSegments[1] : null;
-    const requestedArticleId = requestedPathTab === 'kb' && pathSegments[2] === 'articles' ? pathSegments[3] : undefined;
-    const requestedChangelogId = requestedPathTab === 'changelog' ? pathSegments[2] : undefined;
-    const activeTab = useMemo(
-        () => normalizeHelpCenterTab(requestedTab || requestedPathTab || initialTab),
+    const activeSection = useMemo(
+        () => normalizeMenuListHelpSection(requestedTab || requestedPathTab || initialTab),
         [initialTab, requestedPathTab, requestedTab],
     );
 
     useEffect(() => {
         if (!isDirectHelpCenterRoute) return;
 
-        const nextPath = helpCenterTabRouting(activeTab);
+        const nextPath = helpCenterTabRouting(activeSection);
         const currentPath = `${window.location.pathname}${window.location.search}`;
         const isNestedHelpPath = window.location.pathname.startsWith(`${nextPath}/`);
 
         if (currentPath !== nextPath && !isNestedHelpPath) {
             router.replace(`${nextPath}${window.location.hash}`, { scroll: false });
         }
-    }, [activeTab, isDirectHelpCenterRoute, router]);
+    }, [activeSection, isDirectHelpCenterRoute, router]);
 
     const handleBack = () => {
-        window.history.replaceState(null, '', '/dashboard#mobile/more');
-        router.replace('/dashboard#mobile/more', { scroll: false });
+        if (isDirectHelpCenterRoute) {
+            window.history.replaceState(null, '', '/dashboard#mobile/more');
+            router.replace('/dashboard#mobile/more', { scroll: false });
+        }
         onBack();
     };
 
@@ -328,12 +321,7 @@ export default function MobileHelpScreen({ initialTab, onBack }: MobileHelpScree
                         padding: 0 !important;
                     }
                 `}</style>
-                <HelpCenter
-                    initialArticleId={requestedArticleId}
-                    initialChangelogId={requestedChangelogId}
-                    initialTab={activeTab}
-                    syncRoute={isDirectHelpCenterRoute}
-                />
+                <MenuListHelpCenter initialSection={activeSection} />
             </div>
         </Flex>
     );

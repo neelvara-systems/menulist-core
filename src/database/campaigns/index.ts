@@ -1,12 +1,14 @@
 import { DB_COLLECTIONS } from "@constant/database";
 import { FEATURE_FLAGS } from "@config/features";
 import { uploadPreparedMediaImageWithLedger } from "@database/storage/uploadPreparedMediaImage";
+import { deleteFileByUrl } from "@database/storage/deleteFromStorage";
 import { collection, deleteField, doc, getDoc, getDocs, limit, orderBy, query, runTransaction, serverTimestamp, setDoc, Timestamp, where } from "@firebase/firestore";
 import { requestBodyComposer } from "@lib/apiHelper";
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
 import getActiveSession from "@lib/auth/getActiveSession";
 import { firebaseClient } from "@lib/firebase/firebaseClient";
 import { isDataUrl } from "@lib/media/mediaStorage";
+import { cleanupUploadedMediaUrls } from "@lib/media/mediaUploadBoundary";
 import { isValidFirestoreDocumentId } from "@lib/firebase/firestoreDocumentId";
 import {
     isCampaignExecutionSurface,
@@ -25,7 +27,10 @@ import {
     removeCampaignFromToday,
 } from "@lib/campaigns/campaignActionState";
 import { normalizeOwnerSlideCaption, normalizeScreenImageUrl } from "@lib/screen/screenContent";
-import { isDigitalScreenManagementResponse } from "@lib/screen/screenManagementContracts";
+import {
+    isDigitalScreenManagementResponse,
+    serializeDigitalScreenOwnerSlideForMutation,
+} from "@lib/screen/screenManagementContracts";
 import type {
     DigitalScreenManagementMutation,
     DigitalScreenOwnerStateTransport,
@@ -850,13 +855,22 @@ function hydrateDigitalScreenOwnerState(
 async function callDigitalScreenManagementApi(
     mutation?: DigitalScreenManagementMutation,
 ): Promise<DigitalScreenOwnerState | null> {
-    const response = await fetch("/api/digital-screens", {
+    const session = requireCampaignSessionScope(await getActiveSession());
+    const endpoint = mutation
+        ? "/api/digital-screens"
+        : `/api/digital-screens?storeId=${encodeURIComponent(String(session.sId))}`;
+    const response = await fetch(endpoint, {
         method: mutation ? "POST" : "GET",
         headers: mutation ? { "Content-Type": "application/json" } : undefined,
         credentials: "same-origin",
         cache: "no-store",
         redirect: "manual",
-        ...(mutation ? { body: JSON.stringify(mutation) } : {}),
+        ...(mutation ? {
+            body: JSON.stringify({
+                ...mutation,
+                targetStoreId: session.sId,
+            }),
+        } : {}),
     });
     if (!response.ok) {
         throw new Error(`digital_screen_management_request_failed_${response.status}`);
@@ -930,10 +944,7 @@ export const addPinnedSlide = async (slide: ScreenSlide): Promise<DigitalScreenM
             if (!validUntilMs) throw new Error("digital_screen_slide_expiry_invalid");
             const screen = await callDigitalScreenManagementApi({
                 action: "add_slide",
-                slide: {
-                    ...slide,
-                    validUntilMs,
-                },
+                slide: serializeDigitalScreenOwnerSlideForMutation(slide, validUntilMs),
             });
             if (!screen) throw new Error("digital_screen_not_initialized");
             return { success: true, screen } satisfies DigitalScreenMutationResult;
@@ -946,7 +957,10 @@ export const addPinnedSlide = async (slide: ScreenSlide): Promise<DigitalScreenM
 /**
  * Remove pinned slide
  */
-export const removePinnedSlide = async (slideId: string): Promise<DigitalScreenMutationResult> => {
+export const removePinnedSlide = async (
+    slideId: string,
+    imageUrl?: string,
+): Promise<DigitalScreenMutationResult> => {
     return await apiCallComposer(
         async () => {
             const normalizedSlideId = requireScreenSlideId(slideId);
@@ -955,6 +969,16 @@ export const removePinnedSlide = async (slideId: string): Promise<DigitalScreenM
                 slideId: normalizedSlideId,
             });
             if (!screen) throw new Error("digital_screen_not_initialized");
+            if (imageUrl) {
+                const cleanup = await cleanupUploadedMediaUrls([imageUrl], deleteFileByUrl);
+                if (cleanup.failedCount > 0) {
+                    logCampaignScreenFailure(
+                        'digital_screen_slide_delete_cleanup_failed',
+                        new Error('digital_screen_slide_delete_cleanup_failed'),
+                        { attemptedCount: cleanup.attemptedCount, failedCount: cleanup.failedCount },
+                    );
+                }
+            }
             return { success: true, screen } satisfies DigitalScreenMutationResult;
         },
         { slideId },
@@ -1039,6 +1063,7 @@ export const uploadScreenSlide = async (
             // Generate unique slide ID
             const slideId = `upload-${Date.now()}-${createRandomIdSegment(9)}`;
             let imageUrl = typeof data.url === 'string' ? normalizeScreenImageUrl(data.url) : '';
+            let uploadedVariantUrls: string[] = [];
 
             // Upload prepared media to immutable profile-aware Storage path
             if (data.blob || isDataUrl(data.url)) {
@@ -1056,6 +1081,7 @@ export const uploadScreenSlide = async (
                     variant: 'full',
                 });
                 imageUrl = normalizeScreenImageUrl(uploaded.primaryUrl);
+                uploadedVariantUrls = uploaded.variantUrls;
             }
             if (!imageUrl) throw new Error('digital_screen_slide_image_invalid');
 
@@ -1080,6 +1106,29 @@ export const uploadScreenSlide = async (
                     'digital_screen_slide_upload_update_rejected',
                 );
             } catch (error) {
+                let addCommitted = false;
+                let stateReadSucceeded = false;
+                try {
+                    const verificationState = await getScreenState();
+                    stateReadSucceeded = true;
+                    addCommitted = Boolean(
+                        verificationState?.pinnedSlides.some((slide) => slide.id === slideId),
+                    );
+                } catch {
+                    // Ambiguous commit: retain immutable media rather than break
+                    // a server-committed slide after a lost response.
+                }
+                if (addCommitted) return newSlide;
+                if (stateReadSucceeded) {
+                    const cleanup = await cleanupUploadedMediaUrls(uploadedVariantUrls, deleteFileByUrl);
+                    if (cleanup.failedCount > 0) {
+                        logCampaignScreenFailure(
+                            'digital_screen_slide_upload_cleanup_failed',
+                            error,
+                            { attemptedCount: cleanup.attemptedCount, failedCount: cleanup.failedCount },
+                        );
+                    }
+                }
                 throw error;
             }
 

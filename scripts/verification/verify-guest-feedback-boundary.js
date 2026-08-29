@@ -444,6 +444,9 @@ function verifyOwnerDtoRuntime() {
     assertFeedbackStatusUpdateSucceeded,
     isGuestFeedbackListResult,
   } = require(path.join(ROOT, 'src/database/guestFeedback/index.ts'));
+  const {
+    resolveGuestFeedbackOwnerProjectId,
+  } = require(path.join(ROOT, 'src/lib/feedback/guestFeedbackProjectIdBoundary.ts'));
   const feedback = {
     id: 'feedback_1',
     tId: 1,
@@ -511,10 +514,35 @@ function verifyOwnerDtoRuntime() {
     rejectedFractionalCount = true;
   }
   assert(rejectedFractionalCount, 'Guest Feedback count acknowledgement must reject fractional values');
+
+  const projects = [
+    { projectId: 'special-menu', isDefault: true, isSpecialMenu: true },
+    { projectId: 'inactive-menu', active: false },
+    { projectId: 'deleted-menu', deleted: true },
+    { projectId: '1-default-101', isDefault: true },
+    { projectId: '1-secondary-101' },
+  ];
+  assert(
+    resolveGuestFeedbackOwnerProjectId(projects) === '1-default-101',
+    'Guest Feedback owner QR must resolve the active regular default project',
+  );
+  assert(
+    resolveGuestFeedbackOwnerProjectId(projects, '1-secondary-101') === '1-secondary-101',
+    'Guest Feedback owner QR must honor a selectable preferred project',
+  );
+  assert(
+    resolveGuestFeedbackOwnerProjectId(projects, 'special-menu') === '1-default-101',
+    'Guest Feedback owner QR must reject a special-menu preference',
+  );
+  assert(
+    resolveGuestFeedbackOwnerProjectId([{ projectId: ' unsafe ' }]) === null,
+    'Guest Feedback owner QR must reject whitespace-mutated project IDs',
+  );
 }
 
 function verifyOwnerDesktopMobile() {
   const desktop = read('src/components/templates/main-app/feedback/index.tsx');
+  const desktopRoute = read('src/app/(main)/feedback/page.tsx');
   const desktopCard = read('src/components/templates/main-app/feedback/FeedbackCard.tsx');
   const desktopQr = read('src/components/templates/main-app/feedback/FeedbackQrDownload.tsx');
   const desktopDiagnostics = read('src/components/templates/main-app/feedback/feedbackInboxDiagnostics.ts');
@@ -532,6 +560,17 @@ function verifyOwnerDesktopMobile() {
   assertIncludes(desktop, 'feedback_inbox_status_update_rejected', 'Guest Feedback desktop status rejection code');
   assertIncludes(desktop, 'logFeedbackInboxFailure', 'Guest Feedback desktop bounded diagnostics');
   assertIncludes(desktop, 'return <FeedbackInboxContent key={scopeKey} {...props} />;', 'Guest Feedback desktop tenant/store keyed state lifetime');
+  assertIncludes(desktopRoute, '<FeedbackInbox />', 'Guest Feedback desktop route uses context-resolved project scope');
+  assertIncludes(desktop, 'normalizeGuestFeedbackProjectId(storeDetails?.primaryProjectId)', 'Guest Feedback desktop validates the store primary-project candidate');
+  assertIncludes(desktop, "['feedbackQrProjectSummaries', feedbackScope.tenantId, feedbackScope.storeId]", 'Guest Feedback desktop project-summary cache key includes tenant and store');
+  assertIncludes(desktop, 'feedbackScope ? { tId: feedbackScope.tenantId, sId: feedbackScope.storeId } : undefined', 'Guest Feedback desktop fallback project lookup retains captured tenant/store scope');
+  assertIncludes(desktop, 'dedupingInterval: 60 * 60 * 1000', 'Guest Feedback desktop fallback project lookup is bounded');
+  assertIncludes(desktop, 'revalidateOnFocus: false', 'Guest Feedback desktop fallback project lookup avoids focus-triggered reads');
+  assertIncludes(desktop, 'revalidateOnReconnect: false', 'Guest Feedback desktop fallback project lookup avoids reconnect-triggered reads');
+  assertIncludes(desktop, 'resolveGuestFeedbackOwnerProjectId(', 'Guest Feedback desktop resolves the canonical regular menu for QR distribution');
+  assertIncludes(desktop, '{resolvedProjectId ? (', 'Guest Feedback desktop QR surface uses the resolved project ID');
+  assertIncludes(desktop, 'projectId={resolvedProjectId}', 'Guest Feedback desktop QR component receives the resolved project ID');
+  assertIncludes(desktop, 'storeName={resolvedStoreName}', 'Guest Feedback desktop inbox and QR use the active store name');
   assertIncludes(desktop, 'getFeedbackList(filter, 50, cursorId || undefined, expectedScope)', 'Guest Feedback desktop list retains captured tenant/store scope');
   assertIncludes(desktop, "getFeedbackCount('needs_attention', expectedScope)", 'Guest Feedback desktop count retains captured tenant/store scope');
   assertIncludes(desktop, 'latestRequestRef.current !== requestId', 'Guest Feedback desktop latest request settlement');
@@ -572,6 +611,11 @@ function verifyOwnerDesktopMobile() {
   assertIncludes(mobile, 'mobile_feedback_link_copy_failed', 'Guest Feedback mobile copy failure diagnostic');
   assertIncludes(mobile, 'openMobilePublicLink(feedbackUrl', 'Guest Feedback mobile shell-safe public link open');
   assertIncludes(mobile, 'mobile_feedback_native_share_failed', 'Guest Feedback mobile native share diagnostic');
+  assertIncludes(mobile, "copyLabel={t('copyLink')}", 'Guest Feedback mobile copy action accessible name');
+  assertIncludes(mobile, "shareLabel={mobileNavigation('share')}", 'Guest Feedback mobile share action accessible name');
+  assertIncludes(mobile, "showQrLabel={t('showQr')}", 'Guest Feedback mobile QR action accessible name');
+  assertIncludes(mobile, "openLabel={`${common('open')} ${t('feedbackQrTitle')}`}", 'Guest Feedback mobile open action accessible name');
+  assertIncludes(mobile, 'aria-label={ariaLabel}', 'Guest Feedback mobile action accessible name forwarding');
   assertIncludes(mobile, 'logMobileOwnerFailure', 'Guest Feedback mobile bounded diagnostics');
   assertIncludes(mobile, 'return <MobileFeedbackScreenContent key={scopeKey} {...props} />;', 'Guest Feedback mobile tenant/store keyed state lifetime');
   assertIncludes(mobile, 'getFeedbackList(targetFilter, 50, cursorId || undefined, expectedScope)', 'Guest Feedback mobile list retains captured tenant/store scope');
@@ -642,6 +686,8 @@ function verifyDocsParity() {
   assertIncludes(impl, 'deterministic document ID', 'Guest Feedback implementation deterministic record contract');
   assertIncludes(impl, 'There are no authenticated `/api/feedback` list/update routes.', 'Guest Feedback implementation client DAL truth');
   assertIncludes(impl, 'src/lib/feedback/guestFeedbackProjectIdBoundary.ts', 'Guest Feedback implementation project ID helper');
+  assertIncludes(impl, 'deduped for one hour with focus/reconnect revalidation disabled', 'Guest Feedback implementation owner QR lookup cache boundary');
+  assertIncludes(impl, 'active, non-deleted, non-special projects', 'Guest Feedback implementation owner QR project eligibility');
   assertIncludes(firebase, 'Guest feedback writes do not invalidate public menu/OBP cache', 'Guest Feedback Firebase cache boundary');
   assertIncludes(firebase, 'Guest Feedback project ID admission', 'Guest Feedback Firebase project ID admission boundary');
   assertIncludes(firebase, 'whitespace-mutated', 'Guest Feedback Firebase strict project ID admission boundary');
@@ -658,6 +704,9 @@ function verifyDocsParity() {
   assertIncludes(helpdoc, 'Private feedback', 'Guest Feedback helpdoc private feedback wording');
   assertIncludes(helpdoc, 'send it manually', 'Guest Feedback helpdoc manual reply boundary');
   assertIncludes(firebase, 'Feedback reply drafts are Firebase-cost neutral', 'Guest Feedback Firebase reply draft boundary');
+  assertIncludes(firebase, 'Desktop Feedback distribution project resolution adds zero reads', 'Guest Feedback Firebase owner QR existing-store cost boundary');
+  assertIncludes(firebase, 'one exact tenant/store-scoped project-summary read', 'Guest Feedback Firebase owner QR fallback read bound');
+  assertIncludes(firebase, 'Copy, open, WhatsApp handoff, QR generation, and PNG download remain browser-local', 'Guest Feedback Firebase owner QR browser-local actions');
   assertIncludes(readme, 'feedbackReplyTemplates.ts', 'Guest Feedback README reply template helper');
   assertIncludes(impl, 'feedbackReplyTemplates.ts', 'Guest Feedback implementation reply template helper');
   assertIncludes(marketing, 'Claims That Are Not Allowed', 'Guest Feedback marketing claim guard');
@@ -696,6 +745,7 @@ function verifyDocsParity() {
   assertIncludes(changelog, 'Feedback PII requires explicit store membership', 'Changelog Guest Feedback store-membership boundary');
   assertIncludes(changelog, 'Public Media Load Fallbacks', 'Changelog Guest Feedback identity logo fallback evidence');
   assertIncludes(changelog, 'synthetic 320-character fill clamped to `300/300`', 'Changelog Guest Feedback controlled-state browser evidence');
+  assertIncludes(changelog, 'Owner Feedback QR and link recovery', 'Changelog Guest Feedback owner QR/link recovery');
 }
 
 const checks = [

@@ -1803,3 +1803,23 @@ proof before scale, audience/problem alignment, qualified outcomes, SEO page
 admission, AI discovery and dark attribution, organic content, video, paid
 acquisition, permissioned field distribution, measurement, system ownership,
 product routing, and revalidation.
+
+---
+
+## August 27, 2026 - Owner-Language Boundary Applied Repo-Wide
+
+### Decision
+
+Kept `public-business truth infrastructure` as MenuList's internal category and architecture language, while making the external owner promise one owner-approved customer link for the latest version the owner publishes.
+
+### Work Completed
+
+- Updated canonical language governance and the global ChatGPT handoff.
+- Updated the founder-approved video standard, launch blueprint, active video handoffs, founder review, and active HyperFrames wording.
+- Replaced unqualified `always latest` wording in the Official Business Page sharing card and staff WhatsApp template.
+- Added the reusable category-to-buyer translation and absolute-claim boundary to DistributionOS and MenuList marketing operations.
+- Added `ML-MKT-EXT-012` and verifier coverage for the durable decision.
+
+### Boundary
+
+No public claim may imply that MenuList silently updates unsupported external platforms. Owner review, publication, supported MenuList outputs, and latest-published-version language remain explicit.

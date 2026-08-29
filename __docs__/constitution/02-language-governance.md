@@ -1,6 +1,6 @@
 # MenuList Language Governance
 
-**Version:** 2.1
+**Version:** 2.2
 **Status:** 🔒 LOCKED — TRUTH-FIRST INTERPRETATION
 **Applies To:** UI, Support, Sales, Marketing, Docs, Emails, All Teams
 
@@ -86,12 +86,12 @@ Use these everywhere:
 - "No action needed."
 - "Everything is running normally."
 - "Menu state is stable."
-- "Handled automatically."
+- "Handled automatically." Only when the named workflow is verified to require no owner action.
 - "No change today."
 - "This is set."
-- "MenuList runs your menu."
-- "You don't need to manage this."
-- "Nothing to configure."
+- "Your latest approved version is published."
+- "Your customer link is ready to share."
+- "Review the prepared change, then publish it."
 
 ---
 
@@ -108,22 +108,39 @@ Use these everywhere:
 | "Improves conversion…" | Unverifiable           |
 | "Increases sales…"     | Unverifiable           |
 | "Best performing…"     | Invites comparison     |
+| "Customers always see the current version." | Absolute freshness claim |
+| "Update once. Everything updates everywhere." | Implies unsupported propagation |
+| "You don't need to manage this." | Hides owner approval and correction duties |
+| "Nothing to configure." | Hides setup requirements |
+| "If it's shown, it's safe." | Replaces evidence with an absolute assurance |
 
 ### ✅ Sales IS Allowed to Say
 
-| Approved                         | Why It Works             |
-| -------------------------------- | ------------------------ |
-| "MenuList runs your menu."       | Operational certainty    |
-| "This updates automatically."    | No action required       |
-| "You don't need to manage this." | Removes cognitive load   |
-| "Nothing to configure."          | Zero decisions           |
-| "If it's shown, it's safe."      | Trust in public surfaces |
+| Approved | Why It Works |
+| --- | --- |
+| "MenuList keeps your approved customer link connected to the version you publish." | Names the mechanism and owner action |
+| "Publish the change once across supported MenuList outputs." | Scopes propagation truthfully |
+| "Start from the menu you already have." | Reduces setup anxiety without hiding review |
+| "Private preview first. Review before publishing." | Makes the approval boundary clear |
+| "This link opens our latest published version." | Avoids an unqualified freshness guarantee |
 
 ### Approved One-Line Pitch
 
 > **"MenuList keeps one owner-approved customer list connected to the public links and assets your business uses."**
 
 Nothing else.
+
+### Internal Category vs Owner Promise
+
+`Public-business truth infrastructure` is internal category language for doctrine, architecture, partner, investor, and ecosystem contexts. Do not use it as the lead acquisition phrase for non-technical owners or render it in owner-facing website, launch, onboarding, sales, support, or paid-video copy.
+
+Translate the category into the owner's problem and visible outcome:
+
+- problem: customers see old PDFs, screenshots, prices, QR destinations, or links;
+- owner promise: one owner-approved customer link for the latest published version;
+- proof: the menu, prices, business details, QR, public page, print, screen, and sharing outputs supported by MenuList stay connected to that approved publish.
+
+Avoid `always current`, `customers always see`, `update once everywhere`, and similar absolutes. Use `latest owner-approved publish`, `latest published version`, and `supported MenuList outputs`. External platforms remain owner-placed destinations unless a verified integration explicitly proves otherwise.
 
 ---
 
@@ -202,4 +219,4 @@ Removal of routine responsibility is the product. Approval, correction, billing,
 ---
 
 **Document Signature:** Founder Constitution  
-**Last Updated:** July 18, 2026
+**Last Updated:** August 27, 2026

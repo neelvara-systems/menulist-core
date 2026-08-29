@@ -32,6 +32,8 @@ const features = read('src/config/features.ts');
 const helper = read('src/lib/ownerActions/buildOwnerActionLayer.ts');
 const boundaryTest = read('scripts/verification/test-owner-action-layer-boundary.ts');
 const desktopDashboard = read('src/components/templates/main-app/dashboard/OwnerDashboard/index.tsx');
+const projectPublicationEvents = read('src/lib/projects/projectPublicationEvents.ts');
+const projectDal = read('src/database/projects/index.ts');
 const mobileDashboard = read('src/components/mobile/screens/MobileDashboardScreen.tsx');
 const navigations = read('src/constants/navigations.ts');
 const readme = read('__docs__/owner-action-layer/README.md');
@@ -88,7 +90,17 @@ requireToken(
   "title={t('ownerActions.title')}",
   'ownerActionLayer.primaryAction',
   'router.push(ownerActionLayer.primaryAction.desktopHref)',
+  'subscribeToProjectPublication',
+  'revalidateDashboardProject',
 ].forEach((token) => requireToken(desktopDashboard, token, 'desktop dashboard owner action layer'));
+
+[
+  'normalizeProjectDocumentScope',
+  "window.addEventListener(PROJECT_PUBLICATION_EVENT, handleCustomEvent)",
+  "window.addEventListener('storage', handleStorageEvent)",
+  'normalizeProjectPublicationEventDetail',
+].forEach((token) => requireToken(projectPublicationEvents, token, 'project publication cross-tab boundary'));
+requireToken(projectDal, 'emitProjectPublicationEvent(projectScope);', 'project publication acknowledged event');
 forbidToken(desktopDashboard, 'ownerActionLayer.supportingActions', 'desktop dashboard supporting action grid');
 forbidToken(desktopDashboard, 'title="Update what customers see"', 'desktop dashboard duplicate quick actions');
 
@@ -147,8 +159,8 @@ requireToken(helper, 'lastPublishedAt?: unknown;', 'owner action minimal project
 ].forEach((token) => requireToken(impl, token, 'owner action implementation doc'));
 
 [
-  'The owner action layer adds no Firebase operations.',
-  '| Firestore reads | 0 new |',
+  'Normal dashboard rendering adds no Firebase operation.',
+  '| Firestore reads | 1 per open matching dashboard tab after an acknowledged publish |',
   '| Firestore writes | 0 |',
   'Any future proof capture, date-specific exception schema, review ingestion',
 ].forEach((token) => requireToken(firebase, token, 'owner action firebase doc'));
@@ -167,6 +179,7 @@ requireToken(helper, 'lastPublishedAt?: unknown;', 'owner action minimal project
 
 [
   'No selected project loaded yet',
+  'Another owner tab publishes the selected project',
   'Placement confirmed over 45 days ago',
   'Feature flag off',
 ].forEach((token) => requireToken(tests, token, 'owner action test doc'));

@@ -160,6 +160,7 @@ function DetailsModal({ activeAssetsType, modalData, onClose, onSubmit, activeCa
     const [mutationInFlight, setMutationInFlight] = useState(false);
     const fileReadEpochRef = useRef(0);
     const mutationInFlightRef = useRef(false);
+    const hasRequiredName = Boolean(activeDetails.name.trim());
 
     useEffect(() => {
         fileReadEpochRef.current += 1;
@@ -352,7 +353,7 @@ function DetailsModal({ activeAssetsType, modalData, onClose, onSubmit, activeCa
     }
 
     const onSave = async () => {
-        if (mutationInFlightRef.current || fileReadInFlight) return;
+        if (mutationInFlightRef.current || fileReadInFlight || !hasRequiredName) return;
         mutationInFlightRef.current = true;
         setMutationInFlight(true);
         try {
@@ -569,7 +570,7 @@ function DetailsModal({ activeAssetsType, modalData, onClose, onSubmit, activeCa
                         <Button disabled={mutationInFlight || fileReadInFlight} icon={<MdOutlineDelete />} ghost danger type="primary">Delete</Button>
                     </Popconfirm>}
                 </>,
-                <Button disabled={mutationInFlight || fileReadInFlight} key="Save" icon={<LuSave />} type="primary" onClick={onSave}>Save</Button>
+                <Button disabled={mutationInFlight || fileReadInFlight || !hasRequiredName} key="Save" icon={<LuSave />} type="primary" onClick={onSave}>Save</Button>
             ]}
             width={500}
         >
@@ -577,17 +578,18 @@ function DetailsModal({ activeAssetsType, modalData, onClose, onSubmit, activeCa
                 <Flex gap={20}>
                     <Flex vertical gap={10} style={{ width: "100%" }}>
                         <Text strong>Name</Text>
-                        <Input size="large" placeholder={`${modalData.type} name`} value={activeDetails.name} onChange={(e) => onChangeValue('name', e.target.value)} />
+                        <Input aria-label={`${modalData.type} name`} size="large" placeholder={`${modalData.type} name`} value={activeDetails.name} onChange={(e) => onChangeValue('name', e.target.value)} />
                     </Flex>
                     <Flex vertical gap={10} style={{ width: 70 }} >
                         <Text strong>Active</Text>
-                        <Switch checked={activeDetails.active} onChange={(checked) => onChangeValue('active', checked)} />
+                        <Switch aria-label={`${modalData.type} active`} checked={activeDetails.active} onChange={(checked) => onChangeValue('active', checked)} />
                     </Flex>
                 </Flex>
                 {modalData.type == 'Category' ? <>
                     <Flex vertical gap={10} style={{ width: "100%" }}>
                         <Text strong>Business Types</Text>
                         <Select
+                            aria-label="Business Types"
                             mode="multiple"
                             allowClear
                             style={{ width: '100%' }}

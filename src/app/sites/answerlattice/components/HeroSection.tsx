@@ -44,12 +44,12 @@ export default function HeroSection({ basePath = '' }: { basePath?: string }) {
                     <div className="al-page-hero__actions relative mx-auto w-full sm:max-w-none lg:mx-0 lg:justify-start">
                         <AnswerlatticeLink
                             basePath={basePath}
-                            href="/get-started"
+                            href="/early-access"
                             data-answerlattice-event="hero_cta_clicked"
                             data-answerlattice-label="create_workspace"
                             className="al-page-hero__button al-page-hero__button--primary"
                         >
-                            Create workspace
+                            Request early access
                         </AnswerlatticeLink>
                         <AnswerlatticeLink
                             basePath={basePath}

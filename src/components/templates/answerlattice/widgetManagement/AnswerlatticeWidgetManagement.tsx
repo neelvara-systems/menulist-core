@@ -2019,8 +2019,8 @@ export default function AnswerlatticeWidgetManagement({ embeddedMobile = false, 
                                                 <Alert
                                                     type="success"
                                                     showIcon
-                                                    message="Widget key copied into install snippets"
-                                                    description="Use the install tab now; refresh will clear the visible raw key from this browser."
+                                                    message="Widget key created — copy it now"
+                                                    description="Copy the full key above, then open Install & Embed and replace the placeholder. Leaving this screen clears the visible raw key."
                                                 />
                                             )}
                                             <Alert

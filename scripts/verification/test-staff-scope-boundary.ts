@@ -7,6 +7,7 @@ import RolesPermissionInitialData, {
 import { DEFAULT_ROLE_METADATA } from '../../src/data/shared/defaultRoles';
 import {
     canManageStaffTarget,
+    canManageStaffTargetForSession,
     normalizePersistedStaffStoreMappings,
     normalizeStaffStoreScopeDocumentId,
     staffTargetHasOwnerAccess,
@@ -81,7 +82,7 @@ assert.deepEqual(normalizePersistedStaffStoreMappings([
 ]);
 
 const ownerTarget = { stores: [{ storeId: 1, name: 'One', role: 'owner' }] };
-const ordinaryStaffTarget = { stores: [{ storeId: 1, name: 'One', role: 'staff' }] };
+const ordinaryStaffTarget = { id: 'staff-1', stores: [{ storeId: 1, name: 'One', role: 'staff' }] };
 assert.equal(staffTargetHasOwnerAccess(ownerTarget), true);
 assert.equal(staffTargetHasOwnerAccess({ ownerProtected: true, stores: [] }), true);
 assert.equal(staffTargetHasOwnerAccess(ordinaryStaffTarget), false);
@@ -89,6 +90,10 @@ assert.equal(canManageStaffTarget({ canAssignRoles: false, canManageUsers: true,
 assert.equal(canManageStaffTarget({ canAssignRoles: true, canManageUsers: true, target: ownerTarget }), true);
 assert.equal(canManageStaffTarget({ canAssignRoles: false, canManageUsers: true, target: ordinaryStaffTarget }), true);
 assert.equal(canManageStaffTarget({ canAssignRoles: true, canManageUsers: false, target: ordinaryStaffTarget }), false);
+assert.equal(canManageStaffTargetForSession({ canAssignRoles: true, canManageUsers: true, currentUserId: 'owner-1', target: ordinaryStaffTarget }), true);
+assert.equal(canManageStaffTargetForSession({ canAssignRoles: true, canManageUsers: true, currentUserId: 'staff-1', target: ordinaryStaffTarget }), false);
+assert.equal(canManageStaffTargetForSession({ canAssignRoles: true, canManageUsers: true, currentUserId: '', target: ordinaryStaffTarget }), false);
+assert.equal(canManageStaffTargetForSession({ canAssignRoles: true, canManageUsers: true, currentUserId: 'owner-1', target: { stores: [] } }), false);
 
 const uniquePermissionKeys = new Set(ALL_PERMISSIONS);
 assert.equal(uniquePermissionKeys.size, ALL_PERMISSIONS.length, 'permission constants must be unique');

@@ -1108,7 +1108,7 @@ export default function MobileAiMenuManagerScreen({
                             }}
                         >
                             <Button
-                                ariaLabel="Choose context or suggestions"
+                                aria-label="Choose context or suggestions"
                                 disabled={!selectedProjectId || submitting}
                                 fill="outline"
                                 onClick={() => setIsToolsOpen(true)}
@@ -1124,6 +1124,7 @@ export default function MobileAiMenuManagerScreen({
                                 <LuPlus size={20} />
                             </Button>
                             <TextArea
+                                aria-label="Message Menu Manager"
                                 autoSize={{ minRows: 1, maxRows: 4 }}
                                 disabled={!selectedProjectId || submitting}
                                 onChange={setInput}
@@ -1193,6 +1194,7 @@ export default function MobileAiMenuManagerScreen({
             />
 
             <Popup
+                aria-label="Start from"
                 destroyOnClose
                 onMaskClick={() => setIsToolsOpen(false)}
                 visible={isToolsOpen}
@@ -1208,7 +1210,7 @@ export default function MobileAiMenuManagerScreen({
                             <Text type="secondary">Add context or choose a prepared suggestion.</Text>
                         </div>
                         <Button
-                            ariaLabel="Close tools"
+                            aria-label="Close tools"
                             fill="none"
                             onClick={() => setIsToolsOpen(false)}
                             style={{ minHeight: 44, minWidth: 44, padding: 0 }}
@@ -1248,6 +1250,7 @@ export default function MobileAiMenuManagerScreen({
             </Popup>
 
             <Popup
+                aria-label="Work on"
                 destroyOnClose
                 onMaskClick={() => setIsContextPickerOpen(false)}
                 visible={isContextPickerOpen}
@@ -1265,7 +1268,7 @@ export default function MobileAiMenuManagerScreen({
                             <Text type="secondary">Pick a menu area first, then type what to do.</Text>
                         </div>
                         <Button
-                            ariaLabel="Close context picker"
+                            aria-label="Close context picker"
                             fill="none"
                             onClick={() => setIsContextPickerOpen(false)}
                             style={{ minHeight: 44, minWidth: 44, padding: 0 }}
@@ -1444,6 +1447,7 @@ export default function MobileAiMenuManagerScreen({
             </Popup>
 
             <Popup
+                aria-label="Suggestions"
                 destroyOnClose
                 onMaskClick={closeSuggestions}
                 visible={isSuggestionsOpen}
@@ -1461,7 +1465,7 @@ export default function MobileAiMenuManagerScreen({
                             <Text type="secondary">Pick one to draft it. You can edit before sending.</Text>
                         </div>
                         <Button
-                            ariaLabel="Close suggestions"
+                            aria-label="Close suggestions"
                             fill="none"
                             onClick={closeSuggestions}
                             style={{ minHeight: 44, minWidth: 44, padding: 0 }}

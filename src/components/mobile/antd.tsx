@@ -305,6 +305,7 @@ export function Button({
 }
 
 type CardProps = {
+    'aria-pressed'?: boolean;
     children?: ReactNode;
     className?: string;
     onClick?: () => void;
@@ -313,7 +314,7 @@ type CardProps = {
     title?: ReactNode;
 };
 
-export function Card({ children, className, onClick, size = 'small', style, title }: CardProps) {
+export function Card({ 'aria-pressed': ariaPressed, children, className, onClick, size = 'small', style, title }: CardProps) {
     const handleKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
         if (!onClick) return;
         if (event.key !== 'Enter' && event.key !== ' ') return;
@@ -323,6 +324,7 @@ export function Card({ children, className, onClick, size = 'small', style, titl
 
     return (
         <AntCard
+            aria-pressed={ariaPressed}
             className={className}
             onClick={onClick}
             onKeyDown={handleKeyDown}
@@ -437,6 +439,7 @@ function ListItem({ arrow, children, description, extra, onClick, prefix, style,
 export const List = Object.assign(ListComponent, { Item: ListItem });
 
 type PopupProps = {
+    'aria-label'?: string;
     bodyStyle?: AnyStyle;
     children?: ReactNode;
     destroyOnClose?: boolean;
@@ -454,7 +457,7 @@ function containsElementType(node: ReactNode, targetType: unknown): boolean {
     });
 }
 
-export function Popup({ bodyStyle, children, destroyOnClose, onMaskClick, visible, zIndex }: PopupProps) {
+export function Popup({ 'aria-label': ariaLabel, bodyStyle, children, destroyOnClose, onMaskClick, visible, zIndex }: PopupProps) {
     const [isPwa, setIsPwa] = useState(false);
     const drawerStyle = sanitizeStyle(bodyStyle);
     const hasNavBar = containsElementType(children, NavBar);
@@ -551,6 +554,7 @@ export function Popup({ bodyStyle, children, destroyOnClose, onMaskClick, visibl
 
     return (
         <Drawer
+            aria-label={ariaLabel}
             closable={false}
             destroyOnClose={destroyOnClose}
             height={popupHeight}
@@ -915,6 +919,7 @@ export function Select(props: SelectImplementationProps): ReactElement {
         style,
         value,
     } = props;
+    const [open, setOpen] = useState(false);
     const handleChange = (nextValue: string | string[]) => {
         if (typeof document !== 'undefined') {
             const activeElement = document.activeElement as HTMLElement | null;
@@ -926,6 +931,11 @@ export function Select(props: SelectImplementationProps): ReactElement {
         } else if (typeof nextValue === 'string') {
             props.onChange(nextValue);
         }
+    };
+    const handleInputKeyDown = (event: ReactKeyboardEvent<HTMLInputElement>) => {
+        if (event.key !== 'Escape' || !open) return;
+        event.stopPropagation();
+        setOpen(false);
     };
 
     return (
@@ -942,6 +952,9 @@ export function Select(props: SelectImplementationProps): ReactElement {
             maxCount={maxCount}
             mode={mode}
             onChange={handleChange}
+            onInputKeyDown={handleInputKeyDown}
+            onOpenChange={setOpen}
+            open={open}
             optionFilterProp="label"
             options={options}
             placeholder={placeholder}
@@ -1174,6 +1187,7 @@ export function Picker({
                 >
                     <Flex align="center" justify="space-between" style={{ minHeight: 44 }}>
                         <Button
+                            aria-label="Close"
                             fill="none"
                             onClick={onClose}
                             style={{ minHeight: 44, minWidth: 44, paddingInline: 0 }}
@@ -1333,11 +1347,12 @@ export function Input({
     );
 }
 
-export function TextArea({ autoSize, disabled, maxLength, onChange, placeholder, rows, showCount, style, value }: { autoSize?: { minRows?: number; maxRows?: number }; disabled?: boolean; maxLength?: number; onChange?: (value: string) => void; placeholder?: string; rows?: number; showCount?: boolean; style?: AnyStyle; value?: string }) {
+export function TextArea({ 'aria-label': ariaLabel, autoSize, disabled, maxLength, onChange, placeholder, rows, showCount, style, value }: { 'aria-label'?: string; autoSize?: { minRows?: number; maxRows?: number }; disabled?: boolean; maxLength?: number; onChange?: (value: string) => void; placeholder?: string; rows?: number; showCount?: boolean; style?: AnyStyle; value?: string }) {
     const { token } = theme.useToken();
 
     return (
         <AntInput.TextArea
+            aria-label={ariaLabel}
             autoSize={autoSize}
             disabled={disabled}
             maxLength={maxLength}
@@ -1384,6 +1399,7 @@ function TabPane(_: TabPaneProps): null {
 export const Tabs = Object.assign(TabsComponent, { Tab: TabPane });
 
 type DialogConfig = {
+    ariaLabel?: string;
     cancelText?: ReactNode;
     confirmText?: ReactNode;
     content?: ReactNode;
@@ -1392,8 +1408,44 @@ type DialogConfig = {
     title?: ReactNode;
 };
 
+function resolveStaticDialogLabel(config: DialogConfig, fallback: string): string {
+    const explicitLabel = config.ariaLabel?.trim();
+    if (explicitLabel) return explicitLabel;
+    if (typeof config.title === 'string' && config.title.trim()) return config.title.trim();
+    return fallback;
+}
+
+function AccessibleStaticDialogContent({ children, label }: { children: ReactNode; label: string }) {
+    const anchorRef = useRef<HTMLSpanElement>(null);
+
+    useEffect(() => {
+        const dialog = anchorRef.current?.closest('[role="dialog"]');
+        if (!dialog) return;
+        dialog.setAttribute('aria-label', label);
+        return () => {
+            if (dialog.getAttribute('aria-label') === label) dialog.removeAttribute('aria-label');
+        };
+    }, [label]);
+
+    return (
+        <>
+            {children}
+            <span hidden ref={anchorRef} />
+        </>
+    );
+}
+
+function renderAccessibleStaticDialog(label: string) {
+    return function AccessibleStaticDialogRenderer(node: ReactNode) {
+        return (
+            <AccessibleStaticDialogContent label={label}>{node}</AccessibleStaticDialogContent>
+        );
+    };
+}
+
 async function confirmDialog(config: DialogConfig) {
     const localeText = getMobileUiLocaleText();
+    const dialogLabel = resolveStaticDialogLabel(config, 'Confirmation');
     return new Promise<boolean>((resolve) => {
         Modal.confirm({
             cancelText: config.cancelText || localeText.cancel,
@@ -1407,6 +1459,7 @@ async function confirmDialog(config: DialogConfig) {
                 await config.onConfirm?.();
                 resolve(true);
             },
+            modalRender: renderAccessibleStaticDialog(dialogLabel),
             title: config.title,
             zIndex: MOBILE_DIALOG_Z_INDEX,
         });
@@ -1414,12 +1467,17 @@ async function confirmDialog(config: DialogConfig) {
 }
 
 export const Dialog = {
-    alert: (config: DialogConfig) => Modal.info({ content: config.content, title: config.title, zIndex: MOBILE_DIALOG_Z_INDEX }),
+    alert: (config: DialogConfig) => Modal.info({
+        content: config.content,
+        modalRender: renderAccessibleStaticDialog(resolveStaticDialogLabel(config, 'Notice')),
+        title: config.title,
+        zIndex: MOBILE_DIALOG_Z_INDEX,
+    }),
     confirm: confirmDialog,
 };
 
-export function Checkbox({ checked, children, disabled, indeterminate, onChange, style }: { checked?: boolean; children?: ReactNode; disabled?: boolean; indeterminate?: boolean; onChange?: (checked: boolean) => void; style?: AnyStyle }) {
-    return <AntCheckbox checked={checked} disabled={disabled} indeterminate={indeterminate} onChange={(event) => onChange?.(event.target.checked)} style={sanitizeStyle(style)}>{children}</AntCheckbox>;
+export function Checkbox({ 'aria-label': ariaLabel, checked, children, disabled, indeterminate, onChange, style }: { 'aria-label'?: string; checked?: boolean; children?: ReactNode; disabled?: boolean; indeterminate?: boolean; onChange?: (checked: boolean) => void; style?: AnyStyle }) {
+    return <AntCheckbox aria-label={ariaLabel} checked={checked} disabled={disabled} indeterminate={indeterminate} onChange={(event) => onChange?.(event.target.checked)} style={sanitizeStyle(style)}>{children}</AntCheckbox>;
 }
 
 export function InfiniteScroll({ hasMore, loadMore }: { hasMore?: boolean; loadMore?: () => Promise<void> | void }) {

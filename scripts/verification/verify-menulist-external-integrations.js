@@ -12,6 +12,7 @@ const includes = (content, token, label) => assert(content.includes(token), `${l
 const excludes = (content, token, label) => assert(!content.includes(token), `${label} must not include ${token}`);
 
 const features = read('src/config/features.ts');
+const mobileMore = read('src/components/mobile/screens/MobileMoreScreen.tsx');
 const gbpDal = read('src/database/integrations/gbp.ts');
 const integrationDoc = read('__docs__/external-integrations/README.md');
 const posReadme = read('__docs__/pos-webhook-sync/README.md');
@@ -33,6 +34,12 @@ const packageJson = JSON.parse(read('package.json'));
   'GROWTHOS_DIRECT_POSTING: "disabled"',
   'ENABLE_PUBLIC_TRUTH_GOOGLE_PROFILE_BASICS_CHECKLIST: true',
 ].forEach((token) => includes(features, token, 'MenuList integration feature posture'));
+
+includes(
+  mobileMore,
+  "pickItems([...businessPresenceItems, ...searchDiscoveryHubItems], ['analyticsSettings', 'posSync', 'integrations'])",
+  'Mobile GBP feature-on navigation mapping',
+);
 
 [
   'GBP_TOKEN_STORE_DISABLED',

@@ -1489,6 +1489,7 @@ const platformPricingPlans = read('src/components/templates/platform/pricingPlan
 const platformStoresDashboard = read('src/components/templates/platform/stores/index.tsx');
 const platformStoreDetailsModal = read('src/components/templates/platform/stores/storeDetailsModal.tsx');
 const platformFontPresets = read('src/components/templates/platform/fontPresets/index.tsx');
+const platformFontPresetSortModal = read('src/components/templates/platform/fontPresets/sortFontModal.tsx');
 const storageDiagnostics = read('src/database/storage/storageDiagnostics.ts');
 const deleteFromStorage = read('src/database/storage/deleteFromStorage.ts');
 const uploadBase64ToStorage = read('src/database/storage/uploadBase64ToStorage.ts');
@@ -1775,7 +1776,16 @@ assertIncludes(platformRouteGuard, '!sessionPlatformRole || !allowedPlatformRole
 assertIncludes(platformRouteGuard, 'redirect(redirectPath)', 'Platform route guard must redirect rejected sessions through the selected route boundary.');
 assertIncludes(platformRouteGuard, 'const currentUser = await getCurrentUser(session);', 'Every platform-role route must re-read current persisted authority.');
 assertIncludes(platformRouteGuard, 'currentUser.userData.platformRole !== sessionPlatformRole', 'Every platform-role route must reject stale or demoted persisted role authority.');
-assertIncludes(platformRouteGuard, 'return requirePlatformRoleRouteAccess([MENULIST_PLATFORM_USER_ROLE], redirectPath);', 'Platform admin route guard must keep the full PLATFORM role admission.');
+assertOrder(
+    platformRouteGuard,
+    [
+        'return requirePlatformRoleRouteAccess(',
+        '[MENULIST_PLATFORM_USER_ROLE]',
+        'redirectPath,',
+        'unauthenticatedRedirectPath,',
+    ],
+    'Platform admin route guard must keep full PLATFORM role admission and distinct denial recovery',
+);
 assert(!platformRouteGuard.includes('session: any'), 'Platform route guard must retain the typed NextAuth session contract.');
 assert(!platformRouteGuard.includes('as any'), 'Platform route guard must not erase the typed NextAuth role contract.');
 assertIncludes(platformLayout, "import { requirePlatformAdminRouteAccess } from '@lib/auth/platformRouteGuard';", 'Platform layout must use the shared platform route guard.');
@@ -1788,7 +1798,7 @@ assertIncludes(resellerLayout, '!FEATURE_FLAGS.ENABLE_RESELLER_DASHBOARD', 'Rese
 assertIncludes(resellerLayout, 'requirePlatformRoleRouteAccess(\n        [MENULIST_PLATFORM_USER_ROLE, RESELLER_USER_ROLE]', 'Reseller layout must allow only platform and reseller sessions.');
 assertIncludes(resellerLayout, "'/dashboard'", 'Reseller layout must preserve the dashboard redirect boundary for non-reseller sessions.');
 assertIncludes(resellerManageLayout, "import { requirePlatformAdminRouteAccess } from '@lib/auth/platformRouteGuard';", 'Reseller management layout must use the shared platform admin route guard.');
-assertIncludes(resellerManageLayout, "await requirePlatformAdminRouteAccess('/dashboard');", 'Reseller management layout must stay platform-admin only before rendering.');
+assertIncludes(resellerManageLayout, "await requirePlatformAdminRouteAccess('/reseller');", 'Reseller management layout must stay platform-admin only and recover denied resellers to their own dashboard.');
 for (const resellerRoute of [resellerPage, resellerManagePage, resellerOnboardPage]) {
     assert(!resellerRoute.includes('session as any'), 'Reseller route must retain the typed NextAuth session contract.');
     assert(!resellerRoute.includes('session?.user as any'), 'Reseller route user must retain the typed NextAuth session contract.');
@@ -2818,6 +2828,20 @@ assertIncludes(platformUsers, 'userCopy.storeId = undefined;', 'Platform user te
 assertIncludes(platformUsers, 'if (mutationInFlightRef.current) return;', 'Platform user writes must have synchronous duplicate-submit ownership.');
 assertIncludes(platformUsers, 'setAllTenantUsers((current) => current.map((user) => (', 'Platform user updates must reconcile the unfiltered tenant cache.');
 assertIncludes(platformUsers, 'if (!userCopy.storeIds.includes(userCopy.storeId ?? -1)) userCopy.storeId = userCopy.storeIds[0];', 'Platform user mapping removal must repair the default store.');
+assertIncludes(platformUsers, 'aria-label="Filter users by tenant"', 'Platform users must name the tenant scope filter.');
+assertIncludes(platformUsers, 'aria-label="Filter users by store"', 'Platform users must name the store scope filter.');
+assertIncludes(platformUsers, 'aria-label={`Edit user ${record.name || record.email}`}', 'Platform users must expose a native entity-specific edit action.');
+assert(!platformUsers.includes('onRow={(record: PlatformUserRecord)'), 'Platform users must not use pointer-only rows for editing.');
+assertIncludes(platformUsers, 'aria-label="User active"', 'Platform user lifecycle control must be named.');
+assertIncludes(platformUsers, 'aria-label="Platform role"', 'Platform role selector must be named.');
+assertIncludes(platformUsers, 'aria-label="User tenant"', 'Platform user tenant selector must be named.');
+assertIncludes(platformUsers, 'aria-label={`Store mapping ${index + 1}`}', 'Platform user store mappings must be uniquely named.');
+assertIncludes(platformUsers, 'aria-label={`Store role ${index + 1}`}', 'Platform user store roles must be uniquely named.');
+assertIncludes(platformUsers, 'aria-label="Default store"', 'Platform user default-store selector must be named.');
+assertIncludes(platformUsers, 'aria-label={`Delete store mapping ${mappedStore.name || mappedStore.storeId}`}', 'Platform user mapping removal drafts must identify the selected store.');
+assertIncludes(platformUsers, '<Fragment key={mappedStore.storeId}>', 'Platform user store mappings must use stable store identities.');
+assertIncludes(platformUsers, 'const updatedChanges = getStoreDeepDifference(', 'Platform unchanged user drafts must compare nested mappings by value before persistence.');
+assert(!platformUsers.includes('getObjectDifferance(updated, originalUser)'), 'Platform users must not treat cloned mapping arrays as changed solely by reference identity.');
 assert(!platformUsers.includes('userCopy.stores.push({ storeId: null'), 'Platform user mapping drafts must not introduce a null persisted store ID.');
 assertIncludes(usersDal, 'export type PlatformUserMutation =', 'Platform user persistence must expose an exact mutation contract.');
 assertIncludes(usersDal, 'const data: PlatformUserMutation = {', 'Platform user persistence must copy caller state before upload transformation.');
@@ -2833,18 +2857,37 @@ assertIncludes(platformTenantDetailsModal, 'const scopeKeyRef = useRef(scopeKey)
 assertIncludes(platformTenantDetailsModal, 'scopeKeyRef.current !== requestScopeKey', 'Platform tenant store reads must reject late cross-scope settlement.');
 assertIncludes(platformTenantDetailsModal, 'storeDetails.tenantId !== tenantData.tenantId', 'Platform tenant store reads must verify the returned tenant identity.');
 assertIncludes(platformTenantDetailsModal, 'if (mutationInFlightRef.current) return;', 'Platform tenant mutations must have synchronous duplicate-submit ownership.');
+assertIncludes(platformTenantDetailsModal, 'if (!updatedTenant.name?.trim()) return;', 'Platform tenant mutations must reject a missing canonical name before taking mutation ownership.');
+assertIncludes(platformTenantDetailsModal, 'updatedChanges = getObjectDifferance(updatedTenant, modalData.data);\n                delete updatedChanges.storesList;', 'Platform unchanged tenant saves must discard cloned store-list identity before deciding whether a write is required.');
+assertIncludes(platformTenantDetailsModal, 'disabled={!tenantData || !hasRequiredTenantName || mutationInFlight}', 'Platform tenant save must remain disabled until a canonical name is present.');
+assertIncludes(platformTenantDetailsModal, 'modalRender: labelConfirmDialog(`Archive tenant ${tenantName}?`)', 'Platform tenant archival must use an accessible destructive-action confirmation.');
+assertIncludes(platformTenantDetailsModal, 'onOk: () => addUpdateTenantDetails({ ...tenantData, deleted: true })', 'Platform tenant archival must run only after confirmation.');
 assert(!platformTenantDetailsModal.includes('<Text style={{ minWidth: 150 }}>Phone Prefix</Text>'), 'Platform tenant details must not expose a duplicate country-code field as Phone Prefix.');
 assertIncludes(platformAnalyticsBackfill, 'answerlattice_platform_analytics_backfill_failed', 'Platform analytics backfill must code report generation failures.');
 assert(!platformAnalyticsBackfill.includes('error.message ||'), 'Platform analytics backfill must not surface raw exception messages in failure toasts.');
 assertIncludes(platformPricingPlans, 'platform_pricing_plans_load_failed', 'Platform pricing plans must code load failures.');
 assertIncludes(platformPricingPlans, 'platform_pricing_plan_save_failed', 'Platform pricing plans must code save failures.');
 assertIncludes(platformPricingPlans, 'platform_pricing_plan_deactivate_failed', 'Platform pricing plans must code deactivate failures.');
+assertIncludes(platformPricingPlans, 'aria-label="Filter plans by currency"', 'Platform pricing plans must name the currency filter.');
+assertIncludes(platformPricingPlans, 'aria-label="Filter plans by type"', 'Platform pricing plans must name the plan-type filter.');
+assertIncludes(platformPricingPlans, 'aria-label="Filter plans by billing cycle"', 'Platform pricing plans must name the billing-cycle filter.');
+assertIncludes(platformPricingPlans, 'aria-label={`Edit plan ${record.name}`}', 'Platform pricing plans must identify each edit action.');
+assertIncludes(platformPricingPlans, 'aria-label={`Deactivate plan ${record.name}`}', 'Platform pricing plans must identify each destructive action.');
+assertIncludes(platformPricingPlans, 'modalRender: labelConfirmDialog(`Deactivate plan ${plan.name}?`)', 'Platform pricing-plan deactivation must use an accessible confirmation.');
+assertIncludes(platformPricingPlans, "whitespace: true, message: 'Please enter plan name'", 'Platform pricing plans must reject whitespace-only canonical names in the form.');
+assertIncludes(platformPricingPlans, "whitespace: true, message: 'Please enter plan description'", 'Platform pricing plans must reject whitespace-only descriptions in the form.');
+assertIncludes(platformPricingPlans, 'aria-label="Recommended plan"', 'Platform pricing plan recommendation state must be named.');
+assertIncludes(platformPricingPlans, 'aria-label="Plan active"', 'Platform pricing plan lifecycle state must be named.');
+assertIncludes(platformPricingPlans, "aria-label={editingPlan ? `Edit plan ${editingPlan.name}` : 'Create New Plan'}", 'Platform pricing plan drawers must expose their draft purpose as the dialog name.');
 assertIncludes(platformStoresDashboard, 'platform_stores_tenants_load_failed', 'Platform stores dashboard must code tenant load failures.');
 assertIncludes(platformStoresDashboard, 'platform_stores_load_failed', 'Platform stores dashboard must code store load failures.');
 assertIncludes(platformStoresDashboard, 'if (filterTenant === null)', 'Platform stores dashboard must clear visible stores when tenant scope is cleared.');
 assertIncludes(platformStoresDashboard, 'storeRequestEpochRef.current === requestEpoch', 'Platform stores dashboard must bind async store results to the active tenant filter.');
 assertIncludes(platformStoresDashboard, 'platform_store_acknowledgement_scope_mismatch', 'Platform stores dashboard must reject cross-tenant mutation acknowledgements.');
 assertIncludes(platformStoresDashboard, 'disabled={filterTenant === null}', 'Platform stores dashboard must require an exact tenant before opening Add Store.');
+assertIncludes(platformStoresDashboard, 'aria-label="Filter stores by tenant"', 'Platform stores dashboard must name its tenant scope selector.');
+assertIncludes(platformStoresDashboard, 'aria-label={`Edit store ${record.name || record.storeId}`}', 'Platform stores dashboard must expose one native named edit action per store.');
+assert(!platformStoresDashboard.includes('onRow={(record: StoreDataType)'), 'Platform stores dashboard must not use pointer-only table rows for store editing.');
 assertNoRandomReactKeys(platformStoresDashboard, 'Platform stores dashboard');
 assertIncludes(
     platformStoreDetailsModal,
@@ -2856,12 +2899,40 @@ assertIncludes(
     ': modalData;',
     'Platform store details must preserve the platform administrator selected tenant/store context.',
 );
+assertIncludes(
+    platformStoreDetailsModal,
+    'createPlatformStoreDraft(data.tenantData)',
+    'Platform Add Store must create a tenant-scoped draft instead of rendering an empty drawer.',
+);
+assertIncludes(
+    platformStoreDetailsModal,
+    'Number.isSafeInteger(tenant.tenantId)',
+    'Platform Add Store must reject a missing or malformed tenant scope before rendering a draft.',
+);
+assertIncludes(
+    platformStoreDetailsModal,
+    'storeId: undefined',
+    'Platform Add Store drafts must remain on the create path rather than the platform-store update path.',
+);
+assertIncludes(
+    platformStoreDetailsModal,
+    '? `${modalData.data.name} - Update Store`',
+    'Platform store edit drawers must identify the selected location rather than only its tenant.',
+);
 assert(
     !platformStoreDetailsModal.includes('useEffect(() => {\\n        setData({\\n            ...modalData,\\n            data: storeDetails'),
     'Platform store details must not overwrite an administrator-selected store with signed-in global context.',
 );
 assertIncludes(platformFontPresets, 'platform_font_presets_load_failed', 'Platform font presets must code preset load failures.');
 assertIncludes(platformFontPresets, 'platform_font_preset_preview_failed', 'Platform font presets must code preview generation failures.');
+assertIncludes(platformFontPresets, 'disabled={fontsList.length < 2}', 'Platform font sorting must remain disabled when fewer than two fonts can be reordered.');
+assertIncludes(platformFontPresets, '<Fragment key={fontData.id || fontData.code}>', 'Platform font presets must use stable font identities rather than array indexes.');
+assertIncludes(platformFontPresets, 'aria-label="Font preview name"', 'Platform font preview name must be programmatically labelled.');
+assertIncludes(platformFontPresets, 'aria-label="Font preview size"', 'Platform font preview size must be programmatically labelled.');
+assertIncludes(platformFontPresets, 'aria-label="Font preview canvas width"', 'Platform font preview width must be programmatically labelled.');
+assertIncludes(platformFontPresets, 'aria-label="Internal font code"', 'Platform internal font code must be programmatically labelled.');
+assertIncludes(platformFontPresetSortModal, 'aria-label="Update Font Sequencing"', 'Platform font sequencing modal must expose its purpose as the dialog name.');
+assertIncludes(platformFontPresetSortModal, 'disabled={fontsList.length < 2}', 'Platform font sequencing persistence must remain disabled when no reordering is possible.');
 assertIncludes(platformTenantDetailsModal, 'platform_tenant_save_failed', 'Platform tenant details modal must code bounded tenant save failures.');
 assertIncludes(platformTenantDetailsModal, 'assertTenantUpdateSucceeded(', 'Platform tenant details modal must require tenant write acknowledgement.');
 assertIncludes(platformTenantDetailsModal, 'platform_tenant_update_rejected', 'Platform tenant details modal must code update acknowledgement rejection.');
@@ -3111,6 +3182,11 @@ assert(!staticAssetData.includes('static_asset_category_file_cleanup_failed'), '
 assert(!staticAssetData.includes('static_asset_subcategory_file_cleanup_failed'), 'Static asset subcategory delete must not remove globally shareable persisted previews.');
 assertIncludes(staticAssetData, 'static_asset_item_update_item_missing', 'Static asset item update missing-item paths must be coded.');
 assertIncludes(staticAssetData, 'static_asset_item_delete_item_missing', 'Static asset item delete missing-item paths must be coded.');
+assertIncludes(staticAssetData, "const name = typeof value.name === 'string' ? value.name.trim() : '';", 'Static asset canonical reads must trim entity names.');
+assertIncludes(staticAssetData, "if (!name || name.length > 160) throw new Error('static_asset_name_invalid');", 'Static asset mutations must reject blank or oversized names at the DAL boundary.');
+assertIncludes(staticAssetData, 'data.name = name;', 'Static asset writes must persist normalized entity names.');
+assertIncludes(platformAssetDetailsModal, 'const hasRequiredName = Boolean(activeDetails.name.trim());', 'Platform asset drawer must derive required-name state from trimmed input.');
+assertIncludes(platformAssetDetailsModal, 'mutationInFlight || fileReadInFlight || !hasRequiredName', 'Platform asset drawer must block blank-name writes and repeated mutations.');
 assertNoDirectConsole(staticAssetData, 'Static asset DAL must not direct-console asset IDs, URLs, or provider errors.');
 assert(!staticAssetData.includes('Document written with ID'), 'Static asset DAL must not log raw Firestore document IDs on success.');
 assert(!staticAssetData.includes('Subcategory not found.'), 'Static asset DAL must not keep raw missing-subcategory console text.');
@@ -3253,6 +3329,11 @@ assert(!useIngestionJobsListener.includes('logger.debug('), 'Ingestion jobs list
 });
 assert(!useImageBatchJobListener.includes('import { logger }'), 'Image batch job listener must not import raw logger diagnostics.');
 assert(!useImageBatchJobListener.includes('logger.debug('), 'Image batch job listener must not route lifecycle diagnostics through raw logger.debug.');
+assertIncludes(useImageBatchJobListener, 'if (!listenerActive) return;', 'Image batch job listener must ignore callbacks after listener cleanup.');
+assertIncludes(useImageBatchJobListener, 'if (listenerActive) message.error("Failed to listen to batch job updates.");', 'Image batch job listener must not surface a stale listener error after logout cleanup.');
+assertIncludes(useImageBatchJobListener, 'clearTimeout(listenerErrorTimer);', 'Image batch job listener must clear deferred failure notices during cleanup.');
+assertIncludes(useImageBatchJobListener, 'shouldIgnoreImageBatchListenerAuthTeardown(', 'Image batch job listener must suppress only expected unauthenticated permission errors during logout teardown.');
+assertIncludes(useImageBatchJobListener, 'Boolean(firebaseAuth.currentUser)', 'Image batch job listener teardown suppression must retain signed-in permission failures.');
 [
     'getPreferenceScopeLogContext',
     "getBoundedHookStringContext('tenantId', tId)",
@@ -3391,6 +3472,7 @@ assert(
 assert(!/\bconsole\.(?:error|warn|log|info|debug|trace)\s*\(/.test(firebaseAuthSyncHelper), 'Firebase Auth sync helper must not direct-console bootstrap diagnostics.');
 assertIncludes(firebaseClient, 'initAppCheck(firebaseApp)', 'Firebase client must initialize App Check with the explicit initialized app.');
 assertIncludes(firebaseClient, '!isAnswerlatticeHost', 'MenuList App Check must not initialize on Answerlattice product hosts.');
+assertIncludes(firebaseClient, "normalizedHost.endsWith('.localhost')", 'MenuList App Check must treat standards-based loopback subdomains as local emulator hosts.');
 assertIncludes(firebaseClient, 'resolveMenuListFirebaseClientBoundary', 'Firebase client must validate complete configuration and existing default-app authority before bootstrap.');
 assertIncludes(firebaseClient, "const expectedMenuListProjectId = getExpectedFirebaseProjectId('menulist');", 'Firebase client must bind its project to the active MenuList deployment target.');
 assertIncludes(firebaseClient, 'menulist_client_configuration_rejected', 'Firebase client must report rejected project or existing-app authority without exposing credentials.');
@@ -3444,6 +3526,8 @@ assert(!firebaseAuthSyncHelper.includes('Firebase Auth token check failed'), 'Fi
 assert(!firebaseAuthSyncHelper.includes('const data = await response.json()'), 'Firebase Auth sync helper must not parse unbounded set-claims responses.');
 assertIncludes(sessionProvider, 'firebase_auth_session_provider_sync_failed', 'Session provider must securely log Firebase Auth bootstrap failures.');
 assertIncludes(sessionProvider, 'session_provider_store_bootstrap_failed', 'Session provider must code store bootstrap failures.');
+assertIncludes(sessionProvider, 'if (session && Boolean(session.user?.storeId) && !Boolean(storeDetails?.storeId))', 'Session provider must bootstrap tenant/store state only for sessions that carry a store scope.');
+assert(!sessionProvider.includes('session.user?.platformRole == MENULIST_PLATFORM_USER_ROLE ? true : Boolean(session.user?.storeId)'), 'Store-independent platform sessions must not trigger tenant/store bootstrap reads with absent identifiers.');
 assertIncludes(sessionProvider, 'session_provider_active_store_context_load_failed', 'Session provider must code active store-context load failures.');
 assertIncludes(sessionProvider, 'session_provider_master_outlet_policy_load_failed', 'Session provider must code master outlet policy failures.');
 assertIncludes(sessionProvider, "getBoundedFirebaseStringContext('targetStoreId'", 'Session provider must bound target store diagnostics.');
@@ -3753,6 +3837,8 @@ assertIncludes(userProfileModal, 'logAuthFailure', 'Desktop profile modal must u
 assertIncludes(userProfileModal, 'getBoundedAuthStringContext', 'Desktop profile modal must use bounded auth context.');
 assertIncludes(userProfileModal, 'hasCurrentPassword: Boolean(values?.currentPassword)', 'Desktop profile modal must log password presence only.');
 assertIncludes(userProfileModal, 'hasNewPassword: Boolean(values?.newPassword)', 'Desktop profile modal must log password presence only.');
+assertIncludes(userProfileModal, "if (!open || activeSection !== 'edit') return;", 'Desktop profile form initialization must wait for its mounted section.');
+assertIncludes(userProfileModal, "if (!open || activeSection !== 'security') return;", 'Desktop password form reset must wait for its mounted section.');
 assertIncludes(userProfileModal, "readAuthAccountResponse(res, 'password_change')", 'Desktop password change must validate the reauthentication response envelope.');
 assertIncludes(userProfileModal, 'await signOutSession();', 'Desktop password change must immediately end the revoked current session.');
 assert(!userProfileModal.includes('dispatch(showErrorToast(data.error'), 'Desktop profile modal must not show raw API response text.');
@@ -3990,6 +4076,7 @@ assertIncludes(loginPage, 'const parsedUrl = new URL(callbackUrl, window.locatio
 assertIncludes(loginPage, 'if (parsedUrl.origin === window.location.origin)', 'Login callbackUrl redirect must require same-origin targets.');
 assertIncludes(loginPage, 'return `${parsedUrl.pathname}${parsedUrl.search}${parsedUrl.hash}`;', 'Login callbackUrl redirect must return only path/search/hash.');
 assert(!loginPage.includes("if (callbackUrl.startsWith('/')) return callbackUrl;"), 'Login callbackUrl redirect must not trust protocol-relative // URLs through a raw leading-slash shortcut.');
+assertIncludes(loginPage, 'window.location.assign(getPostLoginRedirect())', 'Credential login must start the authenticated app through a fresh server/session boundary.');
 assertIncludes(authFirebaseDoc, 'Login callback redirect boundary', 'Auth Firebase docs must document login callback redirect boundary.');
 assertIncludes(authMobileSupportDoc, 'same-origin callback redirect guard', 'Auth mobile docs must inherit login callback redirect guard.');
 assertIncludes(productionReadinessAudit, 'Login callback redirect boundary checkpoint', 'Production audit must document login callback redirect boundary.');

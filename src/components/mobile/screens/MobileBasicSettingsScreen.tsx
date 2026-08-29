@@ -18,6 +18,7 @@ import { useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { LuBriefcase, LuBuilding2, LuMail, LuMapPin, LuPhoneCall, LuUser } from 'react-icons/lu';
 import { Button, Card, DotLoading, Flex, Input, NavBar, Select, Text, TextArea, Toast } from '../antd';
 import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
+import { MOBILE_BOTTOM_NAV_CLEARANCE } from '../MobileNavigation';
 import {
     getBoundedMobileOwnerStringContext,
     getMobileOwnerStoreLogContext,
@@ -590,6 +591,7 @@ function MobileBasicSettingsScreenContent({ onBack }: MobileBasicSettingsScreenP
                         </Flex>
                         <Text type="secondary">Add the real customer-facing business address. This is the location people should visit, not internal notes or delivery instructions.</Text>
                         <TextArea
+                            aria-label={tBusiness('streetAddress')}
                             autoSize={{ minRows: 2, maxRows: 4 }}
                             onChange={(value) => setFormData((previous) => ({ ...previous, addressLine: value }))}
                             placeholder={tBusiness('streetAddressPlaceholder')}
@@ -654,7 +656,7 @@ function MobileBasicSettingsScreenContent({ onBack }: MobileBasicSettingsScreenP
                         backdropFilter: 'blur(10px)',
                         backgroundColor: token.colorBgContainer,
                         borderTop: `1px solid ${token.colorBorderSecondary}`,
-                        bottom: 0,
+                        bottom: MOBILE_BOTTOM_NAV_CLEARANCE,
                         marginInline: -16,
                         padding: '12px 16px',
                         position: 'sticky',

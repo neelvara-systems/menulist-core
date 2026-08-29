@@ -18,7 +18,7 @@ import { getStoreContextName } from "@lib/businessIdentity/names";
 import { normalizeGeoCoordinateDraft } from "@lib/businessIdentity/geoCoordinates";
 import { getLocalizedText, getPrimaryLocalizedLanguage, getLocalizedStringList, updateLocalizedStringList, updateLocalizedText } from "@lib/localization/text";
 import { generateOBPUrl } from "@lib/obp/generateOBPUrl";
-import { normalizeBusinessAttributes, normalizeCustomBusinessAttributes } from "@lib/obp/businessAttributes";
+import { BUSINESS_ATTRIBUTE_CONFIG, normalizeBusinessAttributes, normalizeCustomBusinessAttributes } from "@lib/obp/businessAttributes";
 import { normalizeOwnerPublicPresenceLinks } from "@lib/obp/ownerPublicPresenceBoundary";
 import { normalizeOwnerSocialMediaLinks } from "@lib/obp/ownerSocialMediaBoundary";
 import { normalizePhoneNumberForStorage } from "@lib/phone/phoneNumber";
@@ -29,7 +29,7 @@ import {
 } from "@lib/menuPresence/presenceReadiness";
 import { buildScreenUrl } from "@lib/screen/utils";
 import localizeBusinessCopyResult, { mergeLocalizedField, mergeLocalizedKeywordField } from "@services/ai/businessCopy/localizeBusinessCopyResult";
-import { buildBusinessCopyGeneratedMeta, buildBusinessCopyManualOverrideMeta, buildBusinessCopyRepairMeta, getBusinessCopyFieldKeysFromUpdate } from "@services/ai/businessCopy/metadata";
+import { applyBusinessCopyManualOverrideMetaToUpdate, buildBusinessCopyGeneratedMeta, buildBusinessCopyRepairMeta } from "@services/ai/businessCopy/metadata";
 import syncMissingBusinessCopyTranslations from "@services/ai/businessCopy/syncMissingBusinessCopyTranslations";
 import { computeBusinessCopyCoverage } from "@services/ai/businessCopy/translationCoverage";
 import { applyLocalizedDraftMap, applyLocalizedKeywordDraftMap, getLocalizedStoreKeywords, getLocalizedStoreValue, getStoreManagedLanguages, getStorePreferredLanguage, getStoreSourceLanguage, mergeCurrentLocalizedSeoDraft } from "@lib/localization/storeContent";
@@ -48,6 +48,7 @@ import {
     APP_TIME_FORMAT_COOKIES_KEY,
     DATE_FORMATS,
     defaultDateFormatString,
+    defaultTimezone,
     defaultTimeFormatString,
 } from "@lib/localization/config";
 import { UserUploadedFileType } from "@type/common";
@@ -161,6 +162,8 @@ const BUSINESS_SETTINGS_FOCUS_SECTION: Record<string, string> = {
     'working-hours': 'hours',
 };
 
+const BUSINESS_SETTINGS_DEEP_LINK_SCROLL_DELAYS_MS = [100, 600, 1600] as const;
+
 type AdjustableUploadedFile = UserUploadedFileType & {
     crop?: MediaImageCropIntent;
     sourceDataUrl?: string;
@@ -250,19 +253,53 @@ function getFeedbackSettingsDraft(storeDetails: any) {
     };
 }
 
+function getBusinessSettingsLocaleDefaults(storeDetails: any, timeZone?: string) {
+    return {
+        businessDayEndTime: resolveBusinessDayEndTime(
+            storeDetails?.businessType,
+            storeDetails?.businessDayEndTime,
+            storeDetails?.businessCategory,
+        ),
+        country: storeDetails?.country || 'India',
+        currencyCode: storeDetails?.currencyCode || 'INR',
+        currencySymbol: storeDetails?.currencySymbol || '₹',
+        dateFormat: storeDetails?.dateFormat
+            || String(getCookie(APP_DATE_FORMAT_COOKIES_KEY) || defaultDateFormatString),
+        timeFormat: storeDetails?.timeFormat
+            || String(getCookie(APP_TIME_FORMAT_COOKIES_KEY) || defaultTimeFormatString),
+        timeZone: storeDetails?.timeZone || timeZone || defaultTimezone,
+    };
+}
+
 function getBusinessSettingsInitialValues(storeDetails: any) {
     const contentLanguage = resolveStoreContentLanguage(storeDetails);
     const managedLanguages = getStoreManagedLanguages(storeDetails);
     const normalizedLanguagePolicy = normalizeStoreLanguagePolicy(storeDetails);
+    const normalizedAnalytics = normalizeAnalyticsSettings(storeDetails?.analytics);
     const analyticsPreferences = getResolvedAnalyticsPreferences(storeDetails?.analytics);
     const businessCategory = resolveStoreBusinessCategory(storeDetails?.businessType, storeDetails?.businessCategory);
     return {
         ...storeDetails,
         addressLine: storeDetails?.addressLine || storeDetails?.address || '',
+        area: storeDetails?.area,
         businessCategory,
         businessAttributes: normalizeBusinessAttributes(storeDetails?.businessAttributes),
+        canonicalUrl: storeDetails?.canonicalUrl,
+        contactPersonEmail: storeDetails?.contactPersonEmail,
+        contactPersonName: storeDetails?.contactPersonName,
+        contactPersonNumber: storeDetails?.contactPersonNumber,
+        countryCode: storeDetails?.countryCode,
+        dialCode: storeDetails?.dialCode,
+        district: storeDetails?.district,
+        domain: storeDetails?.domain,
+        email: storeDetails?.email,
+        gstn: storeDetails?.gstn,
+        phoneNumber: storeDetails?.phoneNumber,
         analytics: {
-            ...normalizeAnalyticsSettings(storeDetails?.analytics),
+            ...normalizedAnalytics,
+            facebookPixelId: normalizedAnalytics.facebookPixelId,
+            googleAnalyticsId: normalizedAnalytics.googleAnalyticsId,
+            googleSearchConsole: normalizedAnalytics.googleSearchConsole,
             trackCustomerApp: analyticsPreferences.trackCustomerApp,
             trackDecisionBlocks: analyticsPreferences.trackDecisionBlocks,
             trackLocation: analyticsPreferences.trackLocation,
@@ -307,9 +344,20 @@ function getBusinessSettingsInitialValues(storeDetails: any) {
         longitude: storeDetails?.longitude ?? storeDetails?.geo?.longitude,
         publicPresence: {
             ...(storeDetails?.publicPresence || {}),
+            accentColor: storeDetails?.publicPresence?.accentColor,
+            businessCover: storeDetails?.publicPresence?.businessCover,
             customAttributes: normalizeCustomBusinessAttributes(storeDetails?.publicPresence?.customAttributes),
             descriptor: getLocalizedStoreValue(storeDetails?.publicPresence?.descriptor, contentLanguage, ''),
+            establishedYear: storeDetails?.publicPresence?.establishedYear,
+            googleMapsUrl: storeDetails?.publicPresence?.googleMapsUrl,
+            googleRating: storeDetails?.publicPresence?.googleRating,
+            googleReviewCount: storeDetails?.publicPresence?.googleReviewCount,
+            googleReviewUrl: storeDetails?.publicPresence?.googleReviewUrl,
+            iconVariant: storeDetails?.publicPresence?.iconVariant,
             knownFor: getLocalizedStoreValue(storeDetails?.publicPresence?.knownFor, contentLanguage, ''),
+            orderUrl: storeDetails?.publicPresence?.orderUrl,
+            photos: storeDetails?.publicPresence?.photos,
+            reservationUrl: storeDetails?.publicPresence?.reservationUrl,
             specialNote: getLocalizedStoreValue(storeDetails?.publicPresence?.specialNote, contentLanguage, ''),
             showCall: storeDetails?.publicPresence?.showCall !== false,
             showWhatsApp: storeDetails?.publicPresence?.showWhatsApp !== false,
@@ -321,6 +369,7 @@ function getBusinessSettingsInitialValues(storeDetails: any) {
             showPrivacyLink: storeDetails?.publicPresence?.showPrivacyLink !== false,
             showTermsLink: storeDetails?.publicPresence?.showTermsLink !== false,
             showRefundLink: storeDetails?.publicPresence?.showRefundLink !== false,
+            whatsappNumber: storeDetails?.publicPresence?.whatsappNumber,
         },
         tagline: getLocalizedStoreValue(storeDetails?.tagline, contentLanguage, ''),
     };
@@ -447,10 +496,13 @@ function BusinessSettingsContent({ storeDetails, setStoreDetails, tenantDetails 
     const { userPermissions } = useContext(PlatformGlobalDataContext);
     const { data: session } = useSession();
     const isOwnerAccount = session?.user?.role === 'owner';
+    const canRenderOwnerPosSync = isOwnerAccount && FEATURE_FLAGS.ENABLE_POS_SYNC;
     const canAccessDigitalScreens = FEATURE_FLAGS.DIGITAL_SCREENS_ENABLED
         && hasAnyPermission(userPermissions, [PERMISSIONS.MANAGE_DIGITAL_SCREENS]);
     const t = useTranslations('BusinessSettings');
     const searchParams = useSearchParams();
+    const requestedSection = searchParams?.get('section') || '';
+    const requestedFocus = searchParams?.get('focus') || '';
     const format = useFormatter();
     const now = getUTCDate().newDate;
     const [form] = Form.useForm();
@@ -670,14 +722,21 @@ function BusinessSettingsContent({ storeDetails, setStoreDetails, tenantDetails 
         {
             key: "search-discovery",
             label: (
-                <Flex align="center" gap={8}>
+                <span
+                    style={{
+                        alignItems: "center",
+                        display: "inline-flex",
+                        gap: 8,
+                        minWidth: 0,
+                    }}
+                >
                     <span>Search & Discovery</span>
                     {businessCopyCoverage.missingFieldCount > 0 ? (
                         <Tag color="warning">
                             {t('businessCopyCoverageGapCount', { count: businessCopyCoverage.missingFieldCount })}
                         </Tag>
                     ) : null}
-                </Flex>
+                </span>
             ),
             icon: <LuSearch />,
             tab: (
@@ -1085,7 +1144,7 @@ function BusinessSettingsContent({ storeDetails, setStoreDetails, tenantDetails 
                 />
             ),
         },
-        {
+        ...(canRenderOwnerPosSync ? [{
             key: "pos-sync",
             label: t('posSync'),
             icon: <LuShield />,
@@ -1117,7 +1176,7 @@ function BusinessSettingsContent({ storeDetails, setStoreDetails, tenantDetails 
                     }}
                 />
             ),
-        },
+        }] : []),
         ...(FEATURE_FLAGS.ENABLE_NOTIFICATION_OS && isOwnerAccount ? [{
             key: "notifications",
             label: "Notifications",
@@ -1163,8 +1222,8 @@ function BusinessSettingsContent({ storeDetails, setStoreDetails, tenantDetails 
     };
 
     useEffect(() => {
-        const sectionParam = searchParams?.get('section') || '';
-        const focusParam = searchParams?.get('focus') || '';
+        const sectionParam = requestedSection;
+        const focusParam = requestedFocus;
         const targetSectionKey = sectionParam || BUSINESS_SETTINGS_FOCUS_SECTION[focusParam];
         if (!targetSectionKey) return;
 
@@ -1191,12 +1250,22 @@ function BusinessSettingsContent({ storeDetails, setStoreDetails, tenantDetails 
                                             ? publicTruthFocusRefs.current.tempStatus
                                             : null;
 
-        window.setTimeout(() => {
-            setActiveSection(targetSectionIndex);
-            const target = focusRef?.current || scrollRefs.current[targetSectionIndex]?.current;
-            target?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }, 100);
-    }, [searchParams]);
+        setActiveSection(targetSectionIndex);
+
+        // Sections above the target can finish loading after the first paint
+        // (for example Digital Screens), changing the target's position. Keep
+        // the owner deep link aligned through that bounded settling window.
+        const scrollTimers = BUSINESS_SETTINGS_DEEP_LINK_SCROLL_DELAYS_MS.map((delay) => (
+            window.setTimeout(() => {
+                const target = focusRef?.current || scrollRefs.current[targetSectionIndex]?.current;
+                target?.scrollIntoView({ behavior: 'auto', block: 'start' });
+            }, delay)
+        ));
+
+        return () => {
+            scrollTimers.forEach((timer) => window.clearTimeout(timer));
+        };
+    }, [requestedFocus, requestedSection]);
 
     // Initialize imageUrl from storeDetails if it exists
     useEffect(() => {
@@ -1540,17 +1609,10 @@ function BusinessSettingsContent({ storeDetails, setStoreDetails, tenantDetails 
             Boolean(storeDetails?.storeId) ||
             storeDetails?.storeId == MENULIST_PLATFORM_STORE_ID
         ) {
-            const businessCopyFieldKeys = getBusinessCopyFieldKeysFromUpdate(changesToUpload);
-            if (businessCopyFieldKeys.length > 0) {
-                changesToUpload.businessCopyMeta = buildBusinessCopyManualOverrideMeta({
-                    existingMeta: storeDetails?.businessCopyMeta,
-                    fieldKeys: businessCopyFieldKeys,
-                });
-            }
-            const updatedChanges: any = getStoreDeepDifference(
-                changesToUpload,
-                storeDetails,
-            );
+            const updatedChanges: any = applyBusinessCopyManualOverrideMetaToUpdate({
+                existingMeta: storeDetails?.businessCopyMeta,
+                update: getStoreDeepDifference(changesToUpload, storeDetails),
+            });
             if (Object.keys(updatedChanges).length > 0) {
                 updatedChanges.storeId = storeDetails.storeId;
                 if ("workingHours" in updatedChanges) {
@@ -1796,9 +1858,7 @@ function BusinessSettingsContent({ storeDetails, setStoreDetails, tenantDetails 
                             onKeyDown={preventBusinessSettingsPickerEnterSubmit}
                             initialValues={{
                                 ...getBusinessSettingsInitialValues(storeDetails),
-                                currencyCode: storeDetails?.currencyCode || "INR",
-                                currencySymbol: storeDetails?.currencySymbol || "\u20b9",
-                                country: storeDetails?.country || "India",
+                                ...getBusinessSettingsLocaleDefaults(storeDetails, timezone),
                                 workingHours: storeDetails?.workingHours || {
                                     sun: null,
                                     mon: null,
@@ -1847,10 +1907,20 @@ function BusinessSettingsContent({ storeDetails, setStoreDetails, tenantDetails 
                                                 });
                                                 form.setFieldsValue({
                                                     ...getBusinessSettingsInitialValues(storeDetails),
-                                                    currencyCode: storeDetails?.currencyCode,
-                                                    currencySymbol: storeDetails?.currencySymbol,
-                                                    country: storeDetails?.country,
+                                                    ...getBusinessSettingsLocaleDefaults(storeDetails, timezone),
                                                 });
+                                                const persistedBusinessAttributes = normalizeBusinessAttributes(
+                                                    storeDetails?.businessAttributes,
+                                                );
+                                                form.setFieldValue(
+                                                    'businessAttributes',
+                                                    Object.fromEntries(
+                                                        BUSINESS_ATTRIBUTE_CONFIG.map(({ key }) => [
+                                                            key,
+                                                            persistedBusinessAttributes[key],
+                                                        ]),
+                                                    ),
+                                                );
                                                 setFeedbackEnabled(feedbackDraft.feedbackEnabled);
                                                 setFeedbackDefaults(feedbackDraft.feedbackDefaults);
                                                 setReviewUrl(feedbackDraft.reviewUrl);

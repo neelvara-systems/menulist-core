@@ -36,7 +36,6 @@ import {
 import {
     ANSWERLATTICE_SITE_DESCRIPTION,
     ANSWERLATTICE_SITE_TITLE,
-    ANSWERLATTICE_TAGLINE,
 } from './siteConfig';
 
 export const metadata: Metadata = {
@@ -61,12 +60,9 @@ async function getBasePath(): Promise<string> {
 }
 
 const HERO_CHIPS = [
-    'In-app widget',
-    'Hosted help center',
-    'Docs and FAQs',
-    'Changelog',
+    'In-app help',
+    'Hosted help',
     'Ticket fallback',
-    'Feedback review',
     'Approved answers',
 ];
 
@@ -78,10 +74,10 @@ const HERO_TITLE_LINES = [
 const HERO_TITLE_TEXT = HERO_TITLE_LINES.map((line) => line.join(' ')).join(' ');
 
 const CAPABILITY_PROOF = [
-    { label: 'Scattered inputs', value: 'Docs, screenshots, recordings, notes, tickets, releases, and repeated replies.' },
-    { label: 'Support structure', value: 'Documentation, FAQs, approved answers, page context, changelog, and support gaps.' },
-    { label: 'Where users get help', value: 'In-app widget, hosted help center, feedback review, and future AI-agent context.' },
-    { label: 'Review loop', value: 'Missing answers become tickets; you approve what becomes official support.' },
+    { label: 'Start with what you have', value: 'Docs, notes, screenshots, releases, tickets, and repeated replies.' },
+    { label: 'Review the first 10', value: 'Turn likely questions into editable answers backed by your own product material.' },
+    { label: 'Help users where they get stuck', value: 'Use the same reviewed answers in your product and hosted help.' },
+    { label: 'Fix gaps once', value: 'Unknown questions become visible work; you decide what becomes official.' },
 ];
 
 const SUITE_BUILD_STEPS = [
@@ -184,12 +180,9 @@ const SUITE_CAPABILITIES = [
 ];
 
 const INSTALL_SURFACES = [
-    { label: 'Next.js', href: '/install/frameworks/nextjs', detail: 'App Router and Pages Router guidance.' },
-    { label: 'React SPA', href: '/install/frameworks/react', detail: 'Client-side route context updates.' },
-    { label: 'Vue / Nuxt', href: '/install/frameworks/vue', detail: 'Framework install and context handoff.' },
-    { label: 'Plain HTML', href: '/install/frameworks/plain-html', detail: 'Script-tag setup for static products.' },
-    { label: 'Shopify-style', href: '/install/frameworks/shopify', detail: 'Theme-level widget placement.' },
-    { label: 'Webflow-style', href: '/install/frameworks/webflow', detail: 'Hosted-site custom-code install.' },
+    { label: '1. Give setup to your coding agent', href: '/install/ai-agent', detail: 'Copy one prepared instruction packet into your AI coding tool.' },
+    { label: '2. Connect the right page details', href: '/developers/safe-page-context', detail: 'Share only the safe page and account context needed for a useful answer.' },
+    { label: '3. Verify before users see it', href: '/developers/widget-verification', detail: 'Check the key, allowed website, blocked pages, open and close behavior, and fallback.' },
 ];
 
 const FOUNDER_PRESSURE = [
@@ -464,38 +457,21 @@ const REVIEW_SIGNALS = [
     },
     {
         title: 'Find gaps in your support knowledge',
-        detail: 'The Knowledge Map shows product relationships, approved-answer coverage, stale guidance, and open review work.',
+        detail: 'See which important product questions still need a reviewed answer.',
         href: '/product/knowledge-governance',
     },
     {
-        title: 'See which product areas drive questions',
-        detail: 'Compare mapped product areas and open the area creating the most support pressure.',
-        href: '/product/knowledge-governance',
-    },
-    {
-        title: 'Review what changed before release',
-        detail: 'See which approved answers and saved checks a versioned release could affect before activation.',
+        title: 'Review what a release changed',
+        detail: 'Check whether a product change made an important answer incomplete or out of date.',
         href: '/product/changelog',
-    },
-    {
-        title: 'Verify critical answers before reuse',
-        detail: 'Check required facts, evidence, fallback, and safe escalation before customers depend on an answer.',
-        href: '/product/knowledge-governance',
-    },
-    {
-        title: 'Help readers scan long guides',
-        detail: 'Organize published article headings by topic without exposing private support data.',
-        href: '/product/knowledge-base',
     },
 ];
 
 const BUILT_FOR = [
     'Vibe coders with real users',
     'Solo SaaS founders',
-    'Technical founders near launch',
     'Small SaaS teams before a support hire',
-    'Studios launching multiple SaaS products',
-    'AI-built products moving faster than docs',
+    'Studios shipping several products',
 ];
 
 const POSITIONING_BOUNDARIES = [
@@ -525,10 +501,10 @@ function HomepageHero({ basePath }: { basePath: string }) {
             <div className="al-home-hero__inner mx-auto max-w-7xl">
                 <div className="mx-auto max-w-6xl text-center">
                     <p className="mb-3 text-sm font-semibold tracking-wide text-teal-200">
-                        {ANSWERLATTICE_TAGLINE}
+                        Reviewed support for fast-moving products
                     </p>
                     <p className="al-home-hero__eyebrow mb-4 text-xs font-semibold uppercase tracking-widest text-teal-300">
-                        Scattered product knowledge into structured support
+                        Support built for founders who ship fast
                     </p>
                     <h1
                         className="al-home-hero-title mx-auto max-w-6xl text-4xl font-extrabold leading-[1.14] tracking-normal text-white sm:text-5xl lg:text-6xl xl:text-[4.2rem]"
@@ -565,17 +541,17 @@ function HomepageHero({ basePath }: { basePath: string }) {
                         ))}
                     </h1>
                     <p className="al-home-hero__subtitle mx-auto mt-6 max-w-4xl text-lg leading-relaxed text-[#a0a0c0] sm:text-xl">
-                        Turn scattered product knowledge into reviewed support for your widget, help center, docs, search, and AI-assisted surfaces. Approved answers come first; missing coverage becomes visible review work.
+                        Start with the questions your users will ask first. Review the answers, put them inside your product, and turn every missed question into a visible fix.
                     </p>
                     <div className="al-home-hero__actions mt-8 flex flex-col justify-center gap-3 sm:flex-row">
                         <AnswerlatticeLink
                             basePath={basePath}
-                            href="/get-started"
+                            href="/early-access"
                             data-answerlattice-event="hero_cta_clicked"
-                            data-answerlattice-label="create_workspace"
+                            data-answerlattice-label="build_first_10_answers"
                             className="al-page-hero__button al-page-hero__button--primary"
                         >
-                            Create workspace
+                            Request early access
                         </AnswerlatticeLink>
                         <AnswerlatticeLink
                             basePath={basePath}
@@ -617,10 +593,9 @@ function HomepageHero({ basePath }: { basePath: string }) {
 
 function FirstTrustedAnswersSection({ basePath }: { basePath: string }) {
     const steps = [
-        ['01', 'Teach from product sources', 'Select the website, docs, notes, releases, screenshots, or repeated replies you are willing to use as support evidence.'],
-        ['02', 'Generate ten product-specific drafts', 'Prepare ten editable questions and draft answers with source links, applicability, risk, and missing-evidence warnings.'],
-        ['03', 'Run deterministic checks', 'Deterministic Answer Tests verify the expected answer path without calling an AI provider.'],
-        ['04', 'Measure real outcomes', 'Track explicit Solved and Still need help responses instead of treating no escalation as proof.'],
+        ['01', 'Choose your product material', 'Add the docs, notes, screenshots, releases, or repeated replies you already trust.'],
+        ['02', 'Review ten likely questions', 'Edit the draft answers, check their sources, and approve only what users should rely on.'],
+        ['03', 'Test, publish, and improve', 'Verify the answer path and widget, then use real missed questions to improve support.'],
     ] as const;
 
     return (
@@ -633,12 +608,17 @@ function FirstTrustedAnswersSection({ basePath }: { basePath: string }) {
                             Start with the ten questions most likely to interrupt your launch.
                         </h2>
                         <p className="mt-4 max-w-xl text-base leading-relaxed text-[#a0a0c0]">
-                            You do not need a complete support operation on day one. Start from your own product sources, review the generated first-ten drafts, approve the answer path, verify the widget, then improve from real gaps.
+                            You do not need a complete help center on day one. Start with the ten questions most likely to block signup, setup, billing, or daily use.
                         </p>
-                        <AnswerlatticeLink basePath={basePath} href="/resources/founder-launch-kit" className="mt-6 inline-flex min-h-11 items-center gap-2 rounded-xl bg-teal-700 px-5 py-3 text-sm font-semibold text-white transition hover:bg-teal-800">
-                            Open founder launch kit
-                            <LuArrowRight aria-hidden size={15} />
-                        </AnswerlatticeLink>
+                        <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+                            <AnswerlatticeLink basePath={basePath} href="/early-access" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-teal-700 px-5 py-3 text-sm font-semibold text-white transition hover:bg-teal-800">
+                                Request early access
+                                <LuArrowRight aria-hidden size={15} />
+                            </AnswerlatticeLink>
+                            <AnswerlatticeLink basePath={basePath} href="/resources/founder-launch-kit" className="inline-flex min-h-11 items-center justify-center rounded-xl border border-white/[0.1] bg-white/[0.03] px-5 py-3 text-sm font-semibold text-[#d6d6ef] transition hover:border-white/[0.2] hover:text-white">
+                                See the launch guide
+                            </AnswerlatticeLink>
+                        </div>
                     </div>
                     <div className="grid gap-3 sm:grid-cols-2">
                         {steps.map(([number, title, detail]) => (
@@ -909,26 +889,26 @@ function InstallSurfaceSection({ basePath }: { basePath: string }) {
     return (
         <section className="border-y border-white/[0.06] px-4 py-20 sm:px-6">
             <div className="mx-auto max-w-7xl">
-                <div className="grid gap-10 lg:grid-cols-[0.82fr_1.18fr] lg:items-start">
+                <div className="grid gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-start">
                     <div data-answerlattice-reveal>
                         <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">Install path</p>
                         <h2 className="text-3xl font-bold leading-tight text-white sm:text-4xl">
-                            Install without an enterprise project.
+                            Add support with your coding agent.
                         </h2>
                         <p className="mt-5 text-base leading-relaxed text-[#a0a0c0]">
-                            Install confidence should be obvious: one widget contract, framework-specific setup paths, safe context rules, and verification before launch.
+                            Give your coding agent one prepared setup packet. AnswerLattice then shows you what to connect and what to verify before users see the widget.
                         </p>
                         <div className="mt-7 flex flex-col gap-3 sm:flex-row">
                             <AnswerlatticeLink basePath={basePath} href="/install" className="rounded-xl bg-teal-700 px-5 py-3 text-center text-sm font-semibold text-white shadow-lg shadow-teal-500/25 transition hover:bg-teal-800">
-                                Open install guide
+                                See install options
                             </AnswerlatticeLink>
-                            <AnswerlatticeLink basePath={basePath} href="/quickstarts" className="rounded-xl border border-white/[0.1] bg-white/[0.03] px-5 py-3 text-center text-sm font-semibold text-[#d6d6ef] transition hover:border-white/[0.2] hover:text-white">
-                                View quickstarts
+                            <AnswerlatticeLink basePath={basePath} href="/install/ai-agent" className="rounded-xl border border-white/[0.1] bg-white/[0.03] px-5 py-3 text-center text-sm font-semibold text-[#d6d6ef] transition hover:border-white/[0.2] hover:text-white">
+                                Give it to your coding agent
                             </AnswerlatticeLink>
                         </div>
                     </div>
 
-                    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                    <div className="grid gap-3 sm:grid-cols-3">
                         {INSTALL_SURFACES.map((surface) => (
                             <AnswerlatticeLink
                                 key={surface.href}
@@ -1391,10 +1371,10 @@ function FounderReviewSection({ basePath }: { basePath: string }) {
                 <div className="order-1 lg:order-2" data-answerlattice-reveal>
                     <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">Founder review</p>
                     <h2 className="text-3xl font-bold leading-tight text-white sm:text-4xl">
-                        Review the support decisions that actually need you.
+                        See what needs your attention today.
                     </h2>
                     <p className="mt-5 text-base leading-relaxed text-[#a0a0c0]">
-                        Start with today&apos;s support priorities, see where knowledge is missing, review release impact, verify critical answers, and keep long help articles easy to scan. The Daily Brief, Knowledge Map, Product Friction Evidence, and Answer Tests stay available when you need the underlying evidence.
+                        See the few support gaps, repeated questions, or changed answers that need a decision. Quiet days stay quiet.
                     </p>
                     <div className="mt-7 grid gap-x-6 sm:grid-cols-2">
                         {REVIEW_SIGNALS.map((item) => (
@@ -1414,7 +1394,7 @@ function FounderReviewSection({ basePath }: { basePath: string }) {
                         ))}
                     </div>
                     <p className="mt-5 text-sm leading-6 text-[#737391]">
-                        These views organize existing support evidence and link you to the right review screen. They never publish answers, activate releases, or create a second task system.
+                        These views organize what already happened. They never publish an answer or change your product without your approval.
                     </p>
                 </div>
             </div>
@@ -1428,13 +1408,13 @@ function FounderFitBoundarySection() {
             <div className="mx-auto max-w-7xl">
                 <SectionHeader
                     eyebrow="Founder fit"
-                    title="Built for founders at the support tipping point."
-                    description="For AI-built products, solo founders, technical founders, small SaaS teams, and studios that need a first support layer before support becomes a full-time job."
+                    title="Made for founders who shipped fast."
+                    description="For vibe coders, solo founders, small SaaS teams, and studios that have real users but no dedicated support team yet."
                 />
                 <div className="al-founder-fit__grid">
                     <article className="al-founder-fit__panel al-founder-fit__panel--primary" data-answerlattice-reveal-item>
                         <p>Best fit</p>
-                        <h3>When the product is real, but the support team is not.</h3>
+                        <h3>Your product is real. Your support team does not need to be—yet.</h3>
                         <div className="al-founder-fit__list">
                             {BUILT_FOR.map((item) => (
                                 <span key={item}>{item}</span>

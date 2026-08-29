@@ -145,6 +145,10 @@ For destructive/rule-focused local work, use the Firebase Emulator Suite first:
 ```env
 NEXT_PUBLIC_USE_EMULATORS=true
 NEXT_PUBLIC_USE_FIREBASE_EMULATORS=true
+# Optional browser SDK port overrides for an isolated MenuList emulator run.
+NEXT_PUBLIC_MENULIST_FIREBASE_AUTH_EMULATOR_PORT=9099
+NEXT_PUBLIC_MENULIST_FIREBASE_FIRESTORE_EMULATOR_PORT=8080
+NEXT_PUBLIC_MENULIST_FIREBASE_STORAGE_EMULATOR_PORT=9199
 FUNCTIONS_EMULATOR=true
 FIRESTORE_EMULATOR_HOST=127.0.0.1:8080
 FIREBASE_STORAGE_EMULATOR_HOST=127.0.0.1:9199
@@ -153,7 +157,9 @@ FIREBASE_AUTH_EMULATOR_HOST=127.0.0.1:9099
 
 This is a local safety mode, not a third deployed environment. Keep these
 values `false`/blank in Vercel, and use cloud `menulist-qa` locally only for a
-deliberate integration smoke.
+deliberate integration smoke. When another product owns one of the default
+browser ports, select unused values through the three MenuList-scoped overrides
+instead of stopping that process or pointing MenuList at its Auth namespace.
 
 Firebase Functions use a separate non-secret tenant-domain value because the
 app/API host and customer host are intentionally different:

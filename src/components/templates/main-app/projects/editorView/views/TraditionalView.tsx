@@ -621,6 +621,7 @@ export const TraditionalView = ({
                                     >
                                         <LuEyeOff size={14} />
                                         <Switch
+                                            aria-label="Hide inactive and empty categories"
                                             size="small"
                                             checked={hideInactiveCategories}
                                             onChange={setHideInactiveCategories}
@@ -890,6 +891,7 @@ export const TraditionalView = ({
                                                 >
                                                     <LuEyeOff size={14} />
                                                     <Switch
+                                                        aria-label="Hide inactive items"
                                                         size="small"
                                                         checked={hideInactiveItems}
                                                         onChange={setHideInactiveItems}

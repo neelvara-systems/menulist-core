@@ -133,6 +133,7 @@ export default function EditorFiltersPopover({
             <Flex vertical gap={8}>
                 <Text strong style={{ fontSize: 13 }}>Category</Text>
                 <Select
+                    aria-label="Category"
                     placeholder="All categories"
                     allowClear
                     value={localFilters.category}
@@ -186,6 +187,7 @@ export default function EditorFiltersPopover({
                     <Flex vertical gap={8}>
                         <Text strong style={{ fontSize: 13 }}>Price Availability</Text>
                         <Select
+                            aria-label="Price availability"
                             placeholder="All items"
                             allowClear
                             value={localFilters.hasPrice}
@@ -206,6 +208,7 @@ export default function EditorFiltersPopover({
             <Flex vertical gap={8}>
                 <Text strong style={{ fontSize: 13 }}>Images</Text>
                 <Select
+                    aria-label="Images"
                     placeholder="All items"
                     allowClear
                     value={localFilters.hasImage}
@@ -224,6 +227,7 @@ export default function EditorFiltersPopover({
             <Flex vertical gap={8}>
                 <Text strong style={{ fontSize: 13 }}>Status</Text>
                 <Select
+                    aria-label="Status"
                     placeholder="All statuses"
                     allowClear
                     value={localFilters.activeStatus}
@@ -243,6 +247,7 @@ export default function EditorFiltersPopover({
                     <Flex vertical gap={8}>
                         <Text strong style={{ fontSize: 13 }}>Time Slot</Text>
                         <Select
+                            aria-label="Time slot"
                             placeholder="All time slots"
                             allowClear
                             value={localFilters.timeSlotPreset}

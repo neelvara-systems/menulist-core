@@ -39,7 +39,7 @@ export default async function FoundersUseCasePage() {
                 'Install the widget and verify page context.',
                 'Approve the first answers from the review queue.',
             ]}
-            primaryCta="Create workspace"
+            primaryCta="Request early access"
             secondaryCta="See 60-sec demo"
         />
     );

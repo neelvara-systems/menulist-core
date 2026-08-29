@@ -980,6 +980,42 @@ is authorized by this entry.
 - August 13, 2026 - Adopted only the privacy-safe dark-attribution measurement gap: one optional closed-list field on the existing MenuList and Answerlattice tenant writes.
 - August 13, 2026 - Extended the existing external-insight intake system and added a verifier for sequential IDs, required decision fields, cross-product routing, and the self-reported discovery source contract.
 
+### ML-MKT-EXT-012 - Internal Category Versus Owner-Facing Launch Language
+
+- **Status:** `APPLY_NOW` for the language boundary; `REJECTED` for unqualified `always current`, `customers always see`, and `update once everywhere` claims.
+- **Shared:** August 27, 2026
+- **Source:** Founder-supplied expert review of MenuList launch-video positioning; no author, URL, research method, or performance evidence was supplied.
+- **Source type:** Founder-supplied expert feedback
+- **Topics:** positioning, owner-language, launch-video, website-copy, category-language, claim-safety
+- **Use when:** Writing MenuList website, product, sales, support, onboarding, video, partner, or ecosystem copy.
+- **Revalidate:** Current product publication behavior, supported MenuList outputs, cache windows, external integrations, and owner language from permissioned sales or onboarding evidence.
+
+**Source idea**
+
+The expert recommended keeping `public-business truth infrastructure` out of non-technical SMB acquisition and translating it into immediate owner language such as old menus, conflicting prices, and one link the owner can keep updated. The expert also proposed absolute shorthand such as `customers always see the current version` and `update once`.
+
+**MenuList verdict**
+
+Keep `public-business truth infrastructure` as internal category language for doctrine, architecture, partners, investors, and ecosystem explanation. Do not lead non-technical SMB acquisition with it. Translate the same strategy into the owner's immediate problem and visible outcome: old menus, conflicting prices, scattered PDFs or links, and one owner-approved customer link for the latest published version.
+
+The supplied alternatives were directionally useful but too absolute where they said customers `always` see the current version or implied one update reaches every destination. MenuList copy must name owner review and publishing, scope propagation to supported MenuList outputs, and treat external platforms as owner-placed destinations unless a verified integration proves more.
+
+**Current decision**
+
+Apply the internal-category versus owner-promise distinction across current language governance, marketing operations, product copy, and video authority. Preserve the existing owner-native website copy where it already follows this rule. Reject unqualified freshness and universal propagation wording.
+
+**Related MenuList truth**
+
+- [Language governance](../constitution/02-language-governance.md)
+- [Founder-approved video production standard](../videos/videos_founder-approved-production-standard.md)
+- [Marketing and Distribution Bible](../distribution-operating-system/distribution-operating-system_bible.md)
+- [MenuList marketing distribution](./README.md)
+
+**Outcome history**
+
+- August 27, 2026 - Updated language governance, video production authority and handoffs, internal project memory, marketing doctrine, owner-facing link copy, staff-share copy, and the active HyperFrames truth-loop source.
+- August 27, 2026 - Extended the website public-copy verifier to block the internal category phrase on public website surfaces and preserve the latest-published-version wording in owner-facing link surfaces.
+
 ## Maintenance
 
 - Add entries sequentially as `ML-MKT-EXT-001`, `ML-MKT-EXT-002`, and so on.

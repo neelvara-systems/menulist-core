@@ -29,7 +29,9 @@ Public pages must not duplicate plan amounts, private dashboard routes, or provi
 
 The public product tagline is `The governed source behind customer answers.` The supporting line is `Keep approved product knowledge structured, reviewable, and current across support, docs, search, and AI-assisted surfaces.` Use these as brand-level framing above the existing founder-first hero, not as a replacement for the implemented approved-answer, fallback, and review-loop proof.
 
-The visible homepage description is intentionally shorter: `Turn scattered product knowledge into reviewed support for your widget, help center, docs, search, and AI-assisted surfaces. Approved answers come first; missing coverage becomes visible review work.` Keep the longer transformation wording in metadata where it supports discovery, rather than repeating the full inventory in the first fold.
+The visible homepage description is intentionally founder-readable: `Start with the questions your users will ask first. Review the answers, put them inside your product, and turn every missed question into a visible fix.` Keep exact technical contracts on Product, Install, Developer, Security, and Trust pages rather than repeating them in the first fold.
+
+The main homepage action is `Build your first 10 answers`. The mobile drawer contains only the primary evaluation hubs; detailed product and resource routes remain discoverable after Product and Resources.
 
 The footer must present three separate levels: the reviewed-support-layer category, the canonical tagline, and the supporting description. Do not collapse them into one dense paragraph.
 
@@ -51,7 +53,7 @@ The private Knowledge Map may include reviewed product structure and owner-only 
 
 ## Discovery
 
-`ANSWERLATTICE_PUBLIC_PAGES` is the sitemap and structured-data page registry. Every registered path must resolve to a public page file and must stay outside private dashboard, API, widget, sign-in, and unauthorized prefixes. The source verifier currently requires 75 canonical routes and admits only two declared aliases: `/home` for `/` and `/use-cases/vibe-coded-saas` for `/use-cases/ai-built-saas`.
+`ANSWERLATTICE_PUBLIC_PAGES` is the sitemap and structured-data page registry. Every registered path must resolve to a public page file and must stay outside private dashboard, API, widget, sign-in, and unauthorized prefixes. The source verifier currently requires 75 canonical routes, admits the declared `/home`, `/get-started`, and `/use-cases/vibe-coded-saas` aliases, and separately admits `/offline` only as a bounded PWA recovery utility. The utility route is not sitemap or structured-data content.
 
 The sitemap intentionally omits `lastmod` until page-specific source timestamps exist. A build timestamp is not page freshness evidence.
 

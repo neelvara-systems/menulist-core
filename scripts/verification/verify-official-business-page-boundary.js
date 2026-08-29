@@ -77,6 +77,10 @@ function verifyFirestoreCostBoundary() {
 
 function verifyPublicLinkHelperRuntime() {
   const {
+    generateConfiguredOBPUrl,
+    generateConfiguredStoreOBPUrl,
+  } = require(path.join(root, 'src/lib/obp/generateOBPUrl.ts'));
+  const {
     normalizeOBPExternalHttpsUrl,
     normalizeOBPGoogleMapsUrl,
     normalizeOBPReviewUrl,
@@ -109,12 +113,32 @@ function verifyPublicLinkHelperRuntime() {
     ['Non-Google review URL', normalizeOBPReviewUrl('https://example.com/review')],
     ['Wrong Instagram host', normalizeOBPSocialUrl('instagram', 'https://example.com/not-instagram')],
     ['HTTP social URL', normalizeOBPSocialUrl('twitter', 'http://twitter.com/menulist')],
+    ['Scheme-like social fallback', normalizeOBPSocialUrl('instagram', 'javascript:alert(1)')],
     ['Oversized website URL', normalizeOBPWebsiteUrl('x'.repeat(2100))],
   ];
 
   for (const [label, actual] of rejected) {
     assert(actual === null, `${label}: expected null, received ${actual}`);
   }
+
+  assert(generateConfiguredOBPUrl('', '') === '', 'owner distribution must not emit the platform origin without a public address');
+  assert(
+    generateConfiguredOBPUrl('demo-store', '') === 'https://demo-store.menulist.digital',
+    'owner distribution must emit the configured local/QA tenant address',
+  );
+  const tenantStores = [{
+    isMaster: true,
+    storeDetails: { customDomain: '', subdomain: 'demo-brand' },
+  }];
+  assert(
+    generateConfiguredStoreOBPUrl({ isMaster: false, outletSlug: 'central-kitchen' }, tenantStores)
+      === 'https://demo-brand.menulist.digital/central-kitchen',
+    'outlet distribution must inherit the master host and append its validated outlet slug',
+  );
+  assert(
+    generateConfiguredStoreOBPUrl({ isMaster: false, outletSlug: '../private' }, tenantStores) === '',
+    'outlet distribution must reject unsafe outlet slugs',
+  );
 }
 
 function verifyOwnerMutationBoundary() {
@@ -206,7 +230,12 @@ function verifyOwnerMutationBoundary() {
   const businessSettings = read('src/components/templates/main-app/businessSettings/index.tsx');
   const mobileBasic = read('src/components/mobile/screens/MobileBasicSettingsScreen.tsx');
   const mobileOfficial = read('src/components/mobile/screens/MobileOfficialPageScreen.tsx');
+  const mobileNavigation = read('src/components/mobile/MobileNavigation.tsx');
+  const mobileOfficialPreview = read('src/components/mobile/sheets/MobileOfficialPagePreviewSheet.tsx');
   const officialTab = read('src/components/templates/main-app/businessSettings/tabs/OfficialPageTab.tsx');
+  const obpLinkCard = read('src/components/templates/main-app/businessSettings/OBPLinkCard.tsx');
+  const googleListingGuide = read('src/components/templates/main-app/businessSettings/tabs/GoogleListingGuide.tsx');
+  const googleListingCard = read('src/components/templates/main-app/dashboard/OwnerDashboard/GoogleListingCard.tsx');
   const socialMediaTab = read('src/components/templates/main-app/businessSettings/tabs/SocialMediaTab.tsx');
   const mobileAdvancedSettings = read('src/components/mobile/screens/MobileAdvancedSettingsScreen.tsx');
   const b2cView = read('src/components/templates/main-app/projects/b2cView/index.tsx');
@@ -222,6 +251,7 @@ function verifyOwnerMutationBoundary() {
   const publicImage = read('src/app/client/obp/OBPPublicImage.tsx');
   const menuCta = read('src/app/client/obp/OBPMenuCTA.tsx');
   const obpStyles = read('src/app/client/obp/obp.module.scss');
+  const complianceRoute = read('src/app/api/compliance/route.ts');
 
   assertIncludes(resolvedSurface, 'hasPublicHoursTruth(', 'single-store OBP missing-hours truth guard');
   assertIncludes(resolvedSurface, 'store?.timeZone,', 'single-store OBP current-date special-hours scope');
@@ -229,6 +259,7 @@ function verifyOwnerMutationBoundary() {
   assertIncludes(brandContent, 'hasPublicHoursTruth(', 'brand OBP missing-hours truth guard');
   assertIncludes(brandContent, 'outlet.timeZone,', 'brand OBP current-date special-hours scope');
   assertIncludes(brandContent, 'showBadge = hoursOutput ? hoursOutput.showStatusBadge : hasHoursTruth', 'brand OBP missing-hours badge suppression');
+  assertIncludes(complianceRoute, 'refund: null,', 'incomplete compliance response keeps the complete owner response shape');
 
   assertIncludes(locationTab, 'name="addressLine"', 'desktop canonical address field');
   assertIncludes(locationTab, 'name="postalCode"', 'desktop canonical postal field');
@@ -255,6 +286,10 @@ function verifyOwnerMutationBoundary() {
   assertIncludes(mobileAdvancedSettings, 'aria-label={`Edit ${platform.label}`}', 'mobile named social edit action');
   assertIncludes(mobileAdvancedSettings, 'aria-label={`Remove ${platform.label}`}', 'mobile named social remove action');
   assertIncludes(mobileAdvancedSettings, 'aria-label="Close social link editor"', 'mobile named social editor close action');
+  assertIncludes(mobileAdvancedSettings, '<Popup aria-label="Choose Platform"', 'mobile named social platform picker');
+  assertIncludes(mobileAdvancedSettings, "<Popup aria-label={editingPlatform ? `Edit ${editingPlatform.label}` : 'Edit Link'}", 'mobile named social link editor');
+  assertIncludes(mobileAdvancedSettings, "if ((!isKnownPlatform && !normalizedLabel) || !rawValue)", 'mobile social link save requires a public link');
+  assertIncludes(mobileAdvancedSettings, "'Add a public link before saving.'", 'mobile social link empty-value recovery');
   assertIncludes(mobileAdvancedSettings, 'minHeight: 44, minWidth: 44', 'mobile social icon action touch target');
   assertIncludes(mobileBasic, "storeDetails?.geo?.latitude !== undefined", 'mobile zero latitude hydration');
   assertIncludes(mobileBasic, 'normalizeGeoCoordinateDraft(formData.latitude, formData.longitude)', 'mobile shared geo boundary');
@@ -262,7 +297,45 @@ function verifyOwnerMutationBoundary() {
   assertIncludes(mobileBasic, 'ownsMobileBasicOptimisticValues(previous, optimisticUpdates)', 'mobile exact optimistic rollback ownership');
   assertIncludes(mobileBasic, '? { ...previous, ...previousOptimisticValues }', 'mobile canonical field rollback projection');
   assertIncludes(mobileOfficial, 'normalizeOwnerPublicPresenceLinks(publicPresenceDraft)', 'mobile owner public-link boundary');
+  assertIncludes(mobileOfficial, 'generateConfiguredStoreOBPUrl(storeDetails, tenantDetails?.storesList)', 'mobile configured store official-page link boundary');
+  assertIncludes(mobileOfficial, 'Set up your customer link', 'mobile missing customer-link recovery');
+  assertIncludes(mobileOfficial, 'onOpenDomainSettings', 'mobile missing customer-link recovery action');
+  assertIncludes(mobileOfficial, 'hasUnsavedChanges={isDirty}', 'mobile official-page preview dirty-state projection');
+  [
+    "aria-label={t('shortDescriptor')}",
+    "aria-label={t('knownFor')}",
+    "aria-label={t('whatsappNumber')}",
+    "aria-label={t('establishedYear')}",
+    "aria-label={t('googleRating')}",
+    "aria-label={t('googleReviewCount')}",
+  ].forEach((token) => assertIncludes(mobileOfficial, token, 'mobile official-page field name'));
+  assert((mobileOfficial.match(/controls=\{false\}/g) || []).length >= 3, 'mobile official-page numeric inputs must not expose duplicate unnamed stepper controls');
+  assertIncludes(mobileOfficialPreview, 'hasUnsavedChanges: boolean;', 'mobile official-page preview dirty-state contract');
+  assertIncludes(mobileOfficialPreview, '{hasUnsavedChanges ? (', 'mobile official-page unsaved warning guard');
+  assertIncludes(mobileOfficialPreview, "aria-label={t('previewOfficialPageSheetTitle')}", 'mobile official-page preview dialog name');
+  assertIncludes(mobileOfficial, "aria-label={activePhotoIndex != null ? t('photoLabel', { index: activePhotoIndex + 1 }) : t('businessPhotos')}", 'mobile official-page photo dialog name');
+  assertIncludes(mobileOfficial, "import { MOBILE_BOTTOM_NAV_CLEARANCE } from '../MobileNavigation';", 'mobile official-page shared bottom-navigation clearance');
+  assertIncludes(mobileNavigation, "export const MOBILE_BOTTOM_NAV_CLEARANCE = '124px';", 'mobile fixed-navigation clearance source');
+  assertIncludes(mobileOfficial, "import { createPortal } from 'react-dom';", 'mobile official-page action portal dependency');
+  assertIncludes(mobileOfficial, "padding: embedded ? '0 0 24px' : '16px 16px calc(env(safe-area-inset-bottom) + 264px)'", 'mobile official-page fixed-action content clearance');
+  assertIncludes(mobileOfficial, "!embedded && typeof document !== 'undefined' ? createPortal((", 'mobile official-page action portal guard');
+  assertIncludes(mobileOfficial, 'bottom: MOBILE_BOTTOM_NAV_CLEARANCE,', 'mobile official-page fixed actions clear bottom navigation');
+  assertIncludes(mobileOfficial, "position: 'fixed',", 'mobile official-page fixed action placement');
+  assertIncludes(mobileOfficial, '), document.body) : null}', 'mobile official-page action portal target');
   assertIncludes(officialTab, "name={['publicPresence', 'iconVariant']}", 'desktop registered icon variant field');
+  assertIncludes(officialTab, "const EMPTY_PUBLIC_PRESENCE: NonNullable<OfficialPageTabProps['publicPresence']> = {};", 'desktop stable empty public-presence default');
+  assertIncludes(officialTab, 'generateConfiguredStoreOBPUrl(', 'desktop configured store official-page link boundary');
+  assertIncludes(officialTab, 'Set up your customer link', 'desktop missing customer-link recovery');
+  assertIncludes(obpLinkCard, 'generateConfiguredStoreOBPUrl(storeDetails, tenantDetails?.storesList)', 'desktop dashboard OBP card configured-store boundary');
+  assertIncludes(googleListingGuide, 'officialPageUrl || generateConfiguredOBPUrl(', 'desktop Google guide resolved-link boundary');
+  assertIncludes(googleListingGuide, 'const [dismissed, setDismissed] = useState(false);', 'desktop Google guide session dismissal state');
+  assertIncludes(googleListingGuide, 'if (!obpUrl || dismissed) return null;', 'desktop Google guide dismissed render boundary');
+  assertIncludes(googleListingGuide, 'setDismissed(true);', 'desktop Google guide dismissal action');
+  assertIncludes(googleListingGuide, 'onClick={handleDismiss}', 'desktop Google guide reminder button wiring');
+  assertNotIncludes(googleListingGuide, 'onClick={onDismiss}', 'desktop Google guide dead reminder button wiring');
+  assertIncludes(googleListingCard, 'generateConfiguredStoreOBPUrl(storeDetails, tenantDetails?.storesList)', 'desktop dashboard Google card configured-store boundary');
+  assertIncludes(officialTab, 'publicPresence = EMPTY_PUBLIC_PRESENCE,', 'desktop first-use public-presence input stability');
+  assertNotIncludes(officialTab, 'publicPresence = {},', 'desktop render-unstable public-presence default');
   assertIncludes(officialTab, "name={['publicPresence', 'photos']}", 'desktop registered gallery photos field');
   assertIncludes(officialTab, "getValueProps={(value) => ({ checked: value === 'emoji' })}", 'desktop icon variant checked projection');
   assertIncludes(officialTab, "getValueFromEvent={(checked: boolean) => checked ? 'emoji' : 'icons'}", 'desktop icon variant persistence projection');
@@ -274,6 +347,7 @@ function verifyOwnerMutationBoundary() {
   assertIncludes(mobileOfficial, 'aria-haspopup="dialog"', 'mobile accent picker dialog semantics');
   assertIncludes(mobileOfficial, 'showDefaultColorOption', 'mobile accent default restoration');
   const mobileColorPicker = read('src/components/mobile/sheets/ColorPickerSheet.tsx');
+  assertIncludes(mobileColorPicker, "aria-label={t('brandColor')}", 'mobile accent dialog accessible name');
   assertIncludes(mobileColorPicker, 'aria-pressed={isToneStyleColorSelected}', 'mobile accent default pressed state');
   assertIncludes(mobileColorPicker, 'aria-pressed={isBusinessBrandColorSelected}', 'mobile business accent pressed state');
   assertIncludes(mobileColorPicker, 'type="color"', 'mobile native custom accent control');

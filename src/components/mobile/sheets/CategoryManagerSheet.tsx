@@ -4,8 +4,8 @@ import CategoryIcon from '@atoms/CategoryIcon';
 import { getOwnerLabels } from '@config/businessLabels';
 import { getPublicItemListPriceLabel, hasPublicItemDisplayPrice } from '@lib/pricing/publicItemPricePresentation';
 import type { TimeSlotPreset } from '@type/platform/store';
-import { closestCenter, DndContext, DragEndEvent, DragOverlay, PointerSensor, TouchSensor, useSensor, useSensors } from '@dnd-kit/core';
-import { arrayMove, SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { closestCenter, DndContext, DragEndEvent, DragOverlay, KeyboardSensor, PointerSensor, TouchSensor, useSensor, useSensors } from '@dnd-kit/core';
+import { arrayMove, sortableKeyboardCoordinates, SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
@@ -200,6 +200,9 @@ export default function CategoryManagerSheet({
     const [draggingItemId, setDraggingItemId] = useState<string | null>(null);
 
     const sensors = useSensors(
+        useSensor(KeyboardSensor, {
+            coordinateGetter: sortableKeyboardCoordinates,
+        }),
         useSensor(PointerSensor, {
             activationConstraint: {
                 distance: 8,
@@ -261,8 +264,8 @@ export default function CategoryManagerSheet({
             .filter(Boolean) as MobileCategoryReorderItem[];
     }, [itemReorderDraft, orderedItemIds, selectedCategoryItems]);
 
-    const renderStatusBadge = (label: string, color: string) => (
-        <Flex align="center" gap={6} style={{ minWidth: 0 }}>
+    const renderStatusBadge = (label: string, color: string, key: string) => (
+        <Flex align="center" gap={6} key={key} style={{ minWidth: 0 }}>
             <span
                 style={{
                     background: color,
@@ -302,12 +305,12 @@ export default function CategoryManagerSheet({
         const hasMissingPrice = draftItems.some((item) => !hasPublicItemDisplayPrice(item));
 
         return [
-            hasInactive ? renderStatusBadge(t('inactive'), STATUS_COLORS.inactive) : null,
-            hasHiddenByCategory ? renderStatusBadge(t('hiddenByCategory'), STATUS_COLORS.hiddenByCategory) : null,
-            hasUnavailable ? renderStatusBadge(availabilityLabels.unavailable, STATUS_COLORS.soldOut) : null,
-            hasMissingPhoto ? renderStatusBadge(t('missingPhoto'), STATUS_COLORS.missingPhoto) : null,
-            hasMissingDescription ? renderStatusBadge(t('missingDescription'), STATUS_COLORS.missingDescription) : null,
-            hasMissingPrice ? renderStatusBadge(t('missingPrice'), STATUS_COLORS.missingPrice) : null,
+            hasInactive ? renderStatusBadge(t('inactive'), STATUS_COLORS.inactive, 'inactive') : null,
+            hasHiddenByCategory ? renderStatusBadge(t('hiddenByCategory'), STATUS_COLORS.hiddenByCategory, 'hidden-by-category') : null,
+            hasUnavailable ? renderStatusBadge(availabilityLabels.unavailable, STATUS_COLORS.soldOut, 'unavailable') : null,
+            hasMissingPhoto ? renderStatusBadge(t('missingPhoto'), STATUS_COLORS.missingPhoto, 'missing-photo') : null,
+            hasMissingDescription ? renderStatusBadge(t('missingDescription'), STATUS_COLORS.missingDescription, 'missing-description') : null,
+            hasMissingPrice ? renderStatusBadge(t('missingPrice'), STATUS_COLORS.missingPrice, 'missing-price') : null,
         ].filter(Boolean);
     }, [
         STATUS_COLORS.hiddenByCategory,
@@ -483,8 +486,19 @@ export default function CategoryManagerSheet({
 
     if (!visible) return null;
 
+    const categoryManagerTitle = isReorderMode
+        ? t('reorderCategories')
+        : isItemReorderMode
+            ? t('reorderItems')
+            : isReorderHubMode
+                ? t('reorderMenu')
+                : selectedCategoryId
+                    ? (selectedCategory?.name || t('categoriesTitle'))
+                    : t('categoriesTitle');
+
     return (
         <Popup
+            aria-label={categoryManagerTitle}
             bodyStyle={MENU_SHEET_BODY_STYLE}
             destroyOnClose
             onMaskClick={onClose}
@@ -526,15 +540,7 @@ export default function CategoryManagerSheet({
                                         : onClose
                     }
                 >
-                    {isReorderMode
-                        ? t('reorderCategories')
-                        : isItemReorderMode
-                            ? t('reorderItems')
-                            : isReorderHubMode
-                                ? t('reorderMenu')
-                                : selectedCategoryId
-                                    ? (selectedCategory?.name || t('categoriesTitle'))
-                                    : t('categoriesTitle')}
+                    {categoryManagerTitle}
                 </NavBar>
 
                 {isReorderMode ? (
@@ -545,7 +551,7 @@ export default function CategoryManagerSheet({
 
                         <Card style={reorderScrollableCardStyle}>
                             <Flex gap={10} style={{ minHeight: 0 }} vertical>
-                                <Text type="secondary">Press and drag the handle to reorder categories.</Text>
+                                <Text type="secondary">Drag the handle, or focus it and use Space plus the arrow keys.</Text>
                                 <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
                                     <DndContext
                                         collisionDetection={closestCenter}
@@ -664,7 +670,7 @@ export default function CategoryManagerSheet({
                                         </Flex>
                                     ) : null}
 
-                                    <Text type="secondary">Press and drag the handle to reorder items.</Text>
+                                    <Text type="secondary">Drag the handle, or focus it and use Space plus the arrow keys.</Text>
 
                                     <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
                                         <DndContext

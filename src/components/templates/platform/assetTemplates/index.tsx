@@ -482,6 +482,7 @@ function PlatformAssetTemplates() {
                             <Form layout="vertical">
                                 <Form.Item label="Business category">
                                     <Select
+                                        aria-label="Business category"
                                         options={PLATFORM_CATEGORY_OPTIONS}
                                         value={businessCategory}
                                         onChange={(value) => {
@@ -492,6 +493,7 @@ function PlatformAssetTemplates() {
                                 </Form.Item>
                                 <Form.Item label="Asset type">
                                     <Select
+                                        aria-label="Asset type"
                                         options={PRINTABLE_ASSET_TYPES.map((asset) => ({
                                             disabled: !isPrintableAssetEditorRenderable(asset.id),
                                             label: `${asset.title}${isPrintableAssetEditorRenderable(asset.id) ? '' : ' (not editor-ready)'}`,
@@ -509,6 +511,7 @@ function PlatformAssetTemplates() {
                                 </Form.Item>
                                 <Form.Item label="Template family">
                                     <Select
+                                        aria-label="Template family"
                                         options={PRINTABLE_TEMPLATE_FAMILIES.map((family) => ({
                                             label: family.label,
                                             value: family.id,
@@ -535,10 +538,11 @@ function PlatformAssetTemplates() {
                         <Card title={selectedTemplate ? 'Selected template' : 'New template'}>
                             <Form layout="vertical">
                                 <Form.Item label="Template name" required>
-                                    <Input value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Counter Sticker - Local Bold" />
+                                    <Input aria-label="Template name" value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Counter Sticker - Local Bold" />
                                 </Form.Item>
                                 <Form.Item label="Description">
                                     <Input.TextArea
+                                        aria-label="Description"
                                         autoSize={{ minRows: 3, maxRows: 5 }}
                                         maxLength={220}
                                         onChange={(event) => setDescription(event.target.value)}
@@ -549,6 +553,7 @@ function PlatformAssetTemplates() {
                                 </Form.Item>
                                 <Form.Item label="Status">
                                     <Select
+                                        aria-label="Status"
                                         options={TEMPLATE_STATUS_OPTIONS as unknown as { label: string; value: string }[]}
                                         value={status}
                                         onChange={(value) => setStatus(value as TemplateStatus)}

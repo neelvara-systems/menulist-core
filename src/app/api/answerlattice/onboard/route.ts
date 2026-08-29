@@ -19,6 +19,7 @@ export const dynamic = 'force-dynamic';
 
 import {
     FEATURE_FLAGS } from '@config/features';
+import { ANSWERLATTICE_PUBLIC_CHECKOUT_ENABLED } from '@constant/answerlattice/publicAccess';
 import { DB_COLLECTIONS } from '@constant/database';
 import { PRODUCT_IDS } from '@constant/product';
 import { getAnswerlatticePlanById } from '@data/answerlattice/plans';
@@ -723,6 +724,16 @@ const repairAnswerlatticePostFinalizationState = async (params: {
 };
 
 export const POST = withAuth(async (request: NextRequest, session) => {
+    if (!ANSWERLATTICE_PUBLIC_CHECKOUT_ENABLED) {
+        return answerlatticeOnboardingJson(
+            {
+                code: 'ANSWERLATTICE_EARLY_ACCESS_REQUIRED',
+                error: 'Answerlattice is currently available by approved early access only.',
+            },
+            { status: 403 },
+        );
+    }
+
     const rawUserId = session.user.id;
     let db: FirebaseFirestore.Firestore | null = null;
     let localFinalizationComplete = false;

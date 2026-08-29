@@ -76,8 +76,7 @@ function extractMoreSubScreens(mobileMoreScreen) {
 }
 
 function extractRouteMapTargets(block) {
-  return extractQuotedValues(block)
-    .filter((value) => !value.startsWith('/'));
+  return Array.from(block.matchAll(/:\s*'([^']+)'/g)).map((match) => match[1]);
 }
 
 function verifyMobileShellRouteMap() {
@@ -86,6 +85,18 @@ function verifyMobileShellRouteMap() {
   const mobileBillingScreen = read('src/components/mobile/screens/MobileBillingScreen.tsx');
   const mobileNavigation = read('src/components/mobile/MobileNavigation.tsx');
   const mobileMoreScreen = read('src/components/mobile/screens/MobileMoreScreen.tsx');
+  const mobileBottomActionSurfaces = [
+    'src/components/mobile/screens/MobileBasicSettingsScreen.tsx',
+    'src/components/mobile/screens/MobileAdvancedSettingsScreen.tsx',
+    'src/components/mobile/screens/MobileTimeSlotsScreen.tsx',
+    'src/components/mobile/screens/MobileDesignEditorScreen.tsx',
+    'src/components/mobile/screens/MobileWorkingHoursEditScreen.tsx',
+    'src/components/mobile/screens/MobileLocaleSettingsScreen.tsx',
+    'src/components/mobile/screens/MobilePosSyncScreen.tsx',
+    'src/components/mobile/screens/MobileSeoAnalyticsScreen.tsx',
+    'src/components/mobile/screens/MobileLocationsScreen.tsx',
+    'src/components/mobile/menu-card-export/MobileMenuCardExportScreen.tsx',
+  ].map((sourcePath) => ({ sourcePath, content: read(sourcePath) }));
   const mobileOwnerMenuVerifier = read('scripts/verification/verify-mobile-owner-menu.mjs');
   const packageJson = JSON.parse(read('package.json'));
   const mobileSupportDoc = read('__docs__/mobile-operational-support/mobile-operational-support_mobile-support.md');
@@ -152,7 +163,7 @@ function verifyMobileShellRouteMap() {
 
   assertIncludes(mobileShell, "if (normalizedPathname.startsWith('/platform/'))", 'MobileShell platform fallback route map');
   assertIncludes(mobileShell, "moreScreen: 'platformHub'", 'MobileShell platform fallback target');
-  assertIncludes(mobileShell, "return HELP_CENTER_TAB_TO_MORE_SCREEN[tab] || 'answerlatticeHelp';", 'MobileShell help-center tab fallback');
+  assertIncludes(mobileShell, "return HELP_CENTER_TAB_TO_MORE_SCREEN[tab] || 'menuListHelp';", 'MobileShell help-center tab fallback');
   assertIncludes(mobileShell, "buildMobileRouteHash(tab: MobileTab, todayScreen: 'main' | 'dashboard' | 'history', moreScreen: MoreSubScreen)", 'MobileShell hash builder must preserve Today dashboard/history and More sub-screen state');
   assertIncludes(mobileShell, "data-mobile-shell-scroll=\"true\"", 'MobileShell must expose the scroll container for owner-mobile QA harnesses');
   assertIncludes(mobileShell, "const hasPendingSubscription = activeSubscription?.status === 'pending';", 'MobileShell must distinguish payment-pending recovery from a no-subscription plan choice');
@@ -175,12 +186,17 @@ function verifyMobileShellRouteMap() {
   assert(!mobileShell.includes("setForceDesktopRoute('/billing');"), 'Subscription gate must not force a desktop billing route from the mobile shell');
   assertIncludes(ownerLayout, 'const isMobileRecoveryRoute = isHelpCenterRoute || isBillingRoute;', 'Narrow viewport recovery routes must share the mobile-shell boundary');
   assertIncludes(ownerLayout, 'isPlatformRoute || isOpsRoute || isResellerRoute || isMobileRecoveryRoute', 'Billing and Help recovery routes must render in MobileShell at mobile widths');
-  assert(!mobileBillingScreen.includes("router.push('/dashboard#mobile/more/answerlatticeSupport')"), 'Mobile Billing support actions must not cross the restricted dashboard route');
-  assert((mobileBillingScreen.match(/router\.push\('\/help-center\/ticket'\)/g) || []).length >= 2, 'Mobile Billing support actions must use the permitted Help ticket recovery route');
+  assert(!mobileBillingScreen.includes("router.push('/dashboard#mobile/more/menuListContact')"), 'Mobile Billing support actions must not cross the restricted dashboard route');
+  assert((mobileBillingScreen.match(/router\.push\('\/help-center\/contact-us'\)/g) || []).length >= 2, 'Mobile Billing support actions must use the product-owned Help contact recovery route');
+  assert(!mobileShell.includes('answerlatticeHelp') && !mobileShell.includes('answerlatticeDocs') && !mobileShell.includes('answerlatticeSupport'), 'MenuList mobile help route state must not use Answerlattice names');
   assertIncludes(mobileNavigation, "aria-label={t('ariaLabel')}", 'Localized mobile navigation landmark label');
   assertIncludes(mobileNavigation, 'role="navigation"', 'Mobile navigation landmark role');
   assertIncludes(mobileNavigation, 'aria-label={title}', 'Localized mobile navigation accessible tab label');
   assertIncludes(mobileNavigation, 'aria-pressed={isActive}', 'Mobile navigation active tab state');
+  for (const { sourcePath, content } of mobileBottomActionSurfaces) {
+    assertIncludes(content, "import { MOBILE_BOTTOM_NAV_CLEARANCE } from '../MobileNavigation';", `${sourcePath} shared bottom-navigation clearance import`);
+    assertIncludes(content, 'bottom: MOBILE_BOTTOM_NAV_CLEARANCE,', `${sourcePath} bottom action clearance`);
+  }
 
   [
     'const MOBILE_REQUIRED_NAV_TABS = [',

@@ -62,6 +62,13 @@ assert.match(loginPage, /Google sign-in could not be completed\. Please try agai
 assert.match(loginPage, /Log in to manage reviewed answers and support knowledge\./);
 assert.match(loginPage, /<AnswerlatticeLogoMark/);
 assert.match(loginPage, /aria-label=\{`Go to \$\{loginProductName\} home`\}/);
+assert.equal(
+  (loginPage.match(/aria-label=\{`Go to \$\{loginProductName\} home`\}/g) || []).length,
+  2,
+  'Both visible MenuList/Answerlattice brand-home actions must use native named buttons.',
+);
+assert.doesNotMatch(loginPage, /<h1\s+onClick=/);
+assert.match(loginPage, /className=\{styles\.cardBrandButton\}/);
 assert.match(loginPage, /isAnswerlatticeProductHostname\(loginHostname\)/);
 assert.match(signInPage, /title: isAnswerlattice \? 'Answerlattice - Authentication' : 'MenuList - Authentication'/);
 assert.match(signInPage, /pathname === '\/answerlattice' \|\| pathname\.startsWith\('\/answerlattice\/'\)/);

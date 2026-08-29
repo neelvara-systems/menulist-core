@@ -28,6 +28,7 @@ function assertNotIncludes(content, needle, label) {
 function verifyPackageScripts() {
   const scripts = JSON.parse(read('package.json')).scripts || {};
   assertIncludes(scripts['verify:digital-screens-boundary'] || '', 'test:digital-screens:lifecycle', 'Digital Screens verifier');
+  assertIncludes(scripts['verify:digital-screens-boundary'] || '', 'test:digital-screens:store-scope', 'Digital Screens verifier');
   assertIncludes(scripts['verify:digital-screens-boundary'] || '', 'test:digital-screens:rules', 'Digital Screens verifier');
   assertIncludes(scripts['verify:digital-screens-boundary'] || '', 'test:digital-screens:management-emulator', 'Digital Screens verifier');
   assertIncludes(scripts['backfill:digital-screen-public-mirrors'] || '', 'backfill-digital-screen-public-mirrors.ts', 'Public mirror backfill');
@@ -43,7 +44,13 @@ function verifyManagementAuthority() {
 
   assertIncludes(route, 'withAuth(', 'Digital Screens management API auth');
   assertIncludes(route, 'PERMISSIONS.MANAGE_DIGITAL_SCREENS', 'Digital Screens management API permission');
-  assertIncludes(route, 'requireAnyStorePermission(', 'Digital Screens management API store authorization');
+  assertIncludes(route, 'requireAnyStorePermissionForStore(', 'Digital Screens management API selected-store authorization');
+  assertIncludes(route, 'resolveDigitalScreenSelectedStoreScope(session, requestedStoreId)', 'Digital Screens management API selected-store scope resolution');
+  assertIncludes(route, 'targetStoreId: z.number().int().positive().safe()', 'Digital Screens management API selected-store mutation schema');
+  const selectedStoreAccess = read('src/lib/screen/screenManagementAccess.ts');
+  assertIncludes(selectedStoreAccess, 'canUserAccessStore({', 'Digital Screens management API mapped-store authorization');
+  assertIncludes(selectedStoreAccess, 'normalizeStorePermissionScopeDocumentId(requestedStoreId)', 'Digital Screens management API exact selected-store normalization');
+  assertIncludes(selectedStoreAccess, 'reason: "forbidden"', 'Digital Screens management API spoofed-store rejection');
   assertIncludes(route, 'readBoundedJsonBody(request, MAX_BODY_BYTES', 'Digital Screens management API bounded body');
   assertIncludes(route, 'z.discriminatedUnion("action"', 'Digital Screens management API mutation schema');
   assertIncludes(route, 'getRateLimitForFeature(isRead ? "DATA_READ" : "DATA_WRITE")', 'Digital Screens method-aware rate limit');
@@ -77,7 +84,13 @@ function verifyManagementAuthority() {
   assertIncludes(server, 'expiredSlidesPruned', 'Digital Screens expired custom-slide pruning');
   assertIncludes(server, 'validUntilMs > FIRESTORE_TIMESTAMP_MAX_MILLISECONDS', 'Digital Screens server slide expiry ceiling');
 
-  assertIncludes(client, 'fetch("/api/digital-screens"', 'Digital Screens client uses protected API');
+  assertIncludes(client, 'fetch(endpoint, {', 'Digital Screens client uses the protected selected-store endpoint');
+  assertIncludes(client, '`/api/digital-screens?storeId=${encodeURIComponent(String(session.sId))}`', 'Digital Screens read follows the active store');
+  assertIncludes(client, 'targetStoreId: session.sId', 'Digital Screens mutation follows the active store');
+  assertIncludes(client, 'serializeDigitalScreenOwnerSlideForMutation(slide, validUntilMs)', 'Digital Screens uses the strict serializable slide transport');
+  assertIncludes(contracts, 'const { validUntil: _validUntil, ...slideTransport } = slide;', 'Digital Screens strips the client Timestamp before strict transport validation');
+  assertIncludes(contracts, 'return { ...slideTransport, validUntilMs };', 'Digital Screens sends only the strict slide transport contract');
+  assertNotIncludes(client, 'slide: {\n                    ...slide,\n                    validUntilMs,', 'Digital Screens does not leak the client Timestamp into the strict API body');
   assertIncludes(client, 'readJsonResponseWithLimit<unknown>', 'Digital Screens client bounded response parser');
   assertIncludes(client, 'DIGITAL_SCREEN_MANAGEMENT_RESPONSE_MAX_BYTES', 'Digital Screens response byte cap');
   assertIncludes(client, 'isDigitalScreenManagementResponse(result)', 'Digital Screens response runtime validation');
@@ -98,6 +111,7 @@ function verifyPublicReadAndRefresh() {
   const retiredWorker = read('public/screen-sw.js');
   const server = read('src/database/campaigns/serverScreen.ts');
   const seen = read('src/app/api/screen/seen/route.ts');
+  const managementRoute = read('src/app/api/digital-screens/route.ts');
   const seenServer = read('src/lib/screen/screenSeenServer.ts');
   const invalidation = read('src/lib/screen/serverScreenInvalidation.ts');
   const revalidation = read('src/app/api/revalidate/menu/route.ts');
@@ -163,6 +177,9 @@ function verifyPublicReadAndRefresh() {
   assert(!exists('src/lib/screen/screenInvalidation.ts'), 'Digital Screens browser Firestore invalidation file must stay removed');
   assertIncludes(functionsInvalidation, "touchScreen: options.touchDigitalScreen === true", 'Digital Screens Functions routed token-cache refresh');
   assertIncludes(functionsInvalidation, "if (!screen || typeof screen.enabled !== 'boolean')", 'Digital Screens Functions fallback screen guard');
+  assertIncludes(managementRoute, 'getPrivateScreenTokenCacheTag', 'Digital Screens owner mutation cache tag');
+  assertIncludes(managementRoute, 'revalidateTag(getPrivateScreenTokenCacheTag(screen.screenToken), { expire: 0 })', 'Digital Screens owner mutation immediate public-screen cache invalidation');
+  assertIncludes(managementRoute, 'if (screen?.screenToken)', 'Digital Screens owner mutation token-bound cache invalidation');
 }
 
 function verifyDisplayTruthAndQuality() {
@@ -173,10 +190,18 @@ function verifyDisplayTruthAndQuality() {
   const stores = read('src/database/stores/index.tsx');
   const runtime = read('src/lib/screen/screenRuntime.ts');
   const content = read('src/lib/screen/screenContent.ts');
+  const page = read('src/app/screen/[token]/page.tsx');
   const adjust = read('src/components/shared/media/MediaImageAdjustModal.tsx');
   const slideGenerator = read('src/lib/screen/slideGenerator.ts');
   const campaignTypes = read('src/types/campaigns.ts');
   const seenHook = read('src/hooks/useDigitalScreenSeenSignal.ts');
+
+  assertIncludes(adjust, 'const { message } = App.useApp();', 'Digital Screens image-adjust scoped feedback');
+  assertNotIncludes(adjust, 'Typography, message, theme', 'Digital Screens image-adjust detached feedback import');
+  assertIncludes(adjust, 'aria-label="Adjust image"', 'Digital Screens mobile image-adjust dialog name');
+  assertIncludes(adjust, 'aria-label="Close image adjustment"', 'Digital Screens mobile image-adjust close name');
+  assertIncludes(adjust, 'Reset framing', 'Digital Screens framing reset action name');
+  assertIncludes(adjust, 'Reset all', 'Digital Screens complete reset action name');
 
   [menuBoard, highlights].forEach((display, index) => {
     const label = index === 0 ? 'Menu Board' : 'Highlights';
@@ -249,6 +274,11 @@ function verifyDisplayTruthAndQuality() {
   assertIncludes(displayStyles, ':global(.slide-qr-label)', 'Digital Screens explained Highlights QR');
   assertIncludes(displayStyles, 'left: 22px;', 'Digital Screens store watermark attribution separation');
   assertIncludes(highlights, 'screenTimestampToMillis(slide.validUntil)', 'Digital Screens owner slide expiry refresh');
+  assertIncludes(page, 'serializeScreenSlidesForClient(generateScreenSlides({', 'Highlights serializes Firestore timestamps before the client boundary');
+  assertIncludes(content, 'export type PublicScreenSlide', 'Highlights declares a serializable client slide contract');
+  assertIncludes(content, 'validUntil?: number;', 'Highlights client expiry uses serializable milliseconds');
+  assertIncludes(content, 'slide.validUntil = validUntilMilliseconds;', 'Highlights offline cache preserves serializable expiry milliseconds');
+  assertNotIncludes(content, 'slide.validUntil = Timestamp.fromMillis(validUntilMilliseconds);', 'Highlights offline cache does not reconstruct class instances');
   assertIncludes(highlights, 'normalizeCachedScreenSlides(parsedCache.slides)', 'Highlights cached slide projection');
   assertIncludes(highlights, 'const initialTruthRef = useRef({', 'Highlights offline-first mount/server refresh distinction');
   assertIncludes(highlights, 'if (prev.slides.length === 0)', 'Highlights empty-slide rotation guard');
@@ -316,6 +346,15 @@ function verifyOwnerExperience() {
   assertIncludes(desktopLink, '@media (max-width: 640px)', 'Digital Screens desktop narrow-viewport layout');
   assertIncludes(desktopLink, '.screen-link-section .screen-mode-qr {\n                        display: none;', 'Digital Screens desktop narrow-viewport QR overflow guard');
   assertIncludes(mobile, 'Refresh TV status', 'Digital Screens mobile status refresh');
+  assertIncludes(mobile, 'preparedMedia: prepared', 'Digital Screens mobile upload preserves the governed prepared-media identity');
+  assertNotIncludes(mobile, 'prepared?: PreparedMediaImage;', 'Digital Screens mobile upload does not shadow the shared prepared-media field');
+  assertIncludes(mobile, 'removePinnedSlide(slide.id, slide.imageUrl)', 'Digital Screens mobile removal cleans the referenced Storage object after state mutation');
+  assertIncludes(desktopUploads, 'removePinnedSlide(slide.id, slide.imageUrl)', 'Digital Screens desktop removal cleans the referenced Storage object after state mutation');
+  assertIncludes(read('src/database/campaigns/index.ts'), 'stateReadSucceeded = true;', 'Digital Screens verifies failed add-slide persistence before cleanup');
+  assertIncludes(read('src/database/campaigns/index.ts'), 'if (addCommitted) return newSlide;', 'Digital Screens recovers a committed add after a lost response');
+  assertIncludes(read('src/database/campaigns/index.ts'), 'if (stateReadSucceeded) {', 'Digital Screens cleans failed-add media only after confirmed absence');
+  assertIncludes(read('src/database/campaigns/index.ts'), 'cleanupUploadedMediaUrls(uploadedVariantUrls, deleteFileByUrl)', 'Digital Screens confirmed failed state mutation cleans newly uploaded Storage variants');
+  assertIncludes(read('src/database/campaigns/index.ts'), 'cleanupUploadedMediaUrls([imageUrl], deleteFileByUrl)', 'Digital Screens successful slide removal cleans its Storage object');
   assertIncludes(desktop, 'contentVersion: screenState.contentVersion', 'Digital Screens desktop current-version owner state');
   assertIncludes(desktop, 'aria-label="Only custom slides"', 'Digital Screens desktop owner-only switch accessible name');
   assertIncludes(desktop, 'Try again', 'Digital Screens desktop retryable load failure');

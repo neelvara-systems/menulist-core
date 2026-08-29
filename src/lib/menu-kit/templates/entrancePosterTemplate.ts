@@ -375,11 +375,12 @@ export async function generateEntrancePoster(input: PosterInput): Promise<Blob> 
     const imageBlob = await generateEntrancePosterImage(input);
     const imageDataUrl = await blobToDataUrl(imageBlob);
     const doc = new jsPDF({
+        compress: true,
         orientation: 'portrait',
         unit: 'mm',
         format: [POSTER_W_MM, POSTER_H_MM],
     });
-    doc.addImage(imageDataUrl, 'PNG', 0, 0, POSTER_W_MM, POSTER_H_MM);
+    doc.addImage(imageDataUrl, 'PNG', 0, 0, POSTER_W_MM, POSTER_H_MM, undefined, 'FAST');
 
     return doc.output('blob');
 }

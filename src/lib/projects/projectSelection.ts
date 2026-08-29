@@ -29,6 +29,13 @@ function getOwnerProjectStorageKey(
         : null;
 }
 
+export function getOwnerProjectSelectionScopeKey(
+    storeId?: string | number | null,
+    tenantId?: string | number | null,
+): string | null {
+    return getOwnerProjectStorageKey(storeId, tenantId);
+}
+
 export function getStoredOwnerProjectId(
     storeId?: string | number | null,
     tenantId?: string | number | null,

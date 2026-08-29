@@ -85,10 +85,23 @@ export async function propagateNewProjectToOutlets(
         return { propagated: 0, failed: 1 };
     }
 
+    const sourceStore = sourceStoreSnap.exists() ? sourceStoreSnap.data() : null;
+    if (
+        sourceStore
+        && sourceStore.isMaster === false
+        && String(sourceStore.storeId) === String(masterStoreId)
+        && String(sourceStore.tenantId) === String(tenantId)
+    ) {
+        // Outlet-local projects are intentionally isolated. Treat their
+        // creation as a successful no-op instead of logging a false failed
+        // master-propagation attempt on every first visit to an empty outlet.
+        return { propagated: 0, failed: 0 };
+    }
+
     const plan = normalizeProjectPropagationPlan(
         tenantSnap.data()?.storesList,
         masterStoreId,
-        sourceStoreSnap.exists() ? sourceStoreSnap.data() : null,
+        sourceStore,
         tenantId,
     );
     if (!plan) {

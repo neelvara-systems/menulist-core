@@ -4,7 +4,9 @@
 
 ## 1) What this project is
 
-MenuList is an owner-focused **public-business truth infrastructure** for SMBs, especially food businesses, whose practical goal is to keep customer-facing menu and business information correct across many channels with minimal owner effort.
+Internally, MenuList is described as owner-focused **public-business truth infrastructure** for SMBs, especially food businesses. This is category and architecture language, not the default language for non-technical owners.
+
+The external owner promise is simpler: **one owner-approved customer link for the current published menu, services, and business details.** Customer-facing copy should lead with stale menus, conflicting prices, old PDFs, or the need for one link the owner can keep updated.
 
 This is **not** a generic QR menu builder, “AI restaurant software,” or a feature-heavy SaaS dashboard.  
 The product is intended to behave as infrastructure: calm defaults, reliable propagation, low owner load.
@@ -22,8 +24,11 @@ MenuList addresses this with a controlled source model, publishing and propagati
 
 ## 3) Why this project matters
 
-The positioning baseline is:  
+The internal positioning baseline is:
+
 **“Your public business truth stays correct when no one is watching.”**
+
+Do not use that line as an absolute customer promise. Public copy should name the mechanism and owner action: MenuList keeps supported outputs connected to the latest version the owner reviewed and published.
 
 That means:
 

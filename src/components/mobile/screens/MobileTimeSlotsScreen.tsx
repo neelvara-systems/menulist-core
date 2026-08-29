@@ -13,6 +13,7 @@ import { useContext, useEffect, useRef, useState } from 'react';
 import { LuCheck, LuClock, LuPencil, LuPlus, LuTrash2, LuX } from 'react-icons/lu';
 import { Button, Card, Dialog, DotLoading, Empty, Flex, Input, NavBar, Popup, Text, Toast } from '../antd';
 import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
+import { MOBILE_BOTTOM_NAV_CLEARANCE } from '../MobileNavigation';
 import {
     getBoundedMobileOwnerStringContext,
     getMobileOwnerStoreLogContext,
@@ -369,6 +370,7 @@ function MobileTimeSlotsScreenContent({ onBack }: MobileTimeSlotsScreenProps) {
                                                 confirmText: t('delete'),
                                                 content: t('deleteConfirm', { name: preset.label }),
                                                 onConfirm: () => handleDelete(preset),
+                                                title: t('delete'),
                                             });
                                         }} style={{ minHeight: 44, minWidth: 44, paddingInline: 0 }}><LuTrash2 color={token.colorError} size={16} /></Button>
                                     </Flex>
@@ -379,11 +381,17 @@ function MobileTimeSlotsScreenContent({ onBack }: MobileTimeSlotsScreenProps) {
                 )}
             </Flex>
 
-            <Popup bodyStyle={{ maxHeight: '84vh', overflow: 'hidden', padding: 0 }} onMaskClick={() => setIsFormOpen(false)} visible={isFormOpen}>
+            <Popup
+                aria-label={editingPreset ? t('editTimeSlot') : t('newTimeSlot')}
+                bodyStyle={{ maxHeight: '84vh', overflow: 'hidden', padding: 0 }}
+                onMaskClick={() => setIsFormOpen(false)}
+                visible={isFormOpen}
+            >
                 <Flex style={{ height: '100%' }} vertical>
                     <NavBar
                         right={(
                             <Button
+                                aria-label="Close time slot form"
                                 fill="none"
                                 onClick={() => setIsFormOpen(false)}
                                 style={{ minHeight: 44, minWidth: 44, paddingInline: 0 }}
@@ -400,7 +408,7 @@ function MobileTimeSlotsScreenContent({ onBack }: MobileTimeSlotsScreenProps) {
                             <Flex gap={8} vertical>
                                 <Text strong>{t('name')}</Text>
                                 <Text type="secondary">Choose a short label customers and staff can understand quickly, like Lunch, Happy Hour, or Dinner.</Text>
-                                <Input maxLength={30} onChange={setFormLabel} placeholder={t('namePlaceholder')} value={formLabel} />
+                                <Input aria-label={t('name')} maxLength={30} onChange={setFormLabel} placeholder={t('namePlaceholder')} value={formLabel} />
                             </Flex>
                         </Card>
 
@@ -409,12 +417,12 @@ function MobileTimeSlotsScreenContent({ onBack }: MobileTimeSlotsScreenProps) {
                                 <Flex style={{ flex: 1 }} vertical>
                                     <Text strong>{t('startTime')}</Text>
                                     <Text type="secondary">When this slot begins.</Text>
-                                    <Input onChange={setFormStart} type="time" value={formStart} />
+                                    <Input aria-label={t('startTime')} onChange={setFormStart} type="time" value={formStart} />
                                 </Flex>
                                 <Flex style={{ flex: 1 }} vertical>
                                     <Text strong>{t('endTime')}</Text>
                                     <Text type="secondary">When this slot ends.</Text>
-                                    <Input onChange={setFormEnd} type="time" value={formEnd} />
+                                    <Input aria-label={t('endTime')} onChange={setFormEnd} type="time" value={formEnd} />
                                 </Flex>
                             </Flex>
                         </Card>
@@ -455,7 +463,7 @@ function MobileTimeSlotsScreenContent({ onBack }: MobileTimeSlotsScreenProps) {
                             backdropFilter: 'blur(10px)',
                             backgroundColor: token.colorBgContainer,
                             borderTop: `1px solid ${token.colorBorderSecondary}`,
-                            bottom: 0,
+                            bottom: MOBILE_BOTTOM_NAV_CLEARANCE,
                             padding: '12px 16px',
                             position: 'sticky',
                             zIndex: 20,

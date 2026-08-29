@@ -12,6 +12,7 @@ const DrawerElement = ({ children, footerActions, ...props }: DrawerElementProps
         width={'max-content'}
         // rootClassName={"ant-modal-wrap"}
         {...props}
+        aria-label={props['aria-label'] ?? (typeof props.title === 'string' ? props.title : undefined)}
         styles={{
             ...props.styles,
             mask: { backdropFilter: 'blur(6px)' },

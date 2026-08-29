@@ -2,7 +2,9 @@
 
 import { createDefaultAnswerlatticeRoles } from '@constant/answerlattice/permissions';
 import { DB_COLLECTIONS } from '@constant/database';
+import { MENULIST_B2C_PLAN_IDS } from '@constant/menulistPlans';
 import { PRODUCT_IDS } from '@constant/product';
+import { createDefaultRoles, getOwnerRoleId } from '@data/defaultRoles';
 import {
     areAnswerlatticeCompiledSourceVersionsValid,
     getAnswerlatticeBundleManifestDocId,
@@ -14,6 +16,7 @@ import {
     getAnswerlatticeMissingBundleManifestBase,
     getAnswerlatticeMissingSourceVersionsBase,
 } from '@lib/answerlattice/invalidationControlPlane';
+import { buildHostedHelpRegistryDoc } from '@lib/answerlattice/hostedHelpServer';
 import { buildAnswerlatticeWidgetApiStateWithNewKey } from '@lib/answerlattice/widgetKeyManager';
 import { createHash } from 'crypto';
 import { initializeApp } from 'firebase-admin/app';
@@ -56,8 +59,29 @@ const menuListTenantId = 99001;
 const menuListStoreId = 99101;
 const answerlatticeTenantId = 78001;
 const answerlatticeStoreId = 78101;
-const userId = 'answerlattice-local-menulist-owner';
+let userId = 'answerlattice-local-menulist-owner';
+const menuListSubscriptionId = 'menulist-local-active-subscription';
 const subscriptionId = 'answerlattice-local-active-subscription';
+const hostedHelpDomain = 'help.menulist.test';
+const hostedHelpConfig = {
+    enabled: true,
+    domains: [hostedHelpDomain],
+    primaryDomain: hostedHelpDomain,
+    title: 'MenuList Help Center',
+    description: 'Reviewed guidance for MenuList owners and staff.',
+    showFaqs: true,
+    showChangelog: true,
+    noIndex: true,
+};
+const localWidgetAllowedOrigins = [
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',
+    'http://localhost:3014',
+    'http://127.0.0.1:3014',
+    'http://localhost:3020',
+    'http://127.0.0.1:3020',
+    'https://app.menulist.digital',
+];
 const answerlatticeScope = {
     sId: answerlatticeStoreId,
     tId: answerlatticeTenantId,
@@ -97,8 +121,24 @@ async function upsertAuthUser(
     auth: ReturnType<typeof getAuth>,
     customClaims: Record<string, unknown>,
 ): Promise<void> {
+    let existingUser: Awaited<ReturnType<typeof auth.getUser>> | null = null;
+
     try {
-        await auth.getUser(userId);
+        existingUser = await auth.getUserByEmail(email);
+        userId = existingUser.uid;
+    } catch (error) {
+        if ((error as { code?: string })?.code !== 'auth/user-not-found') throw error;
+    }
+
+    if (!existingUser) {
+        try {
+            existingUser = await auth.getUser(userId);
+        } catch (error) {
+            if ((error as { code?: string })?.code !== 'auth/user-not-found') throw error;
+        }
+    }
+
+    if (existingUser) {
         await auth.updateUser(userId, {
             disabled: false,
             displayName: 'MenuList QA Owner',
@@ -106,8 +146,7 @@ async function upsertAuthUser(
             emailVerified: true,
             password,
         });
-    } catch (error) {
-        if ((error as { code?: string })?.code !== 'auth/user-not-found') throw error;
+    } else {
         await auth.createUser({
             disabled: false,
             displayName: 'MenuList QA Owner',
@@ -123,14 +162,23 @@ async function upsertAuthUser(
 
 async function seedFirestore(): Promise<void> {
     const menuListBatch = menuListDb.batch();
+    const menuListOwnerRoleId = getOwnerRoleId(menuListStoreId);
 
     menuListBatch.set(menuListDb.collection(DB_COLLECTIONS.TENANTS).doc(String(menuListTenantId)), {
         active: true,
         createdOn: now,
+        deleted: false,
         id: menuListTenantId,
         name: 'MenuList QA Client',
         pId: PRODUCT_IDS.MENULIST,
         productId: PRODUCT_IDS.MENULIST,
+        storesList: [{
+            isMaster: true,
+            name: 'MenuList Raw Test Client',
+            storeId: menuListStoreId,
+            storeKey: 'menulist-raw-test-client',
+            tenantName: 'MenuList QA Client',
+        }],
         tId: menuListTenantId,
         tenantId: menuListTenantId,
     }, { merge: true });
@@ -153,11 +201,12 @@ async function seedFirestore(): Promise<void> {
         pId: PRODUCT_IDS.MENULIST,
         phoneNumber: '0000000000',
         productId: PRODUCT_IDS.MENULIST,
-        roles: [],
+        roles: createDefaultRoles(menuListStoreId, email),
         sId: menuListStoreId,
         state: 'Karnataka',
         storeKey: 'menulist-raw-test-client',
         storeId: menuListStoreId,
+        isMaster: true,
         tId: menuListTenantId,
         tenantName: 'MenuList QA Client',
         tenantId: menuListTenantId,
@@ -177,13 +226,58 @@ async function seedFirestore(): Promise<void> {
             [PRODUCT_IDS.ANSWERLATTICE]: productAccount,
         },
         productId: PRODUCT_IDS.MENULIST,
-        role: 'owner',
+        role: menuListOwnerRoleId,
         sId: menuListStoreId,
         storeId: menuListStoreId,
         storeIds: [menuListStoreId],
-        stores: [{ name: 'MenuList Raw Test Client', role: 'owner', storeId: menuListStoreId }],
+        stores: [{ name: 'MenuList Raw Test Client', role: menuListOwnerRoleId, storeId: menuListStoreId }],
         tId: menuListTenantId,
         tenantId: menuListTenantId,
+    }, { merge: true });
+    menuListBatch.set(menuListDb.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc(menuListSubscriptionId), {
+        analyticsEntitlement: {
+            activePlanType: MENULIST_B2C_PLAN_IDS.PRO,
+            source: 'answerlattice_local_first_client_fixture',
+            status: 'active',
+            syncedAt: now,
+        },
+        amount: 0,
+        billingHistory: [],
+        billingMode: 'manual',
+        createdOn: now,
+        currency: 'INR',
+        cycleEndDate,
+        cycleStartDate,
+        email,
+        id: menuListSubscriptionId,
+        manualPaymentConfirmed: true,
+        manualPaymentConfirmedAt: now,
+        manualPaymentEvidenceType: 'local_certification_non_payment',
+        monthlyCredits: 250,
+        monthlyCreditsAllowance: 250,
+        name: 'MenuList Raw Test Client',
+        pId: PRODUCT_IDS.MENULIST,
+        paymentMethod: null,
+        paymentProvider: 'razorpay',
+        planId: MENULIST_B2C_PLAN_IDS.PRO,
+        planName: 'MenuList Pro — Local Certification',
+        planType: 'MONTH',
+        productId: PRODUCT_IDS.MENULIST,
+        providerPlanId: 'local_certification_menulist_pro',
+        providerStatus: 'active',
+        providerSubscriptionId: menuListSubscriptionId,
+        quantity: 1,
+        sId: menuListStoreId,
+        status: 'active',
+        storeId: menuListStoreId,
+        subscriptionEndDate: cycleEndDate,
+        subscriptionStartDate: cycleStartDate,
+        tId: menuListTenantId,
+        tenantId: menuListTenantId,
+        topUpCredits: 0,
+        updatedOn: now,
+        userId,
+        userType: 'B2C',
     }, { merge: true });
 
     const answerlatticeBatch = answerlatticeDb.batch();
@@ -222,6 +316,8 @@ async function seedFirestore(): Promise<void> {
         createdOn: now,
         deleted: false,
         id: answerlatticeStoreId,
+        hostedHelpConfig,
+        hostedHelpConfigVersion: 1,
         name: 'MenuList Support Workspace',
         pId: PRODUCT_IDS.ANSWERLATTICE,
         productUrl: 'https://app.menulist.digital',
@@ -232,11 +328,7 @@ async function seedFirestore(): Promise<void> {
         tId: answerlatticeTenantId,
         tenantId: answerlatticeTenantId,
         timeZone: 'Asia/Kolkata',
-        widgetAllowedOrigins: [
-            'http://localhost:3000',
-            'http://localhost:3014',
-            'https://app.menulist.digital',
-        ],
+        widgetAllowedOrigins: localWidgetAllowedOrigins,
     }, { merge: true });
     answerlatticeBatch.set(answerlatticeDb.collection(DB_COLLECTIONS.USERS).doc(userId), {
         active: true,
@@ -286,6 +378,26 @@ async function seedFirestore(): Promise<void> {
         updatedOn: FieldValue.serverTimestamp(),
         userId,
     }, { merge: true });
+    const hostedHelpRegistryDoc = buildHostedHelpRegistryDoc({
+        domain: hostedHelpDomain,
+        tId: answerlatticeTenantId,
+        sId: answerlatticeStoreId,
+        config: hostedHelpConfig,
+        status: {
+            domainStatus: 'verified',
+            domainVerified: true,
+            domainVerifiedAt: now.toDate().toISOString(),
+            domainLastCheckedAt: now.toDate().toISOString(),
+        },
+    });
+    if (!hostedHelpRegistryDoc) {
+        throw new Error('Local hosted-help registry fixture is invalid.');
+    }
+    answerlatticeBatch.set(
+        answerlatticeDb.collection(DB_COLLECTIONS.ANSWERLATTICE_PUBLIC_HELP_SITES).doc(hostedHelpDomain),
+        hostedHelpRegistryDoc,
+        { merge: true },
+    );
     // A fresh browser fixture must not ship hidden approved product truth. The
     // former billing answer referenced an entity that the fixture never created,
     // so reruns also remove those two known legacy documents from older fixtures.

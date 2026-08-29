@@ -243,7 +243,7 @@ function verifyDesktop(component) {
     '<Button href="/ops">Ops</Button>',
     '<Button href="/ops/extraction">Extraction</Button>',
     '<Button href="/platform/owner-business-assistant">Business Health</Button>',
-    '<Button href="/transactions">AI Transactions</Button>',
+    '<Button href="/platform/founder-monitor">Founder Monitor</Button>',
     '<Button onClick={() => void loadData()}>Refresh</Button>',
     'Generated {formatTimestamp(data.generatedAt)}',
   ].forEach((token) => assertIncludes(component, token, 'Platform Cost Posture desktop surface'));
@@ -255,6 +255,11 @@ function verifyDesktop(component) {
     'error.message',
     'fetch(',
   ].forEach((token) => assertNotIncludes(component, token, 'Platform Cost Posture desktop boundary'));
+  assertNotIncludes(
+    component,
+    '<Button href="/transactions">AI Transactions</Button>',
+    'Platform Cost Posture owner-only transactions handoff',
+  );
 }
 
 function verifyMobileAndNavigation(mobileShell, mobileMore, mobileInternal, navConstants, sidebar, horizontalSidebar) {

@@ -10,10 +10,11 @@ import ContextualStateIllustration from "@atoms/contextualStateIllustration";
 import { FEATURE_FLAGS } from "@config/features";
 import type { SpecialMenuListItem } from "@hook/useSpecialMenus";
 import { useSpecialMenus } from "@hook/useSpecialMenus";
+import { PlatformGlobalDataContext, type PlatformGlobalDataProviderType } from "@providers/platformProviders/platformGlobalDataProvider";
 import { formatDateTimeRange } from "@util/dateTime";
 import { Button, Card, Empty, Flex, Modal, Popconfirm, Space, Typography, theme } from "antd";
 import { useFormatter } from "next-intl";
-import { useState } from "react";
+import { useContext, useState } from "react";
 import { LuCalendar, LuPause, LuPencil, LuPlus, LuSparkles, LuX } from "react-icons/lu";
 import CreateSpecialMenuModal from "./CreateSpecialMenuModal";
 import EditSpecialMenuScheduleModal from "./EditSpecialMenuScheduleModal";
@@ -40,6 +41,7 @@ function SpecialMenuItem({
 }) {
     const { token } = theme.useToken();
     const formatter = useFormatter();
+    const { storeDetails } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext);
 
     return (
         <Flex
@@ -65,7 +67,13 @@ function SpecialMenuItem({
                 <Flex align="center" gap={4}>
                     <LuCalendar size={12} />
                     <Text type="secondary" style={{ fontSize: 12 }}>
-                        {formatDateTimeRange(item.startsAt, item.endsAt, formatter, "Schedule unavailable")}
+                        {formatDateTimeRange(
+                            item.startsAt,
+                            item.endsAt,
+                            formatter,
+                            "Schedule unavailable",
+                            storeDetails?.timeZone,
+                        )}
                     </Text>
                 </Flex>
                 <Text type="secondary" style={{ fontSize: 11 }}>

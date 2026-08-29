@@ -39,7 +39,7 @@ export default async function AiBuiltSaasUseCasePage() {
                 'Install the in-app widget and pass safe page context.',
                 'Review missing-answer signals before publishing official answers.',
             ]}
-            primaryCta="Create workspace"
+            primaryCta="Request early access"
             secondaryCta="See 60-sec demo"
         />
     );

@@ -74,7 +74,7 @@ Compact homepage framing:
 If website copy is indexed after implementation:
 
 - Mention "business health" as an AI health check, not a standalone action agent.
-- Keep MenuList as public business truth infrastructure.
+- Keep public-business truth infrastructure as internal category language. Owner-facing website copy should instead describe one owner-approved customer link and the concrete menu, price, detail, QR, page, and sharing outcomes it supports.
 - Do not target broad chatbot keywords that invite unsupported expectations.
 - Do not cite Stanford/IBM/Meta market stats in customer copy.
 

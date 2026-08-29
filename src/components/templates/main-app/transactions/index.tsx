@@ -322,7 +322,10 @@ function TransactionPage() {
 
             <Row gutter={[16, 24]} style={{ marginBottom: 24 }}>
                 <Flex style={{ width: '100%' }} gap={12} justify='flex-end' wrap="wrap">
+                    <label className="sr-only" htmlFor="transaction-start-date">{t('startDate')}</label>
+                    <label className="sr-only" htmlFor="transaction-end-date">{t('endDate')}</label>
                     <RangePicker
+                        id={{ start: 'transaction-start-date', end: 'transaction-end-date' }}
                         style={{ width: 300 }}
                         onChange={handleDateRangeChange}
                         value={dateRange}

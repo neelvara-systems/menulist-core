@@ -7,6 +7,7 @@ import {
     type AnswerlatticeAnswerTestProofStatus,
 } from '@lib/answerlattice/answerTestContracts';
 import {
+    AnswerlatticeGovernanceEntitySelectionSchema,
     AnswerlatticeGovernanceEditedContentSchema,
     type AnswerlatticeGovernanceEditedContent,
 } from '@lib/answerlattice/governanceContracts';
@@ -34,6 +35,7 @@ export const AnswerlatticeProposalImpactRequestSchema = z.object({
     requestId: z.string().trim().min(8).max(100).regex(/^[A-Za-z0-9_-]+$/),
     proposalId: ProposalIdSchema,
     editedContent: AnswerlatticeGovernanceEditedContentSchema.optional(),
+    entityIds: AnswerlatticeGovernanceEntitySelectionSchema.optional(),
 }).strict();
 
 const AnswerlatticeProposalImpactAnswerSummarySchema = z.object({
@@ -120,6 +122,7 @@ export type AnswerlatticeProposalImpactRequest = {
     requestId: string;
     proposalId: string;
     editedContent?: AnswerlatticeGovernanceEditedContent;
+    entityIds?: string[];
 };
 export type AnswerlatticeProposalImpactClassification =
     typeof ANSWERLATTICE_PROPOSAL_IMPACT_CLASSIFICATIONS[number];

@@ -230,6 +230,9 @@ export const addTenant = async (data: TenantMutationInput, from: string = "") =>
     return await apiCallComposer(
         async () => {
             const nextData: TenantMutationInput = { ...data };
+            const nextTenantName = typeof nextData.name === 'string' ? nextData.name.trim() : '';
+            if (!nextTenantName) throw new Error('tenant_create_name_invalid');
+            nextData.name = nextTenantName;
             let uploadedLogoUrl = '';
             const imageToUpdate: unknown = nextData.imageToUpdate;
 
@@ -275,6 +278,7 @@ export const updateTenant = async (data: TenantMutationInput & { tenantId: strin
             const nextData: TenantMutationInput & { tenantId: string | number } = { ...data };
             const docId = nextData.tenantId;
             const nextTenantName = typeof nextData.name === 'string' ? nextData.name.trim() : '';
+            if ('name' in nextData && !nextTenantName) throw new Error('tenant_update_name_invalid');
             const imageToUpdate: unknown = nextData.imageToUpdate;
             const hasLogoUpload = isDataUrl(imageToUpdate);
             delete nextData.imageToUpdate;

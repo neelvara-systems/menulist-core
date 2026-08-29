@@ -7,6 +7,7 @@ require('ts-node').register({
 const fs = require('fs');
 const path = require('path');
 const { PNG } = require('pngjs');
+const { buildPWASettingsUpdatePayload } = require('../../src/lib/pwa/settingsUpdate');
 
 const ROOT = path.resolve(__dirname, '..', '..');
 
@@ -31,6 +32,40 @@ function assertIncludes(content, needle, label) {
 function assertMatches(content, pattern, label) {
   assert(pattern.test(content), `${label} must match ${pattern}`);
 }
+
+const pwaSettingsDeleteSentinel = Symbol('pwa-settings-delete');
+assert(
+  !Object.prototype.hasOwnProperty.call(
+    buildPWASettingsUpdatePayload({}, pwaSettingsDeleteSentinel),
+    'pwaSettings.pwaShortName',
+  ),
+  'omitted PWA short name must not mutate the stored override',
+);
+assert(
+  buildPWASettingsUpdatePayload(
+    { pwaShortName: undefined },
+    pwaSettingsDeleteSentinel,
+  )['pwaSettings.pwaShortName'] === pwaSettingsDeleteSentinel,
+  'explicitly cleared localized PWA short name must delete the stored override',
+);
+assert(
+  buildPWASettingsUpdatePayload(
+    { pwaShortName: '   ' },
+    pwaSettingsDeleteSentinel,
+  )['pwaSettings.pwaShortName'] === pwaSettingsDeleteSentinel,
+  'blank string PWA short name must delete the stored override',
+);
+assert(
+  JSON.stringify(buildPWASettingsUpdatePayload(
+    { enableInstallableApp: false, promoteInstallation: true, pwaShortName: { en: '  Twelve chars  ', hi: '' } },
+    pwaSettingsDeleteSentinel,
+  )) === JSON.stringify({
+    'pwaSettings.enableInstallableApp': false,
+    'pwaSettings.promoteInstallation': true,
+    'pwaSettings.pwaShortName': { en: 'Twelve chars' },
+  }),
+  'PWA settings payload must retain booleans and normalize localized short names',
+);
 
 function assertOrder(content, orderedTokens, label) {
   let previousIndex = -1;
@@ -236,7 +271,7 @@ function verifyCustomerServiceWorkerPolicy() {
   assertIncludes(register, "failurePolicy: 'register_nothing'", 'service worker domain resolution fail-closed policy');
   assertIncludes(register, 'service_worker_unregister_failed', 'service worker registration cleanup diagnostics');
   assertIncludes(register, 'activeWorker: getRegisteredSwLabel(activeUrl)', 'service worker active-worker bounded label');
-  assertIncludes(register, 'targetWorker: getTargetSwLabel(targetUrl)', 'service worker target-worker bounded label');
+  assertIncludes(register, 'targetWorker: getTargetSwLabel(target)', 'service worker target-worker bounded label');
   assertIncludes(register, 'service_worker_script_url_label_parse_failed', 'service worker script-label parse diagnostics');
   assertIncludes(register, 'MAX_SERVICE_WORKER_SCRIPT_LABEL_DIAGNOSTICS', 'service worker script-label diagnostic cap');
   assertIncludes(register, "getBoundedRuntimeStringContext('scriptUrl', scriptUrl)", 'service worker script-label bounded URL metadata');
@@ -677,6 +712,10 @@ function verifyCustomerAppAssets() {
   const customerAppFirebase = read('__docs__/customer-app/customer-app_firebase.md');
   const productionAudit = read('__docs__/audits/menulist-production-readiness-audit.md');
   const changelog = read('__docs__/changelog.md');
+  assertIncludes(desktopSettings, 'aria-label="Customer app language"', 'desktop Customer App language selector name');
+  assertIncludes(desktopSettings, 'aria-label="Home screen name"', 'desktop Customer App short-name input name');
+  assertIncludes(desktopSettings, 'aria-label="Customer App install link"', 'desktop Customer App install-link input name');
+  assertIncludes(mobileSettings, 'aria-label="Home screen name"', 'mobile Customer App short-name input name');
   const executableIconRoute = stripJsComments(appIconRoute);
   const executableSplashRoute = stripJsComments(appSplashRoute);
   const executableScreenshotRoute = stripJsComments(appScreenshotRoute);
@@ -840,6 +879,9 @@ function verifyCustomerAppAssets() {
   assertIncludes(desktopSettings, 'assertPWASettingsUpdateSucceeded(settingsResult);', 'desktop customer app settings acknowledgement guard');
   assertIncludes(desktopSettings, 'aria-label="Enable Customer App"', 'desktop customer app enable switch accessible name');
   assertIncludes(desktopSettings, 'aria-label="Show install prompt"', 'desktop customer app prompt switch accessible name');
+  assertIncludes(desktopSettings, 'const installableReady = enableInstallableApp && Boolean(installLink);', 'desktop customer app readiness requires an install origin');
+  assertIncludes(desktopSettings, "status: installableReady ? 'Active' : enableInstallableApp ? 'Setup needed' : 'Off'", 'desktop customer app truthful installable status');
+  assertIncludes(desktopSettings, "status: installPromptReady ? 'Active' : enableInstallableApp && promoteInstallation ? 'Waiting' : 'Manual only'", 'desktop customer app truthful prompt status');
   assertIncludes(desktopSettings, 'await replacePWAIconOverride({', 'desktop customer app uses shared replacement lifecycle');
   assertIncludes(desktopSettings, 'await removePWAIconOverride({', 'desktop customer app uses shared removal lifecycle');
   assertNotIncludes(desktopSettings, "import { deleteFileByUrl } from '@database/storage/deleteFromStorage';", 'desktop customer app direct Storage deletion bypass');
@@ -847,6 +889,9 @@ function verifyCustomerAppAssets() {
   assertIncludes(mobileSettings, 'assertPWASettingsUpdateSucceeded(settingsResult);', 'mobile customer app settings acknowledgement guard');
   assertIncludes(mobileSettings, 'aria-label={label}', 'mobile customer app toggle accessible name');
   assertIncludes(mobileSettings, 'disabled={disabled}', 'mobile customer app toggle disabled semantics');
+  assertIncludes(mobileSettings, 'const installableReady = enableInstallableApp && Boolean(installLink);', 'mobile customer app readiness requires an install origin');
+  assertIncludes(mobileSettings, "status: installableReady ? 'Active' : enableInstallableApp ? 'Setup' : 'Off'", 'mobile customer app truthful installable status');
+  assertIncludes(mobileSettings, "status: installPromptReady ? 'Active' : enableInstallableApp && promoteInstallation ? 'Waiting' : 'Manual'", 'mobile customer app truthful prompt status');
   assertIncludes(mobileSettings, 'await replacePWAIconOverride({', 'mobile customer app uses shared replacement lifecycle');
   assertIncludes(mobileSettings, 'await removePWAIconOverride({', 'mobile customer app uses shared removal lifecycle');
   assertNotIncludes(mobileSettings, "import { deleteFileByUrl } from '@database/storage/deleteFromStorage';", 'mobile customer app direct Storage deletion bypass');

@@ -18,13 +18,20 @@ import {
     updateFeedbackStatus,
     type GuestFeedbackExpectedScope,
 } from '@database/guestFeedback';
+import { getExistingProjectsListWithoutLoader } from '@database/projects';
 import ContextualStateIllustration from '@atoms/contextualStateIllustration';
 import { useAppDispatch } from '@hook/useAppDispatch';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { GuestFeedback, GuestFeedbackFilter } from '@type/guestFeedback';
+import {
+    normalizeGuestFeedbackProjectId,
+    resolveGuestFeedbackOwnerProjectId,
+    type GuestFeedbackProjectSummary,
+} from '@lib/feedback/guestFeedbackProjectIdBoundary';
 import { Alert, Button, Card, Empty, Flex, Spin, Typography, theme, notification } from 'antd';
-import React, { useCallback, useContext, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import useSWR from 'swr';
 import { FeedbackCard } from './FeedbackCard';
 import { FeedbackFilters } from './FeedbackFilters';
 import { FeedbackQrDownload } from './FeedbackQrDownload';
@@ -59,6 +66,35 @@ const FeedbackInboxContent: React.FC<FeedbackInboxProps> = ({
     const dispatch = useAppDispatch();
     const { token } = theme.useToken();
     const { storeDetails } = useContext(PlatformGlobalDataContext);
+    const feedbackScope = useMemo(
+        () => resolveFeedbackInboxScope(storeDetails),
+        [storeDetails?.storeId, storeDetails?.tenantId],
+    );
+    const providedProjectId = normalizeGuestFeedbackProjectId(projectId);
+    const storePrimaryProjectId = normalizeGuestFeedbackProjectId(storeDetails?.primaryProjectId);
+    const projectSummariesRequest = useSWR(
+        feedbackScope && !providedProjectId && !storePrimaryProjectId
+            ? ['feedbackQrProjectSummaries', feedbackScope.tenantId, feedbackScope.storeId]
+            : null,
+        () => getExistingProjectsListWithoutLoader(
+            true,
+            feedbackScope ? { tId: feedbackScope.tenantId, sId: feedbackScope.storeId } : undefined,
+        ),
+        {
+            dedupingInterval: 60 * 60 * 1000,
+            revalidateOnFocus: false,
+            revalidateOnReconnect: false,
+        },
+    );
+    const resolvedProjectId = useMemo(
+        () => providedProjectId
+            || resolveGuestFeedbackOwnerProjectId(
+                ((projectSummariesRequest.data as { projects?: GuestFeedbackProjectSummary[] } | undefined)?.projects || []),
+                storePrimaryProjectId,
+            ),
+        [providedProjectId, projectSummariesRequest.data, storePrimaryProjectId],
+    );
+    const resolvedStoreName = storeName || storeDetails?.name;
 
     const [feedbackItems, setFeedbackItems] = useState<GuestFeedback[]>([]);
     const [filter, setFilter] = useState<GuestFeedbackFilter>('all');
@@ -318,7 +354,7 @@ const FeedbackInboxContent: React.FC<FeedbackInboxProps> = ({
                                     key={feedback.id}
                                     feedback={feedback}
                                     onStatusUpdate={handleStatusUpdate}
-                                    storeName={storeName}
+                                    storeName={resolvedStoreName}
                                 />
                             ))}
 
@@ -352,15 +388,15 @@ const FeedbackInboxContent: React.FC<FeedbackInboxProps> = ({
                         </Flex>
                     </Card>
 
-                    {projectId ? (
+                    {resolvedProjectId ? (
                         <Card size="small" title="Feedback QR">
                             <Flex vertical gap={12}>
                                 <Text type="secondary">
                                     Place this near tables, counters, bills, or packaging so customers can report issues privately.
                                 </Text>
                                 <FeedbackQrDownload
-                                    projectId={projectId}
-                                    storeName={storeName}
+                                    projectId={resolvedProjectId}
+                                    storeName={resolvedStoreName}
                                 />
                             </Flex>
                         </Card>

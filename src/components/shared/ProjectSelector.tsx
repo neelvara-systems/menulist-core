@@ -243,14 +243,11 @@ export function ProjectSelectorList({ currentProjectId, onCreate, onManage, onSe
                 return (
                     <Card
                         key={project.id}
-                        hoverable
-                        onClick={() => onSelect(project.id)}
                         size="small"
                         style={{
                             width: 'calc(50% - 6px)',
                             maxWidth: 'calc(50% - 6px)',
                             minHeight: 156,
-                            cursor: 'pointer',
                             borderRadius: 16,
                             borderWidth: 2,
                             borderColor: isSelected ? token.colorPrimary : token.colorBorderSecondary,
@@ -262,8 +259,8 @@ export function ProjectSelectorList({ currentProjectId, onCreate, onManage, onSe
                     >
                         {onManage ? (
                             <Button
+                                aria-label={`Manage ${projectName || t('untitled')}`}
                                 onClick={(event) => {
-                                    event.stopPropagation();
                                     onManage(project.id);
                                 }}
                                 size="small"
@@ -273,6 +270,24 @@ export function ProjectSelectorList({ currentProjectId, onCreate, onManage, onSe
                                 <LuMoreVertical size={16} />
                             </Button>
                         ) : null}
+
+                        <button
+                            aria-label={`Select ${projectName || t('untitled')}`}
+                            aria-pressed={isSelected}
+                            onClick={() => onSelect(project.id)}
+                            style={{
+                                background: 'transparent',
+                                border: 0,
+                                color: 'inherit',
+                                cursor: 'pointer',
+                                font: 'inherit',
+                                minHeight: 132,
+                                padding: 0,
+                                textAlign: 'inherit',
+                                width: '100%',
+                            }}
+                            type="button"
+                        >
 
                         {isSelected ? (
                             <Flex
@@ -349,20 +364,18 @@ export function ProjectSelectorList({ currentProjectId, onCreate, onManage, onSe
                                 </Text>
                             ) : null}
                         </Flex>
+                        </button>
                     </Card>
                 );
             })}
 
             {onCreate ? (
                 <Card
-                    hoverable
-                    onClick={onCreate}
                     size="small"
                     style={{
                         width: 'calc(50% - 6px)',
                         maxWidth: 'calc(50% - 6px)',
                         minHeight: 156,
-                        cursor: 'pointer',
                         borderRadius: 16,
                         borderWidth: 2,
                         borderStyle: 'dashed',
@@ -371,26 +384,43 @@ export function ProjectSelectorList({ currentProjectId, onCreate, onManage, onSe
                         boxShadow: 'none',
                     }}
                 >
-                    <div style={{ minHeight: 26, marginBottom: 14 }} />
-                    <Flex align="center" gap={12} justify="center" style={{ minHeight: 110, textAlign: 'center' }} vertical>
-                        <Flex
-                            align="center"
-                            justify="center"
-                            style={{
-                                width: 72,
-                                height: 72,
-                                borderRadius: '50%',
-                                backgroundColor: token.colorFillTertiary,
-                                color: token.colorTextSecondary,
-                                flexShrink: 0,
-                            }}
-                        >
-                            <LuPlus size={32} />
+                    <button
+                        aria-label={t('createCatalog')}
+                        onClick={onCreate}
+                        style={{
+                            background: 'transparent',
+                            border: 0,
+                            color: 'inherit',
+                            cursor: 'pointer',
+                            font: 'inherit',
+                            minHeight: 156,
+                            padding: 0,
+                            textAlign: 'inherit',
+                            width: '100%',
+                        }}
+                        type="button"
+                    >
+                        <div style={{ minHeight: 26, marginBottom: 14 }} />
+                        <Flex align="center" gap={12} justify="center" style={{ minHeight: 110, textAlign: 'center' }} vertical>
+                            <Flex
+                                align="center"
+                                justify="center"
+                                style={{
+                                    width: 72,
+                                    height: 72,
+                                    borderRadius: '50%',
+                                    backgroundColor: token.colorFillTertiary,
+                                    color: token.colorTextSecondary,
+                                    flexShrink: 0,
+                                }}
+                            >
+                                <LuPlus size={32} />
+                            </Flex>
+                            <Text strong style={{ fontSize: 16, textAlign: 'center' }}>
+                                {t('createCatalog')}
+                            </Text>
                         </Flex>
-                        <Text strong style={{ fontSize: 16, textAlign: 'center' }}>
-                            {t('createCatalog')}
-                        </Text>
-                    </Flex>
+                    </button>
                 </Card>
             ) : null}
         </Flex>

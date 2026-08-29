@@ -133,6 +133,7 @@ async function copyMobileFeedbackLinkToClipboard(feedbackUrl: string): Promise<v
 function MobileFeedbackScreenContent({ onBack }: MobileFeedbackScreenProps) {
     const t = useTranslations('FeedbackInbox');
     const common = useTranslations('Common');
+    const mobileNavigation = useTranslations('MobileNavigation');
     const { token } = theme.useToken();
     const format = useFormatter();
     const { storeDetails } = useContext(PlatformGlobalDataContext);
@@ -430,14 +431,18 @@ function MobileFeedbackScreenContent({ onBack }: MobileFeedbackScreenProps) {
                 ) : null}
 
                 <FeedbackLinkCard
+                    copyLabel={t('copyLink')}
                     description={t('feedbackQrDesc')}
                     disabled={!feedbackReady}
                     helperText={!feedbackReady ? (feedbackEnabled ? t('selectMenuForFeedback') : t('feedbackDisabledHelp')) : undefined}
                     label={t('feedbackQrTitle')}
+                    openLabel={`${common('open')} ${t('feedbackQrTitle')}`}
                     onCopy={feedbackReady ? handleCopyFeedbackLink : undefined}
                     onOpen={feedbackReady ? handleOpenFeedbackLink : undefined}
                     onShare={feedbackReady && supportsNativeShare ? () => void handleNativeShare() : undefined}
                     onShowQr={feedbackReady ? handleOpenQr : undefined}
+                    shareLabel={mobileNavigation('share')}
+                    showQrLabel={t('showQr')}
                     statusLabel={feedbackReady ? common('enabled') : common('disabled')}
                     value={feedbackUrl}
                 />
@@ -569,25 +574,33 @@ export default function MobileFeedbackScreen(props: MobileFeedbackScreenProps) {
 }
 
 function FeedbackLinkCard({
+    copyLabel,
     description,
     disabled,
     helperText,
     label,
+    openLabel,
     onCopy,
     onOpen,
     onShare,
     onShowQr,
+    shareLabel,
+    showQrLabel,
     statusLabel,
     value,
 }: {
+    copyLabel: string;
     description: string;
     disabled?: boolean;
     helperText?: string;
     label: string;
+    openLabel: string;
     onCopy?: () => void;
     onOpen?: () => void;
     onShare?: () => void;
     onShowQr?: () => void;
+    shareLabel: string;
+    showQrLabel: string;
     statusLabel: string;
     value: string;
 }) {
@@ -631,10 +644,10 @@ function FeedbackLinkCard({
                         </Card>
 
                         <Flex gap={10}>
-                            {onCopy ? <FeedbackActionTile icon={<LuCopy size={18} />} onClick={onCopy} /> : null}
-                            {onShare ? <FeedbackActionTile icon={<LuShare2 size={18} />} onClick={onShare} /> : null}
-                            {onShowQr ? <FeedbackActionTile icon={<LuQrCode size={18} />} onClick={onShowQr} /> : null}
-                            {onOpen ? <FeedbackActionTile icon={<LuExternalLink size={18} />} onClick={onOpen} /> : null}
+                            {onCopy ? <FeedbackActionTile ariaLabel={copyLabel} icon={<LuCopy size={18} />} onClick={onCopy} /> : null}
+                            {onShare ? <FeedbackActionTile ariaLabel={shareLabel} icon={<LuShare2 size={18} />} onClick={onShare} /> : null}
+                            {onShowQr ? <FeedbackActionTile ariaLabel={showQrLabel} icon={<LuQrCode size={18} />} onClick={onShowQr} /> : null}
+                            {onOpen ? <FeedbackActionTile ariaLabel={openLabel} icon={<LuExternalLink size={18} />} onClick={onOpen} /> : null}
                         </Flex>
                     </>
                 )}
@@ -643,11 +656,12 @@ function FeedbackLinkCard({
     );
 }
 
-function FeedbackActionTile({ icon, onClick }: { icon: React.ReactNode; onClick: () => void }) {
+function FeedbackActionTile({ ariaLabel, icon, onClick }: { ariaLabel: string; icon: React.ReactNode; onClick: () => void }) {
     const { token } = theme.useToken();
 
     return (
         <Button
+            aria-label={ariaLabel}
             fill="outline"
             onClick={onClick}
             size="small"

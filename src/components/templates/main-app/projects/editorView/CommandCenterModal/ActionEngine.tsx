@@ -142,9 +142,18 @@ export default function ActionEngine({
                         return (
                             <Card
                                 key={action.key}
+                                role="button"
+                                aria-label={`${action.title}: ${action.description}`}
+                                aria-disabled={!isEnabled}
+                                tabIndex={isEnabled ? 0 : -1}
                                 size="small"
                                 hoverable={isEnabled}
                                 onClick={() => isEnabled && onActionSelect(action.key)}
+                                onKeyDown={(event) => {
+                                    if (!isEnabled || (event.key !== 'Enter' && event.key !== ' ')) return;
+                                    event.preventDefault();
+                                    onActionSelect(action.key);
+                                }}
                                 style={{
                                     borderRadius: 10,
                                     cursor: isEnabled ? 'pointer' : 'not-allowed',

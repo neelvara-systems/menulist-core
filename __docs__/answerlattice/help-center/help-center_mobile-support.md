@@ -1,49 +1,57 @@
 # MenuList Help Center — Mobile Support
 
-> **Version:** 1.2.2
-> **Last Updated:** 2026-08-15
+> **Version:** 1.3.0
+> **Last Updated:** 2026-08-28
 > **Audience:** Mobile, Product, QA
 > **Source:** Current `MobileShell` and Help Center components
 
 ## Admission
 
-Help is useful away from a desk and has short, touch-oriented tasks: find guidance, check a request, reply, attach evidence, read an update or contact support. Mobile coverage is required.
+Help is useful away from a desk and has short, touch-oriented tasks: find
+guidance, read common answers, or contact support. Mobile coverage is required.
 
 ## Current Architecture
 
 - `MobileMoreScreen` opens `MobileHelpScreen` inside `MobileShell`.
 - Direct `/help-center/*` links map into the same mobile sub-screen instead of bypassing the shell.
-- `kb`, `ticket`, `feedback`, `faq`, `contact-us` and `changelog` reuse the shared Help Center component and business logic.
-- Article and changelog deep links retain their resource identifier.
-- Back returns to `/dashboard#mobile/more`.
+- MenuList Help route state uses `menuListHelp`, `menuListDocs`, and
+  `menuListContact`; it does not expose Answerlattice-labelled state in the
+  owner URL or shell.
+- `kb` and `faq` recover to the MenuList FAQ. `ticket`, `feedback`, and
+  `contact-us` recover to the MenuList contact surface.
+- The MenuList owner surface does not claim a release-notes workflow. Legacy
+  `changelog` links recover to Help home without mounting Answerlattice.
+- Back from a direct `/help-center/*` route returns to
+  `/dashboard#mobile/more`. Back from Help opened inside an existing
+  `MobileShell` route returns to that shell's More root without rewriting the
+  route, dropping its safe query context, or remounting the desktop owner app.
 - Help Center buttons and interactive roles receive a 44 px minimum touch target.
 - Wide Ant Design content is contained within the mobile screen instead of forcing page-level horizontal overflow.
 - The Mobile Help header and description use the maintained `MobileHelp` locale namespace rather than fixed English copy.
-- Help Chat drafts follow the same workspace/user, 2,000-character and 24-hour boundary as desktop.
 
 ## Data and Product Boundary
 
-Mobile does not load a separate MenuList support database. `getActiveSession()` applies the explicit Answerlattice product-account scope for `/help-center`, and the same ticket/search/content DALs serve desktop and mobile. Governance and platform administration remain outside the owner Help Center.
+MenuList Help is product-owned, static FAQ/contact guidance. It performs no
+Help DAL, API, Firestore, Storage, Function, listener, AI, or provider work.
+The governed Answerlattice Help application remains isolated under the
+Answerlattice product route; MenuList does not borrow its ticket, knowledge,
+feedback, chat, or changelog contracts.
 
 ## Failure Behavior
 
-- Search failure does not remove documentation, tickets, FAQs, feedback, contact email or changelog tabs.
-- A workspace-unavailable search keeps the unsent question and shows a persistent error instead of a false local-empty result.
-- Ticket load failure keeps any already cached ticket list and shows fixed owner-safe copy.
-- Ticket-create failure keeps the completed form and shows a persistent inline `Request not sent` alert.
-- Latest-feedback read failure stays visible with a retry action, and feedback-submit failure keeps the completed step values with a persistent localized error.
-- Attachment admission uses the shared four-file/10 MB/type boundary.
-- Attachment opening requires the configured Answerlattice Storage bucket and selected ticket tenant/store path.
-- A delivered ticket is not rolled back because notification delivery is asynchronous.
+- Unsupported or legacy MenuList Help paths recover to Home, FAQ, or Contact
+  instead of showing a dead tab or issuing a cross-product request.
+- The maintained support email remains visible when external mail handling is
+  unavailable; the operating-system mail client is an external boundary.
 
 ## Required Release QA
 
 - iOS Safari/PWA and Android Chrome/PWA direct and in-shell routes;
 - keyboard, screen-reader and 44 px target checks;
 - primary Help Centre navigation cards expose button/pressed semantics and activate with Enter or Space as well as touch;
-- screenshot/file selection and upload for each supported type;
-- slow/offline search and ticket fallback;
-- authenticated Answerlattice claim/Firebase Auth sync;
-- ticket create/reply/status visibility across mobile owner and platform operator surfaces.
+- Home, FAQ disclosures, Contact, support-email handoff, and Back recovery;
+- direct legacy path recovery for `kb`, `ticket`, `feedback`, and `changelog`;
+- verification that no MenuList Help interaction mounts an Answerlattice
+  reader, listener, provider, or support mutation.
 
 These device checks remain pending until run against the approved deployed target.

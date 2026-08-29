@@ -1,9 +1,11 @@
-import { Timestamp } from "@firebase/firestore";
 import type { MenuItemForSlide, ScreenSlide } from "@type/campaigns";
 import { formatMenuPrice, parseSingleMenuPrice } from "@lib/pricing/formatMenuPrice";
 import { getActivePublicItemPriceAttributes } from "@lib/pricing/publicItemPricePresentation";
 import { normalizeOptionalMenuPrice } from "@lib/validation/pricing.schema";
-import { screenTimestampToMillis } from "./screenTimestamp";
+import {
+    FIRESTORE_TIMESTAMP_MAX_MILLISECONDS,
+    screenTimestampToMillis,
+} from "./screenTimestamp";
 
 const SCREEN_TEXT_MAX_DEFAULT = 120;
 const OWNER_CAPTION_MAX = 48;
@@ -26,6 +28,23 @@ const UUID_LIKE_PATTERN = /^[a-f0-9]{8}(-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i;
 const SCREEN_PROJECT_FILE_LIMIT = 100;
 const SCREEN_PROJECT_CATEGORY_LIMIT = 500;
 const SCREEN_PROJECT_ITEM_INSPECTION_LIMIT = 2_000;
+
+export type PublicScreenSlide = Omit<ScreenSlide, "validUntil"> & {
+    validUntil?: number;
+};
+
+export function serializeScreenSlidesForClient(
+    slides: readonly ScreenSlide[],
+): PublicScreenSlide[] {
+    return slides.flatMap((slide) => {
+        const { validUntil, ...serializableSlide } = slide;
+        if (validUntil === undefined) return [serializableSlide];
+        const validUntilMs = screenTimestampToMillis(validUntil);
+        return validUntilMs === null || validUntilMs > FIRESTORE_TIMESTAMP_MAX_MILLISECONDS
+            ? []
+            : [{ ...serializableSlide, validUntil: validUntilMs }];
+    });
+}
 
 const readScreenOwnValue = (value: unknown, key: PropertyKey): unknown => {
     if (!value || typeof value !== "object") return undefined;
@@ -308,8 +327,8 @@ export function normalizeCachedScreenMenuItems(value: unknown): MenuItemForSlide
 export function normalizeCachedScreenSlides(
     value: unknown,
     nowMilliseconds = Date.now(),
-): ScreenSlide[] {
-    const normalized: ScreenSlide[] = [];
+): PublicScreenSlide[] {
+    const normalized: PublicScreenSlide[] = [];
 
     for (const entry of snapshotScreenArray(value, 8)) {
         const id = truncateScreenText(readScreenOwnValue(entry, "id"), 160);
@@ -356,13 +375,14 @@ export function normalizeCachedScreenSlides(
             rawValidUntil !== undefined
             && (
                 validUntilMilliseconds === null
+                || validUntilMilliseconds > FIRESTORE_TIMESTAMP_MAX_MILLISECONDS
                 || validUntilMilliseconds <= nowMilliseconds
             )
         ) {
             continue;
         }
 
-        const slide: ScreenSlide = {
+        const slide: PublicScreenSlide = {
             id,
             source,
             type,
@@ -398,11 +418,7 @@ export function normalizeCachedScreenSlides(
         if (caption) slide.caption = caption;
         if (qrUrl) slide.qrUrl = qrUrl;
         if (validUntilMilliseconds !== null) {
-            try {
-                slide.validUntil = Timestamp.fromMillis(validUntilMilliseconds);
-            } catch {
-                continue;
-            }
+            slide.validUntil = validUntilMilliseconds;
         }
         normalized.push(slide);
     }

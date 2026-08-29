@@ -1,5 +1,6 @@
 import { useOfferingLabels } from '@hook/useOfferingLabels';
-import { Button, Flex, Modal, Steps, Typography, theme } from 'antd';
+import { labelConfirmDialog } from '@lib/accessibility/antConfirmDialog';
+import { Button, Flex, Grid, Modal, Steps, Typography, theme } from 'antd';
 import { LuCheckCircle, LuFileText, LuPen, LuShare, LuSparkles, LuUpload } from 'react-icons/lu';
 
 interface ProcessGuideModalProps {
@@ -9,17 +10,35 @@ interface ProcessGuideModalProps {
 
 export const ProcessGuideModal = ({ isOpen, onClose }: ProcessGuideModalProps) => {
     const { token } = theme.useToken();
+    const screens = Grid.useBreakpoint();
     const labels = useOfferingLabels();
+    const compact = !screens.md;
 
     return (
         <Modal
             open={isOpen}
             onCancel={onClose}
-            footer={null}
+            footer={(
+                <Flex justify="center">
+                    <Button
+                        type="primary"
+                        size="large"
+                        onClick={onClose}
+                        style={{ minWidth: 180, height: 44 }}
+                    >
+                        Got It, Let&apos;s Start!
+                    </Button>
+                </Flex>
+            )}
             width={900}
             centered
+            modalRender={labelConfirmDialog('How It Works')}
             styles={{
-                body: { padding: '32px 24px' }
+                body: {
+                    maxHeight: 'calc(100dvh - 180px)',
+                    overflowY: 'auto',
+                    padding: compact ? '20px 12px' : '32px 24px',
+                }
             }}
         >
             <Flex vertical align="center" gap={24}>
@@ -117,7 +136,7 @@ export const ProcessGuideModal = ({ isOpen, onClose }: ProcessGuideModalProps) =
                     </Flex>
                     <div style={{
                         display: 'grid',
-                        gridTemplateColumns: '1fr 1fr',
+                        gridTemplateColumns: compact ? '1fr' : '1fr 1fr',
                         gap: '12px 24px',
                         paddingLeft: 28
                     }}>
@@ -135,16 +154,6 @@ export const ProcessGuideModal = ({ isOpen, onClose }: ProcessGuideModalProps) =
                         </Typography.Text>
                     </div>
                 </Flex>
-
-                {/* Action Button */}
-                <Button
-                    type="primary"
-                    size="large"
-                    onClick={onClose}
-                    style={{ minWidth: 180, height: 44 }}
-                >
-                    Got It, Let&apos;s Start!
-                </Button>
             </Flex>
         </Modal>
     );

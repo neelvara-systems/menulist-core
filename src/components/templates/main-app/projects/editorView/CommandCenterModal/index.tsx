@@ -44,6 +44,7 @@ import type {
 import ActionEngine from './ActionEngine';
 import ImpactPreview from './ImpactPreview';
 import SelectionContext from './SelectionContext';
+import { labelConfirmDialog } from '../utils/editorOperations';
 import {
     getDescriptionGenerationStats,
     runDescriptionGeneration,
@@ -313,6 +314,7 @@ export default function CommandCenterModal({
                 title: 'Discard current action?',
                 icon: <LuHelpCircle />,
                 content: 'You have unsaved changes in this action. Discard?',
+                modalRender: labelConfirmDialog('Discard current action?'),
                 okText: 'Discard',
                 okType: 'danger',
                 cancelText: 'Keep Editing',
@@ -340,13 +342,15 @@ export default function CommandCenterModal({
     const canApply = useMemo(() => {
         if (activeAction === 'repairMenu') return repairSummary.fixableNowCount > 0 && !isRepairing;
         if (selectedIds.size === 0) return false;
-        if (activeAction === 'pricing') return pricingConfig !== null;
+        if (activeAction === 'pricing') {
+            return pricingConfig !== null && (pricingPreview?.allChanges.length ?? 0) > 0;
+        }
         if (activeAction === 'availability') return availabilityTarget !== null && (availabilityPreview?.itemsToChange ?? 0) > 0;
         if (activeAction === 'moveCategory') return moveCategoryDestination !== null && (moveCategoryPreview?.itemsToMove ?? 0) > 0;
         if (activeAction === 'activeInactive') return activeInactiveTarget !== null && (activeInactivePreview?.itemsToChange ?? 0) > 0;
         if (activeAction === 'textCase') return textCaseConfig !== null && (textCasePreview?.totalFields ?? 0) > 0;
         return false;
-    }, [selectedIds.size, activeAction, pricingConfig, availabilityTarget, availabilityPreview, moveCategoryDestination, moveCategoryPreview, activeInactiveTarget, activeInactivePreview, textCaseConfig, textCasePreview, repairSummary.fixableNowCount, isRepairing]);
+    }, [selectedIds.size, activeAction, pricingConfig, pricingPreview, availabilityTarget, availabilityPreview, moveCategoryDestination, moveCategoryPreview, activeInactiveTarget, activeInactivePreview, textCaseConfig, textCasePreview, repairSummary.fixableNowCount, isRepairing]);
 
     const handleRepairMenuApply = useCallback(async () => {
         if (repairSummary.fixableNowCount === 0 || isRepairing) return;
@@ -625,6 +629,7 @@ export default function CommandCenterModal({
                 title: 'Discard changes?',
                 icon: <LuHelpCircle />,
                 content: 'You have an action in progress. Close without applying?',
+                modalRender: labelConfirmDialog('Discard changes?'),
                 okText: 'Discard & Close',
                 okType: 'danger',
                 cancelText: 'Keep Editing',
@@ -706,6 +711,7 @@ export default function CommandCenterModal({
                                     ].filter(Boolean);
                                     Modal.confirm({
                                         title: activeAction === 'repairMenu' ? 'Repair menu?' : 'Apply changes?',
+                                        modalRender: labelConfirmDialog(activeAction === 'repairMenu' ? 'Repair menu?' : 'Apply changes?'),
                                         content: activeAction === 'repairMenu'
                                             ? `This will ${repairConfirmParts.join(', ')}. Prices and photos will stay unchanged.`
                                             : activeAction === 'textCase'

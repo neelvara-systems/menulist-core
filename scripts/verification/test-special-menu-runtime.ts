@@ -7,6 +7,7 @@ import {
 } from "../../src/data/shared/specialMenuSchedule";
 import { resolveLiveSpecialMenuProject } from "../../src/lib/menu/specialMenuRuntime";
 import {
+    formatDateTimeRange,
     fromNativeDateTimeInputValue,
     toNativeDateTimeInputValue,
 } from "../../src/utils/dateTime";
@@ -136,6 +137,23 @@ assert.equal(
     toNativeDateTimeInputValue("2026-08-15T13:00:00.000Z", "Asia/Kolkata"),
     "2026-08-15T18:30",
     "persisted schedule must round-trip in the business timezone",
+);
+const kolkataScheduleLabel = formatDateTimeRange(
+    "2026-08-29T18:30:00.000Z",
+    "2026-08-30T18:30:00.000Z",
+    undefined,
+    "Schedule unavailable",
+    "Asia/Kolkata",
+);
+assert.equal(
+    /Aug 29|29 Aug/.test(kolkataScheduleLabel),
+    false,
+    "store-timezone schedule labels must not render the preceding UTC calendar date",
+);
+assert.equal(
+    /Aug 30|30 Aug/.test(kolkataScheduleLabel),
+    true,
+    "store-timezone schedule labels must render the owner-entered start date",
 );
 
 process.stdout.write("Special menu public runtime tests passed.\n");

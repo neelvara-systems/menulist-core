@@ -106,6 +106,7 @@ export default function MobileMasterUpdateNotice({
                             {isHistoryView ? 'Last changes' : 'Main menu updates'}
                         </Title>
                         <Button
+                            aria-label="Close update details"
                             fill="none"
                             onClick={() => setDetailOpen(false)}
                             style={{ minHeight: 44, minWidth: 44, paddingInline: 0 }}

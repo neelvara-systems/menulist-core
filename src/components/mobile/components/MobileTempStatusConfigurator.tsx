@@ -210,6 +210,7 @@ export default function MobileTempStatusConfigurator({
                 <Flex gap={6} vertical>
                     <Text strong>{customMessageLabel}</Text>
                     <Input
+                        aria-label={customMessageLabel}
                         maxLength={100}
                         onChange={onCustomMessageChange}
                         placeholder={customPlaceholder}
@@ -239,6 +240,7 @@ export default function MobileTempStatusConfigurator({
                     ))}
                     <div style={{ flex: '1 1 190px', marginLeft: 'auto', minWidth: 190, width: 'clamp(190px, 52vw, 240px)' }}>
                         <Input
+                            aria-label={expiryLabel}
                             min={minExpiryAt}
                             onChange={onExactExpiryAtChange}
                             style={{ minHeight: 44, width: '100%' }}

@@ -5,7 +5,7 @@
 
 ## Audience
 
-The primary buyer and first-use path are a solo technical founder or small founder-led SaaS team that has expected or recurring setup, billing, onboarding, settings, integration, release, or error questions but no dedicated support-operations function.
+The primary buyer and first-use path are a vibe coder, solo technical founder, or small founder-led SaaS team with real users or a credible launch path, expected or recurring product questions, and no dedicated support team.
 
 Secondary audiences are small support teams, product/engineering operators, studios managing several SaaS launches, and bounded cross-functional product groups inside growing companies. Larger-company fit should appear in deeper use-case and operating-guide content, not replace the founder problem in the homepage hero.
 

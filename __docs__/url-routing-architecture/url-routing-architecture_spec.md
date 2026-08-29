@@ -61,14 +61,14 @@
 ### In-Scope (Canonical Routing — Implemented Feb 19, 2026)
 
 - Subdomain auto-assignment during onboarding (both manual + messaging flows)
-- Subdomain settings UI in Business Settings (`SubdomainTab.tsx`)
+- Combined subdomain and custom-domain settings UI in Business Settings (`DomainSettingsTab.tsx`)
 - Subdomain availability checker API (`GET /api/subdomain/check`)
 - Custom domain management via Vercel API (`POST/GET/DELETE /api/domain`)
 - Server-owned, rate-limited advisory availability via `GET /api/domain?candidate=`; POST remains authoritative
 - Transactional, request-unique custom-domain claims that serialize concurrent add/replace/remove work
 - Canonical store and tenant lifecycle/identity admission before owner domain reads or writes
 - Duplicate legacy hostname and claim-owner mismatch handling that fails closed without choosing a winner
-- Custom domain settings UI (`CustomDomainTab.tsx`)
+- Custom domain settings UI (`DomainSettingsTab.tsx`); the guarded legacy `CustomDomainTab.tsx` is not exported or rendered
 - Desktop/mobile explicit verification downgrades and pending cleanup/refresh copy
 - Subdomain → custom domain 301 redirect (SEO consolidation)
 - Lowercase + trailing slash URL normalization (middleware 301)

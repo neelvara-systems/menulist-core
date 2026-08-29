@@ -132,16 +132,24 @@ function UserProfileModal({ open, onClose }: UserProfileModalProps) {
 
         setLocalProfilePatch({});
         setActiveSection('overview');
-        profileForm.setFieldsValue({
-            name: sessionUser?.name || '',
-        });
         setPhoneValue({
             countryCode: sessionUser?.countryCode || '',
             dialCode: sessionUser?.dialCode || '',
             phoneNumber: sessionUser?.phoneNumber || sessionUser?.phone || '',
         });
+    }, [open, sessionUser?.id, sessionUser?.countryCode, sessionUser?.dialCode, sessionUser?.phone, sessionUser?.phoneNumber]);
+
+    useEffect(() => {
+        if (!open || activeSection !== 'edit') return;
+        profileForm.setFieldsValue({
+            name: sessionUser?.name || '',
+        });
+    }, [activeSection, open, profileForm, sessionUser?.name]);
+
+    useEffect(() => {
+        if (!open || activeSection !== 'security') return;
         passwordForm.resetFields();
-    }, [open, sessionUser?.id, profileForm, passwordForm]);
+    }, [activeSection, open, passwordForm]);
 
     const getStoreRecord = (storeId: number) => {
         const tenantStore = tenantDetails?.storesList?.find((store: any) => Number(store?.storeId) === Number(storeId));

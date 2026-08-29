@@ -21,6 +21,7 @@ import {
   hasScreenPrice,
   normalizeCachedScreenSlides,
   normalizeOwnerSlideCaption,
+  type PublicScreenSlide,
   resolveScreenText,
   truncateScreenText,
 } from "@lib/screen/screenContent";
@@ -39,7 +40,7 @@ import {
   guardedReloadWithJitter as _guardedReloadWithJitter,
   guardedReloadWithRetry as _guardedReloadWithRetry,
 } from "@lib/screen/utils";
-import { ScreenSlide, ScreenStoreInfo } from "@type/campaigns";
+import { ScreenStoreInfo } from "@type/campaigns";
 import { QRCode } from "antd";
 import { doc, onSnapshot } from "firebase/firestore";
 import { AnimatePresence, motion } from "framer-motion";
@@ -50,7 +51,7 @@ import styles from "./screenDisplay.module.scss";
 const SCREEN_BUILD_VERSION = process.env.NEXT_PUBLIC_BUILD_ID || "dev";
 interface ScreenDisplayProps {
   initialData: {
-    slides: ScreenSlide[];
+    slides: PublicScreenSlide[];
     storeInfo: ScreenStoreInfo;
     contentVersion: number;
     config: {
@@ -63,7 +64,7 @@ interface ScreenDisplayProps {
 }
 
 interface ScreenState {
-  slides: ScreenSlide[];
+  slides: PublicScreenSlide[];
   currentIndex: number;
   isOffline: boolean;
 }
@@ -487,7 +488,7 @@ function SlideContent({
   storeInfo,
   qrReady,
 }: {
-  slide: ScreenSlide;
+  slide: PublicScreenSlide;
   storeInfo: ScreenStoreInfo;
   qrReady: boolean;
 }) {
@@ -663,7 +664,7 @@ function OwnerUploadSlide({
   qrLabel: string;
   qrReady: boolean;
   qrUrl?: string;
-  slide: ScreenSlide;
+  slide: PublicScreenSlide;
   storeInfo: ScreenStoreInfo;
 }) {
   const [imageFailed, setImageFailed] = useState(false);

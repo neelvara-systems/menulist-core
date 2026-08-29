@@ -30,7 +30,7 @@ Branded QR Action Templates are also renderer/catalog behavior only. Action labe
 | Customize non-menu asset in editor | 0 | 0 | 0 | 0 | The Creative Editor document is generated from current input and kept in browser memory until download/close. |
 | List platform templates | 1 | 0 | 0 | 0 | Business-category catalog only; the doc holds all asset types and the route filters by `productId`, `sourceSurface`, and `assetTypeId`. |
 | List Saved designs | 1 | 0 | 0 | 0 | One bounded store `default` index doc from the registry; no payload or preview blob read. |
-| Save as template | 1 | 1 | 1 immutable document upload + optional immutable preview upload | 0 | Transactionally reads/writes the current index; explicit owner action only. A failed acknowledgement may add one probe read. |
+| Save as template | 1 | 1 | 1 immutable document upload + optional immutable preview upload | 0 | Transactionally reads/writes the current index; explicit owner action only. A failed acknowledgement may add one probe read. Overlapping attempts for the same new-template intent share one reserved ID and do not start a second DAL mutation. |
 | Open saved template | 1 | 0 | 1 document download | 0 | Reads index + Storage payload, then rehydrates current QR/source values. |
 | Delete saved template | 1 | 1 | Up to 2 deletes | 0 | Reads index once, rewrites `data` without the template, deletes Storage document/preview. |
 | Platform admin saves category template | 1 | 1 | 1 document upload + optional preview upload | 0 | One category metadata doc is updated; platform-only low-frequency operation. |
@@ -90,3 +90,14 @@ This optional path is not required for the governed template catalog.
 | 1,000 owners download Menu Kit ZIP | $0 incremental generated-file storage/function cost. |
 
 Runtime CPU/memory cost is on the owner browser. Large Menu Kit ZIP downloads should show progress and avoid parallel generation loops beyond the existing safe generator behavior.
+Raster-backed PDF compression and ZIP generation remain entirely browser-local.
+They add zero Firestore reads/writes, Storage transfers, Cloud Function calls,
+provider requests, cache entries, or server-side file retention.
+
+An unavailable Storage request previously allowed an owner to close, reopen,
+and retry into two Saved design identities: two Firestore index transactions
+and four Storage uploads for one intent. The in-flight reservation and busy
+editor boundary now converge the same recovery sequence to one Firestore index
+record/version and its expected document plus optional preview objects. A
+repeated in-flight activation adds no DAL call. Deterministic cleanup must leave
+zero disposable index records and zero disposable Storage objects.

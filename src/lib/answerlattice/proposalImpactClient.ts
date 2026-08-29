@@ -14,6 +14,7 @@ const PROPOSAL_IMPACT_FAILED = 'Could not check the proposed answer';
 export async function checkAnswerlatticeProposalImpact(
     proposalId: string,
     editedContent?: AnswerlatticeGovernanceEditedContent,
+    entityIds?: string[],
 ): Promise<AnswerlatticeProposalImpactResponse> {
     const controller = new AbortController();
     const timeout = globalThis.setTimeout(() => controller.abort(), PROPOSAL_IMPACT_TIMEOUT_MS);
@@ -31,6 +32,7 @@ export async function checkAnswerlatticeProposalImpact(
                 requestId: createRuntimeId('al_impact'),
                 proposalId,
                 ...(editedContent ? { editedContent } : {}),
+                ...(entityIds ? { entityIds } : {}),
             }),
         });
 

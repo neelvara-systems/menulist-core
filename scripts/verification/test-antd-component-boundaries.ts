@@ -6,6 +6,8 @@ import { normalizeAnimatedBubbleCount, normalizeAnimationDimension } from '../..
 import { normalizeStarRating } from '../../src/components/atoms/feedbackPresentation';
 import { normalizeLiveIndicatorTimestamp } from '../../src/components/atoms/LiveIndicator';
 import {
+  getVisibleIconNames,
+  ICON_PICKER_PAGE_SIZE,
   normalizeEmojiSearchResult,
   normalizeLucideIconName,
   normalizeSuggestedLucideIcons,
@@ -36,6 +38,11 @@ assert.equal(normalizeLiveIndicatorTimestamp('invalid', liveNow), null);
 assert.equal(normalizeLiveIndicatorTimestamp('2026-08-01T12:00:01.000Z', liveNow), null);
 assert.equal(normalizeLiveIndicatorTimestamp('2026-08-01T11:59:00.000Z', liveNow)?.toISOString(), '2026-08-01T11:59:00.000Z');
 const lucideNames = new Set(['LuCoffee', 'LuPizza']);
+const manyLucideNames = Array.from({ length: ICON_PICKER_PAGE_SIZE + 5 }, (_, index) => `LuIcon${index}`);
+assert.equal(getVisibleIconNames(manyLucideNames).length, ICON_PICKER_PAGE_SIZE);
+assert.deepEqual(getVisibleIconNames(manyLucideNames, 2), ['LuIcon0', 'LuIcon1']);
+assert.deepEqual(getVisibleIconNames(manyLucideNames, Number.POSITIVE_INFINITY), manyLucideNames.slice(0, ICON_PICKER_PAGE_SIZE));
+assert.deepEqual(getVisibleIconNames(manyLucideNames, -5), []);
 assert.equal(normalizeLucideIconName('lu:LuCoffee', lucideNames), 'LuCoffee');
 assert.equal(normalizeLucideIconName(' LuPizza ', lucideNames), 'LuPizza');
 assert.equal(normalizeLucideIconName('emoji:🍕', lucideNames), null);
@@ -67,6 +74,7 @@ const multiSelectPicker = read('src/components/atoms/multiSelectPicker/index.tsx
 const proUserIcon = read('src/components/atoms/proUserIcon/index.tsx');
 const segment = read('src/components/atoms/segment/index.tsx');
 const scrollToBottom = read('src/components/atoms/ScrollToBottomButton/ScrollToBottomButton.tsx');
+const iconPicker = read('src/components/atoms/IconPicker/index.tsx');
 const emojiGrid = read('src/components/atoms/IconPicker/EmojiGrid.tsx');
 const lucideIconGrid = read('src/components/atoms/IconPicker/LucideIconGrid.tsx');
 
@@ -94,7 +102,13 @@ assert.doesNotMatch(proUserIcon, /react-icons\/pi/, 'plan badge must use the rep
 assert.doesNotMatch(segment, /\bany\b|defaultValue=|option\.value/, 'segment options must retain one typed controlled value authority');
 assert.match(segment, /value === option/, 'string segment active state must compare the actual option value');
 assert.match(scrollToBottom, /handleScroll\(\);\s*container\.addEventListener/, 'scroll visibility must initialize before the first scroll event');
+assert.match(iconPicker, /aria-pressed=\{activeMode === 'icons'\}/, 'icon mode control must expose its selected state');
+assert.match(iconPicker, /aria-pressed=\{activeMode === 'emoji'\}/, 'emoji mode control must expose its selected state');
+assert.match(iconPicker, /aria-label=\{searchLabel\}/, 'icon search must retain an explicit accessible name');
 assert.doesNotMatch(emojiGrid, /\bany\b|as unknown as/, 'emoji search and picker boundaries must be runtime-narrowed');
 assert.match(lucideIconGrid, /normalizeSuggestedLucideIcons/, 'Lucide suggestions must admit canonical prefixed values');
+assert.match(lucideIconGrid, /getVisibleIconNames/, 'Lucide picker must bound its initial rendered icon set');
+assert.match(lucideIconGrid, /Load more icons/, 'Lucide picker must keep the remaining icons progressively reachable');
+assert.match(lucideIconGrid, /filteredSuggestedIcons\.length > 0 && !searchQuery\.trim\(\)/, 'Lucide search must not repeat unrelated suggested icons above its results');
 
 console.log('Ant Design component boundary tests passed.');

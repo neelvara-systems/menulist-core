@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import {
     MYCODEX_ROBOTS_TAG,
-    MYCODEX_SESSION_COOKIE,
-    isMyCodexAccessConfigured,
-    verifyMyCodexSessionToken,
 } from '@lib/mycodex/auth';
-import { isMyCodexLocalDevelopmentHost } from '@lib/mycodex/requestHost';
+import { getCurrentPlatformUser } from '@lib/auth/currentPlatformUser';
+import { withPlatformAuth } from 'src/middleware/auth';
+import type { Session } from 'next-auth';
 import {
     getMyCodexRelativeSourcePath,
     getMyCodexSlugFromRoutePath,
@@ -15,27 +14,18 @@ import {
 export const revalidate = 0;
 export const dynamic = 'force-dynamic';
 
-export async function GET(request: NextRequest) {
-    const localDevelopmentBypass = !process.env.VERCEL
-        && isMyCodexLocalDevelopmentHost(request.headers.get('host'));
-    if (!localDevelopmentBypass) {
-        const configured = isMyCodexAccessConfigured();
-        const authenticated = configured && await verifyMyCodexSessionToken(
-            request.cookies.get(MYCODEX_SESSION_COOKIE)?.value,
-        );
-        if (!authenticated) {
-            return NextResponse.json(
-                { error: configured ? 'Unauthorized' : 'MyCodex access is not configured' },
-                {
-                    status: configured ? 401 : 503,
-                    headers: {
-                        'Cache-Control': 'private, no-store',
-                        'X-Robots-Tag': MYCODEX_ROBOTS_TAG,
-                        Vary: 'Cookie',
-                    },
+export const GET = withPlatformAuth(async (request: NextRequest, session: Session) => {
+    if (!await getCurrentPlatformUser(session)) {
+        return NextResponse.json(
+            { error: 'Forbidden' },
+            {
+                status: 403,
+                headers: {
+                    'Cache-Control': 'private, no-store',
+                    'X-Robots-Tag': MYCODEX_ROBOTS_TAG,
                 },
-            );
-        }
+            },
+        );
     }
 
     const slug = getMyCodexSlugFromRoutePath(request.nextUrl.searchParams.get('path'));
@@ -64,4 +54,4 @@ export async function GET(request: NextRequest) {
     response.headers.set('Vary', 'Cookie');
 
     return response;
-}
+});

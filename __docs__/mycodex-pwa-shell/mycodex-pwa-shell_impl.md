@@ -9,8 +9,8 @@
 | `src/app/sites/mycodex/components/MyCodexClientContainer.tsx` | Loads reader preferences from browser storage before persistence effects run, so saved settings are not overwritten by defaults on app start. |
 | `src/app/sites/mycodex/favorites/page.tsx` | Adds the private `/favorites` reader page backed by browser-local starred documents. |
 | `src/app/sites/mycodex/queue/page.tsx` | Adds the private `/queue` read-later page backed by browser-local queued documents. |
-| `src/app/sites/mycodex/api/document/route.ts` | Adds a handler-authenticated, private/no-store Markdown reader for favorites playback. |
-| `src/app/sites/mycodex/api/session/route.ts` | Handles private reader login with fail-closed IP rate limiting before form parsing and an 8 KB bounded form-data body cap. |
+| `src/app/sites/mycodex/api/document/route.ts` | Adds a persisted-platform-role-authenticated, private/no-store Markdown reader for favorites playback. |
+| `src/app/sites/mycodex/api/session/route.ts` | Retains the historical dedicated-cookie login handler for compatibility evidence; that cookie does not authorize the current reader, Founder Console, document API, or product APIs. |
 | `src/lib/mycodex/docs.ts` | Centralizes MyCodex docs tree, canonical document resolution, a 4 MiB source limit, symlink exclusion, and heading extraction for document routes, favorites, and the document API. |
 | `src/lib/mycodex/auth.ts` | Keeps `MYCODEX_PRODUCT_CODE = MC` for internal metadata and `MYCODEX_PRODUCT_SLUG = mycodex` for route/session checks; requires the dedicated `MYCODEX_SESSION_SECRET` for signing and rejects external, protocol-relative, encoded-internal, control-character, and backslash return paths. |
 | `src/constants/product.ts` | Reserves `PRODUCT_IDS.MYCODEX = MC` without creating any MyCodex Firebase data path. |
@@ -18,6 +18,9 @@
 | `src/app/sites/mycodex/login/page.tsx` | Adds `mycodex-safe-page`. |
 | `src/app/sites/mycodex/offline/page.tsx` | Adds `mycodex-safe-page`. |
 | `public/mycodex-icon.svg`, `public/mycodex-icon-maskable.svg`, `public/mycodex-*.png` | Keep MyCodex install icons padded inside the square canvas so iPhone home-screen icons do not appear oversized. |
+| `public/mycodex.webmanifest` | Uses `id=/__mycodex`, `scope=/__mycodex/`, and `start_url=/__mycodex/operations`; exposes Founder Console and Documents shortcuts and does not lock orientation. |
+| `public/mycodex-sw.js` | Network-first navigation with only `/__mycodex/offline` and MyCodex logo assets cached; never caches Markdown or operational data. |
+| `src/components/ServiceWorkerRegister.tsx` | Registers the MyCodex worker at `/__mycodex/` while preserving the root MenuList owner worker on the same origin. |
 | `scripts/verification/verify-mycodex-pwa-assets.js` | Verifies the padded icon dimensions, transparent corners, manifest links, service-worker privacy scope, and launch images. |
 | `src/middleware.ts` | Rewrites approved MyCodex host/local routes and returns a private 404 for direct `/sites/mycodex` namespace requests. |
 
@@ -72,7 +75,7 @@ The document API response projector bounds optional source paths to the same
 4,096-character reader contract. ReactMarkdown render transforms use the
 library `Components` and React-node contracts rather than broad `any` values.
 
-MyCodex client navigation path boundary: `MyCodexClientContainer.buildUrl()` trims browser-local reader targets, requires an absolute same-origin path, and collapses empty, external, protocol-relative, control-character, raw-backslash, and encoded-backslash targets to `/`, then applies the local `/__mycodex` route when needed. This keeps favorite, queue, recent, continue-reading, previous/next, and document-tree navigation on the MyCodex origin even if browser-local reader state is malformed.
+MyCodex client navigation path boundary: `MyCodexClientContainer.buildUrl()` trims browser-local reader targets, requires an absolute same-origin path, and collapses empty, external, protocol-relative, control-character, raw-backslash, and encoded-backslash targets to `/`, then applies only the exact proxy-controlled `/__mycodex` base path when present. This keeps favorite, queue, recent, continue-reading, previous/next, and document-tree navigation on the MyCodex origin even if browser-local reader state is malformed.
 
 ## Favorites Route
 
@@ -90,15 +93,25 @@ The approved `public/mycodex-logo.svg` mark remains the source logo. Square PWA 
 
 All safe-area styles are MyCodex-scoped with `mycodex-*` classes. They do not modify global MenuList or Answerlattice shells.
 
-MyCodex is static/private documentation. It has no Firebase project, no Firestore collections, no Storage bucket, no product `pId` writes, and no billing plans or credit packs. The only Vercel-specific env vars are `MYCODEX_BASIC_AUTH_USER`, `MYCODEX_BASIC_AUTH_PASSWORD`, and `MYCODEX_SESSION_SECRET`.
+## Install and offline contract
+
+MyCodex is installed from the canonical owner-app route, not from a separate
+product host. Its manifest launches `/__mycodex/operations` and its worker uses
+the narrower `/__mycodex/` scope, so it can coexist with
+MenuList's root owner worker. Navigation remains network-first. The worker
+caches only the generic MyCodex offline page and immutable MyCodex logo assets;
+private documents, API responses, and operational screens are never cached.
+The manifest omits an orientation lock so phone, tablet, and laptop window
+rotation remain supported.
+
+MyCodex owns no Firebase project, Firestore collections, Storage bucket, product `pId` writes, billing plans, or credit packs. The reader is filesystem-backed. The Founder Console only presents existing MenuList and Answerlattice operations through those products' governed boundaries.
 
 `/sites/mycodex` is an internal rewrite destination, not a public route. The
 middleware rejects that path and all descendants with a no-store, noindex 404
 before product-host rewriting. This keeps the private namespace closed on
 non-Vercel/self-hosted deployments as well as the intended host setup, while
-`/__mycodex` local development and approved MyCodex-host routes continue through
-the authenticated reader boundary.
+`/__mycodex` local development and the exact canonical MenuList owner-app host continue through the persisted `PLATFORM` role boundary.
 
 The login form posts only `username`, `password`, and `returnTo`. `src/app/sites/mycodex/api/session/route.ts` applies the `AUTH_LOGIN` rate limit before reading form data and fails closed if the distributed limiter is unavailable, then parses the form through `readBoundedFormDataBody()` with `MYCODEX_LOGIN_FORM_MAX_BODY_BYTES = 8 * 1024`. Oversized or malformed submissions redirect back to login with the fixed `input` error state. Access is configured only when the username, password, and dedicated session secret are all present; MenuList's NextAuth secret and the access password are never signing-secret fallbacks.
 
-The document route repeats authentication inside the route handler instead of relying only on proxy routing. Outside the exact local-development host bypass, missing configuration returns `503` and an invalid/missing MyCodex session returns `401`; both responses remain private, no-store, noindex, and cookie-varying. The filesystem loader resolves both the docs root and target to canonical paths, rejects symlinks that escape `__docs__`, omits symbolic links from generated navigation, and refuses Markdown sources larger than 4 MiB.
+The document route repeats exact-session and current persisted-platform-user authentication inside the route handler instead of relying on proxy routing or the historical `mycodex_session` cookie. Rejections remain private and no-store. The filesystem loader resolves both the docs root and target to canonical paths, rejects symlinks that escape `__docs__`, omits symbolic links from generated navigation, and refuses Markdown sources larger than 4 MiB.

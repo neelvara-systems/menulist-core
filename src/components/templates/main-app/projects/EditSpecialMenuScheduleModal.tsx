@@ -37,10 +37,28 @@ export default function EditSpecialMenuScheduleModal({
     const [form] = Form.useForm<{ startsAt: string; endsAt: string }>();
     const [isSaving, setIsSaving] = useState(false);
     const submitInFlightRef = useRef(false);
+    const startsAtDraft = Form.useWatch("startsAt", form);
+    const endsAtDraft = Form.useWatch("endsAt", form);
     const timeZone = storeDetails?.timeZone;
     const capabilities = useMemo(
         () => getSpecialMenuCapabilities(storeDetails?.businessType, storeDetails?.businessCategory),
         [storeDetails?.businessCategory, storeDetails?.businessType],
+    );
+    const initialStartsAt = item
+        ? capabilities.allowTimeScheduling
+            ? toNativeDateTimeInputValue(item.startsAt, timeZone)
+            : toNativeDateInputValue(item.startsAt, timeZone)
+        : "";
+    const initialEndsAt = item
+        ? capabilities.allowTimeScheduling
+            ? toNativeDateTimeInputValue(item.endsAt, timeZone)
+            : toNativeDateInputValue(item.endsAt, timeZone)
+        : "";
+    const hasScheduleChanges = Boolean(
+        item
+        && startsAtDraft
+        && endsAtDraft
+        && (startsAtDraft !== initialStartsAt || endsAtDraft !== initialEndsAt),
     );
 
     useEffect(() => {
@@ -56,7 +74,7 @@ export default function EditSpecialMenuScheduleModal({
     }, [capabilities.allowTimeScheduling, form, item, open, timeZone]);
 
     const handleSubmit = async () => {
-        if (!item || submitInFlightRef.current) return;
+        if (!item || !hasScheduleChanges || submitInFlightRef.current) return;
         try {
             const values = await form.validateFields();
             if (submitInFlightRef.current) return;
@@ -123,6 +141,7 @@ export default function EditSpecialMenuScheduleModal({
             confirmLoading={isSaving}
             destroyOnHidden
             okText="Save schedule"
+            okButtonProps={{ disabled: !hasScheduleChanges }}
             onCancel={isSaving ? undefined : onClose}
             onOk={() => void handleSubmit()}
             open={open}

@@ -11,7 +11,7 @@ import { startLoader, stopLoader } from '@reduxSlices/loader';
 import { AICapacityError } from '@services/ai/capacityError';
 import generateImageViaApi from '@services/ai/image/generateImageViaApi';
 import { UserUploadedFileType } from '@type/common';
-import { Button, Card, Collapse, ColorPicker, Flex, Image, Input, App, Modal, Popconfirm, Skeleton, Space, Switch, Tag, theme, Tooltip, Typography, Upload } from 'antd';
+import { Button, Card, Collapse, Flex, Image, Input, App, Modal, Popconfirm, Skeleton, Space, Switch, Tag, theme, Tooltip, Typography, Upload } from 'antd';
 import React, { Fragment, useContext, useEffect, useState } from 'react';
 import { FaImages } from 'react-icons/fa6';
 import { LuBadgeInfo, LuCheck, LuCheckCircle, LuChevronDown, LuImage, LuImagePlus, LuRefreshCcw, LuSettings2, LuWand2, LuX } from 'react-icons/lu';
@@ -267,27 +267,76 @@ const AiImageGenerator: React.FC<AiImageGeneratorProps> = ({
         const isSelected = selectedImageTypes.includes(imageType.type);
 
         return (
-            <Flex
-                align="center"
-                gap={10}
+            <Button
+                aria-pressed={isSelected}
+                block
                 key={imageType.type}
                 onClick={() => toggleImageType(imageType.type)}
                 style={{
                     background: token.colorFillAlter,
                     border: `1px solid ${isSelected ? token.colorPrimary : token.colorBorderSecondary}`,
                     borderRadius: 8,
-                    cursor: 'pointer',
+                    height: 'auto',
                     padding: '10px 12px',
+                    textAlign: 'left',
+                    whiteSpace: 'normal',
                 }}
             >
+                <Flex align="center" gap={10} style={{ width: '100%' }}>
+                    <Flex
+                        align="center"
+                        justify="center"
+                        style={{
+                            background: 'transparent',
+                            border: `1px solid ${isSelected ? token.colorPrimary : token.colorBorder}`,
+                            borderRadius: '999px',
+                            color: isSelected ? token.colorPrimary : token.colorTextSecondary,
+                            flex: '0 0 auto',
+                            height: 24,
+                            width: 24,
+                        }}
+                    >
+                        <LuCheck size={12} />
+                    </Flex>
+                    <Flex gap={2} style={{ minWidth: 0 }} vertical>
+                        <Typography.Text style={{ color: isSelected ? token.colorPrimary : undefined, lineHeight: 1.25 }}>
+                            {imageType.type}
+                        </Typography.Text>
+                        <Typography.Text type="secondary" style={{ fontSize: 12, lineHeight: 1.4 }}>
+                            {imageType.description}
+                        </Typography.Text>
+                    </Flex>
+                </Flex>
+            </Button>
+        );
+    };
+
+    const renderImageTypeShortcut = (label: string, description: string, active: boolean, onClick: () => void, disabled = false) => (
+        <Button
+            aria-pressed={active}
+            block
+            disabled={disabled}
+            onClick={onClick}
+            style={{
+                background: token.colorFillAlter,
+                border: `1px solid ${token.colorBorderSecondary}`,
+                borderRadius: 8,
+                height: 'auto',
+                opacity: disabled ? 0.45 : 1,
+                padding: '8px 10px',
+                textAlign: 'left',
+                whiteSpace: 'normal',
+            }}
+        >
+            <Flex align="center" gap={10} style={{ width: '100%' }}>
                 <Flex
                     align="center"
                     justify="center"
                     style={{
                         background: 'transparent',
-                        border: `1px solid ${isSelected ? token.colorPrimary : token.colorBorder}`,
+                        border: `1px solid ${active ? token.colorPrimary : disabled ? token.colorBorderSecondary : token.colorBorder}`,
                         borderRadius: '999px',
-                        color: isSelected ? token.colorPrimary : token.colorTextSecondary,
+                        color: active ? token.colorPrimary : disabled ? token.colorTextQuaternary : token.colorTextSecondary,
                         flex: '0 0 auto',
                         height: 24,
                         width: 24,
@@ -296,56 +345,13 @@ const AiImageGenerator: React.FC<AiImageGeneratorProps> = ({
                     <LuCheck size={12} />
                 </Flex>
                 <Flex gap={2} style={{ minWidth: 0 }} vertical>
-                    <Typography.Text style={{ color: isSelected ? token.colorPrimary : undefined, lineHeight: 1.25 }}>
-                        {imageType.type}
-                    </Typography.Text>
-                    <Typography.Text type="secondary" style={{ fontSize: 12, lineHeight: 1.4 }}>
-                        {imageType.description}
+                    <Typography.Text style={{ lineHeight: 1.25 }}>{label}</Typography.Text>
+                    <Typography.Text type="secondary" style={{ fontSize: 12, lineHeight: 1.35 }}>
+                        {description}
                     </Typography.Text>
                 </Flex>
             </Flex>
-        );
-    };
-
-    const renderImageTypeShortcut = (label: string, description: string, active: boolean, onClick: () => void, disabled = false) => (
-        <Flex
-            align="center"
-            gap={10}
-            onClick={() => {
-                if (disabled) return;
-                onClick();
-            }}
-            style={{
-                background: token.colorFillAlter,
-                border: `1px solid ${token.colorBorderSecondary}`,
-                borderRadius: 8,
-                cursor: disabled ? 'not-allowed' : 'pointer',
-                opacity: disabled ? 0.45 : 1,
-                padding: '8px 10px',
-            }}
-        >
-            <Flex
-                align="center"
-                justify="center"
-                style={{
-                    background: 'transparent',
-                    border: `1px solid ${active ? token.colorPrimary : disabled ? token.colorBorderSecondary : token.colorBorder}`,
-                    borderRadius: '999px',
-                    color: active ? token.colorPrimary : disabled ? token.colorTextQuaternary : token.colorTextSecondary,
-                    flex: '0 0 auto',
-                    height: 24,
-                    width: 24,
-                }}
-            >
-                <LuCheck size={12} />
-            </Flex>
-            <Flex gap={2} style={{ minWidth: 0 }} vertical>
-                <Typography.Text style={{ lineHeight: 1.25 }}>{label}</Typography.Text>
-                <Typography.Text type="secondary" style={{ fontSize: 12, lineHeight: 1.35 }}>
-                    {description}
-                </Typography.Text>
-            </Flex>
-        </Flex>
+        </Button>
     );
 
     const renderImageTypePickerContent = () => (
@@ -444,6 +450,7 @@ const AiImageGenerator: React.FC<AiImageGeneratorProps> = ({
         if (isMobile) {
             return (
                 <Popup
+                    aria-label="Choose Image Types"
                     bodyStyle={{ minHeight: '72vh', maxHeight: '92vh', overflowX: 'hidden', padding: 0 }}
                     destroyOnClose
                     onMaskClick={() => setShowImageTypeSelector(false)}
@@ -728,17 +735,11 @@ const AiImageGenerator: React.FC<AiImageGeneratorProps> = ({
                                     </Flex>
 
                                     <Flex
-                                        onClick={() => {
-                                            if (generationConfig.isMultiMode) {
-                                                setShowImageTypeSelector(true);
-                                            }
-                                        }}
                                         gap={12}
                                         style={{
                                             background: token.colorFillAlter,
                                             border: `1px solid ${token.colorBorderSecondary}`,
                                             borderRadius: 8,
-                                            cursor: generationConfig.isMultiMode ? 'pointer' : 'default',
                                             padding: '12px 14px',
                                             width: '100%',
                                         }}
@@ -772,6 +773,7 @@ const AiImageGenerator: React.FC<AiImageGeneratorProps> = ({
                                                     </Button>
                                                 ) : null}
                                                 <Switch
+                                                    aria-label="Generate multiple photo types"
                                                     checked={generationConfig.isMultiMode}
                                                     onChange={(checked) => setGenerationConfig({ ...generationConfig, isMultiMode: checked, selectedImageTypes: [] })}
                                                     checkedChildren={<FaImages />}
@@ -819,13 +821,11 @@ const AiImageGenerator: React.FC<AiImageGeneratorProps> = ({
                                     {renderImageTypeSelector()}
 
                                     <Flex
-                                        onClick={() => setShowStyleSelector(true)}
                                         gap={12}
                                         style={{
                                             background: token.colorFillAlter,
                                             border: `1px solid ${token.colorBorderSecondary}`,
                                             borderRadius: 8,
-                                            cursor: 'pointer',
                                             padding: '12px 14px',
                                             width: '100%',
                                         }}
@@ -1008,6 +1008,7 @@ const AiImageGenerator: React.FC<AiImageGeneratorProps> = ({
                                                                     </Typography.Text>
                                                                 </Flex>
                                                                 <Switch
+                                                                    aria-label="Transparent background"
                                                                     checked={generationConfig.transparentBg || false}
                                                                     onChange={(checked) => setGenerationConfig({ ...generationConfig, transparentBg: checked })}
                                                                 />
@@ -1052,16 +1053,32 @@ const AiImageGenerator: React.FC<AiImageGeneratorProps> = ({
                                                                         </Typography.Text>
                                                                     </Flex>
                                                                 </Flex>
-                                                                <ColorPicker
-                                                                    allowClear
-                                                                    disabled={!!generationConfig.transparentBg}
-                                                                    value={generationConfig.backgroundColor}
-                                                                    onChange={(color) => {
-                                                                        const hexColor = color.toHexString();
-                                                                        setGenerationConfig({ ...generationConfig, backgroundColor: hexColor });
-                                                                    }}
-                                                                    onClear={() => setGenerationConfig({ ...generationConfig, backgroundColor: null })}
-                                                                />
+                                                                <Flex align="center" gap={8}>
+                                                                    <input
+                                                                        disabled={!!generationConfig.transparentBg}
+                                                                        aria-label="Choose background color"
+                                                                        onChange={(event) => setGenerationConfig({ ...generationConfig, backgroundColor: event.target.value })}
+                                                                        style={{
+                                                                            background: token.colorBgContainer,
+                                                                            border: `1px solid ${token.colorBorderSecondary}`,
+                                                                            borderRadius: 8,
+                                                                            cursor: generationConfig.transparentBg ? 'not-allowed' : 'pointer',
+                                                                            height: 44,
+                                                                            padding: 4,
+                                                                            width: 44,
+                                                                        }}
+                                                                        type="color"
+                                                                        value={generationConfig.backgroundColor || '#ffffff'}
+                                                                    />
+                                                                    {generationConfig.backgroundColor ? (
+                                                                        <Button
+                                                                            aria-label="Clear background color"
+                                                                            icon={<LuX />}
+                                                                            onClick={() => setGenerationConfig({ ...generationConfig, backgroundColor: null })}
+                                                                            shape="circle"
+                                                                        />
+                                                                    ) : null}
+                                                                </Flex>
                                                             </Flex>
 
                                                             <Flex
@@ -1100,15 +1117,31 @@ const AiImageGenerator: React.FC<AiImageGeneratorProps> = ({
                                                                         </Typography.Text>
                                                                     </Flex>
                                                                 </Flex>
-                                                                <ColorPicker
-                                                                    allowClear
-                                                                    value={generationConfig.foregroundColor}
-                                                                    onChange={(color) => {
-                                                                        const hexColor = color.toHexString();
-                                                                        setGenerationConfig({ ...generationConfig, foregroundColor: hexColor });
-                                                                    }}
-                                                                    onClear={() => setGenerationConfig({ ...generationConfig, foregroundColor: null })}
-                                                                />
+                                                                <Flex align="center" gap={8}>
+                                                                    <input
+                                                                        aria-label="Choose foreground color"
+                                                                        onChange={(event) => setGenerationConfig({ ...generationConfig, foregroundColor: event.target.value })}
+                                                                        style={{
+                                                                            background: token.colorBgContainer,
+                                                                            border: `1px solid ${token.colorBorderSecondary}`,
+                                                                            borderRadius: 8,
+                                                                            cursor: 'pointer',
+                                                                            height: 44,
+                                                                            padding: 4,
+                                                                            width: 44,
+                                                                        }}
+                                                                        type="color"
+                                                                        value={generationConfig.foregroundColor || '#ffffff'}
+                                                                    />
+                                                                    {generationConfig.foregroundColor ? (
+                                                                        <Button
+                                                                            aria-label="Clear foreground color"
+                                                                            icon={<LuX />}
+                                                                            onClick={() => setGenerationConfig({ ...generationConfig, foregroundColor: null })}
+                                                                            shape="circle"
+                                                                        />
+                                                                    ) : null}
+                                                                </Flex>
                                                             </Flex>
                                                         </Flex>
                                                     </Flex>
@@ -1127,6 +1160,7 @@ const AiImageGenerator: React.FC<AiImageGeneratorProps> = ({
                                                             </Flex>
                                                         </Tooltip>
                                                         <Input.TextArea
+                                                            aria-label="Exclude from image"
                                                             rows={2}
                                                             placeholder={`e.g., 'blurry, low quality, text, watermark'`}
                                                             value={generationConfig.negativePrompt}

@@ -158,8 +158,17 @@ export const normalizeBaseUrl = (value?: string | null): string => {
     return stripTrailingSlashes(withProtocol);
 };
 
+/**
+ * Public platform origin that is identical during server rendering and the
+ * browser's first hydration pass. Runtime-local origins must not be read while
+ * producing initial markup because localhost and 127.0.0.1 are equivalent
+ * local hosts but different React attribute values.
+ */
+export const getHydrationStablePublicBaseUrl = (): string =>
+    normalizeBaseUrl(process.env.NEXT_PUBLIC_APP_URL) || PLATFORM_URL;
+
 export const getPublicBaseUrl = (): string => {
-    const envBaseUrl = normalizeBaseUrl(process.env.NEXT_PUBLIC_APP_URL);
+    const envBaseUrl = getHydrationStablePublicBaseUrl();
     if (typeof window !== 'undefined' && window.location?.origin) {
         const currentOrigin = stripTrailingSlashes(window.location.origin);
         const currentHostname = window.location.hostname.toLowerCase();

@@ -275,8 +275,12 @@ assertIncludes(mobileShell, 'onOpenShareTab={handleOpenShareTab}', 'Mobile shell
 assertIncludes(mobileMoreScreen, 'onOpenShareTab', 'Mobile More screen accepts share callback');
 assertIncludes(mobileMoreScreen, 'onOpenMoreScreen={openSubScreen}', 'Mobile More passes sub-screen callback to Business Health');
 assertIncludes(businessSettings, 'BUSINESS_SETTINGS_FOCUS_SECTION', 'Business Settings deep-link section map');
-assertIncludes(businessSettings, "searchParams?.get('section')", 'Business Settings section query handling');
-assertIncludes(businessSettings, "searchParams?.get('focus')", 'Business Settings focus query handling');
+assertIncludes(businessSettings, "const requestedSection = searchParams?.get('section') || ''", 'Business Settings stable section query handling');
+assertIncludes(businessSettings, "const requestedFocus = searchParams?.get('focus') || ''", 'Business Settings stable focus query handling');
+assertIncludes(businessSettings, '[requestedFocus, requestedSection]', 'Business Settings deep-link effect uses stable scalar dependencies');
+assertIncludes(businessSettings, 'BUSINESS_SETTINGS_DEEP_LINK_SCROLL_DELAYS_MS', 'Business Settings bounded deep-link layout settling');
+assertIncludes(businessSettings, "scrollIntoView({ behavior: 'auto', block: 'start' })", 'Business Settings settled deep-link target alignment');
+assertIncludes(businessSettings, 'scrollTimers.forEach((timer) => window.clearTimeout(timer))', 'Business Settings deep-link timer cleanup');
 assertIncludes(businessSettings, "'customer-link'", 'Business Settings customer-link focus target');
 assertIncludes(businessSettings, "'official-page-actions'", 'Business Settings official page actions focus target');
 assertIncludes(businessSettings, 'officialPageActions: createRef<HTMLDivElement>()', 'Business Settings official page actions dedicated focus ref');

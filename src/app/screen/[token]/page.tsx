@@ -19,6 +19,7 @@
 import { FEATURE_FLAGS } from "@config/features";
 import { getMenuItemsForScreenServer, getScreenDataByTokenServer, getUsableScreenMenuProjection } from "@database/campaigns/serverScreen";
 import { getPrivateScreenTokenCacheTag } from "@lib/screen/privateScreenControl";
+import { serializeScreenSlidesForClient } from "@lib/screen/screenContent";
 import { SCREEN_CONFIG } from "@lib/screen/screenRenderer";
 import { generateScreenSlides } from "@lib/screen/slideGenerator";
 import { isValidScreenToken } from "@lib/screen/utils";
@@ -171,12 +172,12 @@ export default async function ScreenPage(props: PageProps) {
         : undefined;
 
     // Generate slides using the full 4-layer stack generator
-    const slides = generateScreenSlides({
+    const slides = serializeScreenSlidesForClient(generateScreenSlides({
         screenState: screenData.screen,
         todayCampaign,
         menuItems,
         storeInfo: screenData.storeInfo
-    });
+    }));
 
     // Build initial data for highlights client component
     const initialData = {

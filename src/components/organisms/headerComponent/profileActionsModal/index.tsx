@@ -156,6 +156,14 @@ function ProfileActionsModal({
                                     key={itemIndex}
                                     className={styles.menuItem}
                                     onClick={() => onClickAction(item)}
+                                    onKeyDown={(event) => {
+                                        if (event.key === 'Enter' || event.key === ' ') {
+                                            event.preventDefault();
+                                            onClickAction(item);
+                                        }
+                                    }}
+                                    role="button"
+                                    tabIndex={0}
                                     style={{
                                         color: item.danger ? token.colorError : token.colorText
                                     }}
@@ -203,7 +211,15 @@ function ProfileActionsModal({
                 className='d-f-c'
                 okButtonProps={{ className: 'd-none' }}
             >
-                {children}
+                <button
+                    type="button"
+                    className={styles.profileTrigger}
+                    aria-label={t('myProfile')}
+                    aria-expanded={isOpen}
+                    aria-haspopup="dialog"
+                >
+                    {children}
+                </button>
             </Popconfirm>
             {/* Logout confirmation modal */}
             <Modal

@@ -1,7 +1,7 @@
 'use client'
 
 import { assertStoreUpdateSucceeded, updateStore } from '@database/stores';
-import { getResolvedAnalyticsPreferences, normalizeGoogleSearchConsoleVerification } from '@lib/analytics/preferences';
+import { getResolvedAnalyticsPreferences, normalizeGoogleAnalyticsMeasurementId, normalizeGoogleSearchConsoleVerification, normalizeMetaPixelId } from '@lib/analytics/preferences';
 import { openIsolatedBrowserUrl } from '@lib/browser/openIsolatedBrowserUrl';
 import { ANALYTICS_SETTINGS_GROUPING_NOTE, ANALYTICS_TRACKING_CATEGORY_DISCLOSURES, EXTERNAL_ANALYTICS_INTEGRATION_NOTE } from '@lib/analytics/settingsDisclosure';
 import { getStoreContextName } from '@lib/businessIdentity/names';
@@ -9,6 +9,7 @@ import { getLocalizedStoreKeywords } from '@lib/localization/storeContent';
 import { generateOBPUrl } from '@lib/obp/generateOBPUrl';
 import { normalizePublicCanonicalUrl } from '@lib/seo/publicMetadata';
 import { getStoreDeepDifference } from '@lib/store/storeNestedUpdateProjection';
+import { getPublicBaseUrl } from '@constant/urls';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { buildBusinessCopyManualOverrideMeta } from '@services/ai/businessCopy/metadata';
 import { theme } from 'antd';
@@ -18,6 +19,7 @@ import { LuBookOpen, LuCheckCircle2, LuExternalLink, LuInfo, LuRocket, LuX } fro
 import { Button, Card, Collapse, Flex, Image, Input, NavBar, Popover, Popup, Switch, Tabs, Text, TextArea, Toast } from '../antd';
 import MobileLocalizedLanguageSelector from '../components/MobileLocalizedLanguageSelector';
 import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
+import { MOBILE_BOTTOM_NAV_CLEARANCE } from '../MobileNavigation';
 import { applyLocalizedDraftMap, applyLocalizedKeywordDraftMap, getLocalizedStoreValue, getStoreLanguageLabel, getStoreManagedLanguages, getStorePreferredLanguage } from '../utils/localizedStoreContent';
 import SeoPreviewCard from '../../templates/main-app/businessSettings/tabs/SeoPreviewCard';
 import {
@@ -68,6 +70,22 @@ const ANALYTICS_TRACKING_DRAFT_KEYS: Array<keyof Pick<AnalyticsDraft,
     'trackMenuViews',
     'trackOfficialBusinessPage',
 ];
+
+const ANALYTICS_DRAFT_KEYS: Array<keyof AnalyticsDraft> = [
+    'enhancedEcommerce',
+    'facebookPixelId',
+    'googleAnalyticsId',
+    'googleSearchConsole',
+    'trackCustomerApp',
+    'trackDecisionBlocks',
+    'trackLocation',
+    'trackMenuViews',
+    'trackOfficialBusinessPage',
+];
+
+function areAnalyticsDraftsEqual(current: AnalyticsDraft, original: AnalyticsDraft): boolean {
+    return ANALYTICS_DRAFT_KEYS.every((key) => current[key] === original[key]);
+}
 
 function countEnabledAnalyticsTracking(draft: AnalyticsDraft): number {
     return ANALYTICS_TRACKING_DRAFT_KEYS.filter((key) => Boolean(draft[key])).length;
@@ -194,7 +212,7 @@ function MobileSeoAnalyticsScreenContent({ onBack, mode = 'seo' }: MobileSeoAnal
         trackOfficialBusinessPage,
     };
     const isAnalyticsDirty = !isSeoMode && originalAnalyticsState !== null
-        && JSON.stringify(analyticsDraft) !== JSON.stringify(originalAnalyticsState);
+        && !areAnalyticsDraftsEqual(analyticsDraft, originalAnalyticsState);
     const seoDraft: SeoDraft = {
         canonicalUrl,
         keywords: currentSeoDraft.keywords,
@@ -448,13 +466,30 @@ function MobileSeoAnalyticsScreenContent({ onBack, mode = 'seo' }: MobileSeoAnal
 
     const saveAnalyticsSettings = async () => {
         if (!storeDetails?.storeId || !isAnalyticsDirty || saveInFlightRef.current) return;
+        const normalizedGoogleAnalyticsId = normalizeGoogleAnalyticsMeasurementId(analyticsDraft.googleAnalyticsId);
+        if (analyticsDraft.googleAnalyticsId.trim() && !normalizedGoogleAnalyticsId) {
+            Toast.show({ content: 'Enter a valid GA4 Measurement ID starting with G-.', duration: 1500 });
+            return;
+        }
+        const normalizedFacebookPixelId = normalizeMetaPixelId(analyticsDraft.facebookPixelId);
+        if (analyticsDraft.facebookPixelId.trim() && !normalizedFacebookPixelId) {
+            Toast.show({ content: 'Enter a valid numeric Meta Pixel ID.', duration: 1500 });
+            return;
+        }
+        const normalizedGoogleSearchConsole = normalizeGoogleSearchConsoleVerification(analyticsDraft.googleSearchConsole);
+        if (analyticsDraft.googleSearchConsole.trim() && !normalizedGoogleSearchConsole) {
+            Toast.show({ content: 'Enter a valid Google Search Console verification token or meta tag.', duration: 1500 });
+            return;
+        }
         const sourceStoreDetails = storeDetails;
         const expectedStoreId = sourceStoreDetails.storeId;
         const expectedTenantId = sourceStoreDetails.tenantId;
         const previousAnalytics = sourceStoreDetails.analytics;
         const submittedAnalyticsDraft = {
             ...analyticsDraft,
-            googleSearchConsole: normalizeGoogleSearchConsoleVerification(analyticsDraft.googleSearchConsole) || '',
+            facebookPixelId: normalizedFacebookPixelId || '',
+            googleAnalyticsId: normalizedGoogleAnalyticsId || '',
+            googleSearchConsole: normalizedGoogleSearchConsole || '',
         };
         saveInFlightRef.current = true;
 
@@ -652,6 +687,7 @@ function MobileSeoAnalyticsScreenContent({ onBack, mode = 'seo' }: MobileSeoAnal
                             <Flex gap={12} vertical>
                                 <FieldGroup hint={tSeo('taglineHelp')} label={tSeo('tagline')}>
                                     <TextArea
+                                        aria-label={tSeo('tagline')}
                                         autoSize={{ minRows: 2, maxRows: 4 }}
                                         maxLength={100}
                                         onChange={(value) => setLocalizedSeoDrafts((previous) => ({
@@ -681,6 +717,7 @@ function MobileSeoAnalyticsScreenContent({ onBack, mode = 'seo' }: MobileSeoAnal
                                 ) : null}
                                 <FieldGroup label={tSeo('metaTitle')} tooltip={tSeo('metaTitleHelp')}>
                                     <TextArea
+                                        aria-label={tSeo('metaTitle')}
                                         autoSize={{ minRows: 2, maxRows: 4 }}
                                         maxLength={60}
                                         onChange={(value) => setLocalizedSeoDrafts((previous) => ({
@@ -710,6 +747,7 @@ function MobileSeoAnalyticsScreenContent({ onBack, mode = 'seo' }: MobileSeoAnal
                                 ) : null}
                                 <FieldGroup label={tSeo('metaDescription')} tooltip={tSeo('metaDescHelp')}>
                                     <TextArea
+                                        aria-label={tSeo('metaDescription')}
                                         autoSize={{ minRows: 3, maxRows: 6 }}
                                         maxLength={160}
                                         onChange={(value) => setLocalizedSeoDrafts((previous) => ({
@@ -739,6 +777,7 @@ function MobileSeoAnalyticsScreenContent({ onBack, mode = 'seo' }: MobileSeoAnal
                                 ) : null}
                                 <FieldGroup label={tSeo('keywords')} tooltip={tSeo('keywordsHelp')}>
                                     <TextArea
+                                        aria-label={tSeo('keywords')}
                                         autoSize={{ minRows: 2, maxRows: 5 }}
                                         maxLength={300}
                                         onChange={(value) => setLocalizedSeoDrafts((previous) => ({
@@ -755,6 +794,7 @@ function MobileSeoAnalyticsScreenContent({ onBack, mode = 'seo' }: MobileSeoAnal
                                 </FieldGroup>
                                 <FieldGroup label={tSeo('canonicalUrl')} tooltip={tSeo('canonicalUrlHelp')}>
                                     <TextArea
+                                        aria-label={tSeo('canonicalUrl')}
                                         autoSize={{ minRows: 2, maxRows: 4 }}
                                         onChange={setCanonicalUrl}
                                         placeholder={tSeo('canonicalUrlPlaceholder')}
@@ -778,7 +818,7 @@ function MobileSeoAnalyticsScreenContent({ onBack, mode = 'seo' }: MobileSeoAnal
                                 backdropFilter: 'blur(10px)',
                                 backgroundColor: token.colorBgContainer,
                                 borderTop: `1px solid ${token.colorBorderSecondary}`,
-                                bottom: 0,
+                                bottom: MOBILE_BOTTOM_NAV_CLEARANCE,
                                 marginInline: -16,
                                 padding: '12px 16px',
                                 position: 'sticky',
@@ -830,17 +870,18 @@ function MobileSeoAnalyticsScreenContent({ onBack, mode = 'seo' }: MobileSeoAnal
                                     description={EXTERNAL_ANALYTICS_INTEGRATION_NOTE}
                                 />
                                 <FieldGroup hint={tAnalytics('googleAnalyticsIdHelp')} label={tAnalytics('googleAnalyticsId')}>
-                                    <Input onChange={setGaId} placeholder="G-XXXXXXXXXX" value={gaId} />
+                                    <Input aria-label={tAnalytics('googleAnalyticsId')} onChange={setGaId} placeholder="G-XXXXXXXXXX" value={gaId} />
                                 </FieldGroup>
                                 <FieldGroup hint={tAnalytics('googleSearchConsoleHelp')} label={tAnalytics('googleSearchConsole')}>
                                     <Input
+                                        aria-label={tAnalytics('googleSearchConsole')}
                                         onChange={setSearchConsole}
                                         placeholder="Verification code"
                                         value={searchConsole}
                                     />
                                 </FieldGroup>
                                 <FieldGroup hint={tAnalytics('facebookPixelIdHelp')} label={tAnalytics('facebookPixelId')}>
-                                    <Input onChange={setFbPixelId} placeholder="XXXXXXXXXXXXXXXXXX" value={fbPixelId} />
+                                    <Input aria-label={tAnalytics('facebookPixelId')} onChange={setFbPixelId} placeholder="XXXXXXXXXXXXXXXXXX" value={fbPixelId} />
                                 </FieldGroup>
                             </Flex>
                         </Card>
@@ -895,7 +936,7 @@ function MobileSeoAnalyticsScreenContent({ onBack, mode = 'seo' }: MobileSeoAnal
                                 backdropFilter: 'blur(10px)',
                                 backgroundColor: token.colorBgContainer,
                                 borderTop: `1px solid ${token.colorBorderSecondary}`,
-                                bottom: 0,
+                                bottom: MOBILE_BOTTOM_NAV_CLEARANCE,
                                 marginInline: -16,
                                 padding: '12px 16px',
                                 position: 'sticky',
@@ -916,6 +957,7 @@ function MobileSeoAnalyticsScreenContent({ onBack, mode = 'seo' }: MobileSeoAnal
             {!isSeoMode ? (
                 <>
                     <Popup
+                        aria-label={tAnalytics('viewGuide')}
                         bodyStyle={{ maxHeight: '92vh', overflow: 'hidden', padding: 0 }}
                         destroyOnClose
                         onMaskClick={() => setIsGuideOpen(false)}
@@ -926,6 +968,7 @@ function MobileSeoAnalyticsScreenContent({ onBack, mode = 'seo' }: MobileSeoAnal
                                 onBack={() => setIsGuideOpen(false)}
                                 right={(
                                     <Button
+                                        aria-label="Close analytics guide"
                                         fill="none"
                                         onClick={() => setIsGuideOpen(false)}
                                         style={{ minHeight: 44, minWidth: 44, paddingInline: 0 }}
@@ -1011,6 +1054,7 @@ function MobileSeoAnalyticsScreenContent({ onBack, mode = 'seo' }: MobileSeoAnal
                     </Popup>
 
                     <Popup
+                        aria-label={tAnalytics('setupWizard')}
                         bodyStyle={{ maxHeight: '92vh', overflow: 'hidden', padding: 0 }}
                         destroyOnClose
                         onMaskClick={closeSetupWizard}
@@ -1021,6 +1065,7 @@ function MobileSeoAnalyticsScreenContent({ onBack, mode = 'seo' }: MobileSeoAnal
                                 onBack={closeSetupWizard}
                                 right={(
                                     <Button
+                                        aria-label="Close analytics setup"
                                         fill="none"
                                         onClick={closeSetupWizard}
                                         style={{ minHeight: 44, minWidth: 44, paddingInline: 0 }}
@@ -1131,7 +1176,7 @@ function ToggleRow({ checked, description, label, onChange }: { checked: boolean
                 <Text strong>{label}</Text>
                 <Text type="secondary">{description}</Text>
             </Flex>
-            <Switch checked={checked} onChange={onChange} />
+            <Switch aria-label={label} checked={checked} onChange={onChange} />
         </Flex>
     );
 }
@@ -1205,7 +1250,7 @@ function ResourceLinksSection({ onOpenExternalLink }: { onOpenExternalLink: (url
                 <LinkButton label="Facebook Pixel Setup Guide" onOpenExternalLink={onOpenExternalLink} source="facebook_pixel_setup" url="https://www.facebook.com/business/help/952192354843755" />
                 <LinkButton label="Events Manager Guide" onOpenExternalLink={onOpenExternalLink} source="events_manager_guide" url="https://www.facebook.com/business/help/402791146561655" />
                 <LinkButton label="GA4 E-commerce Guide" onOpenExternalLink={onOpenExternalLink} source="ga4_ecommerce_guide" url="https://developers.google.com/analytics/devguides/collection/ga4/ecommerce" />
-                <LinkButton label="MenuListAI Analytics Docs" onOpenExternalLink={onOpenExternalLink} source="menulist_analytics_docs" url="https://docs.menulistai.com/analytics" />
+                <LinkButton label="MenuList Analytics Guide" onOpenExternalLink={onOpenExternalLink} source="menulist_analytics_guide" url={`${getPublicBaseUrl()}/features/analytics`} />
             </Flex>
         </Card>
     );

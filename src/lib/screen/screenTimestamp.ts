@@ -1,6 +1,7 @@
 import type { DigitalScreenState } from "@type/campaigns";
 
 export type DigitalScreenSeenTimestamp = DigitalScreenState["screenLastSeenAt"] | null;
+export const FIRESTORE_TIMESTAMP_MAX_MILLISECONDS = 253_402_300_799_999;
 
 const validDateOrNull = (value: unknown): Date | null => {
     try {

@@ -39,9 +39,19 @@ export type MobilePlatformInternalScreenKey =
     | 'answerlatticeIntake'
     | 'answerlatticeWidget';
 
+export type PlatformInternalScreenKey = MobilePlatformInternalScreenKey
+    | 'opsControlRoom'
+    | 'schedulerMonitor'
+    | 'extractionMonitor'
+    | 'answerlatticeEarlyAccess'
+    | 'reportLeadMonitor'
+    | 'websiteEnquiryMonitor';
+
 type MobilePlatformInternalScreenProps = {
+    allowDesktopEscape?: boolean;
     onBack: () => void;
-    screen: MobilePlatformInternalScreenKey;
+    screen: PlatformInternalScreenKey;
+    showHeader?: boolean;
 };
 
 type PlatformScreenConfig = {
@@ -90,6 +100,12 @@ const ChatWeeklyDigest = dynamic(() => import('@template/platform/chatManagement
 const ChatRoiCalculator = dynamic(() => import('@template/platform/chatManagement/ROICalculator'), { loading: RouteLoading, ssr: false });
 const AnswerlatticeIntakeMonitor = dynamic(() => import('@template/main-app/platform/answerlatticeIntakeMonitor'), { loading: RouteLoading, ssr: false });
 const AnswerlatticeWidgetManagement = dynamic(() => import('@template/answerlattice/widgetManagement/AnswerlatticeWidgetManagement'), { loading: RouteLoading, ssr: false });
+const AnswerlatticeEarlyAccessDashboard = dynamic(() => import('@/components/templates/answerlattice/platform/AnswerlatticeEarlyAccessDashboard'), { loading: RouteLoading, ssr: false });
+const ReportLeadMonitor = dynamic(() => import('@template/main-app/platform/reportLeadMonitor'), { loading: RouteLoading, ssr: false });
+const WebsiteEnquiryMonitor = dynamic(() => import('@template/main-app/platform/websiteEnquiryMonitor'), { loading: RouteLoading, ssr: false });
+const OpsControlRoom = dynamic(() => import('@template/main-app/platform/opsControlRoom'), { loading: RouteLoading, ssr: false });
+const SchedulerMonitor = dynamic(() => import('@template/main-app/platform/schedulerMonitor'), { loading: RouteLoading, ssr: false });
+const ExtractionMonitor = dynamic(() => import('@template/main-app/platform/extractionMonitor'), { loading: RouteLoading, ssr: false });
 
 function PlatformTenantsRoute() {
     const [tenantsList, setTenantsList] = useState<TenantDataType[]>([]);
@@ -105,7 +121,31 @@ function AnswerlatticeWidgetRoute() {
     return <AnswerlatticeWidgetManagement embeddedMobile />;
 }
 
-const PLATFORM_SCREEN_CONFIG: Record<MobilePlatformInternalScreenKey, PlatformScreenConfig> = {
+const PLATFORM_SCREEN_CONFIG: Record<PlatformInternalScreenKey, PlatformScreenConfig> = {
+    opsControlRoom: {
+        Component: OpsControlRoom,
+        desktopPath: '/platform/ops-control-room',
+        description: 'Review safety state, adoption, integrity, and recent operational alerts.',
+        minWidth: 760,
+        surface: 'Ops Control Room',
+        title: 'Ops Control Room',
+    },
+    schedulerMonitor: {
+        Component: SchedulerMonitor,
+        desktopPath: '/platform/scheduler-monitor',
+        description: 'Review scheduled task health, results, and bounded recovery actions.',
+        minWidth: 760,
+        surface: 'Scheduler Monitor',
+        title: 'Scheduler Monitor',
+    },
+    extractionMonitor: {
+        Component: ExtractionMonitor,
+        desktopPath: '/platform/extraction-monitor',
+        description: 'Review extraction health, quality, cost, and recent job outcomes.',
+        minWidth: 760,
+        surface: 'Extraction Monitor',
+        title: 'Extraction Monitor',
+    },
     entityBlocks: {
         Component: EntityBlockSettings,
         description: 'Block or unblock tenants, stores, and users with audit details.',
@@ -303,9 +343,38 @@ const PLATFORM_SCREEN_CONFIG: Record<MobilePlatformInternalScreenKey, PlatformSc
         surface: 'Widget Management',
         title: 'Widget Management',
     },
+    answerlatticeEarlyAccess: {
+        Component: AnswerlatticeEarlyAccessDashboard,
+        desktopPath: '/platform/answerlattice-early-access',
+        description: 'Review access requests, feature ideas, and each request lifecycle state.',
+        minWidth: 0,
+        surface: 'Answerlattice Early Access',
+        title: 'Early Access',
+    },
+    reportLeadMonitor: {
+        Component: ReportLeadMonitor,
+        desktopPath: '/ops/report-leads',
+        description: 'Review bounded lead submissions from MenuList report surfaces.',
+        minWidth: 680,
+        surface: 'Report Leads',
+        title: 'Report Leads',
+    },
+    websiteEnquiryMonitor: {
+        Component: WebsiteEnquiryMonitor,
+        desktopPath: '/ops/website-enquiries',
+        description: 'Review and manage enquiries submitted through the MenuList website.',
+        minWidth: 680,
+        surface: 'Website Enquiries',
+        title: 'Website Enquiries',
+    },
 };
 
-export default function MobilePlatformInternalScreen({ onBack, screen }: MobilePlatformInternalScreenProps) {
+export default function MobilePlatformInternalScreen({
+    allowDesktopEscape = true,
+    onBack,
+    screen,
+    showHeader = true,
+}: MobilePlatformInternalScreenProps) {
     const config = PLATFORM_SCREEN_CONFIG[screen];
     const Component = config.Component;
     const isAnswerlatticeRoute = Boolean(config.requiresAnswerlattice);
@@ -320,10 +389,10 @@ export default function MobilePlatformInternalScreen({ onBack, screen }: MobileP
 
     return (
         <Flex style={{ minHeight: '100%', minWidth: 0 }} vertical>
-            <MobileSettingsScreenHeader
+            {showHeader ? <MobileSettingsScreenHeader
                 description={config.description}
                 onBack={onBack}
-                right={config.desktopPath ? (
+                right={allowDesktopEscape && config.desktopPath ? (
                     <Button
                         aria-label={`Open ${config.title} desktop tools`}
                         fill="none"
@@ -334,7 +403,7 @@ export default function MobilePlatformInternalScreen({ onBack, screen }: MobileP
                     </Button>
                 ) : undefined}
                 title={config.title}
-            />
+            /> : null}
             <div
                 data-mobile-answerlattice-admin={isAnswerlatticeRoute ? 'true' : undefined}
                 data-mobile-platform-route

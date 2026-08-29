@@ -12,6 +12,11 @@ Mobile support is required because menu setup is an owner workflow and owners of
 
 - The upload sheet shows "Import from existing menu link" only when `ENABLE_MENU_LINK_IMPORT` is true.
 - The owner enters a URL and confirms permission.
+- The URL field uses the shared browser validator before Import can be enabled,
+  before a missing project can be created, and before the protected request.
+  Invalid protocols, malformed URLs, credential-bearing URLs, and oversized
+  values show safe inline recovery copy; only the normalized public HTTP(S) URL
+  is submitted.
 - The sheet creates a project first when no current project exists, matching existing mobile upload behavior.
 - The API creates the extraction job.
 - The existing mobile processing/review flow continues from the job id.

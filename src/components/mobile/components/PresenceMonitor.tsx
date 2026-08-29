@@ -462,6 +462,7 @@ export default function MobilePresenceMonitor({
                                 }
                                 extra={
                                     <Button
+                                        aria-label={`Open ${t(surface.labelKey)} setup`}
                                         color={active ? 'success' : isNext ? 'primary' : 'default'}
                                         fill={active ? 'outline' : isNext ? 'solid' : 'outline'}
                                         loading={updating === surface.id}
@@ -484,7 +485,6 @@ export default function MobilePresenceMonitor({
                                         )}
                                     </Button>
                                 }
-                                onClick={() => handleOpenSurface(surface)}
                                 prefix={<Flex align="center" gap={8}>{surface.icon}</Flex>}
                                 title={
                                     <Flex gap={8} wrap="wrap">
@@ -535,7 +535,7 @@ export default function MobilePresenceMonitor({
                 ) : null}
             </Flex>
 
-            <Popup
+            <Popup aria-label={selectedSurface ? t(selectedSurface.labelKey) : t('title')}
                 bodyStyle={{ maxHeight: '82vh', minHeight: '50vh', overflow: 'hidden', padding: 0 }}
                 destroyOnClose
                 onMaskClick={handleCloseSurface}
@@ -545,7 +545,7 @@ export default function MobilePresenceMonitor({
                     <Flex style={{ height: '100%' }} vertical>
                         <NavBar
                             right={(
-                                <Button fill="none" onClick={handleCloseSurface} style={{ minHeight: 44, minWidth: 44, paddingInline: 0 }}>
+                                <Button aria-label={`Close ${t(selectedSurface.labelKey)}`} fill="none" onClick={handleCloseSurface} style={{ minHeight: 44, minWidth: 44, paddingInline: 0 }}>
                                     <LuX size={18} />
                                 </Button>
                             )}
@@ -563,13 +563,14 @@ export default function MobilePresenceMonitor({
                             >
                                 <Flex gap={8} vertical>
                                     <Flex align="center" gap={8}>
-                                        <Button
-                                            color={isActive(selectedSurface.id) ? 'success' : 'primary'}
-                                            fill="none"
-                                            style={{ minHeight: 44, minWidth: 44, paddingInline: 0 }}
+                                        <Flex
+                                            align="center"
+                                            aria-hidden="true"
+                                            justify="center"
+                                            style={{ minHeight: 44, minWidth: 44 }}
                                         >
                                             {isActive(selectedSurface.id) ? <LuCheck size={16} /> : <LuPlus size={16} />}
-                                        </Button>
+                                        </Flex>
                                         <Text strong>{isActive(selectedSurface.id) ? t('menuLinkAdded') : t(selectedSurface.explanationKey)}</Text>
                                     </Flex>
                                     <Text type="secondary">

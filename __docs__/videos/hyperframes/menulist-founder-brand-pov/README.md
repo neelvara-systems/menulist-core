@@ -17,7 +17,7 @@ This project creates a first-pass founder POV video without requiring founder ca
 
 ## Positioning Rules
 
-- MenuList is public-business truth infrastructure, not just a QR menu maker.
+- Public-business truth infrastructure is the internal category, not spoken or rendered owner-facing copy. The video should explain the same idea through one owner-approved customer link and the stale-menu problem, without reducing MenuList to a QR menu maker.
 - MenuList is not positioned as generic AI restaurant software.
 - AI is shown as controlled assistance: AI prepares, owner approves.
 - No ranking, traffic, AI recommendation, sales-lift, or external-platform update claims.

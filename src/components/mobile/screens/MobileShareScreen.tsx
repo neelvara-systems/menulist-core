@@ -243,6 +243,7 @@ const copyMobileShareText = async (value: string): Promise<void> => {
 interface MobileShareScreenProps {
     mode?: 'full' | 'printAssets';
     onBack?: () => void;
+    onOpenDomainSettings?: () => void;
     onOpenDigitalScreens?: () => void;
     onOpenDesignEditor?: () => void;
     onOpenMenuTab?: () => void;
@@ -255,6 +256,7 @@ interface MobileShareScreenProps {
 export default function MobileShareScreen({
     mode = 'full',
     onBack,
+    onOpenDomainSettings,
     onOpenDigitalScreens,
     onOpenDesignEditor,
     onOpenMenuTab,
@@ -300,6 +302,7 @@ export default function MobileShareScreen({
     });
     const [supportsNativeShare, setSupportsNativeShare] = useState(false);
     const [ownerReferralOpen, setOwnerReferralOpen] = useState(false);
+    const generatingDownloadRef = useRef<DownloadAssetKey | null>(null);
     const previewRequestRef = useRef(0);
     const previewUrlRef = useRef<string | null>(null);
     const recordedStarterSignalsRef = useRef(new Set<StarterActivationSignal>());
@@ -332,6 +335,7 @@ export default function MobileShareScreen({
 
         const subdomain = storeDetails.subdomain || '';
         const customDomain = storeDetails.customDomain;
+        if (!subdomain && !customDomain) return null;
         const obpLink = generateOBPUrl(subdomain, customDomain);
         const storeMenuLink = `${obpLink.replace(/\/$/, '')}/menu`;
         const installAppLink =
@@ -715,7 +719,7 @@ export default function MobileShareScreen({
             menuUrl: data.menuLink,
             obpBaseUrl: data.obpLink,
             projectId: data.projectId,
-            shortLink: data.menuLink.replace(/^https?:\/\//, ''),
+            shortLink: (assetTypeId === 'feedback_qr' ? data.feedbackQrLink : data.menuLink).replace(/^https?:\/\//, ''),
             storeName: data.storeName,
             templateFamilyId,
         };
@@ -876,7 +880,9 @@ export default function MobileShareScreen({
 
     const handleDownloadPdf = async () => {
         if (!data?.projectId) return;
+        if (generatingDownloadRef.current) return;
 
+        generatingDownloadRef.current = 'menu_pdf';
         setGeneratingDownload('menu_pdf');
         try {
             const projectData = await getSelectedProjectData();
@@ -929,6 +935,7 @@ export default function MobileShareScreen({
             logMobileOwnerFailure('mobile_share_pdf_download_failed', error, buildMobileShareLogContext('pdf_download'));
             Toast.show({ content: t('pdfFailed'), duration: 1600 });
         } finally {
+            generatingDownloadRef.current = null;
             setGeneratingDownload(null);
         }
     };
@@ -941,7 +948,10 @@ export default function MobileShareScreen({
     const handleStructuredExport = async (type: 'json' | 'xlsx') => {
         if (!data?.projectId) return;
 
-        setGeneratingDownload(type === 'xlsx' ? 'export_xlsx' : 'export_json');
+        const downloadKey = type === 'xlsx' ? 'export_xlsx' : 'export_json';
+        if (generatingDownloadRef.current) return;
+        generatingDownloadRef.current = downloadKey;
+        setGeneratingDownload(downloadKey);
         try {
             const exportData = await getSelectedProjectExportData();
             if (exportData.items.length === 0 && exportData.categories.length === 0) {
@@ -962,6 +972,7 @@ export default function MobileShareScreen({
             }));
             Toast.show({ content: t('exportFailed', { type: type.toUpperCase() }), duration: 1600 });
         } finally {
+            generatingDownloadRef.current = null;
             setGeneratingDownload(null);
         }
     };
@@ -969,7 +980,9 @@ export default function MobileShareScreen({
     const handleDownloadMenuKit = async () => {
         const input = buildMenuKitInput();
         if (!input) return;
+        if (generatingDownloadRef.current) return;
 
+        generatingDownloadRef.current = 'menu_kit';
         setGeneratingDownload('menu_kit');
         try {
             const result = await generateMenuKit(input);
@@ -981,6 +994,7 @@ export default function MobileShareScreen({
             logMobileOwnerFailure('mobile_share_menu_kit_download_failed', error, buildMobileShareLogContext('menu_kit_download'));
             Toast.show({ content: t('menuKitFailed'), duration: 1600 });
         } finally {
+            generatingDownloadRef.current = null;
             setGeneratingDownload(null);
         }
     };
@@ -993,7 +1007,9 @@ export default function MobileShareScreen({
     ) => {
         const input = buildMenuKitInput();
         if (!input) return;
+        if (generatingDownloadRef.current) return;
 
+        generatingDownloadRef.current = key;
         setGeneratingDownload(key);
         try {
             const asset = await generateMenuKitAsset(input, assetKey);
@@ -1018,13 +1034,16 @@ export default function MobileShareScreen({
             }));
             Toast.show({ content: t('assetFailed', { label }), duration: 1600 });
         } finally {
+            generatingDownloadRef.current = null;
             setGeneratingDownload(null);
         }
     };
 
     const handleDownloadFeedbackQr = async () => {
         if (!data?.projectId) return;
+        if (generatingDownloadRef.current) return;
 
+        generatingDownloadRef.current = 'feedback_qr';
         setGeneratingDownload('feedback_qr');
         try {
             const { downloadQrCode, generateBrandedFeedbackQrCode, getQrCodeFilename } = await import('@lib/utils/feedbackQrCode');
@@ -1043,6 +1062,7 @@ export default function MobileShareScreen({
             logMobileOwnerFailure('mobile_share_feedback_qr_download_failed', error, buildMobileShareLogContext('feedback_qr_download'));
             Toast.show({ content: t('assetFailed', { label: t('feedbackQr') }), duration: 1600 });
         } finally {
+            generatingDownloadRef.current = null;
             setGeneratingDownload(null);
         }
     };
@@ -1154,6 +1174,36 @@ export default function MobileShareScreen({
                 >
                     {tMenu('tryAgain')}
                 </Button>
+            </Flex>
+        );
+    }
+
+    const selectedProjectExists = projectsList.some((project: any) => project.projectId === selectedProjectId);
+    const missingPublicAddress = Boolean(
+        storeDetails
+        && selectedProjectExists
+        && !storeDetails.subdomain
+        && !storeDetails.customDomain,
+    );
+
+    if (missingPublicAddress) {
+        return (
+            <Flex align="center" gap={12} justify="center" style={{ minHeight: '100%', padding: 24, textAlign: 'center' }} vertical>
+                <ContextualStateIllustration
+                    color={token.colorPrimary}
+                    size={112}
+                    treatment="softHalo"
+                    variant="emptyWorkspace"
+                />
+                <Title level={4} style={{ margin: 0 }}>Set up your customer link</Title>
+                <Text type="secondary" style={{ textAlign: 'center' }}>
+                    Add a MenuList subdomain or custom domain before sharing this menu with customers.
+                </Text>
+                {onOpenDomainSettings ? (
+                    <Button color="primary" onClick={onOpenDomainSettings} size="large">
+                        Open Domain settings
+                    </Button>
+                ) : null}
             </Flex>
         );
     }
@@ -1683,6 +1733,7 @@ export default function MobileShareScreen({
                             <DownloadTile
                                 compact={isCompactHandheld}
                                 description="Templates for tables, counters, feedback, and menus"
+                                disabled={generatingDownload !== null}
                                 icon={<LuPrinter size={18} />}
                                 loading={false}
                                 onClick={onOpenPrintAssets}
@@ -1693,6 +1744,7 @@ export default function MobileShareScreen({
                         <DownloadTile
                             compact={isCompactHandheld}
                             description={FEATURE_FLAGS.ENABLE_MENU_CARD_EXPORT ? 'Preview and create PDF' : t('menuPdfDesc')}
+                            disabled={generatingDownload !== null}
                             icon={<LuFileText size={18} />}
                             loading={generatingDownload === 'menu_pdf'}
                             onClick={() => FEATURE_FLAGS.ENABLE_MENU_CARD_EXPORT ? handleOpenMenuCardExport() : void handleDownloadPdf()}
@@ -1703,6 +1755,7 @@ export default function MobileShareScreen({
                             <DownloadTile
                                 compact={isCompactHandheld}
                                 description={t('completeMenuKitDesc')}
+                                disabled={generatingDownload !== null}
                                 icon={<LuPackage size={18} />}
                                 loading={generatingDownload === 'menu_kit'}
                                 onClick={() => void handleDownloadMenuKit()}
@@ -1719,6 +1772,7 @@ export default function MobileShareScreen({
                         <DownloadTile
                             compact={isCompactHandheld}
                             description={t('exportXlsxDesc')}
+                            disabled={generatingDownload !== null}
                             icon={<LuSheet size={18} />}
                             loading={generatingDownload === 'export_xlsx'}
                             onClick={() => void handleStructuredExport('xlsx')}
@@ -1727,6 +1781,7 @@ export default function MobileShareScreen({
                         <DownloadTile
                             compact={isCompactHandheld}
                             description={t('exportJsonDesc')}
+                            disabled={generatingDownload !== null}
                             icon={<LuFileJson size={18} />}
                             loading={generatingDownload === 'export_json'}
                             onClick={() => void handleStructuredExport('json')}
@@ -1743,6 +1798,7 @@ export default function MobileShareScreen({
                                 <DownloadTile
                                     compact={isCompactHandheld}
                                     description={t('tableTentDesc')}
+                                    disabled={generatingDownload !== null}
                                     icon={<LuQrCode size={18} />}
                                     loading={generatingDownload === 'table_tent'}
                                     onClick={() => void handleMenuKitAsset('table_tent', 'table_tent', t('tableTent'))}
@@ -1751,6 +1807,7 @@ export default function MobileShareScreen({
                                 <DownloadTile
                                     compact={isCompactHandheld}
                                     description={t('singleTableCardDesc')}
+                                    disabled={generatingDownload !== null}
                                     icon={<LuQrCode size={18} />}
                                     loading={generatingDownload === 'single_table_card'}
                                     onClick={() => void handleMenuKitAsset('single_table_card', 'single_table_card', t('singleTableCard'))}
@@ -1759,6 +1816,7 @@ export default function MobileShareScreen({
                                 <DownloadTile
                                     compact={isCompactHandheld}
                                     description={t('counterStickerDesc')}
+                                    disabled={generatingDownload !== null}
                                     icon={<LuQrCode size={18} />}
                                     loading={generatingDownload === 'counter_sticker'}
                                     onClick={() => void handleMenuKitAsset('counter_sticker', 'counter_sticker', t('counterSticker'))}
@@ -1767,6 +1825,7 @@ export default function MobileShareScreen({
                                 <DownloadTile
                                     compact={isCompactHandheld}
                                     description={t('entrancePosterDesc')}
+                                    disabled={generatingDownload !== null}
                                     icon={<LuQrCode size={18} />}
                                     loading={generatingDownload === 'entrance_poster'}
                                     onClick={() => void handleMenuKitAsset('entrance_poster', 'entrance_poster', t('entrancePoster'))}
@@ -1776,6 +1835,7 @@ export default function MobileShareScreen({
                                     <DownloadTile
                                         compact={isCompactHandheld}
                                         description={t('feedbackQrDesc')}
+                                        disabled={generatingDownload !== null}
                                         icon={<LuMessageSquare size={18} />}
                                         loading={generatingDownload === 'feedback_qr'}
                                         onClick={() => void handleDownloadFeedbackQr()}
@@ -1791,6 +1851,7 @@ export default function MobileShareScreen({
                                 <DownloadTile
                                     compact={isCompactHandheld}
                                     description={t('instagramStoryDesc')}
+                                    disabled={generatingDownload !== null}
                                     icon={<LuImage size={18} />}
                                     loading={generatingDownload === 'instagram_story'}
                                     onClick={() => void handleMenuKitAsset('instagram_story', 'instagram_story', t('instagramStory'), 'share_instagram')}
@@ -1799,6 +1860,7 @@ export default function MobileShareScreen({
                                 <DownloadTile
                                     compact={isCompactHandheld}
                                     description={t('whatsappStatusDesc')}
+                                    disabled={generatingDownload !== null}
                                     icon={<LuShare2 size={18} />}
                                     loading={generatingDownload === 'whatsapp_status'}
                                     onClick={() => void handleMenuKitAsset('whatsapp_status', 'whatsapp_status', t('whatsappStatus'), 'share_whatsapp')}
@@ -1807,6 +1869,7 @@ export default function MobileShareScreen({
                                 <DownloadTile
                                     compact={isCompactHandheld}
                                     description={t('googleMapsImageDesc')}
+                                    disabled={generatingDownload !== null}
                                     icon={<LuMapPin size={18} />}
                                     loading={generatingDownload === 'google_maps'}
                                     onClick={() => void handleMenuKitAsset('google_maps', 'google_maps', t('googleMapsImage'), 'share_google_maps')}
@@ -2288,6 +2351,7 @@ function PrintableTemplateActionSheet({
 function DownloadTile({
     compact,
     description,
+    disabled,
     highlighted,
     icon,
     loading,
@@ -2299,6 +2363,7 @@ function DownloadTile({
 }: {
     compact?: boolean;
     description: string;
+    disabled?: boolean;
     highlighted?: boolean;
     icon: ReactNode;
     loading: boolean;
@@ -2319,6 +2384,7 @@ function DownloadTile({
         <Button
             block
             color={highlighted ? 'primary' : undefined}
+            disabled={disabled}
             fill={highlighted ? 'solid' : 'outline'}
             loading={loading}
             onClick={onClick}
@@ -2346,6 +2412,7 @@ function DownloadTile({
                 {primaryTile}
                 <Button
                     block
+                    disabled={disabled}
                     fill="outline"
                     loading={secondaryLoading}
                     onClick={onSecondaryClick}
@@ -2386,6 +2453,7 @@ function ScreenLinkPanel({
     onOpen: () => void;
     tag: string;
 }) {
+    const common = useTranslations('Common');
     const { token } = theme.useToken();
 
     return (
@@ -2411,13 +2479,13 @@ function ScreenLinkPanel({
                     {link.replace(/^https?:\/\//, '')}
                 </Text>
                 <Flex gap={8}>
-                    <Button block fill="outline" onClick={onCopy}>
+                    <Button aria-label={`${common('copy')} ${label}`} block fill="outline" onClick={onCopy}>
                         <Flex align="center" gap={6} justify="center">
                             <LuCopy size={14} />
                             <Text>Copy</Text>
                         </Flex>
                     </Button>
-                    <Button block fill="outline" onClick={onOpen}>
+                    <Button aria-label={`${common('open')} ${label}`} block fill="outline" onClick={onOpen}>
                         <Flex align="center" gap={6} justify="center">
                             <LuExternalLink size={14} />
                             <Text>Open</Text>
@@ -2467,6 +2535,7 @@ function GuideSheet({
 
     return (
         <Popup
+            aria-label={guide?.title || undefined}
             bodyStyle={{ maxHeight: '94vh', overflow: 'hidden', padding: 0 }}
             destroyOnClose
             onMaskClick={onClose}

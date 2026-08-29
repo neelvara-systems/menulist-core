@@ -55,7 +55,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         const safeModeResponse = await checkAnswerlatticeSafeMode();
         if (safeModeResponse) return withArticleEmbeddingPrivateHeaders(safeModeResponse);
 
-        const rateLimitResponse = await checkAIOperationLimit();
+        const rateLimitResponse = await checkAIOperationLimit({ session });
         if (rateLimitResponse) return withArticleEmbeddingPrivateHeaders(rateLimitResponse);
 
         const actorId = resolveCurrentSessionUserDocumentId(session);

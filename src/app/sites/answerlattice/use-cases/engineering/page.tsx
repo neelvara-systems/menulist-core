@@ -39,7 +39,7 @@ export default async function EngineeringUseCasePage() {
                 'Verify the runtime status from the AnswerLattice dashboard.',
                 'Review fallback signals before publishing new approved answers.',
             ]}
-            primaryCta="Create workspace"
+            primaryCta="Request early access"
             secondaryCta="See 60-sec demo"
         />
     );

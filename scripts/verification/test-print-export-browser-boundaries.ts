@@ -98,6 +98,17 @@ async function testBrowserFileShareBoundary(): Promise<void> {
     setNavigator({
         canShare: () => true,
         share: async () => {
+            throw new DOMException('transient activation unavailable', 'NotAllowedError');
+        },
+    });
+    assert.equal(
+        await shareBrowserFile({ blob, filename: 'menu.pdf', title: 'Menu' }),
+        'unsupported',
+    );
+
+    setNavigator({
+        canShare: () => true,
+        share: async () => {
             throw new Error('share_failed');
         },
     });

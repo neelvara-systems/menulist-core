@@ -795,7 +795,7 @@ Use this only after approval:
 Build the complete MenuList Resources and AI discovery content layer as one release scope.
 
 Context:
-MenuList is public-business truth infrastructure for SMBs and restaurants. It helps owners keep one approved menu and business source current across QR codes, public pages, Google/menu links, shared links, screens, print/PDF assets, and customer-facing surfaces.
+Internally, MenuList is public-business truth infrastructure for SMBs and restaurants. Public resource copy must translate that category into owner language: MenuList helps an owner publish one approved customer link and keep supported MenuList QR, page, sharing, screen, and print outputs connected to that version. Google and other external destinations remain owner-placed links unless a verified integration proves otherwise.
 
 Do not position MenuList as a generic QR menu maker, generic AI restaurant software, feature-heavy SaaS dashboard, guaranteed SEO/ranking tool, or AI visibility guarantee tool.
 

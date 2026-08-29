@@ -4,7 +4,7 @@
 
 Printable Asset Templates turns MenuList print/download files into a dedicated owner workspace called **Assets**. The owner chooses what they need - table tent, single table card, counter sticker, entrance poster, feedback QR, flyer, gift certificate, front/back business card, ID card, invitation, postcard, product tag, campaign poster, full print menu, or complete Menu Kit - then chooses a finished template family and downloads the result. Editor-backed assets expose the 9-family catalog; full Print Menu exposes only its real unique PDF layouts until the full-menu PDF renderer owns all 9 families.
 
-The default path is still not a blank design tool. Owners choose a finished template and download it. For non-menu printable assets, desktop also offers a governed **Customize in editor** path backed by the shared Creative Editor document model. Owners can adjust copy and layout when needed, while QR destination, scan-safe QR rendering, front/back business-card frames, and MenuList attribution policy stay protected. QR/link source layers remain locked in the editor document. MenuList attribution is not stored as an editable canvas layer; it is applied at export time when the existing plan policy requires it.
+The default path is still not a blank design tool. Owners choose a finished template and download it. For non-menu printable assets, desktop also offers a governed **Customize design** path backed by the shared Creative Editor document model. Owners can adjust background, owned images, text, styles, Brand Kit values, and layout when needed, while QR destination, scan-safe QR rendering, front/back business-card frames, and MenuList attribution policy stay protected. QR/link source layers remain locked in the editor document. MenuList attribution is not stored as an editable canvas layer; it is applied at export time when the existing plan policy requires it.
 
 ## Why This Matters
 
@@ -30,7 +30,7 @@ The current Print Assets screen proves the workflow. The next system must make t
 | Not Included | Reason |
 | --- | --- |
 | Blank free-form editor | Too much owner responsibility and support risk. Governed customization starts from a finished print template. |
-| Font/color controls | Store color and logo already define brand identity. |
+| Unbounded design-suite surface | MenuList exposes only the controls needed to adapt an approved operational asset; the full campaign-creation surface remains in CampaignCue. |
 | Generated Storage uploads | Adds cost and cleanup burden. |
 | Print ordering marketplace | Separate operational business, not needed for this feature. |
 | Designer marketplace | Scope creep and support burden. |
@@ -50,8 +50,9 @@ first menu.”
 5. Owner clicks one template family.
 6. Desktop opens a modal and mobile opens a bottom sheet with the generated output preview already visible. Non-menu printable assets preview from the Creative Editor document renderer; Print Menu uses the generated menu PDF first-page image preview.
 7. Owner downloads the selected template as PDF or image. Business Card image download creates separate front and back PNG files; its PDF stays paired for print handoff. Complete Menu Kit remains a ZIP bundle.
-8. On desktop, owner can click **Customize in editor** for Table Tent, Single Card, Counter Sticker, Entrance Poster, Feedback QR, Flyer, Gift Certificate, Business Card, ID Card, Invitation, Postcard, Product Tag, or Campaign Poster. The template opens fullscreen with editable copy/layout and locked QR/link source layers. Business Card opens with front and back faces in one canvas, and edited image export downloads both side images. MenuList attribution is added only to the downloaded output when the existing plan policy requires it.
-9. MenuList creates the file locally and downloads it.
+8. On desktop, owner can click **Customize design** for Table Tent, Single Card, Counter Sticker, Entrance Poster, Feedback QR, Flyer, Gift Certificate, Business Card, ID Card, Invitation, Postcard, Product Tag, or Campaign Poster. The template opens fullscreen with the full asset visible, no protected layer selected, and only Background, Images, Text, Styles, and Brand Kit tools. Business Card opens with front and back faces in one canvas, and edited image export downloads both side images. MenuList attribution is added only to the downloaded output when the existing plan policy requires it.
+9. MenuList keeps a browser-local recovery draft, warns before a changed design is discarded or the browser page closes, and runs the shared readiness check before PDF or image output. A repeated download with the unchanged warning set is the explicit override.
+10. MenuList creates the file locally and downloads it.
 
 ## Route and Navigation
 
@@ -114,6 +115,10 @@ Each family is a finished layout system that can adapt to different business typ
 | Output parity | Desktop and mobile downloads must use the same template ID and renderer. |
 | No duplicate choices | If an asset renderer maps multiple families to the same output, the UI exposes only the unique supported family choices for that asset. |
 | Governed customization | Desktop customization must start from an approved template document and keep QR/link source layers locked. MenuList attribution must stay out of saved editor documents and be applied only at export time when policy requires it. |
+| MenuList editor scope | MenuList exposes Background, owned Images, Text, Styles, and Brand Kit only. CampaignCue retains the full creation rail and product-specific campaign actions. |
+| Safe initial state | Open with the asset fitted, the left drawer collapsed, and no layer selected. Protected layers remain discoverable in Layers but never become the default inspector target. |
+| Recovery and exit | Keep recovery drafts browser-local. A dirty Close or browser unload must warn before discarding; a pristine Close remains immediate. |
+| Download readiness | Both Print PDF and Image use the shared readiness issue scan before the first export attempt. |
 | Trust cue boundary | Use business identity, current-action copy, short link, and attribution. Do not add "official", "verified", "secure", "no spam", WhatsApp badge, or WhatsApp consent copy to normal MenuList page QR assets. |
 
 ## Branded QR Action Template Boundary

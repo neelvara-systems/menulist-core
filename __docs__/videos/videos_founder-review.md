@@ -27,7 +27,7 @@ Do not run paid distribution until the measurement gates in this review pass.
 
 Approved.
 
-MenuList should be positioned as public-business truth infrastructure for SMBs, not as:
+Internally, MenuList should be positioned as public-business truth infrastructure for SMBs. That category phrase is for doctrine and ecosystem explanation, not non-technical owner acquisition. Owner-facing work should lead with old or conflicting menu versions and one owner-approved customer link. MenuList is not positioned as:
 
 - a QR menu maker;
 - a generic AI restaurant tool;
@@ -37,7 +37,7 @@ MenuList should be positioned as public-business truth infrastructure for SMBs, 
 
 Evidence:
 
-- The master blueprint tells the design team that MenuList is not just a QR builder, not generic AI restaurant software, not a flashy SaaS dashboard, and is public-business truth infrastructure.
+- The master blueprint keeps public-business truth infrastructure as an internal category while requiring owner-facing work to show the stale-menu problem, owner approval, and one customer link instead of rendering the category phrase.
 - The videos index makes the same source-of-truth statement for the full folder.
 
 ### 2. Core Product Line

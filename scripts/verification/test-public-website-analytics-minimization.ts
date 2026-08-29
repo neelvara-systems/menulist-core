@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { normalizeGoogleSearchConsoleVerification } from '../../src/lib/analytics/preferences';
+import { normalizeGoogleAnalyticsMeasurementId, normalizeGoogleSearchConsoleVerification, normalizeMetaPixelId } from '../../src/lib/analytics/preferences';
 import {
     cleanPublicAnalyticsString,
     getPublicAnalyticsAttributionToken,
@@ -106,6 +106,12 @@ for (const source of [desktopAnalyticsSource, analyticsWizardSource, mobileAnaly
     assert.ok(!source.includes("tAnalytics('enhancedEcommerce')"));
     assert.ok(!source.includes("t('enhancedEcommerce')"));
 }
+for (const source of [desktopAnalyticsSource, mobileAnalyticsSource]) {
+    assert.ok(source.includes('normalizeGoogleAnalyticsMeasurementId'));
+    assert.ok(source.includes('normalizeGoogleSearchConsoleVerification'));
+    assert.ok(source.includes('normalizeMetaPixelId'));
+}
+assert.ok(mobileAnalyticsSource.includes('!areAnalyticsDraftsEqual(analyticsDraft, originalAnalyticsState)'));
 assert.ok(!analyticsWizardSource.includes('Track Orders & Sales'));
 assert.ok(!analyticsWizardSource.includes('See how much money you make'));
 assert.ok(!analyticsWizardSource.includes('How much money you make'));
@@ -143,6 +149,12 @@ assert.ok(googleAnalyticsSource.includes('gtag: (...args: unknown[]) => void;'))
 assert.ok(googleAnalyticsSource.includes('dataLayer: unknown[];'));
 assert.ok(!googleAnalyticsSource.includes('any[]'));
 
+assert.equal(normalizeGoogleAnalyticsMeasurementId(' g-test123 '), 'G-TEST123');
+assert.equal(normalizeGoogleAnalyticsMeasurementId('UA-12345'), undefined);
+assert.equal(normalizeGoogleAnalyticsMeasurementId('G-<script>'), undefined);
+assert.equal(normalizeMetaPixelId(' 1234567890 '), '1234567890');
+assert.equal(normalizeMetaPixelId('1234'), undefined);
+assert.equal(normalizeMetaPixelId('12345abc'), undefined);
 assert.equal(normalizeGoogleSearchConsoleVerification('abcDEF_123-xyz'), 'abcDEF_123-xyz');
 assert.equal(
     normalizeGoogleSearchConsoleVerification('<meta name="google-site-verification" content="abcDEF_123-xyz" />'),

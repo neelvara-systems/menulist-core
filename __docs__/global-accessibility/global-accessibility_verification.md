@@ -16,12 +16,17 @@ expand/collapse action and localized Home action (MLRC-109).
 - no maintained `src/app` viewport disables zoom;
 - raw TSX images under `src/app` and `src/components` have alternatives;
 - shared mobile keyboard, touch-target, back-label, and floating-label contracts remain present;
+- shared QR and mobile compliance policy sheets forward their visible titles to
+  the underlying dialog accessible name;
 - owner and website skip navigation remains wired;
 - desktop vertical and horizontal support-popover destinations remain native
   buttons instead of pointer-only clickable containers;
 - owner business settings, dashboard, support chat, reseller onboarding,
   digital-screen settings, activity history, AI search, knowledge base, drawer,
   and loading controls retain stable accessible names;
+- the desktop item editor's visible customer-visibility, availability, and best
+  seller labels remain natively associated with their named switches, without
+  duplicate pointer-only text handlers;
 - global focus and reduced-motion styles remain active;
 - known clickable-span and undersized-mobile-control regressions do not return;
 - global access-denied recovery copy uses readable punctuation instead of

@@ -1479,7 +1479,7 @@ export default function AiMenuManagerRoute() {
                                             size="small"
                                             type="text"
                                         >
-                                            Clear
+                                            Clear work area
                                         </Button>
                                     ) : null}
                                 </div>
@@ -1774,7 +1774,7 @@ export default function AiMenuManagerRoute() {
                                         Applies to the next message
                                     </Text>
                                     <Button disabled={submitting} onClick={clearComposerContext} size="small" type="text">
-                                        Clear
+                                        Clear message context
                                     </Button>
                                 </Space>
                             </div>

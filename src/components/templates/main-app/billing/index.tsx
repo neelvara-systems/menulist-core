@@ -406,6 +406,7 @@ function BillingPage() {
                             </Flex>
                         </Flex>
                         <Select
+                            aria-label="Billing store"
                             value={billingStoreId || undefined}
                             onChange={handleBillingStoreChange}
                             options={accessibleBillingStores.map((store: any) => ({

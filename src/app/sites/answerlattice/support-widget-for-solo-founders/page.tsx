@@ -46,7 +46,7 @@ export default async function SupportWidgetForSoloFoundersPage() {
                     'Keep screenshots explicit: upload or paste only.',
                     'Approve the first answers before relying on fallback.',
                 ]}
-                primaryCta="Create workspace"
+                primaryCta="Request early access"
             />
             <AnswerlatticeFooter basePath={basePath} />
         </>

@@ -6,6 +6,7 @@ const { Text } = Typography;
 interface ProjectConfirmModalProps {
     isOpen: boolean;
     actionType: 'reset' | 'delete' | null;
+    pending?: boolean;
     onCancel: () => void;
     onDelete: () => void;
     onReset: () => void;
@@ -16,6 +17,7 @@ interface ProjectConfirmModalProps {
 export const ProjectConfirmModal: React.FC<ProjectConfirmModalProps> = ({
     isOpen,
     actionType,
+    pending = false,
     onCancel,
     onDelete,
     onReset,
@@ -30,12 +32,16 @@ export const ProjectConfirmModal: React.FC<ProjectConfirmModalProps> = ({
             title={actionType === 'delete' ? `Delete ${offeringName}` : `Reset ${offeringName}`}
             centered
             open={isOpen}
-            onCancel={onCancel}
+            onCancel={pending ? undefined : onCancel}
+            closable={!pending}
+            keyboard={!pending}
+            maskClosable={!pending}
             width={550}
             footer={[
                 <Button
                     key="cancel"
                     onClick={onCancel}
+                    disabled={pending}
                 >
                     Cancel
                 </Button>,
@@ -45,6 +51,8 @@ export const ProjectConfirmModal: React.FC<ProjectConfirmModalProps> = ({
                         danger
                         type="primary"
                         onClick={onDelete}
+                        loading={pending}
+                        disabled={pending}
                     >
                         {fileCount > 0 ? `Delete ${offeringName} & ${fileCount} File${fileCount > 1 ? 's' : ''}` : `Delete ${offeringName}`}
                     </Button>
@@ -55,6 +63,8 @@ export const ProjectConfirmModal: React.FC<ProjectConfirmModalProps> = ({
                         ghost
                         type="primary"
                         onClick={onReset}
+                        loading={pending}
+                        disabled={pending}
                     >
                         Reset {offeringName}
                     </Button>

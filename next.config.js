@@ -155,6 +155,9 @@ const skipNextBuildChecks = process.env.NEXT_SKIP_NEXT_BUILD_CHECKS === '1';
 
 const nextConfig = {
     poweredByHeader: false,
+    // Keep parallel local product certification on a cookie-isolated loopback
+    // host. Next applies this only to development asset/request checks.
+    allowedDevOrigins: ['127.0.0.1'],
     generateBuildId: async () => deploymentBuildId,
     // Keep canonical slash redirects inside Proxy so environment/host-specific
     // security and crawler headers are preserved on the redirect response.

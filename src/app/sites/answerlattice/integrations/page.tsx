@@ -121,12 +121,12 @@ export default async function AnswerlatticeIntegrationsPage() {
                                 </AnswerlatticeLink>
                                 <AnswerlatticeLink
                                     basePath={basePath}
-                                    href="/get-started"
+                                    href="/early-access"
                                     data-answerlattice-event="integrations_cta_clicked"
                                     data-answerlattice-label="create_workspace"
                                     className="rounded-xl border border-white/[0.1] bg-white/[0.03] px-6 py-3 text-center text-sm font-semibold text-[#d6d6ef] transition hover:border-white/[0.2] hover:text-white"
                                 >
-                                    Create workspace
+                                    Request early access
                                 </AnswerlatticeLink>
                             </div>
                         </div>

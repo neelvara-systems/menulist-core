@@ -164,7 +164,7 @@ Team — here is our updated {offering} link:
 {menu_link}
 
 Please share this link with any customer who asks for the {offering}.
-This link always shows the latest version.
+This link opens our latest published version.
 ```
 
 ### Template 7: Staff Daily Replies

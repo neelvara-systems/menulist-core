@@ -172,7 +172,7 @@ import textTemplateLibrary from "./textTemplates.json";
 import styles from "./CreativeEditor.module.scss";
 
 type EditorTheme = "light" | "dark";
-type EditorToolId =
+export type CreativeEditorToolId =
     | "ai"
     | "templates"
     | "background"
@@ -187,6 +187,8 @@ type EditorToolId =
     | "barcode"
     | "myStuff"
     | "brandKit";
+export type CreativeEditorWorkspaceControl = "grid" | "preview" | "review" | "safeArea";
+type EditorToolId = CreativeEditorToolId;
 type InteractionMode = "selection" | "grab" | "draw" | "polygon";
 type LayerAction = "back" | "backward" | "forward" | "front";
 type AlignmentAction = "bottom" | "center" | "centerX" | "centerY" | "left" | "right" | "top";
@@ -494,6 +496,7 @@ export interface CreativeEditorHeaderAction {
     label: string;
     loading?: boolean;
     onClick: () => Promise<void> | void;
+    requiresReadiness?: boolean;
     tone?: CreativeEditorHeaderActionTone;
 }
 
@@ -502,12 +505,16 @@ export interface CreativeEditorProps {
     allowNewDesign?: boolean;
     allowRasterImports?: boolean;
     assetSources?: CreativeEditorAssetSource[];
+    availableToolIds?: CreativeEditorToolId[];
     aiToolActions?: CreativeEditorAiToolAction[];
+    enableBrowserDrafts?: boolean;
     chromeMode?: "embedded" | "full";
     designCueCommands?: CreativeEditorDesignCueCommand[];
     disabledExportFormats?: CreativeEditorExportFormat[];
     headerActions?: CreativeEditorHeaderAction[];
     initialDocument: CreativeEditorDocument;
+    initialDrawerCollapsed?: boolean;
+    initialSelectedLayerId?: string | null;
     onAiToolAction?: CreativeEditorAiToolHandler;
     onDesignCueApply?: CreativeEditorDesignCueApplyHandler;
     onDesignCueRequest?: CreativeEditorDesignCueHandler;
@@ -518,6 +525,7 @@ export interface CreativeEditorProps {
     sourceLabel?: string;
     templateSaveLabel?: string;
     templateSavePreview?: boolean;
+    workspaceControls?: CreativeEditorWorkspaceControl[];
 }
 
 const EDITOR_TOOLS: EditorTool[] = [
@@ -1431,12 +1439,16 @@ export default function CreativeEditor({
     allowNewDesign = true,
     allowRasterImports = true,
     assetSources = [],
+    availableToolIds,
     aiToolActions = [],
+    enableBrowserDrafts,
     chromeMode = "full",
     designCueCommands = [],
     disabledExportFormats = [],
     headerActions = [],
     initialDocument,
+    initialDrawerCollapsed = false,
+    initialSelectedLayerId,
     onAiToolAction,
     onDesignCueApply,
     onDesignCueRequest,
@@ -1447,18 +1459,37 @@ export default function CreativeEditor({
     sourceLabel = "Blank asset",
     templateSaveLabel = "Save as template",
     templateSavePreview = false,
+    workspaceControls,
 }: CreativeEditorProps) {
     const initialEditorDocument = useMemo(
         () => normalizeCreativeEditorDocumentPages(initialDocument),
         [initialDocument],
     );
-    const browserDraftsEnabled = chromeMode === "full";
+    const browserDraftsEnabled = enableBrowserDrafts ?? chromeMode === "full";
     const showInternalExportTools = chromeMode === "full";
     const showDesignManagementActions = chromeMode === "full";
     const showWorkspaceNavigationActions = chromeMode === "full";
     const initialBarcodeText = initialEditorDocument.metadata?.brand?.name || productLabel || "Product";
     const [documentValue, setDocumentValue] = useState<CreativeEditorDocument>(initialEditorDocument);
-    const [selectedId, setSelectedIdState] = useState(initialEditorDocument.elements[0]?.id || "");
+    const resolveInitialSelectedId = (documentValue: CreativeEditorDocument) => {
+        if (initialSelectedLayerId === null) return "";
+        if (typeof initialSelectedLayerId === "string") {
+            return documentValue.elements.some((element) => element.id === initialSelectedLayerId)
+                ? initialSelectedLayerId
+                : "";
+        }
+        return documentValue.elements[0]?.id || "";
+    };
+    const availableTools = useMemo(() => {
+        if (!availableToolIds?.length) return EDITOR_TOOLS;
+        const admittedIds = new Set(availableToolIds);
+        return EDITOR_TOOLS.filter((tool) => admittedIds.has(tool.id));
+    }, [availableToolIds]);
+    const visibleWorkspaceControls = useMemo(
+        () => new Set<CreativeEditorWorkspaceControl>(workspaceControls || ["grid", "safeArea", "review", "preview"]),
+        [workspaceControls],
+    );
+    const [selectedId, setSelectedIdState] = useState(() => resolveInitialSelectedId(initialEditorDocument));
     const [activeTool, setActiveTool] = useState<EditorToolId>("background");
     const [drawerSearch, setDrawerSearch] = useState("");
     const [recentInsertions, setRecentInsertions] = useState<DrawerSearchItem[]>([]);
@@ -1481,7 +1512,7 @@ export default function CreativeEditor({
     const [barcodeDisplayText, setBarcodeDisplayText] = useState(true);
     const [fabricReady, setFabricReady] = useState(false);
     const [historyState, setHistoryState] = useState({ version: 0 });
-    const [drawerCollapsed, setDrawerCollapsed] = useState(false);
+    const [drawerCollapsed, setDrawerCollapsed] = useState(initialDrawerCollapsed);
     const [showGrid, setShowGrid] = useState(false);
     const [showSafeArea, setShowSafeArea] = useState(false);
     const [inspectorOpen, setInspectorOpen] = useState(false);
@@ -1523,6 +1554,7 @@ export default function CreativeEditor({
     const shortcutCloseButtonRef = useRef<HTMLButtonElement | null>(null);
     const previewButtonRef = useRef<HTMLButtonElement | null>(null);
     const previewCloseButtonRef = useRef<HTMLButtonElement | null>(null);
+    const inspectorRef = useRef<HTMLElement | null>(null);
     const documentRef = useRef<CreativeEditorDocument>(initialEditorDocument);
     const selectedIdRef = useRef(selectedId);
     const interactionModeRef = useRef(interactionMode);
@@ -1560,6 +1592,14 @@ export default function CreativeEditor({
         points: Array<{ x: number; y: number }>;
         preview: CreativeFabricObject | null;
     }>({ points: [], preview: null });
+
+    useEffect(() => {
+        if (!inspectorOpen || rightPanelModeState !== "properties" || !readinessPanelOpen) return undefined;
+        const frameId = window.requestAnimationFrame(() => {
+            if (inspectorRef.current) inspectorRef.current.scrollTop = 0;
+        });
+        return () => window.cancelAnimationFrame(frameId);
+    }, [inspectorOpen, readinessPanelOpen, rightPanelModeState]);
 
     const selectedElement = useMemo(
         () => documentValue.elements.find((element) => element.id === selectedId) || null,
@@ -2665,7 +2705,8 @@ export default function CreativeEditor({
             });
             canvas.on("path:created", handlePathCreated);
             const bootstrapDocument = documentRef.current;
-            void loadDocument(bootstrapDocument, bootstrapDocument.elements[0]?.id || "").then(() => {
+            const bootstrapSelectedId = resolveInitialSelectedId(bootstrapDocument);
+            void loadDocument(bootstrapDocument, bootstrapSelectedId).then(() => {
                 if (!cancelled) {
                     fitZoomToStage();
                     setFabricReady(true);
@@ -2760,13 +2801,15 @@ export default function CreativeEditor({
         clearFloatingSelectionToolbar();
         setInspectorOpen(false);
         setRightPanelMode("properties");
+        setDrawerCollapsed(initialDrawerCollapsed);
         lastDesignCueRequestRef.current = null;
         setBarcodeText(initialEditorDocument.metadata?.brand?.name || productLabel || "Product");
         setBarcodeValue("https://example.com/");
         setBackgroundMode(initialEditorDocument.canvas.backgroundGradient?.enabled ? "gradient" : "solid");
         setDocumentValue(initialEditorDocument);
-        setSelectedId(initialEditorDocument.elements[0]?.id || "");
-        void loadDocument(initialEditorDocument, initialEditorDocument.elements[0]?.id || "").then(() => fitZoomToStage());
+        const nextInitialSelectedId = resolveInitialSelectedId(initialEditorDocument);
+        setSelectedId(nextInitialSelectedId);
+        void loadDocument(initialEditorDocument, nextInitialSelectedId).then(() => fitZoomToStage());
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [initialEditorDocument]);
 
@@ -3688,14 +3731,14 @@ export default function CreativeEditor({
         const nextElement = validatedCandidate.elements.find((item) => item.id === element.id);
         if (!nextElement) return;
         const reloadCanvas = shouldReloadCanvasForSelectedPatch(element, patch);
-        const didPatchCanvas = reloadCanvas ? false : applySelectedElementPatchToFabricObject(nextElement);
+        const didPatchCanvas = reloadCanvas ? false : applySelectedElementPatchToFabricObject(nextElement); const historyLabel = describeSelectedPatch(element, patch);
         commitDocument(
             validatedCandidate,
             true,
             element.id,
             reloadCanvas || !didPatchCanvas,
-            describeSelectedPatch(element, patch),
-        );
+            historyLabel,
+        ); setNotice(`${historyLabel}.`);
     };
 
     const updateCanvas = (patch: Partial<CreativeEditorDocument["canvas"]>) => {
@@ -3822,8 +3865,8 @@ export default function CreativeEditor({
                 backgroundGradient: undefined,
             },
             elements: nextElements,
-        }, true, selectedIdRef.current, true, `Applied ${preset.label} style`);
-        setNotice(`${preset.label} style applied.`);
+        }, true, selectedIdRef.current, true, `Applied ${preset.label}${preset.label.toLowerCase().endsWith("style") ? "" : " style"}`);
+        setNotice(`${preset.label}${preset.label.toLowerCase().endsWith("style") ? "" : " style"} applied.`);
     };
 
     const applyBrandProjectStyle = () => {
@@ -4052,7 +4095,7 @@ export default function CreativeEditor({
                     ...patch,
                 },
             },
-        }, true, selectedIdRef.current, true, "Changed watermark");
+        }, true, selectedIdRef.current, true, "Changed watermark"); setNotice(typeof patch.enabled === "boolean" ? `Visible watermark ${patch.enabled ? "enabled" : "disabled"}.` : "Visible watermark updated.");
     };
 
     const removeSelected = () => {
@@ -4156,7 +4199,7 @@ export default function CreativeEditor({
         canvas.setActiveObject(object);
         canvas.requestRenderAll();
         syncDocumentFromCanvas(true, "Moved layer");
-        scheduleFloatingSelectionToolbarRefresh();
+        scheduleFloatingSelectionToolbarRefresh(); setNotice({ back: "Layer moved to back.", backward: "Layer moved backward.", forward: "Layer moved forward.", front: "Layer moved to front." }[action]);
     };
 
     const reorderLayerByDrop = (draggedId: string, targetId: string) => {
@@ -4268,7 +4311,7 @@ export default function CreativeEditor({
         activeObject.setCoords();
         canvas.requestRenderAll();
         syncDocumentFromCanvas(true, "Aligned layer");
-        scheduleFloatingSelectionToolbarRefresh();
+        scheduleFloatingSelectionToolbarRefresh(); setNotice({ bottom: "Layer aligned bottom.", center: "Layer centered on background.", centerX: "Layer centered horizontally.", centerY: "Layer centered vertically.", left: "Layer aligned left.", right: "Layer aligned right.", top: "Layer aligned top." }[alignment]);
     };
 
     const distributeSelection = (axis: "x" | "y") => {
@@ -4351,8 +4394,8 @@ export default function CreativeEditor({
             },
             pages,
         }, true, templateDocument.elements[0]?.id || "", true, `Applied ${template?.label || "template"}`);
+        setNotice(`Applied ${template?.label || "template"} template.`);
     };
-
     const startBlankDesign = () => {
         if (blockIfActivePageLocked()) return;
         const createdAt = new Date().toISOString();
@@ -4768,7 +4811,7 @@ export default function CreativeEditor({
         }
         if (selectedElement.type === "qr") {
             updateSelected({ darkColor: color } as Partial<CreativeEditorElement>);
-        }
+        } else { setNotice("Select text, a shape, a line, or a QR code before applying a brand color."); }
     };
 
     const undo = () => {
@@ -5329,7 +5372,7 @@ export default function CreativeEditor({
         activeObject.setCoords();
         canvas.requestRenderAll();
         syncDocumentFromCanvas(true, "Flipped layer");
-        scheduleFloatingSelectionToolbarRefresh();
+        scheduleFloatingSelectionToolbarRefresh(); setNotice(axis === "x" ? "Layer flipped horizontally." : "Layer flipped vertically.");
     };
 
     const groupSelection = () => {
@@ -5420,7 +5463,7 @@ export default function CreativeEditor({
                         <section className={styles.drawerSection}>
                             <h3>Popular searches</h3>
                             <div className={styles.popularChipRow}>
-                                {["Frame", "Shape", "Line", "Rectangle", "Arrow", "Sticker"].map((label) => (
+                                {["Sale", "New", "Offer", "Callout", "Graphic", "Sticker"].map((label) => (
                                     <button key={label} onClick={() => setDrawerSearch(label.toLowerCase())} type="button">{label}</button>
                                 ))}
                             </div>
@@ -5574,22 +5617,22 @@ export default function CreativeEditor({
         if (activeTool === "background") {
             return (
                 <>
-                    <label className={styles.legacyCheckboxField}>
-                        <input checked readOnly type="checkbox" />
-                        Show background
-                    </label>
-                    <div className={styles.legacySegmented} role="group" aria-label="Background source">
-                        <button className={styles.legacySegmentButton} data-active="true" type="button">
+                    <div className={styles.legacySegmented}>
+                        <div
+                            className={`${styles.legacySegmentButton} ${styles.legacySegmentStatus}`}
+                            data-active="true" data-creative-editor-background-status="color"
+                            role="status"
+                        >
                             <LuPalette size={17} />
-                            Color
-                        </button>
+                            Color background
+                        </div>
                         <button
                             className={styles.legacySegmentButton}
                             onClick={() => setActiveTool("images")}
                             type="button"
                         >
                             <LuImage size={17} />
-                            Image
+                            Add image layer
                         </button>
                     </div>
                     <p className={styles.legacyHelperText}>Choose color type of background</p>
@@ -5817,10 +5860,6 @@ export default function CreativeEditor({
                     <button className={styles.textPrimaryAction} onClick={() => addTextPreset(TEXT_PRESETS[0])} type="button">
                         <LuType size={22} />
                         Add a text box
-                    </button>
-                    <button className={styles.textSecondaryAction} disabled title="Magic Write requires a product-owned AI contract." type="button">
-                        <LuSparkles size={18} />
-                        Magic Write
                     </button>
                     <section className={styles.drawerSection}>
                         <div className={styles.drawerSectionHeader}>
@@ -6395,7 +6434,7 @@ export default function CreativeEditor({
             ...selectedGradient,
             ...patch,
         };
-        if (patch.from || patch.to) {
+        if ((patch.from || patch.to) && !patch.stops) {
             const existingStops = normalizeGradientStops(selectedGradient);
             next.stops = existingStops.map((stop, index) => {
                 if (index === 0) return { ...stop, color: next.from };
@@ -6499,7 +6538,7 @@ export default function CreativeEditor({
 
         if (isGroupedSelection) {
             return (
-                <div aria-label="Selected group properties" className={styles.contextualToolbar} role="toolbar">
+                <div aria-label="Selected group properties" className={styles.contextualToolbar} onMouseDown={(event) => event.stopPropagation()} role="toolbar">
                     <button disabled={!canUngroupActiveSelection} onClick={ungroupSelection} type="button">
                         <LuUngroup size={16} />
                         Ungroup
@@ -6514,7 +6553,7 @@ export default function CreativeEditor({
 
         if (isMultiSelection) {
             return (
-                <div aria-label="Selected layers properties" className={styles.contextualToolbar} role="toolbar">
+                <div aria-label="Selected layers properties" className={styles.contextualToolbar} onMouseDown={(event) => event.stopPropagation()} role="toolbar">
                     <button disabled={!canGroupActiveSelection} onClick={groupSelection} type="button">
                         <LuGroup size={16} />
                         Group
@@ -6547,7 +6586,7 @@ export default function CreativeEditor({
 
         if (canEditTextElement(selectedElement)) {
             return (
-                <div aria-label="Selected text properties" className={styles.contextualToolbar} role="toolbar">
+                <div aria-label="Selected text properties" className={styles.contextualToolbar} onMouseDown={(event) => event.stopPropagation()} role="toolbar">
                     <select
                         aria-label="Font family"
                         disabled={selectedIsLocked}
@@ -6585,16 +6624,16 @@ export default function CreativeEditor({
                         />
                     </label>
                     <span className={styles.toolbarDivider} />
-                    <button data-active={selectedElement.fontWeight === "bold" || selectedElement.fontWeight === "800" ? "true" : "false"} disabled={selectedIsLocked} onClick={() => updateSelected({ fontWeight: selectedElement.fontWeight === "bold" || selectedElement.fontWeight === "800" ? "normal" : "800" } as Partial<CreativeEditorElement>)} type="button">
+                    <button aria-label="Bold" aria-pressed={selectedElement.fontWeight === "bold" || selectedElement.fontWeight === "800"} data-active={selectedElement.fontWeight === "bold" || selectedElement.fontWeight === "800" ? "true" : "false"} disabled={selectedIsLocked} onClick={() => updateSelected({ fontWeight: selectedElement.fontWeight === "bold" || selectedElement.fontWeight === "800" ? "normal" : "800" } as Partial<CreativeEditorElement>)} type="button">
                         <LuBold size={16} />
                     </button>
-                    <button data-active={selectedElement.fontStyle === "italic" ? "true" : "false"} disabled={selectedIsLocked} onClick={() => updateSelected({ fontStyle: selectedElement.fontStyle === "italic" ? "normal" : "italic" } as Partial<CreativeEditorElement>)} type="button">
+                    <button aria-label="Italic" aria-pressed={selectedElement.fontStyle === "italic"} data-active={selectedElement.fontStyle === "italic" ? "true" : "false"} disabled={selectedIsLocked} onClick={() => updateSelected({ fontStyle: selectedElement.fontStyle === "italic" ? "normal" : "italic" } as Partial<CreativeEditorElement>)} type="button">
                         <LuItalic size={16} />
                     </button>
-                    <button data-active={selectedElement.underline ? "true" : "false"} disabled={selectedIsLocked} onClick={() => updateSelected({ underline: !selectedElement.underline } as Partial<CreativeEditorElement>)} type="button">
+                    <button aria-label="Underline" aria-pressed={Boolean(selectedElement.underline)} data-active={selectedElement.underline ? "true" : "false"} disabled={selectedIsLocked} onClick={() => updateSelected({ underline: !selectedElement.underline } as Partial<CreativeEditorElement>)} type="button">
                         <LuUnderline size={16} />
                     </button>
-                    <button data-active={selectedElement.linethrough ? "true" : "false"} disabled={selectedIsLocked} onClick={() => updateSelected({ linethrough: !selectedElement.linethrough } as Partial<CreativeEditorElement>)} type="button">
+                    <button aria-label="Strikethrough" aria-pressed={Boolean(selectedElement.linethrough)} data-active={selectedElement.linethrough ? "true" : "false"} disabled={selectedIsLocked} onClick={() => updateSelected({ linethrough: !selectedElement.linethrough } as Partial<CreativeEditorElement>)} type="button">
                         <LuStrikethrough size={16} />
                     </button>
                     <span className={styles.toolbarDivider} />
@@ -6628,7 +6667,7 @@ export default function CreativeEditor({
 
         if (selectedElement.type === "image") {
             return (
-                <div aria-label="Selected image properties" className={styles.contextualToolbar} role="toolbar">
+                <div aria-label="Selected image properties" className={styles.contextualToolbar} onMouseDown={(event) => event.stopPropagation()} role="toolbar">
                     <button disabled={selectedIsLocked} onClick={() => replaceImageInputRef.current?.click()} type="button">
                         <LuFileImage size={16} />
                         Replace
@@ -6669,7 +6708,7 @@ export default function CreativeEditor({
         }
 
         return (
-            <div aria-label="Selected layer properties" className={styles.contextualToolbar} role="toolbar">
+            <div aria-label="Selected layer properties" className={styles.contextualToolbar} onMouseDown={(event) => event.stopPropagation()} role="toolbar">
                 <button onClick={openSelectionInspector} type="button">Edit</button>
                 <label className={styles.toolbarSwatch} title="Layer color">
                     <span style={{ background: selectedColorValue }} />
@@ -6984,15 +7023,15 @@ export default function CreativeEditor({
                         </div>
                     ) : null}
                     <div className={styles.textStyleRow} role="group" aria-label="Text style">
-                        <button
+                        <button aria-label="Bold" aria-pressed={selectedElement.fontWeight === "bold" || selectedElement.fontWeight === "800" || selectedElement.fontWeight === "700"}
                             data-active={selectedElement.fontWeight === "bold" || selectedElement.fontWeight === "800" || selectedElement.fontWeight === "700"}
                             disabled={selectedIsLocked}
-                            onClick={() => updateSelected({ fontWeight: selectedElement.fontWeight === "bold" ? "normal" : "bold" } as Partial<CreativeEditorElement>)}
+                            onClick={() => updateSelected({ fontWeight: selectedElement.fontWeight === "bold" || selectedElement.fontWeight === "800" || selectedElement.fontWeight === "700" ? "normal" : "bold" } as Partial<CreativeEditorElement>)}
                             type="button"
                         >
                             <LuBold size={16} />
                         </button>
-                        <button
+                        <button aria-label="Italic" aria-pressed={selectedElement.fontStyle === "italic"}
                             data-active={selectedElement.fontStyle === "italic"}
                             disabled={selectedIsLocked}
                             onClick={() => updateSelected({ fontStyle: selectedElement.fontStyle === "italic" ? "normal" : "italic" } as Partial<CreativeEditorElement>)}
@@ -7000,7 +7039,7 @@ export default function CreativeEditor({
                         >
                             <LuItalic size={16} />
                         </button>
-                        <button
+                        <button aria-label="Underline" aria-pressed={Boolean(selectedElement.underline)}
                             data-active={selectedElement.underline ? "true" : "false"}
                             disabled={selectedIsLocked}
                             onClick={() => updateSelected({ underline: !selectedElement.underline } as Partial<CreativeEditorElement>)}
@@ -7008,7 +7047,7 @@ export default function CreativeEditor({
                         >
                             <LuUnderline size={16} />
                         </button>
-                        <button
+                        <button aria-label="Strikethrough" aria-pressed={Boolean(selectedElement.linethrough)}
                             data-active={selectedElement.linethrough ? "true" : "false"}
                             disabled={selectedIsLocked}
                             onClick={() => updateSelected({ linethrough: !selectedElement.linethrough } as Partial<CreativeEditorElement>)}
@@ -7113,22 +7152,22 @@ export default function CreativeEditor({
                             <LuFileImage size={15} />
                             Replace
                         </button>
-                        <button disabled={selectedIsLocked} onClick={() => updateSelected({ fit: selectedElement.fit === "contain" ? "cover" : "contain" } as Partial<CreativeEditorElement>)} type="button">
+                        <button disabled={selectedIsLocked} onClick={() => { updateSelected({ fit: selectedElement.fit === "contain" ? "cover" : "contain" } as Partial<CreativeEditorElement>); setNotice(selectedElement.fit === "contain" ? "Image set to crop." : "Image fit inside frame."); }} type="button">
                             {selectedElement.fit === "contain" ? "Crop" : "Fit"}
                         </button>
-                        <button disabled={selectedIsLocked} onClick={() => flipSelected("x")} type="button">
+                        <button disabled={selectedIsLocked} onClick={() => { flipSelected("x"); setNotice("Image flipped horizontally."); }} type="button">
                             <LuFlipHorizontal2 size={15} />
                             Flip
                         </button>
                     </div>
                     <div className={styles.imageSmartActionGrid}>
-                        <button disabled={selectedIsLocked} onClick={fillSelectedImageToFrame} type="button">
+                        <button disabled={selectedIsLocked} onClick={() => { fillSelectedImageToFrame(); setNotice("Image filled the frame."); }} type="button">
                             Fill frame
                         </button>
-                        <button disabled={selectedIsLocked} onClick={fitSelectedImageInsideFrame} type="button">
+                        <button disabled={selectedIsLocked} onClick={() => { fitSelectedImageInsideFrame(); setNotice("Image fit inside frame."); }} type="button">
                             Fit inside
                         </button>
-                        <button disabled={selectedIsLocked} onClick={makeSelectedImageLarger} type="button">
+                        <button disabled={selectedIsLocked} onClick={() => { makeSelectedImageLarger(); setNotice("Image enlarged."); }} type="button">
                             Larger
                         </button>
                         <button disabled={selectedIsLocked} onClick={sendSelectedImageBehindText} type="button">
@@ -7138,6 +7177,7 @@ export default function CreativeEditor({
                     <label className={styles.selectField}>
                         <LuFilter size={16} />
                         <select
+                            aria-label="Image filter"
                             disabled={selectedIsLocked}
                             onChange={(event) => updateSelected({ filter: event.target.value as CreativeEditorImageFilter } as Partial<CreativeEditorElement>)}
                             value={selectedImageFilter}
@@ -7634,7 +7674,7 @@ export default function CreativeEditor({
             className={styles.editorShell}
             data-creative-editor-active-tool={activeTool}
             data-creative-editor-root="true"
-            data-creative-editor-layer-count={documentValue.elements.length}
+            data-creative-editor-layer-count={documentValue.elements.length} data-creative-editor-selected-layer-id={selectedId}
             data-chrome-mode={chromeMode}
             data-theme={theme}
             data-review-mode={reviewMode ? "true" : "false"}
@@ -7643,27 +7683,36 @@ export default function CreativeEditor({
         >
             <input
                 accept="application/json,.json"
+                aria-hidden="true"
                 className={styles.hiddenFileInput}
                 disabled={!allowDesignImport}
+                hidden
                 onChange={(event) => handleFileInput(event, "json")}
                 ref={jsonInputRef}
+                tabIndex={-1}
                 type="file"
             />
             <input
                 accept="image/png,image/jpeg,image/webp,image/gif"
+                aria-hidden="true"
                 className={styles.hiddenFileInput}
                 multiple
                 disabled={!allowRasterImports}
+                hidden
                 onChange={(event) => handleFileInput(event, "image")}
                 ref={imageInputRef}
+                tabIndex={-1}
                 type="file"
             />
             <input
                 accept="image/png,image/jpeg,image/webp,image/gif"
+                aria-hidden="true"
                 className={styles.hiddenFileInput}
                 disabled={!allowRasterImports}
+                hidden
                 onChange={handleReplaceImageInput}
                 ref={replaceImageInputRef}
+                tabIndex={-1}
                 type="file"
             />
             <header className={styles.topBar}>
@@ -7713,36 +7762,42 @@ export default function CreativeEditor({
                             <LuFileImage size={18} />
                         </button>
                     ) : null}
-                    <button
-                        aria-label="Toggle grid and rulers"
-                        className={styles.roundButton}
-                        data-creative-editor-action="toggle-grid"
-                        data-active={showGrid ? "true" : "false"}
-                        onClick={() => setShowGrid((value) => !value)}
-                        type="button"
-                    >
-                        <LuGrid size={18} />
-                    </button>
-                    <button
-                        aria-label="Toggle safe area guides"
-                        className={styles.roundButton}
-                        data-creative-editor-action="toggle-safe-area"
-                        data-active={showSafeArea ? "true" : "false"}
-                        onClick={() => setShowSafeArea((value) => !value)}
-                        type="button"
-                    >
-                        <LuShieldCheck size={18} />
-                    </button>
-                    <button
-                        aria-label="Review before download"
-                        className={styles.roundButton}
-                        data-creative-editor-action="review"
-                        data-active={readinessPanelOpen ? "true" : "false"}
-                        onClick={enterReviewMode}
-                        type="button"
-                    >
-                        <LuShieldCheck size={18} />
-                    </button>
+                    {visibleWorkspaceControls.has("grid") ? (
+                        <button
+                            aria-label="Toggle grid and rulers"
+                            className={styles.roundButton}
+                            data-creative-editor-action="toggle-grid"
+                            data-active={showGrid ? "true" : "false"}
+                            onClick={() => setShowGrid((value) => !value)}
+                            type="button"
+                        >
+                            <LuGrid size={18} />
+                        </button>
+                    ) : null}
+                    {visibleWorkspaceControls.has("safeArea") ? (
+                        <button
+                            aria-label="Toggle safe area guides"
+                            className={styles.roundButton}
+                            data-creative-editor-action="toggle-safe-area"
+                            data-active={showSafeArea ? "true" : "false"}
+                            onClick={() => setShowSafeArea((value) => !value)}
+                            type="button"
+                        >
+                            <LuShieldCheck size={18} />
+                        </button>
+                    ) : null}
+                    {visibleWorkspaceControls.has("review") ? (
+                        <button
+                            aria-label="Review before download"
+                            className={styles.roundButton}
+                            data-creative-editor-action="review"
+                            data-active={readinessPanelOpen ? "true" : "false"}
+                            onClick={enterReviewMode}
+                            type="button"
+                        >
+                            <LuShieldCheck size={18} />
+                        </button>
+                    ) : null}
                     {showDesignManagementActions && allowNewDesign ? (
                         <button aria-label="Reset design" className={styles.roundButton} onClick={startBlankDesign} type="button">
                             <LuRotateCcw size={18} />
@@ -7776,16 +7831,18 @@ export default function CreativeEditor({
                             <LuShare2 size={18} />
                         </button>
                     ) : null}
-                    <button
-                        aria-label="Preview"
-                        className={styles.roundButton}
-                        data-creative-editor-action="preview"
-                        onClick={openPreview}
-                        ref={previewButtonRef}
-                        type="button"
-                    >
-                        <LuEye size={18} />
-                    </button>
+                    {visibleWorkspaceControls.has("preview") ? (
+                        <button
+                            aria-label="Preview"
+                            className={styles.roundButton}
+                            data-creative-editor-action="preview"
+                            onClick={openPreview}
+                            ref={previewButtonRef}
+                            type="button"
+                        >
+                            <LuEye size={18} />
+                        </button>
+                    ) : null}
                     {showInternalExportTools ? (
                         <>
                             <button
@@ -7826,7 +7883,13 @@ export default function CreativeEditor({
                                     data-tone={action.tone || "default"}
                                     disabled={action.disabled || action.loading}
                                     key={action.id}
-                                    onClick={() => { void action.onClick(); }}
+                                    onClick={() => {
+                                        if (action.requiresReadiness) {
+                                            const issues = buildReadinessIssues(getLatestDocumentFromCanvas());
+                                            if (shouldPauseForReadiness(issues)) return;
+                                        }
+                                        void action.onClick();
+                                    }}
                                     type="button"
                                 >
                                     {action.icon}
@@ -7853,7 +7916,7 @@ export default function CreativeEditor({
                 data-review-mode={reviewMode ? "true" : "false"}
             >
                 <nav className={styles.toolRail} data-creative-editor-rail="true" aria-label="Editor tools">
-                    {EDITOR_TOOLS.map((tool) => {
+                    {availableTools.map((tool) => {
                         const Icon = tool.icon;
                         const active = !drawerCollapsed && activeTool === tool.id;
                         return (
@@ -7887,7 +7950,7 @@ export default function CreativeEditor({
                         </button>
                         <h2>{TOOL_LABELS[activeTool]}</h2>
                     </div>
-                    <label className={styles.drawerSearch}>
+                    <label className={styles.drawerSearch} hidden={!SEARCHABLE_EDITOR_TOOL_IDS.has(activeTool)}>
                         <LuFilter size={16} />
                         <input
                             aria-label={`Search ${TOOL_LABELS[activeTool]}`}
@@ -8071,6 +8134,7 @@ export default function CreativeEditor({
                     className={styles.inspector}
                     data-creative-editor-inspector="true"
                     data-panel-mode={rightPanelModeState}
+                    ref={inspectorRef}
                 >
                     {rightPanelModeState === "layers" ? renderLayerPanel() : (
                         <>
@@ -8090,13 +8154,18 @@ export default function CreativeEditor({
                     </div>
 
                     <div className={styles.quickActions}>
-                        <button disabled={!selectedElement || activePageLocked || selectedLayerFrameLocked} onClick={toggleSelectedLock} type="button">
+                        <button
+                            aria-label={selectedLayerFrameLocked ? "Selected layer is protected" : selectedLayerLocked ? "Unlock selected layer" : "Lock selected layer"}
+                            disabled={!selectedElement || activePageLocked || selectedLayerFrameLocked}
+                            onClick={toggleSelectedLock}
+                            type="button"
+                        >
                             {selectedLayerFrameLocked ? <LuLock size={20} /> : selectedLayerLocked ? <LuUnlock size={20} /> : <LuLock size={20} />}
                         </button>
-                        <button disabled={!selectedElement || selectedLayerReadOnly} onClick={duplicateSelected} type="button">
+                        <button aria-label="Duplicate selected layer" disabled={!selectedElement || selectedLayerReadOnly} onClick={duplicateSelected} type="button">
                             <LuCopy size={20} />
                         </button>
-                        <button disabled={!selectedElement || selectedLayerReadOnly} onClick={removeSelected} type="button">
+                        <button aria-label="Delete selected layer" disabled={!selectedElement || selectedLayerReadOnly} onClick={removeSelected} type="button">
                             <LuTrash2 size={20} />
                         </button>
                     </div>
@@ -8168,13 +8237,13 @@ export default function CreativeEditor({
                     <div className={`${styles.inspectorSection} ${styles.alignmentInspectorSection}`}>
                         <h3>Alignment With Background</h3>
                         <div className={styles.alignIconRow}>
-                            <button disabled={!selectedElement || selectedLayerReadOnly} onClick={() => alignSelected("left")} type="button"><LuAlignStartVertical size={21} /></button>
-                            <button disabled={!selectedElement || selectedLayerReadOnly} onClick={() => alignSelected("centerX")} type="button"><LuAlignCenterVertical size={21} /></button>
-                            <button disabled={!selectedElement || selectedLayerReadOnly} onClick={() => alignSelected("right")} type="button"><LuAlignEndVertical size={21} /></button>
-                            <button disabled={!selectedElement || selectedLayerReadOnly} onClick={() => alignSelected("center")} type="button"><LuAlignCenter size={21} /></button>
-                            <button disabled={!selectedElement || selectedLayerReadOnly} onClick={() => alignSelected("top")} type="button"><LuAlignStartHorizontal size={21} /></button>
-                            <button disabled={!selectedElement || selectedLayerReadOnly} onClick={() => alignSelected("centerY")} type="button"><LuAlignHorizontalJustifyCenter size={21} /></button>
-                            <button disabled={!selectedElement || selectedLayerReadOnly} onClick={() => alignSelected("bottom")} type="button"><LuAlignEndHorizontal size={21} /></button>
+                            <button aria-label="Align selected layer to left edge" disabled={!selectedElement || selectedLayerReadOnly} onClick={() => alignSelected("left")} type="button"><LuAlignStartVertical size={21} /></button>
+                            <button aria-label="Center selected layer horizontally" disabled={!selectedElement || selectedLayerReadOnly} onClick={() => alignSelected("centerX")} type="button"><LuAlignCenterVertical size={21} /></button>
+                            <button aria-label="Align selected layer to right edge" disabled={!selectedElement || selectedLayerReadOnly} onClick={() => alignSelected("right")} type="button"><LuAlignEndVertical size={21} /></button>
+                            <button aria-label="Center selected layer on background" disabled={!selectedElement || selectedLayerReadOnly} onClick={() => alignSelected("center")} type="button"><LuAlignCenter size={21} /></button>
+                            <button aria-label="Align selected layer to top edge" disabled={!selectedElement || selectedLayerReadOnly} onClick={() => alignSelected("top")} type="button"><LuAlignStartHorizontal size={21} /></button>
+                            <button aria-label="Center selected layer vertically" disabled={!selectedElement || selectedLayerReadOnly} onClick={() => alignSelected("centerY")} type="button"><LuAlignHorizontalJustifyCenter size={21} /></button>
+                            <button aria-label="Align selected layer to bottom edge" disabled={!selectedElement || selectedLayerReadOnly} onClick={() => alignSelected("bottom")} type="button"><LuAlignEndHorizontal size={21} /></button>
                         </div>
                     </div>
 
@@ -8341,6 +8410,7 @@ export default function CreativeEditor({
                                         value={stop.offset}
                                     />
                                     <button
+                                        aria-label={`Remove gradient stop ${index + 1}`}
                                         disabled={!canGradientElement(selectedElement) || selectedElement.locked || !selectedGradient.enabled || selectedGradientStops.length <= 2}
                                         onClick={() => removeGradientStop(index)}
                                         type="button"
@@ -8424,6 +8494,7 @@ export default function CreativeEditor({
                         <label className={styles.selectField}>
                             <LuFilter size={16} />
                             <select
+                                aria-label="Image filter adjustments"
                                 disabled={selectedElement?.type !== "image" || selectedElement.locked}
                                 onChange={(event) => updateSelected({ filter: event.target.value as CreativeEditorImageFilter } as Partial<CreativeEditorElement>)}
                                 value={selectedImageFilter}
@@ -8673,15 +8744,15 @@ export default function CreativeEditor({
                                         <textarea disabled={selectedElement.locked} onChange={(event) => updateSelected({ text: event.target.value } as Partial<CreativeEditorElement>)} value={selectedElement.text} />
                                     </label>
                                     <div className={styles.textStyleRow} role="group" aria-label="Text style">
-                                        <button
+                                        <button aria-label="Bold" aria-pressed={selectedElement.fontWeight === "bold" || selectedElement.fontWeight === "800" || selectedElement.fontWeight === "700"}
                                             data-active={selectedElement.fontWeight === "bold" || selectedElement.fontWeight === "800" || selectedElement.fontWeight === "700"}
                                             disabled={selectedElement.locked}
-                                            onClick={() => updateSelected({ fontWeight: selectedElement.fontWeight === "bold" ? "normal" : "bold" } as Partial<CreativeEditorElement>)}
+                                            onClick={() => updateSelected({ fontWeight: selectedElement.fontWeight === "bold" || selectedElement.fontWeight === "800" || selectedElement.fontWeight === "700" ? "normal" : "bold" } as Partial<CreativeEditorElement>)}
                                             type="button"
                                         >
                                             <LuBold size={16} />
                                         </button>
-                                        <button
+                                        <button aria-label="Italic" aria-pressed={selectedElement.fontStyle === "italic"}
                                             data-active={selectedElement.fontStyle === "italic"}
                                             disabled={selectedElement.locked}
                                             onClick={() => updateSelected({ fontStyle: selectedElement.fontStyle === "italic" ? "normal" : "italic" } as Partial<CreativeEditorElement>)}
@@ -8689,7 +8760,7 @@ export default function CreativeEditor({
                                         >
                                             <LuItalic size={16} />
                                         </button>
-                                        <button
+                                        <button aria-label="Underline" aria-pressed={Boolean(selectedElement.underline)}
                                             data-active={selectedElement.underline ? "true" : "false"}
                                             disabled={selectedElement.locked}
                                             onClick={() => updateSelected({ underline: !selectedElement.underline } as Partial<CreativeEditorElement>)}
@@ -8697,7 +8768,7 @@ export default function CreativeEditor({
                                         >
                                             <LuUnderline size={16} />
                                         </button>
-                                        <button
+                                        <button aria-label="Strikethrough" aria-pressed={Boolean(selectedElement.linethrough)}
                                             data-active={selectedElement.linethrough ? "true" : "false"}
                                             disabled={selectedElement.locked}
                                             onClick={() => updateSelected({ linethrough: !selectedElement.linethrough } as Partial<CreativeEditorElement>)}
@@ -8937,3 +9008,16 @@ export default function CreativeEditor({
         </section>
     );
 }
+
+const SEARCHABLE_EDITOR_TOOL_IDS = new Set<EditorToolId>([
+    "templates",
+    "illustrations",
+    "graphics",
+    "characters",
+    "images",
+    "text",
+    "styles",
+    "shapes",
+    "myStuff",
+    "brandKit",
+]);

@@ -42,15 +42,19 @@ const NAV_LINKS = [
     { label: 'Pricing', href: '/pricing' },
 ];
 
-const MOBILE_OTHER_LINKS = [
-    ...NAV_LINKS.filter((link) => link.href !== '/product'),
-    { label: 'Operating Guide', href: '/resources/answerlattice-operating-guide' },
-    { label: 'Pre-Onboarding', href: '/pre-onboarding' },
-    { label: 'Trust and Data Handling', href: '/trust' },
-    { label: 'Security', href: '/security' },
-    { label: 'Developers', href: '/developers' },
-    { label: 'Comparisons', href: '/comparisons' },
-    { label: 'Updates', href: '/updates' },
+const MOBILE_PRIMARY_LINKS = [
+    { label: 'Product overview', href: '/product' },
+    { label: 'See the demo', href: '/demo' },
+    { label: 'Prepare your sources', href: '/pre-onboarding' },
+    { label: 'Install AnswerLattice', href: '/install' },
+    { label: 'Who it is for', href: '/use-cases' },
+    { label: 'Pricing', href: '/pricing' },
+];
+
+const MOBILE_LEARN_LINKS = [
+    { label: 'Resources', href: '/resources' },
+    { label: 'Common questions', href: '/faq' },
+    { label: 'Trust and data handling', href: '/trust' },
     { label: 'Contact', href: '/contact' },
 ];
 
@@ -137,9 +141,10 @@ const MOBILE_NAV_ICONS: Record<string, IconType> = {
     '/developers': LuFileText,
     '/pre-onboarding': LuFileInput,
     '/updates': LuBell,
+    '/faq': LuHelpCircle,
     '/contact': LuMail,
     '/trust': LuShieldCheck,
-    '/get-started': LuRocket,
+    '/early-access': LuRocket,
 };
 
 const DRAWER_OPEN_DELAY_MS = 20;
@@ -437,10 +442,10 @@ export default function AnswerlatticeHeader({ basePath = '' }: { basePath?: stri
                                                 <LuShieldCheck size={30} aria-hidden />
                                             </div>
                                             <L
-                                                href="/get-started"
+                                                href="/early-access"
                                                 className="mt-4 inline-flex min-h-10 w-full items-center justify-center rounded-xl bg-teal-600 px-4 text-sm font-semibold text-white transition hover:bg-teal-500"
                                             >
-                                                Create workspace
+                                                Request early access
                                             </L>
                                         </div>
                                     </div>
@@ -577,12 +582,12 @@ export default function AnswerlatticeHeader({ basePath = '' }: { basePath?: stri
 
                     <div className="hidden items-center gap-3 xl:flex">
                         <L
-                            href="/get-started"
+                            href="/early-access"
                             data-answerlattice-event="header_cta_clicked"
                             data-answerlattice-label="create_workspace"
                             className="rounded-xl bg-teal-700 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-teal-800"
                         >
-                            Create workspace
+                            Request early access
                         </L>
                     </div>
 
@@ -634,64 +639,34 @@ export default function AnswerlatticeHeader({ basePath = '' }: { basePath?: stri
 
                         <nav className="al-mobile-drawer__nav flex-1 overflow-y-auto px-5 py-4" data-lenis-prevent-touch>
                             <div className="space-y-5">
-                                <section aria-label="Product navigation">
+                                <section aria-label="Start here">
                                     <p className="mb-2 px-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-[#6b6b8a]">
-                                        Product
+                                        Start here
                                     </p>
                                     <div className="space-y-1">
-                                        <L
-                                            href="/product"
-                                            className="flex min-h-12 items-center gap-3 rounded-xl px-2 py-2.5 text-[0.95rem] font-semibold text-[#f4f4ff] transition-colors hover:bg-white/[0.045]"
-                                            onClick={closeDrawer}
-                                        >
-                                            <MobileNavIcon icon={getMobileNavIcon('/product')} />
-                                            <span>Product overview</span>
-                                        </L>
-                                        {ANSWERLATTICE_PRODUCT_AREAS.map((area) => {
-                                            const Icon = getMobileNavIcon(area.href);
+                                        {MOBILE_PRIMARY_LINKS.map((link) => {
+                                            const Icon = getMobileNavIcon(link.href);
                                             return (
                                                 <L
-                                                    key={area.href}
-                                                    href={area.href}
+                                                    key={link.href}
+                                                    href={link.href}
                                                     className="flex min-h-12 items-center gap-3 rounded-xl px-2 py-2.5 text-[0.95rem] font-medium text-[#d6d6ef] transition-colors hover:bg-white/[0.045] hover:text-white"
                                                     onClick={closeDrawer}
                                                 >
                                                     <MobileNavIcon icon={Icon} />
-                                                    <span>{getProductAreaNavLabel(area)}</span>
+                                                    <span>{link.label}</span>
                                                 </L>
                                             );
                                         })}
                                     </div>
                                 </section>
 
-                                <section aria-label="Support tools" className="border-t border-white/[0.07] pt-4">
+                                <section aria-label="Learn and verify" className="border-t border-white/[0.07] pt-4">
                                     <p className="mb-2 px-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-[#6b6b8a]">
-                                        Support tools
+                                        Learn and verify
                                     </p>
                                     <div className="space-y-1">
-                                        {ANSWERLATTICE_SUPPORT_FEATURES.map((feature) => {
-                                            const Icon = getMobileNavIcon(feature.href);
-                                            return (
-                                                <L
-                                                    key={feature.href}
-                                                    href={feature.href}
-                                                    className="flex min-h-11 items-center gap-3 rounded-xl px-2 py-2 text-sm font-medium text-[#d6d6ef] transition-colors hover:bg-white/[0.045] hover:text-white"
-                                                    onClick={closeDrawer}
-                                                >
-                                                    <MobileNavIcon icon={Icon} />
-                                                    <span>{getProductFeatureNavLabel(feature)}</span>
-                                                </L>
-                                            );
-                                        })}
-                                    </div>
-                                </section>
-
-                                <section aria-label="More navigation" className="border-t border-white/[0.07] pt-4">
-                                    <p className="mb-2 px-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-[#6b6b8a]">
-                                        More
-                                    </p>
-                                    <div className="space-y-1">
-                                        {MOBILE_OTHER_LINKS.map((link) => {
+                                        {MOBILE_LEARN_LINKS.map((link) => {
                                             const Icon = getMobileNavIcon(link.href);
                                             return (
                                                 <L
@@ -715,14 +690,14 @@ export default function AnswerlatticeHeader({ basePath = '' }: { basePath?: stri
                                 <AnswerlatticeThemeSwitcher />
                             </div>
                             <L
-                                href="/get-started"
+                                href="/early-access"
                                 data-answerlattice-event="mobile_header_cta_clicked"
-                                data-answerlattice-label="create_workspace"
+                                data-answerlattice-label="build_first_10_answers"
                                 className="flex min-h-12 items-center justify-center gap-2 rounded-xl bg-teal-700 px-4 py-3 text-center text-sm font-semibold text-white transition-colors hover:bg-teal-800"
                                 onClick={closeDrawer}
                             >
                                 <LuRocket size={16} aria-hidden />
-                                Create workspace
+                                Request early access
                             </L>
                         </div>
                     </aside>

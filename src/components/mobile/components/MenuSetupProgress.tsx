@@ -14,18 +14,22 @@ import { LuListChecks } from 'react-icons/lu';
 import { Button, Card, Flex, Text } from '../antd';
 
 interface MobileMenuSetupProgressProps {
+    actionLoading?: boolean;
     hideUntilPublished?: boolean;
     onOpenMenu?: () => void;
     onOpenOfficialPage?: () => void;
+    onPublish?: () => void;
     onOpenShare?: () => void;
     project?: (Project & Record<string, unknown>) | null;
     storeDetails?: StoreDataType | null;
 }
 
 export default function MobileMenuSetupProgress({
+    actionLoading = false,
     hideUntilPublished = false,
     onOpenMenu,
     onOpenOfficialPage,
+    onPublish,
     onOpenShare,
     project,
     storeDetails,
@@ -51,6 +55,10 @@ export default function MobileMenuSetupProgress({
             onOpenShare?.();
             return;
         }
+        if (action.id === 'open_publish' && onPublish) {
+            onPublish();
+            return;
+        }
         if (action.id === 'open_public_presence' || action.id === 'open_public_photos') {
             onOpenOfficialPage?.();
             return;
@@ -72,7 +80,14 @@ export default function MobileMenuSetupProgress({
                 </Flex>
 
                 {summary.nextAction ? (
-                    <Button block color="primary" onClick={() => handleAction(summary.nextAction)} size="middle">
+                    <Button
+                        block
+                        color="primary"
+                        disabled={actionLoading}
+                        loading={actionLoading}
+                        onClick={() => handleAction(summary.nextAction)}
+                        size="middle"
+                    >
                         {summary.nextAction.label}
                     </Button>
                 ) : null}

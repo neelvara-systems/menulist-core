@@ -165,6 +165,7 @@ const BatchSetupView: React.FC<BatchSetupViewProps> = ({
                         </Checkbox>
                         <Flex align="center" gap={token.paddingXS}>
                             <Switch
+                                aria-label="Show only items without images"
                                 size="small"
                                 checked={showOnlyItemsWithoutImages}
                                 onChange={(checked) => {

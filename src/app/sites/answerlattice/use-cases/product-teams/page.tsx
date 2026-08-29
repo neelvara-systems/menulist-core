@@ -39,7 +39,7 @@ export default async function ProductTeamsUseCasePage() {
                 'Review stale-answer and coverage signals after releases.',
                 'Protect material billing, security, retention, and permission answers with repeatable tests.',
             ]}
-            primaryCta="Create workspace"
+            primaryCta="Request early access"
             secondaryCta="See 60-sec demo"
         />
     );

@@ -107,6 +107,17 @@ or a product-specific decision trail.
   positioning is stronger than implying replacement of a broader system.
 - Keep one coherent promise across website, product, sales, support, video, and
   partner material.
+- Separate internal category language from customer acquisition language. An
+  internal phrase may guide product doctrine, architecture, partner, investor,
+  or ecosystem positioning, but buyer-facing copy should translate it into the
+  customer's immediate problem, required action, and visible outcome. For
+  MenuList, `public-business truth infrastructure` stays internal; owners hear
+  about old menus, conflicting prices, one owner-approved customer link, and
+  the latest version they reviewed and published.
+- Avoid absolute freshness or propagation claims such as `always current`,
+  `customers always see`, or `update once everywhere`. Name the owner approval
+  and publish step, scope the claim to supported product outputs, and distinguish
+  owner-placed external links from verified integrations.
 - Never use guaranteed growth, ranking, revenue, conversion, or time-to-result
   claims without direct approved evidence.
 

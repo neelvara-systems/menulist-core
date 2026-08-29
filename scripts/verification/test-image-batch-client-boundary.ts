@@ -11,6 +11,7 @@ import {
     normalizeImageBatchJobForClient,
     selectLatestOwnerVisibleImageBatchJob,
     shouldApplyImageBatchListenerSnapshot,
+    shouldIgnoreImageBatchListenerAuthTeardown,
     toPersistedImageBatchProjectImage,
 } from '@lib/ai/imageBatchClientBoundary';
 import {
@@ -103,6 +104,9 @@ assert.equal(
     'A queued legacy callback must not replace a newer primary snapshot.',
 );
 assert.equal(shouldApplyImageBatchListenerSnapshot('primary', true), true);
+assert.equal(shouldIgnoreImageBatchListenerAuthTeardown('permission-denied', false), true);
+assert.equal(shouldIgnoreImageBatchListenerAuthTeardown('permission-denied', true), false);
+assert.equal(shouldIgnoreImageBatchListenerAuthTeardown('unavailable', false), false);
 
 const olderProcessingJob = {
     ...normalized,

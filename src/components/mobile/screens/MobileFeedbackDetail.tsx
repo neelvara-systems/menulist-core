@@ -251,6 +251,7 @@ export default function MobileFeedbackDetail({ expectedScope, feedback, onBack, 
                                 </Flex>
                             </Flex>
                             <TextArea
+                                aria-label={t('writeReply')}
                                 maxLength={500}
                                 onChange={setReplyText}
                                 placeholder={t('writeReply')}

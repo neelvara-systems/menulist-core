@@ -98,7 +98,7 @@ export default function TextCaseAction({
                     ].map((entry) => (
                         <Flex align="center" justify="space-between" key={entry.label}>
                             <Text>{entry.label}</Text>
-                            <Switch checked={entry.checked} onChange={entry.onChange} />
+                            <Switch aria-label={`Apply to ${entry.label.toLowerCase()}`} checked={entry.checked} onChange={entry.onChange} />
                         </Flex>
                     ))}
                 </Flex>

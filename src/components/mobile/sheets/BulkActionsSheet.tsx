@@ -49,7 +49,7 @@ interface BulkActionsSheetProps {
     businessType?: string;
     visible: boolean;
     onClose: () => void;
-    onApply: (updatedProject: Project, context?: { previousProject?: Project; successMessage?: string; updatedCount?: number }) => void;
+    onApply: (updatedProject: Project, context?: { previousProject?: Project; successMessage?: string; updatedCount?: number }) => Promise<void> | void;
     projectData: Project | null;
     initialAction?: BulkAction;
     initialSelectedIds?: string[];
@@ -555,7 +555,7 @@ export default function BulkActionsSheet({
                 ].filter(Boolean) as string[];
 
                 setWorkingProject(updated);
-                onApply(updated, {
+                await onApply(updated, {
                     previousProject,
                     successMessage: repairSummaryParts.join(' · '),
                     updatedCount: totalFixes,
@@ -566,7 +566,7 @@ export default function BulkActionsSheet({
                 if (partialProject) updated = partialProject;
                 if (partialProject || completedLanguageRepairs > 0) {
                     setWorkingProject(updated);
-                    onApply(updated, {
+                    await onApply(updated, {
                         previousProject,
                         successMessage: 'Repair stopped. Completed translations were saved.',
                         updatedCount: Math.max(completedLanguageRepairs, partialProject ? 1 : 0),
@@ -633,6 +633,7 @@ export default function BulkActionsSheet({
 
         Dialog.confirm({
             content: t('bulkActionConfirm', { action: actionLabel, count: selectedIds.size }),
+            title: actionLabel,
             onConfirm: async () => {
                 if (!workingProject) return;
                 setApplying(true);
@@ -653,7 +654,7 @@ export default function BulkActionsSheet({
                     }
 
                     setWorkingProject(updated);
-                    onApply(updated, { previousProject, updatedCount: selectedIds.size });
+                    await onApply(updated, { previousProject, updatedCount: selectedIds.size });
                     setSelectedIds(new Set());
                     setAction(null);
                     onClose();
@@ -821,6 +822,7 @@ export default function BulkActionsSheet({
 
         return (
             <Popup
+                aria-label={actionTitle}
                 bodyStyle={MENU_SHEET_BODY_STYLE}
                 destroyOnClose
                 onMaskClick={applying ? undefined : onClose}
@@ -974,26 +976,32 @@ export default function BulkActionsSheet({
     }
 
     const renderSelectionShortcut = (label: string, nextItems: ItemEntry[]) => (
-        <Flex
-            align="center"
-            gap={10}
+        <button
+            disabled={nextItems.length === 0}
             onClick={(event) => {
                 event.stopPropagation();
-                if (nextItems.length === 0) return;
                 selectItems(nextItems);
             }}
-            onPointerDown={(event) => event.stopPropagation()}
             style={{
+                alignItems: 'center',
+                background: 'transparent',
                 border: `1px solid ${token.colorBorderSecondary}`,
                 borderRadius: 10,
                 cursor: nextItems.length > 0 ? 'pointer' : 'not-allowed',
+                display: 'flex',
+                font: 'inherit',
+                gap: 10,
+                minHeight: 44,
                 opacity: nextItems.length > 0 ? 1 : 0.45,
                 padding: '9px 12px',
+                textAlign: 'left',
+                width: '100%',
             }}
+            type="button"
         >
             <LuCheck size={14} style={{ color: nextItems.length > 0 ? token.colorPrimary : token.colorTextQuaternary, flex: '0 0 auto' }} />
             <Text>{label}</Text>
-        </Flex>
+        </button>
     );
 
     const statusFilterContent = (
@@ -1006,16 +1014,25 @@ export default function BulkActionsSheet({
                     { key: 'inactive', label: t('hiddenFromMenu') },
                     { key: 'soldOut', label: availabilityLabels.unavailable },
                 ] as const).map((option) => (
-                    <Flex
-                        align="center"
-                        gap={10}
+                    <button
+                        aria-pressed={statusFilter === option.key}
                         key={option.key}
                         onClick={() => handleStatusFilterChange(option.key)}
                         style={{
+                            alignItems: 'center',
+                            background: 'transparent',
+                            border: 0,
                             borderRadius: 10,
                             cursor: 'pointer',
+                            display: 'flex',
+                            font: 'inherit',
+                            gap: 10,
+                            minHeight: 44,
                             padding: '10px 12px',
+                            textAlign: 'left',
+                            width: '100%',
                         }}
+                        type="button"
                     >
                         <Flex
                             align="center"
@@ -1031,7 +1048,7 @@ export default function BulkActionsSheet({
                             <LuCheckCheck size={11} />
                         </Flex>
                         <Text style={{ color: statusFilter === option.key ? token.colorPrimary : undefined }}>{option.label}</Text>
-                    </Flex>
+                    </button>
                 ))}
             </Flex>
             <Flex
@@ -1055,6 +1072,7 @@ export default function BulkActionsSheet({
 
     return (
         <Popup
+            aria-label={actionTitle}
             bodyStyle={MENU_SHEET_BODY_STYLE}
             destroyOnClose
             onMaskClick={onClose}
@@ -1190,6 +1208,7 @@ export default function BulkActionsSheet({
                                     </Flex>
                                 </Flex>
                                 <Select
+                                    aria-label={t('destinationCategory')}
                                     onChange={handleDestinationCategoryChange}
                                     options={destinationCategories}
                                     placeholder={t('chooseCategory')}
@@ -1304,13 +1323,6 @@ export default function BulkActionsSheet({
                                         title={(
                                             <Flex align="center" gap={8} justify="space-between" style={{ width: '100%' }}>
                                                 <Flex align="center" gap={8} style={{ flex: 1, minWidth: 0 }}>
-                                                    <div onClick={(event) => event.stopPropagation()}>
-                                                        <Checkbox
-                                                            checked={allCategorySelected}
-                                                            indeterminate={someCategorySelected}
-                                                            onChange={(checked) => toggleCategory(categoryName, checked)}
-                                                        />
-                                                    </div>
                                                     <Text strong>{categoryName}</Text>
                                                 </Flex>
                                                 <Tag color={selectedCount > 0 ? 'processing' : undefined} style={{ borderRadius: 999 }}>
@@ -1320,6 +1332,16 @@ export default function BulkActionsSheet({
                                         )}
                                     >
                                         <Flex gap={8} vertical>
+                                            <Checkbox
+                                                checked={allCategorySelected}
+                                                indeterminate={someCategorySelected}
+                                                onChange={(checked) => toggleCategory(categoryName, checked)}
+                                                style={{ minHeight: 44 }}
+                                            >
+                                                <Text>
+                                                    {allCategorySelected ? 'Deselect' : 'Select'} all items in {categoryName} ({categoryItems.length})
+                                                </Text>
+                                            </Checkbox>
                                             {categoryItems.map((item) => (
                                                 <Card
                                                     key={item.id}
@@ -1330,20 +1352,12 @@ export default function BulkActionsSheet({
                                                         margin: 0,
                                                     }}
                                                 >
-                                                    <Flex
-                                                        align="center"
-                                                        gap={10}
-                                                        justify="space-between"
-                                                        onClick={() => toggleItem(item.id)}
-                                                        style={{ cursor: 'pointer' }}
+                                                    <Checkbox
+                                                        checked={selectedIds.has(item.id)}
+                                                        onChange={() => toggleItem(item.id)}
+                                                        style={{ minHeight: 44, width: '100%' }}
                                                     >
                                                         <Flex align="center" gap={8} style={{ flex: 1, minWidth: 0 }}>
-                                                            <div onClick={(event) => event.stopPropagation()}>
-                                                                <Checkbox
-                                                                    checked={selectedIds.has(item.id)}
-                                                                    onChange={() => toggleItem(item.id)}
-                                                                />
-                                                            </div>
                                                             <Flex gap={4} style={{ flex: 1, minWidth: 0 }} vertical>
                                                                 <Text>{item.name}</Text>
                                                                 <Flex gap={8} wrap="wrap">
@@ -1353,7 +1367,7 @@ export default function BulkActionsSheet({
                                                                 </Flex>
                                                             </Flex>
                                                         </Flex>
-                                                    </Flex>
+                                                    </Checkbox>
                                                 </Card>
                                             ))}
                                         </Flex>

@@ -48,7 +48,7 @@ The July 29 baseline commands and the final August 2 gates ran with the reposito
 - Sensitive finding handling remains partial because filesystem access control and retention are operator-owned.
 - MenuList CSP mapping covers the report boundary, not complete browser-header deployment evidence.
 - Answerlattice governance mapping is partial rather than an end-to-end runtime claim.
-- CampaignCue, SignalDesk, and MyCodex are registered-only.
+- CampaignCue and SignalDesk are registered-only; MyCodex has focused partial private-console boundary evidence.
 - Neelvara has no focused security verifier in Phase one.
 
 ## Why the Manifest Still Starts at `not-run`

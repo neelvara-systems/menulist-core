@@ -13,6 +13,7 @@
 import { FEATURE_FLAGS } from '@config/features';
 import { ANSWERLATTICE_CUSTOMER_LANGUAGE } from '@constant/answerlattice/customerLanguage';
 import { useMutationProposals } from '@hook/answerlattice/useMutationProposals';
+import { useEntities } from '@hook/answerlattice/useEntities';
 import { useClientAuthSession } from '@hook/useClientAuthSession';
 import { normalizeAnswerlatticePublicCitationUrl } from '@lib/answerlattice/publicAnswerContracts';
 import type { AnswerlatticeGovernanceEditedContent } from '@lib/answerlattice/governanceContracts';
@@ -21,13 +22,14 @@ import type {
     AnswerlatticeProposalImpactResponse,
 } from '@lib/answerlattice/proposalImpactContracts';
 import { ANSWERLATTICE_CANONICAL_EVIDENCE_CONSTRAINTS, AnswerlatticeMutationProposal } from '@type/answerlattice';
-import { Alert, Badge, Button, Card, Empty, Flex, Form, Grid, Input, List, Modal, Popconfirm, Space, Tag, Typography, theme } from 'antd';
+import { Alert, Badge, Button, Card, Empty, Flex, Form, Grid, Input, List, Modal, Popconfirm, Select, Space, Tag, Typography, theme } from 'antd';
 import { useCallback, useState } from 'react';
 import { LuCheck, LuFileCheck, LuGitCompare, LuMinus, LuPlus, LuRefreshCw, LuSparkles, LuX } from 'react-icons/lu';
 
 const { Text, Title } = Typography;
 const { TextArea } = Input;
 const ACTION_BUTTON_STYLE = { minHeight: 44 };
+type DraftApprovalFormValues = AnswerlatticeGovernanceEditedContent & { entityIds: string[] };
 
 const MUTATION_TYPE_COLORS: Record<string, string> = {
     content_refinement: 'blue',
@@ -388,7 +390,12 @@ export default function MutationProposalReview() {
         session?.tId || 0,
         session?.sId || 0,
     );
-    const [draftForm] = Form.useForm();
+    const { entities, loading: entitiesLoading } = useEntities(
+        session?.tId || 0,
+        session?.sId || 0,
+        'entities_only',
+    );
+    const [draftForm] = Form.useForm<DraftApprovalFormValues>();
     const [draftProposal, setDraftProposal] = useState<AnswerlatticeMutationProposal | null>(null);
     const [publishing, setPublishing] = useState(false);
     const [regeneratingId, setRegeneratingId] = useState<string | null>(null);
@@ -399,6 +406,7 @@ export default function MutationProposalReview() {
         setDraftProposal(proposal);
         draftForm.setFieldsValue({
             title: proposal.suggestedChange?.draftTitle || '',
+            entityIds: proposal.relatedEntityIds,
             structuredSummary: proposal.suggestedChange?.structuredSummary || '',
             detailedExplanation: proposal.suggestedChange?.detailedExplanation || '',
             edgeCases: proposal.suggestedChange?.edgeCases || '',
@@ -417,17 +425,18 @@ export default function MutationProposalReview() {
 
     const publishDraft = useCallback(async () => {
         if (!draftProposal) return;
-        let values: AnswerlatticeGovernanceEditedContent;
+        let values: DraftApprovalFormValues;
         try {
             values = await draftForm.validateFields();
         } catch {
             return;
         }
         const approvedBy = String(session?.user?.email || session?.uId || 'answerlattice_owner');
+        const { entityIds, ...editedContent } = values;
 
         setPublishing(true);
         try {
-            await approveDraft(draftProposal.id, values, approvedBy);
+            await approveDraft(draftProposal.id, editedContent, entityIds, approvedBy);
             closeDraftModal();
         } finally {
             setPublishing(false);
@@ -446,10 +455,11 @@ export default function MutationProposalReview() {
     const handlePreviewImpact = useCallback(async (
         proposal: AnswerlatticeMutationProposal,
         editedContent?: AnswerlatticeGovernanceEditedContent,
+        entityIds?: string[],
     ) => {
         setPreviewingId(proposal.id);
         try {
-            const result = await previewImpact(proposal.id, editedContent);
+            const result = await previewImpact(proposal.id, editedContent, entityIds);
             setImpactResult(result);
         } catch {
             setImpactResult(null);
@@ -460,13 +470,14 @@ export default function MutationProposalReview() {
 
     const previewEditedDraft = useCallback(async () => {
         if (!draftProposal) return;
-        let values: AnswerlatticeGovernanceEditedContent;
+        let values: DraftApprovalFormValues;
         try {
             values = await draftForm.validateFields();
         } catch {
             return;
         }
-        await handlePreviewImpact(draftProposal, values);
+        const { entityIds, ...editedContent } = values;
+        await handlePreviewImpact(draftProposal, editedContent, entityIds);
     }, [draftForm, draftProposal, handlePreviewImpact]);
 
     if (!FEATURE_FLAGS.ENABLE_ANSWERLATTICE_SIGNAL_MUTATION) {
@@ -522,6 +533,7 @@ export default function MutationProposalReview() {
                 open={Boolean(draftProposal)}
                 onCancel={closeDraftModal}
                 destroyOnHidden
+                forceRender
                 styles={{
                     body: {
                         maxHeight: isMobile ? 'calc(100dvh - 168px)' : 'calc(100vh - 220px)',
@@ -556,6 +568,34 @@ export default function MutationProposalReview() {
                 ]}
             >
                 <Form form={draftForm} layout="vertical">
+                    <Form.Item
+                        name="entityIds"
+                        label="Product Topics"
+                        extra="Choose the precise topic this trusted answer governs. This prevents unrelated answers from competing for the same scope."
+                        rules={[
+                            { required: true, message: 'Choose at least one Product Topic' },
+                            {
+                                validator: (_, value) => Array.isArray(value) && value.length <= 25
+                                    ? Promise.resolve()
+                                    : Promise.reject(new Error('Use at most 25 Product Topics')),
+                            },
+                        ]}
+                    >
+                        <Select
+                            mode="multiple"
+                            loading={entitiesLoading}
+                            maxCount={25}
+                            optionFilterProp="label"
+                            placeholder="Select Product Topics"
+                            options={entities
+                                .filter(entity => entity.status !== 'deprecated')
+                                .sort((left, right) => left.name.localeCompare(right.name))
+                                .map(entity => ({
+                                    value: entity.id,
+                                    label: `${entity.name} (${entity.type})`,
+                                }))}
+                        />
+                    </Form.Item>
                     <Form.Item
                         name="title"
                         label="Title"

@@ -182,7 +182,7 @@ export default function OwnerBusinessAssistantMonitor() {
             <Text type="secondary">Internal answer quality, support gaps, feedback, and cost view.</Text>
           </div>
           <Space wrap>
-            <Button href="/transactions">Owner Transactions</Button>
+            <Button href="/platform/cost-posture">Cost Posture</Button>
             <Button href="/ops">Ops Control Room</Button>
             <Button onClick={() => void loadData()}>Refresh</Button>
           </Space>

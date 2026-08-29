@@ -31,11 +31,13 @@ import {
     createWorkloadIdentityFirestore,
     createWorkloadIdentityStorageAdmin,
 } from '@lib/google/workloadIdentityFirebaseServices';
+import { normalizeAnswerlatticeFirestoreEmulatorHost } from './answerlatticeEmulatorPorts';
 
 const ANSWERLATTICE_APP_NAME = 'answerlattice-admin';
 const DEFAULT_APP_NAME = '[DEFAULT]';
 const isAnswerlatticeEmulator = process.env.FUNCTIONS_EMULATOR === 'true'
     || Boolean(process.env.FIRESTORE_EMULATOR_HOST)
+    || Boolean(process.env.ANSWERLATTICE_FIRESTORE_EMULATOR_HOST)
     || Boolean(process.env.FIREBASE_AUTH_EMULATOR_HOST)
     || Boolean(process.env.FIREBASE_STORAGE_EMULATOR_HOST);
 
@@ -269,6 +271,15 @@ const answerlatticeFirestoreAdmin = answerlatticeAdminApp
             ? getAdminFirestore(answerlatticeAdminApp, answerlatticeFirestoreDatabaseId)
             : getAdminFirestore(answerlatticeAdminApp)))
     : null;
+const answerlatticeFirestoreEmulatorHost = process.env.NODE_ENV === 'production'
+    ? null
+    : normalizeAnswerlatticeFirestoreEmulatorHost(process.env.ANSWERLATTICE_FIRESTORE_EMULATOR_HOST);
+if (answerlatticeFirestoreAdmin && answerlatticeFirestoreEmulatorHost) {
+    answerlatticeFirestoreAdmin.settings({
+        host: answerlatticeFirestoreEmulatorHost,
+        ssl: false,
+    });
+}
 if (answerlatticeAdminApp && answerlatticeFirestoreAdmin) {
     registerFirebaseFirestoreCompatInstance(answerlatticeAdminApp, answerlatticeFirestoreAdmin);
 }

@@ -1,10 +1,11 @@
 import getActiveSession from "@lib/auth/getActiveSession";
+import { getProjectDeleteSafeUiMessage } from "@lib/errors/projectDeleteErrors";
 import { getSafeUiErrorMessage } from "@lib/errors/uiErrorMessages";
 import { secureError } from "@lib/security/secureLogger";
 import { startLoader, stopLoader } from "@reduxSlices/loader";
 import { showErrorToast } from "@reduxSlices/toast";
 import { reduxStore } from "@reduxStore/index";
-import { getBoundedErrorName } from '@lib/monitoring/boundedLogContext';
+import { getBoundedErrorCode, getBoundedErrorName } from '@lib/monitoring/boundedLogContext';
 import {
     createDalLoaderRequestId,
     getDalFunctionName,
@@ -28,12 +29,15 @@ export const apiCallComposerClient = async <T>(fn: DalOperation<T>, ...args: unk
         return response;
     } catch (error) {
         const fallbackMessage = 'Could not load data. Please try again.';
-        secureError('[DAL Client] API call failed', new Error('dal_client_call_failed'), {
-            functionName,
-            errorName: getBoundedErrorName(error) || typeof error,
-            params: summarizeDalArgs(args),
-            withLoader: true,
-        });
+        const expectedProjectDeleteMessage = getProjectDeleteSafeUiMessage(getBoundedErrorCode(error));
+        if (!expectedProjectDeleteMessage) {
+            secureError('[DAL Client] API call failed', new Error('dal_client_call_failed'), {
+                functionName,
+                errorName: getBoundedErrorName(error) || typeof error,
+                params: summarizeDalArgs(args),
+                withLoader: true,
+            });
+        }
         reduxStore.dispatch(showErrorToast(getSafeUiErrorMessage(error, fallbackMessage)));
         throw error;
     } finally {

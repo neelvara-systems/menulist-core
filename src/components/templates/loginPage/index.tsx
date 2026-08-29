@@ -31,9 +31,9 @@ import { Button, Divider, Flex, Form, Input, Space, theme, Typography } from "an
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { getSession, signIn, useSession } from "next-auth/react";
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type ComponentProps, type PointerEvent as ReactPointerEvent } from "react";
 import { FcGoogle } from "react-icons/fc";
-import { LuLock, LuMoon, LuSun, LuUser } from "react-icons/lu";
+import { LuEye, LuEyeOff, LuLock, LuMoon, LuSun, LuUser } from "react-icons/lu";
 import { useAppDispatch } from "src/hooks/useAppDispatch";
 import styles from './loginPage.module.scss';
 
@@ -90,6 +90,32 @@ const LOGIN_ERRORS = {
   "UNREGISTRED": "email-not-registred",
 }
 const { Text } = Typography;
+
+const AccessiblePasswordInput = (props: ComponentProps<typeof Input>) => {
+  const [passwordVisible, setPasswordVisible] = useState(false);
+  const visibilityLabel = passwordVisible ? 'Hide password' : 'Show password';
+
+  return (
+    <Input
+      {...props}
+      type={passwordVisible ? 'text' : 'password'}
+      suffix={(
+        <Button
+          aria-label={visibilityLabel}
+          aria-pressed={passwordVisible}
+          htmlType="button"
+          icon={passwordVisible ? <LuEyeOff /> : <LuEye />}
+          onClick={() => setPasswordVisible((visible) => !visible)}
+          onPointerDown={(event) => event.preventDefault()}
+          size="small"
+          title={visibilityLabel}
+          type="text"
+        />
+      )}
+    />
+  );
+};
+
 const CLAIM_ACCOUNT_SETUP_FAILED_MESSAGE = 'Failed to set up account';
 const LOGIN_FAILED_MESSAGE = 'Login failed. Please check your details and try again.';
 const OAUTH_CALLBACK_FAILED_MESSAGE = 'Google sign-in could not be completed. Please try again.';
@@ -799,7 +825,11 @@ function LoginPage() {
       }
 
       dispatch(stopLoader(requestId))
-      router.push(getPostLoginRedirect())
+      // Start the authenticated app from a fresh server/session boundary. A soft
+      // transition can retain the pre-login SessionProvider state and leave
+      // role-routed accounts (for example resellers) on the loading shell until
+      // the browser is refreshed manually.
+      window.location.assign(getPostLoginRedirect())
     } catch {
       dispatch(stopLoader(requestId))
       dispatch(showErrorToast("An error occurred during sign in"));
@@ -843,15 +873,22 @@ function LoginPage() {
         )}
       </span>
       <h3 className={`${styles.heading}`} style={{ color: statusColor }}>{statusText}</h3>
-      <h1 onClick={() => router.push(getLoginHomeRoute())} className={`heading ${styles.heading} ${styles.title}`}>
-        {isAnswerlatticeExperience ? (
-          <span className={styles.brandTitleText}>AnswerLattice</span>
-        ) : (
-          <BrandWordmark
-            showLogo={false}
-            textClassName={styles.brandTitleText}
-          />
-        )}
+      <h1 className={`heading ${styles.heading} ${styles.title}`}>
+        <button
+          aria-label={`Go to ${loginProductName} home`}
+          className={styles.cardBrandButton}
+          onClick={() => router.push(getLoginHomeRoute())}
+          type="button"
+        >
+          {isAnswerlatticeExperience ? (
+            <span className={styles.brandTitleText}>AnswerLattice</span>
+          ) : (
+            <BrandWordmark
+              showLogo={false}
+              textClassName={styles.brandTitleText}
+            />
+          )}
+        </button>
       </h1>
       <div className={styles.subHeading} style={{ color: subHeadingColor }}>{subHeading}</div>
     </>
@@ -972,7 +1009,7 @@ function LoginPage() {
                     name="password"
                     rules={[{ required: true, message: 'Please choose a password!' }, { min: 6, message: 'Password must be at least 6 characters' }]}
                   >
-                    <Input.Password className={styles.inputElement} size="large" prefix={<LuLock className="site-form-item-icon" />} allowClear placeholder="Choose a password" />
+                    <AccessiblePasswordInput className={styles.inputElement} size="large" prefix={<LuLock className="site-form-item-icon" />} allowClear placeholder="Choose a password" />
                   </Form.Item>
                   <Form.Item
                     className={styles.formItem}
@@ -988,7 +1025,7 @@ function LoginPage() {
                       }),
                     ]}
                   >
-                    <Input.Password className={styles.inputElement} size="large" prefix={<LuLock className="site-form-item-icon" />} allowClear placeholder="Confirm password" />
+                    <AccessiblePasswordInput className={styles.inputElement} size="large" prefix={<LuLock className="site-form-item-icon" />} allowClear placeholder="Confirm password" />
                   </Form.Item>
                   <Space direction="vertical" align="center" style={{ width: '100%' }}>
                     <Button type="primary" size="large" htmlType="submit" style={{ width: 200 }}>Create Account</Button>
@@ -1011,7 +1048,7 @@ function LoginPage() {
                     name="password"
                     rules={[{ required: true, message: 'Please choose a passcode!' }, { min: 6, message: 'Passcode must be at least 6 characters' }]}
                   >
-                    <Input.Password className={styles.inputElement} size="large" prefix={<LuLock className="site-form-item-icon" />} allowClear placeholder="Choose passcode" />
+                    <AccessiblePasswordInput className={styles.inputElement} size="large" prefix={<LuLock className="site-form-item-icon" />} allowClear placeholder="Choose passcode" />
                   </Form.Item>
                   <Form.Item
                     className={styles.formItem}
@@ -1027,7 +1064,7 @@ function LoginPage() {
                       }),
                     ]}
                   >
-                    <Input.Password className={styles.inputElement} size="large" prefix={<LuLock className="site-form-item-icon" />} allowClear placeholder="Confirm passcode" />
+                    <AccessiblePasswordInput className={styles.inputElement} size="large" prefix={<LuLock className="site-form-item-icon" />} allowClear placeholder="Confirm passcode" />
                   </Form.Item>
                   <Space direction="vertical" align="center" style={{ width: '100%' }}>
                     <Button type="primary" size="large" htmlType="submit" style={{ width: 220 }}>Use WhatsApp Number</Button>
@@ -1186,7 +1223,7 @@ function LoginPage() {
                           { min: 6, message: `${secretLabel} must be at least 6 characters` },
                         ]}
                       >
-                        <Input.Password
+                        <AccessiblePasswordInput
                           id="login-secret"
                           className={styles.inputElement}
                           size="large"
@@ -1217,7 +1254,7 @@ function LoginPage() {
                     <Button type="link" onClick={() => router.push(`/pricing`)}>Sign up</Button>
                   </Flex>
                   <Space direction="vertical" align="center" style={{ width: "100%", marginTop: 8 }} >
-                    <Button type="text" className="login-form-button" style={{ color: token.colorTextLabel }}>Need help? Contact the owner.</Button>
+                    <Text style={{ color: token.colorTextLabel }}>Need help? Contact the owner.</Text>
                   </Space>
                 </Form>
               </>

@@ -49,7 +49,7 @@ export default async function LaunchSetupProductPage() {
                 workflowTitle="Set up support in the order founders actually think."
                 workflowDescription="AnswerLattice makes setup concrete: add product identity, invite the right team, import what exists, map pages, verify install, then approve the first answers."
                 workflowSteps={[
-                    { title: 'Create workspace', description: 'Sign in, enter company and product details, and create the AnswerLattice workspace.' },
+                    { title: 'Request early access', description: 'Share the product, current stage, and first support questions for a human fit review.' },
                     { title: 'Set team access', description: 'Add workspace members with the right AnswerLattice role before support work spreads.' },
                     { title: 'Import knowledge', description: 'Bring starter docs, FAQs, custom answers, release notes, or common support answers.' },
                     { title: 'Map product pages', description: 'Choose the billing, onboarding, settings, release, and error pages that need contextual help.' },

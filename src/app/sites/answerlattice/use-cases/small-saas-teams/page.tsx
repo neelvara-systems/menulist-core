@@ -39,7 +39,7 @@ export default async function SmallSaasTeamsUseCasePage() {
                 'Add workflow notifications or selected Support Board work only when shared ownership requires them.',
                 'Review support gaps and release impact before changes become official answers.',
             ]}
-            primaryCta="Create workspace"
+            primaryCta="Request early access"
             secondaryCta="See 60-sec demo"
         />
     );

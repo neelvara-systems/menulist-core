@@ -935,7 +935,10 @@ function verifyAnswerlatticeFirebaseForensicBoundaries() {
     const vectorIndexFields = vectorIndexes.map((entry) => entry.fields.map((field) => field.fieldPath).join(','));
     assert(vectorIndexes.length === 1, `${label} must contain exactly one canonical KB vector index`);
     assert(
-      vectorIndexFields.includes('pId,tId,sId,status,active,embedding'),
+      vectorIndexFields.some((fields) => (
+        fields === 'pId,tId,sId,status,active,embedding'
+        || fields === 'pId,tId,sId,status,active,__name__,embedding'
+      )),
       `${label} must contain the canonical scoped embedding index`,
     );
     assert(
@@ -2098,6 +2101,7 @@ function verifyAnswerlatticeBrowserHandoffDiagnostics() {
 }
 
 function verifyAnswerlatticeHookFailureCopy() {
+  const features = read('src/config/features.ts');
   const entityCandidates = read('src/hooks/answerlattice/useEntityCandidates.ts');
   const entities = read('src/hooks/answerlattice/useEntities.ts');
   const predictiveTriggers = read('src/hooks/answerlattice/usePredictiveTriggers.ts');
@@ -2172,6 +2176,12 @@ function verifyAnswerlatticeHookFailureCopy() {
   assertIncludes(supportBoard, 'ANSWERLATTICE_SUPPORT_BOARD_TICKET_SYNC_FAILED', 'Answerlattice Support Board fixed ticket-sync copy');
   assertIncludes(supportBoard, 'ANSWERLATTICE_SUPPORT_BOARD_SIGNAL_SYNC_FAILED', 'Answerlattice Support Board fixed signal-sync copy');
   assertIncludes(supportBoard, 'ANSWERLATTICE_SUPPORT_BOARD_PROPOSAL_CREATE_FAILED', 'Answerlattice Support Board fixed proposal-create copy');
+  assertIncludes(features, 'ENABLE_ANSWERLATTICE_SUPPORT_BOARD_SOURCE_SYNC: false', 'Answerlattice Support Board source sync stays disabled by default');
+  assertIncludes(features, 'ENABLE_ANSWERLATTICE_SUPPORT_BOARD_NIGHTLY_SUMMARY: false', 'Answerlattice Support Board nightly summary stays disabled by default');
+  assertIncludes(supportBoard, 'const sourceSyncEnabled = enabled && Boolean(FEATURE_FLAGS.ENABLE_ANSWERLATTICE_SUPPORT_BOARD_SOURCE_SYNC);', 'Answerlattice Support Board source-sync disabled-state gate');
+  assertIncludes(supportBoard, 'const nightlySummaryEnabled = enabled && Boolean(FEATURE_FLAGS.ENABLE_ANSWERLATTICE_SUPPORT_BOARD_NIGHTLY_SUMMARY);', 'Answerlattice Support Board nightly-summary disabled-state gate');
+  assertIncludes(supportBoard, 'if (!sourceSyncEnabled) {', 'Answerlattice Support Board disabled source sync returns before reads and writes');
+  assertIncludes(supportBoard, 'nightlySummaryEnabled\n                    ? loadSupportBoardSummary(tId, sId)\n                    : Promise.resolve(null)', 'Answerlattice Support Board disabled nightly summary performs no summary read');
   assertIncludes(supportBoard, 'answerlattice_support_board_summary_load_failed', 'Answerlattice Support Board summary-load bounded diagnostic');
   assertIncludes(supportBoard, 'getSupportBoardSummaryLogContext', 'Answerlattice Support Board summary bounded context helper');
   assertNotIncludes(supportBoard, 'getAnswerlatticeSupportBoardSummary(tId, sId).catch(() => null)', 'Answerlattice Support Board silent summary fallback');
@@ -3310,6 +3320,7 @@ function verifyAnswerlatticePaidPlanPackaging() {
   const onboard = read('src/app/api/answerlattice/onboard/route.ts');
   const onboardingForm = read('src/app/sites/answerlattice/get-started/OnboardingForm.tsx');
   const pricingPage = read('src/app/sites/answerlattice/pricing/page.tsx');
+  const publicAccess = read('src/constants/answerlattice/publicAccess.ts');
   const pricingPreview = read('src/app/sites/answerlattice/components/PricingPreviewSection.tsx');
   const settings = read('src/components/templates/answerlattice/AnswerlatticeSettings.tsx');
   const workspaceProfile = read('src/app/api/answerlattice/workspace-profile/route.ts');
@@ -3386,8 +3397,13 @@ function verifyAnswerlatticePaidPlanPackaging() {
   assertNotIncludes(onboardingForm, 'res.json().catch(() => null)', 'Answerlattice public onboarding direct JSON fallback');
   assertNotIncludes(onboardingForm, 'response.text()', 'Answerlattice public onboarding response text read');
 
-  assertIncludes(pricingPage, 'Choose a paid plan', 'Answerlattice pricing paid hero copy');
-  assertIncludes(pricingPage, 'Paid setup', 'Answerlattice pricing paid setup copy');
+  assertIncludes(publicAccess, "ANSWERLATTICE_PUBLIC_ACCESS_MODE = 'early_access'", 'Answerlattice public access mode');
+  assertIncludes(publicAccess, "ANSWERLATTICE_PUBLIC_CHECKOUT_ENABLED = (\n    ANSWERLATTICE_PUBLIC_ACCESS_MODE as string\n) === 'public_checkout'", 'Answerlattice public checkout gate');
+  assertIncludes(pricingPage, 'Planned pricing for when public access opens.', 'Answerlattice planned pricing hero copy');
+  assertIncludes(pricingPage, 'requesting access does not start a checkout', 'Answerlattice pricing checkout boundary copy');
+  assertIncludes(pricingPage, 'pricing_early_access_clicked', 'Answerlattice pricing early-access analytics event');
+  assertIncludes(pricingPage, 'Request early access', 'Answerlattice pricing early-access CTA');
+  assertNotIncludes(pricingPage, 'href="/get-started"', 'Answerlattice pricing public onboarding link');
   assertNotIncludes(pricingPage, 'beta setup', 'Answerlattice pricing beta setup copy');
   assertIncludes(pricingPreview, '.filter((plan) => plan.billingInterval ===', 'Answerlattice pricing preview monthly paid plan selection');
   assertNotIncludes(pricingPreview, 'answerlattice_beta', 'Answerlattice pricing preview beta plan filter');
@@ -4518,7 +4534,7 @@ function verifyProtectedAiRequestAdmission() {
     articleEmbedding,
     [
       'const safeModeResponse = await checkAnswerlatticeSafeMode()',
-      'const rateLimitResponse = await checkAIOperationLimit()',
+      'const rateLimitResponse = await checkAIOperationLimit({ session })',
       'const actorId = resolveCurrentSessionUserDocumentId(session)',
       'const permission = await requireAnswerlatticePermission(',
       'readBoundedJsonBody(request, ARTICLE_EMBEDDING_MAX_BODY_BYTES',
@@ -4552,7 +4568,7 @@ function verifyProtectedAiRequestAdmission() {
   assertOrder(
     helpCenterSearch,
     [
-      'const rateLimitResponse = await checkAIOperationLimit()',
+      'const rateLimitResponse = await checkAIOperationLimit({ session })',
       'readBoundedJsonBody(request, HELP_CENTER_SEARCH_MAX_BODY_BYTES',
       'SearchRequestSchema.parse(bodyResult.data)',
       'coreSearch({',
@@ -9032,11 +9048,12 @@ function verifyAnswerlatticeContextBundleVersionBoundary() {
   const contentFeedbackEmulator = read('scripts/verification/test-answerlattice-content-feedback-emulator.ts');
   const localBrowserFixture = read('scripts/answerlattice/seed-local-browser-fixture.ts');
   const localWidgetCertificationPage = read('src/app/answerlattice-widget-certification/page.tsx');
+  const localWidgetCertificationClient = read('src/app/answerlattice-widget-certification/AnswerlatticeLocalWidgetCertificationClient.tsx');
   assertIncludes(localBrowserFixture, 'const browserAuthProjectId = menuListProjectId;', 'Answerlattice local browser fixture shared credentials Auth namespace');
   assertIncludes(localBrowserFixture, "'http://localhost:3000'", 'Answerlattice local browser fixture actual Next dev widget origin');
   assertIncludes(localWidgetCertificationPage, "process.env.NODE_ENV !== 'development'", 'Answerlattice widget certification page local-only boundary');
   assertIncludes(localWidgetCertificationPage, 'notFound()', 'Answerlattice widget certification page production denial');
-  assertIncludes(localWidgetCertificationPage, 'data-answerlattice-key={widgetKey}', 'Answerlattice widget certification page runtime key binding');
+  assertIncludes(localWidgetCertificationClient, 'data-answerlattice-key={widgetKey}', 'Answerlattice widget certification page runtime key binding');
 
   [appVersions, functionsVersions].forEach((content, index) => {
     const label = index === 0 ? 'app' : 'Functions';
@@ -10695,6 +10712,7 @@ function verifyAnswerlatticeWorkspaceLifecycleBoundary() {
     .forEach((fileName) => {
       const source = read(path.join('scripts', 'verification', fileName));
       if (!source.includes('initializeTestEnvironment')) return;
+      if (source.includes('ANSWERLATTICE_PRE_TENANT_RULE_FIXTURE')) return;
       assert(
         source.includes('seedActiveAnswerlatticeRuleWorkspace')
           || /doc\([^\n]+,\s*['"]stores['"],/.test(source),

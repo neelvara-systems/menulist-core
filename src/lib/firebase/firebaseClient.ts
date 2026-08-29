@@ -10,6 +10,7 @@ import firebaseConfig from "./config";
 import { logFirebaseBootstrapFailure } from "./firebaseDiagnostics";
 import { resolveMenuListFirebaseClientBoundary } from "./menuListFirebaseClientBoundary";
 import { menulistPublicEnv } from '@lib/env/menulistPublicEnv';
+import { resolveMenuListEmulatorPorts } from './menuListEmulatorPorts';
 
 const appCheckDebugToken = menulistPublicEnv.firebaseAppCheckDebugToken;
 const expectedMenuListProjectId = getExpectedFirebaseProjectId('menulist');
@@ -20,6 +21,7 @@ const isLocalAppCheckHost = (hostname: string): boolean => {
     if (
         normalizedHost === 'localhost' ||
         normalizedHost === '0.0.0.0' ||
+        normalizedHost.endsWith('.localhost') ||
         normalizedHost.endsWith('.local')
     ) {
         return true;
@@ -76,6 +78,11 @@ const firebaseStorageUrl = firebaseConfig.storageBucket
 const signOutFirebaseAuth = () => firebaseAuth ? signOut(firebaseAuth) : Promise.resolve();
 const functions = firebaseApp ? getFunctions(firebaseApp) : null as any;
 const useFirebaseEmulators = process.env.NEXT_PUBLIC_USE_FIREBASE_EMULATORS === 'true';
+const emulatorPorts = resolveMenuListEmulatorPorts({
+    auth: process.env.NEXT_PUBLIC_MENULIST_FIREBASE_AUTH_EMULATOR_PORT,
+    firestore: process.env.NEXT_PUBLIC_MENULIST_FIREBASE_FIRESTORE_EMULATOR_PORT,
+    storage: process.env.NEXT_PUBLIC_MENULIST_FIREBASE_STORAGE_EMULATOR_PORT,
+});
 
 const isFirebaseEmulatorAlreadyConfigured = (error: unknown): boolean => {
     const code = typeof error === 'object' && error && 'code' in error
@@ -126,15 +133,15 @@ if (firebaseApp && process.env.NODE_ENV === 'development') {
     );
     if (useFirebaseEmulators) {
         connectMenuListEmulator(
-            () => connectAuthEmulator(firebaseAuth, 'http://127.0.0.1:9099', { disableWarnings: true }),
+            () => connectAuthEmulator(firebaseAuth, `http://127.0.0.1:${emulatorPorts.auth}`, { disableWarnings: true }),
             'auth',
         );
         connectMenuListEmulator(
-            () => connectFirestoreEmulator(firebaseClient, '127.0.0.1', 8080),
+            () => connectFirestoreEmulator(firebaseClient, '127.0.0.1', emulatorPorts.firestore),
             'firestore',
         );
         connectMenuListEmulator(
-            () => connectStorageEmulator(firebaseStorage, '127.0.0.1', 9199),
+            () => connectStorageEmulator(firebaseStorage, '127.0.0.1', emulatorPorts.storage),
             'storage',
         );
     }

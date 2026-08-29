@@ -6,6 +6,7 @@ import { readFile } from 'node:fs/promises';
 import { deleteApp, initializeApp, type FirebaseOptions } from 'firebase/app';
 import { getAuth, getIdTokenResult, signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import { collection, doc, getDoc, getDocs, getFirestore, limit, orderBy, query, Timestamp, where } from 'firebase/firestore';
+import { deleteObject, getStorage, ref, uploadBytes, uploadString } from 'firebase/storage';
 import { hasValidSubscriptionAccess } from '../../src/utils/razorpay';
 
 const QA_PROJECT_ID = 'menulist-qa';
@@ -29,9 +30,14 @@ async function main(): Promise<void> {
     if (readArg('confirm-project') !== QA_PROJECT_ID) {
         throw new Error(`Pass --confirm-project=${QA_PROJECT_ID}.`);
     }
-    if (process.env.FIRESTORE_EMULATOR_HOST || process.env.FIREBASE_AUTH_EMULATOR_HOST) {
+    if (
+        process.env.FIRESTORE_EMULATOR_HOST
+        || process.env.FIREBASE_AUTH_EMULATOR_HOST
+        || process.env.FIREBASE_STORAGE_EMULATOR_HOST
+    ) {
         throw new Error('Hosted MenuList QA client test refuses emulator hosts.');
     }
+    const shouldProbeStorage = process.argv.includes('--storage-probe');
     const credentialPath = readArg('credential-file');
     if (!credentialPath?.startsWith('/tmp/') || !credentialPath.endsWith('.json')) {
         throw new Error('Pass --credential-file=/tmp/<fixture-credentials>.json.');
@@ -125,11 +131,44 @@ async function main(): Promise<void> {
             ...activeSubscriptions.docs[0].data(),
             id: activeSubscriptions.docs[0].id,
         } as never), true, 'The owner subscription DAL result must pass the shared workspace gate.');
+        let storageProbe = 'not-run';
+        if (shouldProbeStorage) {
+            const storage = getStorage(app);
+            const probeRef = ref(
+                storage,
+                `projects/files/${tenantId}/${storeId}/${fixtureId}-storage-probe.png`,
+            );
+            const onePixelPng = new Uint8Array(Buffer.from(
+                'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
+                'base64',
+            ));
+            await uploadBytes(probeRef, onePixelPng, { contentType: 'image/png' });
+            await deleteObject(probeRef);
+            const dataUrlProbeRef = ref(
+                storage,
+                `projects/files/${tenantId}/${storeId}/${fixtureId}-storage-data-url-probe.png`,
+            );
+            await uploadString(
+                dataUrlProbeRef,
+                `data:image/png;base64,${Buffer.from(onePixelPng).toString('base64')}`,
+                'data_url',
+                {
+                    contentType: 'image/png',
+                    customMetadata: {
+                        fileId: `${fixtureId}-storage-data-url-probe`,
+                        uploadedAt: new Date().toISOString(),
+                    },
+                },
+            );
+            await deleteObject(dataUrlProbeRef);
+            storageProbe = 'bytes-and-data-url-upload-delete-verified';
+        }
         process.stdout.write(JSON.stringify({
             claims: 'verified',
             projectId: QA_PROJECT_ID,
             scope: { storeId, tenantId },
             status: 'client-read-verified',
+            storageProbe,
         }, null, 2) + '\n');
     } finally {
         await signOut(auth).catch(() => undefined);

@@ -166,7 +166,7 @@ export function BusinessHealthProjectScopeSelector({
   ];
 
   return (
-    <Card className={styles.scopeSelectorCard} bodyStyle={{ padding: 12 }}>
+    <Card className={styles.scopeSelectorCard} styles={{ body: { padding: 12 } }}>
       <Flex align="center" gap={12} justify="space-between" wrap="wrap">
         <Flex vertical style={{ minWidth: 0 }}>
           <Text type="secondary">{t('viewing')}</Text>
@@ -180,28 +180,31 @@ export function BusinessHealthProjectScopeSelector({
             placement={getLocaleDirection(locale) === 'rtl' ? 'bottomLeft' : 'bottomRight'}
             trigger={['click']}
           >
-            <Flex
-              align="center"
+            <button
+              aria-haspopup="menu"
+              aria-label={`${t('businessHealth.scope.title')}: ${selectedName}`}
               className={styles.scopeSelectorTrigger}
-              gap={10}
+              type="button"
             >
-              <Avatar
-                size={28}
-                src={resolveProjectImageUrl(selectedProject?.projectImage) || undefined}
-                style={{ background: selectedColor.bg, color: selectedColor.text, fontSize: 11 }}
-              >
-                {selectedProject ? getInitials(selectedName) : <LuLayers size={14} />}
-              </Avatar>
-              <Flex vertical style={{ minWidth: 0 }}>
-                <Text strong ellipsis style={{ maxWidth: 180 }}>{selectedName}</Text>
-                <Text type="secondary" style={{ fontSize: 12 }}>
-                  {selectedProject
-                    ? t('businessHealth.scope.thisMenuOnly')
-                    : t('businessHealth.scope.allMenusInLocation')}
-                </Text>
+              <Flex align="center" gap={10}>
+                <Avatar
+                  size={28}
+                  src={resolveProjectImageUrl(selectedProject?.projectImage) || undefined}
+                  style={{ background: selectedColor.bg, color: selectedColor.text, fontSize: 11 }}
+                >
+                  {selectedProject ? getInitials(selectedName) : <LuLayers size={14} />}
+                </Avatar>
+                <Flex vertical style={{ minWidth: 0 }}>
+                  <Text strong ellipsis style={{ maxWidth: 180 }}>{selectedName}</Text>
+                  <Text type="secondary" style={{ fontSize: 12 }}>
+                    {selectedProject
+                      ? t('businessHealth.scope.thisMenuOnly')
+                      : t('businessHealth.scope.allMenusInLocation')}
+                  </Text>
+                </Flex>
+                <LuChevronDown size={14} color={token.colorTextSecondary} />
               </Flex>
-              <LuChevronDown size={14} color={token.colorTextSecondary} />
-            </Flex>
+            </button>
           </Dropdown>
         )}
       </Flex>

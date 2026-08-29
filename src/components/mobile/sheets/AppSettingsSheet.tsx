@@ -29,7 +29,6 @@ import {
     updateDarkThemeColor,
     updateLightThemeColor,
 } from '@reduxSlices/clientThemeConfig';
-import { ColorPicker } from 'antd';
 import { getCookie } from 'cookies-next';
 import { useFormatter, useLocale, useTimeZone, useTranslations } from 'next-intl';
 import { useCallback, useEffect, useMemo, useState, useTransition } from 'react';
@@ -200,6 +199,7 @@ export default function AppSettingsSheet({ visible, onClose }: AppSettingsSheetP
 
     return (
         <Popup
+            aria-label={t('title')}
             bodyStyle={{ maxHeight: '80vh', minHeight: '60vh', overflow: 'hidden', padding: 0 }}
             destroyOnClose
             onMaskClick={onClose}
@@ -209,7 +209,7 @@ export default function AppSettingsSheet({ visible, onClose }: AppSettingsSheetP
             <Flex style={{ height: '100%' }} vertical>
                 <NavBar
                     right={(
-                        <Button fill="none" onClick={onClose} style={{ minHeight: 44, minWidth: 44, paddingInline: 0 }}>
+                        <Button aria-label="Close app settings" fill="none" onClick={onClose} style={{ minHeight: 44, minWidth: 44, paddingInline: 0 }}>
                             <LuX size={18} />
                         </Button>
                     )}
@@ -224,7 +224,7 @@ export default function AppSettingsSheet({ visible, onClose }: AppSettingsSheetP
                                 {isDarkMode ? <LuMoon size={16} /> : <LuSun size={16} />}
                                 <Text strong>{t('darkMode')}</Text>
                             </Flex>
-                            <Switch checked={isDarkMode} onChange={handleDarkMode} />
+                            <Switch aria-label={t('darkMode')} checked={isDarkMode} onChange={handleDarkMode} />
                         </Flex>
                     </Card>
 
@@ -237,6 +237,8 @@ export default function AppSettingsSheet({ visible, onClose }: AppSettingsSheetP
                             <Flex gap={8} wrap>
                                 {availableColors.map((color) => (
                                     <Button
+                                        aria-label={`${t('themeColors')} ${color}`}
+                                        aria-pressed={activeThemeColor === color}
                                         key={color}
                                         fill={activeThemeColor === color ? 'solid' : 'outline'}
                                         onClick={() => handleThemeColor(color)}
@@ -254,8 +256,11 @@ export default function AppSettingsSheet({ visible, onClose }: AppSettingsSheetP
                             </Flex>
                             <Flex align="center" justify="space-between">
                                 <Text type="secondary">{activeThemeColor?.toUpperCase()}</Text>
-                                <ColorPicker
-                                    onChange={(color) => handleThemeColor(color.toHexString())}
+                                <input
+                                    aria-label={`${t('themeColors')}: ${activeThemeColor?.toUpperCase()}`}
+                                    onChange={(event) => handleThemeColor(event.target.value)}
+                                    style={{ background: 'transparent', border: 0, cursor: 'pointer', height: 44, padding: 0, width: 44 }}
+                                    type="color"
                                     value={activeThemeColor}
                                 />
                             </Flex>
@@ -269,6 +274,7 @@ export default function AppSettingsSheet({ visible, onClose }: AppSettingsSheetP
                                 <Text strong>{`${t('language')} (${selectedLanguageOption?.preview || selectedLanguageLabel})`}</Text>
                             </Flex>
                             <Select
+                                aria-label={t('language')}
                                 onChange={(value: string) => handleLocaleChange([value])}
                                 options={languageOptions.map((option) => ({ label: option.label, value: option.value }))}
                                 placeholder={tSettings('selectLanguage')}
@@ -284,6 +290,7 @@ export default function AppSettingsSheet({ visible, onClose }: AppSettingsSheetP
                                 <Text strong>{`${tSettings('timezone')} (${selectedTimezonePreview || selectedTimezoneLabel})`}</Text>
                             </Flex>
                             <Select
+                                aria-label={tSettings('timezone')}
                                 onChange={(value: string) => handleTimezoneChange([value])}
                                 options={TIMEZONES_LIST.map((option) => ({ label: option.label, value: option.tzCode }))}
                                 placeholder={tSettings('selectTimezone')}
@@ -299,6 +306,7 @@ export default function AppSettingsSheet({ visible, onClose }: AppSettingsSheetP
                                 <Text strong>{`${tSettings('dateFormat')} (${selectedDateFormatLabel})`}</Text>
                             </Flex>
                             <Select
+                                aria-label={tSettings('dateFormat')}
                                 onChange={(value: string) => handleDateFormatChange([value])}
                                 options={DATE_FORMATS.map((option) => ({
                                     label: format.dateTime(previewDate, option.value),
@@ -317,6 +325,7 @@ export default function AppSettingsSheet({ visible, onClose }: AppSettingsSheetP
                                 <Text strong>{`${tSettings('timeFormat')} (${selectedTimeFormatLabel})`}</Text>
                             </Flex>
                             <Select
+                                aria-label={tSettings('timeFormat')}
                                 onChange={(value: string) => handleTimeFormatChange([value])}
                                 options={TIME_FORMATS.map((option) => ({
                                     label: `${format.dateTime(previewDate, option.value)} (${option.labelHelper})`,
@@ -334,7 +343,7 @@ export default function AppSettingsSheet({ visible, onClose }: AppSettingsSheetP
                                 <LuType size={16} />
                                 <Text strong>{t('rtlToggle')}</Text>
                             </Flex>
-                            <Switch checked={isRTL} onChange={handleRTL} />
+                            <Switch aria-label={t('rtlToggle')} checked={isRTL} onChange={handleRTL} />
                         </Flex>
                     </Card>
 
@@ -342,7 +351,7 @@ export default function AppSettingsSheet({ visible, onClose }: AppSettingsSheetP
                         <Card>
                             <Flex align="center" justify="space-between">
                                 <Text strong>{t('useFullScreen')}</Text>
-                                <Switch checked={isFullscreen} onChange={() => void toggleFullscreen()} />
+                                <Switch aria-label={t('useFullScreen')} checked={isFullscreen} onChange={() => void toggleFullscreen()} />
                             </Flex>
                         </Card>
                     ) : null}

@@ -1,16 +1,25 @@
 import { FEATURE_FLAGS } from "@config/features";
 import { normalizeScreenImageUrl } from "@lib/screen/screenContent";
+import { FIRESTORE_TIMESTAMP_MAX_MILLISECONDS } from "@lib/screen/screenTimestamp";
 import { isValidScreenToken } from "@lib/screen/utils";
 import type {
     DigitalScreenDisplayMode,
     ScreenSlide,
 } from "@type/campaigns";
 
-export const FIRESTORE_TIMESTAMP_MAX_MILLISECONDS = 253_402_300_799_999;
+export { FIRESTORE_TIMESTAMP_MAX_MILLISECONDS } from "@lib/screen/screenTimestamp";
 
 export type DigitalScreenOwnerSlideTransport = Omit<ScreenSlide, "validUntil"> & {
     validUntilMs?: number;
 };
+
+export function serializeDigitalScreenOwnerSlideForMutation(
+    slide: ScreenSlide,
+    validUntilMs: number,
+): DigitalScreenOwnerSlideTransport {
+    const { validUntil: _validUntil, ...slideTransport } = slide;
+    return { ...slideTransport, validUntilMs };
+}
 
 export interface DigitalScreenModeSeenReceiptTransport {
     contentVersion: number;

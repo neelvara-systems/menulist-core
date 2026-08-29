@@ -1,8 +1,9 @@
 import { useOfferingLabels } from '@hook/useOfferingLabels';
+import { labelConfirmDialog } from '@lib/accessibility/antConfirmDialog';
 import { getProjectDefaultLanguage } from '@lib/localization/projectContent';
 import { removeObjRef } from '@util/utils';
 import { Alert, Button, Checkbox, Flex, Input, Modal, Tag, Typography, theme } from 'antd';
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { LuHelpCircle } from 'react-icons/lu';
 import { Project, ProjectFileType } from '../types';
 
@@ -90,7 +91,7 @@ const BulkStatusMenuModal = ({ open, projectData, onClose, onApply }: BulkStatus
     const [itemSearch, setItemSearch] = useState('');
 
     // Initialize data when modal opens
-    const handleOpen = () => {
+    const initializeOpenState = useCallback(() => {
         const cats = buildAllCategoryRows(projectData.files || [], activeLang);
         setCategoryRows(cats);
 
@@ -115,7 +116,12 @@ const BulkStatusMenuModal = ({ open, projectData, onClose, onApply }: BulkStatus
         // Reset search
         setCategorySearch('');
         setItemSearch('');
-    };
+    }, [activeLang, projectData.files]);
+
+    useEffect(() => {
+        if (!open) return;
+        initializeOpenState();
+    }, [initializeOpenState, open]);
 
     // When category is clicked, load its items
     const handleCategoryClick = (categoryId: string) => {
@@ -142,6 +148,7 @@ const BulkStatusMenuModal = ({ open, projectData, onClose, onApply }: BulkStatus
         if (hasChanges) {
             Modal.confirm({
                 title: 'Unsaved Changes',
+                modalRender: labelConfirmDialog('Unsaved Changes'),
                 icon: <LuHelpCircle />,
                 content: 'You have unsaved changes. Are you sure you want to close?',
                 okText: 'Discard Changes',
@@ -196,6 +203,8 @@ const BulkStatusMenuModal = ({ open, projectData, onClose, onApply }: BulkStatus
 
     // Apply changes
     const handleApply = () => {
+        if (!hasChanges) return;
+
         const updatedProject = removeObjRef(projectData);
 
         // Update all categories based on checkbox state
@@ -220,7 +229,6 @@ const BulkStatusMenuModal = ({ open, projectData, onClose, onApply }: BulkStatus
         onClose();
     };
 
-    const canApply = true; // Always allow apply since we're setting status for all items
     // Filter categories and items based on search
     const filteredCategories = categoryRows.filter(cat =>
         cat.label.toLowerCase().includes(categorySearch.toLowerCase())
@@ -229,8 +237,8 @@ const BulkStatusMenuModal = ({ open, projectData, onClose, onApply }: BulkStatus
         item.label.toLowerCase().includes(itemSearch.toLowerCase())
     );
 
-    const allCategoriesChecked = filteredCategories.length > 0 && activeCategories.size === categoryRows.length;
-    const allItemsChecked = filteredItems.length > 0 && activeItems.size === itemRows.length;
+    const allCategoriesChecked = categoryRows.length > 0 && activeCategories.size === categoryRows.length;
+    const allItemsChecked = itemRows.length > 0 && activeItems.size === itemRows.length;
 
     // Count changes made
     const categoriesChanged = categoryRows.filter(c =>
@@ -258,10 +266,7 @@ const BulkStatusMenuModal = ({ open, projectData, onClose, onApply }: BulkStatus
             }
             open={open}
             onCancel={handleClose}
-            afterOpenChange={(visible) => {
-                if (visible) handleOpen();
-            }}
-            closable={true}
+            closable={{ 'aria-label': 'Close Bulk Active / Inactive' }}
             maskClosable={false}
             styles={{ mask: { backdropFilter: 'blur(6px)' } }}
             width={900}
@@ -278,10 +283,10 @@ const BulkStatusMenuModal = ({ open, projectData, onClose, onApply }: BulkStatus
                         <Button onClick={handleReset} disabled={!hasChanges}>
                             Reset
                         </Button>
-                        <Button onClick={handleClose}>Cancel</Button>
+                        {hasChanges && <Button onClick={handleClose}>Cancel</Button>}
                         <Button
                             type="primary"
-                            onClick={handleApply}
+                            onClick={hasChanges ? handleApply : handleClose}
                         >
                             {categoriesChanged + itemsChanged > 0
                                 ? `Apply ${categoriesChanged + itemsChanged} ${categoriesChanged + itemsChanged === 1 ? 'Change' : 'Changes'}`
@@ -340,6 +345,7 @@ const BulkStatusMenuModal = ({ open, projectData, onClose, onApply }: BulkStatus
                             >
                                 <Flex align="center" gap={8}>
                                     <Checkbox
+                                        aria-label="Set all categories active"
                                         checked={allCategoriesChecked}
                                         indeterminate={activeCategories.size > 0 && !allCategoriesChecked}
                                         onChange={(e) => handleSelectAllCategories(e.target.checked)}
@@ -390,11 +396,10 @@ const BulkStatusMenuModal = ({ open, projectData, onClose, onApply }: BulkStatus
                                                 borderRadius: 6,
                                                 border: `2px solid ${selectedCategoryId === cat.id ? token.colorPrimary : token.colorBorder}`,
                                                 background: selectedCategoryId === cat.id ? token.colorPrimaryBg : token.colorBgBase,
-                                                cursor: 'pointer'
                                             }}
-                                            onClick={() => handleCategoryClick(cat.id)}
                                         >
                                             <Checkbox
+                                                aria-label={`Set ${cat.label} active`}
                                                 checked={activeCategories.has(cat.id)}
                                                 onChange={(e) => {
                                                     e.stopPropagation();
@@ -402,14 +407,30 @@ const BulkStatusMenuModal = ({ open, projectData, onClose, onApply }: BulkStatus
                                                 }}
                                                 onClick={(e) => e.stopPropagation()}
                                             />
-                                            <Flex vertical style={{ flex: 1 }}>
-                                                <Text style={{ fontSize: 13, fontWeight: selectedCategoryId === cat.id ? 600 : 400 }}>
-                                                    {cat.label}
-                                                </Text>
-                                                <Text type="secondary" style={{ fontSize: 10 }}>
-                                                    {cat.fileName} • {cat.currentStatus ? 'Active' : 'Inactive'}
-                                                </Text>
-                                            </Flex>
+                                            <button
+                                                type="button"
+                                                aria-label={`View ${cat.label} items`}
+                                                aria-pressed={selectedCategoryId === cat.id}
+                                                onClick={() => handleCategoryClick(cat.id)}
+                                                style={{
+                                                    flex: 1,
+                                                    border: 0,
+                                                    padding: 0,
+                                                    background: 'transparent',
+                                                    color: 'inherit',
+                                                    cursor: 'pointer',
+                                                    textAlign: 'left',
+                                                }}
+                                            >
+                                                <Flex vertical>
+                                                    <Text style={{ fontSize: 13, fontWeight: selectedCategoryId === cat.id ? 600 : 400 }}>
+                                                        {cat.label}
+                                                    </Text>
+                                                    <Text type="secondary" style={{ fontSize: 10 }}>
+                                                        {cat.fileName} • {cat.currentStatus ? 'Active' : 'Inactive'}
+                                                    </Text>
+                                                </Flex>
+                                            </button>
                                         </Flex>
                                     ))}
                                 </Flex>
@@ -444,6 +465,7 @@ const BulkStatusMenuModal = ({ open, projectData, onClose, onApply }: BulkStatus
                                 <Flex align="center" gap={8}>
                                     {itemRows.length > 0 && (
                                         <Checkbox
+                                            aria-label="Set all items active"
                                             checked={allItemsChecked}
                                             indeterminate={activeItems.size > 0 && !allItemsChecked}
                                             onChange={(e) => handleSelectAllItems(e.target.checked)}
@@ -526,6 +548,7 @@ const BulkStatusMenuModal = ({ open, projectData, onClose, onApply }: BulkStatus
                                             }}
                                         >
                                             <Checkbox
+                                                aria-label={`Set ${item.label} active`}
                                                 checked={activeItems.has(item.id)}
                                                 onChange={(e) => handleItemCheck(item.id, e.target.checked)}
                                             />

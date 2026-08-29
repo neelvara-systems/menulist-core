@@ -25,7 +25,7 @@ function BasicInformation({ userDetails, onChangeValue }: BasicInformationProps)
             />
 
             {isEditing && <FormElementWrapper label="Active">
-                <Switch size="small"
+                <Switch aria-label="Active staff member" size="small"
                     defaultChecked={userDetails?.active || false}
                     value={userDetails?.active || false}
                     onChange={(checked) => onChangeValue('active', checked)}

@@ -272,7 +272,7 @@ export default function PlatformCostPosture() {
             <Button href="/ops">Ops</Button>
             <Button href="/ops/extraction">Extraction</Button>
             <Button href="/platform/owner-business-assistant">Business Health</Button>
-            <Button href="/transactions">AI Transactions</Button>
+            <Button href="/platform/founder-monitor">Founder Monitor</Button>
             <Button onClick={() => void loadData()}>Refresh</Button>
           </Space>
         </div>

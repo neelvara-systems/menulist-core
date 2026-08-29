@@ -1,6 +1,6 @@
 # Roles & Permissions — Mobile Support
 
-**Last Updated:** July 16, 2026 (v12 - owner-target and response parity)
+**Last Updated:** August 27, 2026 (v13 - mobile lifecycle and accessibility parity)
 **Decision:** MOBILE SUPPORTED — local source verified; hosted device evidence pending
 
 ---
@@ -28,7 +28,7 @@
 | Toggle individual permissions  | `MobileRolesScreen` (switch per perm) | ✅     |
 | Toggle category permissions    | `MobileRolesScreen` (checkbox "All")  | ✅     |
 | Add custom role                | `MobileRolesScreen` (add button)      | ✅     |
-| Deactivate role                | `MobileRolesScreen` (confirmation)    | ✅     |
+| Deactivate/reactivate role     | `MobileRolesScreen` Active switch     | ✅     |
 | Add staff                      | `MobileUsersScreen`                   | ✅     |
 | Reset staff password/passcode    | `MobileUsersScreen`                   | ✅     |
 | Copy/share Staff ID + passcode   | `MobileUsersScreen` login popup       | ✅     |
@@ -90,5 +90,19 @@ their initiating scope, and settle only while the same mounted scope and source 
 still own the target. This also prevents a one-time Staff ID/passcode from appearing
 after a store switch. The shared context stores the runtime-validated public-safe
 `StaffUserSummary[]`, not the broader authenticated account shape.
+
+The mounted settlement guard is re-armed on every React Strict Mode effect setup, so
+development replay cannot permanently suppress create/update/role/remove/reset/sign-out
+settlement. Add Staff, Staff details, and one-time login-detail popups have stable
+programmatic names; create/edit role choices expose `aria-pressed`. The shared active
+state handler admits both transitions: active staff can be deactivated and inactive
+staff can be reactivated while retaining the same permission, scope, and duplicate-
+mutation guards.
+
+Mobile custom roles use the editor's explicit **Active** switch for reversible
+deactivation and reactivation. The former **Delete This Role** action called the same
+soft-deactivation contract while claiming the role was deleted, then immediately left
+the row visible as Off. That contradictory duplicate action is no longer shipped on
+mobile; no hard-delete behavior was introduced.
 
 `MobileUsersScreen` cannot reset the currently signed-in account through the staff-owner flow; self password/passcode change stays under **More → Profile → Account access**. Hosted iOS/Android browser and installed-PWA evidence remains an owner/release task and is not implied by local source parity.

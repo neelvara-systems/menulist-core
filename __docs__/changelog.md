@@ -1,5 +1,878 @@
 # MenuList — Changelog
 
+## August 29, 2026 — Governed MenuList asset editor launch hardening
+
+- Limited the embedded MenuList asset editor to Background, owned Images, Text, Styles, and Brand Kit while preserving CampaignCue's complete editor defaults.
+- Made the generated preview actions reachable at laptop height, opened customization in a body-level full-viewport overlay with no protected default selection, and kept browser-local draft recovery.
+- Added dirty-close/browser-unload protection and routed Print PDF and Image through the shared readiness check; Save reusable design is now a secondary action.
+- Ensured readiness findings reset the properties drawer to the top after a scrolled Layers or selected-property state, so the owner immediately sees the download check instead of an unrelated lower inspector section.
+- Preserved the existing mobile preview/download-only flow and introduced no new Firebase read, write, listener, Function, or Storage operation.
+
+## August 29, 2026 — Answerlattice mobile source-preparation entry
+
+- Added the existing primary human Pre-Onboarding Kit to the bounded Answerlattice `Start here` mobile navigation as `Prepare your sources` before installation.
+- Preserved the intentional two-group mobile route chooser, detailed Product/Resources hub discovery, controlled-access CTA, desktop navigation, runtime, Firebase, and deployment boundaries.
+
+## August 29, 2026 — Readable website hamburger navigation
+
+- Reframed the MenuList mobile website menu as two labeled Product and Resources groups modeled on the clean Answerlattice public-site navigation pattern.
+- Preserved every direct feature and resource shortcut while removing the nested interaction: Start, Publish, and Operate are now quiet visual labels above always-visible flat links rather than additional accordions.
+- Added readable icon rows, active-page state, an unlabeled account utility area, and a fixed theme/preview footer with safe-area spacing in light and dark themes while preserving the desktop header, localized English/Hindi labels, focus trap, Escape close, owner/customer runtime, Firebase, pricing, and deployment boundaries.
+
+## August 29, 2026 — Product PWA route and offline contract repair
+
+- Scoped the MyCodex install to `/__mycodex/`, launched directly into Founder
+  Console, restored rotation support, and kept its worker separate from the
+  root MenuList owner worker.
+- Separated the AnswerLattice website and dashboard install identities, added
+  host-aware local/product launch routes, and corrected dashboard browser theme
+  and safe-area metadata.
+- Added network-first AnswerLattice and MyCodex recovery workers that cache only
+  branded offline shells and immutable logo assets, never tenant pages,
+  documents, APIs, support content, knowledge data, or queued mutations.
+- Extended PWA routing and verification boundaries locally. No commit, push,
+  Vercel build, Firebase deployment, or production mutation occurred.
+
+## August 29, 2026 — MyCodex founder console consolidation
+
+- Added a private, platform-owner-only MyCodex control plane for portfolio
+  operations on laptop, tablet, and mobile without creating a MyCodex database
+  or moving MenuList/Answerlattice ownership boundaries.
+- Consolidated 31 existing internal operating surfaces behind Today, Products,
+  Systems, Documents, and Settings while retaining legacy `/platform` and
+  `/ops` route compatibility.
+- Enforced persisted `PLATFORM` authorization, hid direct source routes,
+  removed legacy document-HMAC access, and kept the active console free of
+  CampaignCue dependencies.
+- Added fail-closed source verification, SecurityOS inventory, responsive
+  navigation, safe-area behavior, and a complete feature document set.
+- Unified the document reader, Founder Console shell, and embedded Ant Design
+  tools behind one persisted light/dark preference; added laptop and phone
+  theme controls plus pre-paint restoration so mixed-theme screens cannot recur.
+- Authenticated browser regression covered all 31 operational surfaces in both
+  modes on desktop and phone, plus reader, queue, favorites, navigation drawer,
+  and two-way reader/operations preference persistence.
+- Completed local authenticated route, responsive, compatibility, auth, and
+  security regression only. No commit, push, Vercel build, Firebase deployment,
+  or production mutation occurred.
+
+## August 29, 2026 — Messaging preview accessibility and publish recovery
+
+- Associated Business Name, Business Type, and Address labels with their
+  controls and gave every Edit/Save action a purpose-specific accessible name.
+- Exposed correction-reason selection through stable `aria-pressed` state while
+  keeping the decorative checkmark out of the accessible name.
+- Fixed the approve route's normalized-session handoff so the publish executor
+  no longer re-normalizes typed data as raw Firestore state and rejects every
+  normal publish.
+- Emulator-retested first publish, atomic tenant/store/project creation,
+  failure recovery, correction drafting, live-state copy, and idempotent replay
+  with unchanged state history. No provider, Razorpay, hosted Firebase,
+  staging, Vercel, Git, or production mutation occurred.
+
+## August 29, 2026 — Exact hidden-control certification inventory
+
+- Corrected the release-candidate scanner so native-hidden, aria-hidden,
+  negative-tab-index programmatic file inputs are not misrepresented as
+  independent owner actions.
+- Added fail-closed coverage for all three Creative Editor file inputs while
+  retaining the existing shareable-report honeypot and every visible upload or
+  replace action.
+- Regenerated and verified the 6,592-row inventory locally. No application
+  behavior, Firebase data, provider, Git ref, staging, Vercel, or production
+  state changed.
+
+## August 29, 2026 — Accessible rich-text toolbar state
+
+- Exposed the shared rich-text toolbar's active formatting state with
+  `aria-pressed` while retaining normal push-button semantics for one-shot
+  actions.
+- Browser-tested headings, alignment, formatting, lists, quote, divider,
+  normalized and rejected links, rejected image URLs, and the complete draft
+  table lifecycle.
+- Cancelled every platform changelog draft; no record, upload, provider,
+  Firebase, staging, Vercel, or production mutation occurred.
+
+## August 29, 2026 — Truthful mobile default-menu editing
+
+- Corrected Edit details so a canonical default menu opens with its Default
+  switch checked instead of contradicting the selector badge and current-default
+  text.
+- Added a fail-closed source assertion scoped to the edit-form initialization.
+- Browser-retested toggle/Reset recovery plus adjacent copy, QR, design,
+  duplicate-form, visibility, reset, and delete-cancel flows against the isolated
+  reseller-entitled emulator owner with no save or external mutation.
+- Bound sixteen exact selector controls, including purpose-named selector and
+  management close recovery, reducing honestly untested MenuList controls from
+  1,688 to 1,672.
+
+## August 29, 2026 — Operable Creative Editor gradient stops
+
+- Reproduced the enabled Add stop action announcing a style change while leaving
+  the two-stop gradient unchanged.
+- Preserved explicit gradient-stop patches instead of replacing them with the
+  stale endpoint-only stop list during endpoint synchronization.
+- Added fail-closed regression coverage and retained local-only, undoable editor
+  behavior with no save, provider, Firebase, staging, or production mutation.
+- Bound five corrected gradient controls to current browser evidence, reducing
+  honestly untested MenuList controls from 1,696 to 1,691.
+- Verified the adjacent line Arrow selector through Arrow and Thin tail states,
+  then discarded the browser-local draft; 1,690 controls remain honestly untested.
+- Verified keyboard adjustment of export-watermark opacity from 0.18 to 0.19
+  with clean reload recovery; 1,689 controls remain honestly untested.
+- Verified the preview panel's exact Close recovery without history or external
+  effects; 1,688 controls remain honestly untested.
+
+## August 29, 2026 — Creative Editor selection-toolbar continuation
+
+- Browser-tested floating Edit, Style, Position, More, Flip, Lock, Duplicate,
+  and Delete controls plus the canvas Duplicate and inspector Clear actions.
+- Restored every mutation through Undo or the reversible lock toggle and
+  finished on the exact clean smoke fixture with no external write or export.
+- Exercised readiness issue selection, guarded SVG/PNG/JSON downloads, both
+  bundle surfaces, Base64 clipboard success, and truthful image-clipboard
+  recovery under the connected browser's denied native image-write policy.
+- Confirmed the Images URL boundary rejects a drafted `javascript:` source
+  before any request or element creation, then restores the disabled clean state.
+- Bound twenty-one additional physical controls to the current source manifest,
+  reducing honestly untested MenuList controls from 1,717 to 1,696.
+
+## August 29, 2026 — Fail-closed shared icon imports
+
+- Restored the shared application compile graph by retaining the supported
+  `LuUsers` Early Access icon without a duplicate named import.
+- Added a repository-wide local verifier that rejects missing and duplicate
+  named `react-icons` imports before they can reach a billable remote build.
+- Browser-retested the authenticated MenuList Projects route and passed the
+  3,719-import icon gate, Answerlattice typecheck, full typecheck, and lint.
+
+## August 29, 2026 — Operable Creative Editor text styles
+
+- Named every contextual and inspector Bold, Italic, Underline, and
+  Strikethrough action and exposed each current pressed state.
+- Corrected 700/800-weight Bold toggling and placed the contextual toolbar
+  above the full-grid Fabric stage so real pointer interaction reaches it.
+- Added fail-closed coverage and browser-retested all twelve style actions,
+  contextual font sizing, exact restoration, and a clean seven-layer reload.
+
+## August 29, 2026 — Advanced Creative Editor inspector certification
+
+- Browser-tested reversible shadow, rotation, image-adjustment, grayscale,
+  gamma, outline, and border controls against the local smoke fixture.
+- Added fail-closed source assertions for every exercised control family and
+  preserved native color pickers as honestly uncredited where Chrome could not
+  drive the operating-system picker.
+- Saved inspected before/changed screenshots and refreshed the independent RC
+  inventory without any save, export, Firebase, deployment, or provider action.
+
+## August 29, 2026 — Current Creative Editor watermark feedback
+
+- Added explicit enabled/disabled confirmation for the visible watermark and a
+  current acknowledgement for its property controls.
+- Preserved the existing document metadata, preview/export rendering, history,
+  and browser-local execution boundary.
+- Added fail-closed source coverage and browser-retested enablement, text,
+  position, size, rotation, disablement, and exact Undo restoration.
+
+## August 29, 2026 — Current Creative Editor alignment feedback
+
+- Added target-specific confirmation to the shared selected-layer alignment
+  helper for all seven canvas alignment actions.
+- Preserved the existing geometry calculation, locked-layer guard, history,
+  and browser-local execution boundary.
+- Added fail-closed source coverage and browser-retested every alignment control
+  with exact Undo restoration of the original smoke document.
+
+## August 29, 2026 — Current Creative Editor layer-order feedback
+
+- Added destination-specific confirmation to the shared selected-layer reorder
+  helper for forward, front, backward, and back actions.
+- Preserved the existing Fabric stack mutation, protected-layer guard, history,
+  and browser-local execution boundary.
+- Added fail-closed source coverage and browser-retested all four layer-order
+  controls with exact Undo restoration of the original smoke document.
+
+## August 29, 2026 — Current Creative Editor flip feedback
+
+- Added axis-specific confirmation to the shared selected-layer flip helper so
+  every horizontal and vertical flip action replaces unrelated earlier status.
+- Preserved the existing layer mutation, Fabric synchronization, history, and
+  browser-local execution boundary.
+- Added fail-closed source coverage and browser-retested Flip X and Flip Y with
+  exact Undo restoration of the original smoke document.
+
+## August 29, 2026 — Current Creative Editor inspector feedback
+
+- Made every successful selected-layer property change acknowledge its own
+  owner-readable history label instead of retaining unrelated earlier status.
+- Preserved no-op and invalid-value guards, reversible document history, and
+  the browser-local execution boundary.
+- Added fail-closed source coverage and browser-retested image filter apply and
+  exact Undo restoration of the original smoke document.
+
+## August 29, 2026 — Current image-action feedback
+
+- Added immediate, action-specific confirmation for Creative Editor Fit/Crop,
+  Flip, Fill frame, Fit inside, and Larger image controls.
+- Preserved existing reversible document history and the already truthful Behind
+  text confirmation.
+- Added fail-closed source coverage and browser-retested every priority image
+  action with exact Undo recovery of the original smoke document.
+
+## August 29, 2026 — Actionable Brand Kit color recovery
+
+- Replaced the silent Brand Kit color no-op for selected image layers with clear
+  guidance to select text, a shape, a line, or a QR code.
+- Preserved the existing background and supported-layer color behavior, history,
+  and browser-local execution boundary.
+- Added fail-closed source coverage and browser-retested the unsupported image
+  path without creating a document mutation.
+
+## August 29, 2026 — Clear Creative Editor style feedback
+
+- Removed the duplicated `style` word from Apply brand style success and Undo
+  feedback while preserving named preset feedback such as Fresh local style.
+- Kept every project-style mutation browser-local and fully reversible.
+- Added fail-closed source coverage and retested brand, shuffled, and named style
+  application with exact Undo restoration of the original smoke document.
+
+## August 29, 2026 — Current Creative Editor template feedback
+
+- Added an exact success acknowledgement after a starter template replaces the
+  active page instead of leaving an unrelated earlier history notice visible.
+- Kept template application browser-local, undoable, and otherwise unchanged.
+- Added fail-closed editor coverage and browser-retested Square apply, exact
+  acknowledgement, and Undo restoration of the original smoke document.
+
+## August 29, 2026 — Productive Creative Editor graphic searches
+
+- Replaced six generic Graphics search suggestions that mostly opened an empty
+  result with six terms backed by the current approved local asset catalogue.
+- Popular searches now resolve Sale, New, Offer, Callout, Graphic, and Sticker
+  results without changing the editor's general free-text search behavior.
+- Added fail-closed shared-editor coverage and browser-retested the previously
+  empty Frame path plus corrected Sale result and clear recovery.
+
+## August 29, 2026 — Truthful Creative Editor drawer search
+
+- Removed the inert search field from Creative Editor drawers whose content is
+  not searchable, including Background, AI Tools, QR Code, and Barcode.
+- Retained search only for the ten drawers that actually filter templates,
+  assets, text, styles, tools, saved content, or brand content.
+- Added fail-closed shared-editor coverage and browser-retested a no-search
+  Background panel plus no-match/recovery behavior on a searchable drawer.
+
+## August 29, 2026 — Distinct Menu Manager context recovery
+
+- Replaced the two simultaneous generic `Clear` actions with purpose-specific
+  `Clear work area` and `Clear message context` controls.
+- Preserved the same draft-only composer context behavior while removing an
+  ambiguous keyboard, voice-control, and screen-reader state.
+- Added fail-closed AI Menu Manager coverage and browser-retested starter,
+  grouped, nested, Back, Close, context-reset, and blank-composer recovery
+  without sending a command or consuming a credit.
+
+## August 29, 2026 — Reachable processed-file actions
+
+- Replaced the collapsed hover-only processed-file tile with a stable-width
+  card that exposes the real filename and purpose-named actions without hover.
+- Removed the redundant card-wide pointer handler; image previews retain their
+  explicit Preview action, while every idle file exposes Delete on keyboard,
+  touch, and pointer paths.
+- Added fail-closed project-file regression coverage and verified the processed
+  delete confirmation/cancel recovery against the isolated fixture. No file or
+  project data was removed and no cloud, deployment, staging, Vercel, Git,
+  provider, Razorpay, or production action occurred.
+
+## August 29, 2026 — Keyboard-accessible editor source previews
+
+- Converted the desktop item/category source-file preview indicators from
+  mouse-only containers into focusable, purpose-named button surfaces.
+- Added Enter and Space activation while retaining the existing pointer
+  preview behavior and named image-preview dialog.
+- Added fail-closed project-editor boundary coverage and connected-browser
+  keyboard retests for both item and category flows. No file, project,
+  Firebase, Storage, provider, credit, deployment, staging, Vercel, Git, or
+  production mutation occurred.
+
+## August 29, 2026 — Item and category draft-dismissal recovery
+
+- Prevented desktop item/category Cancel, close, mask, and Escape actions from
+  silently discarding a changed draft; uniquely named confirmations now keep
+  editing or explicitly discard, while pristine forms still close immediately.
+- Applied the same recovery contract to mobile item/category Back and mask
+  dismissal by reusing their existing normalized dirty-state comparisons.
+- Added editor-boundary regression coverage and connected-browser desktop
+  verification. The exact Drinks / Filter Coffee / ₹80 fixture and blank prep
+  time survived discard recovery and hard reload; narrow-viewport dirty-dismiss
+  browser retesting remains pending. No cloud Firebase, Vercel, staging,
+  provider, Razorpay, production, deployment, push, or Git mutation occurred.
+
+## August 29, 2026 — Confirmed desktop custom-domain removal
+
+- Replaced the desktop Domain screen's one-click destructive removal with the
+  same localized confirmation contract already used on mobile.
+- Cancel now preserves the verified domain and current store-owned claim; only
+  the explicit Remove Domain confirmation reaches the authorized DELETE path.
+- Added fail-closed custom-domain regression coverage. A cancelled action now
+  produces zero Firestore writes, provider requests, and cache invalidations.
+
+## August 29, 2026 — External-sync activation and secret guard
+
+- Prevented External Menu Sync from reporting an enabled/healthy state without
+  a validated HTTPS provider URL on both desktop and mobile.
+- Disabled Regenerate secret until a first server-owned secret exists; mobile
+  first-secret recovery remains available through the validated enable-and-save
+  path, including the persisted-enabled/missing-secret recovery state.
+- Added fail-closed POS-sync and public-truth assertions. This avoids one
+  unnecessary secret request/write and one contradictory store-status write per
+  invalid activation attempt; no provider call was made during verification.
+
+## August 29, 2026 — Named mobile time-slot deletion
+
+- Named the Time Slots destructive confirmation from its existing localized
+  Delete action instead of the generic Confirmation fallback.
+- Added a fail-closed accessibility assertion and browser-retested create,
+  edit/cascade, cancel, confirmed delete, and exact empty-state cleanup.
+- The correction adds no Firebase operation; the disposable local-emulator
+  lifecycle used the existing acknowledged store/cascade write contract.
+
+## August 29, 2026 — Named mobile transaction sheets
+
+- Named the Transactions action-filter and transaction-detail bottom sheets
+  from their existing visible localized headings.
+- Added fail-closed AI-accounting assertions for both dialog names and
+  browser-retested filter selection, Reset recovery, and bounded help copy.
+- This accessibility-only correction adds no Firebase read/write, listener,
+  Function, Storage, credit, provider, payment, deployment, or production work.
+
+## August 29, 2026 — MenuList mobile support boundary
+
+- Reconciled the mobile More and Billing support actions with the current
+  MenuList-owned Help surface: Home, FAQ, and Contact now use MenuList-only
+  route-state names and truthful copy instead of ticket/update claims or
+  Answerlattice-labelled hashes.
+- Billing help now opens `/help-center/contact-us`; legacy ticket, feedback,
+  and changelog URLs retain their governed FAQ/contact/home recovery behavior.
+- Added fail-closed Help, mobile-route, tenant-safety, and billing regressions.
+  The correction adds no Firebase read/write, listener, Function, Storage,
+  provider, payment, deployment, or production work.
+
+## August 29, 2026 — Named mobile billing sheets
+
+- Named the Billing store, Billing History, plan choice, enhancement pack, and
+  cancellation bottom sheets from their visible headings.
+- Added a fail-closed billing-boundary regression and browser-verified HQ to
+  branch read-only isolation, empty history, and HQ restoration.
+- This accessibility-only correction adds no Firebase read/write, listener,
+  Function, Storage, provider, payment, deployment, or production work.
+
+## August 28, 2026 — Bulk-action confirmation names
+
+- Named mobile bulk mutation confirmations from the exact pending action, so a
+  sold-out review now exposes Mark sold out instead of generic Confirmation.
+- Added a fail-closed global-accessibility assertion; selection, mutation,
+  persistence, public propagation, and cancellation remain unchanged.
+- This accessibility-only correction adds no Firebase read/write, listener,
+  Function, Storage, cache, provider, payment, deployment, or production work.
+
+## August 28, 2026 — Featured selector target names
+
+- Gave Featured, Quick, and Value item selectors unique accessible names by
+  combining each visible choice title with the existing localized field label.
+- Added a fail-closed global-accessibility assertion and browser-verified
+  reversible switch, pin, automatic-choice, Save-state, and Back recovery.
+- This accessibility-only correction adds no Firebase read/write, listener,
+  Function, Storage, cache, provider, credit, payment, deployment, or
+  production work.
+
+## August 28, 2026 — Mobile menu-link validation parity
+
+- Applied the existing shared public HTTP(S) link validator before mobile menu
+  import can create a missing project or call the protected import route.
+- Unsafe/invalid input now renders safe alert copy and keeps Import disabled;
+  valid normalized input still requires the existing permission confirmation.
+- Named the URL field from its visible import purpose and added extraction plus
+  accessibility regressions. This can prevent one avoidable blank-project write
+  and rejected request per invalid no-menu attempt.
+
+## August 28, 2026 — Mobile language-picker empty-state recovery
+
+- Disabled Add a translation language when the outlet has no additional
+  governed customer-facing language available, replacing the generic `No data`
+  picker dead end with localized Language & Region recovery guidance.
+- Preserved the outlet-language subset contract and added fail-closed source
+  assertions for the empty state, disabled picker, and recovery copy.
+- This browser-local correction adds no Firebase read/write, listener,
+  Function, Storage, cache, provider, credit, payment, deployment, or
+  production work.
+
+## August 28, 2026 — Mobile Featured section dialog name
+
+- Named the existing **Featured section** Popup from its visible localized title
+  so assistive-technology owners can identify the public-choice configuration
+  context before changing automatic or pinned selections.
+- Added a fail-closed global-accessibility assertion; block enablement, pinned
+  choices, Save, cancellation, public output, and persistence remain unchanged.
+- This accessibility-only correction adds no Firebase read/write, listener,
+  Function, Storage, cache, provider, payment, deployment, or production work.
+
+## August 28, 2026 — Mobile item-reorder legend stability
+
+- Added stable keys to every conditional status badge rendered in the populated
+  mobile item-reorder legend, removing the React missing-key warning and its
+  development issue overlay.
+- Added a fail-closed global-accessibility/runtime-quality assertion; reorder
+  data, drag/keyboard behavior, Save, cancellation, and persistence are unchanged.
+- This render-only correction adds no Firebase read/write, listener, Function,
+  Storage, cache, provider, payment, deployment, or production work.
+
+## August 28, 2026 — Mobile category-manager dialog names
+
+- Named the existing Categories and reorder Popup from the same current visible
+  localized title, including category, item-order, and reorder-hub states.
+- Added a fail-closed global-accessibility assertion; category/item mutation,
+  ordering, scheduling, cancellation, and project scope remain unchanged.
+- This accessibility-only correction adds no Firebase read/write, listener,
+  Function, Storage, cache, provider, payment, deployment, or production work.
+
+## August 28, 2026 — Mobile menu-upload dialog name
+
+- Named the existing **Upload and Process** Popup from its visible localized
+  title so assistive-technology owners can identify the import context before
+  selecting a file or submitting a permitted menu link.
+- Added a fail-closed global-accessibility assertion; file validation, link
+  permission, extraction, project scope, and provider behavior remain unchanged.
+- This accessibility-only correction adds no Firebase read/write, listener,
+  Function, Storage, cache, provider, payment, deployment, or production work.
+
+## August 28, 2026 — Mobile Menu command dialog name
+
+- Named the existing **Manage & Control Your Menu** Popup from its visible
+  localized title so assistive-technology owners can identify the command
+  context before choosing a menu action.
+- Added a fail-closed global-accessibility assertion; all command routing,
+  cancellation, project scope, and mutation boundaries remain unchanged.
+- This accessibility-only correction adds no Firebase read/write, listener,
+  Function, Storage, cache, provider, payment, deployment, or production work.
+
+## August 28, 2026 — Mobile Manage Languages dialog name
+
+- Named the existing mobile **Manage Languages** Popup from its visible
+  localized title so assistive-technology owners can identify the language
+  management context before any translation or project mutation.
+- Added a fail-closed global-accessibility assertion; language selection,
+  translation, repair, persistence, and provider behavior remain unchanged.
+- This accessibility-only correction adds no Firebase read/write, listener,
+  Function, Storage, cache, provider, payment, deployment, or production work.
+
+## August 28, 2026 — Mobile Menu descriptions dialog name
+
+- Named the existing mobile **Menu descriptions** Popup from its visible
+  localized title so assistive-technology owners can identify the generation
+  review context before any provider action.
+- Added a fail-closed global-accessibility assertion; choices, confirmation,
+  project scope, credit handling, and provider behavior remain unchanged.
+- This accessibility-only correction adds no Firebase read/write, listener,
+  Function, Storage, cache, provider, payment, deployment, or production work.
+
+## August 28, 2026 — Mobile Generation defaults dialog name
+
+- Named the existing mobile **Generation defaults** Popup from its visible title
+  so assistive-technology owners can identify the active preference context.
+- Added a fail-closed global-accessibility assertion; reversible defaults,
+  saving, project scope, and provider behavior remain unchanged.
+- This accessibility-only correction adds no Firebase read/write, listener,
+  Function, Storage, cache, provider, payment, deployment, or production work.
+
+## August 28, 2026 — Mobile Fix Text Case dialog name
+
+- Named the existing mobile **Fix Text Case** Popup from its visible localized
+  title so assistive-technology owners can identify the active menu action.
+- Added a fail-closed global-accessibility assertion; text-case choices,
+  cancellation, project persistence, and public-menu behavior remain unchanged.
+- This accessibility-only correction adds no Firebase read/write, listener,
+  Function, Storage, cache, provider, payment, deployment, or production work.
+
+## August 28, 2026 — Mobile local-domain status guard
+
+- Extended the provider-free local `localhost` custom-domain fixture boundary
+  to Mobile Domain settings, which previously called the hosted domain-status
+  route on mount and surfaced a false Store Data error in local certification.
+- The mobile screen now derives the verified local status from already-loaded
+  store truth before any provider-status request; production and non-loopback
+  domains remain fail-closed and unchanged.
+- This removes one unnecessary local status request/error path. It adds no
+  Firestore read/write, listener, Function, Storage, cache, payment, provider,
+  deployment, or production operation.
+
+## August 28, 2026 — Mobile Customer App field name
+
+- Named the localized short-name input from its visible **Home screen name**
+  purpose instead of exposing the example placeholder as the field name.
+- Added fail-closed Customer App and global-accessibility assertions; localized
+  draft, reference-copy, Reset, and Save behavior remain unchanged.
+- This accessibility-only correction adds no Firebase read/write, listener,
+  Function, Storage, cache, analytics, provider, payment, deployment, or
+  production operation.
+
+## August 28, 2026 — Mobile Analytics guide-link recovery
+
+- Replaced the retired non-resolving MenuList analytics-documentation host with
+  the shipped `/features/analytics` product guide on the active MenuList
+  website origin.
+- Added fail-closed regression coverage so the mobile guide cannot restore the
+  obsolete host or bypass the governed environment-aware URL helper.
+- This link-only correction performs no Firebase read/write, listener,
+  Function, Storage, cache, analytics, payment, provider, deployment, or
+  production operation.
+
+## August 28, 2026 — Mobile Official Business Page theme dialog name
+
+- Named the shared color-picker Popup from its existing visible **Theme color**
+  title so assistive-technology owners can identify the opened context.
+- Connected Chrome at 390×844 selected Fresh Green as a reversible draft,
+  closed the sheet, and verified Reset restored persisted `#1677FF` with Save
+  disabled.
+- This accessibility-only correction performs no Firebase read/write, listener,
+  Function, Storage, cache, analytics, payment, provider, deployment, or
+  production operation.
+
+## August 28, 2026 — Mobile Share guide dialog names
+
+- Fixed the Setup Guide, Printing Guide, and Sharing Guide sheets so each
+  Popup is programmatically named by its existing visible localized title.
+- Added fail-closed Communication Kit and global-accessibility guards and
+  verified all three dialogs plus close recovery in connected Chrome at
+  390×844.
+- This ARIA-only correction adds no Firestore read/write, listener, Function,
+  Storage, cache, analytics, payment, provider, or network operation.
+
+## August 28, 2026 — Mobile Feedback action accessibility
+
+- Named the mobile Feedback copy, native-share, QR, and public-link icon actions
+  with existing localized product copy; the shared action tile now requires and
+  forwards the browser `aria-label`.
+- Added fail-closed Guest Feedback and global-accessibility regression guards,
+  included the screen in the source-manifest-bound local interaction evidence,
+  and verified copy, QR, public-link, help, filters, and detail recovery in
+  connected Chrome at 390×844. Native Share remained uninvoked at the external
+  operating-system boundary.
+- This accessibility-only correction adds no Firestore read/write, listener,
+  Function, Storage, analytics, cache invalidation, payment, or provider work.
+
+## August 28, 2026 — Owner Feedback QR and link recovery
+
+- Restored the shipped desktop Feedback distribution card by resolving the
+  store's active regular default menu when the route does not provide a project
+  ID. Explicit and stored primary IDs are validated before use; the fallback
+  read is exact tenant/store scoped, deduped for one hour, and never admits
+  inactive, deleted, special, or malformed projects.
+- Added runtime and source regression coverage for canonical selection, scope,
+  cache behavior, and route handoff. Connected local Chrome passed Copy Link,
+  Copy Message, public-form Open, WhatsApp boundary open/close without sending,
+  named QR generation, acknowledged PNG download, all inbox filters, and the
+  reversible New/Resolved lifecycle.
+- A legacy store without `primaryProjectId` now incurs at most one bounded
+  project-summary read on first Feedback navigation instead of exposing a dead
+  workflow. No write, listener, Function, Storage, analytics, payment,
+  Razorpay, provider-send, cloud Firebase, Vercel, staging, production,
+  deployment, push, or Git mutation ran.
+
+## August 28, 2026 — Owner-action settings deep-link recovery
+
+- Stabilized Business Settings query handling and added bounded post-render
+  alignment so Dashboard `Set hours` and adjacent customer-link actions land
+  with their intended controls visibly in view after asynchronous sections
+  settle.
+- Kept provider-free `localhost` and `*.localhost` custom-domain fixtures local:
+  development Domain Settings now uses the already-loaded store truth instead
+  of calling the hosted provider-status boundary. Production behavior is
+  unchanged.
+- Connected local Chrome completed the dashboard/direct/adjacent journeys with
+  no issue overlay. Focused contracts, lint, strict TypeScript, inventory, and
+  diff integrity passed. No cloud Firebase, Razorpay, Vercel, staging,
+  production, deployment, push, or Git mutation ran.
+
+## August 28, 2026 — Branch setup-guide recovery
+
+- Kept the existing four-step project setup guidance inside a named,
+  viewport-bounded dialog, moved its primary action into an always-visible
+  footer, and stacked the tips at compact widths.
+- Connected local Chrome reproduced the clipped pointer-inoperable action and
+  unnamed dialog at 1512×807, then verified the fully visible pointer action,
+  keyboard close, and `How It Works` programmatic name after the fix.
+- Verified that the empty branch editor intentionally creates one isolated,
+  deterministic default draft and that two hard reloads retained one record
+  with an identical normalized project/summary hash. Guarded emulator cleanup
+  restored zero branch projects. No cloud Firebase, Razorpay, Vercel, staging,
+  production, deployment, push, or Git mutation ran.
+
+## August 28, 2026 — Edited-menu reset and linked-delete recovery
+
+- Bound Reset Menu to the project actually being edited instead of the
+  separately selected project, and kept Close, Cancel, mask/keyboard dismissal,
+  and repeat submission disabled while the acknowledged destructive write is
+  pending.
+- Added stable server rejection codes for protected project deletion and
+  whitelisted static owner copy. Desktop and mobile now render one truthful
+  recovery message instead of a generic DAL failure plus a second local toast;
+  raw server text is never trusted for display.
+- Classified those whitelisted policy rejections as expected client outcomes,
+  so the same protected delete no longer opens duplicate console-error issues;
+  unknown request and post-request failures retain error-level diagnostics.
+- Made the emulator-only reseller-owner fixture deterministic across repeated
+  runs by bounding and clearing dynamic master/outlet menu documents before
+  reseeding, then verifying exact post-seed project counts.
+- Connected local Chrome confirmed the edited duplicate reset, linked-master
+  rejection with no issue overlay, normal duplicate deletion, selector convergence, and unchanged
+  Drinks / Filter Coffee / ₹80 public truth. Two exact stale inherited fixture
+  documents were removed under guarded emulator-only checks. No cloud Firebase,
+  Razorpay, Vercel, staging, production, deployment, push, or Git mutation ran.
+
+## August 28, 2026 — Menu lifecycle recovery
+
+- Kept the Edit Menu form open when an owner cancels the nested Reset Menu
+  confirmation, preserving every unsaved field and status draft until the
+  owner explicitly closes the parent form.
+- Added an accessible required-name error to Duplicate Menu so an empty submit
+  explains the recovery instead of silently doing nothing; valid typing clears
+  the field error immediately.
+- Connected local Chrome verified edit/create draft discard and persistence,
+  duplicate/delete cancellation, and guarded cleanup of one transient
+  emulator-only duplicate. No cloud Firebase, Razorpay, Vercel, staging,
+  production, deployment, or Git operation occurred.
+
+## August 28, 2026 — Project language picker and CTA clearance
+
+- Kept the transient Add Language picker explicitly empty after each choice so
+  a removed language can be selected again without stale internal state.
+- Added bottom content clearance for the fixed Continue to Editor action so it
+  no longer covers or misroutes pointer input intended for language chips.
+- Connected local Chrome added, removed, and re-added Spanish, restored the
+  English-only draft, and intentionally traversed Continue/Back without a
+  translation, extraction, Firebase, provider, deployment, or production
+  operation.
+
+## August 28, 2026 — Item status control accessibility
+
+- Associated the desktop item editor's visible Show to customers, Available,
+  and Best Seller labels with their existing named switches and removed the
+  duplicate pointer-only text handlers.
+- Preserved reversible preview state, keyboard switch operation, item-name and
+  negative-price validation, cancellation recovery, and public truth. Connected
+  local Chrome confirmed the full correction without a save, Firebase write,
+  provider call, deployment, or production mutation.
+
+## August 28, 2026 — Cross-tab publication truth convergence
+
+- Corrected an already-open desktop dashboard that could keep showing
+  `Publish menu — Not live` after another owner tab had successfully published
+  the same menu.
+- Added a bounded same-origin event after acknowledged publication. Only a
+  dashboard with the exact tenant, store, and project scope performs one
+  authoritative project re-read; malformed and cross-scope events fail closed.
+- Preserved the ten-minute normal dashboard dedupe without adding polling,
+  focus-driven reads, a listener, collection scan, write, or persistent menu or
+  owner data. Connected local Chrome proved two-tab convergence without an
+  observer reload, and the emulator fixture finished published at menu version
+  2. No cloud Firebase, Razorpay, Vercel, staging, production, or Git operation
+  occurred.
+
+## August 28, 2026 — Mobile first-publication recovery
+
+- Corrected the mobile Menu setup `Publish menu` action so it opens the real
+  confirmation and existing project publication boundary instead of scrolling
+  the already-open Menu screen.
+- Preserved permission enforcement, pending-save settlement, stale-write
+  protection, acknowledged owner-state synchronization, precise invalidation,
+  bounded verification diagnostics, loading feedback, and duplicate-tap
+  prevention.
+- Connected local Chrome proved cancel, confirmed publication, reload
+  persistence, Share recovery, the published customer menu and Official
+  Business Page, plus reversible availability propagation on a warm customer
+  tab. Testing used only the Firebase emulator and a temporary `.localhost`
+  custom-domain fixture; no cloud Firebase, Razorpay, Vercel, staging,
+  production, or Git operation occurred.
+- Treated browser-standard `.localhost` tenant aliases as local only at the
+  Firebase client App Check bootstrap boundary, removing false missing-site-key
+  diagnostics during emulator customer-route QA without weakening App Check on
+  QA, production, or real custom domains.
+- Reused the existing guarded public freshness timestamp normalizer in the menu
+  footer so valid serialized Firestore `{_seconds,_nanoseconds}` publication
+  timestamps no longer create two render-time console errors. Malformed values
+  still fail closed with bounded diagnostics.
+
+## August 28, 2026 — Printable asset PDF size correction
+
+- Compressed raster-backed printable PDFs without changing print dimensions or
+  QR/image fidelity, preventing Complete Menu Kit downloads from embedding raw
+  oversized raster streams.
+- Kept generation browser-local with no Firebase, Storage, Function, provider,
+  cache, or deployment change.
+
+## August 28, 2026 - Project Editor Guidance and Control Accessibility
+
+- Removed a literal replacement character from the keyboard-shortcuts guide so
+  the `How Selection Works` guidance renders as readable text after a clean
+  reload.
+- Added stable accessible names to the project-filter selectors and the full
+  desktop item editor's category, preparation, promotion, nutrition,
+  serving-size, allergen, dietary, and spice controls.
+- Added fail-closed source assertions and source-manifest-bound connected-Chrome
+  evidence for shortcuts, filter apply/clear recovery, Traditional view, and
+  reversible item drafts. No project save, Firebase write, provider call,
+  credit use, deployment, or production mutation occurred.
+- Gave the shared Category, Item, and Option deletion confirmations stable
+  dialog names while retaining the existing destructive copy, button labels,
+  cancellation, and mutation callbacks.
+- Named the Manage Languages, Add Images, Featured section, and Command Center
+  selection/action surfaces so their visible purpose and choices remain
+  discoverable to keyboard and assistive-technology users.
+- Kept the Featured section footer visible within a bounded desktop viewport;
+  a selected Featured choice draft now cancels through the visible native
+  control without persistence.
+- Made Command Center action cards semantic keyboard-capable buttons, named its
+  item/category/destination controls and confirmations, and replaced deprecated
+  Collapse child panels with the current `items` contract. The complete local
+  preview pass produced no Next.js issue overlay.
+- Verified one deterministic emulator-only Repair Menu correction end to end:
+  the missing category icon was added once, owner Menu Check cleared, and View
+  Menu retained Drinks and Filter Coffee at ₹80. All other language, image,
+  featured, pricing, availability, move, text-case, and visibility drafts were
+  cancelled; no provider, Razorpay, cloud Firebase, deployment, or production
+  path ran.
+- Made the project setup language picker uniquely named and converted selected
+  language tags into named Enter/Space-operable controls. The existing
+  at-least-one-language guard remains intact; a French draft was added and
+  removed locally to restore the exact English-only state.
+- Corrected the shared dialog-label bridge so Ant Design's generated title
+  reference cannot override an explicit accessible name. Menu preview now
+  resolves by its purpose instead of the combined device-toggle labels; its
+  Desktop, Tablet, Mobile, search, item-detail, and close paths plus the
+  adjacent Command Center discard confirmation pass in connected local Chrome.
+- Applied the same bridge to the Editor's validation, pre-publish quality,
+  project-detail repair, and processed-file deletion dialogs. The exercised
+  Before publishing path now has a stable dialog name and Go Back retains the
+  unchanged editor without publishing or writing data.
+- Corrected that destructive source-file confirmation to use file-neutral copy;
+  JSON and other processed menu sources are no longer mislabeled as images.
+  Cancellation retains the source and no save, Storage, provider, or public
+  mutation is performed.
+- Gave the desktop `Share your menu` workflow a stable dialog name while
+  preserving its QR, print, export, social, and Menu Kit behavior. Local browser
+  checks covered reversible logo selection, canonical link/message/staff-line
+  copy, Instagram link copy, JSON/XLSX/QR/Menu Kit downloads, and the Print Menu
+  route handoff without posting externally or writing Firebase data.
+- Kept the Share workflow mounted when an owner opens the current public menu.
+  The external-link action now uses the existing isolated new-tab handoff
+  instead of replacing the owner tab; reversible foreground/background QR color
+  edits and the separate-tab recovery path pass locally without a project or
+  Firebase write.
+- Added a stable `Menu link URL` name to the existing Import link field. Local
+  browser checks retained unsafe-scheme rejection, ownership-permission gating,
+  valid-HTTPS enablement, and cancellation without starting an import job.
+- Canonicalized empty and missing item-attribute arrays only at the editor
+  comparison boundary. Adding and then deleting a blank attribute now returns
+  immediately to clean state instead of leaving an unnecessary project write
+  pending; persisted-attribute removal and other real changes remain dirty.
+- Gave every item and batch image step one stable state-specific dialog name on
+  desktop and mobile, including visible `Select items for images` batch setup.
+  Local browser QA reached consent-enabled generation readiness, then backed
+  out without invoking generation, upload, provider, credit, Storage, Function,
+  Firebase, cache, analytics, deployment, or public-state behavior.
+- Replaced the image target dropdown's internal JSON option name with the
+  visible item/category name while retaining its compound identity value.
+- Added selected-state semantics to item-photo framing, image-type shortcuts
+  and choices, and desktop/mobile aspect ratios; removed redundant pointer-only
+  summary handlers where an existing named action already performs the task.
+- Named special/excluded image instructions and replaced the inaccessible Ant
+  color popup trigger with the product's existing 44px native color-input
+  pattern. Reversible settings were restored locally; generation, camera,
+  upload, provider, credit, Storage, Firebase, cache, analytics, and deployment
+  paths remained untouched.
+
+## August 28, 2026 - Account Menu and Profile Recovery
+
+- Replaced the unnamed, non-focusable desktop profile-avatar trigger with a
+  named native button that exposes its expanded/dialog state and visible
+  keyboard focus while preserving the existing popover layout.
+- Deferred profile and password form initialization until the corresponding
+  modal section is mounted, removing the disconnected Ant Form warning without
+  changing validation, authentication, API, or persistence contracts.
+- Added fail-closed accessibility and auth/profile regression assertions and
+  completed connected-Chrome checks for every account-menu action, profile
+  section, validation recovery, confirmation cancel, and dialog close. No
+  profile, password, session, Firebase, provider, or deployment mutation was
+  submitted.
+
+## August 28, 2026 - Google Profile Reminder Recovery
+
+- Made the Business Settings `Remind me later` action dismiss the Google profile
+  guide for the current mounted session instead of acting as a dead button.
+- Kept the dismissal intentionally ephemeral: no Firestore record, listener,
+  provider request, or billed operation was added, and refresh brings the guide
+  back for later completion.
+- Added source-contract coverage and completed local browser checks for link and
+  profile-kit copy, dismissal, refresh recovery, acknowledged completion, and
+  exact emulator-fixture restoration.
+
+## August 28, 2026 - Disabled-Control Certification Boundary
+
+- Classified only JSX controls with a literal bare `disabled` attribute as
+  permanently non-user-triggerable in the release-candidate inventory.
+- Used the TypeScript AST in both the generator and independent verifier so
+  multiline controls are handled correctly and `disabled={expression}` controls
+  remain in the runtime-testing denominator.
+- Removed 16 false `NOT_RUN` rows without claiming new interaction coverage.
+  No application runtime, Firebase, provider, deployment, or billing behavior
+  changed.
+
+## August 28, 2026 - Business Attributes Atomic Reset Boundary
+
+- Replaced repeated nested Ant form writes in the desktop Business Settings
+  Reset action with one complete Business Attributes projection. This preserves
+  the corrected persisted-state reset while removing the circular-reference
+  console error raised by the repeated field updates.
+- Kept normal load/save projection, Firebase data, public truth, and false-default
+  write behavior unchanged. Reset remains a local draft-only action.
+- Extended the maintained reset verifier and completed a connected-Chrome
+  draft/reset pass with the switch restored and no issue overlay or console
+  warning. No deployment, provider action, credit event, or cloud write occurred.
+
+## August 28, 2026 - Optional Business Settings Reset Projection
+
+- Added every optional Business Profile and Official Page scalar to the shared
+  persisted reset projection as an explicit value-or-undefined property. Ant
+  can now clear a draft when the stored document legitimately omits that field.
+- Reproduced the gap with an unsaved GSTIN, then verified Brand name, Location
+  name, Business Type, Business Email, and GSTIN together. Invalid email stayed
+  on-page with field recovery; Reset restored the complete fixture and removed
+  the validation state without a console warning or write.
+- Extended the maintained reset and source-manifest inventory boundaries. No
+  Firebase schema, rule, index, Function, provider, dependency, deployment, or
+  production environment changed.
+
+## August 27, 2026 - Internal Category and Owner-Language Boundary
+
+- Kept `public-business truth infrastructure` as internal doctrine and ecosystem
+  positioning while requiring website, owner UI, sales, support, onboarding,
+  and video copy to lead with old menus, conflicting prices, and one
+  owner-approved customer link for the latest published version.
+- Replaced absolute `always latest` wording in the Official Business Page share
+  card, staff communication template, communication-kit docs, QR distribution
+  spec, and active HyperFrames truth-loop source.
+- Updated the canonical language and video production rules to name owner review,
+  publishing, supported MenuList outputs, and the external-platform boundary.
+- Added `ML-MKT-EXT-012` and extended
+  `npm run verify:website-public-copy-boundary` to reject the internal category
+  phrase on public website surfaces and guard the corrected owner-facing copy.
+
+### Scope
+
+- No product workflow, publication behavior, external integration, Firebase
+  infrastructure, build, deployment, campaign publication, or outreach changed.
+
 ## August 26, 2026 - Answerlattice Fresh MenuList Client Certification
 
 - Replaced the MenuList-only public widget-key environment name with the same
@@ -561,6 +1434,8 @@
 
 - Extended the desktop page-level Reset action to restore social profile URLs and regular weekly hours from current persisted store truth, alongside the existing Guest Feedback draft restoration.
 - Cleared weekly-hours dirty/day tracking during Reset so a later unrelated Save cannot persist cancelled hours or social-profile edits.
+- Explicitly project persisted-absent GA4, Search Console, and Meta Pixel identifiers during Reset so invalid unsaved analytics drafts cannot survive and leak into a later unrelated save.
+- Reused the exact initial locale-default projection during Reset, preserving country/currency defaults, timezone, business-day boundary, date format, and time format when their persisted fields are absent.
 - Added a focused source verifier. Reset remains Firebase-cost neutral and changes no schema, rule, index, Function, provider, dependency, or production environment.
 
 ## August 14, 2026 - Business Settings Feedback Reset Boundary
@@ -32992,3 +33867,84 @@ TEMPLATE FOR NEW ENTRIES:
   Firestore service instead of the unmanaged default-app service, eliminating
   one invalid-credential attempt per guarded route without changing the one-read
   success path, fail-open behavior, or Answerlattice's injected service boundary.
+# 2026-08-28 - MenuList printable asset reliability
+
+- Reduced Complete Menu Kit output from 46,453,264 bytes to 1,640,055 bytes
+  while retaining the same eleven governed files and print dimensions.
+- Moved Counter Sticker call-to-action copy fully outside the live QR region and
+  added a nine-family geometry regression.
+- Made interrupted Saved design creation idempotent across editor remounts,
+  blocked Close/retry while pending, and persisted the edited document title.
+- Named Saved design deletion from its visible destructive title. Local
+  emulator cleanup finished with zero disposable index records and zero
+  disposable Storage objects.
+- Named the Creative Editor inspector lock, duplicate, delete, seven alignment,
+  and gradient-stop removal actions; all currently enabled corrected actions
+  pass the embedded-editor browser interaction.
+- Removed the dead Show background checkbox and handler-free Color button;
+  retained truthful Color background status plus the explicit Add image layer
+  handoff and existing Solid/Gradient controls.
+- No provider, live Razorpay, cloud Firebase, Vercel, staging, or production
+  operation was performed.
+
+# 2026-08-28 - MenuList Today guide accessibility
+
+- Programmatically named the existing Today feature-guide Drawer from its
+  visible `How Today Actions Work` title so assistive technology can identify
+  the opened context.
+- Extended the Today boundary verifier and source-manifest-bound browser
+  evidence without changing guide content, owner state, or any data path.
+- No Firebase, provider, live Razorpay, deployment, staging, Vercel, or
+  production operation was performed.
+
+# 2026-08-28 - MenuList Business Health local certification
+
+- Completed the owner Business Health refresh, all-menu/canonical-menu scope,
+  primary hours recovery, public-information check, and English report export
+  lifecycle against the isolated emulators.
+- Verified exactly one store-scoped saved report, then removed that disposable
+  report through an exact-scope cleanup and restored the original no-report
+  state. Reconciled one orphaned summary key left by earlier out-of-band QA
+  fixture cleanup; no product-path code change was justified.
+- No external scan, provider, live Razorpay, cloud Firebase, deployment,
+  staging, Vercel, or production operation was performed.
+
+# 2026-08-28 - MenuList mobile Help recovery truth
+
+- Kept in-shell Help Back inside the current MobileShell route instead of
+  rewriting safe query context and remounting the desktop owner application.
+- Removed the mobile Release Notes card because MenuList has no product-owned
+  release-notes reader; legacy changelog links now recover to calm Help home.
+- Preserved the isolated Answerlattice Help and platform changelog contracts.
+- Added fail-closed Help, route-map, mobile-owner, and tenant-safety regression
+  coverage. No Firebase, provider, live Razorpay, deployment, staging, Vercel,
+  or production operation was performed.
+
+# 2026-08-28 - MenuList mobile profile accessibility
+
+- Named the existing Edit profile dialog and its Name, Email, and Phone fields.
+- Named all three Account access password fields from their visible purpose.
+- Added fail-closed mobile-form and dialog regression coverage. Invalid email
+  and password-mismatch recovery complete before any account request.
+- No profile, password, Firebase, provider, live Razorpay, deployment, staging,
+  Vercel, or production mutation was performed.
+
+# 2026-08-28 - MenuList mobile Digital Screen action clarity
+
+- Distinguished the Menu Board and Highlights Copy/Open actions by their
+  visible target so keyboard and assistive-technology owners can select the
+  intended screen link.
+- Preserved acknowledged clipboard copy and isolated-tab public opening.
+- Added Communication Kit and global accessibility regression guards. No
+  Firebase, provider, live Razorpay, deployment, staging, Vercel, or production
+  mutation was performed.
+
+# 2026-08-28 - MenuList mobile generated-file operation recovery
+
+- Serialized Mobile Share generated-file work so rapid or cross-tile taps cannot
+  start duplicate exports or overlapping native share handoffs.
+- Disabled adjacent file actions until the current operation settles and made
+  browser `NotAllowedError` recover through the existing local download path.
+- Added browser-file boundary and fail-closed Communication Kit/Menu Card Export
+  regression coverage. No cloud Firebase, provider, live Razorpay, deployment,
+  staging, Vercel, or production mutation was performed.

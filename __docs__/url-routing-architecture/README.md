@@ -277,7 +277,7 @@ Owner-side browser update paths use `src/lib/cache/publicClientCache.ts` to requ
 | No old slug → redirect system             | `previousSlugs[]` → 301 redirect in client resolver              | ADR-3         |
 | No reserved project slug namespace        | 52 entries in `reservedSlugs.ts` — project, outlet, subdomain    | ADR-4         |
 | No subdomain auto-assignment              | Both onboarding flows auto-generate subdomain from business name | ADR-7, ADR-9  |
-| No subdomain settings UI                  | `SubdomainTab.tsx` + `CustomDomainTab.tsx` in Business Settings  | ADR-5         |
+| No subdomain settings UI                  | Active combined `DomainSettingsTab.tsx` in Business Settings     | ADR-5         |
 | No CDN cache headers                      | `s-maxage=60, stale-while-revalidate=300` on all client pages    | ADR-8         |
 | No subdomain→custom domain redirect       | Page-level 301 redirect when store has verified custom domain    | ADR-5         |
 | No trailing slash/lowercase normalization | Edge middleware 301 redirect                                     | ADR-6         |

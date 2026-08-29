@@ -91,7 +91,11 @@ Switch controls are shown only for active stores mapped to the signed-in user an
 
 ## 9. New master-project propagation
 
-`addProject()` calls `propagateNewProjectToOutlets()` only for a verified active master source. The propagation boundary:
+`addProject()` creates only the empty master draft. Firestore Rules require an inherited
+outlet project to reference a single-source master, so propagation starts after the first
+successful master save that changes `files` from empty to exactly one source. Later saves
+do not repeat the fan-out. `propagateNewProjectToOutlets()` then runs only for a verified
+active master source. The propagation boundary:
 
 - admits a unique compact store list capped at 200 entries;
 - rejects linked, deleted, local-only, malformed, or cross-scope source projects;

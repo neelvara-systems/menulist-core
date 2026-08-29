@@ -8,6 +8,7 @@ import {
 import {
     admitPrintableAssetEditorDocument,
     buildPrintableAssetEditorDocument,
+    getPrintableAssetDisplayShortLink,
 } from '../../src/lib/printable-asset-templates/editorDocumentAdapter';
 import { normalizePrintableAssetRenderInput } from '../../src/lib/printable-asset-templates/inputBoundary';
 import { getMenuListLogoMarkWidth } from '../../src/lib/menu-kit/platformAttribution';
@@ -53,6 +54,56 @@ const printableInput = {
     templateFamilyId: 'modern-calm' as const,
 };
 const printableDocument = buildPrintableAssetEditorDocument(printableInput);
+for (const templateFamilyId of [
+    'classic-luxe',
+    'executive-dark',
+    'botanical-heritage',
+    'modern-calm',
+    'brand-banner',
+    'soft-curve',
+    'qr-first',
+    'local-bold',
+    'clean-utility',
+] as const) {
+    const counterStickerDocument = buildPrintableAssetEditorDocument({
+        ...printableInput,
+        assetTypeId: 'counter_sticker',
+        templateFamilyId,
+    });
+    const counterStickerQr = counterStickerDocument.elements.find((element) => element.type === 'qr');
+    const counterStickerCta = counterStickerDocument.elements.find((element) => (
+        element.type === 'text' && element.name === 'Call to action'
+    ));
+    assert.ok(counterStickerQr?.type === 'qr');
+    assert.ok(counterStickerCta?.type === 'text');
+    assert.ok(
+        counterStickerCta.y + counterStickerCta.height <= counterStickerQr.y,
+        `${templateFamilyId} Counter Sticker call to action must remain outside the live QR code`,
+    );
+}
+const feedbackPrintableInput = {
+    ...printableInput,
+    assetTypeId: 'feedback_qr' as const,
+    feedbackUrl: 'https://boundary-cafe.menulist.online/feedback/1-default-2?source=feedback_qr',
+};
+assert.equal(
+    getPrintableAssetDisplayShortLink(feedbackPrintableInput),
+    'boundary-cafe.menulist.online/feedback/1-default-2?source=feedback_qr',
+);
+assert.equal(
+    getPrintableAssetDisplayShortLink(printableInput),
+    'boundary-cafe.menulist.online/menu',
+);
+const feedbackPrintableDocument = buildPrintableAssetEditorDocument(feedbackPrintableInput);
+assert.ok(feedbackPrintableDocument.elements.some((element) => (
+    element.type === 'qr'
+    && element.value === feedbackPrintableInput.feedbackUrl
+)));
+assert.ok(feedbackPrintableDocument.elements.some((element) => (
+    element.type === 'text'
+    && element.name === 'Short link'
+    && element.text.includes('/feedback/1-default-2')
+)));
 assert.equal(
     admitPrintableAssetEditorDocument(printableDocument, printableInput.assetTypeId).canvas.width,
     2480,

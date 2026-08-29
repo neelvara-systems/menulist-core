@@ -169,6 +169,7 @@ function MobileBusinessAttributesScreenContent({ onBack }: MobileBusinessAttribu
                                         <Text>{t(field.labelKey as any)}</Text>
                                     </Flex>
                                     <Switch
+                                        aria-label={t(field.labelKey as any)}
                                         checked={Boolean(attributes[field.key])}
                                         onChange={(value) => setAttributes((previous) => ({ ...previous, [field.key]: value }))}
                                     />

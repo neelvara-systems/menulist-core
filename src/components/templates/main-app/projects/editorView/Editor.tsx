@@ -8,6 +8,7 @@ import { useAppDispatch } from "@hook/useAppDispatch";
 import { useOfferingLabels } from "@hook/useOfferingLabels";
 import { getStoreContextName } from "@lib/businessIdentity/names";
 import { getSafeUiErrorMessage } from "@lib/errors/uiErrorMessages";
+import { areEditorProjectsEquivalent } from "@lib/projects/editorProjectComparison";
 import { getProjectDefaultLanguage } from "@lib/localization/projectContent";
 import { appendImageBatchSelectionsToProject } from "@lib/ai/imageBatchProjectSelection";
 import { resolveProjectForRender } from "@lib/multiOutlet";
@@ -27,7 +28,7 @@ import translateProjectPublicContent from "@services/ai/projectPublicContent/tra
 import { UserUploadedFileType } from "@type/common";
 import { DEFAULT_OUTLET_POLICY, type InheritanceState, type OutletPolicy } from "@type/multiOutlet.types";
 import { formatDateTime } from "@util/dateTime";
-import { isSameObjects, removeObjRef } from "@util/utils";
+import { removeObjRef } from "@util/utils";
 import {
     message as antdMessage,
     Modal as AntdModal,
@@ -61,6 +62,7 @@ import {
     LuSearch,
 } from "react-icons/lu";
 import { AUTOSAVE_DEBOUNCE_MS, AUTOSAVE_MIN_INTERVAL_MS } from "../constants";
+import { getEditorSaveVisibilityState } from "../b2cView/projectPublishState";
 import {
     ExtractedDataItem,
     ItemForDropdown,
@@ -93,6 +95,7 @@ import {
 } from "./hooks/useEditorKeyboardShortcuts";
 import ImageUploadModal from "./ImageUploadModal";
 import KeyboardShortcutsHelp from "./KeyboardShortcutsHelp";
+import { labelConfirmDialog } from "./utils/editorOperations";
 import LanguageSelectorModal from "./LanguageSelectorModal";
 import ReorderMenuModal from "./ReorderMenuModal";
 import StoreCustomizationModal from "./StoreCustomizationModal";
@@ -172,6 +175,7 @@ function Editor({ selectedProject, onRemove, addFileButton, initialQualityAction
     const [isAIDefaultsOpen, setIsAIDefaultsOpen] = useState(false);
     const [isTranslating, setIsTranslating] = useState(false);
     const showItemPrices = projectData?.config?.design?.menu?.showItemPrices ?? true;
+    const saveVisibilityState = getEditorSaveVisibilityState(projectData);
 
     // Multi-outlet state (Feature #4)
     const [itemStates, setItemStates] = useState<
@@ -245,7 +249,7 @@ function Editor({ selectedProject, onRemove, addFileButton, initialQualityAction
         const comparableProjectData = projectData?.masterProjectId
             ? stripResolvedOutletProjectForSave(projectData, activeProject)
             : projectData;
-        const changesFound = !isSameObjects(activeProject, comparableProjectData);
+        const changesFound = !areEditorProjectsEquivalent(activeProject, comparableProjectData);
         setHasChanges(changesFound);
         hasChangesRef.current = changesFound;
     }, [activeProject, projectData]);
@@ -374,6 +378,7 @@ function Editor({ selectedProject, onRemove, addFileButton, initialQualityAction
         if (validationErrors.length > 0) {
             AntdModal.error({
                 title: "Please fix these issues before continuing",
+                modalRender: labelConfirmDialog("Please fix these issues before continuing"),
                 content: (
                     <ul>
                         {validationErrors.map((err, idx) => (
@@ -400,6 +405,7 @@ function Editor({ selectedProject, onRemove, addFileButton, initialQualityAction
                     const proceed = await new Promise<boolean>((resolve) => {
                         AntdModal.confirm({
                             title: "Before publishing",
+                            modalRender: labelConfirmDialog("Before publishing"),
                             content: (
                                 <ul style={{ paddingLeft: 16, margin: '8px 0' }}>
                                     {actionable.map((s) => (
@@ -564,7 +570,7 @@ function Editor({ selectedProject, onRemove, addFileButton, initialQualityAction
                 ? stripResolvedOutletProjectForSave(updatedData, activeProject)
                 : updatedData;
             // Only sync when there are real changes to avoid unnecessary writes
-            if (!activeProject || isSameObjects(activeProject, projectToSave)) {
+            if (!activeProject || areEditorProjectsEquivalent(activeProject, projectToSave)) {
                 return;
             }
 
@@ -617,6 +623,10 @@ function Editor({ selectedProject, onRemove, addFileButton, initialQualityAction
                     itemCount: totalItems,
                     isMasterLinked,
                 });
+                messageApi.error({
+                    key: 'menu-editor-save-failed',
+                    content: 'Could not save changes. Your edits are still here. Try again.',
+                });
             } finally {
                 if (activeEditorSavePromiseRef.current === saveCompletion) {
                     activeEditorSavePromiseRef.current = null;
@@ -634,14 +644,22 @@ function Editor({ selectedProject, onRemove, addFileButton, initialQualityAction
             totalCategories,
             totalItems,
             isMasterLinked,
+            messageApi,
         ],
     );
+
+    const stageProjectUpdateForPersistence = useCallback((updatedProject: Project) => {
+        setProjectData(updatedProject);
+        setHasChanges(true);
+        hasChangesRef.current = true;
+    }, []);
 
     const handleRepairProjectPublicContent = useCallback(() => {
         if (!projectData?.projectId) return;
 
         AntdModal.confirm({
             title: 'Repair project details?',
+            modalRender: labelConfirmDialog("Repair project details?"),
             content: 'This will fill missing project name, description, and note translations. Existing text stays unchanged.',
             okText: 'Repair',
             cancelText: 'Cancel',
@@ -1167,9 +1185,10 @@ function Editor({ selectedProject, onRemove, addFileButton, initialQualityAction
 
     const confirmFileDeletion = (file: ProjectFileType) => {
         AntdModal.confirm({
-            title: "Delete processed image?",
+            title: "Delete processed file?",
+            modalRender: labelConfirmDialog("Delete processed file?"),
             content:
-                "This image has already been processed and tokens may have been used. Are you sure you want to delete it? This action only removes it locally until you save.",
+                "This file has already been processed and enhancements may have been used. Are you sure you want to delete it? This action only removes it locally until you save.",
             okText: "Yes, delete",
             okType: "danger",
             cancelText: "No, keep it",
@@ -1431,6 +1450,7 @@ function Editor({ selectedProject, onRemove, addFileButton, initialQualityAction
                     src={previewFile.url}
                     style={{ display: "none" }}
                     preview={{
+                        modalRender: labelConfirmDialog(`${previewFile.name || "Source file"} preview`),
                         onVisibleChange: (visible) => {
                             if (!visible) setPreviewFile(null);
                         },
@@ -1473,9 +1493,13 @@ function Editor({ selectedProject, onRemove, addFileButton, initialQualityAction
                         }
                     />
                     {lastSavedAtLabel && !isSaving && !hasChanges && (
-                        <Tooltip title={`Last saved at ${lastSavedAtLabel} · Visible to customers now`}>
+                        <Tooltip
+                            title={saveVisibilityState === "live"
+                                ? `Last saved at ${lastSavedAtLabel} · Visible to customers now`
+                                : `Last saved at ${lastSavedAtLabel} · Saved privately until you publish`}
+                        >
                             <Text type="secondary" style={{ fontSize: 11 }}>
-                                {lastSavedAtLabel} · Live
+                                {lastSavedAtLabel} · {saveVisibilityState === "live" ? "Live" : "Draft"}
                             </Text>
                         </Tooltip>
                     )}
@@ -1503,12 +1527,7 @@ function Editor({ selectedProject, onRemove, addFileButton, initialQualityAction
                 onClose={() => setIsAIDefaultsOpen(false)}
                 open={isAIDefaultsOpen}
                 projectData={projectData}
-                setProjectData={(updatedProject) => {
-                    setProjectData(updatedProject);
-                    setActiveProject(updatedProject);
-                    setHasChanges(true);
-                    hasChangesRef.current = true;
-                }}
+                setProjectData={stageProjectUpdateForPersistence}
             />
 
             <DescriptionGenerationModal
@@ -1575,23 +1594,13 @@ function Editor({ selectedProject, onRemove, addFileButton, initialQualityAction
                 open={isReorderModalOpen}
                 projectData={projectData}
                 onClose={() => setIsReorderModalOpen(false)}
-                onApply={(updatedProject) => {
-                    setProjectData(updatedProject);
-                    setActiveProject(updatedProject);
-                    setHasChanges(true);
-                    hasChangesRef.current = true;
-                }}
+                onApply={stageProjectUpdateForPersistence}
             />
             <BulkStatusMenuModal
                 open={isBulkStatusModalOpen}
                 projectData={projectData}
                 onClose={() => setIsBulkStatusModalOpen(false)}
-                onApply={(updatedProject) => {
-                    setProjectData(updatedProject);
-                    setActiveProject(updatedProject);
-                    setHasChanges(true);
-                    hasChangesRef.current = true;
-                }}
+                onApply={stageProjectUpdateForPersistence}
             />
 
             {FEATURE_FLAGS.ENABLE_DECISION_BLOCKS ? (
@@ -1601,12 +1610,7 @@ function Editor({ selectedProject, onRemove, addFileButton, initialQualityAction
                     businessType={storeDetails?.businessType || tenantDetails?.businessType}
                     businessCategory={storeDetails?.businessCategory}
                     onClose={() => setIsDecisionBlocksModalOpen(false)}
-                    onApply={(updatedProject) => {
-                        setProjectData(updatedProject);
-                        setActiveProject(updatedProject);
-                        setHasChanges(true);
-                        hasChangesRef.current = true;
-                    }}
+                    onApply={stageProjectUpdateForPersistence}
                 />
             ) : null}
 
@@ -1712,12 +1716,7 @@ function Editor({ selectedProject, onRemove, addFileButton, initialQualityAction
                         setCommandCenterInitialAction(null);
                         setIsCommandCenterOpen(false);
                     }}
-                    onApply={(updatedProject) => {
-                        setProjectData(updatedProject);
-                        setActiveProject(updatedProject);
-                        setHasChanges(true);
-                        hasChangesRef.current = true;
-                    }}
+                    onApply={stageProjectUpdateForPersistence}
                 />
             )}
 

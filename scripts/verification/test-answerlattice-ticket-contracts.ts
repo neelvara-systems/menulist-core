@@ -176,6 +176,13 @@ assert.ok(parseAnswerlatticeSupportTicketDocument({
     value: baseTicket,
     scope: { tId: 1, sId: 101 },
 }));
+const ticketWithoutPlatformNotes = parseAnswerlatticeSupportTicketDocument({
+    id: 'ticket-without-platform-notes',
+    value: Object.fromEntries(Object.entries(baseTicket).filter(([key]) => key !== 'platformNotes')),
+    scope: { tId: 1, sId: 101 },
+});
+assert.ok(ticketWithoutPlatformNotes);
+assert.equal(ticketWithoutPlatformNotes?.platformNotes, '');
 assert.equal(parseAnswerlatticeSupportTicketDocument({
     id: 'malformed-client-details',
     value: {

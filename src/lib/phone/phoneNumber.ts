@@ -18,6 +18,14 @@ export type NormalizedPhoneNumber = {
 };
 
 export const DEFAULT_PHONE_COUNTRY_CODE = 'IN';
+const MIN_INTERNATIONAL_PHONE_DIGITS = 7;
+const MAX_INTERNATIONAL_PHONE_DIGITS = 15;
+
+const admitInternationalPhoneDigits = (digits: string) => (
+    digits.length >= MIN_INTERNATIONAL_PHONE_DIGITS
+    && digits.length <= MAX_INTERNATIONAL_PHONE_DIGITS
+    && !/^0+$/.test(digits)
+);
 
 const getPhoneScalarText = (value: unknown): string => (
     typeof value === 'string' || typeof value === 'number' ? String(value) : ''
@@ -99,18 +107,18 @@ export const buildInternationalPhoneDigits = ({
     const raw = getPhoneInputValue({ phone, phoneNumber });
     const digits = normalizePhoneDigits(raw);
     if (!digits) return '';
-    if (raw.startsWith('+')) return digits.length <= 15 ? digits : '';
+    if (raw.startsWith('+')) return admitInternationalPhoneDigits(digits) ? digits : '';
     if (digits.startsWith('00') && digits.length > 12) {
         const withoutPrefix = digits.slice(2);
-        return withoutPrefix.length <= 15 ? withoutPrefix : '';
+        return admitInternationalPhoneDigits(withoutPrefix) ? withoutPrefix : '';
     }
 
     const dialDigits = normalizePhoneDigits(getDialCodeForCountry(countryCode, dialCode));
-    if (!dialDigits) return digits.length <= 15 ? digits : '';
+    if (!dialDigits) return admitInternationalPhoneDigits(digits) ? digits : '';
     const internationalDigits = looksLikeUnprefixedInternationalNumber(digits, dialDigits)
         ? digits
         : `${dialDigits}${digits.replace(/^0+/, '')}`;
-    return internationalDigits.length <= 15 ? internationalDigits : '';
+    return admitInternationalPhoneDigits(internationalDigits) ? internationalDigits : '';
 };
 
 export const getLocalPhoneNumber = ({

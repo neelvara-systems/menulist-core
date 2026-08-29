@@ -24,6 +24,7 @@ import { useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { LuArrowRight, LuCheck, LuCopy, LuEye, LuEyeOff, LuRefreshCw, LuSend, LuShield, LuWifi, LuWifiOff } from 'react-icons/lu';
 import { Button, Card, Collapse, Flex, Input, Switch, Tag, Text, TextArea, Toast } from '../antd';
 import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
+import { MOBILE_BOTTOM_NAV_CLEARANCE } from '../MobileNavigation';
 import {
     getBoundedMobileOwnerStringContext,
     getMobileOwnerStoreLogContext,
@@ -313,7 +314,7 @@ function MobilePosSyncScreenContent({ onBack }: MobilePosSyncScreenProps) {
     }) !== JSON.stringify({
         enabled: originalDraft.enabled,
         webhookUrl: originalDraft.webhookUrl.trim(),
-    });
+    }) || (enabled && !webhookSecret);
 
     const handleSave = async () => {
         const expectedStoreId = storeDetails?.storeId;
@@ -325,7 +326,7 @@ function MobilePosSyncScreenContent({ onBack }: MobilePosSyncScreenProps) {
         const requestScopeKey = posSyncScopeKey;
         const trimmedWebhookUrl = webhookUrl.trim();
         let normalizedWebhookUrl = trimmedWebhookUrl;
-        if (enabled && trimmedWebhookUrl) {
+        if (enabled) {
             const validation = validatePosSyncWebhookUrl(trimmedWebhookUrl);
             if (!validation.valid || !validation.normalizedUrl) {
                 Toast.show({ content: validation.error || 'Enter a valid provider connection URL.', duration: 1500 });
@@ -724,6 +725,7 @@ function MobilePosSyncScreenContent({ onBack }: MobilePosSyncScreenProps) {
                     <Flex gap={10} vertical>
                         <Text strong>{t('webhookUrl')}</Text>
                         <TextArea
+                            aria-label={t('webhookUrl')}
                             autoSize={{ minRows: 2, maxRows: 4 }}
                             onChange={setWebhookUrl}
                             placeholder={t('webhookUrlPlaceholder')}
@@ -757,7 +759,7 @@ function MobilePosSyncScreenContent({ onBack }: MobilePosSyncScreenProps) {
                                     <Text>{t('copySecret')}</Text>
                                 </Flex>
                             </Button>
-                            <Button disabled={secretLoading} fill="outline" onClick={() => void handleRegenerateSecret()} style={{ flex: '1 1 112px' }}>
+                            <Button disabled={!webhookSecret || secretLoading} fill="outline" onClick={() => void handleRegenerateSecret()} style={{ flex: '1 1 112px' }}>
                                 <Flex align="center" gap={6}>
                                     <LuRefreshCw size={16} />
                                     <Text>{t('regenerateSecret')}</Text>
@@ -792,7 +794,7 @@ function MobilePosSyncScreenContent({ onBack }: MobilePosSyncScreenProps) {
                         backdropFilter: 'blur(10px)',
                         backgroundColor: token.colorBgContainer,
                         borderTop: `1px solid ${token.colorBorderSecondary}`,
-                        bottom: 0,
+                        bottom: MOBILE_BOTTOM_NAV_CLEARANCE,
                         marginInline: -16,
                         padding: '12px 16px',
                         position: 'sticky',
@@ -802,7 +804,7 @@ function MobilePosSyncScreenContent({ onBack }: MobilePosSyncScreenProps) {
                     <Button block disabled={!isDirty || isSaving} fill="outline" onClick={handleReset} size="large">
                         {tMobile('reset')}
                     </Button>
-                    <Button block disabled={!isDirty || isSaving} loading={isSaving} onClick={() => void handleSave()} size="large">
+                    <Button block disabled={!isDirty || isSaving || (enabled && !webhookUrl.trim())} loading={isSaving} onClick={() => void handleSave()} size="large">
                         {tMobile('saveChanges')}
                     </Button>
                 </Flex>

@@ -4,6 +4,7 @@ import { StoreDataType } from '@type/platform/store';
 import { Button, Flex, Modal, Tooltip } from 'antd';
 import { useEffect, useState } from 'react';
 import { LuMonitor, LuRectangleVertical, LuTablet } from 'react-icons/lu';
+import { labelConfirmDialog } from '../editorView/utils/editorOperations';
 import { DeviceTypes, PageType } from './types';
 
 interface PreviewModalProps {
@@ -70,6 +71,7 @@ function PreviewModal({ projectData, storeDetails, previewModalOpen, setPreviewM
             </Flex>}
             open={previewModalOpen}
             onCancel={() => setPreviewModalOpen(false)}
+            modalRender={labelConfirmDialog('Menu preview')}
             footer={null}
             width="100%"
             style={{ top: 20, maxWidth: '100%', margin: 0, padding: 0 }}

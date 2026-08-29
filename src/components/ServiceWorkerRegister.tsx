@@ -13,20 +13,22 @@
  *                              {subdomain}.menulist.digital, verified custom domains)
  *      Registers `/sw-customer.js` (hand-rolled, minimal, no caching).
  *
- *   3. MyCodex PWA           → private MyCodex product host if one is
- *                              explicitly configured later.
- *      Registers `/mycodex-sw.js` (private docs offline shell only).
+ *   3. MyCodex PWA           → `/__mycodex/` on the owner-app origin.
+ *      Registers `/mycodex-sw.js` at the narrower `/__mycodex/` scope.
+ *
+ *   4. Answerlattice PWA     → Answerlattice product origins.
+ *      Registers `/answerlattice-sw.js` (network-first, branded offline shell).
  *
  * Registration is conditional on the current origin's tenant type, which
  * is derived client-side from `window.location.host` via the same
- * `resolveDomain` utility the middleware uses. This keeps the two SW
+ * `resolveDomain` utility the middleware uses. This keeps all product SW
  * scopes strictly separated — a customer origin NEVER registers the
- * owner worker, and vice versa.
+ * owner or internal-product workers, and vice versa.
  *
  * Migration safety: If the browser has a stale registration pointing to
  * a different script URL (e.g. a customer who previously had `sw.js`
  * from the old auto-register config), we unregister it before installing
- * the correct one. `skipWaiting` + `clientsClaim` in both SWs ensure the
+ * the correct one. `skipWaiting` + immediate client claiming ensure the
  * new SW takes over on the next load.
  *
  * @see next.config.js § Service Worker Strategy
@@ -48,12 +50,53 @@ const OWNER_SW_URL = '/serwist/sw.js';
 const LEGACY_OWNER_SW_URL = '/sw.js';
 const CUSTOMER_SW_URL = '/sw-customer.js';
 const MYCODEX_SW_URL = '/mycodex-sw.js';
+const ANSWERLATTICE_SW_URL = '/answerlattice-sw.js';
+const ROOT_SW_SCOPE = '/';
+const MYCODEX_OWNER_SCOPE = '/__mycodex/';
+const ANSWERLATTICE_PLATFORM_SCOPE = '/answerlattice/';
 const PUBLIC_SW_CLEARED_RELOAD_KEY = '__menulist_public_sw_cleared__';
 const MAX_SERVICE_WORKER_SCRIPT_LABEL_DIAGNOSTICS = 6;
 let reportedServiceWorkerDomainResolutionFailure = false;
 let reportedServiceWorkerPublicCleanupReloadStorageFailure = false;
 const reportedServiceWorkerScriptLabelFailures = new Set<string>();
 let serviceWorkerReconciliationQueue: Promise<void> = Promise.resolve();
+
+type ServiceWorkerTarget = {
+    label: 'owner' | 'customer' | 'mycodex' | 'answerlattice';
+    scope: string;
+    url: string;
+};
+
+const OWNER_SW_TARGET: ServiceWorkerTarget = {
+    label: 'owner',
+    scope: ROOT_SW_SCOPE,
+    url: OWNER_SW_URL,
+};
+const CUSTOMER_SW_TARGET: ServiceWorkerTarget = {
+    label: 'customer',
+    scope: ROOT_SW_SCOPE,
+    url: CUSTOMER_SW_URL,
+};
+const MYCODEX_ROOT_SW_TARGET: ServiceWorkerTarget = {
+    label: 'mycodex',
+    scope: ROOT_SW_SCOPE,
+    url: MYCODEX_SW_URL,
+};
+const MYCODEX_OWNER_SW_TARGET: ServiceWorkerTarget = {
+    label: 'mycodex',
+    scope: MYCODEX_OWNER_SCOPE,
+    url: MYCODEX_SW_URL,
+};
+const ANSWERLATTICE_SW_TARGET: ServiceWorkerTarget = {
+    label: 'answerlattice',
+    scope: ROOT_SW_SCOPE,
+    url: ANSWERLATTICE_SW_URL,
+};
+const ANSWERLATTICE_PLATFORM_SW_TARGET: ServiceWorkerTarget = {
+    label: 'answerlattice',
+    scope: ANSWERLATTICE_PLATFORM_SCOPE,
+    url: ANSWERLATTICE_SW_URL,
+};
 const OWNER_APP_PATHS = [
     /^\/dashboard(?:\/|$)/,
     /^\/billing(?:\/|$)/,
@@ -113,19 +156,44 @@ function isStandaloneDisplayMode(): boolean {
         || navigatorWithStandalone.standalone === true;
 }
 
-function shouldPreserveOwnerWorkerWithoutTarget(): boolean {
-    const resolved = getResolvedDomain();
-    return resolved?.type === 'platform' && isOwnerWorkerRuntimeEnabled();
-}
-
-function isOwnerWorkerRuntimeEnabled(): boolean {
+function isServiceWorkerRuntimeEnabled(): boolean {
     const deploymentStage = resolveDeploymentStage();
     return process.env.NODE_ENV === 'production'
-        && deploymentStage.valid
-        && deploymentStage.stage !== 'preview';
+        && deploymentStage.valid;
 }
 
-function getTargetSwUrl(pathname: string): string | null {
+function isMyCodexOwnerPath(pathname: string): boolean {
+    return pathname === '/__mycodex' || pathname.startsWith('/__mycodex/');
+}
+
+function isAnswerlatticePlatformPath(pathname: string): boolean {
+    return pathname === '/answerlattice' || pathname.startsWith('/answerlattice/');
+}
+
+function getAllowedSwTargets(): ServiceWorkerTarget[] {
+    const resolved = getResolvedDomain();
+    if (!resolved || !isServiceWorkerRuntimeEnabled()) return [];
+
+    if (resolved.type === 'subdomain' || resolved.type === 'custom') {
+        return [CUSTOMER_SW_TARGET];
+    }
+
+    if (resolved.type === 'product' && resolved.productSite?.id === 'mycodex') {
+        return [MYCODEX_ROOT_SW_TARGET];
+    }
+
+    if (resolved.type === 'product' && resolved.productSite?.id === 'answerlattice') {
+        return [ANSWERLATTICE_SW_TARGET];
+    }
+
+    if (resolved.type === 'platform') {
+        return [OWNER_SW_TARGET, MYCODEX_OWNER_SW_TARGET, ANSWERLATTICE_PLATFORM_SW_TARGET];
+    }
+
+    return [];
+}
+
+function getTargetSw(pathname: string): ServiceWorkerTarget | null {
     if (typeof window === 'undefined') return null;
 
     const resolved = getResolvedDomain();
@@ -137,12 +205,16 @@ function getTargetSwUrl(pathname: string): string | null {
 
     // Customer tenants (subdomain or custom domain) → minimal SW.
     if (resolved.type === 'subdomain' || resolved.type === 'custom') {
-        return CUSTOMER_SW_URL;
+        return isServiceWorkerRuntimeEnabled() ? CUSTOMER_SW_TARGET : null;
     }
 
     // Dedicated private docs product host.
     if (resolved.type === 'product' && resolved.productSite?.id === 'mycodex') {
-        return MYCODEX_SW_URL;
+        return isServiceWorkerRuntimeEnabled() ? MYCODEX_ROOT_SW_TARGET : null;
+    }
+
+    if (resolved.type === 'product' && resolved.productSite?.id === 'answerlattice') {
+        return isServiceWorkerRuntimeEnabled() ? ANSWERLATTICE_SW_TARGET : null;
     }
 
     // Platform origins serve both the public marketing website and the
@@ -150,9 +222,11 @@ function getTargetSwUrl(pathname: string): string | null {
     // already-installed standalone owner app must be able to repair/register
     // its worker even when iOS launches it at the origin root.
     if (resolved.type === 'platform') {
-        if (!isOwnerWorkerRuntimeEnabled()) return null;
+        if (!isServiceWorkerRuntimeEnabled()) return null;
+        if (isMyCodexOwnerPath(pathname)) return MYCODEX_OWNER_SW_TARGET;
+        if (isAnswerlatticePlatformPath(pathname)) return ANSWERLATTICE_PLATFORM_SW_TARGET;
         return isOwnerAppPath(pathname) || isStandaloneDisplayMode()
-            ? OWNER_SW_URL
+            ? OWNER_SW_TARGET
             : null;
     }
 
@@ -160,12 +234,8 @@ function getTargetSwUrl(pathname: string): string | null {
     return null;
 }
 
-function getTargetSwLabel(targetUrl: string | null): string {
-    if (targetUrl === OWNER_SW_URL) return 'owner';
-    if (targetUrl === CUSTOMER_SW_URL) return 'customer';
-    if (targetUrl === MYCODEX_SW_URL) return 'mycodex';
-    if (targetUrl === null) return 'none';
-    return 'unknown';
+function getTargetSwLabel(target: ServiceWorkerTarget | null): string {
+    return target?.label || 'none';
 }
 
 function getRegisteredSwLabel(scriptUrl: string | undefined): string {
@@ -176,6 +246,7 @@ function getRegisteredSwLabel(scriptUrl: string | undefined): string {
         if (pathname === OWNER_SW_URL || pathname === LEGACY_OWNER_SW_URL) return 'owner';
         if (pathname === CUSTOMER_SW_URL) return 'customer';
         if (pathname === MYCODEX_SW_URL) return 'mycodex';
+        if (pathname === ANSWERLATTICE_SW_URL) return 'answerlattice';
     } catch (error) {
         logServiceWorkerScriptLabelFailure(error, scriptUrl);
         return 'unknown';
@@ -231,7 +302,7 @@ function logServiceWorkerPublicCleanupReloadStorageFailure(error: unknown): void
 async function unregisterServiceWorker(
     reg: ServiceWorkerRegistration,
     reason: 'clear_without_target' | 'wrong_target',
-    targetUrl: string | null,
+    target: ServiceWorkerTarget | null,
 ): Promise<boolean> {
     const activeUrl = getServiceWorkerRegistrationScriptUrl(reg);
 
@@ -242,13 +313,28 @@ async function unregisterServiceWorker(
             activeWorker: getRegisteredSwLabel(activeUrl),
             hasController: Boolean(navigator.serviceWorker.controller),
             reason,
-            targetWorker: getTargetSwLabel(targetUrl),
+            targetWorker: getTargetSwLabel(target),
         });
         return false;
     }
 }
 
-async function reconcileServiceWorker(targetUrl: string | null): Promise<void> {
+function getAbsoluteSwIdentity(target: ServiceWorkerTarget): { scope: string; url: string } {
+    return {
+        scope: new URL(target.scope, window.location.origin).href,
+        url: new URL(target.url, window.location.origin).href,
+    };
+}
+
+function matchesTarget(registration: ServiceWorkerRegistration, target: ServiceWorkerTarget): boolean {
+    const identity = getAbsoluteSwIdentity(target);
+    return isExactServiceWorkerRegistration(registration, identity.url, identity.scope);
+}
+
+async function reconcileServiceWorker(
+    target: ServiceWorkerTarget | null,
+    allowedTargets: ServiceWorkerTarget[],
+): Promise<void> {
     try {
         const registrations = await navigator.serviceWorker.getRegistrations();
 
@@ -257,25 +343,25 @@ async function reconcileServiceWorker(targetUrl: string | null): Promise<void> {
         // website routes preserve the correct owner worker so visiting
         // menulist.ai/ cannot break the installed owner app's
         // offline fallback for the same origin.
-        if (process.env.NODE_ENV !== 'production' || !targetUrl) {
-            let removedRegistration = false;
-            const ownerWorkerUrlToPreserve = process.env.NODE_ENV === 'production'
-                && !targetUrl
-                && shouldPreserveOwnerWorkerWithoutTarget()
-                ? new URL(OWNER_SW_URL, window.location.origin).href
-                : null;
-
+        if (process.env.NODE_ENV !== 'production') {
             for (const reg of registrations) {
-                const activeUrl = getServiceWorkerRegistrationScriptUrl(reg);
-                if (ownerWorkerUrlToPreserve && activeUrl === ownerWorkerUrlToPreserve) {
-                    continue;
-                }
+                await unregisterServiceWorker(reg, 'clear_without_target', target);
+            }
+            return;
+        }
 
-                const removed = await unregisterServiceWorker(reg, 'clear_without_target', targetUrl);
+        // Keep only the exact workers allowed on this origin. This permits the
+        // root MenuList owner worker and the narrower MyCodex worker to coexist.
+        let removedRegistration = false;
+        for (const reg of registrations) {
+            if (!allowedTargets.some((allowedTarget) => matchesTarget(reg, allowedTarget))) {
+                const removed = await unregisterServiceWorker(reg, target ? 'wrong_target' : 'clear_without_target', target);
                 removedRegistration = removedRegistration || removed;
             }
+        }
 
-            if (process.env.NODE_ENV === 'production' && !targetUrl && removedRegistration && navigator.serviceWorker.controller) {
+        if (!target) {
+            if (removedRegistration && navigator.serviceWorker.controller) {
                 try {
                     if (!sessionStorage.getItem(PUBLIC_SW_CLEARED_RELOAD_KEY)) {
                         sessionStorage.setItem(PUBLIC_SW_CLEARED_RELOAD_KEY, '1');
@@ -289,29 +375,19 @@ async function reconcileServiceWorker(targetUrl: string | null): Promise<void> {
             return;
         }
 
-        // Existing registrations store both script and scope as absolute URLs.
-        // A same-script worker registered below root does not control the app.
-        const absoluteTargetUrl = new URL(targetUrl, window.location.origin).href;
-        const absoluteTargetScope = new URL('/', window.location.origin).href;
-
-        // Remove any registration that does not match both target script and
-        // root scope. This includes legacy workers and narrowed registrations.
-        for (const reg of registrations) {
-            if (!isExactServiceWorkerRegistration(reg, absoluteTargetUrl, absoluteTargetScope)) {
-                await unregisterServiceWorker(reg, 'wrong_target', targetUrl);
-            }
-        }
-
         // Re-check an existing worker on each route reconciliation so a newly
         // deployed worker does not wait for the browser's periodic check.
         const currentRegistration = registrations.find((reg) => (
-            isExactServiceWorkerRegistration(reg, absoluteTargetUrl, absoluteTargetScope)
+            matchesTarget(reg, target)
         ));
 
         if (currentRegistration) {
             await currentRegistration.update();
         } else {
-            await navigator.serviceWorker.register(targetUrl, { scope: '/' });
+            await navigator.serviceWorker.register(target.url, {
+                scope: target.scope,
+                updateViaCache: 'none',
+            });
         }
     } catch (error) {
         // Non-fatal: registration failures don't break the page,
@@ -319,7 +395,7 @@ async function reconcileServiceWorker(targetUrl: string | null): Promise<void> {
         // work on this session.
         logRuntimeFailure('service_worker_registration_failed', error, {
             hasController: Boolean(navigator.serviceWorker.controller),
-            targetWorker: getTargetSwLabel(targetUrl),
+            targetWorker: getTargetSwLabel(target),
         }, { developmentOnly: true });
     }
 }
@@ -331,11 +407,12 @@ export default function ServiceWorkerRegister(): null {
         if (typeof window === 'undefined') return;
         if (!('serviceWorker' in navigator)) return;
 
-        const targetUrl = getTargetSwUrl(pathname ?? '');
+        const target = getTargetSw(pathname ?? '');
+        const allowedTargets = getAllowedSwTargets();
         let cancelled = false;
         serviceWorkerReconciliationQueue = serviceWorkerReconciliationQueue.then(async () => {
             if (cancelled) return;
-            await reconcileServiceWorker(targetUrl);
+            await reconcileServiceWorker(target, allowedTargets);
         });
 
         return () => {

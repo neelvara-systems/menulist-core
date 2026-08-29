@@ -28,6 +28,7 @@
 11. **Browser denial:** canonical create/update/delete and proposal review updates are denied by rules.
 12. **Tenant isolation:** out-of-scope answer, entity, proposal, and audit access is denied.
 13. **Public error:** safe server guidance reaches the editor without exposing internal error details.
+14. **Reviewer Product Topic correction:** an overlapping broad topic is rejected; selecting a precise in-scope topic is impact-checked, approved, persisted, and audited without bypassing the proposal pipeline.
 
 ## External checks
 

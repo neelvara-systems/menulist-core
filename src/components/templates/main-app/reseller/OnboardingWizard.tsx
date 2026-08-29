@@ -84,7 +84,7 @@ function OnboardingWizard() {
     const steps = [
         { title: 'Business Details', icon: <LuStore /> },
         { title: 'Plan Setup' },
-        { title: 'Confirm & Activate' },
+        { title: 'Confirm & Create Link' },
     ];
 
     const getStepFieldNames = (step: number) => {
@@ -218,7 +218,11 @@ function OnboardingWizard() {
             clearResellerOperationId(operationIntentKey);
             setResult(data);
             setCurrentStep(3); // Success step
-            messageApi.success('Client onboarded successfully!');
+            messageApi.success(
+                data.status === 'active'
+                    ? 'Client activated successfully!'
+                    : 'Client setup created. Payment is pending.',
+            );
         } catch (error) {
             const values = form.getFieldsValue(true);
             logResellerFailure('desktop_reseller_onboard_failed', error, {
@@ -269,19 +273,6 @@ function OnboardingWizard() {
         }
     };
 
-    const selectedTier = tiers.find(t => t.id === form.getFieldValue('pricingTier'));
-    const billingInterval = form.getFieldValue('billingInterval');
-    const locationCount = Number(form.getFieldValue('locationCount') || 1);
-
-    const getDisplayAmount = () => {
-        if (!selectedTier) return '';
-        const quantitySuffix = locationCount > 1 ? ` × ${locationCount} locations` : '';
-        if (billingInterval === 'YEAR') {
-            return `${formatInrPaise(selectedTier.yearlyPriceINR * locationCount)}/year (recurring${quantitySuffix})`;
-        }
-        return `${formatInrPaise(selectedTier.monthlyPriceINR * locationCount)}/month (recurring${quantitySuffix})`;
-    };
-
     // Step 1: Business Details
     const renderStep1 = () => (
         <div>
@@ -317,6 +308,7 @@ function OnboardingWizard() {
                             { required: true, message: 'Enter valid phone number' },
                             {
                                 validator: async (_, value) => {
+                                    if (!value) return;
                                     const normalizedPhone = normalizePhoneNumberForStorage({
                                         countryCode: form.getFieldValue('ownerCountryCode'),
                                         dialCode: form.getFieldValue('ownerDialCode'),
@@ -353,7 +345,7 @@ function OnboardingWizard() {
             </Form.Item>
             <Row gutter={12}>
                 <Col xs={24} md={8}><Form.Item name="billingCity" label="City" rules={[{ required: true }]}><Input autoComplete="address-level2" /></Form.Item></Col>
-                <Col xs={24} md={8}><Form.Item name="billingIndianStateCode" label="State" rules={[{ required: true }]}><Select showSearch options={INDIAN_GST_STATES.map((state) => ({ label: state.name, value: state.code }))} /></Form.Item></Col>
+                <Col xs={24} md={8}><Form.Item name="billingIndianStateCode" label="State" rules={[{ required: true }]}><Select showSearch optionFilterProp="label" options={INDIAN_GST_STATES.map((state) => ({ label: state.name, value: state.code }))} /></Form.Item></Col>
                 <Col xs={24} md={8}><Form.Item name="billingPostalCode" label="Postal Code" rules={[{ required: true }]}><Input autoComplete="postal-code" /></Form.Item></Col>
             </Row>
             <Form.Item name="billingGstin" label="GSTIN (Optional)">
@@ -409,6 +401,15 @@ function OnboardingWizard() {
     // Step 3: Confirm
     const renderStep3 = () => {
         const values = form.getFieldsValue(true);
+        const selectedTier = tiers.find(t => t.id === values.pricingTier);
+        const billingInterval = values.billingInterval;
+        const locationCount = Number(values.locationCount || 1);
+        const quantitySuffix = locationCount > 1 ? ` × ${locationCount} locations` : '';
+        const displayAmount = selectedTier
+            ? billingInterval === 'YEAR'
+                ? `${formatInrPaise(selectedTier.yearlyPriceINR * locationCount)}/year (recurring${quantitySuffix})`
+                : `${formatInrPaise(selectedTier.monthlyPriceINR * locationCount)}/month (recurring${quantitySuffix})`
+            : '';
         const normalizedOwnerPhone = normalizePhoneNumberForStorage({
             countryCode: values.ownerCountryCode,
             dialCode: values.ownerDialCode,
@@ -440,8 +441,14 @@ function OnboardingWizard() {
                     <Col span={16}><Text>Online (Razorpay recurring)</Text></Col>
                     <Col span={8}><Text type="secondary">Locations</Text></Col>
                     <Col span={16}><Text>{values.locationCount || 1}</Text></Col>
+                    {values.commitmentMonths && (
+                        <>
+                            <Col span={8}><Text type="secondary">Commitment</Text></Col>
+                            <Col span={16}><Text>{values.commitmentMonths} months</Text></Col>
+                        </>
+                    )}
                     <Col span={8}><Text type="secondary">Amount</Text></Col>
-                    <Col span={16}><Text strong>{getDisplayAmount()} before GST</Text></Col>
+                    <Col span={16}><Text strong>{displayAmount} before GST</Text></Col>
                     <Col span={8}><Text type="secondary">Invoice email</Text></Col>
                     <Col span={16}><Text>{values.billingEmail}</Text></Col>
                 </Row>
@@ -467,7 +474,7 @@ function OnboardingWizard() {
                         />
                     )}
                     status="success"
-                    title="Client Onboarded Successfully!"
+                    title={result.status === 'active' ? 'Client Activated Successfully!' : 'Client Setup Created'}
                     subTitle={`Store ID: ${result.storeId} | Status: ${result.status}${result.locationCount ? ` | ${result.locationCount} location${result.locationCount > 1 ? 's' : ''}` : ''}`}
                     extra={[
                         result.shortUrl && (

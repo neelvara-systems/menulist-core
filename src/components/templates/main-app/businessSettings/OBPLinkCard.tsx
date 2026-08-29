@@ -11,13 +11,14 @@ import { trackOBPShare } from '@lib/analytics/unified';
 import { getBrandName, getStoreContextName } from '@lib/businessIdentity/names';
 import { resolveStoreBrandColor } from '@lib/menu-kit/brandTokens';
 import { getOfferingLabels } from '@lib/menu-kit/businessTypeLabels';
-import { generateOBPUrl, getDefaultProjectUrl } from '@lib/obp/generateOBPUrl';
+import { generateConfiguredStoreOBPUrl, getDefaultProjectUrl } from '@lib/obp/generateOBPUrl';
+import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { buildQrCodeFilename, downloadQrCode, generateBrandedQrCodeDataUrl } from '@lib/utils/qrCode';
 import { slugify } from '@lib/utils/slugify';
 import { StoreDataType } from '@type/platform/store';
 import { App, Button, Card, Flex, Segmented, Typography, theme } from 'antd';
 import { QRCodeCanvas } from 'qrcode.react';
-import { useEffect, useState } from 'react';
+import { useContext, useEffect, useState } from 'react';
 import { LuCheck, LuCopy, LuExternalLink, LuGlobe, LuMessageCircle, LuQrCode } from 'react-icons/lu';
 
 const { Text } = Typography;
@@ -93,6 +94,7 @@ export default function OBPLinkCard({ storeDetails }: OBPLinkCardProps) {
     const [showQr, setShowQr] = useState(false);
     const [qrType, setQrType] = useState<'share' | 'menu'>('share');
     const [defaultSlug, setDefaultSlug] = useState<string | undefined>(undefined);
+    const { tenantDetails } = useContext(PlatformGlobalDataContext);
     const storeBrandColor = resolveStoreBrandColor(storeDetails as any);
     const labels = getOfferingLabels((storeDetails as any)?.businessType, (storeDetails as any)?.businessCategory);
 
@@ -125,7 +127,7 @@ export default function OBPLinkCard({ storeDetails }: OBPLinkCardProps) {
 
     if (!FEATURE_FLAGS.ENABLE_OBP) return null;
 
-    const obpUrl = generateOBPUrl(storeDetails?.subdomain, storeDetails?.customDomain);
+    const obpUrl = generateConfiguredStoreOBPUrl(storeDetails, tenantDetails?.storesList);
     const menuUrl = getDefaultProjectUrl(
         storeDetails?.subdomain,
         storeDetails?.customDomain,
@@ -136,6 +138,7 @@ export default function OBPLinkCard({ storeDetails }: OBPLinkCardProps) {
     if (!obpUrl) return null;
 
     const storeId = storeDetails?.storeId;
+    const tenantId = storeDetails?.tenantId;
     const obpCopyUrl = withAnalyticsSource(obpUrl, 'copy_link');
     const obpWhatsAppUrl = withAnalyticsSource(obpUrl, 'whatsapp');
     const obpOpenUrl = withAnalyticsSource(obpUrl, 'direct');
@@ -157,8 +160,9 @@ export default function OBPLinkCard({ storeDetails }: OBPLinkCardProps) {
         ...metadata,
     });
     const recordOBPShare = (shareMethod: OBPShareMethod, action: string) => {
-        if (!storeId || !obpTrackingEnabled) return;
+        if (!storeId || !tenantId || !obpTrackingEnabled) return;
         trackOBPShare(storeId, shareMethod, {
+            tenantId: String(tenantId),
             storeTimeZone: storeDetails?.timeZone,
             businessDayEndTime: storeDetails?.businessDayEndTime,
         }).catch((error) => {

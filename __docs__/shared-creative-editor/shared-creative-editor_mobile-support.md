@@ -31,6 +31,10 @@ The full Fabric editor is desktop-first. Mobile support is limited to responsive
 
 CampaignCue workspace is a protected product app, not the MenuList owner PWA shell. Full creative editing remains desktop-first. CampaignCue mobile users can still open the editor, enter Review mode, run download checks, search drawer items, choose templates, use campaign goal starters, add business text, switch pages, use selected-layer quick actions when viewport constraints allow, inspect layers, restore local drafts, preview, and download, but precision canvas editing is not positioned as a mobile-first workflow.
 
+## MenuList Mobile Position
+
+MenuList Printable Asset Templates does not mount the embedded Fabric editor on mobile. The owner stays in `MobileShell`, previews the same governed document, and downloads PDF/image output from the shared renderer. This preserves output parity without asking a phone user to perform precision layer work.
+
 ## Future Mobile Path
 
 - Product-specific template picker.

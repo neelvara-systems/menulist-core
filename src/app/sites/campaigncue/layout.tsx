@@ -1,3 +1,5 @@
+import './styles.css';
+import './scroll-reveal.css';
 import type { Metadata, Viewport } from 'next';
 import PublicCookieConsentBanner from '@/components/shared/publicCookieConsent/PublicCookieConsentBanner';
 import CampaignCueScrollReveal from './components/CampaignCueScrollReveal';

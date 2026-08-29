@@ -394,12 +394,18 @@ export default function CustomerAppTab({ scrollRef }: CustomerAppTabProps) {
         const clean = base.replace(/\/$/, '');
         return `${clean}/?pwa=install`;
     }, [storeDetails]);
+    const installableReady = enableInstallableApp && Boolean(installLink);
+    const installPromptReady = installableReady && promoteInstallation;
     const readinessItems = useMemo(() => ([
         {
-            color: enableInstallableApp ? 'success' : 'default',
-            detail: enableInstallableApp ? 'Manifest and install link are active for this store.' : 'Customers cannot install while this is off.',
+            color: installableReady ? 'success' : enableInstallableApp ? 'warning' : 'default',
+            detail: installableReady
+                ? 'Manifest and install link are active for this store.'
+                : enableInstallableApp
+                    ? 'Add a subdomain or custom domain to make installation available.'
+                    : 'Customers cannot install while this is off.',
             label: 'Installable',
-            status: enableInstallableApp ? 'Active' : 'Off',
+            status: installableReady ? 'Active' : enableInstallableApp ? 'Setup needed' : 'Off',
         },
         {
             color: installLink ? 'success' : 'warning',
@@ -414,12 +420,16 @@ export default function CustomerAppTab({ scrollRef }: CustomerAppTabProps) {
             status: currentIconUrl ? 'Custom' : 'Automatic',
         },
         {
-            color: enableInstallableApp && promoteInstallation ? 'success' : 'default',
-            detail: enableInstallableApp && promoteInstallation ? 'Customers can see the install prompt after the visit threshold.' : 'The app can still be installed manually from the browser/share link.',
+            color: installPromptReady ? 'success' : 'default',
+            detail: installPromptReady
+                ? 'Customers can see the install prompt after the visit threshold.'
+                : enableInstallableApp && promoteInstallation && !installLink
+                    ? 'The prompt will activate after the install link is ready.'
+                    : 'The app can still be installed manually from the browser/share link.',
             label: 'Install prompt',
-            status: enableInstallableApp && promoteInstallation ? 'Active' : 'Manual only',
+            status: installPromptReady ? 'Active' : enableInstallableApp && promoteInstallation ? 'Waiting' : 'Manual only',
         },
-    ]), [currentIconUrl, enableInstallableApp, installLink, promoteInstallation]);
+    ]), [currentIconUrl, enableInstallableApp, installLink, installableReady, installPromptReady, promoteInstallation]);
 
     const handleCopyInstallLink = async () => {
         if (!installLink) return;
@@ -531,6 +541,7 @@ export default function CustomerAppTab({ scrollRef }: CustomerAppTabProps) {
                     <div style={{ marginBottom: 20, maxWidth: 360 }}>
                         <Text strong>Customer app language</Text>
                         <Select
+                            aria-label="Customer app language"
                             value={selectedLanguage}
                             style={{ width: '100%', marginTop: 8 }}
                             options={managedLanguages.map((languageCode) => ({
@@ -584,6 +595,7 @@ export default function CustomerAppTab({ scrollRef }: CustomerAppTabProps) {
                         Leave blank to auto-use the first word of your business name.
                     </Paragraph>
                     <Input
+                        aria-label="Home screen name"
                         value={pwaShortName}
                         maxLength={12}
                         placeholder="e.g. Joe's"
@@ -762,6 +774,7 @@ export default function CustomerAppTab({ scrollRef }: CustomerAppTabProps) {
                         </Paragraph>
                         <Flex gap={8} align="center" wrap="wrap">
                             <Input
+                                aria-label="Customer App install link"
                                 value={installLink}
                                 readOnly
                                 disabled={!enableInstallableApp}

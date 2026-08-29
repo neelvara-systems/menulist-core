@@ -443,10 +443,15 @@ export default function PlatformNotificationMonitor() {
             key: 'actions',
             render: (_, record) => (
                 <Space size={6} wrap>
-                    <Button size="small" onClick={(event) => { event.stopPropagation(); openEvent(record); }}>
+                    <Button
+                        aria-label={`View notification details for ${record.title}`}
+                        size="small"
+                        onClick={(event) => { event.stopPropagation(); openEvent(record); }}
+                    >
                         Details
                     </Button>
                     <Button
+                        aria-label={`Acknowledge notification ${record.title}`}
                         size="small"
                         icon={<LuCheckCircle />}
                         disabled={record.acknowledged}
@@ -458,10 +463,20 @@ export default function PlatformNotificationMonitor() {
                     >
                         Ack
                     </Button>
-                    <Button size="small" icon={<LuMail />} onClick={(event) => { event.stopPropagation(); openPrefillModal(record, 'email'); }}>
+                    <Button
+                        aria-label={`Prepare email for notification ${record.title}`}
+                        size="small"
+                        icon={<LuMail />}
+                        onClick={(event) => { event.stopPropagation(); openPrefillModal(record, 'email'); }}
+                    >
                         Email
                     </Button>
-                    <Button size="small" icon={<LuMessageCircle />} onClick={(event) => { event.stopPropagation(); openPrefillModal(record, 'whatsapp_web'); }}>
+                    <Button
+                        aria-label={`Prepare WhatsApp Web message for notification ${record.title}`}
+                        size="small"
+                        icon={<LuMessageCircle />}
+                        onClick={(event) => { event.stopPropagation(); openPrefillModal(record, 'whatsapp_web'); }}
+                    >
                         WhatsApp Web
                     </Button>
                 </Space>
@@ -528,9 +543,9 @@ export default function PlatformNotificationMonitor() {
             <Card size="small" style={{ marginBottom: 16 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap', alignItems: 'center' }}>
                     <Space wrap>
-                        <Select value={statusFilter} options={STATUS_OPTIONS} style={{ width: 150 }} onChange={setStatusFilter} />
-                        <Select value={severityFilter} options={SEVERITY_OPTIONS} style={{ width: 160 }} onChange={setSeverityFilter} />
-                        <Select showSearch value={triggerFilter} options={triggerOptions} style={{ width: 260 }} onChange={setTriggerFilter} />
+                        <Select aria-label="Filter notifications by status" value={statusFilter} options={STATUS_OPTIONS} style={{ width: 150 }} onChange={setStatusFilter} />
+                        <Select aria-label="Filter notifications by severity" value={severityFilter} options={SEVERITY_OPTIONS} style={{ width: 160 }} onChange={setSeverityFilter} />
+                        <Select aria-label="Filter notifications by trigger" showSearch value={triggerFilter} options={triggerOptions} style={{ width: 260 }} onChange={setTriggerFilter} />
                     </Space>
                     <Text type="secondary">
                         Read cost: {snapshot?.cost.authReads || 0} auth / {snapshot?.cost.alertReads || 0} alerts / {snapshot?.cost.countQueries || 0} counts / scan {snapshot?.cost.scanLimit || 0}
@@ -559,10 +574,6 @@ export default function PlatformNotificationMonitor() {
                     pagination={{ pageSize: 10, hideOnSinglePage: true }}
                     loading={loading}
                     scroll={{ x: 1526 }}
-                    onRow={(record) => ({
-                        onClick: () => openEvent(record),
-                        style: { cursor: 'pointer' },
-                    })}
                 />
             </Card>
 
@@ -684,6 +695,7 @@ export default function PlatformNotificationMonitor() {
                             description={`This opens your ${prefillModal.channel === 'whatsapp_web' ? 'WhatsApp Web' : 'email client'} with the message prefilled. It records action only after you click Record Manual.`}
                         />
                         <Select
+                            aria-label="Manual handoff channel"
                             value={prefillModal.channel}
                             style={{ width: '100%' }}
                             options={[
@@ -697,18 +709,21 @@ export default function PlatformNotificationMonitor() {
                             })}
                         />
                         <Input
+                            aria-label={prefillModal.channel === 'email' ? 'Manual handoff email address' : 'Manual handoff WhatsApp number'}
                             value={prefillModal.destination}
                             placeholder={prefillModal.channel === 'email' ? 'operator@example.com' : '+919999999999'}
                             onChange={(event) => setPrefillModal({ ...prefillModal, destination: event.target.value })}
                         />
                         {prefillModal.channel === 'email' ? (
                             <Input
+                                aria-label="Manual handoff email subject"
                                 value={prefillModal.subject}
                                 placeholder="Email subject"
                                 onChange={(event) => setPrefillModal({ ...prefillModal, subject: event.target.value })}
                             />
                         ) : null}
                         <TextArea
+                            aria-label="Manual handoff message"
                             value={prefillModal.body}
                             rows={9}
                             maxLength={4000}
@@ -728,7 +743,19 @@ export default function PlatformNotificationMonitor() {
                     setManualAlertOpen(false);
                 }}
                 onOk={async () => {
-                    const values = await manualForm.validateFields();
+                    let values: Record<string, unknown>;
+                    try {
+                        values = await manualForm.validateFields();
+                    } catch (error) {
+                        if (
+                            error
+                            && typeof error === 'object'
+                            && Array.isArray((error as { errorFields?: unknown }).errorFields)
+                        ) {
+                            return;
+                        }
+                        throw error;
+                    }
                     const ok = await runAction({
                         action: 'createManualAlert',
                         actionId: manualAlertActionId,
@@ -751,13 +778,14 @@ export default function PlatformNotificationMonitor() {
                     }}
                 >
                     <Form.Item name="triggerType" label="Trigger" rules={[{ required: true }]}>
-                        <Select showSearch options={(snapshot?.registry || []).map((entry) => ({ label: entry.title, value: entry.triggerType }))} />
+                        <Select aria-label="Manual alert trigger" showSearch options={(snapshot?.registry || []).map((entry) => ({ label: entry.title, value: entry.triggerType }))} />
                     </Form.Item>
                     <Form.Item name="severity" label="Severity" rules={[{ required: true }]}>
-                        <Select options={SEVERITY_OPTIONS.filter((option) => option.value !== 'all')} />
+                        <Select aria-label="Manual alert severity" options={SEVERITY_OPTIONS.filter((option) => option.value !== 'all')} />
                     </Form.Item>
                     <Form.Item name="productId" label="Product" rules={[{ required: true }]}>
                         <Select
+                            aria-label="Manual alert product"
                             options={[
                                 { label: 'Platform', value: 'PLATFORM' },
                                 { label: 'MenuList', value: 'ML' },
@@ -765,11 +793,11 @@ export default function PlatformNotificationMonitor() {
                             ]}
                         />
                     </Form.Item>
-                    <Form.Item name="title" label="Title" rules={[{ required: true, min: 3, max: 180 }]}>
-                        <Input maxLength={180} />
+                    <Form.Item name="title" label="Title" rules={[{ required: true, whitespace: true, min: 3, max: 180 }]}>
+                        <Input aria-label="Manual alert title" maxLength={180} />
                     </Form.Item>
-                    <Form.Item name="message" label="Message" rules={[{ required: true, min: 3, max: 1200 }]}>
-                        <TextArea rows={5} maxLength={1200} />
+                    <Form.Item name="message" label="Message" rules={[{ required: true, whitespace: true, min: 3, max: 1200 }]}>
+                        <TextArea aria-label="Manual alert message" rows={5} maxLength={1200} />
                     </Form.Item>
                 </Form>
             </Modal>

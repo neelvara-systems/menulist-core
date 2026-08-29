@@ -30,6 +30,7 @@ export default function MobileLocalizedLanguageSelector({
             <Flex gap={10} vertical>
                 <Text strong>{title || t('contentLanguageTitle')}</Text>
                 <Select
+                    aria-label={title || t('contentLanguageTitle')}
                     onChange={(value: string) => {
                         if (typeof value === 'string') onChange(value);
                     }}

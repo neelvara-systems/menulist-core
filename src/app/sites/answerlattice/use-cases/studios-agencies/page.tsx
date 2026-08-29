@@ -39,7 +39,7 @@ export default async function StudiosAgenciesUseCasePage() {
                 'Publish hosted help, FAQ, and changelog from reviewed support knowledge.',
                 'Give the owner a review queue for gaps, repeated questions, and stale answers.',
             ]}
-            primaryCta="Create workspace"
+            primaryCta="Request early access"
             secondaryCta="See 60-sec demo"
         />
     );

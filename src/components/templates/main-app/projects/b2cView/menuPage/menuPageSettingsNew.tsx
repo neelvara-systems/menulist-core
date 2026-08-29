@@ -305,6 +305,7 @@ const MenuPageSettingsNew: React.FC<MenuPageSettingsNewProps> = ({
                     <Text>{t('showItemPrices')}</Text>
                 </Flex>
                 <Switch
+                    aria-label={t('showItemPrices')}
                     checked={showItemPrices}
                     onChange={handleShowItemPricesChange}
                 />
@@ -316,6 +317,7 @@ const MenuPageSettingsNew: React.FC<MenuPageSettingsNewProps> = ({
                     <Text>{t('showItemImages')}</Text>
                 </Flex>
                 <Switch
+                    aria-label={t('showItemImages')}
                     checked={showImages}
                     onChange={handleShowImagesChange}
                 />
@@ -327,6 +329,7 @@ const MenuPageSettingsNew: React.FC<MenuPageSettingsNewProps> = ({
                     <Text>{t('showCategoryIcons')}</Text>
                 </Flex>
                 <Switch
+                    aria-label={t('showCategoryIcons')}
                     checked={showCategoryIcons}
                     onChange={handleShowCategoryIconsChange}
                 />
@@ -338,6 +341,7 @@ const MenuPageSettingsNew: React.FC<MenuPageSettingsNewProps> = ({
                     <Text>{t('categoryTabs')}</Text>
                 </Flex>
                 <Switch
+                    aria-label={t('categoryTabs')}
                     checked={showCategoryTabs}
                     onChange={handleShowCategoryTabsChange}
                 />

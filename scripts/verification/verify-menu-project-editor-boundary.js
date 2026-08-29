@@ -74,6 +74,7 @@ const packageJson = read('package.json');
 const projectsRoute = read('src/app/(main)/projects/page.tsx');
 const projectsPage = read('src/components/templates/main-app/projects/index.tsx');
 const projectSelector = read('src/components/templates/main-app/projects/ProjectDetails/ProjectSelector.tsx');
+const projectDuplicateModal = read('src/components/templates/main-app/projects/ProjectDetails/ProjectDuplicateModal.tsx');
 const previewModal = read('src/components/templates/main-app/projects/b2cView/previewModal.tsx');
 const projectsSubHeader = read('src/components/templates/main-app/projects/ProjectsSubHeader.tsx');
 const b2cViewHeader = read('src/components/templates/main-app/projects/b2cView/b2CViewHeader.tsx');
@@ -81,9 +82,33 @@ const pdfViewer = read('src/components/templates/main-app/projects/PdfViewer.tsx
 const projectCommonTypes = read('src/components/templates/main-app/projects/types/common.types.ts');
 const projectsDataProvider = read('src/providers/projectsDataProvider.tsx');
 const editor = read('src/components/templates/main-app/projects/editorView/Editor.tsx');
+const fileList = read('src/components/templates/main-app/projects/FileList.tsx');
+const editorProjectComparison = read('src/lib/projects/editorProjectComparison.ts');
+const editorProjectComparisonTest = read('scripts/verification/test-project-editor-noop-comparison.ts');
+const editorKeyboardShortcuts = read('src/components/templates/main-app/projects/editorView/hooks/useEditorKeyboardShortcuts.ts');
+const keyboardShortcutsHelp = read('src/components/templates/main-app/projects/editorView/KeyboardShortcutsHelp.tsx');
+const languageSelectorModal = read('src/components/templates/main-app/projects/editorView/LanguageSelectorModal.tsx');
+const languageSelector = read('src/components/templates/main-app/projects/LanguageSelector.tsx');
+const imageUploadModal = read('src/components/templates/main-app/projects/editorView/ImageUploadModal.tsx');
+const aiImageGenerator = read('src/components/templates/main-app/projects/editorView/AiImageGenerator/index.tsx');
+const aiImageGeneratorChat = read('src/components/templates/main-app/projects/editorView/AiImageGenerator/ChatWidgetUi.tsx');
+const aiDefaultsModal = read('src/components/templates/main-app/projects/editorView/AIDefaultsModal.tsx');
+const bulkStatusMenuModal = read('src/components/templates/main-app/projects/editorView/BulkStatusMenuModal.tsx');
+const reorderMenuModal = read('src/components/templates/main-app/projects/editorView/ReorderMenuModal.tsx');
+const editItemModal = read('src/components/templates/main-app/projects/editorView/editItemModal.tsx');
+const editCategoryModal = read('src/components/templates/main-app/projects/editorView/editCategoryModal.tsx');
+const mediaAspectRatioSelector = read('src/components/shared/media/MediaAspectRatioSelector.tsx');
+const decisionBlocksSettingsModal = read('src/components/templates/main-app/projects/editorView/DecisionBlocksSettingsModal.tsx');
+const editorOperations = read('src/components/templates/main-app/projects/editorView/utils/editorOperations.ts');
+const antConfirmDialog = read('src/lib/accessibility/antConfirmDialog.tsx');
 const editorWelcomeBanner = read('src/components/templates/main-app/projects/editorView/EditorWelcomeBanner.tsx');
 const zoomableImage = read('src/components/templates/main-app/projects/editorView/ZoomableImage.tsx');
 const commandCenter = read('src/components/templates/main-app/projects/editorView/CommandCenterModal/index.tsx');
+const commandCenterActionEngine = read('src/components/templates/main-app/projects/editorView/CommandCenterModal/ActionEngine.tsx');
+const commandCenterSelection = read('src/components/templates/main-app/projects/editorView/CommandCenterModal/SelectionContext.tsx');
+const commandCenterImpactPreview = read('src/components/templates/main-app/projects/editorView/CommandCenterModal/ImpactPreview.tsx');
+const commandCenterBulkOperations = read('src/components/templates/main-app/projects/editorView/CommandCenterModal/utils/bulkOperations.ts');
+const commandCenterMoveCategory = read('src/components/templates/main-app/projects/editorView/CommandCenterModal/actions/MoveCategoryAction.tsx');
 const commandCenterActionFiles = [
   'ActiveInactiveAction.tsx',
   'AvailabilityAction.tsx',
@@ -95,13 +120,21 @@ const commandCenterActionFiles = [
   source: read(`src/components/templates/main-app/projects/editorView/CommandCenterModal/actions/${file}`),
 }));
 const mobileMenu = read('src/components/mobile/screens/MobileMenuScreen.tsx');
+const mobileMenuSetupProgress = read('src/components/mobile/components/MenuSetupProgress.tsx');
 const mobileDesignEditor = read('src/components/mobile/screens/MobileDesignEditorScreen.tsx');
 const mobileProjectsProvider = read('src/components/mobile/providers/MobileProjectsProvider.tsx');
 const mobileShare = read('src/components/mobile/screens/MobileShareScreen.tsx');
 const mobileProjectSelector = read('src/components/mobile/components/MobileProjectSelectorSheet.tsx');
+const sharedProjectSelector = read('src/components/shared/ProjectSelector.tsx');
 const bulkActionsSheet = read('src/components/mobile/sheets/BulkActionsSheet.tsx');
+const mobileItemEditSheet = read('src/components/mobile/sheets/ItemEditSheet.tsx');
+const mobileCategoryEditSheet = read('src/components/mobile/sheets/MobileCategoryEditSheet.tsx');
 const projectDal = read('src/database/projects/index.ts');
 const projectDeleteRoute = read('src/app/api/projects/delete/route.ts');
+const projectDeleteErrors = read('src/lib/errors/projectDeleteErrors.ts');
+const uiErrorMessages = read('src/lib/errors/uiErrorMessages.ts');
+const apiCallComposerClient = read('src/lib/apiHelper/apiCallComposerClient.ts');
+const processGuideModal = read('src/components/templates/main-app/projects/ProcessGuideModal.tsx');
 const projectSlugOwnership = read('src/lib/menu/projectSlugOwnership.ts');
 const projectDocumentScope = read('src/lib/menu/projectDocumentScope.ts');
 const projectMutationAuthority = read('src/lib/menu/projectMutationAuthority.ts');
@@ -135,11 +168,213 @@ for (const { file, source } of commandCenterActionFiles) {
   requireToken(source, 'onPreviewChange', `${file} preview callback dependency`);
 }
 
+forbidToken(keyboardShortcutsHelp, '�', 'keyboard shortcuts replacement-character boundary');
+requireToken(previewModal, "modalRender={labelConfirmDialog('Menu preview')}", 'project preview dialog-name boundary');
+[
+  [editItemModal, 'item'],
+  [editCategoryModal, 'category'],
+].forEach(([source, entity]) => {
+  requireToken(source, 'const hasDraftChanges = currentDraftState !== initialDraftState;', `desktop ${entity} draft comparison`);
+  requireToken(source, `title: 'Discard unsaved ${entity} changes?'`, `desktop ${entity} discard confirmation`);
+  requireToken(source, `modalRender: labelConfirmDialog('Discard unsaved ${entity} changes?')`, `desktop ${entity} discard dialog name`);
+  requireToken(source, "cancelText: 'Keep Editing'", `desktop ${entity} discard recovery`);
+  requireToken(source, 'onCancel={handleClose}', `desktop ${entity} mask and keyboard close guard`);
+  requireToken(source, 'onClick={handleClose}>Cancel</Button>', `desktop ${entity} cancel guard`);
+  requireToken(source, 'aria-label={modalData.status === \'edit\' ? `Preview source file ${fileData.name || \'\'}`.trim() : `Preview target file ${fileData.name || \'\'}`.trim()}', `desktop ${entity} file-preview accessible name`);
+  requireToken(source, "if (event.key === 'Enter' || event.key === ' ')", `desktop ${entity} file-preview keyboard activation`);
+  requireToken(source, 'role="button"', `desktop ${entity} file-preview role`);
+  requireToken(source, 'tabIndex={0}', `desktop ${entity} file-preview focusability`);
+});
+[
+  [mobileItemEditSheet, 'item'],
+  [mobileCategoryEditSheet, 'category'],
+].forEach(([source, entity]) => {
+  requireToken(source, 'const hasChanges = currentComparisonState !== initialComparisonState;', `mobile ${entity} draft comparison`);
+  requireToken(source, `title: 'Discard unsaved ${entity} changes?'`, `mobile ${entity} discard confirmation`);
+  requireToken(source, "cancelText: 'Keep editing'", `mobile ${entity} discard recovery`);
+  requireToken(source, 'onMaskClick={() => {\n                void handleClose();', `mobile ${entity} mask close guard`);
+  requireToken(source, "<NavBar onBack={() => {\n                    void handleClose();", `mobile ${entity} back close guard`);
+});
+requireToken(editor, 'const stageProjectUpdateForPersistence = useCallback((updatedProject: Project) => {', 'shared editor modal persistence staging boundary');
+requireToken(editor, 'onApply={stageProjectUpdateForPersistence}', 'editor modal persistence callback boundary');
+requireToken(editor, 'setProjectData={stageProjectUpdateForPersistence}', 'generation defaults persistence callback boundary');
+if ((editor.match(/onApply=\{stageProjectUpdateForPersistence\}/g) || []).length !== 4) {
+  failures.push('exactly four shared editor mutation modals must use the persistence staging callback');
+}
+forbidToken(
+  editor,
+  'setProjectData(updatedProject);\n                    setActiveProject(updatedProject);\n                    setHasChanges(true);',
+  'premature shared editor persistence baseline replacement boundary',
+);
+requireToken(projectsPage, 'aria-label="Menu link URL"', 'menu-link import URL accessible-name boundary');
+requireToken(projectsPage, 'paddingBottom: (activeProject?.files?.length || 0) > 0 ? 88 : undefined', 'fixed continue action content-clearance boundary');
+requireToken(projectsPage, 'const onCloseProjectConfirmation = () => {', 'project confirmation recovery boundary');
+requireToken(projectsPage, 'onCancel={onCloseProjectConfirmation}', 'project confirmation cancel recovery boundary');
+requireToken(projectsPage, 'pending={projectConfirmationPending}', 'project confirmation pending-state boundary');
+requireToken(projectsPage, 'if (projectConfirmationPending) return;', 'project confirmation pending cancel guard boundary');
+for (const token of [
+  'const resetTarget = projectFormSourceData || editingProject;',
+  'const resetProjectId = editingProject?.projectId;',
+  'const operationScope = projectFormScope;',
+  'projectId: resetProjectId,',
+  'const resetTargetsActiveProject = selectedProject?.projectId === resetProjectId',
+  'if (resetTargetsActiveProject) {',
+  'fileCount={(projectFormSourceData || editingProject)?.files?.length || 0}',
+]) {
+  requireToken(projectsPage, token, 'project confirmation edited-menu identity boundary');
+}
+forbidToken(projectsPage, 'projectId: selectedProject.projectId,\n                    files: [],', 'project reset must not target the currently selected menu');
+forbidToken(projectsPage, 'onCancel={onCloseModal}\n                    fileCount={activeProject?.files?.length || 0}', 'project confirmation must not discard the parent form');
+for (const token of [
+  'pending?: boolean;',
+  'closable={!pending}',
+  'keyboard={!pending}',
+  'maskClosable={!pending}',
+  'loading={pending}',
+  'disabled={pending}',
+]) {
+  requireToken(read('src/components/templates/main-app/projects/ProjectDetails/ProjectConfirmModal.tsx'), token, 'project confirmation pending interaction boundary');
+}
+for (const token of [
+  "setNameError(`Enter a ${labels.offeringPhrase} name.`);",
+  "aria-describedby={nameError ? 'duplicate-project-name-error' : undefined}",
+  'aria-invalid={Boolean(nameError)}',
+  'id="duplicate-project-name-error" role="alert" type="danger"',
+]) {
+  requireToken(projectDuplicateModal, token, 'duplicate project name recovery boundary');
+}
+requireToken(antConfirmDialog, "dialog.removeAttribute('aria-labelledby');", 'shared dialog generated-label override boundary');
+requireToken(antConfirmDialog, "dialog.setAttribute('aria-label', label);", 'shared dialog explicit-label boundary');
+for (const label of [
+  'Please fix these issues before continuing',
+  'Before publishing',
+  'Repair project details?',
+  'Delete processed file?',
+]) {
+  requireToken(editor, `modalRender: labelConfirmDialog(${JSON.stringify(label)})`, `editor ${label} dialog-name boundary`);
+}
+for (const [source, label] of [
+  [editor, 'editor source-file preview'],
+  [fileList, 'project file-list preview'],
+]) {
+  requireToken(
+    source,
+    'modalRender: labelConfirmDialog(`${previewFile.name || "Source file"} preview`)',
+    `${label} dialog-name boundary`,
+  );
+}
+forbidToken(fileList, 'hoveredCard', 'project file actions hover-only boundary');
+forbidToken(fileList, 'onMouseEnter=', 'project file actions mouse-hover dependency');
+requireToken(fileList, 'width: 150,', 'project file-card readable width boundary');
+requireOrder(fileList, [
+  'ellipsis={{ tooltip: file.name }}',
+  'aria-label={`Preview ${file.name}`}',
+  'aria-label={`Delete ${file.name}`}',
+], 'project file name and persistent action boundary');
+requireToken(languageSelectorModal, 'aria-label={isMasterLinked ? "Activate menu language" : "Add menu language"}', 'menu-language selector name boundary');
+for (const token of [
+  'role="button"',
+  'tabIndex={0}',
+  'aria-label={`Remove ${langData?.name ?? lang} language`}',
+  "event.key !== 'Enter' && event.key !== ' '",
+  "aria-label={t('addLanguagePlaceholder')}",
+  'value={null}',
+]) {
+  requireToken(languageSelector, token, 'project language selector accessibility boundary');
+}
+forbidToken(languageSelector, 'value={undefined}', 'project add-language controlled-empty boundary');
+requireToken(imageUploadModal, "return 'How would you like to add images?';", 'image-choice dialog-name boundary');
+requireToken(imageUploadModal, 'aria-label="Select menu item for image"', 'image item-selector name boundary');
+requireToken(imageUploadModal, 'optionRender={(option) => {', 'image item-selector rendered-option boundary');
+requireToken(imageUploadModal, 'label: `${i.itemName} (${i.categoryName})`,', 'image item-selector accessible-option label boundary');
+requireToken(imageUploadModal, "titleText = 'Select items for images';", 'batch-image selection visible-title boundary');
+requireToken(aiImageGeneratorChat, 'aria-label="Special instructions"', 'image-generation special-instructions name boundary');
+requireToken(aiImageGenerator, 'aria-label="Choose background color"', 'image-generation background-color name boundary');
+requireToken(aiImageGenerator, 'aria-label="Choose foreground color"', 'image-generation foreground-color name boundary');
+requireToken(aiImageGenerator, 'aria-label="Exclude from image"', 'image-generation negative-prompt name boundary');
+for (const token of [
+  "ariaLabel: 'Background color'",
+  "ariaLabel: 'Foreground color'",
+  'aria-label={ariaLabel}',
+  'aria-label="Clear background color"',
+  'aria-label="Clear foreground color"',
+  'aria-label="Exclude from image"',
+]) {
+  requireToken(aiDefaultsModal, token, 'generation-defaults accessible-control boundary');
+}
+requireToken(aiImageGenerator, 'aria-pressed={isSelected}', 'image-type selected-state boundary');
+requireToken(aiImageGenerator, 'aria-pressed={active}', 'image-type shortcut selected-state boundary');
+requireToken(aiImageGenerator, 'aria-label="Choose Image Types"', 'mobile image-type dialog name boundary');
+requireToken(mediaAspectRatioSelector, 'aria-pressed={isSelected}', 'shared media aspect-ratio selected-state boundary');
+if (mediaAspectRatioSelector.includes('<Card')) {
+  fail('desktop media aspect-ratio choices must not use pointer-only Card controls');
+}
+if (aiImageGenerator.includes("onClick={() => setShowStyleSelector(true)}")) {
+  fail('image-generation style summary must not duplicate the nested Change action with a pointer-only parent');
+}
+if (aiImageGenerator.includes("if (generationConfig.isMultiMode) {\n                                                setShowImageTypeSelector(true);")) {
+  fail('image-generation photo-count summary must not duplicate the nested Choose action with a pointer-only parent');
+}
+requireToken(imageUploadModal, 'modalRender={labelConfirmDialog(getModalAccessibleTitle())}', 'desktop image-flow explicit dialog-name boundary');
+requireToken(imageUploadModal, 'aria-label={getMobileHeaderTitle()}', 'mobile image-flow explicit dialog-name boundary');
+requireToken(decisionBlocksSettingsModal, 'aria-label={`Select item for ${blockLabels.title}`}', 'featured-choice selector name boundary');
+requireToken(decisionBlocksSettingsModal, 'footer={(_, { CancelBtn }) => (', 'featured-choice native cancel recovery boundary');
+requireToken(decisionBlocksSettingsModal, '<CancelBtn />', 'featured-choice native cancel control boundary');
+requireToken(decisionBlocksSettingsModal, "maxHeight: 'calc(100vh - 260px)'", 'featured-choice viewport-height boundary');
+requireToken(decisionBlocksSettingsModal, "overflowY: 'auto'", 'featured-choice scroll recovery boundary');
+for (const token of [
+  'role="button"',
+  'aria-label={`${action.title}: ${action.description}`}',
+  'aria-disabled={!isEnabled}',
+  'tabIndex={isEnabled ? 0 : -1}',
+  "event.key !== 'Enter' && event.key !== ' '",
+]) {
+  requireToken(commandCenterActionEngine, token, 'command-center action keyboard boundary');
+}
+for (const token of [
+  'aria-label={`Select all items in ${catName}`}',
+  'aria-label={`Select ${item.name}`}',
+]) {
+  requireToken(commandCenterSelection, token, 'command-center selection name boundary');
+}
+requireToken(commandCenterMoveCategory, 'aria-label="Select destination category"', 'command-center destination selector name boundary');
+forbidToken(commandCenterImpactPreview, '<Panel', 'command-center collapse deprecated-child boundary');
+requireToken(commandCenter, "pricingPreview?.allChanges.length ?? 0", 'command-center pricing no-op apply boundary');
+requireToken(commandCenterImpactPreview, 'No price changes needed', 'command-center pricing no-op owner feedback');
+requireToken(commandCenterBulkOperations, 'if (newPrice !== safeCurrentPrice)', 'command-center item-price no-op preview filter');
+requireToken(commandCenterBulkOperations, 'if (newAttrPrice === safeAttrPrice) return;', 'command-center attribute-price no-op preview filter');
+if ((commandCenterImpactPreview.match(/items=\{/g) || []).length < 4) {
+  fail('command-center collapse items boundary is incomplete');
+}
+requireToken(commandCenter, "modalRender: labelConfirmDialog('Discard current action?')", 'discard-action dialog-name boundary');
+requireToken(commandCenter, "modalRender: labelConfirmDialog('Discard changes?')", 'discard-command-center dialog-name boundary');
+requireToken(commandCenter, "modalRender: labelConfirmDialog(activeAction === 'repairMenu' ? 'Repair menu?' : 'Apply changes?')", 'apply-action dialog-name boundary');
+for (const label of ['Delete Category?', 'Delete Item?', 'Delete Option?']) {
+  requireToken(editorOperations, `modalRender: labelConfirmDialog("${label}")`, `${label} dialog-name boundary`);
+}
+
 requireToken(
   packageJson,
-  '"verify:menu-project-editor-boundary": "node scripts/verification/verify-menu-project-editor-boundary.js && npm run test:project-partial-update-projection && npm run test:project-slug-ownership && npm run test:project-document-scope && npm run test:project-owner-scope && npm run test:project-mutation-authority && npm run test:project-upload-identity && npm run test:project-upload-payload && npm run test:time-slot-data-flow"',
+  '"verify:menu-project-editor-boundary": "node scripts/verification/verify-menu-project-editor-boundary.js && npm run test:project-partial-update-projection && npm run test:project-slug-ownership && npm run test:project-document-scope && npm run test:project-owner-scope && npm run test:project-mutation-authority && npm run test:project-upload-identity && npm run test:project-upload-payload && npm run test:project-editor-noop-comparison && npm run test:time-slot-data-flow"',
   'package scripts',
 );
+
+for (const token of [
+  'areEditorProjectsEquivalent(activeProject, comparableProjectData)',
+  'areEditorProjectsEquivalent(activeProject, projectToSave)',
+]) {
+  requireToken(editor, token, 'editor semantic no-op comparison boundary');
+}
+requireToken(editorProjectComparison, 'Array.isArray(item.attributes) && item.attributes.length === 0', 'editor empty-attribute normalization boundary');
+requireToken(editorProjectComparison, 'delete item.attributes;', 'editor empty-attribute canonicalization boundary');
+for (const token of [
+  'missing and empty item attributes must be the same editor truth',
+  'empty and missing item attributes must compare symmetrically',
+  'removing a persisted attribute must remain a real editor change',
+  'non-attribute menu changes must remain detectable',
+]) {
+  requireToken(editorProjectComparisonTest, token, 'editor no-op comparison regression');
+}
 
 ['import ProjectsPage from "@template/main-app/projects"', '<ProjectsPage />'].forEach((token) => {
   requireToken(projectsRoute, token, 'projects route');
@@ -349,6 +584,49 @@ requireNamedImport(editor, '@database/projects', [
 forbidToken(editorWelcomeBanner, "WELCOME_DISMISSED: 'editor_welcome_dismissed'", 'editor onboarding browser state');
 
 [
+  "closable={{ 'aria-label': 'Close Bulk Active / Inactive' }}",
+  'if (!hasChanges) return;',
+  '{hasChanges && <Button onClick={handleClose}>Cancel</Button>}',
+  'onClick={hasChanges ? handleApply : handleClose}',
+  'aria-label="Set all categories active"',
+  'aria-label={`Set ${cat.label} active`}',
+  'aria-label={`View ${cat.label} items`}',
+  'aria-pressed={selectedCategoryId === cat.id}',
+  'aria-label="Set all items active"',
+  'aria-label={`Set ${item.label} active`}',
+  'useEffect(() => {',
+  'initializeOpenState();',
+  'const allCategoriesChecked = categoryRows.length > 0 && activeCategories.size === categoryRows.length;',
+  'const allItemsChecked = itemRows.length > 0 && activeItems.size === itemRows.length;',
+].forEach((token) => requireToken(bulkStatusMenuModal, token, 'bulk status no-change and dialog-action boundary'));
+forbidToken(bulkStatusMenuModal, 'const canApply = true;', 'bulk status no-change boundary');
+forbidToken(bulkStatusMenuModal, 'afterOpenChange=', 'bulk status must not delay populated-state initialization until after animation');
+requireToken(bulkStatusMenuModal, "modalRender: labelConfirmDialog('Unsaved Changes')", 'bulk status unsaved-changes dialog');
+requireToken(reorderMenuModal, "modalRender: labelConfirmDialog('Unsaved Changes')", 'reorder unsaved-changes dialog');
+requireToken(reorderMenuModal, 'if (!hasChanges) return;', 'reorder no-change apply boundary');
+requireToken(reorderMenuModal, 'disabled={!canReorder || !hasChanges}', 'reorder no-change apply control');
+requireToken(reorderMenuModal, 'initializeOpenState();', 'reorder populated open-state boundary');
+requireToken(reorderMenuModal, 'setSelectedCategoryId(firstCat.id);', 'reorder deterministic open selection');
+requireToken(reorderMenuModal, 'setInitialItemRows([]);', 'reorder empty-project recovery');
+forbidToken(reorderMenuModal, 'afterOpenChange=', 'reorder must not delay populated-state initialization until after animation');
+
+requireToken(
+  editor,
+  "content: 'Could not save changes. Your edits are still here. Try again.',",
+  'desktop editor save failure recovery',
+);
+requireToken(
+  editor,
+  "key: 'menu-editor-save-failed',",
+  'desktop editor save failure feedback deduplication',
+);
+forbidToken(
+  editorKeyboardShortcuts,
+  'message.success("Changes saved")',
+  'keyboard save must not claim success before persistence',
+);
+
+[
   'ref={imageRef}',
   'imageRef.current.offsetWidth * zoom',
   'imageRef.current.offsetHeight * zoom',
@@ -438,7 +716,8 @@ forbidToken(editor, 'validationErrors.push(error.message)', 'desktop editor raw 
   'currentSlugSnapshot.size === SLUG_RESERVATION_QUERY_LIMIT',
   'previousSlugSnapshot.size === SLUG_RESERVATION_QUERY_LIMIT',
   'transaction.set(projectDocRef, projectData, { merge: false });',
-  'created && FEATURE_FLAGS.ENABLE_PROJECT_PROPAGATION',
+  'shouldPropagateProjectAfterSourceSave({',
+  'project_outlet_propagation_source_ready_failed',
   "throw new Error('Invalid project metadata scope');",
   "throw new Error('Project summary not found');",
   'const transactionResult = await runTransaction(firebaseClient, async (transaction) => {',
@@ -486,12 +765,58 @@ forbidToken(editor, 'validationErrors.push(error.message)', 'desktop editor raw 
   'requireAnyStorePermissionForStoreData(',
   'const result = await db.runTransaction(async (transaction) => {',
   'const linkedOutletQueries = tenantStoreIds',
-  'throw new ProjectDeleteRejection(409, "Project is already deleted");',
+  'PROJECT_DELETE_REJECTION_CODES.ALREADY_DELETED',
+  'PROJECT_DELETE_REJECTION_CODES.LINKED_OUTLETS',
+  'return NextResponse.json({ code: error.code, error: error.message }, { status: error.status });',
   'transaction.set(projectRef, projectUpdate, { merge: true });',
   'fallbackProjectId: fallbackDefaultEntry?.[0],',
   'runStorePublicTruthPostCommitEffects({',
   'revalidate: (tag) => revalidateTag(tag, { expire: 0 })',
 ].forEach((token) => requireToken(projectDeleteRoute, token, 'project delete route'));
+[
+  'PROJECT_DELETE_REJECTION_CODES',
+  "LINKED_OUTLETS: 'project_delete_linked_outlets'",
+  "'This menu is used by another location and cannot be deleted. Contact MenuList support if it must be removed.'",
+  'isProjectDeleteRejectionResponse',
+].forEach((token) => requireToken(projectDeleteErrors, token, 'project delete error contract'));
+[
+  'getProjectDeleteSafeUiMessage',
+  "Reflect.get(error, 'code')",
+].forEach((token) => requireToken(uiErrorMessages, token, 'safe UI error mapping'));
+[
+  'isProjectDeleteRejectionResponse(responseBody)',
+  'PROJECT_DELETE_REJECTION_CODES.FAILED',
+  'rejectionCode,\n                    response.status,\n                    rejectionCode,',
+].forEach((token) => requireToken(projectDal, token, 'project delete client contract'));
+if ((projectsPage.match(/await deleteProject\([^)]*\)\.catch\(\(\) => null\)/g) || []).length !== 2) {
+  failures.push('desktop project deletion must catch globally handled request rejections before the preflight recovery catch');
+}
+if ((mobileProjectSelector.match(/await deleteProject\([^)]*\)\.catch\(\(\) => null\)/g) || []).length !== 1) {
+  failures.push('mobile project deletion must catch the globally handled request rejection without duplicate diagnostics');
+}
+[
+  'getProjectDeleteSafeUiMessage(getBoundedErrorCode(error))',
+  'if (!expectedProjectDeleteMessage) {',
+  "secureError('[DAL Client] API call failed'",
+  'reduxStore.dispatch(showErrorToast(getSafeUiErrorMessage(error, fallbackMessage)))',
+].forEach((token) => requireToken(apiCallComposerClient, token, 'project delete expected-rejection diagnostics'));
+[
+  "modalRender={labelConfirmDialog('How It Works')}",
+  "maxHeight: 'calc(100dvh - 180px)'",
+  "overflowY: 'auto'",
+  "gridTemplateColumns: compact ? '1fr' : '1fr 1fr'",
+  '<Flex justify="center">',
+  "Got It, Let&apos;s Start!",
+].forEach((token) => requireToken(processGuideModal, token, 'project setup guide viewport and accessibility boundary'));
+if ((projectsPage.match(/if \(!deleteResult\) return;/g) || []).length < 2) {
+  failures.push('desktop project deletion must stop after the single global request-rejection toast');
+}
+requireToken(
+  mobileProjectSelector,
+  'await deleteProject(project.projectId).catch(() => null)',
+  'mobile project delete rejection ownership',
+);
+requireToken(mobileProjectSelector, 'if (!deleteResult) return;', 'mobile project delete rejection ownership');
 [
   'export const preserveExistingProjectImageMetadata',
   "patch.projectImage === undefined",
@@ -649,6 +974,9 @@ requireNamedImport(mobileMenu, '@database/projects', [
   'const MOBILE_MENU_PERSIST_RETRY_MS = 2500;',
   'const persistMenuProjectImmediately = useCallback(async (project: any) => {',
   'const flushPendingMenuPersist = useCallback(async () => {',
+  'const persistExplicitMenuUpdate = useCallback(async (updatedProject: any) => {',
+  "throw new Error('mobile_menu_explicit_persist_project_required');",
+  "throw new Error('mobile_menu_explicit_persist_pending');",
   'const savedProject = await updateProjectWithoutLoader(snapshot);',
   'mobile_menu_project_persist_project_update_rejected',
   'mobile_menu_project_persist_failed',
@@ -657,6 +985,12 @@ requireNamedImport(mobileMenu, '@database/projects', [
   'logMobileMenuFailure',
   'const savedProject = await appendImageBatchProjectSelections({',
 ].forEach((token) => requireToken(mobileMenu, token, 'mobile menu screen'));
+if ((mobileMenu.match(/await persistExplicitMenuUpdate\(updated\);/g) || []).length !== 10) {
+  failures.push('mobile explicit category and item mutations must share the acknowledged persistence boundary');
+}
+if ((mobileMenu.match(/if \(shouldUploadImage\) \{\n\s+applyLocalMenuUpdate\(updated\);\n\s+\} else \{\n\s+await persistExplicitMenuUpdate\(updated\);\n\s+\}/g) || []).length !== 2) {
+  failures.push('mobile item editor must await explicit non-image persistence in both linked and normal save branches');
+}
 forbidToken(mobileMenu, 'console.error(', 'mobile menu direct error logging');
 forbidToken(mobileMenu, 'console.warn(', 'mobile menu direct warn logging');
 
@@ -690,6 +1024,20 @@ requireNamedImport(mobileProjectSelector, '@database/projects', [
   'syncPublicSummary: true,',
   'logMobileProjectFailure',
 ].forEach((token) => requireToken(mobileProjectSelector, token, 'mobile project selector'));
+[
+  "aria-label={t('selectCatalog')}",
+  "aria-label={`${resolveProjectName(managingProject?.name, t('catalogActions'))} menu actions`}",
+  "aria-label={formMode === 'create' ? t('createCatalog')",
+  "<Input aria-label={t('catalogName')}",
+].forEach((token) => requireToken(mobileProjectSelector, token, 'mobile project selector dialog naming'));
+[
+  "aria-label={`Manage ${projectName || t('untitled')}`}",
+  "aria-label={`Select ${projectName || t('untitled')}`}",
+  'aria-pressed={isSelected}',
+  "aria-label={t('createCatalog')}",
+].forEach((token) => requireToken(sharedProjectSelector, token, 'shared project selector accessibility'));
+forbidToken(sharedProjectSelector, 'hoverable\n                        onClick={() => onSelect(project.id)}', 'shared project selector composite card');
+forbidToken(sharedProjectSelector, 'hoverable\n                    onClick={onCreate}', 'shared project create card');
 forbidToken(
   mobileProjectSelector,
   'mobile_project_public_content_translation_metadata_update_rejected',
@@ -703,9 +1051,59 @@ requireNamedImport(bulkActionsSheet, '@database/projects', [
 [
   'applyBulkAvailability',
   'applyBulkActiveInactive',
-  'onApply(updated,',
+  'await onApply(updated,',
+  'aria-label={actionTitle}',
+  "aria-pressed={statusFilter === option.key}",
+  "{allCategorySelected ? 'Deselect' : 'Select'} all items in {categoryName}",
+  "style={{ minHeight: 44, width: '100%' }}",
   'mobile_bulk_actions_project_metadata_translation_update_rejected',
 ].forEach((token) => requireToken(bulkActionsSheet, token, 'mobile bulk actions'));
+if ((bulkActionsSheet.match(/await onApply\(updated,/g) || []).length !== 3) {
+  failures.push('mobile bulk actions must await acknowledged persistence before closing every update path');
+}
+forbidToken(bulkActionsSheet, '<Flex\n            align="center"\n            gap={10}\n            onClick=', 'mobile bulk selection shortcuts');
+forbidToken(bulkActionsSheet, '<div onClick={(event) => event.stopPropagation()}>\n                                                        <Checkbox', 'mobile bulk category and item selection');
+
+[
+  'const applyUndoableBulkMenuUpdate = useCallback(async',
+  'await persistExplicitMenuUpdate(linkedUpdate.project);',
+  'await applyUndoableBulkMenuUpdate(updatedProject,',
+  'void persistExplicitMenuUpdate(removeObjRef(previousProject))',
+].forEach((token) => requireToken(mobileMenu, token, 'mobile bulk acknowledged persistence'));
+
+requireNamedImport(mobileMenu, '@database/projects', [
+  'assertProjectUpdateSucceeded',
+  'publishProject',
+], 'mobile menu publish');
+[
+  'const handlePublishMenu = useCallback(async',
+  'publishMenuInFlightRef.current = true;',
+  'await flushPendingMenuPersist();',
+  'await waitForMenuPersistenceIdle();',
+  "throw new Error('mobile_menu_publish_pending_save');",
+  'const updatedProject = await publishProject(projectToPublish, {',
+  'expectedModifiedOn: projectToPublish.modifiedOn,',
+  "'mobile_menu_publish_project_update_rejected'",
+  'syncSavedMenuProject(publishedProject);',
+  "logMobileMenuFailure('mobile_menu_publish_failed'",
+  "logMobileMenuFailure('mobile_menu_publish_verification_setup_failed'",
+  "logMobileMenuFailure('mobile_menu_publish_verification_failed'",
+  'onPublish={handlePublishMenu}',
+  'actionLoading={isPublishingMenu}',
+].forEach((token) => requireToken(mobileMenu, token, 'mobile menu publish'));
+requireOrder(mobileMenu, [
+  'await flushPendingMenuPersist();',
+  'await waitForMenuPersistenceIdle();',
+  'const updatedProject = await publishProject(projectToPublish, {',
+  'assertProjectUpdateSucceeded(',
+  'syncSavedMenuProject(publishedProject);',
+], 'mobile menu publish acknowledgement order');
+[
+  "action.id === 'open_publish' && onPublish",
+  'onPublish();',
+  'disabled={actionLoading}',
+  'loading={actionLoading}',
+].forEach((token) => requireToken(mobileMenuSetupProgress, token, 'mobile menu setup publish handoff'));
 
 [
   '`npm run verify:menu-project-editor-boundary`',

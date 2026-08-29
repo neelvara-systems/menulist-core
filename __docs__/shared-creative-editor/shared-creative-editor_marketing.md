@@ -9,7 +9,7 @@ Shared Creative Editor is the reusable asset creation layer for products that ne
 | Product | Packaging |
 | --- | --- |
 | CampaignCue | Create campaign assets from packs or from scratch, adjust selected items quickly, reuse approved brand assets, then download and save to Asset Library. |
-| MenuList | Future use may support owned posters, cards, or business assets through a MenuList adapter. |
+| MenuList | Customize governed posters, cards, QR displays, and other owned operational assets from a finished MenuList template, then download or save the reusable design. |
 | Answerlattice | Future use may support support or onboarding visuals only through an Answerlattice adapter. |
 
 ## Messaging Guardrails

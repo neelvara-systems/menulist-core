@@ -1411,6 +1411,8 @@ assert(desktopRoute.includes('sessionDateRef') && desktopRoute.includes('session
 assert(desktopRoute.includes('getAiMenuManagerComposerContextData') && desktopRoute.includes('buildAiMenuManagerComposerPrompt'), 'Desktop AMM must support composer context selection');
 assert(desktopRoute.includes('composerContext: commandContext') && desktopRoute.includes('clearComposerContext();'), 'Desktop AMM must pass exact composer context ids and clear them after use');
 assert(desktopRoute.includes('amm-desktop-context-picker') && desktopRoute.includes('Work on'), 'Desktop AMM must render an inline composer context picker');
+assert(desktopRoute.includes('Clear work area') && desktopRoute.includes('Clear message context'), 'Desktop AMM must distinguish simultaneous context-clear actions');
+assert((desktopRoute.match(/>\s*Clear\s*</g) || []).length === 0, 'Desktop AMM must not expose ambiguous generic Clear actions');
 assert(desktopRoute.includes('Choose context or suggestions') && desktopRoute.includes('<Dropdown'), 'Desktop AMM must consolidate Work on and Suggestions behind one composer tool entry');
 assert(desktopRoute.includes('toggleContextPicker') && desktopRoute.includes('setIsSuggestionsOpen(false)') && desktopRoute.includes('setIsContextPickerOpen(false)'), 'Desktop AMM Work on and Suggestions panels must be mutually exclusive');
 assert(desktopRoute.includes('filterAiMenuManagerComposerEntities') && desktopRoute.includes('toggleComposerEntity'), 'Desktop AMM context picker must support item/category entity selection');
@@ -1515,6 +1517,12 @@ assert(mobileScreen.includes('sessionDateRef') && mobileScreen.includes('session
 assert(mobileScreen.includes('getAiMenuManagerComposerContextData') && mobileScreen.includes('buildAiMenuManagerComposerPrompt'), 'Mobile AMM must support composer context selection');
 assert(mobileScreen.includes('composerContext: commandContext') && mobileScreen.includes('clearComposerContext();'), 'Mobile AMM must pass exact composer context ids and clear them after use');
 assert(mobileScreen.includes('Choose context or suggestions') && mobileScreen.includes('Start from') && mobileScreen.includes('Work on'), 'Mobile AMM must expose one composer tool entry for context and suggestions');
+for (const dialogName of ['Start from', 'Work on', 'Suggestions']) {
+  assert(
+    mobileScreen.includes(`aria-label="${dialogName}"`),
+    `Mobile AMM ${dialogName} popup must expose its visible title as the accessible dialog name`,
+  );
+}
 assert(mobileScreen.includes('openContextPicker') && mobileScreen.includes('setIsSuggestionsOpen(false)') && mobileScreen.includes('setIsContextPickerOpen(false)'), 'Mobile AMM Work on and Suggestions sheets must be mutually exclusive');
 assert(mobileScreen.includes('filterAiMenuManagerComposerEntities') && mobileScreen.includes('toggleComposerEntity'), 'Mobile AMM context picker must support item/category entity selection');
 assert(mobileScreen.includes('activeContextEntityCount') && mobileScreen.includes('shouldShowContextSearch') && mobileScreen.includes('Find item') && mobileScreen.includes('Find category'), 'Mobile AMM item/category picker must use compact conditional search');

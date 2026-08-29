@@ -22,13 +22,15 @@ import {
 } from '@database/compliance/server';
 import { sanitizeComplianceContent } from '@lib/compliance/sanitizer';
 import { composeComplianceContent, extractComplianceInputs, generateComplianceContent } from '@lib/compliance/templates';
+import { resolveExactSessionPlatformRole } from '@lib/auth/sessionPlatformRole';
 import { firestoreAdmin } from '@lib/firebase/firebaseAdmin';
 import { isValidFirestoreDocumentId } from '@lib/firebase/firestoreDocumentId';
 import {
     isMenuListPublicEntityEligible,
     normalizeMenuListPublicEntityIdentityAliases,
 } from '@lib/publicTruth/entityEligibility';
-import { requireAnyStorePermission } from '@lib/permissions/server';
+import { requireAnyStorePermissionForStoreData } from '@lib/permissions/server';
+import { canUserAccessStore } from '@lib/multiOutlet/storeSwitchAccess';
 import { checkRateLimit } from '@lib/rateLimit';
 import { getRateLimitForFeature } from '@lib/rateLimit/configs';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
@@ -44,6 +46,7 @@ const OverrideSchema = z.object({
     type: z.enum(['privacy', 'terms', 'refund']),
     action: z.enum(['override', 'reset']),
     content: z.string().max(15000).optional(),
+    storeId: z.union([z.string().min(1).max(128), z.number().int().positive()]).optional(),
 });
 const COMPLIANCE_OVERRIDE_MAX_BODY_BYTES = 32 * 1024;
 type ComplianceStoreLookupResult =
@@ -76,6 +79,17 @@ function getComplianceSessionScope(session: any): { sId: string; tId: string } |
     return sId && tId ? { sId, tId } : null;
 }
 
+function canSessionAccessComplianceStore(session: any, sessionStoreId: string, targetStoreId: string): boolean {
+    if (sessionStoreId === targetStoreId) return true;
+    return canUserAccessStore({
+        sessionUser: {
+            ...(session?.user || {}),
+            platformRole: resolveExactSessionPlatformRole(session) || undefined,
+        },
+        storeId: Number(targetStoreId),
+    });
+}
+
 /**
  * GET /api/compliance — Get compliance pages status for dashboard
  *
@@ -91,7 +105,15 @@ export const GET = withAuth(async (request: NextRequest, session) => {
     if (!scope) {
         return NextResponse.json({ error: 'Not onboarded' }, { status: 400 });
     }
-    const { sId, tId } = scope;
+    const requestedStoreIdValue = request.nextUrl.searchParams.get('storeId');
+    const requestedStoreId = requestedStoreIdValue === null
+        ? scope.sId
+        : normalizeComplianceSessionDocumentId(requestedStoreIdValue);
+    if (!requestedStoreId) {
+        return NextResponse.json({ error: 'Invalid store scope' }, { status: 400 });
+    }
+    const { tId } = scope;
+    const sId = requestedStoreId;
 
     // Get store data for template generation
     const storeLookup = await getStoreData(sId, tId);
@@ -101,14 +123,31 @@ export const GET = withAuth(async (request: NextRequest, session) => {
             { status: 500 },
         );
     }
+    if (
+        !storeLookup.store
+        || !canSessionAccessComplianceStore(session, scope.sId, sId)
+    ) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+    const permissionError = await requireAnyStorePermissionForStoreData(
+        request,
+        session,
+        storeLookup.store,
+        [PERMISSIONS.MANAGE_PUBLIC_PRESENCE, PERMISSIONS.MANAGE_STORE],
+        'Compliance pages',
+        sId,
+        tId,
+    );
+    if (permissionError) return permissionError;
 
-    const inputs = storeLookup.store ? extractComplianceInputs(storeLookup.store) : null;
+    const inputs = extractComplianceInputs(storeLookup.store);
 
     if (!inputs) {
         return NextResponse.json({
             storeId: sId,
             tenantId: tId,
             privacy: null,
+            refund: null,
             terms: null,
             missingData: true,
             message: 'Add at least one contact method (email or phone) to generate compliance pages.',
@@ -162,13 +201,43 @@ export const POST = withAuth(async (request: NextRequest, session) => {
     if (!scope) {
         return NextResponse.json({ error: 'Not onboarded' }, { status: 400 });
     }
-    const { sId, tId } = scope;
+    const bodyResult = await readBoundedJsonBody(request, COMPLIANCE_OVERRIDE_MAX_BODY_BYTES, {
+        invalidJsonMessage: 'Validation failed',
+    });
+    if (bodyResult.ok === false) return bodyResult.response;
+    const body = bodyResult.data;
+    const validation = OverrideSchema.safeParse(body);
+    if (!validation.success) {
+        return NextResponse.json(
+            { error: 'Validation failed', details: getSafeZodValidationDetails(validation.error) },
+            { status: 400 },
+        );
+    }
 
-    const permissionError = await requireAnyStorePermission(
+    const requestedStoreId = validation.data.storeId === undefined
+        ? scope.sId
+        : normalizeComplianceSessionDocumentId(validation.data.storeId);
+    if (!requestedStoreId) {
+        return NextResponse.json({ error: 'Invalid store scope' }, { status: 400 });
+    }
+    const { tId } = scope;
+    const sId = requestedStoreId;
+    const storeLookup = await getStoreData(sId, tId);
+    if (
+        !storeLookup.ok
+        || !storeLookup.store
+        || !canSessionAccessComplianceStore(session, scope.sId, sId)
+    ) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+    const permissionError = await requireAnyStorePermissionForStoreData(
         request,
         session,
+        storeLookup.store,
         [PERMISSIONS.MANAGE_PUBLIC_PRESENCE, PERMISSIONS.MANAGE_STORE],
         'Compliance pages',
+        sId,
+        tId,
     );
     if (permissionError) return permissionError;
 
@@ -185,19 +254,6 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             error: 'Too many requests. Please try again later.',
             resetAt: rateLimitResult.resetAt,
         }, { status: 429 });
-    }
-
-    const bodyResult = await readBoundedJsonBody(request, COMPLIANCE_OVERRIDE_MAX_BODY_BYTES, {
-        invalidJsonMessage: 'Validation failed',
-    });
-    if (bodyResult.ok === false) return bodyResult.response;
-    const body = bodyResult.data;
-    const validation = OverrideSchema.safeParse(body);
-    if (!validation.success) {
-        return NextResponse.json(
-            { error: 'Validation failed', details: getSafeZodValidationDetails(validation.error) },
-            { status: 400 },
-        );
     }
 
     const { type, action, content } = validation.data;

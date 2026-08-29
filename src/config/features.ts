@@ -31,6 +31,16 @@ export const FEATURE_FLAGS = {
     ENABLE_MYCODEX_READER: true,
 
     /**
+     * Enable the private, platform-role-gated MyCodex founder console.
+     *
+     * MyCodex is only a responsive control-plane shell. MenuList and
+     * Answerlattice remain the owners of their data, APIs, Firebase projects,
+     * permissions, and audit records. The console must never create a MyCodex
+     * Firebase dependency or expose a public administration route.
+     */
+    ENABLE_MYCODEX_FOUNDER_CONSOLE: true,
+
+    /**
      * Enable browser-local read-aloud controls in MyCodex.
      *
      * This uses the user's device/browser SpeechSynthesis engine only. It
@@ -159,7 +169,7 @@ export const FEATURE_FLAGS = {
      * posting, social account connection, ad spend mutation, or billing.
      */
     ENABLE_CAMPAIGNCUE_CREATIVE_EDITOR: true,
-    ENABLE_CAMPAIGNCUE_EDITOR_TEST_ROUTE: true,
+    ENABLE_CAMPAIGNCUE_EDITOR_TEST_ROUTE: false,
     ENABLE_CAMPAIGNCUE_EDITOR_AI_TOOLS: true,
     ENABLE_CAMPAIGNCUE_DESIGN_CUE: true,
     ENABLE_CAMPAIGNCUE_DESIGN_CUE_MODEL_ASSIST: false,

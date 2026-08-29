@@ -36,7 +36,7 @@ export default function MobileSettingsScreenHeader({
                         trigger="click"
                     >
                         <Button
-                            ariaLabel={`About ${title}`}
+                            aria-label={`About ${title}`}
                             fill="none"
                             style={{ minHeight: 44, minWidth: 44, paddingInline: 0 }}
                         >

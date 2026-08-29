@@ -47,10 +47,109 @@ assertIncludes(businessSettings, 'setSocialMedia(socialMediaDraft);', 'Business 
 assertIncludes(businessSettings, 'setWorkingHours(workingHoursDraft);', 'Business Settings working-hours Reset');
 assertIncludes(businessSettings, 'setWorkingHoursDirty(false);', 'Business Settings working-hours dirty Reset');
 assertIncludes(businessSettings, 'setWorkingHoursDirtyDays([]);', 'Business Settings working-hours dirty-day Reset');
+assertIncludes(businessSettings, 'function getBusinessSettingsLocaleDefaults(storeDetails: any, timeZone?: string)', 'Business Settings locale default projection');
+assertIncludes(businessSettings, 'timeZone: storeDetails?.timeZone || timeZone || defaultTimezone', 'Business Settings deterministic timezone fallback');
+assert(
+  (businessSettings.match(/\.\.\.getBusinessSettingsLocaleDefaults\(storeDetails, timezone\)/g) || []).length === 2,
+  'Business Settings initial load and Reset must share the exact locale default projection',
+);
+for (const localeDefaultField of [
+  'businessDayEndTime',
+  'country',
+  'currencyCode',
+  'currencySymbol',
+  'dateFormat',
+  'timeFormat',
+  'timeZone',
+]) {
+  assertIncludes(
+    businessSettings,
+    `${localeDefaultField}:`,
+    `Business Settings Reset locale default ${localeDefaultField}`,
+  );
+}
+assert(
+  !businessSettings.includes('currencyCode: storeDetails?.currencyCode,')
+    && !businessSettings.includes('currencySymbol: storeDetails?.currencySymbol,')
+    && !businessSettings.includes('country: storeDetails?.country,'),
+  'Business Settings Reset must not replace visible locale defaults with missing persisted values',
+);
 assertIncludes(businessSettings, 'function preventBusinessSettingsPickerEnterSubmit(', 'Business Settings picker Enter guard');
 assertIncludes(businessSettings, "if (!event.target.closest('.ant-picker')) return;", 'Business Settings picker-only Enter guard');
 assertIncludes(businessSettings, 'event.preventDefault();', 'Business Settings picker Enter submit prevention');
 assertIncludes(businessSettings, 'onKeyDown={preventBusinessSettingsPickerEnterSubmit}', 'Business Settings form picker Enter guard wiring');
+assertIncludes(businessSettings, "form.setFieldValue(\n                                                    'businessAttributes'", 'Business Settings Reset atomic business-attribute replacement');
+assertIncludes(businessSettings, 'BUSINESS_ATTRIBUTE_CONFIG.map(({ key }) => [', 'Business Settings Reset complete business-attribute projection');
+assert(
+  !businessSettings.includes("form.setFieldValue(\n                                                        ['businessAttributes', key]"),
+  'Business Settings Reset must not perform repeated nested field writes that trigger Ant circular-reference diagnostics',
+);
+for (const persistedOptionalField of [
+  'area',
+  'canonicalUrl',
+  'contactPersonEmail',
+  'contactPersonName',
+  'contactPersonNumber',
+  'countryCode',
+  'dialCode',
+  'district',
+  'domain',
+  'email',
+  'gstn',
+  'phoneNumber',
+]) {
+  assertIncludes(
+    businessSettings,
+    `${persistedOptionalField}: storeDetails?.${persistedOptionalField}`,
+    `Business Settings Reset explicit optional ${persistedOptionalField} projection`,
+  );
+}
+for (const persistedOptionalPublicPresenceField of [
+  'accentColor',
+  'businessCover',
+  'establishedYear',
+  'googleMapsUrl',
+  'googleRating',
+  'googleReviewCount',
+  'googleReviewUrl',
+  'iconVariant',
+  'orderUrl',
+  'photos',
+  'reservationUrl',
+  'whatsappNumber',
+]) {
+  assertIncludes(
+    businessSettings,
+    `${persistedOptionalPublicPresenceField}: storeDetails?.publicPresence?.${persistedOptionalPublicPresenceField}`,
+    `Business Settings Reset explicit optional publicPresence.${persistedOptionalPublicPresenceField} projection`,
+  );
+}
+assertIncludes(
+  businessSettings,
+  'const normalizedAnalytics = normalizeAnalyticsSettings(storeDetails?.analytics);',
+  'Business Settings Reset normalized persisted analytics draft',
+);
+for (const persistedOptionalAnalyticsField of [
+  'facebookPixelId',
+  'googleAnalyticsId',
+  'googleSearchConsole',
+]) {
+  assertIncludes(
+    businessSettings,
+    `${persistedOptionalAnalyticsField}: normalizedAnalytics.${persistedOptionalAnalyticsField}`,
+    `Business Settings Reset explicit optional analytics.${persistedOptionalAnalyticsField} projection`,
+  );
+}
+assertIncludes(businessSettings, 'display: "inline-flex"', 'Business Settings Search & Discovery inline menu label layout');
+assert(
+  !businessSettings.includes('<Flex align="center" gap={8}>\n                    <span>Search & Discovery</span>'),
+  'Business Settings Search & Discovery label must not render a block Flex inside the inline Ant Menu label',
+);
+const officialPage = read('src/components/templates/main-app/businessSettings/tabs/OfficialPageTab.tsx');
+assert(
+  (officialPage.match(/controls=\{false\}/g) || []).length >= 3,
+  'Official Page numeric inputs must not expose duplicate ambiguous and undersized Ant stepper buttons',
+);
 assertIncludes(implementation, 'Desktop Business Settings Reset boundary', 'Business Settings Reset implementation documentation');
 assertIncludes(changelog, 'Business Settings Controlled-Draft Reset Boundary', 'Business Settings Reset changelog evidence');
 

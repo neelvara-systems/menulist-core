@@ -50,6 +50,13 @@ The July 16 parity pass moves mobile custom-domain availability to the authentic
 
 The July 23 tenant/store settlement boundary keys `MobileDomainSettingsScreen` by exact current scope. Switching stores remounts the screen before paint; status, subdomain checks and domain checks reject older responses; save/add/remove completions compare the originating tenant/store before changing context, loading state, or owner copy. This adds no request, provider call, Firestore operation, cache mutation, route or setting.
 
+The August 28 local-certification boundary admits exact `localhost` and
+`*.localhost` custom-domain fixtures only outside production. Mobile Domain
+settings derives their domain and verified status from the already-loaded
+scoped store record before `/api/domain`; production and every non-loopback
+domain retain the authenticated provider-status request. This keeps emulator
+QA free of false provider failures without weakening deployed domain checks.
+
 Mobile and desktop also share `normalizeVercelDomainDnsRecords()`: apex instructions use Vercel's preferred IPv4/A response, subdomain instructions use the project-specific preferred CNAME, and TXT challenges preserve provider name/value. If the provider response has no unambiguous guidance, mobile shows a retry message and never fabricates a generic CNAME.
 
 ---

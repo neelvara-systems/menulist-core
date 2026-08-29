@@ -8,6 +8,7 @@ import { getStoreById } from '@database/stores';
 import { getAllTenants } from '@database/tenants';
 import { getUserByTenantId, type PlatformUserRecord } from '@database/users';
 import { useClientAuthSession } from '@hook/useClientAuthSession';
+import { labelConfirmDialog } from '@lib/accessibility/antConfirmDialog';
 import type { PlatformBlockEntityType } from '@type/platform/blocking';
 import type { StoreDataType } from '@type/platform/store';
 import type { TenantDataType } from '@type/platform/tenant';
@@ -179,6 +180,7 @@ export default function EntityBlockSettings() {
 
         Modal.confirm({
             title: nextBlockedState ? `Block this ${entityType}?` : `Unblock this ${entityType}?`,
+            modalRender: labelConfirmDialog(nextBlockedState ? `Block this ${entityType}?` : `Unblock this ${entityType}?`),
             content: nextBlockedState
                 ? 'This keeps the entity record, but blocks access using the dedicated blocked field.'
                 : 'This removes the block and keeps the original block audit details on the entity.',
@@ -238,6 +240,7 @@ export default function EntityBlockSettings() {
                 <Flex vertical gap={16}>
                     <Flex gap={16} wrap="wrap">
                         <Select<PlatformBlockEntityType>
+                            aria-label="Entity type"
                             onChange={(value) => {
                                 setEntityType(value);
                                 setEntityId(null);
@@ -248,6 +251,7 @@ export default function EntityBlockSettings() {
                         />
                         {entityType !== 'tenant' ? (
                             <Select<number>
+                                aria-label="Tenant scope"
                                 allowClear
                                 onChange={(value) => setTenantId(value ?? null)}
                                 options={tenants.map((tenant) => ({
@@ -264,6 +268,7 @@ export default function EntityBlockSettings() {
                             />
                         ) : null}
                         <Select<string | number>
+                            aria-label={`${entityType} entity`}
                             allowClear
                             disabled={entityType !== 'tenant' && tenantId == null}
                             onChange={(value) => setEntityId(value ?? null)}
@@ -317,7 +322,7 @@ export default function EntityBlockSettings() {
                     <Flex justify="flex-end">
                         <Button
                             danger={nextBlockedState}
-                            disabled={!selectedEntity}
+                            disabled={!selectedEntity || !reason.trim()}
                             loading={loading}
                             onClick={onSubmit}
                             type="primary"

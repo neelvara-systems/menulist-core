@@ -412,6 +412,7 @@ export const approveDraftAsCanonicalAnswer = async (
         edgeCases?: string;
         constraints?: string;
     } | null,
+    entityIds: string[],
     _tId: number,
     _sId: number,
     _approvedBy: string
@@ -426,6 +427,7 @@ export const approveDraftAsCanonicalAnswer = async (
                 action: 'approve_proposal',
                 proposalId: normalizedProposalId,
                 ...(editedContent ? { editedContent } : {}),
+                entityIds,
             });
         },
         { proposalId },

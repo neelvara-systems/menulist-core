@@ -81,6 +81,7 @@ export default function ColorPickerSheet({
 
     return (
         <Popup
+            aria-label={t('brandColor')}
             bodyStyle={MENU_SHEET_BODY_STYLE}
             destroyOnClose
             onMaskClick={onClose}

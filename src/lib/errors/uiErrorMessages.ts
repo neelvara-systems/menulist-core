@@ -1,3 +1,5 @@
+import { getProjectDeleteSafeUiMessage } from './projectDeleteErrors';
+
 const MAX_SAFE_UI_ERROR_LENGTH = 160;
 
 const TECHNICAL_ERROR_PATTERNS = [
@@ -54,6 +56,15 @@ export function getSafeUiErrorMessage(
     fallback: string,
     options: SafeUiErrorMessageOptions = {},
 ): string {
+    if (error && typeof error === 'object') {
+        try {
+            const safeCodeMessage = getProjectDeleteSafeUiMessage(Reflect.get(error, 'code'));
+            if (safeCodeMessage) return safeCodeMessage;
+        } catch {
+            // Fall through to the bounded generic-message policy below.
+        }
+    }
+
     const rawMessage = extractUiErrorMessage(error)?.replace(/^Error:\s*/i, '').trim();
 
     if (!rawMessage) {

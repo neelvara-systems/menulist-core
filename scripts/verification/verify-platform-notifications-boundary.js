@@ -180,6 +180,19 @@ function verifyMonitor(monitor, responseHelper) {
     'Read cost:',
     'scroll={{ x: 1526 }}',
     'width: 380',
+    'aria-label="Filter notifications by status"',
+    'aria-label="Filter notifications by severity"',
+    'aria-label="Filter notifications by trigger"',
+    'aria-label={`View notification details for ${record.title}`}',
+    'aria-label={`Acknowledge notification ${record.title}`}',
+    'aria-label="Manual handoff channel"',
+    'aria-label="Manual alert trigger"',
+    'aria-label="Manual alert severity"',
+    'aria-label="Manual alert product"',
+    'aria-label="Manual alert title"',
+    'aria-label="Manual alert message"',
+    'whitespace: true',
+    'Array.isArray((error as { errorFields?: unknown }).errorFields)',
   ].forEach((token) => assertIncludes(monitor, token, 'Platform notification monitor UI'));
 
   [
@@ -203,6 +216,7 @@ function verifyMonitor(monitor, responseHelper) {
     '.json().catch',
     'error.message',
     'await navigator.clipboard.writeText',
+    'onRow={(record)',
   ].forEach((token) => assertNotIncludes(monitor + responseHelper, token, 'Platform notification monitor client boundary'));
 }
 

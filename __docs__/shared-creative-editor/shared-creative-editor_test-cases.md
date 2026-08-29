@@ -26,6 +26,9 @@
 | Open blank document | Canvas renders a clean output frame with no surprise foreground layers. |
 | Full shell renders | Top toolbar, left rail, asset drawer, canvas, right inspector, and bottom controls render together. |
 | Drawer collapse | Drawer collapse hides the asset drawer; choosing a rail tool reopens it. |
+| Product presentation adapter | An adapter can allowlist rail tools and workspace controls, choose initial drawer/selection state, opt embedded chrome into local drafts, and readiness-gate product header actions without changing full-editor defaults. |
+| Drawer search truthfulness | Non-searchable drawers such as Background, AI Tools, QR Code, and Barcode expose no inert search field. Searchable drawers retain their purpose-named search input, filter to a truthful no-match state, and recover when cleared. Graphics popular searches are limited to Sale, New, Offer, Callout, Graphic, and Sticker so every suggestion resolves at least one current approved asset. |
+| Template acknowledgement | Applying a starter template replaces only the active page, announces the exact applied template, and remains recoverable through Undo without retaining an unrelated earlier notice. |
 | Campaign goal starter | Choosing a campaign goal starter creates a usable first design by composing local background, editable text template layers, and optional QR layers through normal history. |
 | Legacy frame smoke | Development smoke route renders a 620 X 427 Fabric canvas matching the legacy editor frame. |
 | Workspace frame focus | The surrounding editor workspace is not the exported design; only the visible output frame/background and layers export. |
@@ -86,6 +89,7 @@
 | Text checks | Selected text reports low contrast, small size, long copy, near-edge placement, and missing action cue with direct local fixes where possible. |
 | Smart image quick actions | Selected image layers expose Fill frame, Fit inside, Larger, and Behind text actions before advanced image controls. |
 | Irrelevant inspector panels | Image filters, borders, gradients, and shadows are hidden when the current selection cannot use them. |
+| Gradient stop lifecycle | Enabling a supported shape gradient allows angle edits, adding a third stop, editing its offset, and removing it; explicit stop patches are not replaced by stale endpoint-only stops. |
 | AI result placement | AI suggestions and findings appear above the remaining tool groups after a tool result is ready. |
 | Floating toolbar appears | Selecting a layer on the canvas shows the floating selected-layer toolbar near the selected object while detailed options live in the right inspector. |
 | Floating toolbar follows selection | Drag, resize, rotate, zoom, and selection changes update the floating toolbar position so it stays attached to the active Fabric selection. |
@@ -100,21 +104,25 @@
 | Floating toolbar export boundary | SVG, PNG, JSON, clipboard PNG, and base64 export include the canvas content only; the toolbar overlay is not serialized or rendered into output. |
 | Contextual toolbar text controls | Selecting text shows font family, size, color, style, alignment, opacity, effects, and position controls; each updates through existing document history. |
 | Contextual toolbar image controls | Selecting an image shows replace, filter, fit/crop, flip, opacity, style, and position controls. |
+| Priority image action feedback | Fit/Crop, Flip, Fill frame, Fit inside, Larger, and Behind text announce the completed action; Undo announces the matching history recovery instead of leaving a stale earlier status visible. |
+| Selected-property feedback | Every successful inspector or contextual selected-layer property change announces its own owner-readable history label; no-op and invalid edits keep their existing guarded behavior, and Undo announces exact recovery. |
 | Contextual toolbar shape controls | Selecting shape, line, QR, or path layers shows color/stroke/opacity/style/position controls that reuse inspector mutations. |
 | Contextual toolbar multi-selection | Active multi-selection shows group, distribute, duplicate, delete, and position actions. |
 | Drawer search | Drawer search filters local templates, tools, curated assets, approved image assets, text presets, ready-made text templates, Brand Kit picks, and placeholders without a network call. |
 | Drawer item cap | Long local asset/template lists render a capped set of cards with a prompt to search/refine instead of forcing every card into the DOM at once. |
-| Text preset drawer | Text drawer exposes Add a text box, disabled Magic Write placeholder, Brand Kit entry, default text styles, business placeholders, data-backed ready-made text templates, and path text. |
+| Text preset drawer | Text drawer exposes only implemented actions: Add a text box, Brand Kit entry, default text styles, business placeholders, data-backed ready-made text templates, and path text. Unimplemented AI placeholders are absent. |
 | Text template insert/edit/remove | Add a ready-made text template, confirm each inserted layer remains editable text, change one layer from the right properties panel, then remove the selected layer from canvas/Layers without affecting unrelated layers. |
 | Text template thumbnail cards | Text and Styles drawer template cards show visual previews without separate visible label/category text while keeping accessible add labels. |
 | Styles drawer | Styles exposes Project style, Apply brand style, Shuffle style, ready-made project styles, and text combinations. |
 | Apply project style | Applying a project style updates unlocked text, fill/stroke, QR, outlined-image color, and background while locked layers remain unchanged. |
+| Project style feedback | Apply brand style announces `Brand style applied.` while named presets announce `<name> style applied.`; neither success nor Undo feedback duplicates the word `style`. |
 | Shuffle project style | Shuffle cycles local presets and records a normal editor history entry without provider calls. |
 | Graphics sticker drawer | Graphics drawer exposes local stickers, popular search chips, recent insertions, and recommended assets without a network call. |
 | Sticker drawer thumbnail cards | Sticker cards show thumbnail-only buttons with accessible add labels, so long sticker names do not squeeze or break the left drawer grid. |
 | Sticker SVG render | Adding each local sticker renders the complete sticker image on the Fabric canvas and in the right inspector preview; no cropped half-shape placeholder appears. |
 | Recent insertions | Adding assets or text creates browser-local recent chips in the drawer. |
 | Brand Kit quick picks | Product-provided brand colors, logo assets, brand name, and brand font can be applied without shared-editor Firebase reads. |
+| Brand Kit unsupported color target | With a non-colorable image selected, choosing a brand color leaves the design unchanged and explains that text, shape, line, or QR selection is required instead of retaining stale success feedback. |
 | Text placeholders | Product-provided business facts such as business name, offer, CTA, destination, and contact facts insert as editable text layers with source refs. |
 | Page controls | Single-page documents hide page controls; multi-page documents can add pages, duplicate pages with new layer ids, and switch artboards. |
 | Page lock | A locked active page blocks layer/canvas edits, keyboard mutation shortcuts, and selected-layer actions until unlocked. |
@@ -136,18 +144,20 @@
 | Bottom controls | Zoom in, zoom out, fit, Selection, Grab, Draw, Polygon, duplicate, and help controls respond without layout shift. |
 | Lock layer | Drag and property actions that should move it are blocked. |
 | Hide layer | Layer remains in list but disappears from canvas/export. |
-| Reorder layer | Move Forward, Move To Front, Move Backward, and Move To Back update visual stacking and layer list. |
-| Align layer | Left, center X, right, center, top, center Y, and bottom alignment update coordinates against the canvas. |
+| Reorder layer | Move Forward, Move To Front, Move Backward, and Move To Back update visual stacking and layer list, announce the exact destination, and restore through exact Undo feedback. |
+| Align layer | Left, center X, right, center, top, center Y, and bottom alignment update coordinates against the canvas, announce the exact target, and restore through exact Undo feedback. |
 | Distribute selection | Multi-select Distribute X/Y spaces at least three unlocked layers evenly. |
 | Shadow and angle | Shadow blur/color/offset and Angle controls update the selected layer. |
 | Text typography | Font family, weight, style, underline, strike, size, line height, character spacing, text background, and alignment controls update text layers. |
+| Text style accessibility and pointer recovery | Contextual, priority-inspector, and detail-inspector Bold, Italic, Underline, and Strikethrough buttons expose unique names plus current pressed state; a 700/800-weight heading can turn Bold off; contextual controls remain visibly stacked above the Fabric stage and respond to pointer as well as keyboard activation; exact restoration returns the original typography. |
 | Path text controls | Text, path, path color, and path visibility update path-text layers. |
 | Gradient fill | Gradient toggle, start color, end color, angle, add stop, remove stop, stop color, and stop offset update text and fillable shape layers. |
 | Image filter | None, black white, brownie, grayscale, invert, kodachrome, polaroid, sepia, technicolor, vintage, adjustment sliders, grayscale mode, RemoveColor, and Gamma update image layers. |
 | Image outline | Outline color, width, and outline-only controls update supported image layers without changing the original source URL in JSON. |
 | Border controls | Solid, dashed, long-dashed, dash-dot, dotted, round-cap variants, cap, color, width, and line arrow style controls update supported shape, path, line, and image layers. |
-| Visible watermark | Watermark text, position, color, size, opacity, rotation, and tiled mode render in preview/export without becoming a selectable layer. |
-| Flip controls | Flip X and Flip Y update the selected layer and persist through JSON export. |
+| Advanced inspector recovery | Shadow blur and offsets, rotation, all image-adjustment sliders, grayscale mode, gamma channels, image outline/width/outline-only, border type/cap/width, detail X/Y/W/H, and detail opacity each announce the current mutation, enable Undo, and restore the exact prior document state. Native color-picker values require a browser surface that can drive the operating-system picker and must not be credited from source inspection alone. |
+| Visible watermark | Show on export announces enabled/disabled state; text, position, color, size, opacity, rotation, and tiled mode announce updates, render in preview/export without becoming selectable layers, and restore through document history. |
+| Flip controls | Flip X and Flip Y update the selected layer, announce the horizontal or vertical result, persist through JSON export, and restore through exact Undo feedback. |
 | Group controls | Group and ungroup work for multi-selection editing while persistence returns to neutral layers. |
 | Invalid group actions | Group is unavailable with fewer than two unlocked selected layers; Distribute is unavailable with fewer than three unlocked selected layers; Ungroup is unavailable unless a true group is selected. |
 | Duplicate layer | New layer appears with copied properties and new id. |
@@ -168,7 +178,8 @@
 | Download SVG | Browser downloads a `.svg` file. |
 | Download PNG with safe assets | Browser downloads a `.png` file. |
 | Download PNG with blocked external image | Editor shows a clear export error and leaves SVG/JSON available. |
-| Download readiness check | First download with actionable issues opens the download check panel, selects/focuses fixable layers when chosen, and allows a repeated intentional export for the same issue signature. |
+| Download readiness check | Check or the first download with actionable issues opens the named download-check panel, reports the current findings, selects/focuses fixable layers when chosen, closes without changing the document, and allows a repeated intentional export for the same issue signature. |
+| Readiness panel visibility | Opening a download check after scrolling selected-layer properties or switching from Active Layers resets the properties drawer to the top so the heading and findings are immediately visible. |
 | Download clean design | A design with readable text, action copy, safe placement, safe image sources, and QR values shows the clean readiness state before export. |
 | Uploaded raster readiness | A magic-byte-validated PNG/JPEG/WebP/GIF data URL is treated as a safe local image source rather than a false readiness warning. |
 | Export bundle | Bundle downloads client-side PNG variants for square, portrait, story/status, and flyer handoff sizes from the active workspace frame. |

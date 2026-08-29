@@ -333,10 +333,11 @@ for (const indexFile of ['firestore-answerlattice.indexes.json', 'firestore.inde
     const manifest = JSON.parse(fs.readFileSync(path.join(root, indexFile), 'utf8')) as {
         indexes: Array<{ collectionGroup: string; fields: Array<{ fieldPath: string }> }>;
     };
-    const hasIndex = (collectionGroup: string, fields: string) => manifest.indexes.some((entry) => (
-        entry.collectionGroup === collectionGroup
-        && entry.fields.map(field => field.fieldPath).join(',') === fields
-    ));
+    const hasIndex = (collectionGroup: string, fields: string) => manifest.indexes.some((entry) => {
+        const actualFields = entry.fields.map(field => field.fieldPath).join(',');
+        return entry.collectionGroup === collectionGroup
+            && (actualFields === fields || actualFields === `${fields},__name__`);
+    });
     assert.ok(hasIndex('answerlattice_entities', 'pId,tId,sId,status'), `${indexFile} lacks product-scoped entity status index`);
     assert.ok(hasIndex('answerlattice_entities', 'pId,tId,sId,type'), `${indexFile} lacks product-scoped entity type index`);
     assert.ok(hasIndex('answerlattice_entityRelations', 'pId,tId,sId,fromEntityId'), `${indexFile} lacks product-scoped relation index`);

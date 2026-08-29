@@ -209,6 +209,7 @@ const ChatWidgetUi: React.FC<ChatWidgetUiProps> = ({
                         </Flex>
                         <Tooltip title="The prompt is used to guide image generation so the result matches your vision.">
                             <Input.TextArea
+                                aria-label="Special instructions"
                                 id="prompt-input"
                                 allowClear
                                 autoSize={{ minRows: 3, maxRows: 5 }}

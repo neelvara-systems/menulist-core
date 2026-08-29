@@ -40,6 +40,14 @@ forbidToken(attribution, 'const source = String(', 'acquisition attribution cont
 const publicAttribution = read('src/components/customer/PublicMenuListAttribution.tsx');
 requireToken(publicAttribution, 'PUBLIC_SURFACE_GROWTH_ATTRIBUTION', 'public attribution component');
 requireToken(publicAttribution, '`${appUrl}/create-menu`', 'public attribution component');
+requireToken(publicAttribution, "'use client';", 'public attribution hydration boundary');
+requireToken(publicAttribution, 'useState(getHydrationStablePublicBaseUrl)', 'public attribution hydration boundary');
+requireToken(publicAttribution, 'const runtimeBaseUrl = getPublicBaseUrl();', 'public attribution runtime-origin recovery');
+forbidToken(publicAttribution, 'const appUrl = getPublicBaseUrl();', 'public attribution hydration boundary');
+
+const urlConstants = read('src/constants/urls.ts');
+requireToken(urlConstants, 'export const getHydrationStablePublicBaseUrl', 'public URL hydration boundary');
+requireToken(urlConstants, 'normalizeBaseUrl(process.env.NEXT_PUBLIC_APP_URL) || PLATFORM_URL', 'public URL hydration boundary');
 
 const createClient = read('src/app/(website)/create-menu/CreateMenuClient.tsx');
 [

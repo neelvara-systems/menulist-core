@@ -1,7 +1,7 @@
 # External Menu Sync — Mobile Support
 
 > **Decision:** Supported as an operational MobileShell screen
-> **Last code-truth review:** July 16, 2026
+> **Last code-truth review:** August 28, 2026
 
 ## Route and permission
 
@@ -24,13 +24,15 @@ Desktop-only convenience remains delivery-history table, provider email draft, t
 
 Mobile never hydrates a secret from `storeDetails.posSync.webhookSecret` and never writes a secret through `updateStore()`.
 
-On screen open:
+On screen open for the active outlet:
 
 1. call protected `GET /api/pos-sync/secret` with same-origin credentials, no cache, and manual redirect handling;
 2. parse no more than 4 KiB;
 3. accept only a shaped positive secret/version response;
 4. keep the secret in component memory, masked by default;
 5. remove any legacy secret from the local client projection.
+
+The protected route admits the active store only when it is the login store or an explicitly mapped store in the authenticated session. It never accepts a client-supplied tenant override, and it rechecks the canonical selected-store permission before returning a secret. Switching outlets therefore loads that outlet's secret state instead of reusing or rejecting against the login store.
 
 Enabling without a secret calls `action: ensure`. Rotation calls `action: rotate` immediately; the modal remains loading until the server acknowledgement. The server persists the rotation metadata and resets stale connection state. Mobile appends the existing non-blocking MOL audit only after success.
 
@@ -68,10 +70,10 @@ They must not contain raw URL, secret, provider body, API body, exception text, 
 ## Cost
 
 - store and auth context are inherited;
-- screen open adds two server reads for the secret (plus migration writes only for legacy data);
+- screen open uses the existing bounded secret transaction reads for the selected outlet (plus migration writes only for legacy data); selected-store admission adds no Firestore operation;
 - no mobile delivery-log query;
 - reveal/copy/reset are local;
-- ensure/rotate use two transaction reads and two writes.
+- ensure/rotate use three transaction reads (`store`, `tenant`, and server secret) and two writes; rotation adds the existing non-blocking owner-audit write.
 
 ## Verification
 

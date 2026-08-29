@@ -620,7 +620,7 @@ export default function MobileBusinessHealthScreen({ onBack, onOpenMenuTab, onOp
                                     value={question}
                                 />
                                 <Button
-                                    ariaLabel={t('businessHealth.assistant.send')}
+                                    aria-label={t('businessHealth.assistant.send')}
                                     disabled={!canSendQuestion}
                                     icon={<LuSend size={18} />}
                                     loading={isAnswering}
@@ -682,7 +682,7 @@ export default function MobileBusinessHealthScreen({ onBack, onOpenMenuTab, onOp
                             </Text>
                         </Flex>
                         <Button
-                            ariaLabel={t('businessHealth.scope.close')}
+                            aria-label={t('businessHealth.scope.close')}
                             fill="none"
                             onClick={() => setIsScopeSelectorOpen(false)}
                             size="small"

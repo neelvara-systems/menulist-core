@@ -105,11 +105,12 @@ export async function generatePrintMenuTableTent(input: PrintMenuTableTentInput)
     const canvas = await renderPrintMenuTableTentCanvas(input);
     const imgDataUrl = canvas.toDataURL('image/png');
     const doc = new jsPDF({
+        compress: true,
         orientation: 'landscape',
         unit: 'mm',
         format: [SHEET_W_MM, SHEET_H_MM],
     });
-    doc.addImage(imgDataUrl, 'PNG', 0, 0, SHEET_W_MM, SHEET_H_MM);
+    doc.addImage(imgDataUrl, 'PNG', 0, 0, SHEET_W_MM, SHEET_H_MM, undefined, 'FAST');
 
     return doc.output('blob');
 }

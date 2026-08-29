@@ -4,6 +4,19 @@ export interface EmojiSearchResult {
     native: string;
 }
 
+export const ICON_PICKER_PAGE_SIZE = 120;
+
+export function getVisibleIconNames(
+    values: readonly string[],
+    requestedLimit: number = ICON_PICKER_PAGE_SIZE,
+): string[] {
+    const limit = Number.isFinite(requestedLimit)
+        ? Math.max(0, Math.floor(requestedLimit))
+        : ICON_PICKER_PAGE_SIZE;
+
+    return values.slice(0, limit);
+}
+
 const safeRead = (value: object, key: string): unknown => {
     try {
         return Reflect.get(value, key);

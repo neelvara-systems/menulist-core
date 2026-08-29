@@ -233,6 +233,8 @@ function verifyStoreUpdatesRequireAcknowledgement() {
 function verifyTenantWritesRequireAcknowledgement() {
   const tenantsDal = read('src/database/tenants/index.tsx');
   assertIncludes(tenantsDal, 'export function assertTenantUpdateSucceeded', 'Tenant update acknowledgement guard');
+  assertIncludes(tenantsDal, "if (!nextTenantName) throw new Error('tenant_create_name_invalid');", 'Tenant create must reject a missing canonical name before ID reservation or persistence.');
+  assertIncludes(tenantsDal, "if ('name' in nextData && !nextTenantName) throw new Error('tenant_update_name_invalid');", 'Tenant update must reject an explicit canonical-name clear before persistence.');
 
   const tenantHelpers = [
     { helper: 'addTenant(', acknowledgement: 'assertTenantUpdateSucceeded(' },
@@ -1656,6 +1658,7 @@ function verifyPublicMenuFooterFreshnessLoggingIsBounded() {
     'logMenuFooterFreshnessFailure',
     'reportedMenuFooterFreshnessFailures',
     'resolveMenuFooterDate(',
+    'normalizeOBPFreshnessDate(timestamp)',
     'getMenuFooterUpdatedAtIso',
     "getBoundedRuntimeStringContext('timestampType', timestampType)",
     "throw new Error('invalid_last_published_at')",
@@ -1787,6 +1790,7 @@ function verifyPublicMenuAnalyticsLoggingIsBounded() {
   const component = read('src/components/templates/website/clientWebsite/AnalyticsContext.tsx');
   const googleAnalytics = read('src/components/templates/website/clientWebsite/GoogleAnalytics.tsx');
   const facebookPixel = read('src/components/templates/website/clientWebsite/FacebookPixel.tsx');
+  const analyticsPreferences = read('src/lib/analytics/preferences.ts');
   const menuPage = read('src/components/templates/main-app/projects/b2cView/menuPage/menuPageNew.tsx');
   const analyticsUnified = read('src/lib/analytics/unified.ts');
   const diagnostics = read('src/lib/analytics/analyticsDiagnostics.ts');
@@ -1804,18 +1808,18 @@ function verifyPublicMenuAnalyticsLoggingIsBounded() {
 
   [
     'GA4_MEASUREMENT_ID_PATTERN = /^G-[A-Z0-9]+$/',
-    'getSafeGoogleAnalyticsId',
+    'normalizeGoogleAnalyticsMeasurementId',
     'String(value || \'\').trim().toUpperCase()',
-    'const gaId = getSafeGoogleAnalyticsId(storeDetails?.analytics?.googleAnalyticsId)',
-  ].forEach((token) => assertIncludes(googleAnalytics, token, 'Customer menu Google Analytics ID boundary'));
+  ].forEach((token) => assertIncludes(analyticsPreferences, token, 'Shared Google Analytics ID boundary'));
+  assertIncludes(googleAnalytics, 'const gaId = normalizeGoogleAnalyticsMeasurementId(storeDetails?.analytics?.googleAnalyticsId)', 'Customer menu Google Analytics shared ID boundary');
   assertNotIncludes(googleAnalytics, 'const gaId = storeDetails?.analytics?.googleAnalyticsId', 'Customer menu Google Analytics must not interpolate raw owner ID');
 
   [
     'META_PIXEL_ID_PATTERN = /^\\d{5,32}$/',
-    'getSafeMetaPixelId',
+    'normalizeMetaPixelId',
     'String(value || \'\').trim()',
-    'const pixelId = getSafeMetaPixelId(storeDetails?.analytics?.facebookPixelId)',
-  ].forEach((token) => assertIncludes(facebookPixel, token, 'Customer menu Meta Pixel ID boundary'));
+  ].forEach((token) => assertIncludes(analyticsPreferences, token, 'Shared Meta Pixel ID boundary'));
+  assertIncludes(facebookPixel, 'const pixelId = normalizeMetaPixelId(storeDetails?.analytics?.facebookPixelId)', 'Customer menu Meta Pixel shared ID boundary');
   assertNotIncludes(facebookPixel, 'const pixelId = storeDetails?.analytics?.facebookPixelId', 'Customer menu Meta Pixel must not interpolate raw owner ID');
 
   assertIncludes(analyticsImplDoc, 'Customer menu third-party analytics ID boundary', 'Analytics implementation third-party ID boundary');
@@ -3153,18 +3157,21 @@ function verifyProjectPersistenceDiagnosticsAreBounded() {
   assertIncludes(projectDal, 'Treat unknown reservation state as reserved', 'Deleted-project slug reservation lookup must fail closed');
   assertIncludes(projectDal, 'slugReservationWindowDays: SLUG_RESERVATION_WINDOW_MS / (24 * 60 * 60 * 1000),\n        });\n        return true;', 'Deleted-project slug reservation lookup errors must be treated as reserved');
   assertNotIncludes(projectDal, 'Fail-open on infrastructure errors', 'Deleted-project slug reservation lookup must not fail open');
-  assertIncludes(projectDal, 'project_outlet_propagation_create_failed', 'Project outlet propagation create diagnostics');
+  assertIncludes(projectDal, 'project_outlet_propagation_source_ready_failed', 'Project outlet propagation source-ready diagnostics');
+  assertIncludes(projectDal, 'shouldPropagateProjectAfterSourceSave({', 'Project outlet propagation waits for the first canonical source');
+  assertNotIncludes(projectDal, 'project_outlet_propagation_create_failed', 'Empty project creation must not attempt rules-rejected outlet propagation');
   assertIncludes(projectDal, 'master_update_awareness_signal_update_failed', 'Master update awareness diagnostics');
   assertIncludes(projectDal, 'menu_observation_edit_log_failed', 'Menu observation edit diagnostics');
   assertIncludes(projectDal, 'menu_observation_publish_event_failed', 'Menu observation publish diagnostics');
   assertIncludes(projectDal, 'project_linked_outlet_save_rejected', 'Linked outlet save rejection diagnostics');
   assertIncludes(projectDal, 'project_linked_outlet_publish_rejected', 'Linked outlet publish rejection diagnostics');
   assertIncludes(projectDal, 'project_outlet_propagation_duplicate_failed', 'Project outlet propagation duplicate diagnostics');
-  assertIncludes(projectDal, 'import { parseSummaryProjects } from "@lib/firestore/parseSummaryProjects";', 'Project DAL uses canonical project-summary parser');
+  assertIncludes(projectDal, 'isCompleteSummaryProject,\n    parseSummaryProjects,', 'Project DAL uses canonical project-summary parser and completeness guard');
   assertIncludes(projectDal, 'const parsed = parseSummaryProjects(summaryDocData);', 'Project DAL summary reader must delegate to canonical parser');
   assertIncludes(projectDal, 'normalizeParsedProjectSummaryData(projectData)', 'Project DAL summary reader must normalize parsed summary rows');
+  assertIncludes(projectDal, 'if (!isCompleteSummaryProject(projectData)) continue;', 'Project DAL summary reader must ignore incomplete legacy ghost rows');
   assertIncludes(projectDal, 'const projectImage: string | null | undefined', 'Project DAL summary reader must narrow project image before exposing summary data');
-  assertIncludes(projectDal, 'buildSummaryProjectDeletePayload(projectId, deleteField())', 'Project DAL summary deletions use canonical safe delete payload');
+  assertIncludes(projectDal, 'buildSummaryProjectDeletePayload(projectId, deleteField(), summaryDoc.data())', 'Project DAL summary deletions remove the complete mixed-shape project entry');
   assertIncludes(specialMenuLifecycle, 'buildSummaryProjectFieldPayload(', 'Project lifecycle special-menu summary status uses canonical field payload');
   assertIncludes(specialMenuLifecycle, "'specialMenuStatus',\n                status,", 'Project lifecycle summary helper persists its resolved special-menu status through canonical field payload');
   assertIncludes(specialMenuLifecycle, 'buildSummaryUpdate(nextMetadata, nextStatus)', 'Project lifecycle writes the resolved next status through the canonical summary helper');
@@ -3226,6 +3233,12 @@ function verifyProjectDefaultHandoffIsAtomic() {
   assertIncludes(mobileProjectSelector, 'unsetProjectId: nextIsDefault ? currentDefault?.projectId : undefined', 'Mobile project create previous-default handoff');
   assertIncludes(mobileProjectSelector, 'unsetProjectId: shouldUnsetPreviousDefault ? currentDefault?.projectId : undefined', 'Mobile project edit previous-default handoff');
   assertIncludes(mobileProjectSelector, 'setProjectId: defaultReplacement?.projectId', 'Mobile project edit replacement-default handoff');
+  const mobileOpenEdit = mobileProjectSelector.slice(
+    mobileProjectSelector.indexOf('const openEdit = async'),
+    mobileProjectSelector.indexOf('const openDuplicate = async'),
+  );
+  assertIncludes(mobileOpenEdit, 'setFormIsDefault(project.isDefault === true);', 'Mobile project edit form canonical default-state initialization');
+  assertNotIncludes(mobileOpenEdit, 'setFormIsDefault(false);', 'Mobile project edit form false default-state initialization');
   assertNotIncludes(mobileProjectSelector, 'const currentDefaultResult = await updateProjectMetadata(currentDefault.projectId, { isDefault: false });', 'Mobile project selector must not unset previous default with a second metadata write');
   assertNotIncludes(mobileProjectSelector, 'const replacementDefaultResult = await updateProjectMetadata(defaultReplacement.projectId, { isDefault: true });', 'Mobile project selector must not set replacement default with a second metadata write');
 
@@ -4216,8 +4229,13 @@ function verifyStoreAndUserDalDiagnosticsAreBounded() {
   );
   assertIncludes(
     desktopBusinessSettings,
-    'const updatedChanges: any = getStoreDeepDifference(',
-    'Desktop Business Settings changed-leaf mutation projection',
+    'const updatedChanges: any = applyBusinessCopyManualOverrideMetaToUpdate({',
+    'Desktop Business Settings audit metadata after changed-leaf projection',
+  );
+  assertIncludes(
+    desktopBusinessSettings,
+    'update: getStoreDeepDifference(changesToUpload, storeDetails)',
+    'Desktop Business Settings changed-leaf mutation projection before audit metadata',
   );
   assertOccurrenceAtLeast(
     mobileBusinessAttributes,
@@ -4704,6 +4722,10 @@ function verifyMobileProjectDiagnosticsAreBounded() {
   assertIncludes(manageLanguagesSheet, 'mobile_manage_languages_project_metadata_translation_update_rejected', 'Mobile manage languages metadata translation rejected acknowledgement code');
   assertIncludes(manageLanguagesSheet, 'languageIssueTotal', 'Mobile manage languages bounded issue count');
   assertIncludes(manageLanguagesSheet, 'filesWithDataCount', 'Mobile manage languages bounded file count');
+  assertIncludes(manageLanguagesSheet, 'addableLanguages.length === 0', 'Mobile manage languages empty outlet-language state');
+  assertIncludes(manageLanguagesSheet, "tMobileSettings('languageRegion')", 'Mobile manage languages language-settings recovery route');
+  assertIncludes(manageLanguagesSheet, "tBusinessSettings('selectAvailableLanguages')", 'Mobile manage languages localized empty-state guidance');
+  assertIncludes(manageLanguagesSheet, 'disabled={!canTranslate || !canAddLanguage(projectLanguages) || hasNoAddableLanguages}', 'Mobile manage languages empty picker disabled state');
   assertIncludes(smartRecommendationsSheet, 'mobile_smart_recommendations_save_failed', 'Mobile smart recommendations save diagnostics');
   assertIncludes(smartRecommendationsSheet, "getBoundedMobileProjectStringContext('activeLanguage'", 'Mobile smart recommendations bounded language context');
   assertIncludes(smartRecommendationsSheet, 'enabledBlockTypeCount', 'Mobile smart recommendations bounded enabled-block count');
@@ -4775,6 +4797,9 @@ function verifyMobileOwnerDiagnosticsAreBounded() {
   assertIncludes(mobileMenu, "source: 'mobile_menu'", 'Mobile Menu public-link source label');
   assertIncludes(mobileHours, "source: 'mobile_today_hours'", 'Mobile Today hours public-link source label');
   assertIncludes(mobileShare, "source: 'mobile_share'", 'Mobile Share public-link source label');
+  assertIncludes(mobileShare, 'if (!subdomain && !customDomain) return null;', 'Mobile Share missing tenant-address render guard');
+  assertIncludes(mobileShare, 'Set up your customer link', 'Mobile Share missing tenant-address recovery title');
+  assertIncludes(mobileShare, 'onOpenDomainSettings', 'Mobile Share missing tenant-address recovery action');
   [
     'mobile_feedback_load_failed',
     'mobile_feedback_link_copy_failed',
@@ -4941,6 +4966,12 @@ function verifyMobileOwnerDiagnosticsAreBounded() {
   });
   assertNotIncludes(mobileSeoAnalytics, 'mobile_seo_analytics_field_save_failed', 'Mobile SEO/analytics retired dead field-save diagnostics');
   assertIncludes(mobileSeoAnalytics, "getBoundedMobileOwnerStringContext('googleAnalyticsId', analyticsDraft.googleAnalyticsId)", 'Mobile analytics GA bounded context');
+  assertIncludes(mobileSeoAnalytics, 'normalizeGoogleAnalyticsMeasurementId(analyticsDraft.googleAnalyticsId)', 'Mobile analytics GA validation boundary');
+  assertIncludes(mobileSeoAnalytics, 'normalizeMetaPixelId(analyticsDraft.facebookPixelId)', 'Mobile analytics Meta Pixel validation boundary');
+  assertIncludes(mobileSeoAnalytics, 'normalizeGoogleSearchConsoleVerification(analyticsDraft.googleSearchConsole)', 'Mobile analytics Search Console validation boundary');
+  assertIncludes(mobileSeoAnalytics, '!areAnalyticsDraftsEqual(analyticsDraft, originalAnalyticsState)', 'Mobile analytics stable dirty-state comparison');
+  assertIncludes(mobileSeoAnalytics, "googleAnalyticsId: normalizedGoogleAnalyticsId || ''", 'Mobile analytics normalized GA write');
+  assertIncludes(mobileSeoAnalytics, "facebookPixelId: normalizedFacebookPixelId || ''", 'Mobile analytics normalized Meta Pixel write');
   assertIncludes(mobileSeoAnalytics, "getBoundedMobileOwnerStringContext('canonicalUrl', canonicalUrl)", 'Mobile SEO canonical URL bounded context');
   assertIncludes(mobileSeoAnalytics, 'enabledTrackingCount: countEnabledAnalyticsTracking(analyticsDraft)', 'Mobile analytics enabled tracking count context');
   assertIncludes(mobileSeoAnalytics, 'localizedDraftLanguageCount: Object.keys(localizedSeoDrafts).length', 'Mobile SEO localized draft count context');
@@ -5064,6 +5095,8 @@ function verifyOfficialBusinessPageOwnerDiagnosticsAreBounded() {
   assertIncludes(obpLinkCard, "getBoundedStoreStringContext('copyUrl', obpCopyUrl)", 'OBPLinkCard bounded copy URL context');
   assertIncludes(obpLinkCard, 'copyMessageLength: msg.length', 'OBPLinkCard bounded copy-message length');
   assertIncludes(obpLinkCard, 'copyOBPLinkCardText', 'OBPLinkCard copy acknowledgement helper');
+  assertIncludes(obpLinkCard, 'if (!storeId || !tenantId || !obpTrackingEnabled) return;', 'OBPLinkCard share analytics complete scope guard');
+  assertIncludes(obpLinkCard, 'tenantId: String(tenantId),', 'OBPLinkCard share analytics tenant scope');
   assertIncludes(obpLinkCard, 'OBP_LINK_CARD_COPY_UNAVAILABLE', 'OBPLinkCard copy unavailable clipboard code');
   assertIncludes(obpLinkCard, 'OBP_LINK_CARD_COPY_FALLBACK_FAILED', 'OBPLinkCard copy fallback failure code');
   assertIncludes(obpLinkCard, 'OBP_LINK_CARD_MESSAGE_COPY_UNAVAILABLE', 'OBPLinkCard message-copy unavailable clipboard code');
@@ -5388,6 +5421,8 @@ function verifyProjectShareModalDiagnosticsAreBounded() {
   assertIncludes(shareModal, 'hasClipboardWrite: hasExportClipboardWrite()', 'Project share modal clipboard support metadata');
   assertIncludes(shareModal, 'hasCopyFallback: hasExportCopyFallback()', 'Project share modal fallback support metadata');
   assertIncludes(shareModal, "openIsolatedBrowserUrl(socialShareUrl)", 'Project share modal safe social open');
+  assertIncludes(shareModal, "openIsolatedBrowserUrl(directUrl)", 'Project share modal safe direct open');
+  assert(!shareModal.includes('window.location.assign(directUrl)'), 'Project share modal must not replace the owner workflow with the public link');
   assertIncludes(shareModal, 'directUrlLength: directUrl.length', 'Project share modal bounded direct URL length');
   assertIncludes(shareModal, 'copyUrlLength: copyUrl.length', 'Project share modal bounded copy URL length');
   assertIncludes(shareModal, 'onClick={handleOpenDirectLink}', 'Project share modal direct-open handler');
@@ -5940,7 +5975,8 @@ function verifyBusinessSettingsDiagnosticsAreBounded() {
     assertIncludes(content, 'DESKTOP_COMPLIANCE_MUTATION_RESPONSE_JSON_MAX_BYTES', `${label} mutation response byte cap`);
 	    assertIncludes(content, 'DESKTOP_COMPLIANCE_LOAD_RESPONSE_JSON_MAX_BYTES', `${label} load response byte cap`);
 	    assertIncludes(content, 'AUTH_BROWSER_REQUEST_POLICY', `${label} shared authenticated browser request policy`);
-	    assertOccurrenceAtLeast(content, "fetch('/api/compliance'", 3, `${label} compliance API calls`);
+	    assertOccurrenceAtLeast(content, "fetch('/api/compliance'", 2, `${label} compliance mutation calls`);
+	    assertIncludes(content, 'api/compliance?storeId=${encodeURIComponent(', `${label} compliance load active-store scope`);
 	    assertOccurrenceAtLeast(content, 'AUTH_BROWSER_REQUEST_POLICY', 4, `${label} compliance API calls share browser request policy`);
 	    assertOccurrenceAtLeast(content, '...AUTH_BROWSER_REQUEST_POLICY', 2, `${label} compliance mutations spread shared browser request policy`);
 	    assertIncludes(content, "getBoundedBusinessSettingsStringContext('pageUrl', pageUrl)", `${label} bounded page URL context`);
@@ -6001,8 +6037,11 @@ function verifyBusinessSettingsDiagnosticsAreBounded() {
   assertIncludes(posSyncTab, "getBoundedBusinessSettingsStringContext('tenantId', tenantId)", 'Desktop POS Sync bounded tenant context');
   assertIncludes(posSyncTab, "throw createPosSyncStatusError('desktop_pos_sync_settings_missing_store_update_handler')", 'Desktop POS Sync settings missing update handler diagnostic');
   assertIncludes(posSyncTab, 'await Promise.resolve(onStoreUpdate(updates));', 'Desktop POS Sync toggle waits for store persistence');
+  assertIncludes(posSyncTab, 'if (checked) {\n            const validation = validatePosSyncWebhookUrl(normalizedWebhookUrl);', 'Desktop POS Sync validates the provider URL before enablement');
+  assertIncludes(posSyncTab, "if (checked) updates['posSync.webhookUrl'] = normalizedWebhookUrl;", 'Desktop POS Sync atomically persists its validated URL when enabling');
   assertIncludes(posSyncTab, "'posSync.webhookUrl': validation.normalizedUrl,\n                'posSync.status': enabled ? 'healthy' : 'disabled',", 'Desktop POS Sync URL save waits for store persistence and clears stale connection status');
   assertIncludes(posSyncTab, "requestPosSyncSecret({ action: 'rotate', storeId, tenantId })", 'Desktop POS Sync rotation waits for protected server persistence');
+  assertIncludes(posSyncTab, 'disabled={!webhookSecret || secretLoading}', 'Desktop POS Sync only offers secret rotation for an existing secret');
   assertIncludes(posSyncTab, "'posSync.secretVersion': result.version", 'Desktop POS Sync rotation projects the acknowledged secret version');
   assertIncludes(posSyncTab, 'confirmLoading={regeneratingSecret}', 'Desktop POS Sync secret rotation modal save loading state');
   assertIncludes(posSyncTab, 'previousWebhookSecretLength: webhookSecret.length', 'Desktop POS Sync bounded previous secret length context');
@@ -6026,7 +6065,8 @@ function verifyBusinessSettingsDiagnosticsAreBounded() {
   assertIncludes(mobileCompliancePages, 'MOBILE_COMPLIANCE_MUTATION_RESPONSE_JSON_MAX_BYTES', 'Mobile compliance mutation response byte cap');
   assertIncludes(mobileCompliancePages, 'MOBILE_COMPLIANCE_LOAD_RESPONSE_JSON_MAX_BYTES', 'Mobile compliance load response byte cap');
   assertIncludes(mobileCompliancePages, 'AUTH_BROWSER_REQUEST_POLICY', 'Mobile compliance shared authenticated browser request policy');
-  assertOccurrenceAtLeast(mobileCompliancePages, "fetch('/api/compliance'", 3, 'Mobile compliance API calls');
+  assertOccurrenceAtLeast(mobileCompliancePages, "fetch('/api/compliance'", 2, 'Mobile compliance mutation calls');
+  assertIncludes(mobileCompliancePages, 'api/compliance?storeId=${encodeURIComponent(', 'Mobile compliance load active-store scope');
   assertOccurrenceAtLeast(mobileCompliancePages, 'AUTH_BROWSER_REQUEST_POLICY', 4, 'Mobile compliance API calls share browser request policy');
   assertOccurrenceAtLeast(mobileCompliancePages, '...AUTH_BROWSER_REQUEST_POLICY', 2, 'Mobile compliance mutations spread shared browser request policy');
   assertIncludes(mobileCompliancePages, 'mobile_compliance_page_response_parse_failed', 'Mobile compliance mutation response parse diagnostics');

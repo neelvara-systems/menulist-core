@@ -46,13 +46,38 @@ function verifyStartupMetadata() {
   const answerlatticeAppLayout = read('src/app/(answerlattice)/layout.tsx');
   const answerlatticeSiteLayout = read('src/app/sites/answerlattice/layout.tsx');
   const answerlatticeAssets = read('src/lib/answerlattice/pwaAssets.ts');
+  const dashboardManifest = read('src/app/answerlattice-app.webmanifest/route.ts');
+  const serviceWorkerRegister = read('src/components/ServiceWorkerRegister.tsx');
+  const serviceWorker = read('public/answerlattice-sw.js');
+  const offlinePage = read('src/app/sites/answerlattice/offline/page.tsx');
+  const domainResolver = read('src/lib/multiTenant/domainResolver.ts');
+  const proxy = read('src/proxy.ts');
 
   assertIncludes(rootLayout, 'startupImage: appleStartupImages', 'root MenuList metadata');
   assertNotIncludes(rootLayout, 'rel="apple-touch-startup-image"', 'root layout manual startup links');
   assertNotIncludes(rootLayout, 'apple-mobile-web-app-status-bar-style', 'root layout manual status bar metadata');
   assertIncludes(answerlatticeAssets, "ANSWERLATTICE_SPLASH_BASE_PATH = '/answerlattice-splash'", 'Answerlattice PWA assets helper');
   assertIncludes(answerlatticeAppLayout, 'startupImage: getStaticAnswerlatticeAppleStartupImages()', 'Answerlattice dashboard metadata');
+  assertIncludes(answerlatticeAppLayout, "manifest: '/answerlattice-app.webmanifest'", 'Answerlattice dashboard manifest');
+  assertIncludes(answerlatticeAppLayout, "color: '#F8FAFC'", 'Answerlattice dashboard light browser theme');
+  assertIncludes(answerlatticeAppLayout, "color: '#0A0A1A'", 'Answerlattice dashboard dark browser theme');
+  assertIncludes(answerlatticeAppLayout, "viewportFit: 'cover'", 'Answerlattice dashboard safe-area viewport');
   assertIncludes(answerlatticeSiteLayout, 'startupImage: getStaticAnswerlatticeAppleStartupImages()', 'Answerlattice website metadata');
+  assertIncludes(dashboardManifest, "id: '/answerlattice-dashboard'", 'Answerlattice dashboard manifest identity');
+  assertIncludes(dashboardManifest, "start_url: route('/activation')", 'Answerlattice dashboard launch route');
+  assertIncludes(dashboardManifest, "scope: isAnswerlatticeHost ? '/' : '/answerlattice/'", 'Answerlattice host-aware manifest scope');
+  assertIncludes(dashboardManifest, "url: route('/support-board')", 'Answerlattice support shortcut');
+  assertIncludes(serviceWorkerRegister, "const ANSWERLATTICE_SW_URL = '/answerlattice-sw.js';", 'Answerlattice service worker registration');
+  assertIncludes(serviceWorkerRegister, '? ANSWERLATTICE_SW_TARGET : null;', 'Answerlattice product-host worker selection');
+  assertIncludes(serviceWorkerRegister, 'if (isAnswerlatticePlatformPath(pathname)) return ANSWERLATTICE_PLATFORM_SW_TARGET;', 'Answerlattice local-platform worker selection');
+  assertIncludes(serviceWorker, 'Never cache tenant pages, API responses, support content, or knowledge data.', 'Answerlattice service worker privacy policy');
+  assertIncludes(serviceWorker, "const ANSWERLATTICE_CACHE = 'answerlattice-offline-v1';", 'Answerlattice service worker cache');
+  assertIncludes(serviceWorker, "? '/__answerlattice/offline'", 'Answerlattice local offline route');
+  assertNotIncludes(serviceWorker, 'cache.put', 'Answerlattice service worker response-cache boundary');
+  assertIncludes(offlinePage, 'Nothing will be changed while you are offline.', 'Answerlattice offline mutation boundary');
+  assertIncludes(offlinePage, 'variant="serverErrorContext"', 'Answerlattice contextual recovery illustration');
+  assertIncludes(domainResolver, "'/answerlattice-sw.js'", 'Answerlattice worker routing bypass');
+  assertIncludes(proxy, "'/answerlattice-sw.js'", 'Answerlattice worker proxy transport');
 }
 
 function verifyLoaderBranding() {

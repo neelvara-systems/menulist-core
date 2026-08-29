@@ -7,6 +7,7 @@ import { MENULIST_PLATFORM_TENANT_ID } from '@constant/user';
 import { getStoreById } from '@database/stores';
 import { addTenant, assertTenantUpdateSucceeded, updateTenant } from '@database/tenants';
 import { getStoreContextName } from '@lib/businessIdentity/names';
+import { labelConfirmDialog } from '@lib/accessibility/antConfirmDialog';
 import { logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { UserUploadedFileType } from '@type/common';
 import { MinimalStoreDataType } from '@type/platform/store';
@@ -14,7 +15,7 @@ import { TenantDataType } from '@type/platform/tenant';
 import { getFormatedDateAndTime } from '@util/dateTime';
 import { getObjectDifferance } from '@util/deepMerge';
 import { removeObjRef } from '@util/utils';
-import { Button, Divider, Flex, Input, message, Select, Switch, Tag, Typography } from 'antd'; // Import Ant Design components
+import { Button, Divider, Flex, Input, message, Modal, Select, Switch, Tag, Typography } from 'antd'; // Import Ant Design components
 import { useFormatter } from 'next-intl';
 import { Fragment, memo, useEffect, useRef, useState } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
@@ -81,6 +82,7 @@ function TenantDetailsModal({ modalData, closeModal, platformSummary: _platformS
     }
 
     const addUpdateTenantDetails = async (updatedTenant: TenantDataType) => {
+        if (!updatedTenant.name?.trim()) return;
         if (mutationInFlightRef.current) return;
         mutationInFlightRef.current = true;
         setMutationInFlight(true);
@@ -89,13 +91,13 @@ function TenantDetailsModal({ modalData, closeModal, platformSummary: _platformS
         try {
             if (updatedTenant.tenantId || updatedTenant.tenantId == MENULIST_PLATFORM_TENANT_ID) {
                 updatedChanges = getObjectDifferance(updatedTenant, modalData.data);
+                delete updatedChanges.storesList;
                 if (selectedFile.url) {
                     updatedChanges.imageToUpdate = selectedFile.url
                     updatedChanges.imageType = selectedFile.type
                 }
                 if (Object.keys(updatedChanges).length > 0) {
                     updatedChanges.tenantId = updatedTenant.tenantId;
-                    delete updatedChanges.storesList;
                     if ('name' in updatedChanges) {
                         if (typeof updatedChanges.name !== 'string') {
                             throw new Error('platform_tenant_name_invalid');
@@ -191,6 +193,21 @@ function TenantDetailsModal({ modalData, closeModal, platformSummary: _platformS
     }
 
     const isUpdateFlow = (Boolean(tenantData?.tenantId) || tenantData?.tenantId == MENULIST_PLATFORM_TENANT_ID);
+    const hasRequiredTenantName = Boolean(tenantData?.name?.trim());
+
+    const confirmTenantDeletion = () => {
+        if (!tenantData || mutationInFlightRef.current) return;
+        const tenantName = tenantData.name?.trim() || `Tenant ${String(tenantData.tenantId ?? '')}`;
+        Modal.confirm({
+            cancelText: 'Cancel',
+            content: `This archives ${tenantName} and removes it from active platform operations.`,
+            modalRender: labelConfirmDialog(`Archive tenant ${tenantName}?`),
+            okButtonProps: { danger: true },
+            okText: 'Archive tenant',
+            onOk: () => addUpdateTenantDetails({ ...tenantData, deleted: true }),
+            title: `Archive ${tenantName}?`,
+        });
+    };
 
     return (
         <Flex style={{ overflowX: 'auto', width: '100%' }}>
@@ -200,12 +217,12 @@ function TenantDetailsModal({ modalData, closeModal, platformSummary: _platformS
                 onClose={() => closeDrawer()}
                 footerActions={[
                     <Button type="default" disabled={mutationInFlight} onClick={() => closeDrawer()} icon={<LuX />} key="Cancel">Cancel</Button>,
-                    <>{isUpdateFlow && tenantData && <Button disabled={mutationInFlight} type="default" icon={<LuTrash />} danger onClick={() => addUpdateTenantDetails({ ...tenantData, deleted: true })} key="Delete">Delete</Button>}</>,
+                    <>{isUpdateFlow && tenantData && <Button disabled={mutationInFlight} type="default" icon={<LuTrash />} danger onClick={confirmTenantDeletion} key="Delete">Archive</Button>}</>,
                     <>{isUpdateFlow && tenantData && <Button disabled={mutationInFlight} type="primary" ghost icon={<LuPlus />} key="Store" onClick={() => setStoreModal({ active: true, data: null, tenantData })}>Add Store</Button>}</>,
                     <Button
                         type="primary"
                         icon={<LuUploadCloud />}
-                        disabled={!tenantData || mutationInFlight}
+                        disabled={!tenantData || !hasRequiredTenantName || mutationInFlight}
                         onClick={() => {
                             if (tenantData) void addUpdateTenantDetails(tenantData);
                         }}
@@ -252,6 +269,7 @@ function TenantDetailsModal({ modalData, closeModal, platformSummary: _platformS
                         <Flex>
                             <Text style={{ minWidth: 150 }}>Active</Text>
                             <Switch
+                                aria-label="Tenant active"
                                 defaultChecked={tenantData?.active || false}
                                 value={tenantData?.active || false}
                                 onChange={() => onChangeValue('active', !Boolean(tenantData?.active))}
@@ -357,6 +375,7 @@ function TenantDetailsModal({ modalData, closeModal, platformSummary: _platformS
                     <Flex>
                         <Text style={{ minWidth: 150 }}>Business Type</Text>
                         <Select
+                            aria-label="Business Type"
                             defaultValue={tenantData?.businessType || ""}
                             value={tenantData?.businessType || ""}
                             style={{ width: "100%" }}

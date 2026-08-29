@@ -1,16 +1,10 @@
-import HelpCenter from "@template/main-app/helpCenter";
+import MenuListHelpCenter from '@template/main-app/menuListHelpCenter';
 
 async function page(props: { params: Promise<{ segments?: string[] }> }) {
     const params = await props.params;
-    const [tab, resourceType, resourceId] = params.segments || [];
+    const [section] = params.segments || [];
 
-    return (
-        <HelpCenter
-            initialArticleId={tab === 'kb' && resourceType === 'articles' ? resourceId : undefined}
-            initialChangelogId={tab === 'changelog' ? resourceType : undefined}
-            initialTab={tab}
-        />
-    );
+    return <MenuListHelpCenter initialSection={section} />;
 }
 
 export default page;

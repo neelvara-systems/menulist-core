@@ -1,7 +1,9 @@
 import { theme } from 'antd';
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import * as LuIcons from 'react-icons/lu';
 import {
+    getVisibleIconNames,
+    ICON_PICKER_PAGE_SIZE,
     normalizeLucideIconName,
     normalizeSuggestedLucideIcons,
 } from './iconPickerContracts';
@@ -33,11 +35,20 @@ const LucideIconGrid = ({
         () => normalizeLucideIconName(selectedIcon, allIconNames),
         [selectedIcon],
     );
+    const [visibleIconLimit, setVisibleIconLimit] = useState(ICON_PICKER_PAGE_SIZE);
 
     const filteredIcons = useMemo(() =>
         allIcons.filter(icon => icon.toLowerCase().includes(searchQuery.toLowerCase())),
         [searchQuery]
     );
+    const visibleIcons = useMemo(
+        () => getVisibleIconNames(filteredIcons, visibleIconLimit),
+        [filteredIcons, visibleIconLimit],
+    );
+
+    useEffect(() => {
+        setVisibleIconLimit(ICON_PICKER_PAGE_SIZE);
+    }, [searchQuery]);
 
     return (
         <div
@@ -52,7 +63,7 @@ const LucideIconGrid = ({
             }}
         >
             <div className="icon-grid-picker__scroll">
-                {filteredSuggestedIcons.length > 0 ? (
+                {filteredSuggestedIcons.length > 0 && !searchQuery.trim() ? (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                         <div className="icon-grid-picker__label">Suggested</div>
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
@@ -94,7 +105,7 @@ const LucideIconGrid = ({
                     </div>
                     {filteredIcons.length > 0 ? (
                         <div className="icon-grid-picker__results-grid">
-                            {filteredIcons.map((iconName) => {
+                            {visibleIcons.map((iconName) => {
                                 const Icon = LuIcons[iconName as keyof typeof LuIcons];
                                 const iconValue = `lu:${iconName}`;
                                 const isSelected = normalizedSelectedIcon === iconName;
@@ -136,6 +147,41 @@ const LucideIconGrid = ({
                             No icons found
                         </div>
                     )}
+                    {visibleIcons.length > 0 ? (
+                        <div
+                            style={{
+                                alignItems: 'center',
+                                color: token.colorTextSecondary,
+                                display: 'flex',
+                                flexDirection: 'column',
+                                fontSize: 12,
+                                gap: 10,
+                                paddingTop: 4,
+                                textAlign: 'center',
+                            }}
+                        >
+                            <span aria-live="polite">{`Showing ${visibleIcons.length} of ${filteredIcons.length} icons`}</span>
+                            {visibleIcons.length < filteredIcons.length ? (
+                                <button
+                                    className="icon-picker-load-more"
+                                    onClick={() => setVisibleIconLimit((current) => current + ICON_PICKER_PAGE_SIZE)}
+                                    style={{
+                                        background: token.colorBgElevated,
+                                        border: `1px solid ${token.colorBorderSecondary}`,
+                                        borderRadius: 12,
+                                        color: token.colorText,
+                                        font: 'inherit',
+                                        fontWeight: 600,
+                                        minHeight: 44,
+                                        padding: '10px 18px',
+                                    }}
+                                    type="button"
+                                >
+                                    Load more icons
+                                </button>
+                            ) : null}
+                        </div>
+                    ) : null}
                 </div>
             </div>
         </div>

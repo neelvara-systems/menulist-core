@@ -182,8 +182,8 @@ function FontPresets() {
         <Flex align="flex-start" justify="flex-start" gap={20}>
             <Flex vertical style={{ width: 300, height: "100%", overflow: "auto" }} gap={10}>
                 <Text strong>Added Fonts List</Text>
-                {([...fontsList].sort((a, b) => a.index - b.index)).map((fontData: any, i: number) => {
-                    return <Fragment key={i}>
+                {([...fontsList].sort((a, b) => a.index - b.index)).map((fontData: any) => {
+                    return <Fragment key={fontData.id || fontData.code}>
                         <Button
                             ghost={fontData.id == fontDetails?.id}
                             type={fontData.id == fontDetails?.id ? "primary" : "dashed"}
@@ -204,6 +204,7 @@ function FontPresets() {
 
                     <Button
                         block
+                        disabled={fontsList.length < 2}
                         icon={<LuArrowUpDown />}
                         type="primary"
                         ghost
@@ -223,6 +224,7 @@ function FontPresets() {
                         <EditorWrapper>
                             <Text strong>Preview Name</Text>
                             <Input
+                                aria-label="Font preview name"
                                 showCount
                                 maxLength={80}
                                 value={fontDetails.name}
@@ -235,6 +237,7 @@ function FontPresets() {
                         <EditorWrapper>
                             <Text strong>Font Size</Text>
                             <InputNumber
+                                aria-label="Font preview size"
                                 min={10}
                                 max={70}
                                 step={1}
@@ -247,6 +250,7 @@ function FontPresets() {
                         <EditorWrapper>
                             <Text strong>Canvas Width</Text>
                             <InputNumber
+                                aria-label="Font preview canvas width"
                                 min={50}
                                 max={300}
                                 step={1}
@@ -276,6 +280,7 @@ function FontPresets() {
                     <EditorWrapper>
                         <Text strong>Font Code(Used for internal font mapping purpose)</Text>
                         <Input
+                            aria-label="Internal font code"
                             showCount
                             maxLength={80}
                             value={fontDetails.code}
@@ -296,7 +301,7 @@ function FontPresets() {
                                 <Flex style={{ width: "100%", height: 80, background: "black", border: `2px solid ${token.colorBorder}`, boxShadow: token.boxShadow }} align="center" justify="center">
                                     <img alt={`${fontDetails.code} font preview on a dark background`} style={{ width: "auto", border: `1px solid ${token.colorBorder}` }} src={fontDetails.whiteTextUrl} />
                                 </Flex>
-                                <Button>Size: {Number(getBase64Length(fontDetails.whiteTextUrl) / 1000).toFixed()}KB  ({fontDetails.width}X{fontDetails.height})</Button>
+                                <Text type="secondary">Size: {Number(getBase64Length(fontDetails.whiteTextUrl) / 1000).toFixed()}KB  ({fontDetails.width}X{fontDetails.height})</Text>
                             </Flex>
 
                             <Flex gap={20} vertical style={{ width: "100%" }}>
@@ -304,7 +309,7 @@ function FontPresets() {
                                 <Flex style={{ width: "100%", height: 80, background: "white", border: `2px solid ${token.colorBorder}`, boxShadow: token.boxShadow }} align="center" justify="center">
                                     <img alt={`${fontDetails.code} font preview on a light background`} style={{ width: "auto", border: `1px solid ${token.colorBorder}` }} src={fontDetails.blackTextUrl} />
                                 </Flex>
-                                <Button>Size: {Number(getBase64Length(fontDetails.blackTextUrl) / 1000).toFixed()}KB  ({fontDetails.width}X{fontDetails.height})</Button>
+                                <Text type="secondary">Size: {Number(getBase64Length(fontDetails.blackTextUrl) / 1000).toFixed()}KB  ({fontDetails.width}X{fontDetails.height})</Text>
                             </Flex>
 
                         </Flex>

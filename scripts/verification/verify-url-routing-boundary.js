@@ -187,6 +187,8 @@ function verifyResolverRuntimeBoundary() {
     assert(shouldBypassDomainRouting('/__campaigncue/app'), 'CampaignCue local dev prefix must bypass tenant routing');
     assert(shouldBypassDomainRouting('/__mycodex'), 'MyCodex local dev prefix must bypass tenant routing');
     assert(shouldBypassDomainRouting('/manifest.json'), 'global manifest must bypass tenant routing');
+    assert(shouldBypassDomainRouting('/mycodex-sw.js'), 'MyCodex service worker must bypass tenant routing');
+    assert(shouldBypassDomainRouting('/answerlattice-sw.js'), 'Answerlattice service worker must bypass tenant routing');
     assert(!shouldBypassDomainRouting('/robots.txt'), 'tenant robots must not bypass middleware');
     assert(!shouldBypassDomainRouting('/sitemap.xml'), 'tenant sitemap must not bypass middleware');
 

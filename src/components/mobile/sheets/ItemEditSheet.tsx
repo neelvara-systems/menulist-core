@@ -374,6 +374,22 @@ export default function ItemEditSheet({
     }), [canEditImageInline, draftItem, imagePreview, selectedLanguages]);
     const hasChanges = currentComparisonState !== initialComparisonState;
 
+    const handleClose = async () => {
+        if (isSaving) return;
+        if (!hasChanges) {
+            onClose();
+            return;
+        }
+
+        const confirmed = await Dialog.confirm({
+            cancelText: 'Keep editing',
+            confirmText: 'Discard changes',
+            content: 'Your unsaved item changes will be lost.',
+            title: 'Discard unsaved item changes?',
+        });
+        if (confirmed) onClose();
+    };
+
     const handleImageInputChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
         if (!canEditImages) return;
         const file = event.target.files?.[0];
@@ -442,6 +458,7 @@ export default function ItemEditSheet({
                     ) : null}
                     <Flex gap={8} wrap="wrap">
                         <Input
+                            aria-label="Calories"
                             onChange={(value) => updateNutrition({ calories: value ? Number(value) : undefined })}
                             placeholder="Calories"
                             style={{ flex: '1 1 120px' }}
@@ -449,6 +466,7 @@ export default function ItemEditSheet({
                             value={nutritionInfo?.calories !== undefined ? String(nutritionInfo.calories) : ''}
                         />
                         <Input
+                            aria-label="Protein (g)"
                             onChange={(value) => updateNutrition({ protein: value ? Number(value) : undefined })}
                             placeholder="Protein (g)"
                             style={{ flex: '1 1 120px' }}
@@ -456,6 +474,7 @@ export default function ItemEditSheet({
                             value={nutritionInfo?.protein !== undefined ? String(nutritionInfo.protein) : ''}
                         />
                         <Input
+                            aria-label="Carbs (g)"
                             onChange={(value) => updateNutrition({ carbs: value ? Number(value) : undefined })}
                             placeholder="Carbs (g)"
                             style={{ flex: '1 1 120px' }}
@@ -463,6 +482,7 @@ export default function ItemEditSheet({
                             value={nutritionInfo?.carbs !== undefined ? String(nutritionInfo.carbs) : ''}
                         />
                         <Input
+                            aria-label="Fat (g)"
                             onChange={(value) => updateNutrition({ fat: value ? Number(value) : undefined })}
                             placeholder="Fat (g)"
                             style={{ flex: '1 1 120px' }}
@@ -470,6 +490,7 @@ export default function ItemEditSheet({
                             value={nutritionInfo?.fat !== undefined ? String(nutritionInfo.fat) : ''}
                         />
                         <Input
+                            aria-label="Serving size"
                             onChange={(value) => updateNutrition({ servingSize: value || undefined })}
                             placeholder="Serving size"
                             style={{ flex: '1 1 160px' }}
@@ -488,6 +509,7 @@ export default function ItemEditSheet({
                         <Text type="secondary">{field.confirmationText || 'Only add this if confirmed.'}</Text>
                     ) : null}
                     <Select
+                        aria-label={field.label}
                         mode="multiple"
                         onChange={(value: string | string[]) => updateDecisionFact(field, Array.isArray(value) && value.length ? value : undefined)}
                         options={field.options}
@@ -506,6 +528,7 @@ export default function ItemEditSheet({
                         <Text type="secondary">{field.confirmationText || 'Only add this if confirmed.'}</Text>
                     ) : null}
                     <Select
+                        aria-label={field.label}
                         onChange={(value: string) => updateDecisionFact(field, value || undefined)}
                         options={field.options}
                         placeholder={`Select ${field.label.toLowerCase()}`}
@@ -523,6 +546,7 @@ export default function ItemEditSheet({
                         <Text type="secondary">{field.confirmationText || 'Only add this if confirmed.'}</Text>
                     ) : null}
                     <Input
+                        aria-label={field.label}
                         onChange={(value) => updateDecisionFact(field, value || undefined)}
                         placeholder={field.tooltip}
                         value={(getDecisionFactValue(draftItem, field.key) as string | undefined) || ''}
@@ -801,6 +825,7 @@ export default function ItemEditSheet({
                     <Flex gap={6} vertical>
                         <Text strong>{t('itemNameLabel')}</Text>
                         <Input
+                            aria-label={t('itemNameLabel')}
                             autoFocus={isAddMode && languageCode === primaryLanguage}
                             disabled={!canEditMasterFields}
                             onChange={(value) => updateLocalizedField(languageCode, 'name', value)}
@@ -812,6 +837,7 @@ export default function ItemEditSheet({
                     <Flex gap={6} vertical>
                         <Text strong>{t('descriptionLabel')}</Text>
                         <TextArea
+                            aria-label={t('descriptionLabel')}
                             autoSize={{ minRows: 4, maxRows: 10 }}
                             disabled={!canEditDescription}
                             onChange={(value) => updateLocalizedField(languageCode, 'description', value)}
@@ -842,6 +868,7 @@ export default function ItemEditSheet({
                                             <Flex align="center" justify="space-between">
                                                 <Text strong>{t('optionNumber', { number: index + 1 })}</Text>
                                                 <Button
+                                                    aria-label={`${t('delete')} ${t('optionNumber', { number: index + 1 })}`}
                                                     color="danger"
                                                     disabled={isSaving || !canEditMasterFields}
                                                     fill="none"
@@ -852,6 +879,7 @@ export default function ItemEditSheet({
                                                 </Button>
                                             </Flex>
                                             <Input
+                                                aria-label={`${t('variantName')} ${index + 1}`}
                                                 disabled={!canEditMasterFields}
                                                 onChange={(value) => {
                                                     updateAttributeField(attribute.id, {
@@ -868,6 +896,7 @@ export default function ItemEditSheet({
                                                 <Flex gap={6} style={{ flex: 1, minWidth: 0 }} vertical>
                                                     <Text type="secondary">{t('variantPrice')}</Text>
                                                     <Input
+                                                        aria-label={`${t('variantPrice')} ${index + 1}`}
                                                         disabled={!canEditMasterFields}
                                                         inputMode="text"
                                                         maxLength={MENU_PRICE_TEXT_MAX_LENGTH}
@@ -880,6 +909,7 @@ export default function ItemEditSheet({
                                                     <Flex align="center" justify="space-between">
                                                         <Text style={{ fontSize: 12 }} type="secondary">{t('active')}</Text>
                                                         <Switch
+                                                            aria-label={`${getLocalizedValue(attribute.name, languageCode) || t('variantName')} ${t('active')}`}
                                                             checked={attribute.active !== false}
                                                             disabled={!canEditMasterFields}
                                                             onChange={(checked) => updateAttributeField(attribute.id, { active: checked })}
@@ -904,10 +934,11 @@ export default function ItemEditSheet({
 
     return (
         <Popup
+            aria-label={isAddMode ? t('addItemTitle') : t('editItemTitle')}
             bodyStyle={MENU_SHEET_ROUNDED_BODY_STYLE}
             destroyOnClose
             onMaskClick={() => {
-                if (!isSaving) onClose();
+                void handleClose();
             }}
             position="bottom"
             visible
@@ -915,7 +946,7 @@ export default function ItemEditSheet({
         >
             <Flex style={MENU_SHEET_CONTAINER_STYLE} vertical>
                 <NavBar onBack={() => {
-                    if (!isSaving) onClose();
+                    void handleClose();
                 }}>
                     {isAddMode ? t('addItemTitle') : t('editItemTitle')}
                 </NavBar>
@@ -927,6 +958,7 @@ export default function ItemEditSheet({
                                 <Flex gap={6} vertical>
                                     <Text strong>{t('categoryLabel')}</Text>
                                     <Select
+                                        aria-label={t('categoryLabel')}
                                         disabled={!canEditMasterFields}
                                         onChange={(value: string) => {
                                             setDraftItem((previous) => ({ ...previous, category: value }));
@@ -1020,6 +1052,7 @@ export default function ItemEditSheet({
                                 <Flex gap={6} vertical>
                                     <Text strong>{t('priceLabel', { currency: currencySymbol })}</Text>
                                     <Input
+                                        aria-label={t('priceLabel', { currency: currencySymbol })}
                                         disabled={!canEditPrice}
                                         inputMode="text"
                                         maxLength={MENU_PRICE_TEXT_MAX_LENGTH}
@@ -1036,7 +1069,7 @@ export default function ItemEditSheet({
                                         <Text strong>{availabilityLabels.available}</Text>
                                         <Text type="secondary">{t('availableHelp')}</Text>
                                     </Flex>
-                                    <Switch checked={draftItem.available !== false} disabled={!canEditAvailability} onChange={(checked) => setDraftItem((previous) => ({ ...previous, available: checked }))} />
+                                    <Switch aria-label={availabilityLabels.available} checked={draftItem.available !== false} disabled={!canEditAvailability} onChange={(checked) => setDraftItem((previous) => ({ ...previous, available: checked }))} />
                                 </Flex>
                             </div>
 
@@ -1046,7 +1079,7 @@ export default function ItemEditSheet({
                                         <Text strong>{t('showOnMenu')}</Text>
                                         <Text type="secondary">{t('showOnMenuHelp')}</Text>
                                     </Flex>
-                                    <Switch checked={draftItem.active !== false} onChange={(checked) => setDraftItem((previous) => ({ ...previous, active: checked }))} />
+                                    <Switch aria-label={t('showOnMenu')} checked={draftItem.active !== false} onChange={(checked) => setDraftItem((previous) => ({ ...previous, active: checked }))} />
                                 </Flex>
                             </div>
 
@@ -1104,6 +1137,7 @@ export default function ItemEditSheet({
                                                     </Flex>
                                                 </Flex>
                                                 <Switch
+                                                    aria-label={t('bestSeller')}
                                                     checked={draftItem.isBestSeller === true}
                                                     onChange={(checked) => setDraftItem((previous) => ({ ...previous, isBestSeller: checked }))}
                                                 />
@@ -1120,6 +1154,7 @@ export default function ItemEditSheet({
                                                     </Flex>
                                                 </Flex>
                                                 <Input
+                                                    aria-label={t('prepTime')}
                                                     max={240}
                                                     min={0}
                                                     onChange={(value) => setDraftItem((previous) => ({
@@ -1292,6 +1327,7 @@ export default function ItemEditSheet({
                         <Flex gap={12}>
                             {!isAddMode && onDelete && item?.id && canDeleteItem ? (
                                 <Button
+                                    aria-label={t('deleteItemAction')}
                                     color="danger"
                                     disabled={isSaving}
                                     fill="outline"

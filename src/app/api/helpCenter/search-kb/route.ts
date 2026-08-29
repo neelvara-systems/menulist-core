@@ -131,7 +131,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         // ✅ Session guaranteed by withAuth middleware
 
         // 🔒 RATE LIMITING: Prevent API abuse
-        const rateLimitResponse = await checkAIOperationLimit();
+        const rateLimitResponse = await checkAIOperationLimit({ session });
         if (rateLimitResponse) return withSearchResponseHeaders(rateLimitResponse);
 
         // 🔒 VALIDATE INPUT: Prevent injection attacks and invalid data

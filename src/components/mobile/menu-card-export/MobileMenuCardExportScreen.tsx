@@ -10,6 +10,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useState } from 'react';
 import { LuAlertTriangle, LuCheck, LuChevronDown, LuDownload, LuHistory, LuPackage, LuPrinter, LuQrCode, LuShare2, LuSparkles } from 'react-icons/lu';
 import { Button, Card, DotLoading, Empty, Flex, List, MobileAntdAppBridge, NavBar, Popup, Switch, Tag, Text, Title, Toast } from '../antd';
+import { MOBILE_BOTTOM_NAV_CLEARANCE } from '../MobileNavigation';
 import { useMobileProjects } from '../providers/MobileProjectsProvider';
 
 const DENSITY_OPTIONS = [
@@ -304,15 +305,15 @@ export default function MobileMenuCardExportScreen({ initialProjectId, onBack }:
                     <Flex gap={12} vertical>
                         <Flex align="center" justify="space-between" gap={12}>
                             <Text>Include descriptions</Text>
-                            <Switch checked={settings.includeDescriptions} onChange={(checked) => updateToggle('includeDescriptions', checked)} />
+                            <Switch aria-label="Include descriptions" checked={settings.includeDescriptions} onChange={(checked) => updateToggle('includeDescriptions', checked)} />
                         </Flex>
                         <Flex align="center" justify="space-between" gap={12}>
                             <Text>Include QR</Text>
-                            <Switch checked={settings.includeQr} onChange={(checked) => updateToggle('includeQr', checked)} />
+                            <Switch aria-label="Include QR" checked={settings.includeQr} onChange={(checked) => updateToggle('includeQr', checked)} />
                         </Flex>
                         <Flex align="center" justify="space-between" gap={12}>
                             <Text>Include contact block</Text>
-                            <Switch checked={settings.includeContactBlock} onChange={(checked) => updateToggle('includeContactBlock', checked)} />
+                            <Switch aria-label="Include contact block" checked={settings.includeContactBlock} onChange={(checked) => updateToggle('includeContactBlock', checked)} />
                         </Flex>
                     </Flex>
                 </Card>
@@ -390,7 +391,7 @@ export default function MobileMenuCardExportScreen({ initialProjectId, onBack }:
                 style={{
                     background: token.colorBgContainer,
                     borderTop: `1px solid ${token.colorBorderSecondary}`,
-                    bottom: 0,
+                    bottom: MOBILE_BOTTOM_NAV_CLEARANCE,
                     left: 0,
                     padding: '10px 14px calc(env(safe-area-inset-bottom) + 10px)',
                     position: 'fixed',
@@ -419,28 +420,31 @@ export default function MobileMenuCardExportScreen({ initialProjectId, onBack }:
                 </Button>
             </Flex>
 
-            <Popup
-                bodyStyle={{ maxHeight: '80vh', padding: 0 }}
-                destroyOnClose
-                onMaskClick={closeProjectSheet}
-                visible={isProjectSheetOpen}
-            >
-                <NavBar onBack={closeProjectSheet} titleAlign="left">Select Menu</NavBar>
-                <Flex style={{ padding: 16, paddingBottom: 'calc(env(safe-area-inset-bottom) + 16px)' }} vertical>
-                    <List>
-                        {projects.map((project) => (
-                            <List.Item
-                                arrow
-                                key={project.projectId}
-                                onClick={() => handleSelectProject(project.projectId)}
-                                title={resolveMenuCardProjectName(project.name, 'Menu')}
-                                description={project.url.replace(/^https?:\/\//, '')}
-                                extra={project.projectId === selectedProject.projectId ? <Tag color="success">Selected</Tag> : null}
-                            />
-                        ))}
-                    </List>
-                </Flex>
-            </Popup>
+            {isProjectSheetOpen ? (
+                <Popup
+                    aria-label="Select menu"
+                    bodyStyle={{ maxHeight: '80vh', padding: 0 }}
+                    destroyOnClose
+                    onMaskClick={closeProjectSheet}
+                    visible
+                >
+                    <NavBar onBack={closeProjectSheet} titleAlign="left">Select Menu</NavBar>
+                    <Flex style={{ padding: 16, paddingBottom: 'calc(env(safe-area-inset-bottom) + 16px)' }} vertical>
+                        <List>
+                            {projects.map((project) => (
+                                <List.Item
+                                    arrow
+                                    key={project.projectId}
+                                    onClick={() => handleSelectProject(project.projectId)}
+                                    title={resolveMenuCardProjectName(project.name, 'Menu')}
+                                    description={project.url.replace(/^https?:\/\//, '')}
+                                    extra={project.projectId === selectedProject.projectId ? <Tag color="success">Selected</Tag> : null}
+                                />
+                            ))}
+                        </List>
+                    </Flex>
+                </Popup>
+            ) : null}
         </Flex>
     );
 }

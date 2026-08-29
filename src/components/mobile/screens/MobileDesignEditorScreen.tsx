@@ -53,6 +53,7 @@ import MobileLinkCard from '../components/MobileLinkCard';
 import MobileProjectSelectorSheet from '../components/MobileProjectSelectorSheet';
 import MobileQrCodeSheet from '../components/MobileQrCodeSheet';
 import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
+import { MOBILE_BOTTOM_NAV_CLEARANCE } from '../MobileNavigation';
 import { useMobileProjects } from '../providers/MobileProjectsProvider';
 import {
     getBoundedMobileProjectStringContext,
@@ -774,9 +775,24 @@ export default function MobileDesignEditorScreen({
                             const isSelected = menuLayout === layoutKey;
                             const isCompatible = compatibleLayouts.includes(layoutKey);
                             return (
-                                <Card
+                                <button
+                                    aria-pressed={isSelected}
+                                    disabled={!isCompatible}
                                     key={key}
-                                    onClick={() => (isCompatible ? handleLayoutChange(layoutKey) : undefined)}
+                                    onClick={() => handleLayoutChange(layoutKey)}
+                                    style={{
+                                        background: 'transparent',
+                                        border: 0,
+                                        color: 'inherit',
+                                        cursor: isCompatible ? 'pointer' : 'not-allowed',
+                                        font: 'inherit',
+                                        padding: 0,
+                                        textAlign: 'left',
+                                        width: '100%',
+                                    }}
+                                    type="button"
+                                >
+                                  <Card
                                     style={{
                                         backgroundColor: !isCompatible
                                             ? token.colorFillAlter
@@ -784,11 +800,10 @@ export default function MobileDesignEditorScreen({
                                                 ? token.colorPrimaryBg
                                                 : token.colorBgContainer,
                                         borderColor: isSelected ? token.colorPrimary : token.colorBorderSecondary,
-                                        cursor: isCompatible ? 'pointer' : 'not-allowed',
                                         opacity: !isCompatible ? 0.4 : 1,
                                         width: '100%',
                                     }}
-                                >
+                                  >
                                     <Flex align="center" gap={12}>
                                         <LayoutPreview layout={layoutKey} selected={isSelected} />
                                         <Flex gap={2} style={{ flex: 1, minWidth: 0 }} vertical>
@@ -796,13 +811,28 @@ export default function MobileDesignEditorScreen({
                                             <Text type="secondary">{config.description}</Text>
                                         </Flex>
                                     </Flex>
-                                </Card>
+                                  </Card>
+                                </button>
                             );
                         })}
                     </Flex>
                 </SectionCard>
 
-                <Card onClick={() => setIsColorPickerOpen(true)}>
+                <button
+                    onClick={() => setIsColorPickerOpen(true)}
+                    style={{
+                        background: 'transparent',
+                        border: 0,
+                        color: 'inherit',
+                        cursor: 'pointer',
+                        font: 'inherit',
+                        padding: 0,
+                        textAlign: 'left',
+                        width: '100%',
+                    }}
+                    type="button"
+                >
+                  <Card>
                     <Flex align="center" justify="space-between" gap={12}>
                         <Flex gap={2} style={{ minWidth: 0 }} vertical>
                             <Text strong>{t('brandColor')}</Text>
@@ -828,27 +858,28 @@ export default function MobileDesignEditorScreen({
                             <LuPalette color={token.colorTextTertiary} size={18} />
                         </Flex>
                     </Flex>
-                </Card>
+                  </Card>
+                </button>
 
                 <SectionCard title={t('displayOptions')}>
                     <List>
                         <List.Item
-                            extra={<Switch checked={showItemPrices} onChange={handleShowItemPricesChange} />}
+                            extra={<Switch aria-label={t('showItemPrices')} checked={showItemPrices} onChange={handleShowItemPricesChange} />}
                             title={<Text>{t('showItemPrices')}</Text>}
                             description={<Text type="secondary">{t('showItemPricesDesc')}</Text>}
                         />
                         <List.Item
-                            extra={<Switch checked={showImages} onChange={handleShowImagesChange} />}
+                            extra={<Switch aria-label={t('showItemImages')} checked={showImages} onChange={handleShowImagesChange} />}
                             title={<Text>{t('showItemImages')}</Text>}
                             description={<Text type="secondary">{t('showItemImagesDesc')}</Text>}
                         />
                         <List.Item
-                            extra={<Switch checked={showCategoryIcons} onChange={handleShowCategoryIconsChange} />}
+                            extra={<Switch aria-label={t('showCategoryIcons')} checked={showCategoryIcons} onChange={handleShowCategoryIconsChange} />}
                             title={<Text>{t('showCategoryIcons')}</Text>}
                             description={<Text type="secondary">{t('showCategoryIconsDesc')}</Text>}
                         />
                         <List.Item
-                            extra={<Switch checked={showCategoryTabs} onChange={handleCategoryTabsChange} />}
+                            extra={<Switch aria-label={t('categoryTabs')} checked={showCategoryTabs} onChange={handleCategoryTabsChange} />}
                             title={<Text>{t('categoryTabs')}</Text>}
                             description={<Text type="secondary">{t('categoryTabsDesc')}</Text>}
                         />
@@ -912,6 +943,7 @@ export default function MobileDesignEditorScreen({
 
                 <SectionCard title={t('pricingNote')} subtitle={t('pricingNoteSubtitle')}>
                     <TextArea
+                        aria-label={t('pricingNote')}
                         autoSize={{ minRows: 2, maxRows: 3 }}
                         maxLength={SERVICE_CHARGE_MAX_LENGTH}
                         onChange={handleServiceChargeChange}
@@ -944,7 +976,7 @@ export default function MobileDesignEditorScreen({
                         backdropFilter: 'blur(10px)',
                         backgroundColor: token.colorBgContainer,
                         borderTop: `1px solid ${token.colorBorderSecondary}`,
-                        bottom: 0,
+                        bottom: MOBILE_BOTTOM_NAV_CLEARANCE,
                         padding: '12px 16px calc(12px + env(safe-area-inset-bottom))',
                         position: 'sticky',
                         zIndex: 20,
@@ -1029,9 +1061,23 @@ export default function MobileDesignEditorScreen({
                             {recommendedPresets.map((preset) => {
                                 const isSelected = selectedRecommendedPreset?.key === preset.key;
                                 return (
-                                    <Card
+                                    <button
+                                        aria-pressed={isSelected}
                                         key={preset.key}
                                         onClick={() => setSelectedRecommendedPresetKey(preset.key)}
+                                        style={{
+                                            background: 'transparent',
+                                            border: 0,
+                                            color: 'inherit',
+                                            cursor: 'pointer',
+                                            font: 'inherit',
+                                            padding: 0,
+                                            textAlign: 'left',
+                                            width: '100%',
+                                        }}
+                                        type="button"
+                                    >
+                                      <Card
                                         style={{
                                             backgroundColor: isSelected ? token.colorPrimaryBg : token.colorBgContainer,
                                             borderColor: isSelected ? token.colorPrimary : token.colorBorderSecondary,
@@ -1049,7 +1095,8 @@ export default function MobileDesignEditorScreen({
                                             </Flex>
                                             <MenuStylePresetPreview compact preset={preset} selected={isSelected} />
                                         </Flex>
-                                    </Card>
+                                      </Card>
+                                    </button>
                                 );
                             })}
                         </Flex>
@@ -1203,8 +1250,22 @@ function OptionRow({
 }) {
     const { token } = theme.useToken();
     return (
-        <Card
+        <button
+            aria-pressed={isSelected}
             onClick={onSelect}
+            style={{
+                background: 'transparent',
+                border: 0,
+                color: 'inherit',
+                cursor: 'pointer',
+                font: 'inherit',
+                padding: 0,
+                textAlign: 'left',
+                width: '100%',
+            }}
+            type="button"
+        >
+          <Card
             style={{
                 backgroundColor: isSelected ? token.colorPrimaryBg : token.colorBgContainer,
                 borderColor: isSelected ? token.colorPrimary : token.colorBorderSecondary,
@@ -1243,6 +1304,7 @@ function OptionRow({
                 </Flex>
                 {isSelected ? <LuCheck color={token.colorPrimary} size={18} /> : null}
             </Flex>
-        </Card>
+          </Card>
+        </button>
     );
 }

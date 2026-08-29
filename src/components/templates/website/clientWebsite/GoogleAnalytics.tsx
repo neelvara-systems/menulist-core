@@ -1,5 +1,6 @@
 'use client'
 import { StoreDataType } from '@type/platform/store';
+import { normalizeGoogleAnalyticsMeasurementId } from '@lib/analytics/preferences';
 import Script from 'next/script';
 import { useEffect } from 'react';
 
@@ -15,15 +16,8 @@ interface GoogleAnalyticsProps {
     storeDetails?: StoreDataType;
 }
 
-const GA4_MEASUREMENT_ID_PATTERN = /^G-[A-Z0-9]+$/;
-
-const getSafeGoogleAnalyticsId = (value?: string | null): string | null => {
-    const normalized = String(value || '').trim().toUpperCase();
-    return GA4_MEASUREMENT_ID_PATTERN.test(normalized) ? normalized : null;
-};
-
 const GoogleAnalytics = ({ storeDetails }: GoogleAnalyticsProps) => {
-    const gaId = getSafeGoogleAnalyticsId(storeDetails?.analytics?.googleAnalyticsId);
+    const gaId = normalizeGoogleAnalyticsMeasurementId(storeDetails?.analytics?.googleAnalyticsId);
 
     useEffect(() => {
         if (!gaId) return;

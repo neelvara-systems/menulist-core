@@ -251,6 +251,17 @@ export const RATE_LIMIT_CONFIGS = {
     },
 
     /**
+     * Answerlattice Early Access - anonymous public request endpoint.
+     * Repeat email submissions update one deterministic document, but each
+     * request still performs protected verification and a transaction.
+     */
+    ANSWERLATTICE_EARLY_ACCESS: {
+        limit: 5,
+        window: 600,
+        description: 'Answerlattice early access - 5 submissions per 10 minutes per IP'
+    },
+
+    /**
      * MenuList Contact Form - anonymous public website enquiry endpoint
      * Used by: POST /api/public/contact
      *

@@ -149,10 +149,14 @@ const mobilePresence = read('src/components/mobile/components/PresenceMonitor.ts
   'Popup',
   'NavBar',
   'minHeight: 44',
+  'aria-label={`Open ${t(surface.labelKey)} setup`}',
+  "<Popup aria-label={selectedSurface ? t(selectedSurface.labelKey) : t('title')}",
+  'aria-hidden="true"',
   "id: 'appleBusiness'",
   "id: 'bingPlaces'",
 ].forEach((token) => requireToken(mobilePresence, token, 'mobile Presence Monitor'));
 forbidToken(mobilePresence, 'window.open(', 'mobile Presence Monitor no-opener handle acknowledgement');
+forbidToken(mobilePresence, 'onClick={() => handleOpenSurface(surface)}', 'mobile Presence Monitor nested row action');
 [
   'catch {',
   'console.error',

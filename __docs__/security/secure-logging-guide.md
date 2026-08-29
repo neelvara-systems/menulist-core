@@ -167,6 +167,7 @@ secureLog('[Auth] Complex data', {
 | `/functions/src/lib/sentry.ts` | ✅ Done | Functions Sentry expected-error suppression and outbound metadata use structured, bounded context plus capped source error names instead of raw message/user/context payloads |
 | `/functions/src/lib/logger.ts` | ✅ Done | Shared Functions logger sanitizes Firebase Logger message titles, data payloads, and error/context payloads |
 | `/lib/firebase/firebaseDiagnostics.ts` | ✅ Done | Firebase bootstrap diagnostics log normalized failure codes, source error name/code/status, and bounded session/path metadata only |
+| `/services/ai/aiServiceDiagnostics.ts` | ✅ Done | Browser AI request failures retain one bounded support diagnostic at log level so an expected owner-facing recovery does not trigger the Next.js development error overlay; server AI failures retain `secureError()` severity |
 | `/lib/firebase/firebaseClient.ts` | ✅ Done | App Check module-load and local Functions emulator failures use bounded Firebase bootstrap diagnostics |
 | `/lib/firebase/appCheck.ts` | ✅ Done | App Check missing-key, initialize, and custom-provider failures use bounded diagnostics without raw hostnames or console styling payloads |
 | `/lib/auth/firebaseAuthSync.ts` | ✅ Done | Auth sync helper throws coded generic bootstrap errors with numeric status context instead of raw status text |

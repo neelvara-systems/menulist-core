@@ -41,6 +41,8 @@ for (const route of [
   "'/serwist/:path*'",
   "'/sw.js'",
   "'/sw-customer.js'",
+  "'/mycodex-sw.js'",
+  "'/answerlattice-sw.js'",
 ]) {
   assertIncludes(proxy, route, 'PWA transport Proxy matcher');
 }
@@ -60,11 +62,12 @@ assertIncludes(worker, "self.addEventListener('activate'", 'retired owner cache 
 
 const registration = read('src/components/ServiceWorkerRegister.tsx');
 [
-  "deploymentStage.stage !== 'preview'",
+  'function isServiceWorkerRuntimeEnabled()',
   'const pathname = usePathname();',
   '}, [pathname]);',
   'serviceWorkerReconciliationQueue',
-  'isExactServiceWorkerRegistration(reg, absoluteTargetUrl, absoluteTargetScope)',
+  'matchesTarget(reg, allowedTarget)',
+  'return [OWNER_SW_TARGET, MYCODEX_OWNER_SW_TARGET, ANSWERLATTICE_PLATFORM_SW_TARGET]',
   'await currentRegistration.update();',
   '/^\\/assets(?:\\/|$)/',
   '/^\\/business-health(?:\\/|$)/',
