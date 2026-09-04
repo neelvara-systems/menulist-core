@@ -85,9 +85,13 @@ function verifyMobileShellRouteMap() {
   const mobileBillingScreen = read('src/components/mobile/screens/MobileBillingScreen.tsx');
   const mobileNavigation = read('src/components/mobile/MobileNavigation.tsx');
   const mobileMoreScreen = read('src/components/mobile/screens/MobileMoreScreen.tsx');
+  const mobileMenuScreen = read('src/components/mobile/screens/MobileMenuScreen.tsx');
+  const mobileHelpScreen = read('src/components/mobile/screens/MobileHelpScreen.tsx');
+  const answerlatticeWidgetManagement = read('src/components/templates/answerlattice/widgetManagement/AnswerlatticeWidgetManagement.tsx');
+  const menuListHelpCenter = read('src/components/templates/main-app/menuListHelpCenter/index.tsx');
+  const mobileAdvancedSettingsScreen = read('src/components/mobile/screens/MobileAdvancedSettingsScreen.tsx');
   const mobileBottomActionSurfaces = [
     'src/components/mobile/screens/MobileBasicSettingsScreen.tsx',
-    'src/components/mobile/screens/MobileAdvancedSettingsScreen.tsx',
     'src/components/mobile/screens/MobileTimeSlotsScreen.tsx',
     'src/components/mobile/screens/MobileDesignEditorScreen.tsx',
     'src/components/mobile/screens/MobileWorkingHoursEditScreen.tsx',
@@ -165,10 +169,30 @@ function verifyMobileShellRouteMap() {
   assertIncludes(mobileShell, "moreScreen: 'platformHub'", 'MobileShell platform fallback target');
   assertIncludes(mobileShell, "return HELP_CENTER_TAB_TO_MORE_SCREEN[tab] || 'menuListHelp';", 'MobileShell help-center tab fallback');
   assertIncludes(mobileShell, "buildMobileRouteHash(tab: MobileTab, todayScreen: 'main' | 'dashboard' | 'history', moreScreen: MoreSubScreen)", 'MobileShell hash builder must preserve Today dashboard/history and More sub-screen state');
+  assertIncludes(mobileMoreScreen, 'const setSubScreen = useCallback((nextScreen: MoreSubScreen) => {', 'Mobile More controlled sub-screen transition boundary');
+  assertIncludes(mobileMoreScreen, 'setInternalSubScreen(nextScreen);', 'Mobile More local sub-screen transition');
+  assertIncludes(mobileMoreScreen, 'onScreenChange?.(nextScreen);', 'Mobile More parent sub-screen transition');
+  assertIncludes(mobileMoreScreen, 'setInternalSubScreen(initialScreen);', 'Mobile More external route synchronization');
+  assertIncludes(mobileShell, "onOpenPrintAssets={() => handleOpenPrintAssets('share')}", 'Share-origin Assets handoff must retain its return tab');
+  assertIncludes(mobileShell, "onOpenPrintMenu={() => handleOpenPrintMenu('share')}", 'Share-origin Print Menu handoff must retain its return tab');
+  assertIncludes(mobileShell, "onExitPrintSurface={printSurfaceReturnTab === 'share' ? handleOpenShareTab : undefined}", 'Share-origin print surfaces must receive a shell-native return action');
+  assertIncludes(mobileMoreScreen, "onBack={() => onExitPrintSurface ? onExitPrintSurface() : setSubScreen('main')}", 'Print Assets Back must restore its Share origin when present');
+  assertIncludes(mobileMoreScreen, "printMenuBackTarget === 'printAssets'", 'Print Menu Back must first restore its nested Assets origin');
+  assertIncludes(mobileMoreScreen, "if (onExitPrintSurface) {", 'Print Menu Back must restore its Share origin when present');
+  assertIncludes(mobileMoreScreen, "setPrintMenuBackTarget('printAssets')", 'Assets-to-Print-Menu navigation must remember its nested origin');
+  assert(!mobileMoreScreen.includes("setInternalSubScreen(initialScreen);\n        setPrintMenuBackTarget('main');"), 'Mirrored parent screen updates must not erase the Assets-to-Print-Menu return target');
+  assertIncludes(mobileMenuScreen, "const isFirstRunProject = Boolean(menuData?.projectId) && menuItems.length === 0 && !searchQuery && appliedFilterCount === 0;", 'First-run menu guidance must remain visible after the first category until the first item exists');
+  assertIncludes(mobileMenuScreen, "{hasCategories ? (", 'First-run menu guidance must expose Add Item after the first category exists');
+  assert(!mobileMenuScreen.includes("Boolean(menuData?.projectId) && !hasCategories && menuItems.length === 0"), 'First-run Add Item must not be made unreachable by requiring both no categories and existing categories');
+  assert(!mobileMoreScreen.includes('onScreenChange?.(subScreen);'), 'Mobile More must not mirror local state to its parent from an effect because back transitions can oscillate between stale controlled values');
+  assertIncludes(mobileMoreScreen, "['platformHub', 'answerlatticeHub', 'opsControlRoom', 'extractionMonitor', 'schedulerMonitor']", 'Platform role must be allowed to return to both internal management hubs');
+  assertIncludes(answerlatticeWidgetManagement, 'if (!embeddedMobile && shouldNormalizeRoute) {', 'Embedded mobile widget management must remain inside the MenuList internal shell');
+  assertIncludes(answerlatticeWidgetManagement, 'if (embeddedMobile) return;', 'Embedded mobile widget tabs must not navigate into Answerlattice public or dashboard routes');
   assertIncludes(mobileShell, "data-mobile-shell-scroll=\"true\"", 'MobileShell must expose the scroll container for owner-mobile QA harnesses');
-  assertIncludes(mobileShell, "const hasPendingSubscription = activeSubscription?.status === 'pending';", 'MobileShell must distinguish payment-pending recovery from a no-subscription plan choice');
-  assertIncludes(mobileShell, "? `${activeSubscription.planName} — ${billingT('title')}`", 'Payment-pending gate must show the already-selected plan and Billing destination');
-  assertIncludes(mobileShell, "hasPendingSubscription ? mobileMoreT('billing') : t('viewPlans')", 'Payment-pending gate must open Billing instead of asking the owner to choose another plan');
+  assertIncludes(mobileShell, 'const accessRecoveryState = resolveOwnerAccessRecoveryState({ activeSubscription, storeDetails });', 'MobileShell must use the shared owner access-recovery state');
+  assertIncludes(mobileShell, "accessRecoveryState === 'payment_pending'", 'MobileShell must distinguish payment-pending recovery from a no-subscription plan choice');
+  assertIncludes(mobileShell, "`${activeSubscription?.planName || billingT('subscriptionPayment')} — ${billingT('title')}`", 'Payment-pending gate must show the already-selected plan and Billing destination');
+  assertIncludes(mobileShell, "accessRecoveryState === 'payment_pending' ? mobileMoreT('billing') : t('viewPlans')", 'Payment-pending gate must open Billing instead of asking the owner to choose another plan');
   assertIncludes(mobileShell, "const isBillingRecoveryScreen = activeTab === 'more' && moreScreen === 'billing';", 'Mobile billing recovery route must be identified before subscription gating');
   assertIncludes(mobileShell, 'const shouldBypassSubscriptionGate = isBillingRecoveryScreen', 'Mobile billing must remain reachable without active entitlement');
   assertIncludes(mobileShell, "setMoreScreen('billing');", 'Subscription gate View Plans action must open the mobile billing screen');
@@ -187,7 +211,19 @@ function verifyMobileShellRouteMap() {
   assertIncludes(ownerLayout, 'const isMobileRecoveryRoute = isHelpCenterRoute || isBillingRoute;', 'Narrow viewport recovery routes must share the mobile-shell boundary');
   assertIncludes(ownerLayout, 'isPlatformRoute || isOpsRoute || isResellerRoute || isMobileRecoveryRoute', 'Billing and Help recovery routes must render in MobileShell at mobile widths');
   assert(!mobileBillingScreen.includes("router.push('/dashboard#mobile/more/menuListContact')"), 'Mobile Billing support actions must not cross the restricted dashboard route');
-  assert((mobileBillingScreen.match(/router\.push\('\/help-center\/contact-us'\)/g) || []).length >= 2, 'Mobile Billing support actions must use the product-owned Help contact recovery route');
+  assert(!mobileBillingScreen.includes("router.push('/help-center/contact-us')"), 'Mobile Billing support actions must stay inside the MobileShell');
+  assertIncludes(mobileMoreScreen, 'onOpenHelp={() => setSubScreen(\'menuListContact\')}', 'Mobile Billing contact-help handoff');
+  assertIncludes(mobileMoreScreen, 'subScreen === \'menuListContact\') subScreenContent = <MobileHelpScreen initialTab="contact-us"', 'Mobile Billing product-owned contact-help screen');
+  assertIncludes(mobileMoreScreen, 'onSectionChange={openMenuListHelpSection}', 'Mobile Help section navigation must stay inside MobileShell');
+  assertIncludes(mobileMoreScreen, "setSubScreen('menuListDocs');", 'Mobile Help FAQ section target');
+  assertIncludes(mobileMoreScreen, "setSubScreen('menuListContact');", 'Mobile Help contact section target');
+  assertIncludes(mobileMoreScreen, "setSubScreen('menuListHelp');", 'Mobile Help home section target');
+  assertIncludes(mobileHelpScreen, 'onSectionChange={onSectionChange}', 'Mobile Help must project section navigation into the shared Help Centre');
+  assertIncludes(mobileHelpScreen, 'onBackToDashboard={handleBack}', 'Mobile Help dashboard recovery must remain shell-native');
+  assertIncludes(menuListHelpCenter, 'href={onSectionChange ? undefined : helpCenterTabRouting(\'faq\')}', 'Shared Help FAQ link must become a button in MobileShell');
+  assertIncludes(menuListHelpCenter, 'href={onSectionChange ? undefined : helpCenterTabRouting(\'contact-us\')}', 'Shared Help contact link must become a button in MobileShell');
+  assertIncludes(menuListHelpCenter, 'href={onSectionChange ? undefined : helpCenterTabRouting(\'home\')}', 'Shared Help home link must become a button in MobileShell');
+  assertIncludes(menuListHelpCenter, "href={onBackToDashboard ? undefined : '/dashboard'}", 'Shared Help dashboard link must become a button in MobileShell');
   assert(!mobileShell.includes('answerlatticeHelp') && !mobileShell.includes('answerlatticeDocs') && !mobileShell.includes('answerlatticeSupport'), 'MenuList mobile help route state must not use Answerlattice names');
   assertIncludes(mobileNavigation, "aria-label={t('ariaLabel')}", 'Localized mobile navigation landmark label');
   assertIncludes(mobileNavigation, 'role="navigation"', 'Mobile navigation landmark role');
@@ -197,6 +233,13 @@ function verifyMobileShellRouteMap() {
     assertIncludes(content, "import { MOBILE_BOTTOM_NAV_CLEARANCE } from '../MobileNavigation';", `${sourcePath} shared bottom-navigation clearance import`);
     assertIncludes(content, 'bottom: MOBILE_BOTTOM_NAV_CLEARANCE,', `${sourcePath} bottom action clearance`);
   }
+  assertIncludes(mobileAdvancedSettingsScreen, "import { MOBILE_BOTTOM_NAV_CLEARANCE } from '../MobileNavigation';", 'Mobile Advanced Settings shared bottom-navigation clearance import');
+  assertIncludes(mobileAdvancedSettingsScreen, 'paddingBottom: `calc(16px + ${MOBILE_BOTTOM_NAV_CLEARANCE})`', 'Mobile Advanced Settings scroll content clears bottom navigation');
+  assertIncludes(mobileAdvancedSettingsScreen, 'scrollPaddingBottom: `calc(68px + ${MOBILE_BOTTOM_NAV_CLEARANCE})`', 'Mobile Advanced Settings lower controls clear its action row');
+  assert(!mobileAdvancedSettingsScreen.includes('bottom: MOBILE_BOTTOM_NAV_CLEARANCE,'), 'Mobile Advanced Settings action row must not overlap lower feedback controls');
+  const mobileLocaleSettingsScreen = read('src/components/mobile/screens/MobileLocaleSettingsScreen.tsx');
+  assertIncludes(mobileLocaleSettingsScreen, 'paddingBottom: `calc(84px + ${MOBILE_BOTTOM_NAV_CLEARANCE})`', 'Mobile Locale Settings scroll content clears its sticky action row and bottom navigation');
+  assertIncludes(mobileLocaleSettingsScreen, 'scrollPaddingBottom: `calc(84px + ${MOBILE_BOTTOM_NAV_CLEARANCE})`', 'Mobile Locale Settings lower controls remain targetable above its sticky action row');
 
   [
     'const MOBILE_REQUIRED_NAV_TABS = [',

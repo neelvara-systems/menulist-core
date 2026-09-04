@@ -38,3 +38,13 @@ The following inputs are not architecture gaps and may remain unknown until evid
 - optional owner-approved continuity delegate.
 
 Unknown values stay visible in `system-control.md`. They must never be guessed.
+
+## Recorded Additive Change — Schema 1.1
+
+**Effective:** August 31, 2026
+
+**Owner decision:** Approved by Danny in the current request
+
+**Reason:** Exact provider/KYC evidence must remain useful for later operational, banking, tax, and verification work.
+
+Schema 1.1 adds the `restricted-original` evidence state. Existing v1.0 records, IDs, fields, exports, redacted derivatives, product boundaries, and external-action authorization remain unchanged. Migration creates permission-locked `Restricted-Originals/` storage, indexes hashes and owner authorization, and retains masked routine views. Rollback may stop accepting new restricted originals but must preserve already indexed historical evidence. Authentication/payment-authorization secrets remain prohibited.

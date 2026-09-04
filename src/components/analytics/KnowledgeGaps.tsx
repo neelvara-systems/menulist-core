@@ -102,6 +102,13 @@ export const KnowledgeGaps: React.FC<KnowledgeGapsProps> = ({
           >
             <List.Item
               onClick={() => onItemClick?.(item)}
+              onKeyDown={(event) => {
+                if (!onItemClick || (event.key !== 'Enter' && event.key !== ' ')) return;
+                event.preventDefault();
+                onItemClick(item);
+              }}
+              role={onItemClick ? 'button' : undefined}
+              tabIndex={onItemClick ? 0 : undefined}
               style={{
                 cursor: onItemClick ? 'pointer' : 'default',
                 padding: '12px 0',

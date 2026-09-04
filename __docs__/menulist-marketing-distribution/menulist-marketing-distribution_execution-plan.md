@@ -213,17 +213,25 @@ Required materials:
 | FAQ/objection answers | Drafted |
 | Launch-day response rota | Drafted |
 | Follow-up routing | Drafted |
+| Deep launch research and six-gate command plan | Done - `launch-research-2026-09-03/report-source.md` |
 
 Scheduling rule:
 
 Do not schedule until the asset pack, launch page, and follow-up workflow are ready. Product Hunt allows scheduling up to one month ahead, but early scheduling does not replace readiness.
 
-Conditional target:
+Date rule:
 
-- Target date: Tuesday, August 11, 2026.
-- Target time: 12:01am Pacific / 12:31pm IST.
-- Status: target only, not scheduled.
-- Move the date if production WhatsApp readiness, demo proof assets, Product Hunt visuals/video, launch URL, offer, and response coverage are not ready before the scheduling window.
+- The former Tuesday, August 11, 2026 target is expired and retired.
+- Do not select a replacement date until the product/route, proof,
+  intake/capacity, message/assets, channel/compliance, and
+  measurement/continuation gates in
+  `launch-research-2026-09-03/report-source.md` all pass.
+- Current Product Hunt guidance says the best day is when the maker is ready;
+  there is no authoritative golden weekday.
+- Product Hunt normally gives a full daily cycle to a launch scheduled at the
+  start of its Pacific-time day. Use that default only if the founder can cover
+  the relevant response windows; timing must serve response quality, not rank
+  folklore.
 
 ## Phase 6 - Launch Week
 
@@ -240,6 +248,13 @@ Launch day operations:
 - direct partner messages
 - manual response to every useful comment
 - tag every lead by path: upload, partner, multi-location, press, feedback, irrelevant
+
+The X layer runs as the bounded qualified-attention wave in
+`menulist-marketing-distribution_launch-week-content-calendar.md`. Participants
+receive the central claim, verified proof, facts, and optional angles, but use
+their own wording and opinion. No required engagement, duplicate copy,
+undisclosed material relationship, fake independent account, or paid-upvote
+behavior is allowed.
 
 Launch-day metrics:
 

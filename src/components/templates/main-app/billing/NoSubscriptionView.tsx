@@ -1,6 +1,7 @@
 'use client'
 
 import { isStarterActivationStore } from '@lib/onboarding/starterActivation';
+import { resolveOwnerAccessRecoveryState } from '@lib/onboarding/ownerAccessRecovery';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { Alert, Button, Card, Flex, Typography } from 'antd';
 import { useRouter } from 'next/navigation';
@@ -16,28 +17,40 @@ const { Text } = Typography;
 const NoSubscriptionView: React.FC = () => {
     const router = useRouter();
     const billingT = useTranslations('Billing');
+    const dashboardT = useTranslations('Dashboard');
     const starterT = useTranslations('StarterActivation');
-    const { storeDetails } = useContext(PlatformGlobalDataContext);
+    const { activeSubscription, storeDetails } = useContext(PlatformGlobalDataContext);
     const isStarterStore = isStarterActivationStore(storeDetails);
+    const recoveryState = resolveOwnerAccessRecoveryState({ activeSubscription, storeDetails });
+    const title = recoveryState === 'payment_pending'
+        ? billingT('subscriptionPayment')
+        : recoveryState === 'starter_expired'
+            ? billingT('statusExpired')
+            : recoveryState === 'workspace_missing'
+                ? dashboardT('noStoreSelected')
+                : billingT('noActiveSubscription');
+    const description = recoveryState === 'payment_pending'
+        ? billingT('subtitle')
+        : recoveryState === 'starter_expired'
+            ? starterT('noSubscriptionDescription')
+            : billingT('noActiveSubscriptionDesc');
 
     return (
         <>
             <Alert
-                message={isStarterStore ? starterT('endingSoonTitle') : billingT('noActiveSubscription')}
-                description={isStarterStore
-                    ? starterT('noSubscriptionDescription')
-                    : billingT('noActiveSubscriptionDesc')}
-                type="info"
+                message={title}
+                description={description}
+                type={recoveryState === 'payment_pending' ? 'warning' : 'info'}
                 showIcon
                 style={{ marginBottom: '10px' }}
             />
             <Card variant="borderless" style={{ marginBottom: '10px' }}>
                 <Flex vertical align="center" gap={16}>
                     <Text type="secondary">
-                        {isStarterStore ? starterT('choosePlanDescription') : billingT('chooseAPlan')}
+                        {isStarterStore ? starterT('choosePlanDescription') : billingT('noSubscriptionFound')}
                     </Text>
                     <Button type="primary" size="large" onClick={() => router.push('/billing')}>
-                        {billingT('viewPlans')}
+                        {recoveryState === 'payment_pending' ? billingT('retryPayment') : billingT('viewPlans')}
                     </Button>
                 </Flex>
             </Card>

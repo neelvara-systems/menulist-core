@@ -19,9 +19,11 @@ import {
     releaseStoreSwitchAttempt,
 } from '@lib/multiOutlet/storeSwitchAccess';
 import { hasAnyPermission } from '@lib/permissions/permissionRequirements';
-import { DEFAULT_PHONE_COUNTRY_CODE, getDialCodeForCountry, getUniquePhoneCountries } from '@lib/phone/phoneNumber';
+import { DEFAULT_PHONE_COUNTRY_CODE, getDialCodeForCountry, getUniquePhoneCountries, normalizePhoneNumberForStorage } from '@lib/phone/phoneNumber';
+import { retainChangedProfileFields } from '@lib/userProfile/profileUpdate';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { computeBusinessCopyCoverage } from '@services/ai/businessCopy/translationCoverage';
+import type { MenuListHelpSection } from '@template/main-app/menuListHelpCenter';
 import { theme } from 'antd';
 import { useSession } from 'next-auth/react';
 import { useTranslations } from 'next-intl';
@@ -268,13 +270,13 @@ export type MoreSubScreen =
 
 interface MobileMoreScreenProps {
     initialScreen?: MoreSubScreen;
+    onExitPrintSurface?: () => void;
     onOpenMenuTab?: () => void;
     onOpenShareTab?: () => void;
     onRootStateChange?: (isRoot: boolean) => void;
     onScreenChange?: (screen: MoreSubScreen) => void;
 }
-
-export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab, onOpenShareTab, onRootStateChange, onScreenChange }: MobileMoreScreenProps) {
+export default function MobileMoreScreen({ initialScreen = 'main', onExitPrintSurface, onOpenMenuTab, onOpenShareTab, onRootStateChange, onScreenChange }: MobileMoreScreenProps) {
     const t = useTranslations('MobileMore');
     const tAppSettings = useTranslations('AppSettings');
     const tBusiness = useTranslations('BusinessSettings');
@@ -298,7 +300,8 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
         () => computeBusinessCopyCoverage(storeDetails, { includePwaShortName: FEATURE_FLAGS.ENABLE_CUSTOMER_APP_PWA }),
         [storeDetails],
     );
-    const [subScreen, setSubScreen] = useState<MoreSubScreen>(initialScreen);
+    const [subScreen, setInternalSubScreen] = useState<MoreSubScreen>(initialScreen);
+    const [printMenuBackTarget, setPrintMenuBackTarget] = useState<'main' | 'printAssets'>('main');
     const mainScrollTopRef = useRef(0);
     const { data: session } = useSession();
     const [isLoggingOut, setIsLoggingOut] = useState(false);
@@ -460,13 +463,17 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
         }
     }, [accessibleStoreSummaries, currentStoreId, isSwitchingStore, loginStoreId, setActiveStoreContext, storeSwitchScopeKey]);
 
-    useEffect(() => {
-        onRootStateChange?.(subScreen === 'main');
-        onScreenChange?.(subScreen);
-    }, [onRootStateChange, onScreenChange, subScreen]);
+    const setSubScreen = useCallback((nextScreen: MoreSubScreen) => {
+        setInternalSubScreen(nextScreen);
+        onScreenChange?.(nextScreen);
+    }, [onScreenChange]);
 
     useEffect(() => {
-        setSubScreen(initialScreen);
+        onRootStateChange?.(subScreen === 'main');
+    }, [onRootStateChange, subScreen]);
+
+    useEffect(() => {
+        setInternalSubScreen(initialScreen);
     }, [initialScreen]);
 
     useEffect(() => {
@@ -495,12 +502,25 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
         setSubScreen(nextScreen);
     };
 
+    const openMenuListHelpSection = (section: MenuListHelpSection) => {
+        if (section === 'faq') {
+            setSubScreen('menuListDocs');
+            return;
+        }
+        if (section === 'contact-us') {
+            setSubScreen('menuListContact');
+            return;
+        }
+        setSubScreen('menuListHelp');
+    };
+
     const openDesktopRoute = (path: string) => {
         setForceDesktopRoute(path);
         router.push(path);
     };
 
     const openMenuCardExport = useCallback(() => {
+        setPrintMenuBackTarget('main');
         openSubScreen('printMenu');
     }, []);
 
@@ -564,7 +584,7 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
         : { color: 'default', label: tShare('feedbackOff') };
 
     const moduleItems: MoreListItem[] = [
-        ...(canViewAnalytics ? [{ key: 'dashboard', icon: <LuBarChart3 color={token.colorPrimary} size={20} />, keywords: ['public readiness', 'business status', 'public status', 'dashboard', 'needs attention'], label: 'Public readiness', description: 'Menu, hours, customer link, feedback, and activity in one check.', onClick: () => openSubScreen('dashboard') }] : []),
+        ...(canViewAnalytics ? [{ key: 'dashboard', icon: <LuBarChart3 color={token.colorPrimary} size={20} />, keywords: ['public readiness', 'business status', 'public status', 'dashboard', 'needs attention'], label: 'Business status', description: 'See what customers can use now and what needs your attention.', onClick: () => openSubScreen('dashboard') }] : []),
         ...(canOpenMenuSetupShortcut && menuSetupSummary ? [{
             key: 'menuSetup',
             icon: <LuListChecks color={token.colorPrimary} size={20} />,
@@ -736,7 +756,7 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
         if (screen === 'costPosture') return isPlatformAdmin && FEATURE_FLAGS.ENABLE_PLATFORM_COST_POSTURE;
         if (screen === 'assetTemplates') return isPlatformAdmin && FEATURE_FLAGS.ENABLE_PLATFORM_ASSET_TEMPLATE_MANAGER;
         if (screen === 'answerlatticeIntake') return isPlatformAdmin && FEATURE_FLAGS.ENABLE_ANSWERLATTICE_INTAKE_PLATFORM_MONITOR;
-        if (isPlatformAdmin && (isPlatformInternalScreen(screen) || ['platformHub', 'opsControlRoom', 'extractionMonitor', 'schedulerMonitor'].includes(screen))) return true;
+        if (isPlatformAdmin && (isPlatformInternalScreen(screen) || ['platformHub', 'answerlatticeHub', 'opsControlRoom', 'extractionMonitor', 'schedulerMonitor'].includes(screen))) return true;
         if (['menuListHelp', 'menuListDocs', 'menuListContact'].includes(screen)) return true;
         return false;
     }, [
@@ -781,11 +801,10 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
 
     const shareAndPlacementItems = [
         ...pickItems(businessIdentityItems, ['searchDiscoveryHub']),
-        ...pickItems(moduleItems, ['printAssets', 'printMenu']),
     ];
 
     const feedbackAndActivityItems = [
-        ...pickItems(moduleItems, ['dashboard', 'businessHealth', 'feedback', 'todayHistory']),
+        ...pickItems(moduleItems, ['dashboard', 'feedback', 'todayHistory']),
         ...pickItems(businessPresenceItems, ['feedbackSettings']),
     ];
 
@@ -883,7 +902,7 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
         />
     );
     else if (subScreen === 'accountAccess') subScreenContent = <MobileAccountAccessScreen onBack={() => setSubScreen('accountProfile')} userLoginLabel={userLoginLabel} userName={userName} />;
-    else if (subScreen === 'billing') subScreenContent = <MobileBillingScreen onBack={() => setSubScreen('main')} />;
+    else if (subScreen === 'billing') subScreenContent = <MobileBillingScreen onBack={() => setSubScreen('main')} onOpenHelp={() => setSubScreen('menuListContact')} />;
     else if (subScreen === 'businessProfileHub') subScreenContent = <MobileMoreHubScreen description="Manage your public business identity, customer-facing links, and store branding in one place." items={businessProfileHubItems} onBack={() => setSubScreen('main')} title="Business Profile" />;
     else if (subScreen === 'searchDiscoveryHub') subScreenContent = <MobileMoreHubScreen description="Manage how customers find you, what search engines read, and where your official links lead." items={searchDiscoveryHubItems} onBack={() => setSubScreen('main')} title="Search & Discovery" />;
     else if (subScreen === 'platformHub') subScreenContent = <MobileMoreHubScreen description="Internal MenuList account administration, entity blocks, stores, tenants, users, and diagnostics." items={platformHubItems} onBack={() => setSubScreen('main')} title="Platform" />;
@@ -909,11 +928,40 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
     );
     else if (subScreen === 'businessHealth') subScreenContent = <MobileBusinessHealthScreen onBack={() => setSubScreen('main')} onOpenMenuTab={onOpenMenuTab} onOpenMoreScreen={openSubScreen} onOpenShareTab={onOpenShareTab} />;
     else if (subScreen === 'aiMenuManager') subScreenContent = <MobileAiMenuManagerScreen onBack={() => setSubScreen('main')} />;
-    else if (subScreen === 'printAssets') subScreenContent = <MobilePrintAssetsScreen onBack={() => setSubScreen('main')} onOpenDesignEditor={() => setSubScreen('designEditor')} onOpenPrintMenu={() => setSubScreen('printMenu')} />;
-    else if (subScreen === 'printMenu') subScreenContent = <MobileMenuCardExportScreen initialProjectId={selectedProjectId} onBack={() => setSubScreen('main')} />;
+    else if (subScreen === 'printAssets') subScreenContent = (
+        <MobilePrintAssetsScreen
+            onBack={() => onExitPrintSurface ? onExitPrintSurface() : setSubScreen('main')}
+            onOpenDesignEditor={() => setSubScreen('designEditor')}
+            onOpenPrintMenu={() => {
+                setPrintMenuBackTarget('printAssets');
+                setSubScreen('printMenu');
+            }}
+        />
+    );
+    else if (subScreen === 'printMenu') subScreenContent = (
+        <MobileMenuCardExportScreen
+            initialProjectId={selectedProjectId}
+            onBack={() => {
+                if (printMenuBackTarget === 'printAssets') {
+                    setPrintMenuBackTarget('main');
+                    setSubScreen('printAssets');
+                    return;
+                }
+                if (onExitPrintSurface) {
+                    onExitPrintSurface();
+                    return;
+                }
+                setSubScreen('main');
+            }}
+            onOpenPrintAssets={() => {
+                setPrintMenuBackTarget('main');
+                setSubScreen('printAssets');
+            }}
+        />
+    );
     else if (subScreen === 'feedback') subScreenContent = <MobileFeedbackScreen onBack={() => setSubScreen('main')} />;
     else if (subScreen === 'transactions') subScreenContent = <MobileTransactionsScreen onBack={() => setSubScreen('main')} />;
-    else if (subScreen === 'help') subScreenContent = <MobileHelpScreen onBack={() => setSubScreen('main')} />;
+    else if (subScreen === 'help') subScreenContent = <MobileHelpScreen onBack={() => setSubScreen('main')} onSectionChange={openMenuListHelpSection} />;
     else if (subScreen === 'advancedSettings') subScreenContent = <MobileAdvancedSettingsScreen onBack={() => setSubScreen('main')} />;
     else if (subScreen === 'contactSettings') subScreenContent = <MobileBasicSettingsScreen onBack={() => setSubScreen('main')} />;
     else if (subScreen === 'designEditor') subScreenContent = <MobileDesignEditorScreen onBack={() => setSubScreen('main')} />;
@@ -940,9 +988,9 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
     }
     else if (subScreen === 'customerApp') subScreenContent = <MobileCustomerAppScreen onBack={() => setSubScreen(getBackTarget('customerApp'))} />;
     else if (subScreen === 'presenceMonitor') subScreenContent = <MobilePresenceMonitorScreen onBack={() => setSubScreen(getBackTarget('presenceMonitor'))} />;
-    else if (subScreen === 'menuListHelp') subScreenContent = <MobileHelpScreen onBack={() => setSubScreen('main')} />;
-    else if (subScreen === 'menuListDocs') subScreenContent = <MobileHelpScreen initialTab="faq" onBack={() => setSubScreen('main')} />;
-    else if (subScreen === 'menuListContact') subScreenContent = <MobileHelpScreen initialTab="contact-us" onBack={() => setSubScreen('main')} />;
+    else if (subScreen === 'menuListHelp') subScreenContent = <MobileHelpScreen onBack={() => setSubScreen('main')} onSectionChange={openMenuListHelpSection} />;
+    else if (subScreen === 'menuListDocs') subScreenContent = <MobileHelpScreen initialTab="faq" onBack={() => setSubScreen('main')} onSectionChange={openMenuListHelpSection} />;
+    else if (subScreen === 'menuListContact') subScreenContent = <MobileHelpScreen initialTab="contact-us" onBack={() => setSubScreen('main')} onSectionChange={openMenuListHelpSection} />;
     else if (subScreen === 'opsControlRoom') subScreenContent = <MobileOpsControlRoomScreen onBack={() => setSubScreen(getBackTarget('opsControlRoom'))} />;
     else if (subScreen === 'extractionMonitor') subScreenContent = <MobileExtractionMonitorScreen onBack={() => setSubScreen(getBackTarget('extractionMonitor'))} />;
     else if (subScreen === 'schedulerMonitor') subScreenContent = <MobileSchedulerMonitorScreen onBack={() => setSubScreen(getBackTarget('schedulerMonitor'))} />;
@@ -1219,7 +1267,23 @@ function MobileAccountProfileScreen({
     const [editOpen, setEditOpen] = useState(false);
     const [saving, setSaving] = useState(false);
 
-    const phoneLabel = [dialCode, phoneNumber].filter(Boolean).join(' ').trim();
+    const phoneLabel = normalizePhoneNumberForStorage({ countryCode, dialCode, phoneNumber }).displayNumber;
+    const normalizedDraftName = draftName.trim();
+    const normalizedDraftEmail = draftEmail.trim();
+    const normalizedDraftPhone = draftPhone.trim();
+    const profileHasChanges = Object.keys(retainChangedProfileFields({
+        countryCode: phoneNumber ? countryCode || '' : '',
+        dialCode: phoneNumber ? dialCode || '' : '',
+        displayEmail: email || '',
+        name: userName,
+        phoneNumber: phoneNumber || '',
+    }, {
+        countryCode: normalizedDraftPhone ? draftCountryCode || DEFAULT_PHONE_COUNTRY_CODE : '',
+        dialCode: normalizedDraftPhone ? getDialCodeForCountry(draftCountryCode || DEFAULT_PHONE_COUNTRY_CODE, draftDialCode) : '',
+        displayEmail: normalizedDraftEmail,
+        name: normalizedDraftName,
+        phoneNumber: normalizedDraftPhone,
+    })).length > 0;
     const buildProfileLogContext = (flow: string) => ({
         surface: 'mobile_account_profile',
         flow,
@@ -1240,9 +1304,9 @@ function MobileAccountProfileScreen({
     };
 
     const saveProfile = async () => {
-        const nextName = draftName.trim();
-        const nextEmail = draftEmail.trim();
-        const nextPhone = draftPhone.trim();
+        const nextName = normalizedDraftName;
+        const nextEmail = normalizedDraftEmail;
+        const nextPhone = normalizedDraftPhone;
         const nextCountryCode = draftCountryCode || DEFAULT_PHONE_COUNTRY_CODE;
         const nextDialCode = getDialCodeForCountry(nextCountryCode, draftDialCode);
 
@@ -1254,6 +1318,7 @@ function MobileAccountProfileScreen({
             Toast.show({ content: 'Enter a valid email.', duration: 1500 });
             return;
         }
+        if (!profileHasChanges) return;
 
         setSaving(true);
         try {
@@ -1383,7 +1448,7 @@ function MobileAccountProfileScreen({
                         </Card>
                         <Flex gap={8}>
                             <Button block fill="outline" onClick={() => setEditOpen(false)} size="large">Cancel</Button>
-                            <Button block loading={saving} onClick={() => void saveProfile()} size="large">Save</Button>
+                            <Button block disabled={!profileHasChanges} loading={saving} onClick={() => void saveProfile()} size="large">Save</Button>
                         </Flex>
                     </Flex>
                 </Flex>

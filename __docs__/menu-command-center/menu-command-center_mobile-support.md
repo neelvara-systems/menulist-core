@@ -1,9 +1,9 @@
 # Menu Command Center — Mobile Support
 
-**Last Updated:** July 2, 2026
-**Decision:** ⚠️ PARTIAL — Availability + Show/Hide on mobile; Pricing + Category moves desktop-only
+**Last Updated:** August 31, 2026
+**Decision:** ✅ MOBILE SUPPORTED — Availability, visibility, pricing, and category moves
 
-**Source gate:** `npm run verify:menu-project-editor-boundary` checks that Mobile bulk actions stay on the same project persistence contract as desktop: `BulkActionsSheet` returns an updated project, `MobileMenuScreen` persists through `updateProjectWithoutLoader`, and `assertProjectUpdateSucceeded` rejects missing acknowledgements before local state is treated as saved.
+**Source gate:** `npm run verify:menu-project-editor-boundary` checks that Mobile bulk actions stay on the same project persistence contract as desktop: `BulkActionsSheet` returns an updated project, `MobileMenuScreen` persists through `updateProjectWithoutLoader`, and `assertProjectUpdateSucceeded` rejects missing acknowledgements before local state is treated as saved. It also fails closed unless confirmation dialogs replace, rather than stack over, both bulk-action sheets.
 
 ---
 
@@ -11,9 +11,9 @@
 
 | Gate          | Result                               | Reasoning                                                            |
 | ------------- | ------------------------------------ | -------------------------------------------------------------------- |
-| **Frequency** | ⚠️ PARTIAL                           | Availability toggles happen daily on-floor; pricing changes are rare |
-| **Speed**     | ✅ PASS (for availability/show-hide) | Select items → tap action → done in <10s                             |
-| **Touch**     | ✅ PASS (for simple actions)         | Checkboxes + big action buttons work on touch                        |
+| **Frequency** | ✅ PASS                              | Availability and visibility happen during service; pricing and moves are common menu-maintenance actions |
+| **Speed**     | ✅ PASS                              | Search/select → preview → confirm is a short bounded flow            |
+| **Touch**     | ✅ PASS                              | Grouped checkboxes, filters, previews, and 44px action targets work on touch |
 | **Value**     | ✅ PASS                              | Phone-only owner needs to mark items sold out in bulk during service |
 
 ---
@@ -26,10 +26,10 @@
 | Bulk Show/Hide (permanently show/hide) | `BulkActionsSheet` | ✅                          |
 | Multi-select with search               | `BulkActionsSheet` | ✅                          |
 | Category-grouped item list             | `BulkActionsSheet` | ✅                          |
-| Confirmation dialog before apply       | `BulkActionsSheet` | ✅                          |
-| Bulk Pricing (%, flat, fixed)          | Desktop only       | ❌ Complex multi-step UX    |
-| Move to Category                       | Desktop only       | ❌ Complex multi-step UX    |
-| Impact Preview panel                   | Desktop only       | ❌ Needs large screen       |
+| Confirmation dialog before apply       | `BulkActionsSheet` | ✅ Replaces the action sheet while open |
+| Bulk Pricing (%, flat, fixed)          | `BulkActionsSheet` | ✅ Preview before confirm   |
+| Move to Category                       | `BulkActionsSheet` | ✅ Destination + preview    |
+| Impact Preview panel                   | `BulkActionsSheet` | ✅ Compact inline preview   |
 | 30-second Undo                         | Desktop only       | ❌ Complex state management |
 
 ## DAL Parity

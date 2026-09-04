@@ -32,6 +32,7 @@ for (const [source, token, label] of [
   [adapter, "fabricApi.filters", "Fabric 7 image filters"],
   [editor, "convertActiveSelectionToGroup", "Fabric 7 grouping helper"],
   [editor, "convertGroupToActiveSelection", "Fabric 7 ungrouping helper"],
+  [editor, 'const FABRIC_ACTIVE_SELECTION_TYPE = "activeselection"', "Fabric 7 active-selection runtime type"],
   [editor, "canvas.sendObjectToBack(object)", "collection-owned stack movement"],
   [editor, "activeObject.clone(CREATIVE_EDITOR_FABRIC_ATTRIBUTES)", "Promise clone boundary"],
 ]) {
@@ -128,6 +129,11 @@ assert.equal(
 
 const before = [first.getBoundingRect(), second.getBoundingRect()];
 const selection = new ActiveSelection([first, second], { canvas });
+assert.equal(
+  selection.type,
+  "activeselection",
+  "Fabric 7 exposes the legacy ActiveSelection type getter in lowercase",
+);
 canvas.setActiveObject(selection);
 
 const selectedObjects = selection.getObjects();

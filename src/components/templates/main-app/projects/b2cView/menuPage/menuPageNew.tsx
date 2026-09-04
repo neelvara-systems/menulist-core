@@ -30,15 +30,19 @@ import { getStoreStatus } from '@lib/hours';
 import {
     createPublicCustomerTranslator,
     getPublicCustomerLanguageDirection,
-    getPublicSpiceLevelLabel,
 } from '@lib/localization/publicCustomerMessages';
 import { getLocalizedText } from '@lib/localization/text';
 import {
     getDecisionFactArray,
     getDecisionFactNumber,
-    getDecisionFactString,
     getDecisionFactValue,
 } from '@lib/menu/itemDecisionFacts';
+import {
+    collectUsedItemDecisionSymbolIds,
+    getPublicItemDecisionSymbolLabels,
+    resolveItemDecisionSymbolIds,
+    type ItemDecisionSymbolId,
+} from '@lib/menu/itemDecisionSymbols';
 import { buildCanonicalItemUrl } from '@lib/menu/itemTruthUrls';
 import { normalizePublicMenuBackground } from '@lib/menu/publicMenuBackground';
 import {
@@ -66,6 +70,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import Image from 'next/image';
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { LuImage } from 'react-icons/lu';
+import ItemDecisionSymbolGroup from '@/components/shared/menu/ItemDecisionSymbolGroup';
 import { ExtractedDataCategory, ExtractedDataItem, PrecomputedDecisionBlocks, Project } from '../../types';
 import {
     DEFAULTS,
@@ -327,6 +332,10 @@ function MenuPageNew({
     const t = useMemo(
         () => createPublicCustomerTranslator(activeLanguage),
         [activeLanguage],
+    );
+    const itemDecisionSymbolLabels = useMemo(
+        () => getPublicItemDecisionSymbolLabels(t),
+        [t],
     );
     const languageDirection = getPublicCustomerLanguageDirection(activeLanguage);
     const localizedItemsPlural = useMemo(() => {
@@ -1018,6 +1027,21 @@ function MenuPageNew({
         );
     }, [allItems, categoriesById]);
 
+    const itemDecisionSymbolsByItem = useMemo(() => {
+        const symbolsByItem = new Map<unknown, ItemDecisionSymbolId[]>();
+        visibleItems.forEach((item) => {
+            symbolsByItem.set(item, resolveItemDecisionSymbolIds(item));
+        });
+        return symbolsByItem;
+    }, [visibleItems]);
+
+    const menuDecisionSymbolLegend = useMemo(
+        () => collectUsedItemDecisionSymbolIds(
+            Array.from(itemDecisionSymbolsByItem.values()).map((decisionSymbols) => ({ decisionSymbols })),
+        ),
+        [itemDecisionSymbolsByItem],
+    );
+
     const searchSuggestions = useMemo(() => {
         const suggestions: Array<{ id: string; label: string; type: 'item' | 'category' }> = [];
         const seen = new Set<string>();
@@ -1167,28 +1191,7 @@ function MenuPageNew({
         };
 
         const normalizedAttributes = normalizeItemFilterAttributes(item);
-        if (normalizedAttributes.veg) addChip(t('menu.vegetarian'));
-        if (normalizedAttributes.nonveg) addChip(t('menu.nonVeg'));
-        if (normalizedAttributes.forMen) addChip(t('menu.forMen'));
-        if (normalizedAttributes.forWomen) addChip(t('menu.forWomen'));
         if (normalizedAttributes.popular) addChip(t('menu.popular'));
-
-        const canonicalDietaryFilterTags = new Set(['vegetarian', 'non-vegetarian', 'non-veg', 'nonveg']);
-        getDecisionFactArray(item, 'dietaryTags')
-            .filter((tag) => !canonicalDietaryFilterTags.has(tag.toLowerCase().replace(/_/g, '-').replace(/\s+/g, '-')))
-            .slice(0, 2)
-            .forEach((tag) => {
-                const key = tag.toLowerCase().replace(/_/g, '-').replace(/\s+/g, '-');
-                if (key === 'gluten-free') addChip(t('menu.glutenFree'));
-                else if (key === 'dairy-free') addChip(t('menu.dairyFree'));
-                else if (key === 'sugar-free') addChip(t('menu.sugarFree'));
-                else addChip(normalizeFactLabel(tag));
-            });
-
-        const spiceLevel = getDecisionFactString(item, 'spiceLevel');
-        if (spiceLevel && !['none', 'not spicy', 'no spice'].includes(spiceLevel.toLowerCase())) {
-            addChip(t('menu.spice', { value: getPublicSpiceLevelLabel(spiceLevel, t) }));
-        }
 
         const durationNumber = getDecisionFactNumber(item, 'duration');
         const durationValue = getDecisionFactValue(item, 'duration');
@@ -1199,9 +1202,6 @@ function MenuPageNew({
         } else if (typeof durationValue === 'string') {
             addChip(normalizeFactLabel(durationValue));
         }
-
-        const targetAudience = getDecisionFactString(item, 'targetAudience');
-        if (targetAudience) addChip(normalizeFactLabel(targetAudience));
 
         const allergens = getDecisionFactArray(item, 'allergens');
         if (allergens.length > 0) {
@@ -1933,10 +1933,26 @@ function MenuPageNew({
         fontFamily: moodConfig.bodyFont,
     };
     const bottomMetaStyle: React.CSSProperties = {
-        marginTop: spacing.category,
+        marginTop: menuDecisionSymbolLegend.length > 0 ? 0 : spacing.category,
         padding: isMobile ? '10px 0 12px' : '12px 0 14px',
-        borderTop: `1px solid ${moodConfig.itemStyle.borderColor}`,
+        borderTop: menuDecisionSymbolLegend.length > 0
+            ? 'none'
+            : `1px solid ${moodConfig.itemStyle.borderColor}`,
         borderBottom: `1px solid ${moodConfig.itemStyle.borderColor}`,
+    };
+    const decisionSymbolLegendStyle: React.CSSProperties = {
+        alignItems: 'center',
+        background: `${moodConfig.accentColor}08`,
+        borderBottom: `1px solid ${moodConfig.itemStyle.borderColor}`,
+        borderTop: `1px solid ${moodConfig.itemStyle.borderColor}`,
+        boxSizing: 'border-box',
+        color: moodConfig.bodyColor,
+        display: 'flex',
+        fontFamily: moodConfig.bodyFont,
+        marginTop: spacing.category,
+        minHeight: isMobile ? 42 : 44,
+        padding: isMobile ? '9px 10px' : '10px 12px',
+        width: '100%',
     };
 
     const categoryHeaderStyle: React.CSSProperties = {
@@ -2601,6 +2617,7 @@ function MenuPageNew({
                                                     const itemName = getMenuText(item.name, t('menu.menuItem'));
                                                     const itemDescription = getMenuText(item.description);
                                                     const itemDecisionChips = getItemDecisionChips(item);
+                                                    const itemDecisionSymbols = itemDecisionSymbolsByItem.get(item) || [];
                                                     const activePriceAttributes = getActivePublicItemPriceAttributes(item);
                                                     const itemListPriceLabel = getPublicItemListPriceLabel(item, currencySymbol);
                                                     const shouldSpanFullGridRow =
@@ -2701,6 +2718,17 @@ function MenuPageNew({
                                                                 }}>
                                                                     <h3 style={itemNameStyle}>
                                                                         {renderHighlightedText(itemName, searchHighlightTerm, moodConfig.accentColor)}
+                                                                        {itemDecisionSymbols.length > 0 ? (
+                                                                            <span style={{ display: 'inline-flex', marginInlineStart: 7, verticalAlign: 'middle' }}>
+                                                                                <ItemDecisionSymbolGroup
+                                                                                    backgroundColor={moodConfig.background}
+                                                                                    color={moodConfig.bodyColor}
+                                                                                    labels={itemDecisionSymbolLabels}
+                                                                                    size={14}
+                                                                                    symbols={itemDecisionSymbols}
+                                                                                />
+                                                                            </span>
+                                                                        ) : null}
                                                                     </h3>
                                                                     {showItemPrices && itemListPriceLabel && (
                                                                         <span style={{
@@ -2936,6 +2964,22 @@ function MenuPageNew({
                             />
                         </div>
                     )}
+
+                    {menuDecisionSymbolLegend.length > 0 ? (
+                        <div
+                            data-menu-decision-symbol-legend="true"
+                            style={decisionSymbolLegendStyle}
+                        >
+                            <ItemDecisionSymbolGroup
+                                backgroundColor={moodConfig.background}
+                                color={moodConfig.bodyColor}
+                                labelled
+                                labels={itemDecisionSymbolLabels}
+                                size={isMobile ? 14 : 15}
+                                symbols={menuDecisionSymbolLegend}
+                            />
+                        </div>
+                    ) : null}
 
                     {/* Menu meta moves to the bottom so browsing controls stay focused at the top. */}
                     <section style={bottomMetaStyle} aria-label={t('menu.menuStatusAndLanguage')}>

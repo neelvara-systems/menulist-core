@@ -127,6 +127,11 @@ async function run(): Promise<void> {
     });
 
     try {
+        // This suite intentionally reuses the approved local emulator when it is
+        // available. Clear only this demo project so a prior certification pass
+        // cannot turn the initial create assertion into an update assertion.
+        await testEnv.clearFirestore();
+
         const ownerDb = testEnv.authenticatedContext('owner-1', {
             role: 'OWNER', storeId: '101', storeIds: ['101'], tenantId: '1', uId: 'owner-1',
         }).firestore();

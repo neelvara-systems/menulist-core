@@ -3,6 +3,7 @@ import path from 'path';
 import { FEATURE_FLAGS } from '../../src/config/features';
 import {
     applyCategoryIconDefaults,
+    normalizeCategoryIcon,
     resolveCategoryIcon,
 } from '../../src/data/shared/categoryIconSuggestions';
 import { isItemPhotoPreparationContextCurrent } from '../../src/lib/media/itemPhotoCaptureAssist';
@@ -36,8 +37,13 @@ const categoryMirror = read('functions/src/sharedData/categoryIconSuggestions.ts
 const extractionWorker = read('functions/src/logic/processMenuImagesJob.ts');
 const categoryRepair = read('src/lib/menu/categoryIconRepair.ts');
 const categoryRenderer = read('src/components/atoms/CategoryIcon/index.tsx');
+const categoryIconPicker = read('src/components/atoms/IconPicker/index.tsx');
 const desktopCategoryEditor = read('src/components/templates/main-app/projects/editorView/editCategoryModal.tsx');
+const desktopEditorContent = read('src/components/templates/main-app/projects/editorView/EditorContent.tsx');
+const desktopTraditionalView = read('src/components/templates/main-app/projects/editorView/views/TraditionalView.tsx');
 const mobileCategoryEditor = read('src/components/mobile/sheets/MobileCategoryEditSheet.tsx');
+const publicCategorySection = read('src/components/templates/main-app/projects/b2cView/output/MenuCategory.tsx');
+const publicMenuPage = read('src/components/templates/main-app/projects/b2cView/menuPage/menuPageNew.tsx');
 const ownerDashboard = read('src/components/templates/main-app/dashboard/OwnerDashboard/index.tsx');
 const ownerDashboardEnglish = read('public/locales/menulist.ai/en-GB.json');
 const desktopShare = read('src/components/templates/main-app/projects/b2cView/shareModal/index.tsx');
@@ -56,6 +62,8 @@ const mobileMenu = read('src/components/mobile/screens/MobileMenuScreen.tsx');
 
 assertCheck(FEATURE_FLAGS.ENABLE_CATEGORY_ICONS === true, 'Category icons remain enabled');
 assertCheck(categoryPrimary === categoryMirror, 'Category icon resolver is byte-identical in app and Functions');
+assertCheck(normalizeCategoryIcon(' lu:LuSoup ') === 'lu:LuSoup', 'Category icon admission normalizes canonical Lucide values');
+assertCheck(normalizeCategoryIcon('emoji:<svg>') === '', 'Category icon admission rejects markup-like emoji values');
 assertCheck(
     resolveCategoryIcon('Steaks', 'food')?.icon === 'lu:LuBeef',
     'Category icon matching does not treat the tea substring in Steaks as coffee',
@@ -79,6 +87,33 @@ assertCheck(categoryRepair.includes('applyCategoryIconDefaults(categories, items
 assertCheck(categoryRenderer.includes("normalizedIcon.startsWith('emoji:')"), 'Public category rendering preserves emoji icons');
 assertCheck(desktopCategoryEditor.includes('<IconPicker'), 'Desktop category editing exposes the shared icon picker');
 assertCheck(mobileCategoryEditor.includes('<IconPicker'), 'Mobile category editing exposes the shared icon picker');
+assertCheck(
+    categoryIconPicker.includes('disabled={disabled}')
+        && categoryIconPicker.includes('open={!disabled && open}'),
+    'Shared category icon picker enforces its disabled state without opening',
+);
+assertCheck(
+    desktopCategoryEditor.includes('disabled={isMasterControlledCategory}')
+        && desktopEditorContent.includes('categoryStates?.[editCategoryModalState.category.id]')
+        && desktopTraditionalView.includes('categoryStates?.[editCategoryModalState.category.id]'),
+    'Every desktop category editor locks master-controlled category icons using category inheritance state',
+);
+assertCheck(
+    mobileCategoryEditor.includes('disabled={isMasterControlledCategory}')
+        && mobileMenu.includes('isMasterControlled: Boolean(')
+        && mobileMenu.includes('...(scheduleChanged ? { timeSlots: nextTimeSlots } : {})'),
+    'Mobile category editing locks master-controlled identity and writes outlet schedules only when changed',
+);
+assertCheck(
+    publicCategorySection.includes('<CategoryIcon')
+        && publicCategorySection.includes('FEATURE_FLAGS.ENABLE_CATEGORY_ICONS && showCategoryIcons && category.icon'),
+    'Public category sections render saved icons only when the shared menu-design switch is enabled',
+);
+assertCheck(
+    publicMenuPage.includes('showCategoryIcons={showCategoryIcons}')
+        && publicMenuPage.includes('<CategoryIcon'),
+    'Public live-menu layouts pass the same category icon visibility preference through every section renderer',
+);
 
 assertCheck(FEATURE_FLAGS.ENABLE_BEHAVIOR_NUDGES === true, 'Behavior-copy guidance remains enabled');
 assertCheck(

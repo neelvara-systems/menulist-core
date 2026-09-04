@@ -333,6 +333,8 @@ Examples:
 
 Menu Kit is generated **client-side on demand** when the owner clicks "Download Menu Kit." Assets are NOT pre-generated or stored in Firestore.
 
+Complete Menu Kit inherits one aggregate parent theme. Callers pass the singular canonical family resolved from the current menu theme, business theme, or governed default. Every one of the 10 generated visual assets consumes that same ID; compatibility per-asset maps are collapsed to one theme before rendering. This prevents mixed-brand ZIP output. The ZIP is the fixed deployment pack, not every registered printable: assets that require selected staff, item, feedback, campaign, full-menu, or other owner-purpose context remain in their owning workflows so generation never invents data.
+
 **Why client-side:**
 
 - Zero Firebase storage cost

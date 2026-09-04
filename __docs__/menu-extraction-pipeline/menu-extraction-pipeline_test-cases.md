@@ -37,6 +37,8 @@
 - Worker completion strips arbitrary provider, owner-boost, review, confidence, and unknown envelope fields; malformed/orphan DTOs fail.
 - Owner listener rejects malformed persisted job IDs and malformed `preview_ready` result structures before comparison; a completed auto-save with malformed optional metrics stays completed but does not expose the bad result.
 - Re-extraction comparison excludes orphan items and duplicate source-file/item IDs from every mutation plan and retains attributes, tags, dietary tags, spice level, duration, and active variant state for safe new items.
+- A newly extracted category keeps its inferred canonical icon through preview approval and both standard/master and linked-outlet apply plans; a matched existing category keeps its owner-selected icon.
+- Malformed, markup-like, ASCII-only `emoji:` or overlong category icon values fail the runtime/review boundary before persistence.
 - Re-extraction rejects duplicate category IDs and a second category/item that maps to an already claimed persisted identity; dependent ambiguous items cannot enter a mutation plan.
 - Invalid extracted prices remain warning-only, omitted category order does not delete the stored order, and weak category matches emit review warnings without renaming or reordering persisted truth.
 - Primary-language item/category updates merge retained translations, configured weak thresholds control classification, and outlet-local updates contain only the explicitly changed fields.

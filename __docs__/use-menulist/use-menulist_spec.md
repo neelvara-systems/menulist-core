@@ -10,7 +10,7 @@ MenuList generates multiple outputs (links, screen URLs, QR codes, PDFs, asset b
 
 ## 2. Solution
 
-A single "Use MenuList" page that aggregates every usable output into one operational hub. Owners open this page whenever they need to:
+A single internal `Use MenuList` module, presented to owners as **Share your menu**, that aggregates every usable output into one operational hub. Owners open Share whenever they need to:
 - Share a menu link (WhatsApp, Instagram, Google)
 - Get a screen URL for their TV
 - Download print-ready QR assets

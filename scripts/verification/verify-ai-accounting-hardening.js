@@ -159,6 +159,7 @@ for (const route of billableRoutes) {
     'imagePromptCacheWriteCommitted',
     'IMAGE_PROMPT_CACHE_TTL_DAYS',
     'generationConfig?.referanceImage?.url',
+    'generationConfig?.subjectProfileId',
     'params.prompts.length !== 1',
     'Number(params.generationConfig?.numberOfImages || 1) !== 1',
     'buildMediaStoragePath({',
@@ -176,6 +177,74 @@ for (const route of billableRoutes) {
     assert(promptCache.includes(token), `AI image prompt cache helper includes token ${token}`);
   });
   assert(!promptCache.includes('prompt,'), 'AI image prompt cache helper does not persist raw prompts');
+
+  const subjectProfileRoute = read('src/app/api/image-subject-profiles/route.ts');
+  const subjectProfileStore = read('src/lib/ai/imageSubjectProfiles.ts');
+  const savedPersonSingleImageRoute = read('src/app/api/image-generation/route.ts');
+  const savedPersonBatchImageTrigger = read('src/app/api/image-generation/batch-trigger/route.ts');
+  const savedPersonBatchImageWorker = read('src/app/api/image-generation/batch-generation/route.ts');
+  const savedPersonSelector = read('src/components/templates/main-app/projects/editorView/AiImageGenerator/SubjectProfileSelector.tsx');
+  const platformGlobalDataProvider = read('src/providers/platformProviders/platformGlobalDataProvider.tsx');
+  const sessionProvider = read('src/providers/sessionProvider.tsx');
+  [
+    'withAuth',
+    'PERMISSIONS.GENERATE_IMAGES',
+    'PERMISSIONS.MANAGE_STORE',
+    'readBoundedJsonBody',
+    "checkAIRateLimit('FILE_UPLOAD'",
+    'commercialUsePermissionConfirmed: z.literal(true)',
+    'publicFigureConfirmedFalse: z.literal(true)',
+    "includeWithdrawn ? [PERMISSIONS.MANAGE_STORE] : [PERMISSIONS.GENERATE_IMAGES]",
+    "logger.security('Saved Person Profile Input Validation Failed'",
+    "'Cache-Control': 'private, no-store, max-age=0'",
+    'export const PUT = withAuth',
+    "action: z.literal('rename')",
+    'expectedVersion: z.number().int().positive()',
+  ].forEach((token) => assert(subjectProfileRoute.includes(token), `saved-person API includes security boundary ${token}`));
+  [
+    "const SUBJECT_STORAGE_PREFIX = 'system/imageSubjectProfiles'",
+    "cacheControl: 'private, max-age=0, no-store'",
+    'getMediaDataFingerprint',
+    "profile.status !== 'active'",
+    'options.includeWithdrawn === true || data.status === \'active\'',
+    'await firestoreAdmin.runTransaction(async (transaction)',
+    "logRuntimeFailure('image_subject_profile_failed_create_cleanup_failed'",
+    "throw new ImageSubjectProfileError('VERSION_MISMATCH')",
+    'deleteReferences(paths)',
+    'renameImageSubjectProfile',
+    'replaceImageSubjectProfileReferences',
+    'const nextVersion = initial.version + 1',
+    '// Preserve transaction-current metadata so a concurrent rename is not lost.',
+    "logRuntimeFailure('image_subject_profile_failed_update_cleanup_failed'",
+    'transaction.update(ref, {',
+  ].forEach((token) => assert(subjectProfileStore.includes(token), `saved-person private store includes lifecycle boundary ${token}`));
+  assert(!subjectProfileStore.includes('firebaseStorageDownloadTokens'), 'saved-person references must not receive public Firebase download tokens');
+  assert(savedPersonSingleImageRoute.includes('resolveImageSubjectProfileForGeneration'), 'single generation resolves private saved-person references server-side');
+  assert(savedPersonBatchImageTrigger.includes('assertImageSubjectProfileAvailable'), 'batch trigger preflights the exact saved-person version');
+  assert(savedPersonBatchImageWorker.includes('resolveImageSubjectProfileForGeneration'), 'batch worker resolves private saved-person references server-side');
+  [
+    'cachedImageSubjectProfiles',
+    'setCachedImageSubjectProfiles',
+    'ImageSubjectProfileCacheState',
+  ].forEach((token) => assert(platformGlobalDataProvider.includes(token), `global provider exposes lazy saved-person cache boundary ${token}`));
+  assert(!platformGlobalDataProvider.includes("@services/ai/image/subjectProfiles"), 'global provider must not eagerly fetch saved-person profiles');
+  [
+    'setCachedImageSubjectProfiles(createEmptyImageSubjectProfileCache())',
+    'providerStateMatchesCurrentSession',
+    'cachedImageSubjectProfiles',
+  ].forEach((token) => assert(sessionProvider.includes(token), `session provider scopes or clears saved-person cache with token ${token}`));
+  [
+    'getImageSubjectProfileCacheScopeKey',
+    'IMAGE_SUBJECT_PROFILE_CACHE_TTL_MS',
+    'listImageSubjectProfiles(canManageLifecycle)',
+    'cached.includeWithdrawn === canManageLifecycle',
+    'applyProfiles([profile',
+    'applyProfiles(profiles.map',
+    'applyProfiles(profiles.filter',
+    'renameImageSubjectProfile',
+    'replaceImageSubjectProfileReferences',
+    'Update photos',
+  ].forEach((token) => assert(savedPersonSelector.includes(token), `saved-person selector uses lazy scoped cache token ${token}`));
   [
     'system/aiImagePromptCache',
     'getReusableImagePromptCacheSource',
@@ -2517,9 +2586,16 @@ for (const helper of imageEditingPromptHelpers) {
     const source = read(relPath);
     assert(source.includes('AI_SERVICE_ROUTE_REQUEST_OPTIONS'), `${label} uses shared AI service request policy`);
     assert(source.includes('...AI_SERVICE_ROUTE_REQUEST_OPTIONS'), `${label} applies shared AI service request policy to fetch`);
-    assert(source.includes('createAiServiceHttpError'), `${label} uses coded HTTP errors`);
+    const usesCodedHttpError = relPath === 'src/services/ai/image/generateImageViaApi.ts'
+      ? source.includes('createImageGenerationRequestError')
+      : source.includes('createAiServiceHttpError');
+    assert(usesCodedHttpError, `${label} uses coded HTTP errors`);
     assert(source.includes('logAiServiceFailure'), `${label} uses bounded AI service diagnostics`);
-    assert(source.includes(requestFailureCode), `${label} includes request failure code ${requestFailureCode}`);
+    if (relPath === 'src/services/ai/image/generateImageViaApi.ts') {
+      assert(source.includes('ImageGenerationRequestError'), `${label} preserves owner-safe typed request failures`);
+    } else {
+      assert(source.includes(requestFailureCode), `${label} includes request failure code ${requestFailureCode}`);
+    }
     assert(source.includes(catchFailureCode), `${label} includes catch failure code ${catchFailureCode}`);
     assert(!source.includes('response.statusText'), `${label} does not copy raw response.statusText into errors`);
     assert(!source.includes('@lib/monitoring/logger'), `${label} does not use raw client logger for API failures`);
@@ -3224,6 +3300,7 @@ for (const { route, cap, validation, gate, reader } of boundedBillableBodyRoutes
     'FEATURE_FLAGS.ENABLE_AI_IMAGE_GENERATION && initialBatchItemIdSet.size > 0',
     'FEATURE_FLAGS.ENABLE_AI_IMAGE_GENERATION ? [{',
     'IMAGE_BATCH_PROJECT_SELECTION_MAX_ITEMS',
+    'zIndex={1400}',
   ].forEach((token) => assert(imageModal.includes(token), `image upload modal includes flag/limit token ${token}`));
 
   const batchSelection = read('src/components/templates/main-app/projects/editorView/AiImageGenerator/batchImageGeneration/index.tsx');

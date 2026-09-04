@@ -1,6 +1,6 @@
 # Featured Choices — Owner Help
 
-**Last verified:** July 16, 2026
+**Last verified:** September 2, 2026
 
 ## What Featured Choices does
 
@@ -21,6 +21,12 @@ When enough settled menu activity exists, MenuList can choose eligible items aut
 5. Save the menu.
 
 Desktop and mobile use the same settings.
+
+## Download a poster for a chosen item
+
+After you select and save a specific item, the same Featured section screen shows a poster download action for that choice. Open it to preview the poster, adjust the design if needed, then download an image or print-ready PDF. The poster uses your selected Asset Theme and its QR code opens that exact item.
+
+Automatic choices do not have a poster action because MenuList may select a different item later. A poster also stays unavailable while the selected item is unsaved, hidden, unavailable, missing, unsupported for that choice, or missing a public customer link.
 
 ## When a selected item cannot be shown
 

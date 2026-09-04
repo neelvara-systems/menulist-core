@@ -3,7 +3,7 @@ import type { MenuCardPrintSource } from '../models/printModel';
 import type { MenuCardTemplate } from '../models/templateTypes';
 import { resolveMenuCardBusinessPrintProfile } from '../templates/businessPrintProfiles';
 
-export const MENU_CARD_EXPORT_RENDERER_VERSION = 'menu-card-export-jspdf-v2';
+export const MENU_CARD_EXPORT_RENDERER_VERSION = 'menu-card-export-jspdf-v28';
 
 export function safeArtifactFilename(value: string, maxLength = 120): string {
     const normalized = (value || 'menu')

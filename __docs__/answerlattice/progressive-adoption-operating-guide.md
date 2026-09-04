@@ -46,7 +46,7 @@ The default navigation is intentionally smaller than the full Answerlattice feat
 - **Get Live** starts with Activation, First 10 Answers, Install Support, and Setup Status.
 - **Run Support** starts with Daily Brief and Ticket Inbox.
 - **Answer Quality** starts with Trusted Answers.
-- **All tools** reveals the other authorized tools inside that group for the current browser session.
+- **All tools** in the **Advanced** section reveals the other authorized workflows across Answerlattice for the current browser session.
 - A directly opened advanced route remains visible while it is active, so shared links and bookmarked routes are not hidden.
 - Permissions and feature flags are applied before the reveal control is built. The control never exposes an unavailable route.
 

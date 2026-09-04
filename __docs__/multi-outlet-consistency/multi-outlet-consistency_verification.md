@@ -165,7 +165,13 @@ The February 5 field-level audit below is preserved for traceability. Current Ma
 | -------- | ------ | ------------------ | -------------------- | ------ |
 | `id`     | 🔒 Yes | N/A (not editable) | N/A                  | ✅     |
 | `name`   | 🔒 Yes | ✅ Locked          | ✅ Locked            | ✅     |
+| `icon`   | 🔒 Yes | ✅ Locked          | ✅ Locked            | ✅     |
 | `images` | 🔒 Yes | ✅ Locked          | N/A (no image field) | ✅     |
+
+Desktop Advanced, Traditional, and Focus views and the mobile category sheet
+all consume category inheritance state. Mobile keeps the allowed visibility
+and schedule controls active. It writes the schedule only when preset selection
+changes, so a visibility-only save does not freeze the inherited master hours.
 
 ### 3.2 Item Locked Fields
 

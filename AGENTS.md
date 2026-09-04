@@ -73,6 +73,13 @@ This loop is the default for every non-trivial repo request. The user does not n
 5. **Auto-continue within safe scope**: do not wait for the user to explicitly request parity checks, final review, mobile review, docs sync, cache checks, or security checks when the selected workflow requires them. Stop only for core architecture changes, breaking changes, dependency conflicts, or genuinely ambiguous product context.
 6. **Skip only truly trivial requests**: a one-line shell answer or isolated wording change can be handled directly, but any repo behavior, owner/customer surface, public output, data contract, route, docs, or workflow request must go through this loop.
 
+### Cross-Worktree Session Non-Interruption
+
+- **Never trigger, message, continue, validate, or send follow-up work into another Codex session while that session is active or running.** A cross-session message can interrupt the task already in progress and leave it incomplete.
+- Before contacting another worktree session, inspect its current status. If it is active or running, wait for it to finish. Send the notification, validation request, or follow-up only after the session is complete or idle.
+- Do not create a replacement task or parallel thread merely to bypass this wait. If an active session cannot be safely contacted after waiting, report that state to Danny instead of interrupting it.
+- This rule applies to every registered worktree and every Codex session in this repository, including coordination, review, Git, release, and validation sessions.
+
 ### Strategy Confidence and Error Recovery
 
 - **Apply confidence loops proportionally**: for strategies, architecture, production-impacting fixes, security, cost, public/customer output, data contracts, route behavior, cache behavior, and cross-surface owner/mobile work, ask internally: "Am I factually confident this strategy covers the real risk?" If not, identify loopholes, failure modes, hidden assumptions, and missing evidence; propose fixes; then repeat until no known material gaps remain.

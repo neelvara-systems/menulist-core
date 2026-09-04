@@ -12,6 +12,23 @@ const CreativeEditor = dynamic(() => import("@/modules/creative-editor/CreativeE
 type SmokeVariant = "default" | "stress";
 type QaStatus = "idle" | "running" | "passed" | "failed";
 
+const smokeAssetSources = [
+    {
+        id: "smoke-approved-image",
+        label: "Smoke approved image",
+        sourceRef: "creative-editor-smoke",
+        type: "image" as const,
+        url: "/images/menu-card-export/botanical-corner-watercolor.png",
+    },
+    {
+        id: "smoke-brand-logo",
+        label: "Smoke brand logo",
+        sourceRef: "creative-editor-smoke",
+        type: "logo" as const,
+        url: "/images/menu-card-export/botanical-corner-watercolor.png",
+    },
+];
+
 interface QaResult {
     detail?: string;
     label: string;
@@ -54,6 +71,18 @@ function getButtonName(button: HTMLButtonElement) {
         button.getAttribute("title"),
         button.textContent,
     ].filter(Boolean).join(" ").replace(/\s+/g, " ").trim();
+}
+
+function describeBlockingTarget(target: Element | null) {
+    if (!(target instanceof HTMLElement)) return "unknown element";
+    const className = target.className
+        ? `.${String(target.className).replace(/\s+/g, ".")}`
+        : "";
+    const accessibleName = target.getAttribute("aria-label")
+        || target.getAttribute("title")
+        || target.textContent
+        || "";
+    return `${target.tagName.toLowerCase()}${className} ${accessibleName}`.trim();
 }
 
 async function clickButtonByName(name: string, label = name, scopeSelector?: string) {
@@ -146,6 +175,7 @@ function createQaPanel() {
         maxHeight: "48vh",
         overflow: "auto",
         padding: "12px",
+        pointerEvents: "none",
         position: "fixed",
         right: "16px",
         width: "360px",
@@ -233,6 +263,24 @@ function CreativeEditorSmokeQaProbe({
                 return `${layerCount} layers, ${canvas.width}x${canvas.height} canvas.`;
             });
 
+            await step("Single-page designs can add, duplicate, switch, and lock pages", async () => {
+                const root = await waitFor(() => query<HTMLElement>("[data-creative-editor-root='true']"), "editor root");
+                if (root.getAttribute("data-creative-editor-page-count") !== "1") {
+                    throw new Error("Smoke fixture did not start with exactly one page.");
+                }
+                await clickButtonByName("Add page", "add second page");
+                await waitFor(() => root.getAttribute("data-creative-editor-page-count") === "2", "second page");
+                await clickButtonByName("Duplicate page", "duplicate active page");
+                await waitFor(() => root.getAttribute("data-creative-editor-page-count") === "3", "third page");
+                await clickButtonByName("Page 1", "return to first page", "[aria-label='Design pages']");
+                await waitFor(() => root.getAttribute("data-creative-editor-active-page-id") === "page_1", "first page active");
+                await clickButtonByName("Lock page", "lock active page", "[aria-label='Page controls']");
+                await waitFor(() => query<HTMLButtonElement>("[aria-label='Unlock page']"), "page locked");
+                await clickButtonByName("Unlock page", "unlock active page", "[aria-label='Page controls']");
+                await waitFor(() => query<HTMLButtonElement>("[aria-label='Lock page']"), "page unlocked");
+                return "3 pages with Page 1 active and unlocked.";
+            });
+
             await step("Top-bar toggles keep the viewport stable", async () => {
                 const root = await waitFor(() => query<HTMLElement>("[data-creative-editor-root='true']"), "editor root");
                 const stage = await waitFor(() => query<HTMLElement>("[data-creative-editor-stage='true']"), "editor stage");
@@ -274,6 +322,25 @@ function CreativeEditorSmokeQaProbe({
                 ), "background status after returning");
             });
 
+            await step("Template search includes goal starters and applies a result", async () => {
+                const layerCount = getLayerCount();
+                await clickTool("templates");
+                const searchField = await waitFor(() => (
+                    query<HTMLInputElement>("input[placeholder='Search templates']")
+                ), "template search field");
+                searchField.focus();
+                setControlledValue(searchField, "appointment");
+                const appointmentStarter = await waitFor(() => {
+                    const drawer = query<HTMLElement>("[data-creative-editor-asset-drawer='true']");
+                    return Array.from(drawer?.querySelectorAll<HTMLButtonElement>("button:not([disabled])") || [])
+                        .find((candidate) => getButtonName(candidate).includes("Appointment reminder"));
+                }, "Appointment reminder search result");
+                appointmentStarter.click();
+                const nextLayerCount = await waitForLayerCountAbove(layerCount, "appointment starter layers");
+                setControlledValue(searchField, "");
+                return `${nextLayerCount - layerCount} starter layers added.`;
+            });
+
             await step("Rail tabs and drawer insertions create editable layers", async () => {
                 let layerCount = getLayerCount();
                 const drawerSelector = "[data-creative-editor-asset-drawer='true']";
@@ -295,6 +362,21 @@ function CreativeEditorSmokeQaProbe({
                 return `${layerCount} layers after drawer insertions.`;
             });
 
+            await step("Approved image, My Stuff, and Brand Kit assets insert from deterministic sources", async () => {
+                let layerCount = getLayerCount();
+                const drawerSelector = "[data-creative-editor-asset-drawer='true']";
+                await clickTool("images");
+                await clickButtonByName("Smoke approved image", "approved image source", drawerSelector);
+                layerCount = await waitForLayerCountAbove(layerCount, "approved image inserted");
+                await clickTool("myStuff");
+                await clickButtonByName("Smoke approved image", "My Stuff approved image", drawerSelector);
+                layerCount = await waitForLayerCountAbove(layerCount, "My Stuff image inserted");
+                await clickTool("brandKit");
+                await clickButtonByName("Smoke brand logo", "brand logo source", drawerSelector);
+                layerCount = await waitForLayerCountAbove(layerCount, "brand logo inserted");
+                return `${layerCount} layers after all three approved-asset insertion paths.`;
+            });
+
             await step("Keyboard creation shortcuts use normal history", async () => {
                 (document.activeElement as HTMLElement | null)?.blur();
                 let layerCount = getLayerCount();
@@ -311,17 +393,126 @@ function CreativeEditorSmokeQaProbe({
                 return `${layerCount} layers after keyboard insertions.`;
             });
 
+            await step("Multi-selection actions group, distribute, duplicate, delete, and ungroup", async () => {
+                const root = await waitFor(() => query<HTMLElement>("[data-creative-editor-root='true']"), "editor root");
+                const initialCount = getLayerCount();
+                const keyboardTarget = await waitFor(() => query<HTMLButtonElement>("[data-creative-editor-action='layers']"), "editor keyboard target");
+                keyboardTarget.click();
+                const nonTextLayer = await waitFor(() => {
+                    const row = query<HTMLElement>("[data-creative-layer-name='Hexagon accent']");
+                    return row?.querySelector<HTMLButtonElement>("[data-creative-editor-action='select-layer']");
+                }, "non-text layer for multi-selection");
+                nonTextLayer.click();
+                await wait(120);
+                keyboardTarget.focus();
+                keyboardTarget.dispatchEvent(new KeyboardEvent("keydown", {
+                    bubbles: true,
+                    cancelable: true,
+                    ctrlKey: true,
+                    key: "a",
+                }));
+                const floatingToolbar = await waitFor(() => {
+                    const toolbar = query<HTMLElement>("[data-creative-editor-floating-toolbar='true'][data-multi='true']");
+                    return toolbar?.querySelector<HTMLButtonElement>("button[title='Group selected layers']:not([disabled])")
+                        ? toolbar
+                        : null;
+                }, "enabled multi-selection toolbar");
+                keyboardTarget.click();
+                await waitFor(() => query<HTMLElement>("[data-creative-editor-inspector='true'][data-panel-mode='layers'][aria-hidden='false']"), "layers panel with multi-selection");
+                await clickButtonByName("Close layers panel", "close layers panel before contextual actions", "[data-creative-editor-inspector='true']");
+                const contextualToolbar = await waitFor(() => query<HTMLElement>("[aria-label='Selected layers properties']"), "multi-selection properties");
+                const distributeX = Array.from(contextualToolbar.querySelectorAll<HTMLButtonElement>("button:not([disabled])"))
+                    .find((button) => getButtonName(button).includes("Distribute X"));
+                const distributeY = Array.from(contextualToolbar.querySelectorAll<HTMLButtonElement>("button:not([disabled])"))
+                    .find((button) => getButtonName(button).includes("Distribute Y"));
+                if (!distributeX || !distributeY) {
+                    throw new Error("Multi-selection distribution actions were not enabled.");
+                }
+                distributeX.click();
+                await wait(160);
+                distributeY.click();
+                await wait(160);
+
+                const contextualPosition = Array.from(contextualToolbar.querySelectorAll<HTMLButtonElement>("button:not([disabled])"))
+                    .find((button) => getButtonName(button).includes("Position"));
+                if (!contextualPosition) throw new Error("Contextual multi-selection Position action was unavailable.");
+                contextualPosition.click();
+                await waitFor(() => query<HTMLElement>("[data-creative-editor-inspector='true'][data-panel-mode='properties'][aria-hidden='false']"), "contextual multi-selection properties");
+                const quickTools = await waitFor(() => query<HTMLElement>("[data-creative-editor-inspector='true'][data-panel-mode='properties'][aria-hidden='false']"), "multi-selection Quick Tools");
+                await clickButtonByName("Distribute X", "Quick Tools distribute X", "[data-creative-editor-inspector='true']");
+                await clickButtonByName("Distribute Y", "Quick Tools distribute Y", "[data-creative-editor-inspector='true']");
+                if (!quickTools) throw new Error("Multi-selection Quick Tools did not render.");
+
+                const floatingDistributeX = floatingToolbar.querySelector<HTMLButtonElement>("button[title='Distribute across']:not([disabled])");
+                const floatingDistributeY = floatingToolbar.querySelector<HTMLButtonElement>("button[title='Distribute down']:not([disabled])");
+                const floatingMore = floatingToolbar.querySelector<HTMLButtonElement>("button[title='More layer controls']:not([disabled])");
+                if (!floatingDistributeX || !floatingDistributeY || !floatingMore) {
+                    throw new Error("Floating multi-selection distribution or More action was unavailable.");
+                }
+                floatingDistributeX.click();
+                await wait(160);
+                floatingDistributeY.click();
+                await wait(160);
+                floatingMore.click();
+                await waitFor(() => query<HTMLElement>("[data-creative-editor-inspector='true'][data-panel-mode='properties'][aria-hidden='false']"), "floating More properties");
+
+                const duplicate = floatingToolbar.querySelector<HTMLButtonElement>("button[title='Duplicate selected layers']:not([disabled])");
+                if (!duplicate) throw new Error("Multi-selection duplicate action was unavailable.");
+                duplicate.click();
+                await waitFor(() => getLayerCount() === initialCount * 2, "multi-selection duplicate");
+                const deleteSelection = await waitFor(() => (
+                    query<HTMLButtonElement>("[data-creative-editor-floating-toolbar='true'] button[title='Delete selected layers']:not([disabled])")
+                ), "multi-selection delete action");
+                deleteSelection.click();
+                await waitFor(() => getLayerCount() === initialCount, "multi-selection duplicate cleanup");
+
+                keyboardTarget.focus();
+                keyboardTarget.dispatchEvent(new KeyboardEvent("keydown", {
+                    bubbles: true,
+                    cancelable: true,
+                    ctrlKey: true,
+                    key: "a",
+                }));
+                const group = await waitFor(() => (
+                    query<HTMLButtonElement>("[data-creative-editor-floating-toolbar='true'] button[title='Group selected layers']:not([disabled])")
+                ), "floating group action");
+                group.click();
+                const groupedToolbar = await waitFor(() => query<HTMLElement>("[aria-label='Selected group actions']"), "grouped selection toolbar");
+                const position = groupedToolbar.querySelector<HTMLButtonElement>("button[title='Position and layers']:not([disabled])");
+                if (!position) throw new Error("Grouped selection Position action was unavailable.");
+                position.click();
+                await waitFor(() => query<HTMLElement>("[data-creative-editor-inspector='true'][data-panel-mode='properties'][aria-hidden='false']"), "group properties inspector");
+                const ungroup = await waitFor(() => (
+                    query<HTMLButtonElement>("[data-creative-editor-floating-toolbar='true'] button[title='Ungroup selected layers']:not([disabled])")
+                ), "floating ungroup action");
+                ungroup.click();
+                await waitFor(() => query("[data-creative-editor-floating-toolbar='true'][data-multi='true']"), "ungrouped multi-selection");
+
+                const quickGroup = await waitFor(() => (
+                    Array.from(document.querySelectorAll<HTMLButtonElement>("[data-creative-editor-inspector='true'] button:not([disabled])"))
+                        .find((button) => getButtonName(button) === "Group")
+                ), "Quick Tools group action");
+                quickGroup.click();
+                const quickUngroup = await waitFor(() => (
+                    Array.from(document.querySelectorAll<HTMLButtonElement>("[data-creative-editor-inspector='true'] button:not([disabled])"))
+                        .find((button) => getButtonName(button) === "Ungroup")
+                ), "Quick Tools ungroup action");
+                quickUngroup.click();
+                await waitFor(() => query("[data-creative-editor-floating-toolbar='true'][data-multi='true']"), "Quick Tools ungrouped multi-selection");
+                await clickSelector("[data-creative-editor-action='layers']", "open layers before closing inspector");
+                await clickButtonByName("Close layers panel", "close inspector before toolbar geometry", "[data-creative-editor-inspector='true']");
+                pressEscape();
+                await waitFor(() => !query("[data-creative-editor-floating-toolbar='true']"), "multi-selection cleared");
+                pressKey("t");
+                await waitFor(() => getLayerCount() === initialCount + 1, "fresh toolbar anchor layer");
+                return `${initialCount} unlocked layers exercised through real Fabric multi-selection; one fresh anchor layer added for toolbar geometry.`;
+            });
+
             await step("Floating toolbar stays below selection border", async () => {
                 const stage = await waitFor(() => query<HTMLElement>("[data-creative-editor-stage='true']"), "editor stage");
-                await clickSelector("[data-creative-editor-action='layers']", "layers panel");
-                const centeredLayerButton = await waitFor(() => {
-                    const rows = Array.from(document.querySelectorAll<HTMLElement>("[data-creative-layer-name]"));
-                    const row = rows.find((candidate) => candidate.dataset.creativeLayerName === "Hexagon accent");
-                    return row?.querySelector<HTMLButtonElement>("[data-creative-editor-action='select-layer']");
-                }, "Hexagon accent layer row");
-                centeredLayerButton.click();
-                await wait(160);
+                await waitFor(() => query<HTMLElement>("[data-creative-editor-floating-toolbar='true']"), "fresh anchor floating toolbar");
                 await clickButtonByName("Fit to screen", "fit canvas to screen");
+                await wait(520);
                 const toolbar = await waitFor(() => query<HTMLElement>("[data-creative-editor-floating-toolbar='true']"), "floating selection toolbar");
                 const top = Number.parseFloat(toolbar.style.top || "0");
                 const left = Number.parseFloat(toolbar.style.left || "0");
@@ -335,9 +526,22 @@ function CreativeEditorSmokeQaProbe({
                 }
                 const stageRect = stage.getBoundingClientRect();
                 const toolbarRect = toolbar.getBoundingClientRect();
-                const maxToolbarLeft = Math.max(8, stageRect.width - toolbarRect.width - 8);
-                const maxToolbarTop = Math.max(8, stageRect.height - toolbarRect.height - 8);
-                const expectedLeft = Math.max(8, Math.min(maxToolbarLeft, anchorLeft - toolbarRect.width / 2));
+                const fabricCanvas = await waitFor(() => query<HTMLCanvasElement>("canvas.lower-canvas"), "Fabric lower canvas");
+                const logicalCanvasWidth = Number.parseFloat(fabricCanvas.style.width || "0");
+                const logicalCanvasHeight = Number.parseFloat(fabricCanvas.style.height || "0");
+                if (!Number.isFinite(logicalCanvasWidth) || !Number.isFinite(logicalCanvasHeight) || logicalCanvasWidth <= 0 || logicalCanvasHeight <= 0) {
+                    throw new Error("Fabric logical canvas dimensions did not resolve.");
+                }
+                const editorBody = query<HTMLElement>("[data-creative-editor-body='true']");
+                const inspector = query<HTMLElement>("[data-creative-editor-inspector='true']");
+                const availableCanvasWidth = editorBody?.getAttribute("data-inspector-open") === "true" && inspector
+                    ? Math.max(1, logicalCanvasWidth - inspector.offsetWidth)
+                    : logicalCanvasWidth;
+                const logicalToolbarWidth = toolbar.offsetWidth;
+                const logicalToolbarHeight = toolbar.offsetHeight;
+                const maxToolbarLeft = Math.max(8, availableCanvasWidth - logicalToolbarWidth - 8);
+                const maxToolbarTop = Math.max(8, logicalCanvasHeight - logicalToolbarHeight - 8);
+                const expectedLeft = Math.max(8, Math.min(maxToolbarLeft, anchorLeft - logicalToolbarWidth / 2));
                 const expectedTop = Math.max(8, Math.min(maxToolbarTop, selectionBottom + 10));
                 const verticalGap = top - selectionBottom;
                 if (Math.abs(left - expectedLeft) > 4) {
@@ -352,6 +556,18 @@ function CreativeEditorSmokeQaProbe({
                 if (verticalGap < 8 || verticalGap > 14) {
                     throw new Error(`Toolbar gap was ${Math.round(verticalGap)}px instead of the safe gap below selection.`);
                 }
+                let blockingTarget: Element | null = null;
+                const blockedButton = Array.from(toolbar.querySelectorAll<HTMLButtonElement>("button:not([disabled])"))
+                    .find((button) => {
+                        const rect = button.getBoundingClientRect();
+                        const hitTarget = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
+                        if (hitTarget && !button.contains(hitTarget)) blockingTarget = hitTarget;
+                        return !hitTarget || !button.contains(hitTarget);
+                });
+                if (blockedButton) {
+                    const blocker = describeBlockingTarget(blockingTarget);
+                    throw new Error(`${getButtonName(blockedButton) || "Floating toolbar action"} is covered by ${blocker}.`);
+                }
                 return `Toolbar at ${Math.round(left)}, ${Math.round(top)} with ${Math.round(verticalGap)}px gap.`;
             });
 
@@ -361,6 +577,13 @@ function CreativeEditorSmokeQaProbe({
                 if (!dialog.contains(document.activeElement)) {
                     throw new Error("Shortcut dialog did not receive focus.");
                 }
+                await clickButtonByName("Close", "shortcut close button", "[data-creative-editor-dialog='shortcuts']");
+                await waitFor(() => !query("[data-creative-editor-dialog='shortcuts']"), "shortcut dialog close button");
+                if (document.activeElement !== shortcutButton) {
+                    throw new Error("Shortcut Close did not restore focus to the shortcut button.");
+                }
+                shortcutButton.click();
+                await waitFor(() => query<HTMLElement>("[data-creative-editor-dialog='shortcuts']"), "shortcut dialog reopen");
                 pressEscape();
                 await waitFor(() => !query("[data-creative-editor-dialog='shortcuts']"), "shortcut dialog close");
                 if (document.activeElement !== shortcutButton) {
@@ -402,6 +625,25 @@ function CreativeEditorSmokeQaProbe({
                 return `${rows.length} layer rows.`;
             });
 
+            await step("Existing image layers duplicate and delete through governed history", async () => {
+                const root = await waitFor(() => query<HTMLElement>("[data-creative-editor-root='true']"), "editor root");
+                await clickSelector("[data-creative-editor-action='layers']", "layers panel");
+                const imageLayer = await waitFor(() => {
+                    const row = query<HTMLElement>("[data-creative-layer-name='Illustration']");
+                    return row?.querySelector<HTMLButtonElement>("[data-creative-editor-action='select-layer']");
+                }, "Illustration layer row");
+                const imageLayerId = imageLayer.closest<HTMLElement>("[data-creative-layer-id]")?.dataset.creativeLayerId;
+                if (!imageLayerId) throw new Error("Illustration layer identity did not resolve.");
+                imageLayer.click();
+                await waitFor(() => root.getAttribute("data-creative-editor-selected-layer-id") === imageLayerId, "Illustration selection");
+                const initialCount = Number(root.getAttribute("data-creative-editor-layer-count") || "0");
+                await clickButtonByName("Duplicate selected layer", "duplicate image layer", "[aria-label='Selected layer actions']");
+                await waitFor(() => Number(root.getAttribute("data-creative-editor-layer-count") || "0") === initialCount + 1, "duplicated image layer");
+                await clickButtonByName("Delete selected layer", "delete duplicated image layer", "[aria-label='Selected layer actions']");
+                await waitFor(() => Number(root.getAttribute("data-creative-editor-layer-count") || "0") === initialCount, "image duplicate cleanup");
+                return `${initialCount} layers restored after image duplicate cleanup.`;
+            });
+
             await step("Text inspector fields keep focus after value changes", async () => {
                 await clickSelector("[data-creative-layer-type='text'] [data-creative-editor-action='select-layer']", "text layer row");
                 await clickSelector("[data-creative-editor-action='edit-selected-layer']", "edit selected layer button");
@@ -419,6 +661,17 @@ function CreativeEditorSmokeQaProbe({
                 if (document.activeElement !== sizeField) {
                     throw new Error("Font size field lost focus after editing.");
                 }
+            });
+
+            await step("Built-in artwork remains safe at download readiness", async () => {
+                await clickButtonByName("Check", "download readiness check", "[data-creative-editor-inspector='true']");
+                const readinessPanel = await waitFor(() => query<HTMLElement>("[data-creative-editor-readiness='true']"), "download readiness panel");
+                const hasImageSourceIssue = Array.from(readinessPanel.querySelectorAll("strong"))
+                    .some((label) => label.textContent?.trim() === "Image source issue");
+                if (hasImageSourceIssue) {
+                    throw new Error("Editor-provided artwork was flagged as an unsafe image source.");
+                }
+                await clickButtonByName("Close download check", "close download readiness", "[data-creative-editor-inspector='true']");
             });
 
             await step("Escape clears selection first, then collapses the left drawer", async () => {
@@ -464,7 +717,7 @@ export default function CreativeEditorSmokeClient({
     return (
         <>
             <CreativeEditor
-                assetSources={[]}
+                assetSources={smokeAssetSources}
                 initialDocument={initialDocument}
                 productLabel="Shared"
                 sourceLabel={variant === "stress" ? "Internal stress smoke route" : "Internal smoke route"}

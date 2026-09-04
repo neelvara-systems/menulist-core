@@ -81,7 +81,7 @@ function QRCodeView({ activePlanType, brandColor, logoUrl, shareUrl, storeName =
                 activePlanType,
             });
             downloadQrCode(dataUrl, buildQrCodeFilename(`${storeName}-menu`, 'qr'));
-            messageApi.success('QR code downloaded successfully!');
+            messageApi.success(`${storeName} menu QR downloaded. It opens the latest published menu.`);
         } catch (error) {
             logExportFailure('project_share_legacy_qr_download_failed', error, getLegacyQrDownloadLogContext({
                 activePlanType,

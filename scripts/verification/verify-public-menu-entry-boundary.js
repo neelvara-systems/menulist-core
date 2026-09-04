@@ -473,9 +473,12 @@ forbidToken(successClient, "textAlign: 'left'", 'Public Menu Entry RTL-safe succ
 ].forEach((token) => forbidToken(noSubscriptionView, token, 'Public Menu Entry localized Billing state'));
 [
   "useTranslations('StarterActivation')",
-  'isStarterActivationStore(storeDetails)',
-  "isStarterStore ? starterT('endingSoonTitle') : t('subscribeTitle')",
-  "isStarterStore ? starterT('noSubscriptionDescription') : t('subscribeDescription')",
+  'resolveOwnerAccessRecoveryState({ activeSubscription, storeDetails })',
+  "accessRecoveryState === 'starter_expired'",
+  "starterT('noSubscriptionDescription')",
+  "mobileMoreT('billing')",
+  "accessRecoveryState === 'payment_pending' ? mobileMoreT('billing') : t('viewPlans')",
+  "t('viewPlans')",
 ].forEach((token) => requireToken(mobileShell, token, 'Public Menu Entry starter-aware mobile subscription state'));
 [
   '"keepLiveTitle"',
@@ -495,7 +498,7 @@ if (websiteLocaleCodes.length !== 8 || new Set(websiteLocaleCodes).size !== webs
 }
 const websiteSourcePack = readJson('public/locales/menulist.ai/en-US.json');
 const createMenuNamespaceCounts = {
-  Header: 61,
+  Header: 65,
   Footer: 57,
   ThemeSwitcher: 7,
   LanguageSwitcher: 1,

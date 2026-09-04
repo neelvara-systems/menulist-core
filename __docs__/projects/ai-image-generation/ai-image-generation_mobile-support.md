@@ -1,7 +1,7 @@
 # AI Image Generation — Mobile Support
 
 **Status:** Implemented through the shared responsive owner flow
-**Last Updated:** July 14, 2026
+**Last Updated:** August 31, 2026
 
 ## Mobile decision
 
@@ -19,6 +19,8 @@ Image generation passes the mobile admission gate because owners commonly add or
 | Edit existing image | Shared uploaded-image actions open the same edit draft flow when generation is enabled |
 | Generate project/menu cover | Mobile project selector exposes the action only when the master flag is enabled |
 | Generate business cover | Mobile Official Page screen exposes the action only when the master flag is enabled |
+| Use a saved person | Select or clear an existing active, owner-approved person in the shared generation flow |
+| Manage saved people | Create with consent, withdraw, and delete remain desktop owner setup/governance actions |
 
 ## Shared inheritance
 
@@ -38,6 +40,8 @@ Mobile inherits:
 - The master flag hides new generation/edit actions without hiding upload/delete or existing batch-result recovery.
 - Batch selection never exceeds 50. If a larger missing-image set is supplied, the shared modal selects the first supported 50 and tells the owner.
 - Do not show fixed completion-time promises. Show selected-item count and the shared credit estimate.
+- Keep the generated-photo modal footer above nested sheets and suppress the underlying floating menu control while it is open.
+- Generated drafts use visible labeled selection controls; selection must not depend on hover.
 - Use plain owner copy; do not use `Smart`, provider jargon, raw job errors, or raw IDs.
 
 ## Persistence and public output
@@ -69,5 +73,9 @@ Single accepted images use `handleModalImageUpload()` and the shared item-image 
 - `npm run verify:public-business-truth`
 - scoped lint for the mobile and shared image surfaces
 - authenticated mobile-shell smoke for upload, generate, batch review, accept, discard, cancel, retry, project cover, and business cover
+
+## Saved-person behavior
+
+The shared responsive image sheet exposes the frequent saved-person action on narrow screens: an owner or permitted staff member can select or clear an existing active profile and see its protected preview. Mobile does not expose profile creation because preparing 2–4 photos and making four consent/rights assertions is rare governance work rather than a quick field action. Withdrawal and permanent deletion also remain desktop management actions. The mobile selector explains this boundary without adding a new MobileShell destination or mobile-only API. Generated output retains the existing owner review/save boundary.
 
 The authenticated mobile-shell smoke is release evidence and remains pending until run against the target deployment.

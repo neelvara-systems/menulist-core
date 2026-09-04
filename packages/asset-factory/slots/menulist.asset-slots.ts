@@ -82,7 +82,7 @@ type MenuListPublicMediaSlotConfig = {
   destination: string;
   component?: string;
   format: 'webp' | 'jpg' | 'svg';
-  ratio: '16:9' | '4:3' | '1:1' | '9:16';
+  ratio: '16:9' | '4:5' | '4:3' | '1:1' | '9:16';
   maxKb: number;
   sources: string[];
   mobileNotes: string;
@@ -92,6 +92,31 @@ type MenuListPublicMediaSlotConfig = {
 };
 
 const menuListPublicMediaSlotConfigs: MenuListPublicMediaSlotConfig[] = [
+  {
+    id: 'menulist.home.owner-workflow.intake-demonstration',
+    page: 'MenuList homepage',
+    route: '/',
+    placement: 'post-hero owner workflow gallery intake demonstration',
+    intent:
+      'Show a small-business owner starting from an existing printed menu without presenting illustrative material as customer UGC.',
+    destination: 'public/images/website/owner-workflow-intake-demo.webp',
+    component: 'src/components/website/home/OwnerWorkflowGallerySection.tsx',
+    format: 'webp',
+    ratio: '4:5',
+    maxKb: 180,
+    sources: [
+      '__docs__/main-website/main-website_content.md',
+      '__docs__/main-website/main-website_image-assets.md',
+      'public/locales/menulist.ai/en-US.json',
+      'src/components/website/home/OwnerWorkflowGallerySection.tsx',
+    ],
+    mobileNotes:
+      'Keep the owner, phone, and existing printed menu recognizable in the single-column mobile sequence.',
+    extraRejectionRules: [
+      'This is generated illustrative material; never label it as customer UGC, a testimonial, or a real MenuList customer.',
+      'Do not include a readable business name, customer identity, platform logo, metric, or automatic-publishing implication.',
+    ],
+  },
   {
     id: 'menulist.industry.service-businesses.hero-source',
     page: 'MenuList service-business industry pages',
@@ -317,6 +342,7 @@ const menuListPublicMediaSlotConfigs: MenuListPublicMediaSlotConfig[] = [
       '__docs__/main-website/main-website_image-assets.md',
       '__docs__/main-website/asset-production/stage-08-product-proof/stage-08-product-proof-demo-assets.md',
       'scripts/website-assets/generate-product-proof-assets.mjs',
+      'src/components/website/home/OwnerWorkflowGallerySection.tsx',
       'src/components/website/home/OwnerProofSection.tsx',
       'src/components/website/ai-menu-manager/AiMenuManagerPage.tsx',
     ],
@@ -484,6 +510,7 @@ export const menuListAssetSlots: AssetSlot[] = [
     sources: [
       '__docs__/main-website/main-website_image-assets.md',
       'src/components/website/home/BusinessSection.tsx',
+      'src/components/website/home/OwnerWorkflowGallerySection.tsx',
       'src/app/client/obp/OBPContent.tsx',
     ],
     mobile: {

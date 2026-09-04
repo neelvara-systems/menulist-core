@@ -18,9 +18,12 @@ import { getTenantStoreStorageKey } from '@lib/browserStorage/tenantStoreKey';
 import { getHoursConfidenceState } from '@lib/outputControl';
 import { getStoreDayKey, getStoreLocalDateKey, getStoreStatus, parseWorkingHoursRanges } from '@lib/hours/hoursEngine';
 import { getSpecialHoursEntry, normalizeSpecialHours } from '@lib/hours/specialHours';
+import { isPublishedMenuProject } from '@lib/menuPresence/presenceReadiness';
 import { isValidClockRange } from '@lib/menu/timeSlotPresetBoundary';
 import { buildTodayMenuLink, performTodaySurfaceAction } from '@lib/campaigns/todayActionExecutor';
 import { getBoundedCampaignStringContext, logCampaignFailure } from '@lib/campaigns/campaignDiagnostics';
+import { buildTodayCampaignPosterRenderInput } from '@lib/printable-asset-templates/campaignPoster';
+import type { PrintableAssetRenderInput } from '@lib/printable-asset-templates/types';
 import { AUTH_BROWSER_REQUEST_POLICY } from '@lib/auth/browserRequestPolicy';
 import { shouldShowGrowthOSNavigation } from '@lib/growthos/entitlements';
 import { getGrowthOSTodayTriggerState } from '@lib/growthos/todayTrigger';
@@ -31,6 +34,10 @@ import { getInactiveItemsReminder, getInactiveReminderDismissKey } from '@lib/to
 import { sortOperationalCampaignsByPriority } from '@lib/today/todayCampaignPrioritizer';
 import { buildTodayWeeklyGrowthPack } from '@lib/today/weeklyGrowthPack';
 import { readTempStatusResponse } from '@lib/tempStatus/clientResponse';
+import {
+    getTempStatusDraftIssue,
+    getTempStatusDraftIssueMessage,
+} from '@lib/tempStatus/draftValidation';
 import { generateProjectUrl } from '@lib/utils/slugify';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { ACTION_TITLES, CampaignType, CONTEXT_TEMPLATES, SURFACE_BUTTON_COPY, TodayCampaignSummary } from '@type/campaigns';
@@ -39,7 +46,7 @@ import { formatDateTime, fromNativeDateTimeInputValue, toDate } from '@util/date
 import { theme } from 'antd';
 import { useFormatter, useTranslations } from 'next-intl';
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { LuAlertTriangle, LuBarChart3, LuClock, LuDownload, LuEye, LuInfo, LuMessageCircle, LuPower, LuPowerOff, LuQrCode, LuSticker, LuTent, LuX } from 'react-icons/lu';
+import { LuAlertTriangle, LuClock, LuDownload, LuEye, LuInfo, LuMessageCircle, LuPower, LuPowerOff, LuSticker, LuTent, LuX } from 'react-icons/lu';
 import { Button, Card, Dialog, DotLoading, Flex, Input, List, Popup, Tag, Text, Title, Toast } from '../antd';
 import MobileTempStatusConfigurator, {
     MOBILE_TEMP_STATUS_EXPIRY_OPTIONS,
@@ -48,11 +55,18 @@ import MobileTempStatusConfigurator, {
 } from '../components/MobileTempStatusConfigurator';
 import GrowthKitsMobileCard from '../components/GrowthKitsMobileCard';
 import TodayWeeklyGrowthPackCard from '../components/TodayWeeklyGrowthPackCard';
+import CampaignPosterModal from '@/components/shared/printableAssets/CampaignPosterModal';
 import { useMobileProjects } from '../providers/MobileProjectsProvider';
 import { getBoundedMobileOwnerStringContext, getMobileOwnerStoreLogContext, logMobileOwnerFailure } from '../utils/mobileOwnerDiagnostics';
 import { openMobilePublicLink } from '../utils/openMobilePublicLink';
 
 type TodayStatus = 'open' | 'closed_today' | 'closed_after_hours';
+type PendingCampaignPoster = {
+    campaignId: string;
+    campaignType: CampaignType;
+    input: PrintableAssetRenderInput;
+    projectId: string;
+};
 
 const DAY_LABELS: Record<string, string> = {
     sun: 'Sunday',
@@ -113,12 +127,10 @@ interface MobileHoursScreenProps {
     onOpenShare?: () => void;
 }
 
-function MobileHoursScreenContent({ onOpenDashboard, onOpenHistory, onOpenMenuTab, onOpenShare }: MobileHoursScreenProps) {
+function MobileHoursScreenContent({ onOpenMenuTab }: MobileHoursScreenProps) {
     const { token } = theme.useToken();
     const t = useTranslations('MobileHours');
     const tToday = useTranslations('MobileToday');
-    const tDesign = useTranslations('MobileDesignEditor');
-    const tMore = useTranslations('MobileMore');
     const formatter = useFormatter();
     const { activeSubscription, storeDetails, setStoreDetails } = useContext(PlatformGlobalDataContext);
     const storeBrandColor = useMemo(() => resolveStoreBrandColor(storeDetails as any), [storeDetails]);
@@ -134,6 +146,7 @@ function MobileHoursScreenContent({ onOpenDashboard, onOpenHistory, onOpenMenuTa
     const todayLabel = DAY_LABELS[todayKey] || 'today';
     const { todayCampaigns, staffPrompt, physicalSurfaces, isLoading: isCampaignsLoading, mutate } = useTodayCampaigns();
     const [isCampaignProcessing, setIsCampaignProcessing] = useState(false);
+    const [pendingCampaignPoster, setPendingCampaignPoster] = useState<PendingCampaignPoster | null>(null);
     const [isNudgeDismissed, setIsNudgeDismissed] = useState(false);
     const [nudgeInitialized, setNudgeInitialized] = useState(false);
     const [isDownloadingTent, setIsDownloadingTent] = useState(false);
@@ -187,6 +200,7 @@ function MobileHoursScreenContent({ onOpenDashboard, onOpenHistory, onOpenMenuTa
             selectedProjectSummary?.name,
         ) || menuUrl
     ), [menuUrl, selectedProjectSummary?.name, storeDetails?.customDomain, storeDetails?.subdomain]);
+    const selectedMenuIsLive = isPublishedMenuProject(selectedProjectSummary);
 
     useEffect(() => {
         const dismissKey = getTenantStoreStorageKey(
@@ -340,6 +354,23 @@ function MobileHoursScreenContent({ onOpenDashboard, onOpenHistory, onOpenMenuTa
                 ? null
                 : await getCampaign(campaign.campaignId);
             hasCampaignImage = Boolean(fullCampaign?.assets?.imageUrl);
+            if (campaign.primarySurface === 'print_poster') {
+                const input = buildTodayCampaignPosterRenderInput({
+                    campaign: fullCampaign,
+                    expectedProjectId: selectedProjectId,
+                    menuUrl: menuLink,
+                    project: selectedProject,
+                    store: storeDetails,
+                });
+                if (!input) throw new Error('Campaign Poster source is incomplete');
+                setPendingCampaignPoster({
+                    campaignId: campaign.campaignId,
+                    campaignType: campaign.type,
+                    input,
+                    projectId: campaign.projectId,
+                });
+                return;
+            }
             const actionFeedback = await performTodaySurfaceAction({
                 surface: campaign.primarySurface,
                 itemName: campaign.subject?.itemName || 'Item',
@@ -369,6 +400,37 @@ function MobileHoursScreenContent({ onOpenDashboard, onOpenHistory, onOpenMenuTa
             Toast.show({ content: tToday('failed'), duration: 2000 });
         } finally {
             setIsCampaignProcessing(false);
+        }
+    };
+
+    const handleCampaignPosterDownloaded = async () => {
+        const pending = pendingCampaignPoster;
+        if (!pending) return;
+        try {
+            const result = await dbCompleteCampaign(
+                pending.campaignId,
+                pending.projectId,
+                pending.campaignType,
+                'print_poster',
+                'download',
+            );
+            assertCampaignCompleteSucceeded(result, {
+                campaignId: pending.campaignId,
+                campaignType: pending.campaignType,
+                method: 'download',
+                projectId: pending.projectId,
+                surface: 'print_poster',
+            });
+            await mutate((current) => current ? { ...current, today: result.today } : current, { revalidate: false });
+            setPendingCampaignPoster(null);
+            Toast.show({ content: 'Poster downloaded and marked handled', duration: 1800 });
+        } catch (error) {
+            logCampaignFailure('mobile_today_campaign_poster_complete_failed', error, {
+                ...getBoundedCampaignStringContext('campaignId', pending.campaignId),
+                ...getBoundedCampaignStringContext('projectId', pending.projectId),
+                ...getBoundedCampaignStringContext('campaignType', pending.campaignType),
+            });
+            throw error;
         }
     };
 
@@ -531,6 +593,10 @@ function MobileHoursScreenContent({ onOpenDashboard, onOpenHistory, onOpenMenuTa
     const shouldShowInactiveReminder = Boolean(inactiveItemsReminder && !isInactiveReminderDismissed);
 
     const handleOpenPreview = () => {
+        if (!selectedMenuIsLive) {
+            Toast.show({ content: 'Publish the menu before opening the customer preview.', duration: 1800 });
+            return;
+        }
         if (!menuUrl) {
             Toast.show({ content: t('failedToUpdate'), duration: 1500 });
             return;
@@ -654,16 +720,30 @@ function MobileHoursScreenContent({ onOpenDashboard, onOpenHistory, onOpenMenuTa
     const tempStatusPreviewMessage = tempStatusType === 'custom'
         ? (customTempStatusMessage.trim() || 'Enter a custom message')
         : (MOBILE_TEMP_STATUS_OPTIONS.find((option) => option.value === tempStatusType)?.defaultMsg || tempStatusType);
+    const tempStatusDraftExpiresAt = fromNativeDateTimeInputValue(exactTempStatusExpiryAt);
+    const tempStatusDraftIssue = getTempStatusDraftIssue({
+        customMessage: customTempStatusMessage,
+        expiresAt: tempStatusDraftExpiresAt,
+        statusType: tempStatusType,
+    });
+    const tempStatusDraftIssueMessage = tempStatusDraftIssue
+        ? getTempStatusDraftIssueMessage(tempStatusDraftIssue)
+        : undefined;
 
     const handleSetTempStatus = async () => {
         if (!storeDetails?.storeId || !storeDetails?.tenantId) return;
-        if (tempStatusType === 'custom' && !customTempStatusMessage.trim()) {
-            Toast.show({ content: 'Enter a custom message.', duration: 2000 });
-            return;
-        }
         const expectedStoreId = storeDetails.storeId;
         const expectedTenantId = storeDetails.tenantId;
         const expiresAt = fromNativeDateTimeInputValue(exactTempStatusExpiryAt);
+        const currentDraftIssue = getTempStatusDraftIssue({
+            customMessage: customTempStatusMessage,
+            expiresAt,
+            statusType: tempStatusType,
+        });
+        if (currentDraftIssue) {
+            Toast.show({ content: getTempStatusDraftIssueMessage(currentDraftIssue), duration: 2000 });
+            return;
+        }
         const exactExpiryDate = toDate(expiresAt);
         if (!exactTempStatusExpiryAt || Number.isNaN(exactExpiryDate.getTime()) || exactExpiryDate.getTime() <= Date.now()) {
             Toast.show({ content: 'Choose a future end date and time.', duration: 2000 });
@@ -887,37 +967,24 @@ function MobileHoursScreenContent({ onOpenDashboard, onOpenHistory, onOpenMenuTa
             </Flex>
 
             <Card style={{ borderRadius: 20 }}>
+                <Flex gap={4} style={{ padding: '4px 12px 0' }} vertical>
+                    <Text strong>Today&apos;s next step</Text>
+                    <Text type="secondary">One useful check before you move on.</Text>
+                </Flex>
                 <List>
                     <List.Item
                         arrow
-                        description={<Text type="secondary">{tMore('dashboardDesc')}</Text>}
-                        onClick={onOpenDashboard}
-                        prefix={<LuBarChart3 size={18} />}
-                        title={<Text strong>{tMore('dashboard')}</Text>}
-                    />
-                    <List.Item
-                        arrow
-                        description={<Text type="secondary">{tMore('shareQrDesc')}</Text>}
-                        onClick={onOpenShare}
-                        prefix={<LuQrCode size={18} />}
-                        title={<Text strong>{tMore('shareQr')}</Text>}
-                    />
-                    <List.Item
-                        arrow
-                        description={<Text type="secondary">{tMore('shareQrDesc')}</Text>}
-                        onClick={handleOpenPreview}
+                        description={(
+                            <Text type="secondary">
+                                {selectedMenuIsLive
+                                    ? 'Confirm today’s menu looks right before customers open or share it.'
+                                    : 'Complete and publish the menu before sharing it with customers.'}
+                            </Text>
+                        )}
+                        onClick={selectedMenuIsLive ? handleOpenPreview : onOpenMenuTab}
                         prefix={<LuEye size={18} />}
-                        title={<Text strong>{tDesign('preview')}</Text>}
+                        title={<Text strong>{selectedMenuIsLive ? 'Check the customer view' : 'Finish your menu'}</Text>}
                     />
-                    {FEATURE_FLAGS.ENABLE_PAST_ACTIVITY_HISTORY ? (
-                        <List.Item
-                            arrow
-                            description={<Text type="secondary">Review today actions completed or skipped in the last 7 days.</Text>}
-                            onClick={onOpenHistory}
-                            prefix={<LuClock size={18} />}
-                            title={<Text strong>Past Activity</Text>}
-                        />
-                    ) : null}
                 </List>
             </Card>
 
@@ -1018,7 +1085,7 @@ function MobileHoursScreenContent({ onOpenDashboard, onOpenHistory, onOpenMenuTa
                             size="small"
                             style={{ minHeight: 44, minWidth: 44, paddingInline: 6 }}
                         >
-                            ✕
+                            <LuX aria-hidden="true" size={18} />
                         </Button>
                     </Flex>
                     <Flex gap={12} style={{ overflowY: 'auto', padding: 14 }} vertical>
@@ -1103,6 +1170,8 @@ function MobileHoursScreenContent({ onOpenDashboard, onOpenHistory, onOpenMenuTa
                             expiryLabel="Show until"
                             expiresLabel="Expires:"
                             expiryOptions={MOBILE_TEMP_STATUS_EXPIRY_OPTIONS}
+                            draftIssue={tempStatusDraftIssue}
+                            draftIssueMessage={tempStatusDraftIssueMessage}
                             isActive={Boolean(isTempActive)}
                             isLoading={isTempStatusLoading}
                             onClear={() => void handleClearTempStatus()}
@@ -1311,6 +1380,7 @@ function MobileHoursScreenContent({ onOpenDashboard, onOpenHistory, onOpenMenuTa
             ) : null}
 
             <Popup
+                aria-label={TODAY_FEATURE_GUIDE_TITLE}
                 bodyStyle={{ maxHeight: '78vh', overflowY: 'auto', paddingBottom: 12 }}
                 onMaskClick={() => setIsTodayGuideOpen(false)}
                 visible={isTodayGuideOpen}
@@ -1319,13 +1389,13 @@ function MobileHoursScreenContent({ onOpenDashboard, onOpenHistory, onOpenMenuTa
                     <Flex align="center" justify="space-between">
                         <Text strong>{TODAY_FEATURE_GUIDE_TITLE}</Text>
                         <Button
-                            aria-label={t('close')}
+                            aria-label="Close Today guide"
                             fill="none"
                             onClick={() => setIsTodayGuideOpen(false)}
                             size="small"
                             style={{ minHeight: 44, minWidth: 44, paddingInline: 6 }}
                         >
-                            ✕
+                            <LuX aria-hidden="true" size={18} />
                         </Button>
                     </Flex>
                     <Flex gap={10} vertical>
@@ -1340,6 +1410,12 @@ function MobileHoursScreenContent({ onOpenDashboard, onOpenHistory, onOpenMenuTa
                     </Flex>
                 </Flex>
             </Popup>
+            <CampaignPosterModal
+                input={pendingCampaignPoster?.input || null}
+                onClose={() => setPendingCampaignPoster(null)}
+                onDownloaded={handleCampaignPosterDownloaded}
+                open={Boolean(pendingCampaignPoster)}
+            />
         </Flex>
     );
 }

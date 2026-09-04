@@ -1,14 +1,20 @@
-import { AI_SERVICE_ROUTE_REQUEST_OPTIONS, createAiServiceHttpError, getBoundedAiServiceStringContext, logAiServiceFailure, readAiServiceResponseJson } from "@services/ai/aiServiceDiagnostics";
+import { AI_SERVICE_ROUTE_REQUEST_OPTIONS, getBoundedAiServiceStringContext, logAiServiceFailure, readAiServiceResponseJson } from "@services/ai/aiServiceDiagnostics";
 import { syncBalanceFromResponse } from "@services/ai/balanceSync";
 import { AICapacityError, checkCapacityResponse } from "@services/ai/capacityError";
 import { GenerateImageViaApiPayloadType, ImageGenerationConfigType, ItemForDropdown } from "@template/main-app/projects/types";
 import { normalizeAiImageResponseItems, type AiImageResponseItem } from './imageResponse';
+import {
+    createImageGenerationRequestError,
+    createInvalidImageGenerationResponseError,
+    createUnknownImageGenerationRequestError,
+    ImageGenerationRequestError,
+} from './imageGenerationError';
 
 const IMAGE_GENERATION_RESPONSE_JSON_MAX_BYTES = 24 * 1024 * 1024;
 
 async function generateImageViaApi({ itemDetails, generationConfig, projectId, fileId, businessType }: { itemDetails: ItemForDropdown, generationConfig: ImageGenerationConfigType, projectId: string, fileId: string, businessType: string }): Promise<AiImageResponseItem[]> {
     try {
-        const { prompt, referanceImage, stylesCategory, styles, aspectRatio, environments, lighting, colors, moods, compositions, backgroundColor, transparentBg, negativePrompt, foregroundColor, selectedImageTypes, isMultiMode } = generationConfig;
+        const { prompt, referanceImage, subjectProfileId, subjectProfileVersion, stylesCategory, styles, aspectRatio, environments, lighting, colors, moods, compositions, backgroundColor, transparentBg, negativePrompt, foregroundColor, selectedImageTypes, isMultiMode } = generationConfig;
         const { itemName, descriptionLine, attributesList, categoryName } = itemDetails;
         const payload: GenerateImageViaApiPayloadType = {
             projectId,
@@ -17,6 +23,8 @@ async function generateImageViaApi({ itemDetails, generationConfig, projectId, f
             generationConfig: {
                 prompt,
                 referanceImage,
+                subjectProfileId,
+                subjectProfileVersion,
                 stylesCategory,
                 styles,
                 aspectRatio,
@@ -51,7 +59,7 @@ async function generateImageViaApi({ itemDetails, generationConfig, projectId, f
 
         await checkCapacityResponse(response);
         if (!response.ok) {
-            throw createAiServiceHttpError('ai_image_generation_request_failed', response);
+            throw await createImageGenerationRequestError(response);
         }
         const responseJson = await readAiServiceResponseJson(response, {
             context: {
@@ -73,18 +81,25 @@ async function generateImageViaApi({ itemDetails, generationConfig, projectId, f
                 maxBytes: IMAGE_GENERATION_RESPONSE_JSON_MAX_BYTES,
                 responseStatus: response.status,
             });
-            return [];
+            throw createInvalidImageGenerationResponseError(response.status);
         }
         return data;
 
     } catch (error) {
-        if (error instanceof AICapacityError) throw error;
+        if (error instanceof AICapacityError || error instanceof ImageGenerationRequestError) {
+            logAiServiceFailure('ai_image_generation_api_failed', error, {
+                ...getBoundedAiServiceStringContext('projectId', projectId),
+                ...getBoundedAiServiceStringContext('fileId', fileId),
+                ...getBoundedAiServiceStringContext('businessType', businessType),
+            });
+            throw error;
+        }
         logAiServiceFailure('ai_image_generation_api_failed', error, {
             ...getBoundedAiServiceStringContext('projectId', projectId),
             ...getBoundedAiServiceStringContext('fileId', fileId),
             ...getBoundedAiServiceStringContext('businessType', businessType),
         });
-        return [];
+        throw createUnknownImageGenerationRequestError();
     }
 }
 

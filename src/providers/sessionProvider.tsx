@@ -66,6 +66,7 @@ import { normalizeAiBalanceUpdate } from '@services/ai/balanceSync';
 import { Timestamp } from 'firebase/firestore';
 import { Session } from 'next-auth';
 import type LoginUserType from '@type/loginUser';
+import { createEmptyImageSubjectProfileCache } from '@type/imageSubjectProfile';
 import { SessionProvider as Provider, signOut } from 'next-auth/react';
 import { usePathname } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -117,6 +118,9 @@ export default function SessionProvider({ children, session, productContext }: P
     const [activeSubscriptionLoading, setActiveSubscriptionLoading] = useState(Boolean(session?.user?.storeId))
     const [activeSubscriptionSyncError, setActiveSubscriptionSyncError] = useState<Error | null>(null)
     const [activeSubscriptionRetryNonce, setActiveSubscriptionRetryNonce] = useState(0)
+    const [cachedImageSubjectProfiles, setCachedImageSubjectProfiles] = useState(
+        createEmptyImageSubjectProfileCache,
+    )
 
     // Multi-Outlet Session Context (Feature #4C — T20/T21)
     // Persisted to localStorage so store context survives page refresh
@@ -150,6 +154,8 @@ export default function SessionProvider({ children, session, productContext }: P
     const [firebaseAuthReadyScopeKey, setFirebaseAuthReadyScopeKey] = useState<string | null>(null)
     const [firebaseAuthSyncError, setFirebaseAuthSyncError] = useState<Error | null>(null)
     const [firebaseAuthRetryNonce, setFirebaseAuthRetryNonce] = useState(0)
+    const [storeBootstrapSyncError, setStoreBootstrapSyncError] = useState<Error | null>(null)
+    const [storeBootstrapRetryNonce, setStoreBootstrapRetryNonce] = useState(0)
     const activeSubscriptionScopeKeyRef = useRef<string | null>(null);
     const activeSubscriptionRequestScopeKeyRef = useRef<string | null>(null);
     const normalizedPathname = pathname === '/' ? pathname : (pathname || '').replace(/\/+$/, '');
@@ -232,6 +238,7 @@ export default function SessionProvider({ children, session, productContext }: P
         setCachedChangelog({ cachedOn: null, changelog: null, scopeKey: null });
         setCachedTickets({ cachedOn: null, tickets: [], scopeKey: null });
         setCachedArticles({ cachedOn: null, articles: [], scopeKey: null });
+        setCachedImageSubjectProfiles(createEmptyImageSubjectProfileCache());
         setPlatformStoreSummaryOptions([]);
         setPlatformStoreSummaryLoadedAt(null);
         setPlatformStoreSummaryLoading(false);
@@ -299,6 +306,7 @@ export default function SessionProvider({ children, session, productContext }: P
         if (!session) {
             setClientProviderSession(null);
             setClientSessionSyncError(null);
+            setStoreBootstrapSyncError(null);
             return;
         }
 
@@ -436,6 +444,7 @@ export default function SessionProvider({ children, session, productContext }: P
             providerSessionScopeKeyRef.current = currentProviderScopeKey;
             prevSessionKeyRef.current = undefined;
             resetScopedProviderState();
+            setStoreBootstrapSyncError(null);
             // Keep owner route gates waiting while the new signed-in scope is
             // bootstrapped. Exposing a transient `loading=false` here lets
             // Dashboard/Projects misclassify a paid owner as unpaid and route
@@ -487,6 +496,7 @@ export default function SessionProvider({ children, session, productContext }: P
         // Check if the session exists and store details have not been fetched yet
         if (session && Boolean(session.user?.storeId) && !Boolean(storeDetails?.storeId)) {
             setActiveSubscriptionLoading(Boolean(session.user?.storeId));
+            setStoreBootstrapSyncError(null);
 
             const bootstrapStoreContext = async () => {
                 try {
@@ -567,6 +577,7 @@ export default function SessionProvider({ children, session, productContext }: P
                     // Update the store details state with the fetched fetchedStore
                     setLoginStoreDetails(fetchedStore);
                     setStoreDetails(fetchedStore);
+                    setStoreBootstrapSyncError(null);
 
                     // Fetch subscription data
                     let subscriptionData: FirestoreSubscriptionDoc | null;
@@ -605,6 +616,7 @@ export default function SessionProvider({ children, session, productContext }: P
                 } catch (e) {
                     if (cancelled) return;
                     setActiveSubscriptionLoading(false)
+                    setStoreBootstrapSyncError(new Error('Store access could not be loaded'))
                     logFirebaseBootstrapFailure('session_provider_store_bootstrap_failed', e, {
                         ...getFirebaseAuthSessionLogContext(session),
                     });
@@ -635,6 +647,7 @@ export default function SessionProvider({ children, session, productContext }: P
         resetScopedProviderState,
         session,
         activeSubscriptionRetryNonce,
+        storeBootstrapRetryNonce,
     ]) // Re-run the effect when the session changes
 
     useEffect(() => {
@@ -844,13 +857,14 @@ export default function SessionProvider({ children, session, productContext }: P
         const authorityStoreDetails = loginStoreCanActAsMaster
             ? (loginStoreDetails || storeDetails)
             : (storeDetails || loginStoreDetails);
-        if (!objectNullCheck(authorityStoreDetails) || !Array.isArray(authorityStoreDetails?.roles)) {
-            setUserPermissions(null);
-            return;
-        }
 
         if (session?.user?.platformRole === MENULIST_PLATFORM_USER_ROLE) {
             setUserPermissions(RolesPermissionInitialData);
+            return;
+        }
+
+        if (!objectNullCheck(authorityStoreDetails) || !Array.isArray(authorityStoreDetails?.roles)) {
+            setUserPermissions(null);
             return;
         }
 
@@ -1041,6 +1055,10 @@ export default function SessionProvider({ children, session, productContext }: P
                 setActiveSubscription,
                 activeSubscriptionLoading: isResolvingOwnerSubscription,
                 setActiveSubscriptionLoading,
+                cachedImageSubjectProfiles: providerStateMatchesCurrentSession
+                    ? cachedImageSubjectProfiles
+                    : createEmptyImageSubjectProfileCache(),
+                setCachedImageSubjectProfiles,
                 isMasterUser: loginStoreIsMaster,
                 activeStoreContext,
                 setActiveStoreContext,
@@ -1075,6 +1093,17 @@ export default function SessionProvider({ children, session, productContext }: P
                             brand={isAnswerlatticeRoute ? 'answerlattice' : 'menulist'}
                         />
                     )
+                ) : (storeBootstrapSyncError && expectedStoreIdForRender) ? (
+                    <StoreAccessRecovery
+                        brand="menulist"
+                        onRetry={() => {
+                            prevSessionKeyRef.current = undefined;
+                            setStoreBootstrapSyncError(null);
+                            setActiveSubscriptionLoading(true);
+                            setStoreBootstrapRetryNonce((current) => current + 1);
+                        }}
+                        onSignOut={() => void signOut({ callbackUrl: '/signin' })}
+                    />
                 ) : (session && !isStoreContextReadyForRender) ? (
                     <BrandedPageLoader page="Loading Store Data" brand={isAnswerlatticeRoute ? 'answerlattice' : 'menulist'} />
                 ) : (activeSubscriptionSyncError && expectedSubscriptionScopeKeyForRender) ? (

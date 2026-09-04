@@ -29,7 +29,10 @@
 ## Safety
 
 - Private evidence is rejected from Git paths.
-- Sensitive payment and credential fields are redacted or not requested.
+- Routine evidence, ledger fields, and reports redact or mask sensitive identifiers.
+- Explicit current-request founder authorization admits necessary exact business/KYC identifiers only as `restricted-original` evidence in the private permission-locked store, with a hash, linked owner decision, and redacted derivative when practical.
+- PINs, OTPs, passwords, API/private keys, cookies/tokens, recovery codes, QR authorization payloads, CVV, full payment-card credentials, and unrelated personal balances are rejected even when exact record retention is authorized.
+- Restricted originals are rejected from Git, product runtime, Firebase, public/cloud evidence surfaces, chat output, and ordinary shared folders.
 - Reminders do not initiate payments or claim automatic transaction detection.
 - A periodic reminder does not become `CHECKED` without a dated provider-console observation.
 - Chrome review waits for current-run owner approval and a founder-opened `admin@neelvara.com` session.

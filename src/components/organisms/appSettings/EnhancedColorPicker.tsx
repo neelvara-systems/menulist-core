@@ -2,9 +2,8 @@ import SelectedItemCheck from '@atoms/selectedItemCheck';
 import { getColorDescription } from '@constant/colorMetadata';
 import { useRecentColors } from '@hook/useRecentColors';
 import { hexToRgbA } from '@util/utils';
-import { ColorPicker as AntColorPicker, Button, Flex, Tooltip, Typography } from 'antd';
-import { Color } from 'antd/es/color-picker';
-import { Fragment, memo, type KeyboardEvent } from 'react';
+import { Button, Flex, Tooltip, Typography } from 'antd';
+import { Fragment, memo, type ChangeEvent, type KeyboardEvent } from 'react';
 import { LuHeart, LuPipette } from 'react-icons/lu';
 import styles from './appSettings.module.scss';
 
@@ -43,9 +42,8 @@ const EnhancedColorPicker: React.FC<EnhancedColorPickerProps> = ({
         onSelect(color); // Just select, don't add to recent again
     };
 
-    const handleCustomColorChange = (color: Color) => {
-        const hexColor = color.toHexString();
-        handleColorSelect(hexColor);
+    const handleCustomColorChange = (event: ChangeEvent<HTMLInputElement>) => {
+        handleColorSelect(event.target.value);
     };
 
     const handleFavoriteKeyDown = (event: KeyboardEvent<HTMLElement>, color: string) => {
@@ -64,41 +62,16 @@ const EnhancedColorPicker: React.FC<EnhancedColorPickerProps> = ({
                         <LuPipette aria-hidden="true" style={{ fontSize: 16 }} />
                     </Tooltip>
                 </Flex>
-                <AntColorPicker
-                    value={selectedColor}
-                    onChange={handleCustomColorChange}
-                    showText
-                    size="large"
-                    format="hex"
-                    presets={[
-                        {
-                            label: 'Recommended',
-                            colors: colors.slice(0, 10),
-                        },
-                    ]}
-                    panelRender={(_, { components: { Picker, Presets } }) => (
-                        <div aria-label={ariaLabel} role="dialog" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                            <Picker />
-                            <Presets />
-                        </div>
-                    )}
-                >
-                    <Button
-                        aria-label={ariaLabel}
-                        aria-haspopup="dialog"
-                        size="large"
-                        style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}
-                    >
-                        <Flex align="center" gap={8}>
-                            <span
-                                aria-hidden="true"
-                                style={{ background: selectedColor, borderRadius: 4, height: 20, width: 20 }}
-                            />
-                            <span>{selectedColor.toUpperCase()}</span>
-                        </Flex>
-                        <LuPipette aria-hidden="true" />
-                    </Button>
-                </AntColorPicker>
+                <Flex align="center" justify="space-between">
+                    <Text type="secondary">{selectedColor.toUpperCase()}</Text>
+                    <input
+                        aria-label={`${ariaLabel}: ${selectedColor.toUpperCase()}`}
+                        onChange={handleCustomColorChange}
+                        style={{ background: 'transparent', border: 0, cursor: 'pointer', height: 44, padding: 0, width: 44 }}
+                        type="color"
+                        value={selectedColor}
+                    />
+                </Flex>
             </Flex>
 
             {/* Recent Colors */}

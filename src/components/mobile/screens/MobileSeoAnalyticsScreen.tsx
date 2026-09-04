@@ -377,7 +377,7 @@ function MobileSeoAnalyticsScreenContent({ onBack, mode = 'seo' }: MobileSeoAnal
                     <Flex gap={12} vertical>
                         <Text strong>Step 4: Choose What You Want to Track</Text>
                         <Text type="secondary">
-                            These settings are applied directly to your store when you switch them on or off.
+                            These are draft choices. Close this guide and choose Save Changes to apply them to your store.
                         </Text>
                         <FeatureToggleCard
                             checked={trackMenuViews}
@@ -423,21 +423,21 @@ function MobileSeoAnalyticsScreenContent({ onBack, mode = 'seo' }: MobileSeoAnal
                 <Card size="small">
                     <Flex align="center" gap={12} style={{ textAlign: 'center' }} vertical>
                         <LuCheckCircle2 size={40} />
-                        <Text strong>Everything is running normally.</Text>
+                        <Text strong>Review your analytics settings.</Text>
                         <Text type="secondary">
-                            Your analytics setup is ready. Data usually starts appearing within 24 to 48 hours.
+                            Close this guide, review any optional IDs and tracking choices, then choose Save Changes.
                         </Text>
                         <StepList
                             items={[
-                                'Check your analytics dashboard tomorrow',
-                                'Review your popular menu items',
-                                'Watch for customer location and traffic patterns',
+                                'Add only the external analytics IDs you actually use',
+                                'Review the tracking categories for this store',
+                                'Choose Save Changes on Analytics Settings',
                             ]}
                         />
                     </Flex>
                 </Card>
             ),
-            title: 'Done',
+            title: 'Review',
         },
     ];
 
@@ -1013,10 +1013,11 @@ function MobileSeoAnalyticsScreenContent({ onBack, mode = 'seo' }: MobileSeoAnal
                                             />
                                             <GuideSection
                                                 items={[
-                                                    'Enable sales tracking for order and revenue visibility',
-                                                    'Enable menu item views to see popular dishes',
-                                                    'Enable location tracking for customer geography',
-                                                    'Wait 24 to 48 hours for data to appear',
+                                                    'Keep Menu activity on to measure menu, item, search, and action demand',
+                                                    'Keep Featured section analytics on when you use Featured choices',
+                                                    'Review Official business page and Customer app activity for this store',
+                                                    'Enable Approximate location only when you need regional context',
+                                                    'Choose Save Changes after reviewing the draft',
                                                 ]}
                                                 title="Enable Tracking Features"
                                             />
@@ -1026,7 +1027,7 @@ function MobileSeoAnalyticsScreenContent({ onBack, mode = 'seo' }: MobileSeoAnal
                                     <Tabs.Tab key="complete" title="Complete Guide">
                                         <Flex gap={12} style={{ paddingTop: 12 }} vertical>
                                             <GuideSection
-                                                description="Reports > Realtime shows who is currently visiting your menu. Reports > Engagement > Events helps you track views, add-to-cart actions, and purchases."
+                                                description="After you add a valid GA4 ID, Reports > Realtime and Reports > Engagement > Events can show supported public-page visits and actions sent to your property."
                                                 title="Google Analytics Reports"
                                             />
                                             <GuideSection
@@ -1034,12 +1035,12 @@ function MobileSeoAnalyticsScreenContent({ onBack, mode = 'seo' }: MobileSeoAnal
                                                 title="Search Console Features"
                                             />
                                             <GuideSection
-                                                description="Facebook Pixel helps you understand ad-driven visits, customer journeys, and conversion performance."
+                                                description="After you add a valid Pixel ID, Meta can report supported visits to your public MenuList pages from your campaigns."
                                                 title="Facebook Pixel Insights"
                                             />
                                             <GuideSection
-                                                description="Enhanced e-commerce gives view-to-purchase insight, cart behavior, and category-level sales visibility."
-                                                title="Enhanced E-commerce Features"
+                                                description="MenuList internal analytics reports menu opens, item and search demand, unavailable-item interest, Featured usage, Official Business Page actions, customer-app activity, entry source, and anonymous session totals."
+                                                title="MenuList Activity Reports"
                                             />
                                             <GuideSection
                                                 description="Location analytics helps you understand where visitors come from and when they are most active."
@@ -1105,7 +1106,7 @@ function MobileSeoAnalyticsScreenContent({ onBack, mode = 'seo' }: MobileSeoAnal
                                         setWizardStep((current) => Math.min(wizardSteps.length - 1, current + 1));
                                     }}
                                 >
-                                    {wizardStep === wizardSteps.length - 1 ? 'Finish Setup' : 'Next Step'}
+                                    {wizardStep === wizardSteps.length - 1 ? 'Close Guide' : 'Next Step'}
                                 </Button>
                             </Flex>
                         </Flex>
@@ -1249,7 +1250,6 @@ function ResourceLinksSection({ onOpenExternalLink }: { onOpenExternalLink: (url
                 <LinkButton label="SEO Best Practices Guide" onOpenExternalLink={onOpenExternalLink} source="seo_best_practices" url="https://developers.google.com/search/docs" />
                 <LinkButton label="Facebook Pixel Setup Guide" onOpenExternalLink={onOpenExternalLink} source="facebook_pixel_setup" url="https://www.facebook.com/business/help/952192354843755" />
                 <LinkButton label="Events Manager Guide" onOpenExternalLink={onOpenExternalLink} source="events_manager_guide" url="https://www.facebook.com/business/help/402791146561655" />
-                <LinkButton label="GA4 E-commerce Guide" onOpenExternalLink={onOpenExternalLink} source="ga4_ecommerce_guide" url="https://developers.google.com/analytics/devguides/collection/ga4/ecommerce" />
                 <LinkButton label="MenuList Analytics Guide" onOpenExternalLink={onOpenExternalLink} source="menulist_analytics_guide" url={`${getPublicBaseUrl()}/features/analytics`} />
             </Flex>
         </Card>

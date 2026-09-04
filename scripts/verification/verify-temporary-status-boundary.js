@@ -61,6 +61,7 @@ const route = read('src/app/api/store/temp-status/route.ts');
 const serverMutationScope = read('src/lib/tempStatus/serverMutationScope.ts');
 const postCommitHelper = read('src/lib/cache/storePublicTruthPostCommit.ts');
 const statusBoundary = read('src/lib/tempStatus/statusBoundary.ts');
+const draftValidation = read('src/lib/tempStatus/draftValidation.ts');
 const activeStatusHook = read('src/hooks/useActiveTempStatus.ts');
 const publicBusinessApi = read('src/app/api/public/v1/business/route.ts');
 const publicBusinessProjection = read('src/lib/publicApi/businessProjection.ts');
@@ -68,6 +69,8 @@ const clientResponse = read('src/lib/tempStatus/clientResponse.ts');
 const desktopCard = read('src/components/templates/main-app/businessSettings/TempStatusCard.tsx');
 const mobileTempStatus = read('src/components/mobile/screens/MobileTempStatusScreen.tsx');
 const mobileHours = read('src/components/mobile/screens/MobileHoursScreen.tsx');
+const mobileTempStatusConfigurator = read('src/components/mobile/components/MobileTempStatusConfigurator.tsx');
+const mobileAntd = read('src/components/mobile/antd.tsx');
 const mobileMore = read('src/components/mobile/screens/MobileMoreScreen.tsx');
 const tempStatusBanner = read('src/components/atoms/TempStatusBanner/index.tsx');
 const menuPage = read('src/components/templates/main-app/projects/b2cView/menuPage/menuPageNew.tsx');
@@ -136,6 +139,8 @@ if (!(firestoreIndexes.fieldOverrides || []).some((entry) => (
   'const expectedStoreId = normalizeSessionDocumentId(validation.data.expectedStoreId);',
   'const expectedTenantId = normalizeSessionDocumentId(validation.data.expectedTenantId);',
   'if (expectedStoreId !== storeId || expectedTenantId !== tenantId)',
+  "type === 'custom' && !normalizeTempStatusCustomMessage(message)",
+  'Custom status message is required',
   'new Date(expiresAt).getTime() <= Date.now()',
   'const storeRef = db.collection(DB_COLLECTIONS.STORES).doc(storeId);',
   'const tenantRef = db.collection(DB_COLLECTIONS.TENANTS).doc(tenantId);',
@@ -241,6 +246,12 @@ forbidToken(clientResponse, '.json().catch', 'Temporary Status client response p
   'String(prev.storeId) === String(expectedStoreId)',
   "setError('Failed to set status')",
   "setError('Failed to clear status')",
+  'getTempStatusDraftIssue({',
+  'getTempStatusDraftIssueMessage(currentDraftIssue)',
+  'disabled={Boolean(draftIssue)}',
+  'aria-label="Custom status message"',
+  'aria-label="Temporary status expiry"',
+  'role="alert"',
 ].forEach((token) => requireToken(desktopCard, token, 'Desktop Temporary Status card'));
 requireOccurrenceAtLeast(desktopCard, "fetch('/api/store/temp-status'", 2, 'Desktop Temporary Status route calls');
 requireOccurrenceAtLeast(desktopCard, '...AUTH_BROWSER_REQUEST_POLICY', 2, 'Desktop Temporary Status request policy');
@@ -279,6 +290,9 @@ forbidToken(desktopCard, 'Modal.confirm({', 'Desktop Temporary Status static con
   "String(prev?.tenantId ?? '') !== String(expectedTenantId)",
   "String(prev?.storeId ?? '') !== String(expectedStoreId)",
   'prev === optimisticStoreDetails',
+  'getTempStatusDraftIssue({',
+  'draftIssue={draftIssue}',
+  'draftIssueMessage={draftIssueMessage}',
 ].forEach((token) => requireToken(mobileTempStatus, token, 'Mobile Temporary Status screen'));
 requireOccurrenceAtLeast(mobileTempStatus, 'prev === optimisticStoreDetails', 2, 'Mobile Temporary Status attempt-owned rollback');
 requireOccurrenceAtLeast(mobileTempStatus, "fetch('/api/store/temp-status'", 2, 'Mobile Temporary Status route calls');
@@ -313,6 +327,9 @@ forbidToken(mobileTempStatus, "throw new Error('Failed to clear status')", 'Mobi
   'isExpectedTempStatusScope(expectedTenantId, expectedStoreId)',
   "readTempStatusResponse(res, 'set'",
   "readTempStatusResponse(res, 'clear'",
+  'getTempStatusDraftIssue({',
+  'draftIssue={tempStatusDraftIssue}',
+  'draftIssueMessage={tempStatusDraftIssueMessage}',
 ].forEach((token) => requireToken(mobileHours, token, 'Mobile Today Temporary Status shortcuts'));
 requireOccurrenceAtLeast(mobileHours, "fetch('/api/store/temp-status'", 3, 'Mobile Today Temporary Status route calls');
 requireOccurrenceAtLeast(mobileHours, '...AUTH_BROWSER_REQUEST_POLICY', 3, 'Mobile Today Temporary Status request policy');
@@ -361,6 +378,34 @@ forbidToken(mobileHours, 'if (!res.ok) throw new Error();', 'Mobile Today Tempor
   "normalizeTempStatusMessage(type, readOwnValue(value, 'message'))",
   'TEMP_STATUS_MESSAGE_MAX_LENGTH = 100',
 ].forEach((token) => requireToken(statusBoundary, token, 'Canonical Temporary Status boundary'));
+[
+  'export function getTempStatusDraftIssue(',
+  "return 'custom_message_required';",
+  "return 'custom_message_too_long';",
+  "return 'expiry_required';",
+  "return 'expiry_invalid';",
+  "return 'expiry_not_future';",
+  'export function getTempStatusDraftIssueMessage(',
+].forEach((token) => requireToken(draftValidation, token, 'Temporary Status draft validation'));
+
+[
+  'draftIssue?: TempStatusDraftIssue | null;',
+  'aria-describedby={customMessageIsInvalid ? draftErrorId : undefined}',
+  'aria-invalid={customMessageIsInvalid}',
+  'aria-describedby={expiryIsInvalid ? draftErrorId : undefined}',
+  'aria-invalid={expiryIsInvalid}',
+  'role="alert"',
+  'disabled={Boolean(draftIssue)}',
+].forEach((token) => requireToken(mobileTempStatusConfigurator, token, 'Mobile Temporary Status draft feedback'));
+
+[
+  "'aria-describedby': ariaDescribedBy",
+  "'aria-invalid': ariaInvalid",
+  "'aria-required': ariaRequired",
+  'aria-describedby={ariaDescribedBy}',
+  'aria-invalid={ariaInvalid}',
+  'aria-required={ariaRequired}',
+].forEach((token) => requireToken(mobileAntd, token, 'Mobile Input accessibility forwarding'));
 [
   'MAX_TIMEOUT_MS = 2_147_000_000',
   'const activeStatus = useMemo(() => getActiveTempStatus(value, nowMs)',

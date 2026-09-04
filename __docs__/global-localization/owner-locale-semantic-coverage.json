@@ -2,7 +2,7 @@
   "version": 1,
   "generatedOn": "2026-08-11",
   "sourceLocale": "en-US",
-  "sourceOwnerSha256": "70332975af74dfc547578f48b393ababd0eec63cedd1cc60b02e883627db58ed",
+  "sourceOwnerSha256": "d1fbe52d9ab1c6c4ad3b52d30805437299f3151e7d69b03094c017d15d6b7684",
   "sourceOwnerValueCount": 4025,
   "policy": "Existing non-source values were preserved. Only values equal to en-US were generated.",
   "qualityGates": [
@@ -61,7 +61,7 @@
       "generatedValues": 0,
       "identicalValues": 0,
       "ownerValueCount": 4025,
-      "ownerSha256": "70332975af74dfc547578f48b393ababd0eec63cedd1cc60b02e883627db58ed"
+      "ownerSha256": "d1fbe52d9ab1c6c4ad3b52d30805437299f3151e7d69b03094c017d15d6b7684"
     },
     "en-GB": {
       "provider": "regional-source",
@@ -69,7 +69,7 @@
       "generatedValues": 0,
       "identicalValues": 0,
       "ownerValueCount": 4025,
-      "ownerSha256": "e1f48f2d546803f900f27b580b88356b18bb26e243313810dc60ed19e291aeef"
+      "ownerSha256": "e3c59688480ef1d62c3075df0a9379282ae9853c13ae11f28bd5ea2d00d53d22"
     },
     "hi-IN": {
       "provider": "indictrans2",

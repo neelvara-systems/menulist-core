@@ -8,7 +8,12 @@ import {
     assertStarterActivationSignalUpdateSucceeded,
     recordStarterActivationSignal,
 } from '@database/stores';
+import {
+    clearPrintableProjectThemeOverride,
+    savePrintableThemePreference,
+} from '@database/printableAssetStylePreferences';
 import { useOfferingLabels } from '@hook/useOfferingLabels';
+import { usePrintableStaffBadgePeople } from '@hook/usePrintableStaffBadgePeople';
 import { trackMenuKitDownload } from '@lib/analytics/unified';
 import { withAnalyticsSource } from '@lib/analytics/sourceAttribution';
 import { getStoreContextName } from '@lib/businessIdentity/names';
@@ -21,12 +26,23 @@ import { resolveStoreBrandColor } from '@lib/menu-kit/brandTokens';
 import { downloadBlob, generateMenuKit, generateMenuKitAsset, type MenuKitAssetKey, shareBlob } from '@lib/menu-kit/menuKitGenerator';
 import { recordLocalPdfDownload, resolveLocalExportStorageScope } from '@lib/export/localExportHistory';
 import { generateOBPUrl } from '@lib/obp/generateOBPUrl';
-import { PRINTABLE_ASSET_TYPES, getPrintableAssetPreviewCopy, getPrintableAssetType } from '@lib/printable-asset-templates/assetTypes';
+import { PRINTABLE_ASSET_CATALOG_TYPES, PRINTABLE_BRAND_KIT_PREVIEW_ASSET_IDS, getPrintableAssetPreviewCopy, getPrintableAssetType } from '@lib/printable-asset-templates/assetTypes';
+import { downloadPrintableAssetFiles, preparePrintableAssetDelivery } from '@lib/printable-asset-templates/assetDelivery';
+import { getAssetBusinessProfileReadiness } from '@lib/printable-asset-templates/businessProfile';
+import {
+    getPrintableThemeFamiliesForBusiness,
+    resolvePrintableBusinessThemeRecommendation,
+} from '@lib/printable-asset-templates/businessThemeRecommendations';
 import { renderPrintableAsset, renderPrintableAssetDownloadFiles } from '@lib/printable-asset-templates/renderPrintableAsset';
 import { buildPrintableStoreContactFields } from '@lib/printable-asset-templates/storeContact';
+import type { PrintableStaffBadgePerson } from '@lib/printable-asset-templates/staffBadgePerson';
 import {
-    DEFAULT_PRINTABLE_TEMPLATE_FAMILY_ID,
-    getPrintableTemplateFamiliesForAsset,
+    applyPrintableThemePreference,
+    normalizePrintableAssetStylePreferences,
+    removePrintableProjectThemeOverride,
+    resolvePrintableAssetStyle,
+} from '@lib/printable-asset-templates/stylePreferences';
+import {
     getPrintableTemplateFamily,
 } from '@lib/printable-asset-templates/templateFamilies';
 import type { PrintableAssetOutputFormat, PrintableAssetRenderInput, PrintableAssetType, PrintableAssetTypeId, PrintableTemplateFamily, PrintableTemplateFamilyId } from '@lib/printable-asset-templates/types';
@@ -50,18 +66,41 @@ import { isOwnerReferralAcquisitionEnabledForStore } from '@lib/ownerReferral/ow
 import { buildQrCodeFilename } from '@lib/utils/qrCode';
 import { generateProjectUrl } from '@lib/utils/slugify';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
+import FlyerCampaignFields, {
+    EMPTY_PRINTABLE_FLYER_CAMPAIGN_DRAFT,
+    buildPrintableFlyerCampaignContent,
+    type PrintableFlyerCampaignDraft,
+} from '@/components/shared/printableAssets/FlyerCampaignFields';
+import PostcardContentFields, {
+    EMPTY_PRINTABLE_POSTCARD_CONTENT_DRAFT,
+    buildPrintablePostcardContent,
+    type PrintablePostcardContentDraft,
+} from '@/components/shared/printableAssets/PostcardContentFields';
+import {
+    EMPTY_PRINTABLE_GIFT_CERTIFICATE_DRAFT,
+    EMPTY_PRINTABLE_INVITATION_DRAFT,
+    GiftCertificateContentFields,
+    InvitationContentFields,
+    buildPrintableGiftCertificateContent,
+    buildPrintableInvitationContent,
+    type PrintableGiftCertificateDraft,
+    type PrintableInvitationDraft,
+} from '@/components/shared/printableAssets/PersonalizedAssetFields';
 import PrintableTemplatePreview from '@/components/shared/printableAssets/PrintableTemplatePreview';
+import AssetBusinessProfileEditor from '@/components/shared/printableAssets/AssetBusinessProfileEditor';
 import { buildExportDataFromProject, downloadMenuData } from '@template/main-app/projects/utils/excelUtils';
 import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
-import { type ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { type ReactNode, type TouchEvent as ReactTouchEvent, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import {
     LuBadge,
     LuBadgePercent,
     LuBookOpen,
     LuCalendarDays,
     LuCheck,
+    LuChevronLeft,
+    LuChevronRight,
     LuClipboard,
     LuContact,
     LuCopy,
@@ -86,12 +125,13 @@ import {
     LuShare2,
     LuShield,
     LuSmartphone,
+    LuSparkles,
     LuTag,
     LuUserPlus,
     LuX,
 } from 'react-icons/lu';
 import { ProjectSelectorTrigger } from '../../shared/ProjectSelector';
-import { Button, Card, DotLoading, Flex, NavBar, Popup, Tag, Text, Title, Toast } from '../antd';
+import { Button, Card, Dialog, DotLoading, Flex, NavBar, Popup, Tag, Text, Title, Toast } from '../antd';
 import MobileCommunicationKit from '../components/CommunicationKit';
 import MobileLinkCard from '../components/MobileLinkCard';
 import MobileMenuSetupProgress from '../components/MenuSetupProgress';
@@ -141,6 +181,7 @@ type ShareData = {
     storeLogo?: string | null;
     storeMenuLink: string;
     storeName: string;
+    storeTagline?: string | null;
 };
 
 type ScreenLinksState = {
@@ -268,7 +309,7 @@ export default function MobileShareScreen({
     const { token } = theme.useToken();
     const router = useRouter();
     const { isCompactHandheld } = useViewportInfo();
-    const { isMasterUser, setStoreDetails, storeDetails, tenantDetails, userPermissions } = useContext(PlatformGlobalDataContext);
+    const { isMasterUser, setStoreDetails, setUsersList, storeDetails, tenantDetails, userPermissions, usersList } = useContext(PlatformGlobalDataContext);
     const t = useTranslations('MobileShare');
     const tMenu = useTranslations('MobileMenu');
     const referralT = useTranslations('OwnerReferral');
@@ -291,9 +332,23 @@ export default function MobileShareScreen({
     const [generatingDownload, setGeneratingDownload] = useState<DownloadAssetKey | null>(null);
     const [previewAsset, setPreviewAsset] = useState<PreviewAssetState | null>(null);
     const [selectedPrintableAssetId, setSelectedPrintableAssetId] = useState<PrintableAssetTypeId>('single_table_card');
+    const [selectedStaffBadgePersonId, setSelectedStaffBadgePersonId] = useState<string | null>(null);
+    const [pendingThemeId, setPendingThemeId] = useState<PrintableTemplateFamilyId | null>(null);
+    const [showAllThemeFamilies, setShowAllThemeFamilies] = useState(false);
+    const [stylePreferenceBusyKey, setStylePreferenceBusyKey] = useState<string | null>(null);
+    const stylePreferenceBusyRef = useRef(false);
     const [printableActionTemplateId, setPrintableActionTemplateId] = useState<PrintableTemplateFamilyId | null>(null);
     const [printableBusyKey, setPrintableBusyKey] = useState<string | null>(null);
     const [printablePreviewState, setPrintablePreviewState] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
+    const [printableRuntimeDraftDirty, setPrintableRuntimeDraftDirty] = useState(false);
+    const [isAssetBusinessProfileOpen, setIsAssetBusinessProfileOpen] = useState(false);
+    const [assetBusinessProfileAssetId, setAssetBusinessProfileAssetId] = useState<PrintableAssetTypeId | null>(null);
+    const [assetBusinessProfileState, setAssetBusinessProfileState] = useState({ busy: false, dirty: false });
+    const [flyerCampaignDraft, setFlyerCampaignDraft] = useState<PrintableFlyerCampaignDraft>(EMPTY_PRINTABLE_FLYER_CAMPAIGN_DRAFT);
+    const [posterCampaignDraft, setPosterCampaignDraft] = useState<PrintableFlyerCampaignDraft>(EMPTY_PRINTABLE_FLYER_CAMPAIGN_DRAFT);
+    const [postcardContentDraft, setPostcardContentDraft] = useState<PrintablePostcardContentDraft>(EMPTY_PRINTABLE_POSTCARD_CONTENT_DRAFT);
+    const [giftCertificateDraft, setGiftCertificateDraft] = useState<PrintableGiftCertificateDraft>(EMPTY_PRINTABLE_GIFT_CERTIFICATE_DRAFT);
+    const [invitationDraft, setInvitationDraft] = useState<PrintableInvitationDraft>(EMPTY_PRINTABLE_INVITATION_DRAFT);
     const isPrintAssetsMode = mode === 'printAssets';
     const [screenLinks, setScreenLinks] = useState<ScreenLinksState>({
         highlightsLink: null,
@@ -305,7 +360,10 @@ export default function MobileShareScreen({
     const generatingDownloadRef = useRef<DownloadAssetKey | null>(null);
     const previewRequestRef = useRef(0);
     const previewUrlRef = useRef<string | null>(null);
+    const printableOperationRef = useRef<string | null>(null);
+    const profileStoreOverrideRef = useRef<Record<string, unknown> | null>(null);
     const recordedStarterSignalsRef = useRef(new Set<StarterActivationSignal>());
+    const flyerCampaignProjectRef = useRef<string | null>(null);
     const resolveProjectName = useCallback(
         (name: string | Record<string, string> | undefined, fallback?: string) =>
             getLocalizedText(name, undefined, getPrimaryLocalizedLanguage(name, 'en'), fallback || tProjectSelector('untitled')),
@@ -319,6 +377,19 @@ export default function MobileShareScreen({
         () => resolveStoreBrandColor(storeDetails as any),
         [storeDetails],
     );
+    const printableStoreContactFields = useMemo(
+        () => buildPrintableStoreContactFields(storeDetails),
+        [storeDetails],
+    );
+    const assetProfileReadiness = useMemo(
+        () => getAssetBusinessProfileReadiness(storeDetails, tenantDetails),
+        [storeDetails, tenantDetails],
+    );
+    const selectedAssetProfileReadiness = useMemo(
+        () => getAssetBusinessProfileReadiness(storeDetails, tenantDetails, selectedPrintableAssetId),
+        [selectedPrintableAssetId, storeDetails, tenantDetails],
+    );
+    const canManageAssetBusinessProfile = hasAnyPermission(userPermissions, [PERMISSIONS.MANAGE_STORE]);
     const canManageSharing = hasAnyPermission(userPermissions, [PERMISSIONS.MANAGE_MENU_SHARING, PERMISSIONS.PUBLISH_MENU]);
     const canManageIntegrations = hasAnyPermission(userPermissions, [PERMISSIONS.MANAGE_INTEGRATIONS]);
     const canManageDigitalScreens = hasAnyPermission(userPermissions, [PERMISSIONS.MANAGE_DIGITAL_SCREENS]);
@@ -386,8 +457,30 @@ export default function MobileShareScreen({
             storeLogo: storeDetails.logo || null,
             storeMenuLink,
             storeName: storeDisplayName,
+            storeTagline: getLocalizedText(
+                storeDetails.tagline,
+                undefined,
+                getPrimaryLocalizedLanguage(storeDetails.tagline, 'en'),
+                '',
+            ) || null,
         };
     }, [labels.offeringTitle, projectsList, resolveProjectName, selectedProjectId, storeDetails, storeDisplayName, t]);
+
+    useEffect(() => {
+        const nextProjectId = data?.projectId || null;
+        if (flyerCampaignProjectRef.current === null) {
+            flyerCampaignProjectRef.current = nextProjectId;
+        } else if (flyerCampaignProjectRef.current !== nextProjectId) {
+            flyerCampaignProjectRef.current = nextProjectId;
+            setPendingThemeId(null);
+            setFlyerCampaignDraft(EMPTY_PRINTABLE_FLYER_CAMPAIGN_DRAFT);
+            setPosterCampaignDraft(EMPTY_PRINTABLE_FLYER_CAMPAIGN_DRAFT);
+            setPostcardContentDraft(EMPTY_PRINTABLE_POSTCARD_CONTENT_DRAFT);
+            setGiftCertificateDraft(EMPTY_PRINTABLE_GIFT_CERTIFICATE_DRAFT);
+            setInvitationDraft(EMPTY_PRINTABLE_INVITATION_DRAFT);
+            setPrintableRuntimeDraftDirty(false);
+        }
+    }, [data?.projectId]);
 
     const buildMobileShareLogContext = useCallback((
         flow: string,
@@ -504,17 +597,106 @@ export default function MobileShareScreen({
         () => getPrintableAssetType(selectedPrintableAssetId),
         [selectedPrintableAssetId],
     );
+    const staffBadgePeopleState = usePrintableStaffBadgePeople({
+        canReadStaff: userPermissions?.canManageUsers === true,
+        enabled: selectedPrintableAssetId === 'staff_id_card',
+        roles: storeDetails?.roles || [],
+        setUsersList,
+        storeId: storeDetails?.storeId,
+        tenantId: storeDetails?.tenantId,
+        usersList,
+    });
+    const selectedStaffBadgePerson = useMemo(
+        () => staffBadgePeopleState.people.find((person) => person.id === selectedStaffBadgePersonId) || null,
+        [selectedStaffBadgePersonId, staffBadgePeopleState.people],
+    );
+    useEffect(() => {
+        setSelectedStaffBadgePersonId(null);
+    }, [storeDetails?.storeId, storeDetails?.tenantId]);
+    useEffect(() => {
+        if (
+            selectedStaffBadgePersonId
+            && !staffBadgePeopleState.loading
+            && !staffBadgePeopleState.people.some((person) => person.id === selectedStaffBadgePersonId)
+        ) {
+            setSelectedStaffBadgePersonId(null);
+        }
+    }, [selectedStaffBadgePersonId, staffBadgePeopleState.loading, staffBadgePeopleState.people]);
+    const stylePreferences = useMemo(
+        () => normalizePrintableAssetStylePreferences(storeDetails?.printableAssetStylePreferences),
+        [storeDetails?.printableAssetStylePreferences],
+    );
+    const themeBusinessType = (storeDetails as any)?.businessType || data?.businessType;
+    const themeBusinessCategory = (storeDetails as any)?.businessCategory;
+    const themeRecommendation = useMemo(
+        () => resolvePrintableBusinessThemeRecommendation({
+            businessCategory: themeBusinessCategory,
+            businessType: themeBusinessType,
+        }),
+        [themeBusinessCategory, themeBusinessType],
+    );
+    const themeFamilies = useMemo(
+        () => getPrintableThemeFamiliesForBusiness({
+            businessCategory: themeBusinessCategory,
+            businessType: themeBusinessType,
+        }),
+        [themeBusinessCategory, themeBusinessType],
+    );
+    const resolvedParentThemeStyle = useMemo(
+        () => resolvePrintableAssetStyle({
+            assetTypeId: 'single_table_card',
+            businessCategory: themeBusinessCategory,
+            businessType: themeBusinessType,
+            preferences: stylePreferences,
+            projectId: data?.projectId,
+        }),
+        [data?.projectId, stylePreferences, themeBusinessCategory, themeBusinessType],
+    );
+    const effectiveThemeId = resolvedParentThemeStyle.templateFamilyId;
+    const visibleThemeFamilies = useMemo(() => {
+        if (showAllThemeFamilies) return themeFamilies;
+        const recommendedThemeIds = new Set<PrintableTemplateFamilyId>([
+            effectiveThemeId,
+            ...themeRecommendation.recommendedThemeIds,
+        ]);
+        return themeFamilies.filter((family) => recommendedThemeIds.has(family.id));
+    }, [effectiveThemeId, showAllThemeFamilies, themeFamilies, themeRecommendation.recommendedThemeIds]);
+    const previewThemeFamily = useMemo(
+        () => getPrintableTemplateFamily(pendingThemeId || effectiveThemeId),
+        [effectiveThemeId, pendingThemeId],
+    );
+    const effectiveThemeSource = resolvedParentThemeStyle.source === 'project-theme'
+        ? 'project'
+        : resolvedParentThemeStyle.source === 'business-theme'
+            ? 'business'
+            : 'recommended';
+    const resolvedSelectedAssetStyle = useMemo(
+        () => resolvePrintableAssetStyle({
+            assetTypeId: selectedPrintableAssetId,
+            businessCategory: themeBusinessCategory,
+            businessType: themeBusinessType,
+            preferences: stylePreferences,
+            projectId: data?.projectId,
+        }),
+        [data?.projectId, selectedPrintableAssetId, stylePreferences, themeBusinessCategory, themeBusinessType],
+    );
     const selectedPrintableActionFormats = useMemo(
         () => getMobilePrintableActionFormats(selectedPrintableAsset),
         [selectedPrintableAsset],
     );
     const availablePrintableTemplateFamilies = useMemo(
-        () => getPrintableTemplateFamiliesForAsset(selectedPrintableAssetId),
-        [selectedPrintableAssetId],
+        () => [getPrintableTemplateFamily(effectiveThemeId)],
+        [effectiveThemeId],
     );
     const printableActionTemplate = useMemo(
         () => printableActionTemplateId ? getPrintableTemplateFamily(printableActionTemplateId) : null,
         [printableActionTemplateId],
+    );
+    const printableActionTemplateIndex = useMemo(
+        () => printableActionTemplateId
+            ? availablePrintableTemplateFamilies.findIndex((family) => family.id === printableActionTemplateId)
+            : -1,
+        [availablePrintableTemplateFamilies, printableActionTemplateId],
     );
 
     const outletQrLinks = useMemo<OutletQrLink[]>(() => {
@@ -695,32 +877,64 @@ export default function MobileShareScreen({
             menuUrl: data.menuLink,
             shortLink: data.menuLink.replace(/^https?:\/\//, ''),
             storeName: data.storeName,
-            templateFamilyId: DEFAULT_PRINTABLE_TEMPLATE_FAMILY_ID,
+            templateFamilyId: effectiveThemeId,
         };
     };
 
     const buildPrintableRenderInput = async (
         assetTypeId: PrintableAssetTypeId,
         templateFamilyId: PrintableTemplateFamilyId,
+        staffBadgePerson: PrintableStaffBadgePerson | null = selectedStaffBadgePerson,
     ): Promise<PrintableAssetRenderInput | null> => {
         if (!data) return null;
-        const contactFields = buildPrintableStoreContactFields(storeDetails);
+        if (assetTypeId === 'staff_id_card' && !staffBadgePerson) return null;
+        const sourceStoreDetails = profileStoreOverrideRef.current || storeDetails;
+        const sourceStoreName = getStoreContextName(sourceStoreDetails as any, data.storeName);
+        const sourceTagline = getLocalizedText(
+            sourceStoreDetails?.tagline,
+            undefined,
+            getPrimaryLocalizedLanguage(sourceStoreDetails?.tagline, 'en'),
+            data.storeTagline || '',
+        );
+        const sourceLogo = (sourceStoreDetails?.logo as string | undefined) || data.storeLogo || undefined;
+        const sourceBrandColor = resolveStoreBrandColor(sourceStoreDetails as any);
+        const contactFields = buildPrintableStoreContactFields(sourceStoreDetails);
 
         const baseInput: PrintableAssetRenderInput = {
-            activePlanType: (storeDetails as any)?.activePlanType,
+            activePlanType: sourceStoreDetails?.activePlanType as string | undefined,
             assetTypeId,
-            brandColor: storeBrandColor,
-            businessCategory: (storeDetails as any)?.businessCategory,
-            businessType: (storeDetails as any)?.businessType || data.businessType,
+            brandColor: sourceBrandColor,
+            businessCategory: sourceStoreDetails?.businessCategory as string | undefined,
+            businessType: (sourceStoreDetails?.businessType as string | undefined) || data.businessType,
             ...contactFields,
             feedbackUrl: data.feedbackQrLink,
+            flyerCampaign: assetTypeId === 'campaign_flyer'
+                ? buildPrintableFlyerCampaignContent(flyerCampaignDraft)
+                : undefined,
+            campaignContent: assetTypeId === 'campaign_poster'
+                ? buildPrintableFlyerCampaignContent(posterCampaignDraft)
+                : undefined,
+            postcardContent: assetTypeId === 'postcard'
+                ? buildPrintablePostcardContent(postcardContentDraft)
+                : undefined,
+            giftCertificateContent: assetTypeId === 'gift_certificate'
+                ? buildPrintableGiftCertificateContent(giftCertificateDraft)
+                : undefined,
+            invitationContent: assetTypeId === 'event_invitation'
+                ? buildPrintableInvitationContent(invitationDraft)
+                : undefined,
             lastPublishedAt: parseTimestamp(data.menuModifiedOn),
-            logoUrl: data.storeLogo || undefined,
+            logoUrl: sourceLogo,
             menuUrl: data.menuLink,
             obpBaseUrl: data.obpLink,
             projectId: data.projectId,
             shortLink: (assetTypeId === 'feedback_qr' ? data.feedbackQrLink : data.menuLink).replace(/^https?:\/\//, ''),
-            storeName: data.storeName,
+            ...(assetTypeId === 'staff_id_card' && staffBadgePerson ? {
+                staffName: staffBadgePerson.name,
+                staffRole: staffBadgePerson.role,
+            } : {}),
+            storeName: sourceStoreName,
+            tagline: sourceTagline || undefined,
             templateFamilyId,
         };
 
@@ -737,36 +951,138 @@ export default function MobileShareScreen({
         const language =
             (projectData as any)?.defaultLanguage ||
             exportData.languages[0] ||
-            storeDetails?.defaultLanguage ||
-            storeDetails?.activeLanguages?.[0] ||
-            storeDetails?.language ||
+            (sourceStoreDetails?.defaultLanguage as string | undefined) ||
+            (sourceStoreDetails?.activeLanguages as string[] | undefined)?.[0] ||
+            (sourceStoreDetails?.language as string | undefined) ||
             'en';
 
         return {
             ...baseInput,
             printMenuOptions: {
-                activePlanType: (storeDetails as any)?.activePlanType,
-                brandColor: storeBrandColor,
-                businessCategory: (storeDetails as any)?.businessCategory,
-                businessType: (storeDetails as any)?.businessType || data.businessType,
+                activePlanType: sourceStoreDetails?.activePlanType as string | undefined,
+                brandColor: sourceBrandColor,
+                businessCategory: sourceStoreDetails?.businessCategory as string | undefined,
+                businessType: (sourceStoreDetails?.businessType as string | undefined) || data.businessType,
                 categories: exportData.categories,
-                currency: storeDetails?.currencySymbol || '',
-                currencyCode: (storeDetails as any)?.currencyCode || (storeDetails as any)?.currency || undefined,
+                currency: (sourceStoreDetails?.currencySymbol as string | undefined) || '',
+                currencyCode: (sourceStoreDetails?.currencyCode as string | undefined)
+                    || ((sourceStoreDetails as any)?.currency as string | undefined)
+                    || undefined,
                 items,
                 language,
-                logoUrl: data.storeLogo || (storeDetails as any)?.logo || undefined,
+                logoUrl: sourceLogo,
                 menuUrl: data.menuLink,
                 projectData: projectData as any,
                 projectId: data.projectId || undefined,
                 projectName: data.projectName || labels.offeringTitle,
                 showDescriptions: true,
-                storeData: storeDetails as any,
-                storeName: data.storeName,
+                storeData: sourceStoreDetails as any,
+                storeName: sourceStoreName,
             },
         };
     };
 
+    const replaceLocalStylePreferences = (nextPreferences: typeof stylePreferences) => {
+        setStoreDetails((current) => current ? {
+            ...current,
+            printableAssetStylePreferences: nextPreferences,
+        } : current);
+    };
+
+    const handleSaveThemePreference = async (
+        scope: 'business' | 'project',
+        templateFamilyId: PrintableTemplateFamilyId,
+    ): Promise<boolean> => {
+        if (!FEATURE_FLAGS.ENABLE_PRINTABLE_ASSET_STYLE_DEFAULTS) return false;
+        if (stylePreferenceBusyRef.current) return false;
+        const storeId = Number(storeDetails?.storeId);
+        if (!Number.isSafeInteger(storeId) || storeId <= 0) {
+            Toast.show({ content: 'Could not save this theme. Refresh and try again.', duration: 1600 });
+            return false;
+        }
+        const previousPreferences = stylePreferences;
+        const busy = `theme:${scope}:${templateFamilyId}`;
+        stylePreferenceBusyRef.current = true;
+        setStylePreferenceBusyKey(busy);
+        try {
+            replaceLocalStylePreferences(applyPrintableThemePreference({
+                businessCategory: themeBusinessCategory,
+                businessType: themeBusinessType,
+                current: previousPreferences,
+                projectId: data?.projectId,
+                scope,
+                templateFamilyId,
+            }));
+            const savedPreferences = await savePrintableThemePreference({
+                businessCategory: themeBusinessCategory,
+                businessType: themeBusinessType,
+                current: previousPreferences,
+                projectId: data?.projectId,
+                scope,
+                storeId,
+                templateFamilyId,
+            });
+            replaceLocalStylePreferences(savedPreferences);
+            const themeLabel = getPrintableTemplateFamily(templateFamilyId).label;
+            Toast.show({
+                content: scope === 'project'
+                    ? `${themeLabel} applied to this menu`
+                    : `${themeLabel} applied to all menus`,
+                duration: 1400,
+                icon: 'success',
+            });
+            setPendingThemeId(null);
+            return true;
+        } catch (error) {
+            replaceLocalStylePreferences(previousPreferences);
+            logMobileOwnerFailure('mobile_share_printable_theme_preference_save_failed', error, buildMobileShareLogContext('printable_theme_preference_save', {
+                ...getBoundedMobileOwnerStringContext('templateFamilyId', templateFamilyId),
+                ...getBoundedMobileOwnerStringContext('preferenceScope', scope),
+            }));
+            Toast.show({ content: 'Could not save this theme. Try again.', duration: 1600 });
+            return false;
+        } finally {
+            stylePreferenceBusyRef.current = false;
+            setStylePreferenceBusyKey(null);
+        }
+    };
+
+    const handleClearProjectThemeOverride = async () => {
+        if (!data?.projectId) return;
+        if (stylePreferenceBusyRef.current) return;
+        const storeId = Number(storeDetails?.storeId);
+        if (!Number.isSafeInteger(storeId) || storeId <= 0) return;
+        const previousPreferences = stylePreferences;
+        stylePreferenceBusyRef.current = true;
+        setStylePreferenceBusyKey('theme:clear');
+        try {
+            replaceLocalStylePreferences(removePrintableProjectThemeOverride({
+                current: previousPreferences,
+                projectId: data.projectId,
+            }));
+            const savedPreferences = await clearPrintableProjectThemeOverride({
+                current: previousPreferences,
+                projectId: data.projectId,
+                storeId,
+            });
+            replaceLocalStylePreferences(savedPreferences);
+            Toast.show({
+                content: stylePreferences.businessThemeId ? 'Using the business theme' : 'Using the recommended theme',
+                duration: 1400,
+                icon: 'success',
+            });
+        } catch (error) {
+            replaceLocalStylePreferences(previousPreferences);
+            logMobileOwnerFailure('mobile_share_printable_theme_preference_clear_failed', error, buildMobileShareLogContext('printable_theme_preference_clear'));
+            Toast.show({ content: 'Could not restore the business theme. Try again.', duration: 1600 });
+        } finally {
+            stylePreferenceBusyRef.current = false;
+            setStylePreferenceBusyKey(null);
+        }
+    };
+
     const closePrintableTemplateActions = () => {
+        if (printableOperationRef.current) return;
         previewRequestRef.current += 1;
         releasePreviewUrl();
         setPrintableActionTemplateId(null);
@@ -775,8 +1091,59 @@ export default function MobileShareScreen({
         setPrintablePreviewState('idle');
     };
 
-    const renderPrintableTemplatePreview = async (templateFamilyId: PrintableTemplateFamilyId) => {
-        if (!data) return;
+    const renderMobileInputPreview = async (
+        input: PrintableAssetRenderInput,
+        assetType: PrintableAssetType,
+        requestId: number,
+    ): Promise<boolean> => {
+        const previewFormat = getMobilePrintablePreviewFormat(assetType);
+        if (!previewFormat) {
+            if (previewRequestRef.current === requestId) {
+                setPrintableRuntimeDraftDirty(false);
+                setPrintablePreviewState('ready');
+            }
+            return true;
+        }
+
+        releasePreviewUrl();
+        setPreviewAsset(null);
+        setPrintablePreviewState('loading');
+        try {
+            const result = await renderPrintableAsset({ ...input, outputFormat: previewFormat });
+            const previewBlob = new Blob([result.blob], { type: result.mimeType });
+            const previewUrl = URL.createObjectURL(previewBlob);
+            if (previewRequestRef.current !== requestId) {
+                URL.revokeObjectURL(previewUrl);
+                return false;
+            }
+            releasePreviewUrl();
+            previewUrlRef.current = previewUrl;
+            setPreviewAsset({
+                blob: result.blob,
+                filename: result.filename,
+                outputFormat: result.outputFormat,
+                title: `${assetType.title} - ${getPrintableTemplateFamily(input.templateFamilyId).label}`,
+                url: previewUrl,
+            });
+            setPrintableRuntimeDraftDirty(false);
+            setPrintablePreviewState('ready');
+            return true;
+        } catch (error) {
+            logMobileOwnerFailure('mobile_share_printable_preview_render_failed', error, buildMobileShareLogContext('printable_preview_render', {
+                ...getBoundedMobileOwnerStringContext('assetTypeId', input.assetTypeId),
+                ...getBoundedMobileOwnerStringContext('templateFamilyId', input.templateFamilyId),
+                ...getBoundedMobileOwnerStringContext('previewFormat', previewFormat),
+            }));
+            if (previewRequestRef.current === requestId) setPrintablePreviewState('error');
+            return false;
+        }
+    };
+
+    const renderPrintableTemplatePreview = async (
+        templateFamilyId: PrintableTemplateFamilyId,
+        staffBadgePerson: PrintableStaffBadgePerson | null = selectedStaffBadgePerson,
+    ) => {
+        if (!data || printableOperationRef.current) return;
         previewRequestRef.current += 1;
         const requestId = previewRequestRef.current;
 
@@ -787,39 +1154,17 @@ export default function MobileShareScreen({
         }
 
         const previewFormat = getMobilePrintablePreviewFormat(assetType);
-        releasePreviewUrl();
-        setPreviewAsset(null);
-        if (!previewFormat) {
-            if (previewRequestRef.current === requestId) setPrintablePreviewState('ready');
-            return;
-        }
 
         const busyKey = `preview:${selectedPrintableAssetId}:${templateFamilyId}:${previewFormat}`;
+        printableOperationRef.current = busyKey;
         setPrintableBusyKey(busyKey);
-        setPrintablePreviewState('loading');
         try {
-            const input = await buildPrintableRenderInput(selectedPrintableAssetId, templateFamilyId);
+            const input = await buildPrintableRenderInput(selectedPrintableAssetId, templateFamilyId, staffBadgePerson);
             if (!input) {
                 if (previewRequestRef.current === requestId) setPrintablePreviewState('idle');
                 return;
             }
-            const result = await renderPrintableAsset({ ...input, outputFormat: previewFormat });
-            const previewBlob = new Blob([result.blob], { type: result.mimeType });
-            const previewUrl = URL.createObjectURL(previewBlob);
-            if (previewRequestRef.current !== requestId) {
-                URL.revokeObjectURL(previewUrl);
-                return;
-            }
-            releasePreviewUrl();
-            previewUrlRef.current = previewUrl;
-            setPreviewAsset({
-                blob: result.blob,
-                filename: result.filename,
-                outputFormat: result.outputFormat,
-                title: `${assetType.title} - ${getPrintableTemplateFamily(templateFamilyId).label}`,
-                url: previewUrl,
-            });
-            setPrintablePreviewState('ready');
+            await renderMobileInputPreview(input, assetType, requestId);
         } catch (error) {
             logMobileOwnerFailure('mobile_share_printable_preview_failed', error, buildMobileShareLogContext('printable_preview', {
                 ...getBoundedMobileOwnerStringContext('assetTypeId', selectedPrintableAssetId),
@@ -829,7 +1174,45 @@ export default function MobileShareScreen({
             }));
             if (previewRequestRef.current === requestId) setPrintablePreviewState('error');
         } finally {
+            if (printableOperationRef.current === busyKey) printableOperationRef.current = null;
             if (previewRequestRef.current === requestId) setPrintableBusyKey(null);
+        }
+    };
+
+    const openAssetBusinessProfile = (assetTypeId: PrintableAssetTypeId | null) => {
+        if (!canManageAssetBusinessProfile || printableOperationRef.current) return;
+        setAssetBusinessProfileAssetId(assetTypeId);
+        setAssetBusinessProfileState({ busy: false, dirty: false });
+        setIsAssetBusinessProfileOpen(true);
+    };
+
+    const closeAssetBusinessProfile = async () => {
+        if (assetBusinessProfileState.busy) return;
+        if (assetBusinessProfileState.dirty) {
+            const confirmed = await Dialog.confirm({
+                cancelText: 'Keep editing',
+                confirmText: 'Discard changes',
+                content: 'Your unsaved business-detail changes will be lost.',
+                title: 'Discard changes?',
+            });
+            if (!confirmed) return;
+        }
+        setIsAssetBusinessProfileOpen(false);
+        setAssetBusinessProfileAssetId(null);
+        setAssetBusinessProfileState({ busy: false, dirty: false });
+    };
+
+    const handleAssetBusinessProfileSaved = async (nextStoreDetails: Record<string, unknown>) => {
+        profileStoreOverrideRef.current = nextStoreDetails;
+        setIsAssetBusinessProfileOpen(false);
+        setAssetBusinessProfileAssetId(null);
+        setAssetBusinessProfileState({ busy: false, dirty: false });
+        try {
+            if (printableActionTemplate && selectedPrintableAssetId !== 'complete_menu_kit') {
+                await renderPrintableTemplatePreview(printableActionTemplate.id);
+            }
+        } finally {
+            profileStoreOverrideRef.current = null;
         }
     };
 
@@ -838,29 +1221,64 @@ export default function MobileShareScreen({
         void renderPrintableTemplatePreview(templateFamilyId);
     };
 
+    const handleSelectStaffBadgePerson = (personId: string) => {
+        if (printableOperationRef.current) return;
+        const person = staffBadgePeopleState.people.find((candidate) => candidate.id === personId) || null;
+        setSelectedStaffBadgePersonId(person?.id || null);
+        setPrintableRuntimeDraftDirty(true);
+        if (printableActionTemplateId) {
+            void renderPrintableTemplatePreview(printableActionTemplateId, person);
+        }
+    };
+
+    const navigatePrintableTemplate = (direction: 'previous' | 'next') => {
+        if (!printableActionTemplateId || printablePreviewState === 'loading') return;
+
+        const currentIndex = printableActionTemplateIndex;
+        if (currentIndex < 0) return;
+
+        const nextIndex = direction === 'previous' ? currentIndex - 1 : currentIndex + 1;
+        const nextFamily = availablePrintableTemplateFamilies[nextIndex];
+        if (!nextFamily) return;
+
+        openPrintableTemplateActions(nextFamily.id);
+    };
+
     const handlePrintableAssetRender = async (templateFamilyId: PrintableTemplateFamilyId, outputFormat: PrintableAssetOutputFormat) => {
-        if (!data) return;
+        if (!data || printableOperationRef.current) return;
 
         const assetType = selectedPrintableAsset;
+        if (selectedPrintableAssetId === 'campaign_poster' && !buildPrintableFlyerCampaignContent(posterCampaignDraft)) {
+            Toast.show({ content: 'Add a real campaign headline before downloading the Campaign Poster.', duration: 1800 });
+            return;
+        }
         if (assetType.requiresFeedback && !data.hasFeedbackEnabled) {
             Toast.show({ content: 'Turn on feedback first, then download this QR.', duration: 1600 });
             return;
         }
 
         const busyKey = `download:${selectedPrintableAssetId}:${templateFamilyId}:${outputFormat}`;
+        printableOperationRef.current = busyKey;
         setPrintableBusyKey(busyKey);
         try {
             const input = await buildPrintableRenderInput(selectedPrintableAssetId, templateFamilyId);
             if (!input) return;
+            previewRequestRef.current += 1;
+            const requestId = previewRequestRef.current;
+            if (!await renderMobileInputPreview(input, assetType, requestId)) {
+                Toast.show({ content: 'Preview must be ready before the file can be created. Retry the preview.', duration: 1800 });
+                return;
+            }
             const files = await renderPrintableAssetDownloadFiles({ ...input, outputFormat });
-
-            files.forEach((file) => downloadBlob(file.blob, file.filename));
+            const delivery = await downloadPrintableAssetFiles(files, `${assetType.title}-${getPrintableTemplateFamily(templateFamilyId).label}`);
             if (selectedPrintableAssetId === 'complete_menu_kit') {
                 void trackMenuKitDownload('zip_download');
                 recordStarterSignal(STARTER_ACTIVATION_SIGNALS.MENU_KIT_DOWNLOADED);
             }
             Toast.show({
-                content: files.length > 1 ? `${assetType.title} front and back images downloaded` : `${assetType.title} downloaded`,
+                content: delivery.filename.endsWith('.zip') && outputFormat !== 'zip'
+                    ? `${assetType.title} front and back images saved as one ZIP`
+                    : `${assetType.title} downloaded`,
                 duration: 1400,
                 icon: 'success',
             });
@@ -874,6 +1292,52 @@ export default function MobileShareScreen({
             }));
             Toast.show({ content: `Could not create ${assetType.title}`, duration: 1600 });
         } finally {
+            if (printableOperationRef.current === busyKey) printableOperationRef.current = null;
+            setPrintableBusyKey(null);
+        }
+    };
+
+    const handlePrintableAssetShare = async (templateFamilyId: PrintableTemplateFamilyId, outputFormat: PrintableAssetOutputFormat) => {
+        if (!data || printableOperationRef.current) return;
+        const assetType = selectedPrintableAsset;
+        if (selectedPrintableAssetId === 'campaign_poster' && !buildPrintableFlyerCampaignContent(posterCampaignDraft)) {
+            Toast.show({ content: 'Add a real campaign headline before sharing the Campaign Poster.', duration: 1800 });
+            return;
+        }
+        if (assetType.requiresFeedback && !data.hasFeedbackEnabled) {
+            Toast.show({ content: 'Turn on feedback first, then share this QR.', duration: 1600 });
+            return;
+        }
+        const busyKey = `share:${selectedPrintableAssetId}:${templateFamilyId}:${outputFormat}`;
+        printableOperationRef.current = busyKey;
+        setPrintableBusyKey(busyKey);
+        try {
+            const input = await buildPrintableRenderInput(selectedPrintableAssetId, templateFamilyId);
+            if (!input) return;
+            previewRequestRef.current += 1;
+            const requestId = previewRequestRef.current;
+            if (!await renderMobileInputPreview(input, assetType, requestId)) {
+                Toast.show({ content: 'Preview must be ready before sharing. Retry the preview.', duration: 1800 });
+                return;
+            }
+            const files = await renderPrintableAssetDownloadFiles({ ...input, outputFormat });
+            const delivery = await preparePrintableAssetDelivery(files, `${assetType.title}-${getPrintableTemplateFamily(templateFamilyId).label}`);
+            const result = await shareBlob(delivery.blob, delivery.filename, assetType.title);
+            if (result === 'unsupported') {
+                downloadBlob(delivery.blob, delivery.filename);
+                Toast.show({ content: `${assetType.title} saved to downloads`, duration: 1500, icon: 'success' });
+            } else if (result === 'shared') {
+                Toast.show({ content: `${assetType.title} ready to share`, duration: 1400, icon: 'success' });
+            }
+        } catch (error) {
+            logMobileOwnerFailure('mobile_share_printable_share_failed', error, buildMobileShareLogContext('printable_share', {
+                ...getBoundedMobileOwnerStringContext('assetTypeId', selectedPrintableAssetId),
+                ...getBoundedMobileOwnerStringContext('templateFamilyId', templateFamilyId),
+                ...getBoundedMobileOwnerStringContext('outputFormat', outputFormat),
+            }));
+            Toast.show({ content: `Could not share ${assetType.title}`, duration: 1600 });
+        } finally {
+            if (printableOperationRef.current === busyKey) printableOperationRef.current = null;
             setPrintableBusyKey(null);
         }
     };
@@ -922,6 +1386,7 @@ export default function MobileShareScreen({
                 brandColor: storeBrandColor,
                 currencyCode: (storeDetails as any)?.currencyCode || (storeDetails as any)?.currency || undefined,
                 storeName: data.storeName,
+                printableThemeId: effectiveThemeId,
             });
 
             downloadPdf(pdfResult);
@@ -1046,17 +1511,10 @@ export default function MobileShareScreen({
         generatingDownloadRef.current = 'feedback_qr';
         setGeneratingDownload('feedback_qr');
         try {
-            const { downloadQrCode, generateBrandedFeedbackQrCode, getQrCodeFilename } = await import('@lib/utils/feedbackQrCode');
-            const qrDataUrl = await generateBrandedFeedbackQrCode(data.projectId, {
-                brandColor: storeBrandColor,
-                footer: data.feedbackQrLink.replace(/^https?:\/\//, ''),
-                logoUrl: data.storeLogo || undefined,
-                storeName: data.storeName,
-                subtitle: t('feedbackLinkDesc'),
-                title: t('feedbackQr'),
-                activePlanType: (storeDetails as any)?.activePlanType,
-            }, data.obpLink);
-            downloadQrCode(qrDataUrl, getQrCodeFilename(data.storeName));
+            const input = await buildPrintableRenderInput('feedback_qr', effectiveThemeId);
+            if (!input) return;
+            const files = await renderPrintableAssetDownloadFiles({ ...input, outputFormat: 'png' });
+            await downloadPrintableAssetFiles(files, `${t('feedbackQr')}-${getPrintableTemplateFamily(effectiveThemeId).label}`);
             Toast.show({ content: t('assetDownloaded', { label: t('feedbackQr') }), duration: 1400, icon: 'success' });
         } catch (error) {
             logMobileOwnerFailure('mobile_share_feedback_qr_download_failed', error, buildMobileShareLogContext('feedback_qr_download'));
@@ -1264,7 +1722,284 @@ export default function MobileShareScreen({
                     />
                 ) : null}
 
+                <Card
+                    style={{
+                        background: assetProfileReadiness.percent === 100 ? token.colorSuccessBg : token.colorPrimaryBg,
+                        border: `1px solid ${assetProfileReadiness.percent === 100 ? token.colorSuccessBorder : token.colorPrimaryBorder}`,
+                        borderRadius: 24,
+                    }}
+                >
+                    <Flex gap={10} vertical>
+                        <Flex align="flex-start" gap={10} justify="between">
+                            <Flex align="flex-start" gap={9} style={{ minWidth: 0 }}>
+                                <span
+                                    style={{
+                                        alignItems: 'center',
+                                        background: token.colorBgContainer,
+                                        borderRadius: 12,
+                                        color: assetProfileReadiness.percent === 100 ? token.colorSuccess : token.colorPrimary,
+                                        display: 'inline-flex',
+                                        flexShrink: 0,
+                                        height: 36,
+                                        justifyContent: 'center',
+                                        width: 36,
+                                    }}
+                                >
+                                    {assetProfileReadiness.percent === 100 ? <LuCheck size={19} /> : <LuSparkles size={19} />}
+                                </span>
+                                <Flex gap={3} style={{ minWidth: 0 }} vertical>
+                                    <Text strong>{assetProfileReadiness.percent === 100 ? 'Business details ready' : 'Make every asset feel complete'}</Text>
+                                    <Text style={{ color: token.colorTextSecondary, fontSize: 12, lineHeight: 1.4 }}>
+                                        {assetProfileReadiness.percent === 100
+                                            ? 'Your saved business details are reused across every asset.'
+                                            : 'Add the missing business details once. Assets and future previews will reuse them.'}
+                                    </Text>
+                                </Flex>
+                            </Flex>
+                            <Tag color={assetProfileReadiness.percent === 100 ? 'success' : 'primary'} style={{ flexShrink: 0, marginInlineEnd: 0 }}>
+                                {assetProfileReadiness.completedCount}/{assetProfileReadiness.totalCount}
+                            </Tag>
+                        </Flex>
+                        <div
+                            aria-label={`${assetProfileReadiness.percent}% of recommended asset profile complete`}
+                            aria-valuemax={100}
+                            aria-valuemin={0}
+                            aria-valuenow={assetProfileReadiness.percent}
+                            role="progressbar"
+                            style={{ background: token.colorFillSecondary, borderRadius: 999, height: 6, overflow: 'hidden' }}
+                        >
+                            <div
+                                style={{
+                                    background: assetProfileReadiness.percent === 100 ? token.colorSuccess : token.colorPrimary,
+                                    borderRadius: 999,
+                                    height: '100%',
+                                    transition: 'width 180ms ease',
+                                    width: `${assetProfileReadiness.percent}%`,
+                                }}
+                            />
+                        </div>
+                        {assetProfileReadiness.missingFields.length ? (
+                            <Text style={{ color: token.colorTextSecondary, fontSize: 12 }}>
+                                Add next: {assetProfileReadiness.missingFields.map((field) => field.label).join(', ')}
+                            </Text>
+                        ) : null}
+                        {canManageAssetBusinessProfile ? (
+                            <Button
+                                color={assetProfileReadiness.percent === 100 ? undefined : 'primary'}
+                                fill={assetProfileReadiness.percent === 100 ? 'outline' : 'solid'}
+                                onClick={() => openAssetBusinessProfile(null)}
+                                style={{ minHeight: 44 }}
+                            >
+                                {assetProfileReadiness.percent === 100 ? 'Review business details' : 'Complete business details'}
+                            </Button>
+                        ) : (
+                            <Text style={{ color: token.colorTextTertiary, fontSize: 12 }}>
+                                Ask an owner or manager with Business Settings access to complete these details.
+                            </Text>
+                        )}
+                    </Flex>
+                </Card>
+
                 <MobilePrintReadinessPanel compact={isCompactHandheld} items={printReadinessItems} />
+
+                <Card style={{ borderRadius: 24 }}>
+                    <Flex gap={12} vertical>
+                        <SectionHeader
+                            compact={isCompactHandheld}
+                            subtitle={`${themeRecommendation.audienceLabel}. Tap a theme to preview the complete brand kit before applying it.`}
+                            title="Asset Theme"
+                        />
+                        <Flex align="center" justify="between">
+                            <Text type="secondary" style={{ fontSize: 12 }}>
+                                {showAllThemeFamilies ? `All ${themeFamilies.length} themes` : 'Recommended for your business'}
+                            </Text>
+                            <Button
+                                fill="none"
+                                onClick={() => setShowAllThemeFamilies((current) => !current)}
+                                size="small"
+                            >
+                                {showAllThemeFamilies ? 'Show recommended' : 'View all themes'}
+                            </Button>
+                        </Flex>
+                        <Flex gap={10} style={{ marginInline: -4, overflowX: 'auto', padding: '2px 4px 8px' }}>
+                            {visibleThemeFamilies.map((family) => {
+                                const current = family.id === effectiveThemeId;
+                                const selected = family.id === pendingThemeId;
+                                const recommended = themeRecommendation.recommendedThemeIds.includes(family.id);
+                                return (
+                                    <button
+                                        aria-label={`${family.label}. ${current ? 'Current theme. ' : ''}${selected ? 'Previewing, not applied yet.' : 'Tap to preview.'}`}
+                                        aria-pressed={selected}
+                                        aria-current={current ? 'true' : undefined}
+                                        disabled={Boolean(stylePreferenceBusyKey)}
+                                        key={family.id}
+                                        onClick={() => setPendingThemeId((value) => value === family.id || current ? null : family.id)}
+                                        style={{
+                                            alignItems: 'stretch',
+                                            background: selected
+                                                ? token.colorPrimaryBg
+                                                : current
+                                                    ? token.colorSuccessBg
+                                                    : token.colorBgContainer,
+                                            border: `2px solid ${selected
+                                                ? token.colorPrimaryBorder
+                                                : current
+                                                    ? token.colorSuccess
+                                                    : token.colorBorderSecondary}`,
+                                            borderRadius: 18,
+                                            boxSizing: 'border-box',
+                                            color: token.colorText,
+                                            display: 'flex',
+                                            flex: '0 0 142px',
+                                            flexDirection: 'column',
+                                            font: 'inherit',
+                                            height: 170,
+                                            maxWidth: 142,
+                                            minWidth: 142,
+                                            overflow: 'hidden',
+                                            padding: 8,
+                                            textAlign: 'left',
+                                            WebkitTapHighlightColor: 'transparent',
+                                        }}
+                                        type="button"
+                                    >
+                                        <TemplateFamilySwatch
+                                            actionLabel="View"
+                                            assetTypeId="single_table_card"
+                                            brandColor={storeBrandColor}
+                                            family={family}
+                                            height={86}
+                                            instructionLabel="Scan"
+                                            shortLink={data.menuLink.replace(/^https?:\/\//, '')}
+                                            storeLogo={data.storeLogo}
+                                            storeName={data.storeName}
+                                            width={122}
+                                        />
+                                        <Text strong style={{ display: 'block', flex: '0 0 auto', fontSize: 12, lineHeight: 1.35, marginTop: 7, minHeight: 32, width: '100%' }}>
+                                            {family.label}
+                                        </Text>
+                                        {selected ? (
+                                            <Tag color="primary" style={{ alignSelf: 'flex-start', marginInlineEnd: 0, marginTop: 5 }}>
+                                                Previewing
+                                            </Tag>
+                                        ) : current ? (
+                                            <Tag color="success" style={{ alignSelf: 'flex-start', marginInlineEnd: 0, marginTop: 5 }}>
+                                                {effectiveThemeSource === 'project' ? 'Menu theme' : effectiveThemeSource === 'business' ? 'Business theme' : 'Recommended'}
+                                            </Tag>
+                                        ) : recommended ? (
+                                            <Tag style={{ alignSelf: 'flex-start', marginInlineEnd: 0, marginTop: 5 }}>Recommended</Tag>
+                                        ) : null}
+                                    </button>
+                                );
+                            })}
+                        </Flex>
+                        <div
+                            aria-label={`${previewThemeFamily.label} asset preview`}
+                            style={{
+                                background: token.colorFillQuaternary,
+                                border: `1px solid ${token.colorBorderSecondary}`,
+                                borderRadius: 20,
+                                display: 'grid',
+                                gap: 7,
+                                gridAutoRows: isCompactHandheld ? 82 : 94,
+                                gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+                                overflow: 'hidden',
+                                padding: 7,
+                            }}
+                        >
+                            {PRINTABLE_BRAND_KIT_PREVIEW_ASSET_IDS.map((assetId, index) => {
+                                const asset = getPrintableAssetType(assetId);
+                                const copy = getPrintableAssetPreviewCopy(assetId, labels);
+                                return (
+                                    <div
+                                        key={assetId}
+                                        style={{
+                                            borderRadius: 14,
+                                            gridColumn: index === 0 || index === 5 ? 'span 2' : 'span 1',
+                                            minHeight: 0,
+                                            overflow: 'hidden',
+                                            position: 'relative',
+                                        }}
+                                    >
+                                        <TemplateFamilySwatch
+                                            actionLabel={copy.actionLabel}
+                                            assetTypeId={assetId}
+                                            brandColor={storeBrandColor}
+                                            family={previewThemeFamily}
+                                            height={index === 0 || index === 5 ? (isCompactHandheld ? 82 : 94) : (isCompactHandheld ? 82 : 94)}
+                                            instructionLabel={copy.instructionLabel}
+                                            shortLink={(assetId === 'feedback_qr' ? data.feedbackQrLink : data.menuLink).replace(/^https?:\/\//, '')}
+                                            storeLogo={data.storeLogo}
+                                            storeName={data.storeName}
+                                            width={index === 0 || index === 5 ? 320 : 154}
+                                        />
+                                        <span style={{
+                                            background: 'rgba(15, 23, 42, 0.72)',
+                                            borderRadius: 999,
+                                            bottom: 6,
+                                            color: '#fff',
+                                            fontSize: 10,
+                                            fontWeight: 700,
+                                            left: 6,
+                                            lineHeight: 1,
+                                            padding: '4px 6px',
+                                            position: 'absolute',
+                                        }}>
+                                            {asset.title}
+                                        </span>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                        <Flex align="center" justify="between">
+                            <Text strong style={{ fontSize: 13 }}>{previewThemeFamily.label}</Text>
+                            <Text style={{ color: pendingThemeId ? token.colorPrimary : token.colorSuccess, fontSize: 12, fontWeight: 700 }}>
+                                {pendingThemeId ? 'Not applied yet' : 'Current brand look'}
+                            </Text>
+                        </Flex>
+                        {pendingThemeId ? (
+                            <Flex gap={8} wrap="wrap">
+                                {data.projectId ? (
+                                    <Button
+                                        color="primary"
+                                        disabled={Boolean(stylePreferenceBusyKey) || stylePreferences.projectThemeOverrides?.[data.projectId] === pendingThemeId}
+                                        fill="solid"
+                                        loading={stylePreferenceBusyKey === `theme:project:${pendingThemeId}`}
+                                        onClick={() => void handleSaveThemePreference('project', pendingThemeId)}
+                                        style={{ minHeight: 44 }}
+                                    >
+                                        {stylePreferences.projectThemeOverrides?.[data.projectId] === pendingThemeId ? 'Already applied to this menu' : 'Apply to this menu'}
+                                    </Button>
+                                ) : null}
+                                <Button
+                                    disabled={Boolean(stylePreferenceBusyKey) || stylePreferences.businessThemeId === pendingThemeId}
+                                    fill="outline"
+                                    loading={stylePreferenceBusyKey === `theme:business:${pendingThemeId}`}
+                                    onClick={() => void handleSaveThemePreference('business', pendingThemeId)}
+                                    style={{ minHeight: 44 }}
+                                >
+                                    {stylePreferences.businessThemeId === pendingThemeId ? 'Already applied to all menus' : 'Apply to all menus'}
+                                </Button>
+                            </Flex>
+                        ) : null}
+                        <Flex gap={8} wrap="wrap">
+                            {data.projectId && stylePreferences.projectThemeOverrides?.[data.projectId] ? (
+                                <Button
+                                    disabled={Boolean(stylePreferenceBusyKey)}
+                                    fill="none"
+                                    loading={stylePreferenceBusyKey === 'theme:clear'}
+                                    onClick={() => void handleClearProjectThemeOverride()}
+                                    style={{ minHeight: 44 }}
+                                >
+                                    {stylePreferences.businessThemeId ? 'Use business theme' : 'Use recommended theme'}
+                                </Button>
+                            ) : null}
+                        </Flex>
+                        <Text style={{ color: token.colorTextTertiary, fontSize: 12 }}>
+                            Selecting a card only changes this preview. Apply it when the whole set feels right.
+                        </Text>
+                    </Flex>
+                </Card>
 
                 <Card style={{ borderRadius: 24 }}>
                     <Flex gap={12} vertical>
@@ -1274,18 +2009,19 @@ export default function MobileShareScreen({
                             title="Assets"
                         />
                         <Flex gap={10} vertical>
-                            {PRINTABLE_ASSET_TYPES.map((asset) => {
+                            {PRINTABLE_ASSET_CATALOG_TYPES.map((asset) => {
                                 const active = selectedPrintableAssetId === asset.id;
                                 const disabled = asset.requiresFeedback && !data.hasFeedbackEnabled;
                                 return (
                                     <button
                                         aria-label={`${asset.title}. ${disabled ? 'Turn on feedback first' : `Output format ${asset.outputFormat.toUpperCase()}`}`}
                                         aria-pressed={active}
-                                        disabled={disabled}
+                                        disabled={disabled || Boolean(printableBusyKey)}
                                         key={asset.id}
                                         onClick={() => {
-                                            if (disabled) return;
+                                            if (disabled || printableOperationRef.current) return;
                                             setSelectedPrintableAssetId(asset.id);
+                                            setPrintableRuntimeDraftDirty(false);
                                             closePrintableTemplateActions();
                                         }}
                                         style={{
@@ -1331,21 +2067,27 @@ export default function MobileShareScreen({
                     <Flex gap={12} vertical>
                         <SectionHeader
                             compact={isCompactHandheld}
-                            subtitle="Pick one finished look. Logo, color, URL, and MenuList branding are filled automatically."
-                            title="Choose Style"
+                            subtitle={selectedPrintableAssetId === 'complete_menu_kit'
+                                ? 'Downloads every supported asset in the selected parent theme.'
+                                : 'This asset inherits the selected parent theme automatically.'}
+                            title={selectedPrintableAssetId === 'complete_menu_kit' ? 'Themed Asset Set' : 'Current Theme'}
                         />
                         <Flex gap={10} vertical>
                             {availablePrintableTemplateFamilies.map((family) => {
+                                const isResolvedDefault = family.id === resolvedSelectedAssetStyle.templateFamilyId;
+                                const isBundle = selectedPrintableAssetId === 'complete_menu_kit';
                                 return (
                                     <button
                                         aria-haspopup="dialog"
-                                        aria-label={`Open ${family.label} ${selectedPrintableAsset.title} download options`}
+                                        aria-label={isBundle
+                                            ? `Open the ${family.label} asset set download options`
+                                            : `Open ${family.label} ${selectedPrintableAsset.title} download options`}
                                         key={family.id}
                                         onClick={() => openPrintableTemplateActions(family.id)}
                                         style={{
                                             alignItems: 'stretch',
                                             background: token.colorBgContainer,
-                                            border: `1px solid ${token.colorBorderSecondary}`,
+                                            border: `1px solid ${isResolvedDefault && !isBundle ? token.colorPrimaryBorder : token.colorBorderSecondary}`,
                                             borderRadius: 18,
                                             cursor: 'pointer',
                                             display: 'flex',
@@ -1392,16 +2134,32 @@ export default function MobileShareScreen({
                                                         overflowWrap: 'anywhere',
                                                     }}
                                                 >
-                                                    {family.label}
+                                                    {isBundle ? 'Your asset set' : family.label}
                                                 </Text>
-                                                <Tag style={{ flexShrink: 0, marginInlineEnd: 0 }}>{family.tier}</Tag>
+                                                {isBundle ? (
+                                                    <Tag color="primary" style={{ flexShrink: 0, marginInlineEnd: 0 }}>ZIP</Tag>
+                                                ) : isResolvedDefault ? (
+                                                    <Tag color={resolvedSelectedAssetStyle.source.startsWith('project') ? 'primary' : resolvedSelectedAssetStyle.source.startsWith('business') ? 'success' : 'default'} style={{ flexShrink: 0, marginInlineEnd: 0 }}>
+                                                        {resolvedSelectedAssetStyle.source === 'project-theme'
+                                                                ? 'Menu theme'
+                                                                : resolvedSelectedAssetStyle.source === 'business-theme'
+                                                                        ? 'Business theme'
+                                                                        : 'Recommended'}
+                                                    </Tag>
+                                                ) : (
+                                                    <Tag style={{ flexShrink: 0, marginInlineEnd: 0 }}>{family.tier}</Tag>
+                                                )}
                                             </span>
                                             <Text style={{ color: token.colorTextSecondary, display: 'block', fontSize: 12, lineHeight: 1.35, overflowWrap: 'anywhere' }}>
-                                                {family.description}
+                                                {isBundle
+                                                    ? `Uses ${family.label} across the full asset set.`
+                                                    : family.description}
                                             </Text>
-                                            <Text style={{ color: token.colorTextTertiary, display: 'block', fontSize: 11.5, lineHeight: 1.35, overflowWrap: 'anywhere' }}>
-                                                Best for: {family.bestFor}
-                                            </Text>
+                                            {!isBundle ? (
+                                                <Text style={{ color: token.colorTextTertiary, display: 'block', fontSize: 11.5, lineHeight: 1.35, overflowWrap: 'anywhere' }}>
+                                                    Best for: {family.bestFor}
+                                                </Text>
+                                            ) : null}
                                         </span>
                                     </button>
                                 );
@@ -1452,23 +2210,97 @@ export default function MobileShareScreen({
                     visible={isProjectSelectorOpen}
                 />
                 <PrintableTemplateActionSheet
-                    actionLabel={previewCopy.actionLabel}
                     asset={selectedPrintableAsset}
-                    assetTypeId={selectedPrintableAssetId}
-                    brandColor={storeBrandColor}
                     busyKey={printableBusyKey}
+                    canManageBusinessProfile={canManageAssetBusinessProfile}
+                    canGoNext={Boolean(
+                        printableActionTemplateIndex >= 0
+                        && !printableBusyKey
+                        && printableActionTemplateIndex < availablePrintableTemplateFamilies.length - 1
+                    )}
+                    canSelectStaffBadgePerson={userPermissions?.canManageUsers === true}
+                    canGoPrevious={Boolean(
+                        printableActionTemplateIndex > 0
+                        && !printableBusyKey
+                    )}
+                    currentPosition={printableActionTemplateIndex >= 0 ? printableActionTemplateIndex + 1 : 0}
                     family={printableActionTemplate}
-                    instructionLabel={previewCopy.instructionLabel}
+                    flyerCampaignDraft={flyerCampaignDraft}
+                    giftCertificateDraft={giftCertificateDraft}
+                    invitationDraft={invitationDraft}
+                    posterCampaignDraft={posterCampaignDraft}
+                    postcardContentDraft={postcardContentDraft}
                     onClose={closePrintableTemplateActions}
                     onDownload={(templateFamilyId, outputFormat) => void handlePrintableAssetRender(templateFamilyId, outputFormat)}
+                    onEditBusinessProfile={() => openAssetBusinessProfile(selectedPrintableAssetId)}
+                    onShare={(templateFamilyId, outputFormat) => void handlePrintableAssetShare(templateFamilyId, outputFormat)}
+                    onNext={() => navigatePrintableTemplate('next')}
+                    onPrevious={() => navigatePrintableTemplate('previous')}
+                    onRetryPreview={() => {
+                        if (printableActionTemplate) void renderPrintableTemplatePreview(printableActionTemplate.id);
+                    }}
+                    onSelectStaffBadgePerson={handleSelectStaffBadgePerson}
+                    onUpdateFlyerCampaign={(value) => { setFlyerCampaignDraft(value); setPrintableRuntimeDraftDirty(true); }}
+                    onUpdateGiftCertificate={(value) => { setGiftCertificateDraft(value); setPrintableRuntimeDraftDirty(true); }}
+                    onUpdateGiftCertificatePreview={() => {
+                        if (printableActionTemplate) void renderPrintableTemplatePreview(printableActionTemplate.id);
+                    }}
+                    onUpdateInvitation={(value) => { setInvitationDraft(value); setPrintableRuntimeDraftDirty(true); }}
+                    onUpdateInvitationPreview={() => {
+                        if (printableActionTemplate) void renderPrintableTemplatePreview(printableActionTemplate.id);
+                    }}
+                    onUpdatePosterCampaign={(value) => { setPosterCampaignDraft(value); setPrintableRuntimeDraftDirty(true); }}
+                    onUpdateFlyerPreview={() => {
+                        if (printableActionTemplate) void renderPrintableTemplatePreview(printableActionTemplate.id);
+                    }}
+                    onUpdatePostcardContent={(value) => { setPostcardContentDraft(value); setPrintableRuntimeDraftDirty(true); }}
+                    onUpdatePostcardPreview={() => {
+                        if (printableActionTemplate) void renderPrintableTemplatePreview(printableActionTemplate.id);
+                    }}
                     previewAsset={previewAsset}
+                    profileReadiness={selectedAssetProfileReadiness}
+                    projectName={data.projectName || labels.offeringTitle}
                     previewState={printablePreviewState}
-                    shortLink={data.menuLink.replace(/^https?:\/\//, '')}
-                    storeLogo={data.storeLogo}
+                    runtimeDraftDirty={printableRuntimeDraftDirty}
+                    storeContactFields={printableStoreContactFields}
                     storeName={data.storeName}
+                    storeTagline={data.storeTagline || null}
                     supportedOutputFormats={selectedPrintableActionFormats}
+                    supportsNativeShare={supportsNativeShare}
+                    staffBadgePeople={staffBadgePeopleState.people}
+                    staffBadgePeopleError={staffBadgePeopleState.error}
+                    staffBadgePeopleLoading={staffBadgePeopleState.loading}
+                    selectedStaffBadgePersonId={selectedStaffBadgePersonId}
+                    totalStyles={availablePrintableTemplateFamilies.length}
                     visible={Boolean(printableActionTemplate)}
                 />
+                <Popup
+                    bodyStyle={{ maxHeight: '94vh', overflow: 'hidden', padding: 0 }}
+                    destroyOnClose
+                    onMaskClick={() => void closeAssetBusinessProfile()}
+                    visible={isAssetBusinessProfileOpen}
+                >
+                    <Flex style={{ height: '100%', maxHeight: '94vh' }} vertical>
+                        <NavBar
+                            backIcon={<LuX size={20} />}
+                            onBack={() => void closeAssetBusinessProfile()}
+                        >
+                            Business details for assets
+                        </NavBar>
+                        <div style={{ overflowY: 'auto', padding: 14 }}>
+                            <AssetBusinessProfileEditor
+                                assetTitle={assetBusinessProfileAssetId
+                                    ? getPrintableAssetType(assetBusinessProfileAssetId).title
+                                    : undefined}
+                                assetTypeId={assetBusinessProfileAssetId}
+                                compact
+                                onCancel={() => void closeAssetBusinessProfile()}
+                                onSaved={handleAssetBusinessProfileSaved}
+                                onStateChange={setAssetBusinessProfileState}
+                            />
+                        </div>
+                    </Flex>
+                </Popup>
             </Flex>
         );
     }
@@ -1727,12 +2559,16 @@ export default function MobileShareScreen({
                         subtitle={t('printDownloadsDesc')}
                         title={t('printDownloadsTitle')}
                     />
+                    <Flex align="center" gap={6}>
+                        <Text type="secondary" style={{ fontSize: 12 }}>Current brand look</Text>
+                        <Tag color="primary">{getPrintableTemplateFamily(effectiveThemeId).label}</Tag>
+                    </Flex>
 
                     <Flex gap={10} wrap="wrap">
                         {(FEATURE_FLAGS.ENABLE_PRINTABLE_ASSET_TEMPLATES || FEATURE_FLAGS.ENABLE_PRINT_ASSETS_ROUTE) && onOpenPrintAssets ? (
                             <DownloadTile
                                 compact={isCompactHandheld}
-                                description="Templates for tables, counters, feedback, and menus"
+                                description={`Templates for tables, counters, feedback, and menus · ${getPrintableTemplateFamily(effectiveThemeId).label}`}
                                 disabled={generatingDownload !== null}
                                 icon={<LuPrinter size={18} />}
                                 loading={false}
@@ -1743,7 +2579,9 @@ export default function MobileShareScreen({
                         ) : null}
                         <DownloadTile
                             compact={isCompactHandheld}
-                            description={FEATURE_FLAGS.ENABLE_MENU_CARD_EXPORT ? 'Preview and create PDF' : t('menuPdfDesc')}
+                            description={FEATURE_FLAGS.ENABLE_MENU_CARD_EXPORT
+                                ? `Preview and create PDF · ${getPrintableTemplateFamily(effectiveThemeId).label}`
+                                : `${t('menuPdfDesc')} · ${getPrintableTemplateFamily(effectiveThemeId).label}`}
                             disabled={generatingDownload !== null}
                             icon={<LuFileText size={18} />}
                             loading={generatingDownload === 'menu_pdf'}
@@ -2202,41 +3040,123 @@ function MobilePrintReadinessPanel({
 }
 
 function PrintableTemplateActionSheet({
-    actionLabel,
     asset,
-    assetTypeId,
-    brandColor,
     busyKey,
+    canManageBusinessProfile,
+    canGoNext,
+    canGoPrevious,
+    canSelectStaffBadgePerson,
+    currentPosition,
     family,
-    instructionLabel,
+    flyerCampaignDraft,
+    giftCertificateDraft,
+    invitationDraft,
+    posterCampaignDraft,
+    postcardContentDraft,
     onClose,
     onDownload,
+    onEditBusinessProfile,
+    onNext,
+    onPrevious,
+    onRetryPreview,
+    onSelectStaffBadgePerson,
+    onShare,
+    onUpdateFlyerCampaign,
+    onUpdateGiftCertificate,
+    onUpdateGiftCertificatePreview,
+    onUpdateInvitation,
+    onUpdateInvitationPreview,
+    onUpdatePosterCampaign,
+    onUpdateFlyerPreview,
+    onUpdatePostcardContent,
+    onUpdatePostcardPreview,
     previewAsset,
+    profileReadiness,
+    projectName,
     previewState,
-    shortLink,
-    storeLogo,
+    runtimeDraftDirty,
+    storeContactFields,
     storeName,
+    storeTagline,
     supportedOutputFormats,
+    supportsNativeShare,
+    staffBadgePeople,
+    staffBadgePeopleError,
+    staffBadgePeopleLoading,
+    selectedStaffBadgePersonId,
+    totalStyles,
     visible,
 }: {
-    actionLabel: string;
     asset: PrintableAssetType;
-    assetTypeId: PrintableAssetTypeId;
-    brandColor?: string | null;
     busyKey: string | null;
+    canManageBusinessProfile: boolean;
+    canGoNext: boolean;
+    canGoPrevious: boolean;
+    canSelectStaffBadgePerson: boolean;
+    currentPosition: number;
     family: PrintableTemplateFamily | null;
-    instructionLabel: string;
+    flyerCampaignDraft: PrintableFlyerCampaignDraft;
+    giftCertificateDraft: PrintableGiftCertificateDraft;
+    invitationDraft: PrintableInvitationDraft;
+    posterCampaignDraft: PrintableFlyerCampaignDraft;
+    postcardContentDraft: PrintablePostcardContentDraft;
     onClose: () => void;
     onDownload: (templateFamilyId: PrintableTemplateFamilyId, outputFormat: PrintableAssetOutputFormat) => void;
+    onEditBusinessProfile: () => void;
+    onNext: () => void;
+    onPrevious: () => void;
+    onRetryPreview: () => void;
+    onSelectStaffBadgePerson: (personId: string) => void;
+    onShare: (templateFamilyId: PrintableTemplateFamilyId, outputFormat: PrintableAssetOutputFormat) => void;
+    onUpdateFlyerCampaign: (value: PrintableFlyerCampaignDraft) => void;
+    onUpdateGiftCertificate: (value: PrintableGiftCertificateDraft) => void;
+    onUpdateGiftCertificatePreview: () => void;
+    onUpdateInvitation: (value: PrintableInvitationDraft) => void;
+    onUpdateInvitationPreview: () => void;
+    onUpdatePosterCampaign: (value: PrintableFlyerCampaignDraft) => void;
+    onUpdateFlyerPreview: () => void;
+    onUpdatePostcardContent: (value: PrintablePostcardContentDraft) => void;
+    onUpdatePostcardPreview: () => void;
     previewAsset: PreviewAssetState | null;
+    profileReadiness: ReturnType<typeof getAssetBusinessProfileReadiness>;
+    projectName: string;
     previewState: 'idle' | 'loading' | 'ready' | 'error';
-    shortLink?: string;
-    storeLogo?: string | null;
+    runtimeDraftDirty: boolean;
+    storeContactFields: ReturnType<typeof buildPrintableStoreContactFields>;
     storeName: string;
+    storeTagline: string | null;
     supportedOutputFormats: PrintableAssetOutputFormat[];
+    supportsNativeShare: boolean;
+    staffBadgePeople: PrintableStaffBadgePerson[];
+    staffBadgePeopleError: boolean;
+    staffBadgePeopleLoading: boolean;
+    selectedStaffBadgePersonId: string | null;
+    totalStyles: number;
     visible: boolean;
 }) {
     const { token } = theme.useToken();
+    const previewTouchStartRef = useRef<{ x: number; y: number } | null>(null);
+    const hasMultipleStyles = totalStyles > 1;
+
+    const handlePreviewTouchStart = (event: ReactTouchEvent<HTMLDivElement>) => {
+        const touch = event.touches[0];
+        previewTouchStartRef.current = touch ? { x: touch.clientX, y: touch.clientY } : null;
+    };
+
+    const handlePreviewTouchEnd = (event: ReactTouchEvent<HTMLDivElement>) => {
+        const start = previewTouchStartRef.current;
+        previewTouchStartRef.current = null;
+        if (!start || !hasMultipleStyles) return;
+
+        const touch = event.changedTouches[0];
+        if (!touch) return;
+        const deltaX = touch.clientX - start.x;
+        const deltaY = touch.clientY - start.y;
+        if (Math.abs(deltaX) < 48 || Math.abs(deltaX) <= Math.abs(deltaY) * 1.2) return;
+
+        if (deltaX < 0 && canGoNext) onNext();
+        if (deltaX > 0 && canGoPrevious) onPrevious();
+    };
 
     return (
         <Popup
@@ -2247,11 +3167,131 @@ function PrintableTemplateActionSheet({
         >
             <Flex style={{ height: '100%', maxHeight: '92vh' }} vertical>
                 <NavBar backIcon={<LuX size={20} />} onBack={onClose}>
-                    {family ? `${asset.title} - ${family.label}` : asset.title}
+                    {family ? `${asset.title} - ${asset.outputFormat === 'zip' ? 'Your asset set' : family.label}` : asset.title}
                 </NavBar>
                 {family ? (
                     <Flex gap={12} style={{ overflowY: 'auto', padding: 12 }} vertical>
+                        {asset.id === 'staff_id_card' ? (
+                            <Card style={{ background: token.colorBgLayout, borderRadius: 18 }}>
+                                <Flex gap={6} vertical>
+                                    <Text strong>Select staff member</Text>
+                                    <select
+                                        aria-label="Select staff member for badge"
+                                        disabled={Boolean(busyKey) || !canSelectStaffBadgePerson || staffBadgePeopleLoading || staffBadgePeople.length === 0}
+                                        onChange={(event) => onSelectStaffBadgePerson(event.target.value)}
+                                        style={{
+                                            appearance: 'none',
+                                            background: token.colorBgContainer,
+                                            border: `1px solid ${token.colorBorder}`,
+                                            borderRadius: 12,
+                                            color: token.colorText,
+                                            font: 'inherit',
+                                            minHeight: 46,
+                                            padding: '10px 12px',
+                                            width: '100%',
+                                        }}
+                                        value={selectedStaffBadgePersonId || ''}
+                                    >
+                                        <option value="">{staffBadgePeopleLoading ? 'Loading staff...' : 'Choose a staff member'}</option>
+                                        {staffBadgePeople.map((person) => (
+                                            <option key={person.id} value={person.id}>
+                                                {person.role ? `${person.name} - ${person.role}` : person.name}
+                                            </option>
+                                        ))}
+                                    </select>
+                                    <Text style={{ color: token.colorTextSecondary, fontSize: 12, lineHeight: 1.35 }}>
+                                        {!canSelectStaffBadgePerson
+                                            ? 'You need staff-management access to create a staff badge.'
+                                            : staffBadgePeopleError
+                                            ? 'Staff details could not be loaded.'
+                                            : staffBadgePeople.length === 0 && !staffBadgePeopleLoading
+                                                ? 'No active staff with a valid name are available.'
+                                                : 'Uses only the selected staff record name and resolved role.'}
+                                    </Text>
+                                </Flex>
+                            </Card>
+                        ) : null}
+                        {asset.id === 'campaign_flyer' || asset.id === 'campaign_poster' ? (
+                            <FlyerCampaignFields
+                                assetLabel={asset.id === 'campaign_poster' ? 'Campaign Poster' : 'Flyer'}
+                                applying={previewState === 'loading'}
+                                compact
+                                dirty={runtimeDraftDirty}
+                                disabled={Boolean(busyKey)}
+                                onApply={onUpdateFlyerPreview}
+                                onChange={asset.id === 'campaign_poster' ? onUpdatePosterCampaign : onUpdateFlyerCampaign}
+                                value={asset.id === 'campaign_poster' ? posterCampaignDraft : flyerCampaignDraft}
+                            />
+                        ) : null}
+                        {asset.id === 'postcard' ? (
+                            <PostcardContentFields
+                                applying={previewState === 'loading'}
+                                compact
+                                dirty={runtimeDraftDirty}
+                                disabled={Boolean(busyKey)}
+                                onApply={onUpdatePostcardPreview}
+                                onChange={onUpdatePostcardContent}
+                                value={postcardContentDraft}
+                            />
+                        ) : null}
+                        {asset.id === 'gift_certificate' ? (
+                            <GiftCertificateContentFields
+                                applying={previewState === 'loading'}
+                                compact
+                                dirty={runtimeDraftDirty}
+                                disabled={Boolean(busyKey)}
+                                onApply={onUpdateGiftCertificatePreview}
+                                onChange={onUpdateGiftCertificate}
+                                value={giftCertificateDraft}
+                            />
+                        ) : null}
+                        {asset.id === 'event_invitation' ? (
+                            <InvitationContentFields
+                                applying={previewState === 'loading'}
+                                compact
+                                dirty={runtimeDraftDirty}
+                                disabled={Boolean(busyKey)}
+                                onApply={onUpdateInvitationPreview}
+                                onChange={onUpdateInvitation}
+                                value={invitationDraft}
+                            />
+                        ) : null}
+                        <Card style={{ background: token.colorBgLayout, borderRadius: 18 }}>
+                            <Flex gap={8} vertical>
+                                <Flex align="center" gap={8} justify="between">
+                                    <Text strong>Saved business details</Text>
+                                    <Tag color={profileReadiness.percent === 100 ? 'success' : 'processing'} style={{ marginInlineEnd: 0 }}>
+                                        {profileReadiness.completedCount}/{profileReadiness.totalCount} ready
+                                    </Tag>
+                                </Flex>
+                                <Text style={{ color: token.colorTextSecondary, fontSize: 12, lineHeight: 1.4 }}>
+                                    This preview uses the same canonical business profile as your other assets.
+                                </Text>
+                                {profileReadiness.missingFields.length ? (
+                                    <Text style={{ color: token.colorTextSecondary, fontSize: 12, lineHeight: 1.4 }}>
+                                        Missing for this asset: {profileReadiness.missingFields.map((field) => field.label).join(', ')}
+                                    </Text>
+                                ) : null}
+                                {canManageBusinessProfile ? (
+                                    <Button
+                                        disabled={Boolean(busyKey)}
+                                        fill="outline"
+                                        onClick={onEditBusinessProfile}
+                                        style={{ minHeight: 44 }}
+                                    >
+                                        {profileReadiness.percent === 100 ? 'Review business details' : 'Complete details here'}
+                                    </Button>
+                                ) : (
+                                    <Text style={{ color: token.colorTextTertiary, fontSize: 12 }}>
+                                        Ask an owner or manager with Business Settings access to update these details.
+                                    </Text>
+                                )}
+                            </Flex>
+                        </Card>
                         <div
+                            onTouchCancel={() => { previewTouchStartRef.current = null; }}
+                            onTouchEnd={handlePreviewTouchEnd}
+                            onTouchStart={handlePreviewTouchStart}
                             style={{
                                 alignItems: 'center',
                                 background: token.colorBgLayout,
@@ -2262,6 +3302,8 @@ function PrintableTemplateActionSheet({
                                 justifyContent: 'center',
                                 overflow: 'hidden',
                                 padding: 10,
+                                position: 'relative',
+                                touchAction: hasMultipleStyles ? 'pan-y' : 'auto',
                             }}
                         >
                             {previewState === 'loading' ? (
@@ -2282,40 +3324,148 @@ function PrintableTemplateActionSheet({
                                     }}
                                 />
                             ) : asset.outputFormat === 'zip' ? (
-                                <PrintableTemplatePreview
-                                    actionLabel={actionLabel}
-                                    assetTypeId={assetTypeId}
-                                    brandColor={brandColor}
-                                    family={family}
-                                    instructionLabel={instructionLabel}
-                                    shortLink={shortLink}
-                                    storeLogo={storeLogo}
-                                    storeName={storeName}
-                                />
+                                <Flex align="center" gap={10} justify="center" vertical>
+                                    <LuPackage color={token.colorPrimary} size={54} />
+                                    <Text strong>{family.label} asset set</Text>
+                                    <Text style={{ color: token.colorTextSecondary, maxWidth: 280, textAlign: 'center' }}>
+                                        Every supported file follows the same selected parent theme automatically.
+                                    </Text>
+                                </Flex>
                             ) : previewState === 'error' ? (
-                                <Text style={{ color: token.colorTextSecondary, textAlign: 'center' }}>
-                                    Preview is unavailable. Download can still generate the file.
-                                </Text>
+                                <Flex align="center" gap={10} justify="center" vertical>
+                                    <Text style={{ color: token.colorTextSecondary, textAlign: 'center' }}>
+                                        Preview could not be created. Download and Share stay unavailable until it succeeds.
+                                    </Text>
+                                    <Button disabled={Boolean(busyKey)} fill="outline" onClick={onRetryPreview}>Retry preview</Button>
+                                </Flex>
+                            ) : null}
+                            {hasMultipleStyles ? (
+                                <div
+                                    aria-label="Style navigation"
+                                    role="group"
+                                    style={{
+                                        alignItems: 'center',
+                                        display: 'flex',
+                                        insetInline: 10,
+                                        justifyContent: 'space-between',
+                                        pointerEvents: 'none',
+                                        position: 'absolute',
+                                        top: '50%',
+                                        transform: 'translateY(-50%)',
+                                    }}
+                                >
+                                    <button
+                                        aria-label="Previous style"
+                                        disabled={!canGoPrevious}
+                                        onClick={onPrevious}
+                                        style={{
+                                            alignItems: 'center',
+                                            background: token.colorBgElevated,
+                                            border: `1px solid ${token.colorBorderSecondary}`,
+                                            borderRadius: 999,
+                                            color: token.colorText,
+                                            cursor: canGoPrevious ? 'pointer' : 'default',
+                                            display: 'inline-flex',
+                                            height: 44,
+                                            justifyContent: 'center',
+                                            opacity: canGoPrevious ? 0.96 : 0.38,
+                                            pointerEvents: 'auto',
+                                            width: 44,
+                                        }}
+                                        type="button"
+                                    >
+                                        <LuChevronLeft aria-hidden="true" size={22} />
+                                    </button>
+                                    <button
+                                        aria-label="Next style"
+                                        disabled={!canGoNext}
+                                        onClick={onNext}
+                                        style={{
+                                            alignItems: 'center',
+                                            background: token.colorBgElevated,
+                                            border: `1px solid ${token.colorBorderSecondary}`,
+                                            borderRadius: 999,
+                                            color: token.colorText,
+                                            cursor: canGoNext ? 'pointer' : 'default',
+                                            display: 'inline-flex',
+                                            height: 44,
+                                            justifyContent: 'center',
+                                            opacity: canGoNext ? 0.96 : 0.38,
+                                            pointerEvents: 'auto',
+                                            width: 44,
+                                        }}
+                                        type="button"
+                                    >
+                                        <LuChevronRight aria-hidden="true" size={22} />
+                                    </button>
+                                </div>
+                            ) : null}
+                            {hasMultipleStyles ? (
+                                <span
+                                    aria-live="polite"
+                                    role="status"
+                                    style={{
+                                        background: token.colorBgElevated,
+                                        border: `1px solid ${token.colorBorderSecondary}`,
+                                        borderRadius: 999,
+                                        bottom: 10,
+                                        color: token.colorTextSecondary,
+                                        fontSize: 12,
+                                        fontWeight: 600,
+                                        left: '50%',
+                                        lineHeight: '28px',
+                                        minWidth: 58,
+                                        paddingInline: 10,
+                                        position: 'absolute',
+                                        textAlign: 'center',
+                                        transform: 'translateX(-50%)',
+                                    }}
+                                >
+                                    {currentPosition} of {totalStyles}
+                                </span>
                             ) : null}
                         </div>
                         <Card style={{ background: token.colorBgLayout, borderRadius: 18 }}>
                             <Flex gap={6} vertical>
                                 <Flex align="center" gap={8} justify="space-between">
-                                    <Text strong>{family.label}</Text>
-                                    <Tag>{asset.outputFormat === 'zip' ? 'ZIP' : 'PDF + IMAGE'}</Tag>
+                                    <Text strong>{asset.outputFormat === 'zip' ? 'Your asset set' : family.label}</Text>
+                                    {asset.outputFormat === 'zip' ? (
+                                        <Tag>ZIP</Tag>
+                                    ) : (
+                                        <Tag color="primary">Inherited theme</Tag>
+                                    )}
                                 </Flex>
                                 <Text style={{ color: token.colorTextSecondary, lineHeight: 1.35 }}>
-                                    {family.description}
+                                    {asset.outputFormat === 'zip'
+                                        ? `Downloads all Menu Kit files in ${family.label}.`
+                                        : family.description}
                                 </Text>
                                 <Text style={{ color: token.colorTextTertiary, fontSize: 12 }}>
                                     {asset.size}
                                 </Text>
                             </Flex>
                         </Card>
+                        {asset.id === 'business_card' ? (
+                            <Card style={{ background: token.colorBgLayout, borderRadius: 18 }}>
+                                <Flex gap={5} vertical>
+                                    <Text strong>Business card contact preview</Text>
+                                    <Text type="secondary">Business: {storeName}</Text>
+                                    <Text type="secondary">Tagline: {storeTagline || 'Not set'} · Contact: {storeContactFields.contactName || 'Not set'}</Text>
+                                    <Text type="secondary">Phone: {storeContactFields.contactPhone || 'Not set'} · Email: {storeContactFields.contactEmail || 'Not set'}</Text>
+                                    <Text type="secondary">Address: {storeContactFields.contactAddress || 'Not set'}</Text>
+                                </Flex>
+                            </Card>
+                        ) : null}
+                        {asset.id === 'print_menu' ? (
+                            <Card style={{ background: token.colorBgLayout, borderRadius: 18 }}>
+                                <Text type="secondary">Data used: published items, categories, prices, options, descriptions, and item attributes from {projectName}. Update them in Menu before downloading if anything is wrong.</Text>
+                            </Card>
+                        ) : null}
                         <Flex gap={8} vertical>
                             {asset.outputFormat === 'zip' ? (
                                 <Button
                                     color="primary"
+                                    disabled={Boolean(busyKey) || previewState !== 'ready'}
                                     loading={busyKey === `download:${asset.id}:${family.id}:zip`}
                                     onClick={() => onDownload(family.id, 'zip')}
                                 >
@@ -2328,6 +3478,7 @@ function PrintableTemplateActionSheet({
                                 supportedOutputFormats.map((format, index) => (
                                     <Button
                                         color={index === 0 ? 'primary' : 'default'}
+                                        disabled={Boolean(busyKey) || previewState !== 'ready' || (asset.id === 'staff_id_card' && !selectedStaffBadgePersonId)}
                                         fill={index === 0 ? 'solid' : 'outline'}
                                         key={format}
                                         loading={busyKey === `download:${asset.id}:${family.id}:${format}`}
@@ -2340,6 +3491,20 @@ function PrintableTemplateActionSheet({
                                     </Button>
                                 ))
                             )}
+                            {supportsNativeShare && asset.outputFormat !== 'zip' ? supportedOutputFormats.map((format) => (
+                                <Button
+                                    disabled={Boolean(busyKey) || previewState !== 'ready' || (asset.id === 'staff_id_card' && !selectedStaffBadgePersonId)}
+                                    fill="outline"
+                                    key={`share:${format}`}
+                                    loading={busyKey === `share:${asset.id}:${family.id}:${format}`}
+                                    onClick={() => onShare(family.id, format)}
+                                >
+                                    <Flex align="center" gap={6} justify="center">
+                                        <LuShare2 size={16} />
+                                        <Text>{format === 'pdf' ? 'Share or save PDF' : asset.id === 'business_card' ? 'Share or save image ZIP' : 'Share or save image'}</Text>
+                                    </Flex>
+                                </Button>
+                            )) : null}
                         </Flex>
                     </Flex>
                 ) : null}

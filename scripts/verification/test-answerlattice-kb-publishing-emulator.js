@@ -24,7 +24,11 @@ const { dispatchPublishingEmbeddingTasks, finalizePublishingJob } = require(`${r
 const { publishApprovedJobLogic } = require(`${runtimeRoot}/logic/publishApprovedJob`);
 const { tiptapToText } = require(`${runtimeRoot}/utils/tiptapUtils`);
 
-const SCOPE = { tId: 82, sId: 802 };
+// The local readiness runner can execute this suite repeatedly against one
+// approved emulator. Use a fresh numeric tenant/store scope per process so
+// earlier navigation and cache-version documents cannot affect this run.
+const runScopeSeed = (Date.now() % 1_000_000_000) + (process.pid % 1_000);
+const SCOPE = { tId: runScopeSeed, sId: runScopeSeed + 1 };
 const VECTOR = Array.from(
     { length: ANSWERLATTICE_EMBEDDING_OUTPUT_DIMENSIONALITY },
     (_, index) => (index + 1) / 1_000_000,

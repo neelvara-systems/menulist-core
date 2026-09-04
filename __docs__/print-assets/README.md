@@ -2,9 +2,13 @@
 
 **Status:** Freeze-ready
 **Owner:** MenuList
-**Last Updated:** June 25, 2026
+**Last Updated:** September 4, 2026
 
-Assets is the focused owner workspace for every printable customer-facing asset: table tents, single table/counter cards, counter stickers, entrance posters, feedback QR, campaign flyers, gift certificates, front/back business cards, ID cards, invitations, postcards, product tags, campaign posters, full menu PDF, and the complete Menu Kit bundle. The older "Print Assets" name remains only for compatibility route/docs context. It also shows print readiness, image-first generated preview, print-shop handoff text, reprint guidance, and governed desktop customization for supported single print assets.
+Assets is the focused owner workspace for every printable customer-facing asset: table tents, single table/counter cards, counter stickers, entrance posters, feedback QR, campaign flyers, gift certificates, front/back business cards, ID cards, invitations, postcards, product tags, campaign posters, full menu PDF, and the complete Menu Kit bundle. The older "Print Assets" name remains only for compatibility route/docs context. It also shows print readiness, business-profile readiness, image-first generated preview, print-shop handoff text, reprint guidance, and governed desktop customization for supported single print assets.
+
+Owners with Business Settings access can complete missing identity and public-contact details directly from the Assets dashboard or the selected asset preview. The flow writes through the canonical store/tenant settings paths and immediately rebuilds the open preview; it does not create an Assets-only copy of business data.
+
+The Print Menu asset delegates to Menu Card Export and therefore includes only the category icons saved on the current menu, uses the same `showCategoryIcons` preference as the public live menu, and refreshes when a category icon changes.
 
 June 25, 2026 hardening: every QR generated through Assets/Menu Kit must preserve a four-module quiet zone, keep business identity and short-link trust cues outside the QR pattern, and avoid unsupported "verified", "secure", "no spam", or WhatsApp-consent claims on normal MenuList menu/page QR outputs.
 

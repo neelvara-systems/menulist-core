@@ -119,6 +119,7 @@ export default function BulkActionsSheet({
     const [destinationCategoryId, setDestinationCategoryId] = useState<string | null>(null);
     const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
     const [isStatusFilterOpen, setIsStatusFilterOpen] = useState(false);
+    const [isConfirmationOpen, setIsConfirmationOpen] = useState(false);
     const [applyDetail, setApplyDetail] = useState('');
     const selectionSummaryStyle = {
         backgroundColor: token.colorFillAlter,
@@ -143,6 +144,7 @@ export default function BulkActionsSheet({
         setDestinationCategoryId(null);
         setStatusFilter('all');
         setIsStatusFilterOpen(false);
+        setIsConfirmationOpen(false);
         setApplyDetail('');
     }, [initialAction, initialSelectedIds, projectData, visible]);
 
@@ -602,7 +604,9 @@ export default function BulkActionsSheet({
         ].filter(Boolean);
         const repairConfirmContent = `This will ${repairConfirmParts.join(', ')}. Prices and photos will stay unchanged.`;
 
+        setIsConfirmationOpen(true);
         Modal.confirm({
+            afterClose: () => setIsConfirmationOpen(false),
             cancelButtonProps: {
                 style: { display: 'none' },
             },
@@ -624,47 +628,46 @@ export default function BulkActionsSheet({
         if (action === 'availability') {
             actionLabel = target === 'available' ? t('markAvailable') : t('markSoldOut');
         } else if (action === 'showHide') {
-            actionLabel = target === 'show' ? t('active') : t('inactive');
+            actionLabel = target === 'show' ? t('showOnMenu') : t('hideFromMenu');
         } else if (action === 'pricing') {
             actionLabel = t('updatePrices');
         } else if (action === 'moveCategory') {
             actionLabel = t('moveItems');
         }
 
-        Dialog.confirm({
+        setIsConfirmationOpen(true);
+        const confirmed = await Dialog.confirm({
             content: t('bulkActionConfirm', { action: actionLabel, count: selectedIds.size }),
             title: actionLabel,
-            onConfirm: async () => {
-                if (!workingProject) return;
-                setApplying(true);
-                try {
-                    const previousProject = removeObjRef(workingProject);
-                    let updated = removeObjRef(workingProject);
-                    if (action === 'availability' && (target === 'available' || target === 'unavailable')) {
-                        updated = applyBulkAvailability(updated, selectedIds, target);
-                    } else if (action === 'showHide' && (target === 'show' || target === 'hide')) {
-                        updated = applyBulkActiveInactive(updated, selectedIds, target);
-                    } else if (action === 'pricing' && pricingConfig) {
-                        updated = applyBulkPricing(updated, selectedIds, pricingConfig);
-                    } else if (action === 'moveCategory' && destinationCategoryId) {
-                        updated = applyBulkMoveCategory(updated, selectedIds, destinationCategoryId);
-                    } else {
-                        setApplying(false);
-                        return;
-                    }
+        }).finally(() => setIsConfirmationOpen(false));
+        if (!confirmed || !workingProject) return;
 
-                    setWorkingProject(updated);
-                    await onApply(updated, { previousProject, updatedCount: selectedIds.size });
-                    setSelectedIds(new Set());
-                    setAction(null);
-                    onClose();
-                } catch {
-                    Toast.show({ content: t('bulkApplyFailed'), duration: 2000 });
-                } finally {
-                    setApplying(false);
-                }
-            },
-        });
+        setApplying(true);
+        try {
+            const previousProject = removeObjRef(workingProject);
+            let updated = removeObjRef(workingProject);
+            if (action === 'availability' && (target === 'available' || target === 'unavailable')) {
+                updated = applyBulkAvailability(updated, selectedIds, target);
+            } else if (action === 'showHide' && (target === 'show' || target === 'hide')) {
+                updated = applyBulkActiveInactive(updated, selectedIds, target);
+            } else if (action === 'pricing' && pricingConfig) {
+                updated = applyBulkPricing(updated, selectedIds, pricingConfig);
+            } else if (action === 'moveCategory' && destinationCategoryId) {
+                updated = applyBulkMoveCategory(updated, selectedIds, destinationCategoryId);
+            } else {
+                return;
+            }
+
+            setWorkingProject(updated);
+            await onApply(updated, { previousProject, updatedCount: selectedIds.size });
+            setSelectedIds(new Set());
+            setAction(null);
+            onClose();
+        } catch {
+            Toast.show({ content: t('bulkApplyFailed'), duration: 2000 });
+        } finally {
+            setApplying(false);
+        }
     };
 
     if (!visible) return null;
@@ -827,7 +830,7 @@ export default function BulkActionsSheet({
                 destroyOnClose
                 onMaskClick={applying ? undefined : onClose}
                 position="bottom"
-                visible={visible}
+                visible={visible && !isConfirmationOpen}
             >
                 <Flex style={MENU_SHEET_CONTAINER_STYLE} vertical>
                     <NavBar onBack={applying ? undefined : onClose}>
@@ -1077,7 +1080,7 @@ export default function BulkActionsSheet({
             destroyOnClose
             onMaskClick={onClose}
             position="bottom"
-            visible={visible}
+            visible={visible && !isConfirmationOpen}
         >
             <Flex style={MENU_SHEET_CONTAINER_STYLE} vertical>
                 <NavBar
@@ -1097,6 +1100,7 @@ export default function BulkActionsSheet({
                                     </Flex>
                                 </Flex>
                                 <Segmented
+                                    aria-label={t('pricingRule')}
                                     block
                                     onChange={(value) => handlePricingModeChange(value as string)}
                                     options={[
@@ -1111,6 +1115,7 @@ export default function BulkActionsSheet({
                                     {pricingMode !== 'set' ? (
                                         <Flex style={{ minWidth: 72 }}>
                                             <Segmented
+                                                aria-label={`${t('priceChangeTitle')} ${t('priceValueLabel')}`}
                                                 block
                                                 onChange={(value) => handlePricingUnitChange(value as string)}
                                                 options={[
@@ -1153,6 +1158,7 @@ export default function BulkActionsSheet({
                                                 </Flex>
                                             )}
                                             <Input
+                                                aria-label={pricingMethod.includes('Percent') ? t('enterPercentage') : t('enterAmount')}
                                                 onChange={(value) => {
                                                     const parsed = value === '' ? null : Number(value);
                                                     setPricingValue(Number.isFinite(parsed) && parsed !== null && parsed >= 0 ? parsed : null);

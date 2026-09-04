@@ -36,6 +36,7 @@ interface FocusViewProps {
     ) => Promise<void>;
     // Multi-outlet props
     itemStates?: Record<string, InheritanceState>;
+    categoryStates?: Record<string, InheritanceState>;
     isMasterLinked?: boolean;
 }
 
@@ -53,6 +54,7 @@ export const FocusView = ({
     onImageUpload,
     // Multi-outlet props
     itemStates,
+    categoryStates,
     isMasterLinked,
 }: FocusViewProps) => {
     return (
@@ -108,6 +110,7 @@ export const FocusView = ({
                                             filters={filters}
                                             // Multi-outlet props
                                             itemStates={itemStates}
+                                            categoryStates={categoryStates}
                                             isMasterLinked={isMasterLinked}
                                         />
                                     </div>

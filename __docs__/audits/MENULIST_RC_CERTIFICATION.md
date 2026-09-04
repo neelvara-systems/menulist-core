@@ -6,7 +6,9 @@
 
 **Initial candidate commit:** `b857a164944012d42131917e7c62215c94022c0f`
 
-**Current local repository base commit:** `4586bb8523a92b1c7d0ea37a5b17267432346cf6`
+**Current local repository base commit:** `f50737c77ddfd198820940dc44c6bc0e52ebf314`
+
+**Current server staging commit:** `f50737c77ddfd198820940dc44c6bc0e52ebf314`
 
 **Current tested MenuList filesystem:** the coordinated filesystem that was
 locally validated on base `59e1dc2561750ed2d97764fa30df7614c3071fd2`
@@ -22,6 +24,22 @@ focused regression coverage, plus the exact inventory-evidence pointer refresh
 required after those source-line changes, a fail-closed MenuList-only local
 owner browser fixture, isolated configurable emulator ports, truthful
 customer-link recovery, and a corrected first-publication state boundary.
+The repository was subsequently consolidated once on `staging` as
+`f50737c77ddfd198820940dc44c6bc0e52ebf314` by the separately authorized Git
+operation. This certification continuation is again local-only and adds
+MLRC-418 through MLRC-472, current-source owner-control and dynamic-route
+recovery evidence, and a passing 6,704-row inventory gate; it has not issued
+another push or deployment.
+The September 1 closeout remains based on that same Git commit but tests a
+coordinated dirty filesystem. It now includes 47 governed printable themes,
+611 per-theme compact fixtures plus five auxiliary audit/contact sheets, a
+passing 6,731-row inventory, and 162 anonymous API method probes. The current
+inventory contains 5,728 discovered control candidates, of which 3,890 are
+MenuList controls. Exact current evidence or an explicit bounded final status
+now exists for all but 187 MenuList controls; the former 1,946 `NOT_RUN`
+checkpoint is superseded. These figures supersede older checkpoint totals in
+the historical defect and command ledger below; no later local source has been
+committed, pushed, or deployed.
 The continuation now also includes real owner/staff lifecycle coverage,
 permission-consistent desktop/mobile staff controls, Billing and Transactions
 accessibility corrections, Business Health console/keyboard corrections,
@@ -528,37 +546,52 @@ The generated discovery inventory is retained in
   credential remains outside the repository in a mode-600 temporary file and
   is not reproduced in this report. No payment, Razorpay action, infrastructure
   deployment, staging push, Vercel build, or production mutation occurred.
+- The August 30 continuation independently refreshed that capability with
+  marker `ml-hosted-qa-certification-85ee58de7d`, tenant `12`, store `17`, and
+  subdomain `qa-rc-85ee58de7d`, expiring September 2, 2026. The guarded Admin
+  verifier, registered Firebase Web client, and connected Chrome all passed:
+  exact OWNER claims and tenant/store membership were present, the production
+  owner-subscription query found one valid amount-zero Pro lease, `/dashboard`
+  rendered without the subscription gate, and `/projects` rendered the menu
+  upload/import workflow. Its password remains only in a mode-600 `/tmp` file
+  and is omitted from this report. No Razorpay, infrastructure deployment, Git
+  mutation, staging push, Vercel build, or production action occurred.
 
 ## B. Inventory summary
 
-The current generator discovered 6,610 source candidates across the shared
+The current generator discovered 6,731 source candidates across the shared
 repository. These are discovery candidates, not passing test claims.
 
 | Inventory class | Discovered | Current status |
 | --- | ---: | --- |
-| Pages | 312 | Product classification and runtime reachability in progress |
-| Route handlers | 295 | Product classification, methods, and boundary tests in progress |
+| Pages | 313 | Product classification and runtime reachability in progress |
+| Route handlers | 297 | Product classification, methods, and boundary tests in progress |
 | Layouts | 20 | Source and host behavior in progress |
 | Loading/error/not-found surfaces | 9 | Runtime coverage in progress |
-| User-control candidates | 5,612 | 3,774 MenuList controls are classified, of which 3,634 map to page routes; 140 MenuList controls are explicitly classified as non-shipped source; 41 hidden/permanently disabled controls are source-verified as non-user-triggerable; 135 exact physical controls carry hosted interaction evidence; 1,837 Creative Editor/website/auth/pricing/contact/create-menu/tool/recovery/owner/reseller/platform/public-customer controls carry current source-manifest-bound local desktop/mobile interaction evidence. Existing evidence remains attached to concrete controls under the correct product boundary. Current local evidence additionally covers the invalid Menu Preview recovery link, shared rich-text heading, alignment, formatting, list, quote, divider, normalized/rejected link, rejected image, and complete draft-table controls with all test drafts discarded, plus the Platform Notifications to populated Ops Control Room recovery path and five populated Ops monitor round trips. Exactly 1,621 MenuList controls remain honestly `NOT_RUN`. |
-| Feature flags | 334 | All declarations, boolean helper results, and 1,201 source reader locations pass current source-manifest-bound registry checks. Of 195 MenuList-classified declarations, 27 have no runtime reader and are closed as dormant/non-shipped; the other 168 carry honest partial registry/reader evidence while their individual flag-on/flag-off journeys remain pending. |
+| User-control candidates | 5,728 | 3,890 MenuList controls are classified. Current-source generation credits 2,194 exact local-browser interactions, 134 deterministic component-runtime interactions, 127 hosted interactions, 149 source-unreachable controls, 44 non-user-triggerable controls, and 34 feature-disabled controls. Exactly 187 controls retain the explicit `BLOCKED_CURRENT_SOURCE_INTERACTION_PENDING` status. Every other discovered control has an evidence-backed pass or a named fixture, provider, browser-native, external-handoff, alternate-lifecycle, safety, feature-disabled, non-shipped, or non-triggerable final boundary; none of those bounded statuses is represented as an interaction pass. The exact-current evidence includes authenticated printable Assets desktop/mobile, Mobile More, Mobile Share, bulk actions, the conservative Mobile Menu/item/category slices, reversible owner settings, public-tool journeys, and focused component-runtime regressions. Historical evidence is credited only through source-manifest-current or newer focused evidence, with overlapping controls removed. |
+| Feature flags | 336 | All declarations, boolean helper results, and 1,210 source reader locations pass current source-manifest-bound registry checks. The current registry contains 291 runtime readers and 45 dormant declarations; individual flag-on/flag-off journeys remain honestly partial where not explicitly exercised. |
 | Firebase Function exports | 28 | 23 MenuList-owned exports plus five fail-closed Answerlattice compatibility boundaries; deployed-only and emulator-only conditional exports are both inventoried. All 23 MenuList wrappers now have source-hash-bound local runtime evidence: three intentionally retired callables pass their complete current local contract and twenty remain partial pending applicable success/deployed evidence. |
 
-Current product classification yielded 4,283 MenuList candidates and 2,327
+Current product classification yielded 4,402 MenuList candidates and 2,329
 separation-boundary candidates. A candidate remains `DISCOVERED_UNTESTED` until
 its rendered reachability and behavior are proven; source inspection alone does
 not mark a control tested.
 
-The August 29 matrix readback is explicit: 1,621/4,283 MenuList candidates
-remain `NOT_RUN`, all of them user-control candidates. Of the 3,774 MenuList
-controls, 2,153 have either exact interaction evidence or a source-unreachable,
-non-shipped/non-user-triggerable classification. Existing source, contract, emulator, route-render,
-feature-registry, and representative hosted evidence is valuable adjacent
-coverage, but it does not convert the remaining control rows into interaction
-passes. This count is a completion-gate blocker and prevents any claim that
-every discovered control has been certified.
+The September 1 current matrix readback is explicit: 187/4,402 MenuList
+candidates retain the generic current-source interaction-pending status, all of
+them user-control candidates. Of the 3,890 MenuList controls, 2,194 have exact
+current local-browser interaction evidence, 134 have deterministic
+component-runtime interaction evidence, and 127 have exact hosted interaction
+evidence. The remaining controls now carry explicit final boundaries rather
+than a generic `NOT_RUN`: 310 fixture-state, 272 external-provider, 164
+browser-native, 77 external-handoff, 60 alternate-lifecycle, 17 safety, 12
+browser-native-or-extraction, five safe-execution, and one uncaptured-browser
+boundary, plus the non-shipped, non-triggerable, feature-disabled and local
+contract classifications above. These boundaries are not interaction passes.
+The 187 generic pending rows remain a completion-gate blocker and prevent any
+claim that every discovered control has been certified.
 
-All 168 MenuList feature flags with runtime readers now carry
+All 291 MenuList feature flags with runtime readers now carry
 `PASS_PARTIAL_FLAG_REGISTRY_BOUNDARY`: their declarations resolve to booleans,
 both registry helpers return the declared value, readers reference only declared
 flags, runtime source does not mutate the registry, and rate-limiting environment
@@ -589,22 +622,23 @@ canonical destination. The catch-all Help Center page was exercised through
 `ACCESS_PASSED_FUNCTIONAL_INTERACTION_PENDING`, so authentication protection is
 proved without claiming their authenticated controls were exercised.
 
-Of 3,774 MenuList-classified control candidates, 3,634 map through the static
-import graph to one or more App Router pages. The remaining 140 controls in 46
+Of 3,872 MenuList-classified control candidates, 3,731 map through the static
+import graph to one or more App Router pages. The remaining 141 controls in 46
 source files have no page import path and now carry the explicit final status
 `SOURCE_UNREACHABLE_NOT_USER_TRIGGERABLE`. They are classified as non-shipped
 source, not represented as runtime-tested controls. Shared components retain
 all reachable page routes so cross-product or cross-role reuse is visible in
 the matrix.
 
-All 140 MenuList route handlers now have resolved exported HTTP methods and an
+All 141 MenuList route handlers now have resolved exported HTTP methods and an
 explicit source-derived access-boundary classification. This includes the four
 Growth Kits APIs because active product truth defines Growth Kits as a shipped
 MenuList Pro/Multi-location add-on, not a standalone product. An exact-hosted
-anonymous runtime pass exercised all 157 exported methods with credentials
+anonymous runtime pass exercised all 162 exported methods with credentials
 omitted and empty or invalid deterministic input: 5 returned public/static 200
-responses, 1 redirected, 15 rejected with 400, 130 with 401, 1 with 403, and 5
-with 404.
+responses, 1 redirected, 15 rejected with 400, 137 with 401, 1 with 403, and 3
+with 404. This current local sweep includes the four-method saved-person profile
+lifecycle boundary.
 There were no final timeouts or 5xx responses, and no protected method returned
 2xx. The five legacy
 `/api/widget/*` handlers are classified as Answerlattice separation boundaries,
@@ -615,11 +649,11 @@ separately tracked and is not implied by this anonymous boundary pass.
 
 | Product area | Scope | Result | Evidence / blocker |
 | --- | --- | --- | --- |
-| Baseline identity | Worktree, branch, HEAD, and filesystem ownership | PASS Git identity; BLOCKED exact hosted deployment | Direct readback on August 26 proved local/server `staging` at consolidated commit `4586bb8523a92b1c7d0ea37a5b17267432346cf6` with no committed-history divergence. `main` remains unchanged at `fe625d5bbf527c1b7e537b00ab32a4f655905c35`. One registered shared worktree contains the three MenuList evidence files from this pass plus preserved concurrent Answerlattice-certification and Git-ledger updates. The one automatic QA deployment was canceled by Vercel's Ignored Build Step before execution, and the canonical QA alias still serves exact prior build `59e1dc256…`. No Git mutation or deployment occurred in this certification pass. |
+| Baseline identity | Worktree, branch, HEAD, and filesystem ownership | PASS Git identity; BLOCKED exact hosted deployment | Direct readback on August 30 shows the one registered worktree and local/server `staging` aligned at the separately authorized consolidated commit `f50737c77ddfd198820940dc44c6bc0e52ebf314`. This certification continuation began after that push and has made only local filesystem changes; it has issued no additional push or deployment. The exact hosted build serving the QA aliases has not yet been reverified against this new local continuation, so hosted-current proof remains blocked. |
 | SecurityOS registry | MenuList surface/evidence registry integrity | PASS | The MenuList-only registry audit and both read-only evidence plans passed. Current selective evidence passed for auth/API tenant safety, account lifecycle, tenant DAL, tenant/store Rules, reseller privacy, public-screen projection, guest feedback, custom-domain claims, CSP, input/file/network/webhook validation, session/store switching, and multi-outlet isolation. Expected `PERMISSION_DENIED` logs were asserted denials, not escaped failures. No scanner, cloud target, production data, deployment, or provider was invoked. |
-| Route/control inventory | App Router, controls, flags, Functions | PASS (discovery, private-route classification/access, API classification, static reachability, product separation, and bounded control-evidence registry) | `npm run verify:menulist-rc-inventory`; 6,592 unique rows; all 49 MenuList private pages are explicitly classified, all 49 plus ten legacy Answerlattice separation routes have signed-out access evidence, and `/platform/answerlattice-intake` plus the newly discovered `/platform/answerlattice-early-access` remain explicitly untested Answerlattice boundaries rather than MenuList passes. All 140 MenuList route handlers have resolved methods/access classes; all 28 Functions exports are discovered and product/environment classified; 3,634/3,774 MenuList control candidates map to page routes, 140 are explicitly classified as non-shipped source, 135 exact physical controls carry hosted evidence, 1,823 carry the local interaction registry, and 41 hidden/permanently disabled controls are verified non-user-triggerable. The shared Answerlattice Help Center, twelve legacy Answerlattice control-plane pages, fourteen exact Answerlattice Mobile More actions, and 264 controls across 50 governed legacy Answerlattice component files are classified only as separation boundaries; the nine MenuList-owned Help Center controls remain in scope. Five recovery-specific dynamic pages carry current source-manifest-bound invalid-state browser evidence, and the invalid Menu Preview recovery action now has an exact source-manifest-bound control pass. MLRC-111 covers the governed interactive component families; MLRC-113 extends the source roots to reachable `src/modules` surfaces such as Creative Editor; MLRC-228 replaces the lossy line-oriented menu-action heuristic with fail-closed AST discovery; MLRC-235 excludes non-interactive Ant Form containers; MLRC-240 independently identifies only bare `disabled` JSX attributes and retains dynamic disabled states for runtime testing; MLRC-367 independently removes multiline concrete-control handler duplicates while preserving handlers on non-control surfaces; MLRC-368 independently requires every exact Answerlattice Mobile More key to remain outside MenuList; MLRC-369 independently requires the exact component-family prefix set to remain separated; MLRC-413 recognizes native-hidden, aria-hidden, negative-tab-index programmatic file inputs without inflating the user-control denominator. Read-only `Steps` progress displays are explicitly excluded from control counts. |
+| Route/control inventory | App Router, controls, flags, Functions | PASS CURRENT LOCAL GENERATION / COMPLETION GATE BLOCKED BY REMAINING COVERAGE | Generation and verification pass with 6,731 unique rows: 313 pages, 297 API routes, 5,728 control candidates, 336 feature flags, and 28 Function exports. MenuList owns 4,402 rows, including 3,890 controls: 2,194 local-browser interactions, 134 deterministic component-runtime interactions, 127 hosted interactions, and explicit final boundary classifications for fixture, provider, native, external, alternate-lifecycle, safety, disabled, non-shipped and non-triggerable states. Exactly 187 controls retain the generic current-source interaction-pending status, down from the superseded 1,946 checkpoint. Current focused evidence owns changed printable Assets, Mobile More, Mobile Share, Bulk Actions, Mobile Menu, item/category controls, owner/public recovery controls, and the added analytics/search component regressions without duplicate attribution; older broad evidence is retained only where its source manifest remains current. Product boundaries remain separated. |
 | Private-route authentication | All 49 MenuList `(main)` page routes, plus exact legacy product-separation routes from the original access manifest | PASS (signed-out access only for the recorded manifest) | Connected Chrome on the current local production build: all 49 MenuList routes and ten legacy Answerlattice control-plane separation routes reached callback-aware sign-in after settled navigation; no private screen rendered. Growth Kits is included. `/platform/answerlattice-intake` and the newly discovered `/platform/answerlattice-early-access` are deliberately retained as untested Answerlattice boundaries. Authenticated functional state remains separately tracked per product and fixture. |
-| Route-handler anonymous boundary | All 140 MenuList handlers and 157 exported HTTP methods | PASS current coordinated local candidate | The August 27 current-filesystem sweep returned 200×5, 301×1, 400×15, 401×132, 403×1, and 404×3 with zero timeout/5xx. This includes all four Growth Kits APIs and the active compliance target-store contract. The authenticated internal batch worker rejects a request without its worker credentials with 403 before any Firebase read. Live Razorpay execution remains excluded. Prior exact-hosted evidence remains recorded separately. |
+| Route-handler anonymous boundary | All 141 MenuList handlers and 162 exported HTTP methods | PASS current coordinated local candidate | The August 31 current-filesystem sweep returned 200×5, 301×1, 400×15, 401×137, 403×1, and 404×3 with zero timeout/5xx. This includes all four Growth Kits APIs, the active compliance target-store contract, and the current saved-person profile boundary. The authenticated internal batch worker rejects a request without its worker credentials with 403 before any Firebase read. Live Razorpay execution remains excluded. Prior exact-hosted evidence remains recorded separately. |
 | Entitled owner desktop navigation | Fifteen shipped owner destinations plus in-place App settings panel | PASS exact hosted candidate (route/render scope) | Connected Chrome on exact `c22dd233…` reached Dashboard, Today, Feedback, Projects, Business Settings, Use MenuList, QR, Assets, Users, Locations, Billing, Transactions, Help, Menu Manager, and Growth Kits without a generic load failure or horizontal overflow. App settings opened in place. Child controls and destructive mutations remain separately tracked. |
 | Current disposable-owner control sweep | Dashboard, Today, Feedback, Projects, Business Settings, Use MenuList, QR, Assets, Users, Locations, Billing, Transactions, Help, Menu Manager, and Growth Kits; critical mobile routes at 390×844 | PASS for recorded exact controls; accessibility defects MLRC-107 through MLRC-110 reproduced on hosted base | The reseller-entitled fixture reached all 15 desktop destinations without sign-in recovery or generic application failure. Connected Chrome exercised the real sidebar and representative child controls, including safe Business Settings modal/disclosure/validation flows, billing-history recovery, QR/download/open/copy distribution actions, printable assets and Creative Editor, staff forms, location gating, transactions, help validation, AI Menu Manager drafting, and Growth Kits copy/review generation. Reversible or unsaved state was restored and no payment/provider action was invoked. Browser accessibility-tree/DOM resolution confirmed the hosted shared breadcrumb/sidebar controls, Projects controls, and support destinations retain the defects corrected locally by MLRC-107 through MLRC-110. A corrected iPhone Safari user-agent pass rendered Dashboard, Projects, Billing, Help, and Use MenuList at an exact 390px viewport/scroll width with no generic error boundary. Unrecorded controls and destructive mutations remain explicitly untested. |
 | Current Dashboard, Today, and Feedback control pass | Dashboard recovery/navigation, analytics selectors and disclosures; Today guide/status preview; Feedback filters and reversible status lifecycle | PASS exact hosted base; 28 source/control rows recorded | Real coordinate pointer interaction proved all three Dashboard recovery actions, all seven analytics selectors after settled-state waits, and all three initially collapsed detail sections. Today opened/closed its guide, selected all six temporary-status presets, rendered a custom preview, and cleared the draft without publishing. Feedback rendered truthful All/Needs Attention/Resolved filters, changed the isolated resolved record to New, then restored it to Resolved. One transient Firestore `unavailable` warning occurred during the first status write; the existing retry path converged and the restored final UI matched the starting state. No public status, payment, provider, customer record, or production data changed. |
@@ -633,7 +667,7 @@ separately tracked and is not implied by this anonymous boundary pass.
 | Current Use MenuList controls | Primary link copies, all 11 rendered message-copy instances, share guidance, three resource guides, and TV-status refresh | PASS exact hosted disposable tenant; 19 source/control rows recorded | Copy Menu Link and Copy Screen Link produced named success acknowledgements. All three share-card and eight customer/staff template Copy Message instances completed, with the final named confirmation visible. Where should I share this, Setup, Printing, and Sharing guides opened the correct named dialog and closed cleanly. Refresh TV status completed once for the disposable screen fixture. No WhatsApp, external listing, download, payment, provider, or production action was invoked. |
 | Current owner operations control pass | Assets/Creative Editor, Users, Locations, Billing/Transactions, Help, Menu Manager, and Growth Kits | PASS exact hosted disposable tenant; 52 additional source/control rows recorded | All asset selectors and representative previews worked; the embedded Creative Editor exposed all enabled panels plus reversible guide/preview controls. User details/edit/add validation, the prepaid-outlet gate, one restored outlet-policy mutation, usage navigation, transaction filtering/details/reset, Help destinations and empty-ticket validation, Menu Manager draft/context controls, and Growth Kits copy/review guard all behaved truthfully. No user/location creation, menu command, download, share, post, payment, provider handoff, or production action occurred. |
 | Current post-MLRC-177 local owner pass | Business Health, Users, restricted staff, Billing, Transactions, Growth Kits, Assets, mobile Staff/menu choices, Projects reorder, generation defaults, Menu Design, mobile editor/close actions, Business Attributes, Customer App, Language & Region, Time Slots, Feedback Settings, App Settings, Analytics/SEO Settings, Share recovery, and logout cleanup | PASS current local source | Connected Chrome proved Business Health opens with the current read-only status and a keyboard-operable scope trigger; the owner's own edit/passcode/sign-out/remove controls are disabled while details remain available; one disposable no-email Staff fixture completed create, one-time credential delivery, deactivation, inactive passcode/sign-out guards, removal, a second isolated staff sign-in, restricted sidebar rendering without Growth Kits, owner force-sign-out, signed-out recovery, and cleanup. Billing exposed the labelled store selector and truthful provider-free ₹0 prepaid entitlement; Transactions exposed associated Start date/End date labels and truthful empty state; Growth Kits retained the owner-only empty/review state. Assets opened the real Feedback QR editor, produced corrected PNG/PDF destinations, showed truthful empty Print Menu recovery, and generated a valid 11-file Complete Menu Kit ZIP. The mobile Staff form now renders optional Email truthfully and exposes named Name, Email, and Phone inputs. A freshly seeded isolated owner session opened the real menu editor, invoked Rearrange Menu, and keyboard-focused both named reorder handles; mobile filters, AI defaults, description choices, text-case choices, recommended Menu Design styles, tones, layouts, and the theme-color opener accepted keyboard input with truthful selected-state semantics. Reset restored the saved design with no write. Edit Drinks and Edit Filter Coffee opened by keyboard; their corrected Delete actions were named while unchanged Save/Reset remained disabled. Today guide and Social Media nested editors exposed named keyboard-close actions and discarded unchanged drafts. Business Attributes toggled and reset a built-in attribute, created then discarded one custom row, and performed no save. Customer App toggled and reset its prompt, opened/closed its install guide, and now truthfully renders Setup/Waiting while the install link is missing. Language & Region exposed seven uniquely named selectors; every selector opened in Chrome, the Business day end draft changed by keyboard, and Reset restored the original value without saving. Time Slots exposed a named New Time Slot dialog and three named fields; required-name validation, draft time/color changes, Reset, and Close all passed without persistence. Feedback Settings toggled every rendered switch and Reset restored the saved configuration. App Settings exposed a named dialog and 13 named theme-colour choices with pressed state; theme, dark mode, and RTL drafts were restored, all four format/locale selectors opened and closed without change, and the fullscreen switch returned truthful unsupported-browser recovery while remaining off. Its custom colour control is now a named native 44px input; the external operating-system chooser remains explicitly uncounted. Analytics Settings exposed named fields/dialogs, truthful clean-state actions, three pre-write validation recoveries, five disclosures, both guide tabs, and all six wizard steps. SEO and AEO exposed five uniquely named textboxes, clean initial actions, reversible Tagline state, and pre-write unsafe-canonical recovery. Share recovered from a missing public address and routed to Domain settings instead of crashing. Logout from the active Projects listener reached sign-in without a stale listener error. Evidence: `18-business-health-local.png` through `40-mobile-share-missing-link-recovery-local.jpg`, plus connected-Chrome SEO role/name and validation readback. No hosted, cloud-admin, provider, deployment, or production mutation occurred. |
-| Local aggregate | MenuList-filtered repository production-readiness gate | PASS WITH EXTERNAL BLOCKER (current candidate through MLRC-216) | The August 28 current-registry aggregate completed with 159/160 checks passing and only `verify:upstash-readiness` correctly classified `BLOCKED_EXTERNAL` because this shell has no URL/token. It executed all 160 current child verifier scripts, all 42 Rules predeploy suites, strict TypeScript, zero-warning lint, docs links, and `git diff --check`. The first attempt stopped before a product assertion because the preserved browser fixture owned Firestore port 8080; the unchanged suite resumed on temporary isolated ports. The exact original 917-byte `firebase.json` was restored afterward with SHA-256 `3bb9d843541583e1955911077004cb9e6f67304c21354c53beb73ae6de2608e8`. No cloud write, Git mutation, deployment, or Vercel build occurred. |
+| Local aggregate | MenuList-filtered repository production-readiness gate | PASS WITH EXTERNAL BLOCKER (uninterrupted exact-current August 31 snapshot) | A from-zero `npm run certify:menulist-local` completed 166/167 checks, with only `verify:upstash-readiness` correctly classified `BLOCKED_EXTERNAL` because this shell has no URL/token. It executed all 163 current child verifier scripts, explicitly excluded 48 sibling-product scripts, passed the 43-script root Firebase Rules predeploy, strict TypeScript, zero-warning `src` lint, docs links, and `git diff --check`. The cost closeout passed on the current 538-runtime-file scan with 9 listener-risk, 2 public-read-risk, 2 query-scope-risk, and 54 write-volume-risk files. Suite-only isolated emulator ports were restored afterward; `firebase.json` matches SHA-256 `3bb9d843541583e1955911077004cb9e6f67304c21354c53beb73ae6de2608e8`. No cloud write, Git mutation, deployment, live provider action, or Vercel build occurred. |
 | Authentication regression | Leading/trailing email and password; invalid login recovery; forgot-password validation and local reset-link emission; callback preservation; logout/cross-tab protection; session-expiry recovery | PASS | Deterministic credential-normalization tests plus an exact hosted provider-free QA owner login with both identifier and password padded on both sides returned an authenticated tenant/store `4/4` session. The current local candidate independently accepted an uppercased disposable emulator email and valid password with whitespace padded on both sides and reached the reseller-entitled Dashboard. Real logout forced a second tab's `/projects` request to callback-aware sign-in. The expired-session dialog returned to `/signin?expired=true`. Exact hosted Chrome also kept malformed identifier/passcode on sign-in with inline validation, preserved `/dashboard` through Forgot/Return, and announced invalid reset email. A valid local-only forgot-password submission emitted exactly one Auth-emulator `PASSWORD_RESET` record, retained enumeration-safe UI copy, returned through `/signin?callbackUrl=%2Fprojects`, and the next positive login restored Projects. No real reset email, account creation, payment, provider, cloud credential, deployment, staging, Vercel, or production action occurred. |
 | Authentication and onboarding aggregate | Sign-up/sign-in boundaries, claims/workspace association, plan handoff, owner setup, extraction entry, retry, recovery, concurrency, and cleanup | PASS (local/emulator) | `npm run verify:auth-onboarding-flow`, `npm run test:login-credential-normalization`, and `npm run verify:menu-extraction-pipeline` completed with exit 0; expected denial/failure logs were fixture assertions rather than escaped failures |
 | Pricing handoff | Official, Pro, and Multi-location across INR/USD and monthly/yearly selection; content-pack sign-in; comparison and FAQ controls | PASS (provider boundary only) | Exact hosted Chrome exercised all 12 signed-out plan/currency/interval combinations. Each produced the expected callback-aware sign-in handoff with plan, currency, interval, B2C type, and quantity one or the Multi-location minimum of two. Content-pack sign-in, comparison expansion, all three FAQ categories, and an accordion in each category worked with zero overflow. No Razorpay provider execution occurred. |
@@ -641,7 +675,7 @@ separately tracked and is not implied by this anonymous boundary pass.
 | Hosted transport | Website/app/tenant HTTP, metadata, noindex, PWA assets, missing routes | PASS (bounded) | Website, pricing, features, resources, legal, sign-in, owner manifest, offline, service workers, and tenant menu matched QA policy; disabled sitemap/customer manifest returned honest 404; missing menu slug rendered noindex recovery |
 | Public website browser inventory | All 186 sitemap URLs, including 22 public tool routes and 62 App Router page patterns | PASS consolidated local release snapshot (render/recovery) | Connected Chrome reran the current sitemap manifest (`30afee75c57db88ee93dec78926ed0b389a1ff7ddde99fb2510946d897e24fe8`) on the coordinated filesystem later committed as `4586bb852…` and rendered a main region and route-specific heading without application/404 failure across all 186 unique URLs. Four bounded loading shells passed on settled retry; individual transmitting controls remain separately pending; the 22 tools expose 410 rendered controls. |
 | Current hosted mobile website routes | Static marketing, feature, industry, legal, trust, tools, English resources, and all 112 locale-prefixed resource variants | PASS (render/responsive/accessibility attributes) | Exact `b1750e0…` QA at 320×568 rendered every static website route and every reviewed localized resource variant with a non-empty heading, no application/not-found state, and no horizontal overflow. Exact `25d58ae…` then passed all 16 Arabic hub/article routes with root `lang=ar-SA`, root/content `dir=rtl`, and zero overflow; Arabic→English switch plus Chrome back/forward restored the correct route, heading, language, and direction each time. |
-| Global signed-out recovery routes | `/403`, `/404`, `/unauthorized`, `/offline`, invalid `/invite`, `/product`, disabled `/creative-editor-smoke`, protected `/test-sentry`, invalid `/msg-preview/[sessionId]` | PASS (behavior, copy, width, destination, 44px targets, and first-viewport recovery) | Exact hosted `194f39a…` at 320×568 rendered the reviewed responsive contextual artwork on `/403`, `/unauthorized`, and invalid `/screen/[token]`; document width stayed 320px, document height stayed 568px, and both 44px recovery actions were fully visible. Invalid-screen Back/Home and access-denied destinations remained correct. Current connected Chrome also rendered missing-token Menu Preview recovery with no private preview data and followed `Go to MenuList` to the local public home page; that exact control is source-manifest-bound in the inventory. |
+| Global signed-out recovery routes | `/403`, `/404`, `/unauthorized`, `/offline`, invalid `/invite`, `/product`, disabled `/creative-editor-smoke`, protected `/test-sentry`, invalid `/msg-preview/[sessionId]` | PASS (behavior, copy, width, destination, 44px targets, and first-viewport recovery) | Exact hosted `194f39a…` at 320×568 rendered the reviewed responsive contextual artwork on `/403`, `/unauthorized`, and invalid `/screen/[token]`; document width stayed 320px, document height stayed 568px, and both 44px recovery actions were fully visible. Invalid-screen Back/Home and access-denied destinations remained correct. Current connected Chrome also rendered missing-token Menu Preview recovery with no private preview data and followed `Go to MenuList` to the local public home page. The current local missing-token `/invite` state exposed no referral identity, and Create my customer link performed only the same-origin decline/cookie-clear boundary before `/create-menu`; Browser Back restored the unavailable state. Valid-token capture remains uncredited. |
 | Digital screen invalid-token recovery | `/screen/[token]` with deterministic invalid token; generic Back/Home recovery; deactivated-store license boundary and restoration | PASS | Exact hosted `f050856…` at 320×568 rendered the noindex generic not-found boundary with zero overflow and no screen/store disclosure. Both actions measured 44px and were visible in the first viewport; Go Back restored the previous pricing route and Go Home reached `https://menulist.digital/`. The isolated entitled fixture rendered its active empty-screen state truthfully, then rendered all five populated menu items. Highlights mode used a calm business-name/QR fallback because the fixture had no slides. On exact `7696f0e…`, the same menu-board URL reflected ₹220→₹222 and the restored ₹220 after owner settlement. On exact `246ff48…`, the disposable store was changed from `active:true` to `active:false`; after the independently bounded cache layers settled, its Official Business Page rendered the inactive-link recovery and its bearer screen URL rendered the generic no-disclosure 404. The fixture was restored to `active:true` immediately after the assertion. Recovery progressed safely from 404 through a no-menu placeholder while the independently cached menu projection settled, then returned to the same five-item ₹220 screen without resurrecting stale truth. |
 | Public Truth Tools | All 22 tool routes plus the tools index and report reader; primary generation/check, empty/result, copy, public-link, reset, follow-up validation, and mobile width | PASS (non-transmitting browser coverage) | Connected Chrome at 320×568 rendered every route without application failure or overflow. All 18 remaining generator/check tools produced an honest empty-input report; every available Reset restored the initial state; every generated report copied and created a public report link; all 12 inline follow-up forms refused blank submission with “Enter your name.” Public Truth Check, QR Poster Maker, QR Link Health Check, valid/malformed report links, and shared source contracts were exercised separately. No valid follow-up form was transmitted. |
 | Create-menu entry | Signed-out phone/Google gate; signed-in upload/link tabs; empty and malformed link recovery | PASS (non-mutating) | Phone action remained disabled for incomplete input and enabled for a structurally valid number; empty owned-link submission showed a recoverable message and restored the form; no hosted upload/import was submitted without a proven disposable fixture |
@@ -1095,8 +1129,603 @@ audit-fix-retest loop.
 | MLRC-413 | Medium | The certification matrix treated three native-hidden Creative Editor file inputs as independent untested user controls | The scanner recognized one exact display-none pattern but did not understand the editor's native `hidden`, `aria-hidden`, and `tabIndex={-1}` programmatic input contract. The visible named upload and replace buttons remained the real owner controls, while three unreachable implementation inputs inflated the exhaustive-control denominator. | Require the combined static non-user contract: input-only, negative tab index, static aria-hidden semantics, and either native hidden or static display-none ancestry. Preserve dynamically hidden inputs as runtime candidates. Add fail-closed assertions for all three Creative Editor inputs and retain the existing tool-report honeypot boundary. | `npm run verify:menulist-rc-inventory` passed at 6,592 rows; exact inventory readback classifies `input@7641`, `input@7652`, and `input@7664` as `STATICALLY_HIDDEN_NOT_USER_TRIGGERABLE`; focused zero-warning ESLint; strict TypeScript; `git diff --check` | All three programmatic file inputs are excluded from the user-triggerable completion denominator without changing runtime UI or file handling. The visible upload/replace actions remain in scope, the existing honeypot still classifies correctly, and the Answerlattice Early Access route/control remain honestly untested separation-boundary rows. | CLOSED_LOCAL |
 | MLRC-414 | Medium | Valid messaging-preview business and correction controls had ambiguous names and unstable selected-state semantics | Business Name, Business Type, and Address labels were not associated with their form controls; three visible Edit and three Save actions exposed only duplicate generic names. Correction reasons changed their accessible name when selected and exposed no pressed state. | Associate each label with a stable input/select ID, give every Edit/Save action a purpose-specific accessible name, expose issue selection through `aria-pressed`, and hide the decorative checkmark from assistive technology. | Current-source connected Chrome exercised all three edit/input/save paths, every correction reason, optional note, Cancel/draft restoration, Request Fix reopening, and live-state Copy Link. `verify:menu-extraction-pipeline` source assertions cover the exact label/name/state contract; current source-manifest inventory evidence binds the exercised controls. | Inputs are uniquely named from their visible labels, Edit/Save actions resolve by purpose, and all five reasons keep a stable name while announcing pressed state. External WhatsApp and claim-link navigation remain deliberately unexecuted. | CLOSED_LOCAL / HOSTED CURRENT-CANDIDATE RETEST PENDING |
 | MLRC-415 | High | Normal messaging `Approve & Publish` requests always failed before tenant/store/project publication | The approve route correctly normalized the persisted session and passed that typed `MessagingPublishSession` to `executeMessagingOnboardingPublish`. The executor then called the raw-Firestore normalizer on the already-normalized object, which no longer contains raw timestamp/business-info field shapes, and threw `Invalid messaging publish source`. The route recovered `PUBLISHING` to `AWAITING_APPROVAL`, so no contradictory partial state was created, but the core publish journey could never complete. | Make the executor's internal contract explicitly accept `MessagingPublishSession`, retain session-ID equality validation, and keep the canonical in-transaction persisted-session re-read plus source-fingerprint check before writes. Add a fail-closed regression that rejects reintroduction of `normalizeMessagingPublishSession(params.sessionData, ...)`. | Before fix: two independent emulator-only route attempts returned HTTP 500 and recovered to `AWAITING_APPROVAL`. After fix: a fresh first POST returned HTTP 200 and atomically created one tenant, store, owner, project, summary, and LIVE result. A repeated LIVE POST returned the same tenant/store/project identities with state-history count unchanged at 3. The correction flow remained isolated. | Provider-free local publish and idempotent replay pass. The local fixture substitutes an HTTPS QA-format dashboard URL after first publish because the public persisted-result boundary correctly rejects `http://localhost`; production/QA owner-app URLs are HTTPS. No provider, Razorpay, hosted Firebase, Storage object, staging, Vercel, Git, or production mutation occurred. | CLOSED_LOCAL / HOSTED CURRENT-CANDIDATE RETEST PENDING |
+| MLRC-416 | Medium | Homepage sticky conversion tray covered footer preferences and intercepted Analytics | The tray depended on observer callbacks plus one delayed initial rectangle read. After abrupt scrolling/history-style restoration it could retain stale `nearStop=false` even after the stop target had passed, leaving a fixed link geometrically over the footer controls. The Analytics click then activated `/create-menu` instead of the privacy dialog. | Retain both section observers and add one requestAnimationFrame-throttled rect synchronizer for passive scroll, resize, and `pageshow`, with listener and pending-frame cleanup. Add a focused source regression command in addition to the shared website boundary assertions. | Pre-fix desktop geometry showed the fixed tray at y721.8–787 overlapping Analytics at y734.1–774.1, and the click navigated to `/create-menu`. Post-fix connected Chrome kept the tray absent at the same footer position, opened the named privacy dialog at `/`, and repeated the flow at 390×844. `npm run verify:website-sticky-cta-boundary` and focused ESLint pass. | Desktop and phone footer preferences remain reachable; screenshots `03-footer-light-theme.png`, `04-analytics-privacy-fixed.png`, `05-mobile-footer-fixed.png`, and `06-mobile-analytics-privacy-fixed.png` preserve before/after evidence under `__docs__/audits/screenshots/menulist-rc-2026-08-30/`. The portfolio-wide website verifier is separately blocked by unrelated concurrent Answerlattice public-copy drift and is not represented as passing. | CLOSED_LOCAL / HOSTED CURRENT-CANDIDATE RETEST PENDING |
+| MLRC-417 | Medium | Platform operator direct visits to owner routes rendered a blank main region | `SessionProvider` validated owner store-role data before its trusted platform-role branch. A valid storeless platform session therefore left `userPermissions` unresolved, while `OwnerPermissionGuard` correctly rendered nothing during that unresolved state. Direct `/dashboard` and `/assets` visits retained the complete shell but an empty main region. Genuine owner store-bootstrap failures also had no explicit retry state in the current source. | Evaluate the already trusted platform role before owner store-role validation and retain the existing all-false owner permission defaults, so the guard renders its explicit unauthorized recovery rather than widening access. Add a bounded owner store-bootstrap error state with Try again and Sign out, reset the previous attempt before retry, and lock branch ordering/recovery controls in the existing session and accessibility regressions. | Connected local Chrome reproduced the empty direct Dashboard main region, then verified all 22 requested permission-governed paths across Dashboard, Business Health, Today, Growth Kits, Projects, Users, sharing/QR, assets/output, Menu Manager, Feedback, Business Settings, Billing, and Locations settle to their purpose-specific unauthorized copy with Open help. The legacy `/qrCode` alias canonicalized to `/qr-code`; `Open help` reached `/help-center`. `npm run test:session-store-context-boundary`, `node scripts/verification/verify-global-accessibility-boundary.js`, focused zero-warning ESLint, strict TypeScript, and `git diff --check` pass. | Screenshot `07-owner-shell-blank-current.png` preserves the reproduction and `08-platform-owner-route-denial-fixed.png` preserves the corrected denial. The platform operator retains zero owner permissions; owner tenant/store authorization, subscription admission, and Firebase contracts are unchanged. The portfolio auth-security matrix is separately blocked by unrelated concurrent service-worker diagnostic drift and is not represented as passing. | CLOSED_LOCAL / HOSTED CURRENT-CANDIDATE RETEST PENDING |
+| MLRC-418 | High | Later edits to an already-published menu could not be republished | After Filter Coffee price autosaved from 80 to 81, opening the customer preview remounted `B2CView` and initialized `lastPublishedState` from that same current draft. Structural equality therefore disabled Publish even though Firestore readback proved `modifiedOn` was newer than `lastPublishedAt`. The owner could save a changed canonical menu but could not intentionally republish it. | Extend the centralized publish-change predicate with normalized timestamp comparison. Treat a project as publishable whenever valid `modifiedOn` is newer than valid `lastPublishedAt`, while retaining the never-published and structural-difference paths. Support Date, ISO/number, and Firestore Timestamp-like values without changing persistence, authorization, cache, or provider contracts. | Connected local Chrome exact 80→81 reproduction; direct emulator readback of newer modifiedOn; `npm run test:project-first-publish-state`; focused ESLint; strict TypeScript; corrected 81 publish; warm public tenant propagation; reversible 81→80 owner edit, republish, and warm public restoration | Publish is enabled for an autosaved draft newer than the last publication even when preview remounts from that draft. Both subsequent publications completed once, the warm public menu converged immediately to ₹81 then back to the deterministic ₹80 fixture, and the settled Publish action disabled again. No Razorpay/provider, cloud Firebase, staging, Vercel, Git, or production mutation occurred. | CLOSED_LOCAL / HOSTED CURRENT-CANDIDATE RETEST PENDING |
+| MLRC-419 | Medium | Local owner share links opened an unreachable HTTPS loopback host | The populated Share your menu dialog emitted `https://menulist-local-browser-qa.localhost/menu?entry_source=direct` for the emulator fixture. Chrome opened a new tab, but the local dev server serves HTTP on port 3000, so the owner received `ERR_CONNECTION_REFUSED` instead of the published customer menu. The affected store expresses the loopback hostname through the custom-domain path, not only the subdomain helper. | Normalize only `localhost` and `*.localhost` tenant hosts to HTTP and the configured local owner-app port in both generated-subdomain and custom-domain paths. Retain HTTPS for all hosted custom domains and QA/production tenant domains. Add deterministic local host-routing assertions for both URL shapes. | Connected Chrome exact failed Open action and error page; `npm run test:menulist-host-routing`; focused ESLint; strict TypeScript; corrected visible Share → Open retest in a new Chrome tab | The same owner action now opens `http://menulist-local-browser-qa.localhost:3000/menu?entry_source=direct` and renders Filter Coffee / ₹80 published truth. The helper is pure URL construction and adds no Firebase, Storage, Function, provider, cache, or analytics operation. | CLOSED_LOCAL / HOSTED CURRENT-CANDIDATE RETEST PENDING |
+| MLRC-420 | Medium | Unchanged profile submissions issued an unnecessary Firestore write | The server normalized the submitted profile but always appended `modifiedOn` and called `update`, even when every field already matched persisted truth. Each repeated unchanged Save therefore performed one read plus one billed write. | Compare normalized proposed fields with the existing document before adding `modifiedOn`; return an acknowledged no-op when no semantic field changed. Treat absent/null and normalized-empty optional fields as equivalent. | `npm run test:profile-update-noop-boundary`; strict TypeScript; current Chrome profile validation/cancel pass and unchanged Save; exact emulator user-document readback before and after | The UI acknowledged Profile updated while `updateTime` remained `2026-08-29T20:49:38.143160Z` and `modifiedOn` remained `2026-08-29T20:49:38.134Z`, proving zero write. An unchanged request retains the required authorization/read boundary but changes from one read + one write to one read + zero writes. Real changes still retain the existing scoped update contract. | CLOSED_LOCAL / HOSTED CURRENT-CANDIDATE RETEST PENDING |
+| MLRC-421 | Medium | Local Menu Kit download rejected the deterministic loopback tenant URL | The shared Menu Kit URL validator required HTTPS for every hostname, so the emulator-backed `http://*.localhost:3000` customer URL failed before browser-local asset generation. Hosted behavior was correct. | Allow HTTP only outside production for exact loopback hosts (`localhost`, `127.0.0.1`, `[::1]`, and `*.localhost`); retain HTTPS for every hosted environment and reject hostile suffixes, credentials, and unsupported schemes. | Connected Chrome pre/post-fix Download Menu Kit; `npm run test:menu-kit-url-boundary`; production-mode repeat of the same test; strict TypeScript | The local Menu Kit now downloads successfully. Production still rejects every HTTP loopback URL, and no Firebase, Storage, Function, provider, or hosted contract changed. | CLOSED_LOCAL |
+| MLRC-422 | Medium | Desktop App Settings custom-colour popup exposed unnamed internal controls | The Ant Design colour-picker popup exposed unnamed hue/alpha sliders, a generic hex textbox, and an unnamed spinbutton. The visible swatch did not provide a stable purpose-specific name, making custom theme-colour selection ambiguous for keyboard and assistive-technology owners. | Replace the library popup with one uniquely named native `type="color"` input using the selected colour in its accessible name and a 44×44 target. Preserve the existing colour-change handler, presets, recent colours, favourites, reset behavior, and theme persistence. Add fail-closed global accessibility assertions that require the native control and reject the prior library import. | Connected Chrome pre/post-fix accessibility-tree and DOM readback; exact theme, preset, recent, favourite, clear, layout, direction, locale, timezone, date/time, display, and fullscreen-recovery pass; `verify-global-accessibility-boundary`; focused zero-warning ESLint; strict TypeScript; inventory verifier | Chrome now exposes `Theme Colours: #3B82F6` as the single native colour input with no unnamed library internals. All 21 credited App Settings actions were restored to their original values. The operating-system native colour chooser itself remains explicitly untested and its input row remains `NOT_RUN`; hosted current-candidate retest is pending. | CLOSED_LOCAL / NATIVE CHOOSER AND HOSTED CURRENT-CANDIDATE RETEST PENDING |
+| MLRC-423 | Medium | Public menu exposed an invalid placeholder phone number | The deterministic store truth contained `0000000000`. The shared phone boundary correctly rejected that value for `tel:` and WhatsApp actions, but the footer separately rendered the raw stored value as plain customer-facing text whenever no call action was available. Customers could therefore see a phone number the product itself considered unusable. | Bind the plain-text fallback to the already validated `callHref` result as well as the stored display value. Valid owner-supplied numbers still render when the Call action is intentionally hidden; invalid, all-zero, too-short, or otherwise rejected values render neither an action nor misleading fallback text. Add fail-closed public-business-truth assertions that reject the raw-phone condition. | Connected Chrome pre/post-fix current-source DOM readback; deterministic fixture reseed; acknowledged local republish; authenticated emulator project readback; fresh cache-busted tenant route; `npm run test:phone-number-boundary`; `npm run verify:public-business-truth`; focused zero-warning ESLint; strict TypeScript | The fresh customer menu renders Published, Filter Coffee / ₹80, business/location/policy/feedback truth, and no invalid phone text. Screenshot `09-public-menu-invalid-phone-hidden-local.jpg` preserves the corrected footer. The optional Menu Health Function was unavailable locally and logged its bounded development diagnostic after publication, matching the existing MLRC-276 limitation; it did not replace acknowledged publication success. | CLOSED_LOCAL / HOSTED CURRENT-CANDIDATE RETEST PENDING |
+| MLRC-424 | Medium | Multi-location Official Business Page emitted unreachable deterministic-local customer links | The brand-level location selector manually forced `https://` and omitted the local development port for both the tenant subdomain and custom-domain branches. The same shared URL contract already used by owner Share correctly understands exact loopback hosts, but this public path bypassed it. The resulting headquarters and branch cards were visible yet unreachable in isolated local certification. | Build the brand-level base URL with `getTenantBaseUrl`, normalizing nullable header values at the typed boundary. Keep hosted subdomains and real custom domains HTTPS-governed through the shared helper. Add a fail-closed Official Business Page verifier that requires the shared builder and rejects the manual subdomain template. | Connected Chrome exact root-selector DOM readback and both-card navigation; `npm run verify:official-business-page-boundary`; `npm run test:menulist-host-routing`; focused zero-warning ESLint; strict TypeScript | Both cards now emit `http://menulist-local-browser-qa.localhost:3000/...`; headquarters opens the published Filter Coffee / ₹80 menu and the branch opens its truthful `Menu coming soon` Official Page. Screenshot `10-public-multi-location-links-local.jpg` preserves the corrected selector. Hosted current-candidate retest remains pending. | CLOSED_LOCAL / HOSTED CURRENT-CANDIDATE RETEST PENDING |
+| MLRC-425 | High | Direct customer-editor deep links crashed before the selected project finished loading | A valid `/projects?view=b2c&projectId=…` request moved the parent into customer view as soon as it parsed the route, but rendered `B2CView` before `activeProject` existed. The child correctly rejects a missing canonical project and the owner reached the global Server Error screen instead of the requested editor. | Gate the customer editor on the selected-project load lifecycle, render an explicit retry/back recovery for a failed project read, and mount `B2CView` only with an admitted active project. Lock loading, error, and active-render ordering in the maintained project-editor boundary. | Connected Chrome exact direct-link crash reproduction and hard-reload retest; `npm run verify:menu-project-editor-boundary` and all nine adjacent project data-flow suites; focused zero-warning ESLint; strict TypeScript; `git diff --check` | The same direct URL now settles on the owner customer editor with Official Page, Mobile view, Preview, and disabled clean Publish state; no generic error boundary or issue overlay appears. No write, provider call, Razorpay execution, deployment, staging push, Vercel build, Git mutation, or production action occurred. | CLOSED_LOCAL / HOSTED CURRENT-CANDIDATE RETEST PENDING |
+| MLRC-426 | Medium | Restoring an Official Page field to its saved value could leave Publish falsely enabled | The embedded editor expands omitted defaults after its first input and the parent compared raw `JSON.stringify` output. Semantically equivalent values such as an omitted true visibility flag, omitted `icons`, empty optional fields, or Firestore `null` versus an undefined form value therefore looked changed even after the owner restored the visible value. | Compare owner public presence by rendered meaning at the shared trust boundary: normalize localized copy, null/undefined optional values, empty optional strings/photos, default-true visibility flags, and the default icon variant, then use the existing deep-difference contract. Preserve real visibility, copy-clear, and other mutations. | Connected Chrome reversible Short Descriptor, Known For, WhatsApp, Established Year, and Show Call transitions; `npm run verify:official-business-page-boundary`; focused zero-warning ESLint; strict TypeScript; authenticated emulator readback; `git diff --check` | Every real draft enables Publish and every exact restoration disables it. The regression also proves real false visibility and saved-copy removal remain publishable. Store update/modified timestamps remain unchanged because no Publish action was invoked. | CLOSED_LOCAL / HOSTED CURRENT-CANDIDATE RETEST PENDING |
+| MLRC-427 | Medium | Cancelling an Official Page policy edit hid but retained the unsaved owner draft | The shared mobile compliance editor's Cancel action only left edit mode. Its `customText` state remained untouched, so reopening Edit content showed the cancelled Privacy draft again and could mislead the owner into believing it was saved or intentionally retained. Desktop already resets its draft from persisted content at edit entry. | Add a scoped cancel handler that restores the current persisted custom content before leaving edit mode. Preserve the separate Reset-to-baseline mutation, minimum-content validation, policy cache, API, tenant/store, and public rendering contracts. Lock the discard handler in the maintained compliance-pages boundary. | Connected Chrome exact Privacy draft/cancel/reopen reproduction and corrected retest; named Privacy, Terms, and Refund entry/back lifecycle; baseline disclosure; short-content Save recovery; `npm run verify:compliance-pages-boundary`; `npm run test:mobile-compliance-cache-boundary`; focused zero-warning ESLint; strict TypeScript; `git diff --check` | Reopening Privacy after Cancel now shows 0/15000 persisted empty content. Short invalid content recovers locally with the minimum-length message and Cancel discards it. Terms and Refund open under their exact names and return to the unchanged editor. No compliance API mutation or Firebase write occurred. | CLOSED_LOCAL / HOSTED CURRENT-CANDIDATE RETEST PENDING |
+| MLRC-428 | Medium | Digital Screens copy actions could remain indefinitely unacknowledged | Both Menu Board and Highlights used the shared async Clipboard API first. In current connected Chrome, the exposed `navigator.clipboard.writeText()` promise did not settle; the handler never reached its existing textarea fallback, success state, or failure toast, so repeated Copy link activation appeared inert. Clipboard writes are permission and user-activation gated by the current Clipboard API contract, and an exposed API is not proof that a request will complete promptly. | Bound only the shared Digital Screens Clipboard attempt to 1.2 seconds, matching the repository's existing mobile Growth Kits recovery pattern, then continue to the already acknowledged textarea fallback. Preserve the copied value, secure diagnostics, owner screen state, and every non-screen clipboard helper. Add fail-closed Customer App/Digital Screens assertions for the timeout and fallback chain. | Connected Chrome exact two-link no-feedback reproduction; W3C Clipboard API and MDN `writeText()` security/permission review; corrected Menu Board and Highlights copy retest; isolated Menu Board, Highlights, and full-width Open route/customer-truth verification; `npm run verify:customer-app-pwa`; focused zero-warning ESLint; strict TypeScript; inventory verifier; `git diff --check` | Both actions now recover after the bounded primary attempt and visibly render Copied. Menu Board renders Drinks / Filter Coffee / ₹80; Highlights renders its governed brand fallback; every opened tab was closed. No screen setting, slide, Firebase operation, provider, Razorpay, hosted, staging, Vercel, Git, deployment, or production state changed. | CLOSED_LOCAL / DESKTOP PHYSICAL AND HOSTED CURRENT-CANDIDATE RETEST PENDING |
+| MLRC-429 | Medium | Mobile Find & Fix filter sheet had no accessible dialog name | The visible Find & Fix heading was rendered inside an unnamed Popup. Connected Chrome exposed only `dialog`, so keyboard and assistive-technology owners could not identify the active filter task even though its close and filter controls were present. | Give the existing Popup the same localized `findAndFix` title used by its visible heading. Preserve every filter, recovery action, mask/Close path, tenant/store scope, and mutation boundary. Add a fail-closed global accessibility assertion. | Connected Chrome 390×844 pre/post accessibility-tree readback; matching/unmatched search; Missing image apply/clear; Close recovery; `verify:global-accessibility-boundary`; focused zero-warning ESLint; strict TypeScript; current inventory regeneration/verifier | Chrome now exposes `dialog "Find & Fix"`; Missing image applies the expected one-item filter, Clear all restores the menu, and Close recovers without a write. | CLOSED_LOCAL / HOSTED CURRENT-CANDIDATE RETEST PENDING |
+| MLRC-430 | Medium | Nested mobile category editor dialog had no accessible name | Opening saved category Drinks rendered the named outer Categories manager plus a second active editor Popup with no accessible name. The inner dialog contained the actual category fields and actions, so assistive-technology owners could not distinguish the focused editor layer. | Derive one localized category editor title and reuse it for the Popup accessible name and visible NavBar title. Preserve add/edit modes, discard recovery, category data, and all mutation guards. Add exact source assertions to the global accessibility gate. | Connected Chrome 390×844 pre/post dialog-tree readback; unchanged Drinks editor open/back recovery; `verify:global-accessibility-boundary`; focused zero-warning ESLint; strict TypeScript; current inventory regeneration/verifier | Both active dialog layers now expose `Drinks`; saved category truth renders with disabled Reset/Save and Back exits without a category write. | CLOSED_LOCAL / HOSTED CURRENT-CANDIDATE RETEST PENDING |
+| MLRC-431 | Medium | Owner Share templates exposed an invalid placeholder phone number | The deterministic store contained `0000000000`. The public menu already rejected it through the shared phone boundary after MLRC-423, but Official Business Page and Business Info message templates independently serialized any non-empty stored phone. An owner could therefore copy or send contact truth that the customer surface correctly considered unusable. | Validate the optional Share phone with the existing `buildTelHref` boundary before adding it to either template. Preserve the trimmed original display value for valid numbers and leave links, address, hours, template order, and all provider boundaries unchanged. Add deterministic invalid/valid message-template assertions plus a fail-closed communication-kit source gate. | Connected Chrome 390×844 pre/post Share readback; all nine message Copy actions; all four customer-link QR and isolated Open destinations; store/business/project/outlet QR sheets; three named guides; `npm run test:phone-number-boundary`; `npm run verify:communication-kit-boundary`; `npm run verify:public-business-truth`; focused zero-warning ESLint; strict TypeScript; current inventory verifier; `git diff --check` | Official Business Page and Business Info now omit `0000000000` while retaining canonical link, address, and closed-today truth. The regression proves `9876543210` remains present. No native share, WhatsApp send, provider, Razorpay, Firebase write, staging push, Vercel build, deployment, Git mutation, or production action occurred. | CLOSED_LOCAL / HOSTED CURRENT-CANDIDATE RETEST PENDING |
+| MLRC-432 | Medium | Mobile Analytics Setup Wizard falsely implied draft tracking choices were applied automatically and ended with an unearned healthy/ready claim | The wizard's tracking step said choices were applied directly when switched, although the screen requires Save Changes. Its final step declared everything was running normally and analytics ready within 24–48 hours even when no external ID was configured and Finish Setup only closed the guide. An owner could leave believing unsaved or unconfigured tracking was active. | Describe tracking choices as drafts, instruct the owner to review the optional IDs/categories and use Save Changes, rename the final step to Review, and make the final action Close Guide. Preserve the actual analytics draft, validation, save, tenant/store, and external-provider boundaries. Add fail-closed public-business-truth assertions for the truthful copy and rejected claims. | Connected Chrome 390×844 all-six-step pre/post wizard traversal; footer Back and named Close recovery; clean disabled Save/Reset baseline; invalid-ID recovery and draft Reset; `npm run verify:public-business-truth`; focused ESLint; strict TypeScript; inventory regeneration/verifier | The wizard now explains the draft/save contract and closes without claiming or performing a save. The store remained unchanged. | CLOSED_LOCAL / HOSTED CURRENT-CANDIDATE RETEST PENDING |
+| MLRC-433 | Medium | Mobile Analytics guides advertised unsupported sales and e-commerce reporting | Quick Start told owners to enable sales tracking, menu-item views, and location tracking, while Complete Guide claimed add-to-cart, purchase, enhanced-ecommerce, category-sales, and Meta conversion reporting that the current MenuList event contract does not provide. It also linked to a GA4 e-commerce guide, reinforcing the unsupported promise. | Rewrite Quick Start and Complete Guide around the actual category switches and supported public-page/MenuList activity events; remove enhanced-ecommerce and the GA4 e-commerce resource. Preserve legitimate GA4, Search Console, Meta visit, MenuList activity, and approximate-location guidance. Lock both positive truth and rejected claims in the public-business-truth verifier. | Connected Chrome 390×844 pre/post Quick Start and Complete Guide readback; all five category disclosures; named guide Close and clean Back recovery; `npm run verify:public-business-truth`; focused ESLint; strict TypeScript; inventory regeneration/verifier | Both guide tabs now match current runtime capability, and the unsupported sales/e-commerce copy and resource are absent. External provider/help links were deliberately not invoked in this current pass. | CLOSED_LOCAL / HOSTED CURRENT-CANDIDATE RETEST PENDING |
+| MLRC-434 | Medium | Mobile Brand Settings accepted invalid business and contact email drafts without validation | Connected Chrome accepted `not-an-email` in Business Email, displayed no error, and enabled Save. Source tracing confirmed the mobile handler passed both optional email strings directly to the client-side store DAL, while the desktop Business Profile already enforced email syntax. A normal mobile save could therefore persist malformed public/contact truth. | Add one pure optional-contact-email boundary, validate both fields before any optimistic state or DAL call, trim admitted values before persistence, and preserve blank optional values. Lock the helper behavior and both mobile trust-boundary calls in deterministic regression coverage. | Connected Chrome 390×844 pre/post invalid Business Email and Contact Person Email recovery; all 17 reversible text fields; both selectors; incomplete-coordinate recovery; Reset and About guidance; `npm run test:business-contact-email-boundary`; `npm run verify:public-business-truth`; focused ESLint; strict TypeScript; inventory regeneration/verifier | Both invalid email drafts now stop with purpose-specific recovery before `updateStore`; Reset restores the exact fixture and disabled Save. No store/tenant write, Firebase operation, Storage upload, provider, Razorpay, staging, Vercel, Git, deployment, or production action occurred. | CLOSED_LOCAL / HOSTED CURRENT-CANDIDATE RETEST PENDING |
+| MLRC-435 | Medium | Custom social-platform names were rendered from the normalized storage key rather than the owner-entered customer-facing label | Entering `QA Platform` in the mobile Social Media editor immediately produced a card and edit title labelled `qa platform`. The normalized key is correct for storage, but using it as display text degraded owner recognition and the public accessible name. | Add one shared display-label formatter for custom social keys, preserve normalized storage keys, and use the formatted label consistently in the owner card, edit dialog, action names, and public projection. | Connected Chrome 390×844 pre/post Other Platform draft; empty-link, unsafe-URL, and missing-name validation; card, edit-title, Open/Edit/Remove accessible names; Official Business Page boundary regression; public-business-truth regression; focused ESLint; strict TypeScript | The same normalized key now renders `QA Platform` consistently without changing its persistence identity or adding a read/write. | CLOSED_LOCAL / HOSTED CURRENT-CANDIDATE RETEST PENDING |
+| MLRC-436 | Medium | Owner-supported custom social links were persisted but omitted from every customer-facing surface and schema projection | Both desktop and mobile owner forms admitted arbitrary HTTPS platform links, but the Official Business Page, public menu footer, and `sameAs` schema enumerated only the fixed built-in networks. Saving a valid custom link therefore consumed the normal store update/invalidation while customers saw no result. | Project bounded validated custom links through one shared helper; exclude built-ins, website, and WhatsApp; deduplicate, sort, and cap at 12; render generic external-link controls on Official Business Page and menu footer; include the exact URLs in schema `sameAs`; preserve all existing analytics classifications and cache invalidation. | Connected Chrome 390×844 disposable `QA Platform` save; fresh cache-busted customer menu rendered `Visit our QA Platform` with the exact HTTPS URL; fresh removal save; final fresh menu retained Filter Coffee / ₹80 and omitted the link; Official Business Page boundary regression; public-business-truth regression; focused ESLint; strict TypeScript; current inventory regeneration/verifier | The normal acknowledged save now propagates the owner-supported custom public truth to customer output and structured data without an additional Firebase operation. The reversible emulator lifecycle ended clean after two isolated writes (add and remove). A single-store visual OBP link remains pending because the current root fixture intentionally renders its two-location chooser. | CLOSED_LOCAL / SINGLE-STORE OBP VISUAL AND HOSTED CURRENT-CANDIDATE RETEST PENDING |
+| MLRC-437 | High | Mobile Feedback Settings sticky action row covered the lowest field controls | The action row was stuck 124px above the nested scroll-container bottom while the shell already reserved bottom-navigation space. At the tested narrow owner surface, `Make Email Required` sat beneath the action row: pointer activation produced no state change, while keyboard Space worked. This broke a normal touch-first owner-critical configuration path. | Give the settings scroll region explicit bottom and scroll padding, and return the action row to normal document flow so it cannot obscure the final field. Preserve the shared navigation clearance, field state, reset/save behavior, and 44px actions. Add fail-closed Guest Feedback and MobileShell route-map assertions. | Connected Chrome pre/post screenshot and role-state readback; repeated pointer click before correction; pointer click after correction; all master, optional, and required switches; About; Reset; `npm run verify:guest-feedback-boundary`; `npm run verify:mobile-shell-route-map`; focused ESLint; strict TypeScript; inventory regeneration/verifier | The full Email field and required switch now render above the action row; pointer activation changes checked state and enables Reset/Save. No provider or cloud operation occurred. | CLOSED_LOCAL / PHYSICAL-DEVICE AND HOSTED CURRENT-CANDIDATE RETEST PENDING |
+| MLRC-438 | High | A successful store write could leave the owner indefinitely trapped in Saving while public-cache revalidation never settled | The Feedback Settings write reached emulator Firestore and fresh public rendering, but the client remained in `Saving` for more than ten seconds because the cache helper relied only on aborting `fetch`; it did not independently settle the awaited promise if the runtime ignored or delayed the abort. Controls remained disabled even though persisted truth had changed. | Race the revalidation request against an explicit bounded outcome, abort at the existing four-second deadline, absorb late request rejection, log only bounded timeout context, and allow the acknowledged write path to recover without weakening cache invalidation or public freshness. Add deterministic response/error/never-settling deadline coverage and make it part of the public-business-truth gate. | Connected Chrome reproduced indefinite Saving after an acknowledged name-required write; authenticated emulator readback proved the exact persisted defaults; deterministic deadline test; corrected cleanup save settled after the bounded attempt; fresh public feedback page returned to baseline; exact final emulator readback; public-business-truth and Guest Feedback suites; focused ESLint; strict TypeScript; inventory verifier | The cache revalidation request is still attempted and aborted on deadline, but a non-settling transport can no longer trap the owner. The reversible add/remove lifecycle ended with the original feedback configuration exactly restored. | CLOSED_LOCAL / HOSTED CURRENT-CANDIDATE RETEST PENDING |
+| MLRC-439 | Medium | An unchanged valid NotificationOS default looked like an owner configuration error | A newly created store correctly persisted `email_and_whatsapp`, meaning use every eligible channel, while the email-only fixture had no verified WhatsApp destination or consent. Opening Notifications immediately displayed two corrective warnings instructing the owner to grant consent and choose a valid channel even though no draft existed and eligible email delivery remained valid. | Preserve the combined default and fail-closed save rules, but show corrective readiness/consent warnings only for changed drafts. For an unchanged saved selection containing an unavailable channel, show one calm explanation that MenuList continues with eligible channels. Apply the same contract to mobile and desktop and make the inventory manifest include the mobile screen. | Connected Chrome 390×844 pre/post baseline; About; delivery and preferred-channel selectors; Email-first/WhatsApp-first fallback order; Back discard and reopen; NotificationOS source/routing/rules tests; focused ESLint; strict TypeScript; feature-reader runtime; current inventory | The persisted combined default now remains visible with Save disabled and one truthful informational explanation. Draft validation is unchanged, no preference was saved, and no Firebase/provider operation occurred. | CLOSED_LOCAL / DESKTOP VISUAL AND HOSTED CURRENT-CANDIDATE RETEST PENDING |
+| MLRC-440 | Medium | Mobile Profile rendered a dial code as if it were a complete phone number | The disposable owner had a retained `+91` dial code and no phone number. Mobile Profile displayed `+91` under Profile details, while the desktop profile already required a number before rendering a phone label. The owner could reasonably mistake the country code for stored contact truth. | Build both desktop and mobile profile labels through the shared phone normalizer and render a display number only when the normalized international destination is valid. Preserve the raw editable country choice and every public/notification phone boundary. | Connected Chrome 390×844 pre/post Profile summary; empty and all-zero shared phone regression; focused ESLint; strict TypeScript; current inventory | The same fixture now renders `No phone added`; valid numbers retain their formatted dial code and number, while empty and invalid placeholders remain hidden. No profile or Firebase mutation occurred. | CLOSED_LOCAL / DESKTOP VISUAL AND HOSTED CURRENT-CANDIDATE RETEST PENDING |
+| MLRC-441 | Medium | Mobile and desktop profile forms could issue a profile API request for an unchanged draft | The mobile Edit profile action opened with an enabled Save button even though every field matched current truth. The server-side MLRC-420 guard prevented a Firestore write, but each unchanged submit still consumed the profile endpoint, rate-limit check, authenticated user-document read, response handling, and owner time. Desktop had the same preflight gap. | Reuse the normalized changed-field projection before the request. Disable the unchanged mobile Save action, retain a defensive early return, and make the desktop handler acknowledge unchanged input locally without calling the endpoint. Preserve server-side no-op protection as defense in depth. | Connected Chrome 390×844 unchanged editor before/after; profile no-op regression; focused ESLint; strict TypeScript; current inventory | Mobile Save is disabled on the exact unchanged draft. A real field change still enables the existing validation/save path; desktop unchanged submission now stops locally. No request or Firebase operation occurred in the corrected browser pass. | CLOSED_LOCAL / DESKTOP BROWSER AND HOSTED CURRENT-CANDIDATE RETEST PENDING |
+| MLRC-442 | Medium | External Menu Sync accepted an invalid URL draft as actionable but gave no persistent recovery | On the provider-free mobile screen, enabling sync and entering `javascript:alert(1)` left Save enabled. The submit guard correctly rejected the value before secret creation or store persistence, but its short toast was not represented in the active form state; the unsafe value and enabled action remained, so an owner could reasonably interpret the click as broken. Desktop used the same detached-message-only pattern. | Derive field validity from the shared HTTPS/public-endpoint validator, associate a persistent alert with the URL input, mark the field invalid, and disable Save and Test until the draft is admitted. Apply the same contract to mobile and desktop while preserving the server guard, secret ownership, tenant/store scope, delivery path, and provider boundary. | Connected Chrome 390×844 pre/post invalid URL, valid HTTPS-shaped recovery, Reset, disclosure, and About; `npm run verify:pos-sync-boundary`; `npm run test:pos-sync-boundaries`; focused zero-warning ESLint; strict TypeScript; feature-reader runtime; current 6,692-row inventory verifier | Mobile now announces `Provider connection URL must use HTTPS.` beside the field and exposes Save/Test as disabled until the URL is valid. A valid HTTPS-shaped draft clears the alert and re-enables Save; Reset restores the exact off/empty fixture. Desktop source parity and regression gates pass. No secret, API request, store write, provider test/delivery, cloud Firebase, Razorpay, staging, Vercel, deployment, Git, or production action occurred. | CLOSED_LOCAL / DESKTOP VISUAL AND HOSTED CURRENT-CANDIDATE RETEST PENDING |
+| MLRC-443 | Medium | Time Slot invalid drafts remained actionable with transient-only recovery | Mobile and desktop relied on handler-time toast/message feedback for blank, duplicate, or invalid time ranges. The invalid draft remained in place after the message disappeared, and Save/Create remained actionable, making repeated clicks appear broken. | Add one shared pure draft-admission boundary for missing labels, case-insensitive duplicates, malformed/equal ranges, and valid daytime/overnight ranges. Disable invalid submit actions and expose persistent field-associated feedback on mobile and desktop while retaining handler, DAL, tenant/store, cascade, and cache guards. | Connected Chrome 390×844 first-use/About, required-state lock, duplicate recovery, disposable create/edit/delete and exact cleanup; `npm run test:time-slot-data-flow`; `npm run verify:working-hours-boundary`; public-business-truth and tenant-safety suites; focused zero-warning ESLint; strict TypeScript; 6,692-row inventory | The required empty state now keeps Save disabled; a duplicate announces `A slot with this name already exists` beside the field and remains blocked. QA Dinner created and rendered, edited to QA Supper through the durable category-cascade contract, then deleted through the named confirmation; final readback returned to no slots. Native time-picker automation remains uncredited, while deterministic tests cover malformed/equal/daytime/overnight values. No cloud Firebase, provider, Razorpay, staging, Vercel, deployment, Git, or production action occurred. | CLOSED_LOCAL / DESKTOP VISUAL AND HOSTED CURRENT-CANDIDATE RETEST PENDING |
+| MLRC-444 | Medium | Mobile Billing help left the owner shell and broke the mobile continuation contract | Both Billing support actions pushed the desktop `/help-center/contact-us` route. The owner lost the MobileShell navigation and context even though MenuList already has a stable shell-native Contact Us state. An initial dedicated Billing sub-screen also exposed a route-synchronization update loop and was rejected rather than retained. | Route both Billing support actions through the existing `menuListContact` Mobile More state via an explicit callback. Reuse the established help screen and avoid a duplicate route/state contract, Firebase work, provider handoff, or entitlement mutation. | Connected Chrome 390×844 provider-free reseller Billing, HQ→branch→HQ scope, Billing History open/close, About, and both help actions; `npm run verify:billing-entitlement-boundary`; `npm run verify:mobile-shell-route-map`; focused zero-warning ESLint; strict TypeScript; current inventory | `Need billing help?` now opens MenuList Contact Us inside MobileShell with bottom navigation retained and no error boundary. The reseller-labelled ₹0 Pro entitlement, 250 plan credits, zero pack credits, inherited branch state, and empty history remain unchanged. No payment, Razorpay, Firebase, provider, staging, Vercel, deployment, Git, or production action occurred. | CLOSED_LOCAL / HOSTED CURRENT-CANDIDATE RETEST PENDING |
+| MLRC-445 | Medium | MenuList Help actions inside MobileShell navigated back into desktop owner routes | The shell-native Contact Us screen rendered shared Help Centre actions as links to `/help-center/faq` and `/help-center`. Activating Read FAQ at 390×844 discarded the MobileShell and opened the desktop sidebar layout, repeating the same continuation failure found at the Billing boundary. | Let the shared MenuList Help Centre accept optional section and dashboard callbacks. When embedded in MobileShell, render section actions as buttons and route Home, FAQ, Contact, and Dashboard recovery through the existing More sub-screen state. Keep ordinary desktop Help Centre routes as links when callbacks are absent. | Connected Chrome 390×844 exact Contact→FAQ reproduction; corrected Contact→FAQ, FAQ disclosure, FAQ→Contact, Contact→Home, and Home→More journey; `npm run verify:mobile-shell-route-map`; feature-flag runtime; focused zero-warning ESLint; strict TypeScript; current 6,692-row inventory | All internal Help actions now retain MobileShell, its bottom navigation, and canonical hash state. The support mail link remains a real external mail action and was deliberately not invoked. Desktop route behavior remains available through unchanged fallback hrefs. | CLOSED_LOCAL / DESKTOP ROUTE RETEST AND HOSTED CURRENT-CANDIDATE RETEST PENDING |
+| MLRC-446 | Medium | Oversized Menu Manager drafts remained actionable until after an API/rate-limit request | The command API correctly limits text to 1,000 characters, but mobile and desktop composers had no matching input or composed-context preflight. A raw 1,000-character draft plus `Selected item: Filter Coffee.` exceeded the actual server command limit while Send remained enabled, guaranteeing a rejected request and generic failure after rate-limit work. | Centralize the 1,000-character command boundary, reuse it in command/planner schemas and the client DAL, cap raw composer input, validate the final context-composed command, disable Send, and show persistent recovery text. Keep the DAL guard before scope resolution as defense for non-UI callers. | Connected Chrome 390×844 exact selected-item 1,000-character reproduction and corrected recovery; exact-limit/oversize/blank deterministic assertions; complete `verify:ai-menu-manager` suite; focused zero-warning ESLint; strict TypeScript; feature-flag runtime; current inventory | The composed oversized draft now announces `Menu Manager messages can be up to 1,000 characters, including selected context.` and keeps Send disabled. Replacing it with a short draft clears the alert and enables Send; clearing the draft/context restores the exact baseline. No command, provider, AI, credit, project, Firebase, Razorpay, hosted, staging, Vercel, deployment, Git, or production action occurred. | CLOSED_LOCAL / DESKTOP VISUAL AND HOSTED CURRENT-CANDIDATE RETEST PENDING |
+| MLRC-447 | Medium | Empty Custom Temporary Status remained actionable until after the owner tapped publish | Both mobile owner entry points showed `Enter a custom message` only inside the preview while leaving Set/Show enabled. A tap produced a transient toast instead of persistent field recovery, and a crafted API request could still publish the generic Custom fallback. | Add one shared meaningful-copy/expiry draft boundary, associate persistent mobile and desktop feedback with the affected input, disable invalid publication, retain handler guards, and reject empty or invisible-only Custom copy at the API trust boundary before the store transaction. | Connected Chrome 390×844 dedicated Temporary Status and Today plus 1512×807 Business Settings empty/valid recovery and accessible-name verification; deterministic blank/invisible/oversize/expiry assertions; `npm run verify:temporary-status-boundary`; `npm run verify:public-business-truth`; focused zero-warning ESLint; strict TypeScript | Empty Custom now immediately announces `Enter a custom message.` and disables publication on all three owner paths; valid local copy clears the alert and re-enables the action. The desktop message and expiry fields have explicit accessible names. All drafts were reset without submission. The API now rejects a bypass before Firestore mutation. No request, rate-limit check during browser proof, Firebase write, provider, Razorpay, staging, Vercel, deployment, Git, or production action occurred. | CLOSED_LOCAL / HOSTED CURRENT-CANDIDATE RETEST PENDING |
+| MLRC-448 | Low | Auth security verifier expected retired `targetUrl` field | Runtime uses bounded `targetWorker`; stale assertion blocked aggregate. | Pin the exact current field while retaining the full failure matrix. | Auth security failure matrix and 12 adjacent cases | PASS; no auth behavior weakened. | CLOSED_LOCAL |
+| MLRC-449 | Low | Contextual-state verifier missed `@/components/atoms` and one governed offline consumer | Import discovery only recognized `@atoms`, undercounting current valid consumers. | Admit both aliases, add offline recovery, and update exact count 79→80. | Contextual-state illustration gate | PASS with unchanged policy. | CLOSED_LOCAL |
+| MLRC-450 | Low | Certification prose retained a historical invalid npm command token | Documentation verifier treated the obsolete alias as executable. | Describe it without reproducing an invalid command; retain the current boundary command. | Documentation npm-script verifier | PASS. | CLOSED_LOCAL |
+| MLRC-451 | Low | Firebase cost closeout undercounted current runtime files | Scanner evaluates 535 files; README stated 534. | Refresh measured total/date without changing risk policy. | Firebase scale/cost closeout | PASS: 535 files; risk bands 9/2/2/53/469. | CLOSED_LOCAL |
+| MLRC-452 | Low | Help Centre verifier assumed retired single-line JSX | Current shared component exposes explicit section/dashboard callbacks across multiline JSX. | Pin props and exact callback invocations instead of formatting. | Complete Help Centre suite | PASS; desktop links and MobileShell callbacks remain asserted. | CLOSED_LOCAL |
+| MLRC-453 | Low | Internal Ops verifier expected retired `document.id` DAL variable | Current committed DAL uses `snapshot.id`. | Update exact identifier assertion. | Internal Ops flow suite | PASS without scope relaxation. | CLOSED_LOCAL |
+| MLRC-454 | Medium | Six website locale packs omitted four mobile-navigation labels | Tamil, Telugu, Marathi, Bengali, Arabic and Spanish retained 61 Header keys while English/Hindi had 65. | Add localized navigation, Product, Resources and account labels; pin exact count 65. | Public Menu Entry, website locale, TypeScript and lint gates | All eight active locales have exact non-empty key parity. | CLOSED_LOCAL / HOSTED LOCALE RETEST PENDING |
+| MLRC-455 | Low | Public Truth Tools verifier pinned retired Business Settings and mobile Resources markup | Business-copy metadata now wraps the deep diff; the drawer uses shared groups. | Assert the wrapper, nested deep diff, shared resource group, active-route projection and current link class. | Public Truth Tools plus runtime suite | PASS across 16 truth and five asset tools. | CLOSED_LOCAL |
+| MLRC-456 | Low | SecurityOS exact registry count lagged one valid entry | Audit reported 47 entries while test expected 46. | Refresh exact count after registry integrity passed. | Complete SecurityOS gate | PASS: six products, 22 surfaces, 47 entries, seven bundles. | CLOSED_LOCAL |
+| MLRC-457 | Low | Cross-product tagline verifier was whitespace-fragile | Correct Neelvara separation sentence wrapped across JSX lines. | Assert both exact semantic fragments, including separate websites/policies. | Website public-copy gate | PASS; product separation remains enforced. | CLOSED_LOCAL |
+| MLRC-458 | Low | Two AssetOS slots became stale after Mobile Share style navigation changed | New previous/next controls changed a watched source fingerprint. | Browser-verify the current action sheet and `1 of 9`→`2 of 9` transition, document review, and re-lock only two affected slots. | Connected local Chrome; MenuList AssetOS certification; website copy gate | PASS with zero AssetOS errors/warnings; no media publication or external mutation. | CLOSED_LOCAL |
+| MLRC-459 | Medium | Printable-asset project-style clearing built a dynamic Firestore field path before validating the project identifier | The clear helper interpolated the raw caller value into `printableAssetStylePreferences.projectOverrides.<projectId>.<assetId>` and only called the normalizer after the write. A malformed dotted, slash-containing, or reserved-key identifier could therefore address an unintended nested path before rejection. | Normalize and validate the project identifier before constructing the dynamic update path; use only the returned trimmed identifier in the store DAL call. Add deterministic valid, whitespace-normalized, dotted, slash, and reserved-key coverage. | `npm run test:printable-asset-style-preferences`; `npm run verify:printable-asset-templates`; focused zero-warning ESLint; strict TypeScript; desktop emulator preference lifecycle | Invalid identifiers now fail before any persistence call; the valid project override, business default, and clear-to-business-default lifecycle persists and survives reload. | CLOSED_LOCAL / MOBILE DEFAULT-ACTION AND HOSTED CURRENT-CANDIDATE RETEST PENDING |
+| MLRC-460 | Medium | Assets reported a false no-menu state when a real menu lacked a public customer address | The route loaded the seeded menu, then `generateProjectUrl` rejected the absent subdomain/custom domain inside the same broad catch. The owner was told to create a first menu even though one existed, and received no route to fix the actual prerequisite. | Separate missing-public-link and load-failure states; wait for trusted tenant/store scope; bind the project read to that scope; send the owner to the existing customer-link settings focus; retain a distinct retry state for genuine read failures. Extend the deterministic browser fixture with configured/missing public-link modes and reset printable style preferences on every seed. | Connected local Chrome reproduction and corrected Domain-settings handoff; seeded project readback through the browser SDK; `npm run verify:menulist-local-browser-fixture`; `npm run verify:printable-asset-templates`; `npm run verify:contextual-state-illustrations`; focused zero-warning ESLint; strict TypeScript | A seeded menu without a public address now renders `Set up your customer link` and opens `/business-settings?focus=customer-link`; genuine failures render `Assets could not be loaded` with Try again. Re-seeding configured state restores all 15 asset types and nine styles without stale preference state. | CLOSED_LOCAL / MOBILE MISSING-LINK AND HOSTED CURRENT-CANDIDATE RETEST PENDING |
+| MLRC-461 | Low | Four approved AssetOS slots became source-stale after the printable-assets and Mobile Share corrections | The maintained source fingerprints correctly invalidated the MenuList public-surface matrix, QR/share kit, printable dashboard, and printable editor evidence after watched runtime files changed. | Visually re-review the exact four approved images against the current source changes, retain the existing pixels and fictional-data/privacy boundaries, and refresh only those four fingerprints through the slot-scoped command. | Original-resolution visual review; four scoped `assets:fingerprint` operations; `npm run certify:asset-factory-menulist` | PASS with 28 MenuList slots and zero errors, warnings, blocked items, or founder-review items. No public media, runtime behavior, or external state changed. | CLOSED_LOCAL |
+| MLRC-462 | Low | Multi-location source verifier required the retired single-line store update composer | The printable-style private-field boundary changed the composer into a typed conditional while preserving server propagation ordering; the verifier rejected the stronger current form after 78 aggregate checks. | Require both conditional branches and retain the exact propagation-before-direct-summary-write order assertion. | `npm run verify:multi-location-boundary`; adjacent multi-outlet and working-hours gates; aggregate resume | PASS without changing multi-location runtime behavior, tenant/store scope, propagation, or summary writes. | CLOSED_LOCAL |
+| MLRC-463 | Low | Printable-assets verifier declared the same Menu Kit source binding twice | Two independently added coverage blocks introduced a duplicate top-level `const`, so Node rejected the verifier before assertions ran. | Keep one shared source binding, remove duplicate file/feature tokens, and retain both image-preview and prepared-style assertions. | `npm run verify:printable-asset-templates`; `npm run test:printable-asset-style-preferences`; aggregate resume | PASS; no product assertion was removed or weakened. | CLOSED_LOCAL |
+| MLRC-464 | Medium | Mobile printable-style save and clear failures were silently swallowed | Optimistic state correctly rolled back and owner recovery copy appeared, but both new failure branches used bare catches, leaving support with no bounded diagnostic evidence. | Capture the error, emit the shared privacy-safe mobile-owner diagnostic with operation, asset, template, preference scope, and bounded project context, and retain rollback/toast behavior. | Printable-assets verifier; full public-business-truth and cache-adjacent suite; focused zero-warning ESLint; aggregate resume | PASS; failures remain recoverable and now observable without logging raw owner content or credentials. | CLOSED_LOCAL / MOBILE FAILURE-INJECTION AND HOSTED CURRENT-CANDIDATE RETEST PENDING |
+| MLRC-465 | Low | Working Hours verifier pinned the retired one-argument `updateStore` signature | The shared DAL now accepts a typed private-configuration option for printable styles; the hours verifier rejected that signature although hours normalization and cache behavior were unchanged. | Pin the typed options declaration and exact current function signature while retaining every hours, time-slot, transaction, cascade, and cache assertion. | `npm run verify:working-hours-boundary`; runtime boundary tests; aggregate final segment | PASS without modifying Working Hours runtime behavior. | CLOSED_LOCAL |
+| MLRC-466 | Low | The certification summary retained the preceding inventory and feature-registry totals after current-source regeneration | Mobile Share diagnostics shifted exact control identities and the regenerated matrix added eight controls and one feature declaration, while the report header still described the prior snapshot. | Refresh the source-manifest hashes and exact control identities, regenerate the inventory, and reconcile the report to the verified matrix without crediting any unexecuted interaction. | `npm run test:menulist-feature-flag-runtime`; `npm run verify:menulist-rc-inventory`; final aggregate resume; exact CSV readback | PASS — 6,703 rows, 335 feature declarations, 3,863 MenuList controls, and 2,517 honest `NOT_RUN` controls; no interaction status was inflated. | CLOSED_LOCAL |
+| MLRC-467 | Low | Menu Card Export verifier pinned two retired PDF layout/copy implementation tokens | The renderer now measures category titles through `getCategoryTitleHeight`/`minimumStartHeight` and truthfully labels the optional footer from the menu's update timestamp; the old `boxHeight` and generated-time copy no longer represented the shipped contract. | Pin the current pagination measurement and `includeUpdatedDate`/menu-update footer behavior while retaining metadata, deterministic naming, sanitization, QR, shared-controller, attribution, and no-storage assertions. | `npm run verify:menu-card-export` and all six chained Menu Card/print contract suites; aggregate checkpoint replay | PASS; no renderer behavior or test assertion was weakened. | CLOSED_LOCAL |
+| MLRC-468 | Medium | Public website footer and organization schema advertised an unavailable Instagram profile | Activating the shipped Instagram footer link in connected Chrome reached Instagram's exact `Profile isn't available` response, while organization structured data also asserted the same dead identity. Repository truth contained no authoritative replacement profile. | Remove only the unavailable Instagram link and matching `sameAs` claim; retain email and LinkedIn. Add a dead-URL regression plus source-hash-bound browser evidence for every current footer control so future source movement fails closed. | Connected Chrome rendered-footer activation at desktop width; real pointer and keyboard navigation; isolated read-only external tabs; `verify:website-public-copy-boundary`; RC inventory admission | All current internal destinations, the email handoff, and LinkedIn worked. The unavailable Instagram claim is absent locally. Exact-current hosted retest awaits the one explicitly authorized consolidated staging release. | CLOSED_LOCAL / HOSTED_CURRENT_CANDIDATE_RETEST_PENDING |
+| MLRC-469 | Low | Firebase scale/cost closeout documentation lagged the current scanner by one runtime file | The aggregate correctly failed closed because the scanner measured 536 runtime Firebase/Storage/Functions files while the maintained closeout still stated 535. Risk-band totals remained unchanged. | Reconcile only the measured file total; retain all listener, public-read, query-scope, write-volume, lease, and optimization conclusions. | Initial aggregate failure; standalone `npm run verify:firebase-scale-cost-closeout`; aggregate resume from the exact failed gate | PASS — scanner and closeout now agree on 536 runtime files; the 9 listener, 2 public-read, 2 query-scope, and 53 write-volume risk counts plus both lease emulator suites pass. | CLOSED_LOCAL |
+| MLRC-470 | High | Craft Kitchen artwork opacity setup failed strict TypeScript after the bounded renderer task stabilized | The runtime-supported `new doc.GState(...)` form is not constructable in jsPDF's document-instance TypeScript declaration, causing TS7009 and blocking the release gate. | Use the document helper's declared callable form, `doc.GState({ opacity })`, inside the unchanged `setGState` call. Preserve artwork opacity, placement, fallback, and export behavior without `any`, suppression, or a second constructor import. | Focused zero-warning ESLint; complete `verify:menu-card-export` downstream chain; strict `tsc`; aggregate resume through typecheck, lint, and `git diff --check`; refreshed four-page Craft Kitchen PDF render | PASS — the renderer compiles without `any` or suppression; all menu-card/print regression suites pass; the final four-page A4 output retains legible content, natural-aspect edge artwork, complete page labels, QR, contact, attribution, and no clipping. | CLOSED_LOCAL |
+| MLRC-471 | Medium | Printable-theme dietary tags leaked the compact tag font size into tagged-item prices | The renderer set the compact dietary-tag font and did not restore the governed item-price size before drawing the price, so tagged dishes could display materially smaller prices than otherwise identical untagged dishes in customer-facing print menus. | Restore each theme's governed price font immediately before every price draw and extend the static Menu Card verifier so the ordering cannot regress. Preserve the user-directed body, category, and dim-light contrast contracts. | Complete Menu Card downstream chain; printable-template/artwork gates; strict TypeScript; zero-warning full lint; current isolated production build; exact five-output programmatic price audit; four-page Botanical A4 render and all-page visual inspection | PASS — Classic prices are 9.8pt bold only, Premium 10.6pt bold only, Compact 9.0pt bold only, and Botanical/Craft 17.2pt bold only; tagged and untagged items retain identical price font/size. The current four-page Botanical artifact is readable, unclipped, structurally safe, and matches the final idle hashes. | CLOSED_LOCAL / HOSTED CURRENT-CANDIDATE RETEST PENDING |
+| MLRC-472 | Medium | Desktop Features navigation required a second pointer click after hover | Entering the Features trigger opened its panel through `onMouseEnter`; the same first pointer click then ran the generic toggle and immediately closed it. Exact browser state stayed `aria-expanded=false`, `data-open=false`, and `aria-hidden=true`, even though the owner had just activated the visible control. | Distinguish pointer-generated clicks from keyboard activation. Pointer activation now keeps Features open; keyboard Enter retains the existing open/close toggle and Escape retains recovery. Add the contract to the maintained header-navigation regression without changing the menu layout or destinations. | Connected Chrome exact state reproduction and retest; accepted before/failure/after screenshots; `npm run test:header-navigation-boundary`; focused ESLint; inventory source-manifest refresh and verification; scoped `git diff --check` | PASS — the first pointer click changes all three state signals to open, keyboard Enter closes and reopens the panel, and Escape closes it. The existing six homepage FAQ disclosures also completed open/close recovery in the same current-source pass. | CLOSED_LOCAL / HOSTED CURRENT-CANDIDATE RETEST PENDING |
+| MLRC-473 | Medium | Five printable menu themes allowed decorative artwork to cross customer-facing content or reduce price contrast | Fresh current-source PDF generation and all-page contact-sheet inspection found Bombay Chronicle artwork crossing category headings, Ink Vine branches crossing headings, Japanese Night Luxe pale prices crossing the light moon area, Lankan Block Print borders covering names/descriptions/prices, and Tea Salon Heritage florals covering headings, items, prices, and the contact heading. Source/static suites had passed, proving the defect required rendered-output inspection. | Keep the complete theme artwork while introducing theme-safe content geometry, controlled content panels, pagination, and dark-theme contrast handling. Extend the static/output verifier around those contracts. Preserve adjacent accepted themes. | Before hashes `2ec0db10…`, `8f36ea3c…`, `1f54d29c…`; corrected hashes `6586e2c9…`, `46e07e60…`, `bea6722a…`; complete Menu Card/printable/artwork/style suites; regenerated 14-PDF suite; affected-theme review; complete adjacent all-page 60-DPI contact-sheet review; `pdfinfo` structural audit | PASS — all five failing themes now keep headings, names, descriptions, prices, and contact details clear of decorative artwork; Japanese Night Luxe uses a contrast-safe dark content panel. All nine adjacent themes remain visually acceptable after shared pagination changes. All 14 files are A4, unencrypted, Form none, JavaScript no. | CLOSED_LOCAL / HOSTED CURRENT-CANDIDATE RETEST PENDING |
+| MLRC-474 | Medium | Printable output allowed separate per-asset style choices, so one business/menu could generate a visually mixed customer asset set | The prior desktop and mobile owner surfaces exposed style navigation inside individual asset previews, and saved compatibility maps could preserve different style families for different output types. This contradicted the newly confirmed one-parent-theme contract and made Complete Menu Kit branding inconsistent. | Introduce one canonical business theme plus an optional menu override, deterministically normalize admitted legacy per-asset values into that parent theme, remove legacy per-asset style choices from owner-facing UI, and pass the resolved theme through every printable and Menu Kit output. Retain compatibility input only at the normalization boundary. | `test:printable-asset-style-preferences`; `verify:printable-asset-templates`; `verify:menu-card-export` and downstream QR/source/sanitizer/shared/catalog suites; `test:menu-kit-url-boundary`; printable artwork placement test; strict TypeScript; scoped zero-warning ESLint; scoped `git diff --check`; two-pass 76-file hash stability readback; authenticated desktop and 390×844 MobileShell persistence/inheritance pass | PASS LOCALLY — one parent theme governs every asset, explicit parent values win, legacy maps fold deterministically, the menu-theme mutation survived reload, Business Card inherited it, and Complete Menu Kit rendered one themed set. | CLOSED_LOCAL / HOSTED_CURRENT-CANDIDATE_RETEST_PENDING |
+| MLRC-475 | Medium | Tracked cover subtitles were visibly shifted right of the logo and business-name center axis on every full-page printable theme | jsPDF's standard-font center alignment measured glyph width but omitted the active PDF `charSpace`, so labels such as `SERVICES & PRICING` appeared off-center despite using the center-alignment option. | Calculate the complete glyph-plus-tracking width and derive the subtitle start position from the page center. Add a pure geometry regression and a fail-closed renderer assertion with a one-point tolerance. Preserve logo, business-name, theme artwork, pagination, and all non-cover output. | Stable renderer/shared-test/verifier hashes `506d345d…`, `e92a63cb…`, `60b93a77…`; independent `test:menu-card-shared-contracts`; complete `verify:menu-card-export` downstream chain; regenerated 14-PDF suite; independent 14-cover contact-sheet review; first-page PDF word-geometry extraction across all 11 full-page themes | PASS — all full-page covers visually share one center axis. Extracted subtitle centers are within 0.158pt for service fixtures and 0.525pt for menu fixtures of the page/business-name center, below the 1pt fail threshold. | CLOSED_LOCAL / HOSTED CURRENT-CANDIDATE RETEST PENDING |
+| MLRC-476 | Low | Firebase scale/cost closeout documentation lagged the current scanner after the parent-theme preference module was added | The exact-current scanner measured 537 Firebase/Storage/Functions runtime files while the closeout README retained 536 and its verification note retained 533. Risk-band totals were unchanged. | Reconcile both current-count statements to the measured 537 without changing listener, public-read, query-scope, write-volume, lease, or optimization conclusions. | Initial aggregate fail-closed result; exact scanner JSON readback; standalone `verify:firebase-scale-cost-closeout`; both Functions builds; platform-daily and maintenance-task lease emulator suites | PASS — documentation and scanner now agree on 537 runtime files; nine listener-risk, two public-read-risk, two query-scope-risk, and 53 write-volume-risk files remain unchanged. | CLOSED_LOCAL |
+| MLRC-477 | Medium | Salon, makeup-studio, spa and spa-resort owners had no exact business-type printable-theme recommendation and could fall back to restaurant-oriented visual defaults | The parent-theme contract was correct, but its default selection did not use the existing exact shared business-type registry and the governed catalog lacked dedicated salon/spa theme families. Partial text matching would also risk classifying `Pet Grooming Salon` as a beauty salon. | Add exact registry-backed recommendations for Salon/Makeup Studio and Spa/Spa Resort; add Rosewater Editorial, Mineral Sanctuary and Noir Studio; retain no fuzzy matching; preserve menu-theme → business-theme → exact recommendation → Botanical Heritage precedence; propagate one parent theme through all 13 editor-renderable assets, full PDF menus and Complete Menu Kit. | Frozen 19:10:27 IST source hashes; printable-template, preference, artwork and complete Menu Card suites; strict TypeScript; focused zero-warning ESLint; scoped diff-check; 17 regenerated PDF fixtures; 182 compact fixtures; independent three-PDF and three 13-asset contact-sheet review; original-resolution QR recheck; exact-current isolated production build; authenticated desktop and explicit 390×844 MobileShell recommendation/fallback pass | PASS LOCALLY — Salon selected Rosewater Editorial, Spa selected Mineral Sanctuary, Pet Grooming Salon retained Botanical Heritage, all 14 parent themes remained selectable, and the chosen menu theme propagated through individual assets and Complete Menu Kit. | CLOSED_LOCAL / HOSTED_CURRENT-CANDIDATE_RETEST_PENDING |
+| MLRC-478 | Medium | Printable-theme catalog exposed Craft Kitchen to unrelated non-food businesses | The initial parent-theme catalog treated every governed renderer theme as an owner-facing universal choice. Product clarification established one narrow exception: Craft Kitchen is food-specific; the other 16 themes, including salon/spa and cross-category recommendations, remain valid universal owner choices. | Resolve owner-visible themes through the canonical business category/type registry so only Craft Kitchen requires canonical food eligibility. Keep the other 16 themes visible and saveable for every business, use business rules only for recommendation order and defaults, normalize a stale non-food Craft Kitchen preference through the same resolver, and preserve all 17 renderer themes for internal/full-output QA. | Frozen revised theme boundary; exhaustive `test:printable-asset-style-preferences` universal visibility/save assertions for all 16 non-Craft themes; `verify:printable-asset-templates` exact-one-restriction assertion; complete Menu Card downstream chain; strict TypeScript; scoped zero-warning ESLint; scoped diff-check; current-source desktop/mobile browser retest pending action-time credential authorization | SOURCE/CONTRACT PASS — shared resolution, optimistic save, DAL persistence, desktop/mobile catalog, Menu Kit, docs, and fail-closed regressions agree with the clarified policy. Current browser evidence remains intentionally stale until the changed controls are re-exercised. | CLOSED_SOURCE / LOCAL_BROWSER_RETEST_PENDING |
+| MLRC-479 | Medium | Vital Current and Workshop Atlas rendered footer metadata over dark full-bleed artwork | Independent RC inspection of the newly generated five-page PDFs found the page number, freshness line, and MenuList attribution materially low-contrast where the footer crossed dark edge artwork. Static source and structural PDF checks had passed, so the defect required rendered-output review. | Add a theme-scoped translucent paper footer field for Vital Current and Workshop Atlas before drawing cover, content, and closing-page footer text. Keep Gallery Ledger and the other accepted themes unchanged; do not disable artwork or global caching. Extend the fail-closed Menu Card verifier to require the exact two governed theme opt-ins and shared footer-panel draw path. | Complete `verify:menu-card-export` chain; strict TypeScript; scoped zero-warning ESLint; scoped diff-check; regenerated 20-PDF fixture suite; fresh original-resolution inspection of cover, content, and closing pages; PDF structural/hash readback | PASS — footer metadata is readable on both corrected themes without text/artwork collisions or hierarchy regressions. Corrected Vital Current PDF SHA-256 is `d458d22c…`; Workshop Atlas is `70ed4ced…`; both remain five-page A4, unencrypted, Form none, JavaScript none. | CLOSED_LOCAL / HOSTED CURRENT-CANDIDATE RETEST PENDING |
+| MLRC-480 | Medium | Desktop printable-theme recommendations compressed seven cards into too many columns, rendering several theme labels letter-by-letter vertically | Authenticated current-source owner QA at `/use-menulist/print-assets` exposed the layout failure after the 17-theme catalog expansion; source-only checks had not reproduced the rendered grid width. | Cap the desktop recommendation gallery at four equal-height columns and allow card labels and badges to wrap within their cards. Add fail-closed layout-token coverage without changing theme order, recommendation rules, or persistence. | Authenticated desktop before/after screenshots; all 17 themes and 15 assets exercised; `verify:printable-asset-templates`; strict TypeScript; zero-warning lint; final aggregate; exact-current production build | PASS — every recommendation label is readable at the tested desktop viewport and all 17 themes remain selectable with parent-theme inheritance intact. | CLOSED_LOCAL / HOSTED_CURRENT-CANDIDATE_RETEST_PENDING |
+| MLRC-481 | Medium | Mobile printable-theme strip collapsed the active theme label vertically | Authenticated 390×844 MobileShell QA showed the selected theme card shrinking inside the horizontal strip after the catalog expansion. | Give each mobile theme card a fixed 142×170 column footprint with contained badges and label wrapping; lock the required layout tokens in the maintained verifier. | Authenticated mobile before/after screenshots; 17/17 themes and 14/14 enabled assets exercised; Feedback QR correctly disabled for the fixture; parent-theme preview and Complete Menu Kit inheritance; final aggregate and build | PASS — labels remain horizontal and readable, scrolling and selection work, and no enabled mobile asset lost reachability. | CLOSED_LOCAL / HOSTED_CURRENT-CANDIDATE_RETEST_PENDING |
+| MLRC-482 | Medium | Lankan Block Print edge artwork intruded into compact asset text and link/QR-safe geometry | The complete 221-output raster matrix found collisions on Business Card, Gift Certificate, Postcard, and Product Tag. The first correction also exposed an oversized gift-certificate headline and a declared short-link box extending nine pixels beyond the intended safe field. | Add a Lankan-only translucent compact content safe field; fit the gift-certificate headline and URL; keep business-card scan/link boxes, postcard CTA/link/support copy, and product-tag link geometry inside the field. Extend regression coverage to measure declared boxes and actual rasterized glyph bounds for every text layer in the four affected asset types. | 221/221 PNG regeneration, dimensions and entropy audit; full-size four-format cross-theme contact sheets; artwork/glyph-bound regression; printable and Menu Card chains; 17/17 A4 PDF structural/pagination review; strict TypeScript; lint; diff check; final aggregate and build | PASS — no remaining artwork/text/QR collision was found; every affected declared box and measured glyph stays inside the safe field. | CLOSED_LOCAL / HOSTED_CURRENT-CANDIDATE_RETEST_PENDING |
+| MLRC-483 | High | The mobile item editor covered its nested image sheet, blocking every upload and generation control | At 390×844, Item Edit uses a governed drawer at z-index 1300 while the nested image sheet inherited the drawer default of 1000. The image sheet existed in the accessibility tree, but the visible editor remained above it and pointer hit-testing resolved to the editor. Owners could not add or generate item images from the mobile owner flow. | Keep the shared desktop modal unchanged and place only the mobile image sheet at z-index 1400, above Item Edit and below the maintained confirmation-dialog layer. Lock that stacking token in the existing AI boundary verifier. | Authenticated 390×844 before/after screenshots; computed drawer stacking readback (1300/1400); pointer activation of Upload from Device and Generate Photo; active saved-person option selection; provider-free desktop create/select/withdraw/delete-cancel lifecycle; private emulator cleanup; `verify:ai-accounting`; `verify:menu-project-editor-boundary`; image batch/prompt/storage regressions; scoped lint; strict TypeScript; diff check | PASS locally — the nested image sheet is visible and touchable above Item Edit, both tabs switch by pointer, the saved-person selector loads/selects the exact active version, and desktop lifecycle behavior remains intact. No Generate action, provider, Razorpay, cloud Firebase, Git, staging, Vercel, deployment, or production action occurred. | CLOSED_LOCAL / HOSTED_CURRENT-CANDIDATE_RETEST_PENDING |
+| MLRC-484 | Medium | Mobile Add Staff accepted a malformed optional email and returned only a generic post-request failure | At 390×844, entering `not-an-email` with a valid name and Staff role left Add actionable, issued the authenticated create request, and returned `Failed to add user`; the owner received no actionable correction despite the server rejecting the malformed input. The failed request created no staff row. | Move the existing optional staff-email contract into a pure shared schema used by both server and mobile. Reject malformed non-empty email locally with `Invalid email address` before the mutation guard, request, rate-limit admission, authority reads, or write path; preserve name-only Staff ID creation and server validation as defense in depth. | Exact connected-browser reproduction/retest against Auth 9099 and Firestore 8080 at 390×844; fixture count stayed at one owner; `test:staff-form-mapping-boundary`; `verify:staff-roles-route-parity`; scoped zero-warning ESLint; strict TypeScript; scoped diff check | PASS locally — the same malformed draft remains in the named Add Staff Member dialog, receives immediate specific feedback, makes no staff mutation, and cancels cleanly. | CLOSED_LOCAL / HOSTED_CURRENT-CANDIDATE_RETEST_PENDING |
+| MLRC-485 | Medium | Desktop/mobile time-format selectors presented two indistinguishable 24-hour choices | At 390×844, both stored 24-hour patterns rendered as `07:39 (24 Hr format)`, leaving an owner and assistive automation unable to identify which option included the governed leading-zero pattern. The shared `TIME_FORMATS` helper repeated the same label for both variants. | Give every shared 12/24-hour option an explicit, unique leading-zero description while preserving the four stored allowlisted values and existing localized live preview. Add a deterministic uniqueness regression and document the recovery contract. | Current-source connected-browser reproduction and retest at 390×844; direct global-localization boundary; mobile-shell route verifier; scoped zero-warning ESLint; strict TypeScript; scoped diff check | PASS locally — all four choices have distinct accessible text; the 24-hour draft was selected and Reset restored the saved 12-hour value without persistence. | CLOSED_LOCAL / HOSTED_CURRENT-CANDIDATE_RETEST_PENDING |
+| MLRC-486 | Medium | Mobile Locale Settings sticky actions covered the final Currency selector | At the exact 390×844 viewport, the sticky Reset/Save row rendered over the Currency control. Pointer activation could not open Currency even though it remained in the accessibility tree, blocking a normal owner task. | Add action-row and fixed-navigation scroll clearance to the Locale Settings content using the shared mobile bottom-navigation constant; lock both padding and scroll-padding tokens in the maintained MobileShell route verifier. | Before/after connected-browser screenshots and hit-target retest at 390×844; Currency INR→ILS draft and Reset→INR; `verify:mobile-shell-route-map`; direct global-localization boundary; scoped zero-warning ESLint; strict TypeScript; scoped diff check | PASS locally — Currency is fully targetable above the sticky row, its list opens, draft state updates, and Reset restores INR with both actions disabled. | CLOSED_LOCAL / HOSTED_CURRENT-CANDIDATE_RETEST_PENDING |
+| MLRC-487 | Medium | Date Format leaked an internal token and presented locale-equivalent duplicate choices | The governed default `numeric|short|numeric` was absent from `DATE_FORMATS`, so fresh desktop/mobile state rendered the raw storage token. Opening the list also showed multiple identical examples because Intl can render numeric and two-digit padding patterns the same in the active locale. | Admit the documented default in the allowlist, give all eight date patterns unique owner-readable month/padding/year descriptions, and reuse those labels across App Settings, desktop Business Settings, Mobile Locale Settings, and the legacy switcher fallback. Add default-presence and label-uniqueness regressions. | Current-source connected-browser reproduction/retest at 390×844; all eight option labels inspected; reversible numeric two-digit-year draft; direct global-localization boundary; mobile-shell route verifier; scoped zero-warning ESLint; strict TypeScript; scoped diff check | PASS locally — initial state renders `31 Aug 2026 (short month)`, every choice is distinguishable, and Reset restores the saved default without persistence. | CLOSED_LOCAL / HOSTED_CURRENT-CANDIDATE_RETEST_PENDING |
+| MLRC-488 | Medium | Mobile Today exposed an actionable customer Preview before the selected menu had ever been published | The deterministic owner dashboard truthfully showed `Menu: Inactive` and `Not live`, but Today still opened the generated public `/menu` URL. Direct local tenant rendering returned `Menu not found`, so the owner-facing action implied a usable preview while handing off to a dead customer surface. | Reuse the canonical `isPublishedMenuProject` contract. Keep the Preview row as explanatory orientation, but remove its button role, arrow, and click handler until an explicit publish acknowledgement exists; preserve a handler-level fail-closed guard. | Authenticated 390×844 reproduction and current-source retest; direct local tenant `/menu` render; `verify:owner-dashboard-today-boundary`; scoped zero-warning ESLint; strict TypeScript; inventory regeneration | PASS locally — unpublished Today now says `Publish your menu before opening the customer link`, exposes no Preview button, and cannot open the dead public route. Published-project behavior remains admitted by the shared presence contract. | CLOSED_LOCAL / HOSTED_CURRENT-CANDIDATE_RETEST_PENDING |
+| MLRC-489 | Medium | Mobile `How Today Actions Work` popup had no accessible dialog name and used a text-glyph close control | Connected Chrome exposed an unnamed `dialog` even though the visible title was present; assistive technology could not identify the popup purpose. The close button used a generic translated name and raw `✕` despite the existing Lucide icon import. | Name the popup from `TODAY_FEATURE_GUIDE_TITLE`, give its 44×44 close action the stable `Close Today guide` name, render `LuX` as aria-hidden, and lock the mobile boundary in the existing Today verifier. The same file's hours-sheet text glyph was replaced with the already-imported Lucide close icon. | Authenticated 390×844 accessibility-tree reproduction/retest; guide open/close; `verify:owner-dashboard-today-boundary`; scoped zero-warning ESLint; strict TypeScript; diff check | PASS locally — Connected Chrome now exposes `dialog "How Today Actions Work"` and one `Close Today guide` action; both close paths retain the owner state without a write. | CLOSED_LOCAL / HOSTED_CURRENT-CANDIDATE_RETEST_PENDING |
+| MLRC-490 | Medium | Creative Editor template search excluded goal starters and falsely reported no matches | Searching `appointment` hid the owner-facing Appointment reminder starter even though it is part of the same Templates drawer, then rendered `No matching templates`. | Filter the governed campaign starters through the shared drawer query, render matching starters under `Goal matches`, and show the empty result only when neither templates nor starters match. | Connected local browser search/apply/Undo; default and 79-layer stress QA routes; `verify:creative-editor-smoke`; inventory source-manifest check | PASS locally — Appointment reminder is discoverable, applies three governed layers, and remains recoverable through normal history. | CLOSED_LOCAL / HOSTED_CURRENT-CANDIDATE_RETEST_PENDING |
+| MLRC-491 | Medium | Creative Editor marked its own generated artwork and barcode layers unsafe at readiness | Curated SVG artwork and generated barcode SVGs were admitted as editable image layers, but the download-readiness boundary correctly rejected SVG data URLs. Owners could create a design using built-in controls and then be blocked by the product's own output. | Rasterize only product-generated SVG data URLs to PNG before document admission; keep imported/network source validation unchanged and fail safely when rasterization fails. | Curated artwork and barcode browser insertions; readiness Check; PNG preview; image-source/export boundaries; default and stress QA routes | PASS locally — built-in artwork remains editable and passes readiness without weakening the unsafe external image-source boundary. | CLOSED_LOCAL / HOSTED_CURRENT-CANDIDATE_RETEST_PENDING |
+| MLRC-492 | High | Creative Editor hid every Add page action when a document had exactly one page | Page navigation was gated on `pageList.length > 1`, but the only Add page controls lived inside that navigation. A normal single-page design therefore had no route to create page two. | Render governed page navigation whenever at least one page exists; retain lock, duplicate, page-switch, and active-page contracts. Add source-current page-count/active-page probe semantics and a browser lifecycle regression. | Connected local browser single-page Add, Duplicate, switch, lock/unlock; default and 79-layer stress fixtures; strict TypeScript; editor verifier; inventory verification | PASS locally — one-page fixtures can create and duplicate pages, switch back to Page 1, and lock/unlock it. | CLOSED_LOCAL / HOSTED_CURRENT-CANDIDATE_RETEST_PENDING |
+| MLRC-493 | High | Rapid Creative Editor page actions could overwrite the selected page with the previous page's stale Fabric canvas | The browser probe switched from an empty duplicate back to populated Page 1 and immediately locked it. While Page 1 was still loading, `getLatestDocumentFromCanvas()` serialized the old empty canvas and replaced the authoritative seven-layer Page 1 snapshot. Later layers showed only newly inserted content. | Treat `documentRef.current` as authoritative while Fabric is loading and refuse canvas serialization until the queued load settles. Preserve the existing generation, validation, history, and stale-completion guards; pin the loading guard in the maintained verifier. | Exact failing default QA run; layer-identity readback; corrected default and 79-layer stress reruns; `verify:creative-editor-smoke`; inventory source-manifest check | PASS locally — Page 1 retains all seven initial layers through rapid switch/lock/unlock, then reaches 20 layers in default and 92 layers in stress; all fifteen QA groups pass. | CLOSED_LOCAL / HOSTED_CURRENT-CANDIDATE_RETEST_PENDING |
+| MLRC-494 | Medium | Creative Editor duplicate action silently failed for an existing image layer | Fabric 7's image clone promise did not settle on the smoke fixture, so the visible duplicate action produced no layer, history entry, or failure feedback. | Duplicate a governed single selected layer from authoritative document truth, assign a fresh ID, offset it predictably, commit normal history, select the clone, and retain Fabric cloning only for multi-selection/group behavior. | Exact image-layer reproduction; real pointer duplicate/delete recovery; default and 79-layer stress QA; `verify:creative-editor-smoke`; strict TypeScript | PASS locally — both fixtures duplicate the existing image and restore the original layer count through normal Delete/history behavior. | CLOSED_LOCAL / HOSTED_CURRENT-CANDIDATE_RETEST_PENDING |
+| MLRC-495 | Medium | Floating selected-layer actions were covered by the open inspector | The toolbar was centered against the full canvas even though the 330px inspector overlays its right edge. Duplicate, Delete, and More rendered visibly but pointer hit testing resolved to the inspector. The initial inspector slide-in could also bypass a later geometry-only correction. | Reserve the open inspector's final width immediately, retain measured-overlap fallback, force recalculation on inspector mode changes, and fail the browser probe when any enabled action center is not its own hit target. | Initial-load and post-selection DOM hit tests; real pointer duplicate/delete; default and stress QA; source verifier | PASS locally — toolbar left resolves to 28px within the unobscured stage, its right edge stops before the inspector, and no enabled toolbar action is blocked. | CLOSED_LOCAL / HOSTED_CURRENT-CANDIDATE_RETEST_PENDING |
+| MLRC-496 | Medium | Layer-panel lock, duplicate, and delete icon buttons lacked accessible names | Three owner actions were blank icon-only buttons in the accessibility tree, preventing reliable identification by keyboard and assistive-technology users. | Add state-aware Lock/Unlock naming plus explicit Duplicate and Delete names without changing permissions or mutation behavior; pin names in the verifier. | Accessibility-tree/source review; focused verifier; strict TypeScript; lint | PASS locally — all three controls expose meaningful names and retain existing disabled/authorization boundaries. | CLOSED_LOCAL / HOSTED_CURRENT-CANDIDATE_RETEST_PENDING |
+| MLRC-497 | Medium | Mobile reseller management accepted malformed drafts and returned only a generic post-request failure | At 390×844, `not-an-email` remained actionable, issued the authenticated create request, and returned `Could not save reseller`; zero activation capacity and a short edit password also lacked precise local recovery. The API rejected the malformed request and exact emulator readback proved no Auth user or reseller profile was created. | Add one pure reseller-management draft validator for required identity, email, username, password, activation-cap, and bounded optional fields; use it before the mobile no-change/write path while retaining the API schema as defense in depth. | Connected local Chrome at 390×844 before/after; exact Auth/Firestore emulator readback; `test:reseller-management-profile`; reseller dashboard boundary; strict TypeScript; full lint; inventory; diff check | PASS locally — malformed email now reports `Enter a valid reseller email.`, zero cap reports the 1–100 boundary, a five-character edit password reports the 6–100 boundary, unchanged edit remains a zero-request no-op, and Cancel recovers without a mutation. | CLOSED_LOCAL / HOSTED_CURRENT-CANDIDATE_RETEST_PENDING |
+| MLRC-498 | Medium | Mobile project management exposed Preview, Copy Link, and Show QR before a menu was published and could emit an explicitly pending custom domain | At 390×844, an unpublished menu exposed all three customer-distribution actions. Preview opened a correctly resolved tenant route that truthfully returned `Menu not found`; an unverified custom-domain fixture could also be selected before public custom-domain admission. | Reuse canonical `isPublishedMenuProject`, active-project and active-special-menu boundaries in both rendering and handlers; hide distribution actions until ready; ignore a custom domain while `domainVerified === false`; make the local fixture set and verify the domain-admission state explicitly. | Connected local Chrome at 390×844 through unpublished and published states; Copy Link and Show QR; exact tenant public-menu render; custom-host/parser trace; configured/missing fixture readback; project-editor boundary; public-business-truth suite; strict TypeScript; full lint; inventory; isolated build; diff check | PASS locally — unpublished menus show calm `Not live` guidance and no distribution actions; acknowledged local publish admits all three actions; the QR/copy URL and Preview resolve to the correct tenant menu with Drinks, Filter Coffee, ₹80.00, description, and publication state. | CLOSED_LOCAL / HOSTED_CURRENT-CANDIDATE_RETEST_PENDING |
+| MLRC-499 | Medium | Mobile Billing exposed internal plan IDs and did not announce selected interval or cancellation reason | At 390×844, View plans rendered `menulist_official Plan` and `menulist_multi_location Plan`; Monthly/Yearly and cancellation reason choices changed visually but exposed no selected state to assistive technology. | Render the existing owner-facing plan name with its interval suffix removed; add `aria-pressed` to interval controls and cancellation reasons; extend the shared mobile List item to forward selected-state semantics to its interactive DOM node. | Connected local Chrome at 390×844; Billing and global-accessibility verifiers; growth/cancellation boundary; strict TypeScript; focused zero-warning ESLint; docs links; diff check | PASS locally — the chooser renders Official Plan and Multi-location Plan with no internal IDs; Monthly/Yearly and the selected cancellation reason expose exact pressed state. | CLOSED_LOCAL / HOSTED_CURRENT-CANDIDATE_RETEST_PENDING |
+| MLRC-500 | Medium | Abandoned mobile cancellation drafts reappeared on the next cancellation attempt | Select Other, enter detail, continue to the final confirmation, choose Keep Subscription, then reopen Cancel; the previous reason and free text remained actionable. Closing the initial reason sheet had the same stale-draft behavior. | Centralize cancellation-draft reset and invoke it on reason-sheet dismissal, sheet Close, successful cancellation, and final Keep Subscription recovery while preserving a failed mutation draft for explicit retry. | Connected local Chrome at 390×844 through Close and Keep Subscription recovery; billing verifier; growth/cancellation boundary; strict TypeScript; focused zero-warning ESLint; docs links; diff check | PASS locally — reopening after Close or Keep Subscription shows no selected reason, no Other textbox, and disabled Continue cancellation; no cancellation request or provider action occurred. | CLOSED_LOCAL / HOSTED_CURRENT-CANDIDATE_RETEST_PENDING |
+| MLRC-501 | Medium | Mobile project management left background actions active behind edit forms and destructive confirmations | At 390×844, opening Edit details from Manage Menu retained the management Popup behind the form. Background inactive/reset/delete actions could still receive focus or pointer input, producing stacked dialogs and an unintended confirmation path even though no mutation completed. | Make selector, management, form, QR, image-adjust, and destructive-confirmation states mutually exclusive. Track confirmation lifetime around inactive, reset, and delete actions so only the active child surface remains mounted for interaction. | Connected local Chrome before/after dialog-count and pointer retest; Create/Edit/Duplicate drafts; design handoff; inactive/reset/delete cancellation; `verify:menu-project-editor-boundary`; strict TypeScript; focused zero-warning ESLint; inventory verification; diff check | PASS locally — selector, management, form, and each confirmation now expose exactly one active named dialog; Reset restores the correct edit fixture and every cancelled destructive action preserves the project. | CLOSED_LOCAL / HOSTED_CURRENT-CANDIDATE_RETEST_PENDING |
+| MLRC-502 | Medium | Mobile category editing nested a second active Popup and left the editor active behind confirmations | Opening Drinks from Category Manager exposed two active dialogs because `MobileCategoryEditSheet` was rendered inside the manager Popup. Back/discard and Delete confirmation paths could retain editor or manager hit targets behind the confirmation. | Render the category editor as a sibling of the manager Popup, hide the manager while editing, and hide the editor during discard or delete confirmation. Preserve reorder and manager state without changing mutation contracts. | Connected local Chrome before/after dialog-count retest; reversible category-name draft; Keep editing; Reset; keyboard Delete and Cancel; Categories/Reorder Menu entry; project-editor regression; strict TypeScript; focused ESLint; inventory; diff check | PASS locally — Category Manager, Drinks editor, discard confirmation, and delete confirmation each expose exactly one active dialog; all drafts and confirmations recover without a write. | CLOSED_LOCAL / HOSTED_CURRENT-CANDIDATE_RETEST_PENDING |
+| MLRC-503 | Medium | Mobile item editor remained interactive behind discard and delete confirmations | Edit Filter Coffee and Add Item opened their expected sheets, but discard and delete confirmations did not suppress the editor Popup, creating competing focus layers and allowing background controls to remain actionable. | Track item-confirmation lifetime and hide the editor during discard, refresh-description, and delete confirmations. Keep failed or cancelled operations recoverable to the unchanged draft. | Connected local Chrome reversible Add/Edit drafts; name/description/price/availability/visibility controls; Reset; Keep editing; Delete Cancel; exact one-dialog readback; project-editor regression; strict TypeScript; focused ESLint; inventory; diff check | PASS locally — each confirmation is the only active dialog, Keep editing restores the exact draft, Reset restores fixture truth, and Delete Cancel preserves Filter Coffee. | CLOSED_LOCAL / HOSTED_CURRENT-CANDIDATE_RETEST_PENDING |
+| MLRC-504 | Medium | Mobile bulk confirmations stacked over the still-interactive bulk sheet and the successful-write path could restore the sheet before the asynchronous mutation settled | Select Filter Coffee in Availability and choose Unavailable. The confirmation appeared while the source Popup remained mounted. In the successful path, confirmation cleanup ran before the awaited project persistence completed, briefly restoring competing background actions behind the loading confirmation. | Track confirmation lifetime, hide both standard and AI Repair Popup variants while confirming, await the confirmation result before starting persistence, and keep the sheet suppressed until the acknowledged mutation settles. | Connected local Chrome at 390×844 across Availability, Visibility, Pricing, Move Items, and AI Repair; exact one-dialog snapshots; cancellation recovery; successful Availability and Move Items emulator writes; deterministic fixture restoration; project-editor regression; strict TypeScript; focused ESLint; isolated build | PASS locally — every confirmation is the only active dialog, cancellation restores the exact selection, successful writes expose no competing confirmation/sheet surface, and exact emulator readback matches the requested mutation before deterministic restoration. | CLOSED_LOCAL / HOSTED_CURRENT-CANDIDATE_RETEST_PENDING |
+| MLRC-505 | Medium | Bulk pricing controls lacked accessible names and confirmation copy exposed internal or grammatically incorrect owner wording | The two pricing segmented controls appeared as unnamed `segmented control` groups, the numeric field had no mode-specific name, Visibility confirmed `Inactive`, and the one-item English path rendered `1 items`. | Name the pricing-rule, price-value, and numeric controls from existing localized owner copy; use `Show on menu` / `Hide from menu` action wording; make English confirmation count grammar ICU-plural-aware while preserving every other locale and refreshing deterministic semantic hashes. | Connected local Chrome accessibility snapshots and all pricing modes/units; visibility confirmation; one-item restart/retest; global localization boundary across 52 locales; project-editor regression; strict TypeScript; focused ESLint; isolated build | PASS locally — controls expose `Pricing Rule`, `Price Change Value`, and `Enter percentage` / `Enter amount`; visibility uses customer-facing wording; the fresh one-item confirmation reads `Mark sold out for 1 item?`. | CLOSED_LOCAL / HOSTED_CURRENT-CANDIDATE_RETEST_PENDING |
+| MLRC-506 | High | Controlled Mobile More sub-screen state could oscillate during Back and crash into the global error boundary | With a disposable PLATFORM fixture, open More > Answerlattice Intake and choose Back. The local sub-screen setter and parent `initialScreen` synchronization crossed values, repeatedly updated one another, and produced React `Maximum update depth exceeded`. The Answerlattice hub was also omitted from the admitted platform return states. | Make every sub-screen transition synchronously update local and controlled parent state, limit the `initialScreen` effect to local synchronization, remove the competing effect-driven parent write, and admit `answerlatticeHub` for the platform role. | Connected local Chrome at 390×844 before/after; exact Back transition; MobileShell hash readback; `verify:mobile-shell-route-map`; strict TypeScript; focused ESLint; isolated build | PASS locally — Back returns to `#mobile/more/answerlatticeHub`, the hub remains rendered inside MobileShell, and no recursive render or global error state occurs. | CLOSED_LOCAL / HOSTED_CURRENT-CANDIDATE_RETEST_PENDING |
+| MLRC-507 | Medium | Embedded Answerlattice Widget Management escaped the MenuList MobileShell to a public Answerlattice pricing route | From the role-gated Answerlattice Ops hub, open Widget Management without an Answerlattice account/workspace. Embedded route normalization called `router.replace('/__answerlattice/pricing')`, replacing the internal mobile workflow with a public product route. | Keep route normalization and router-backed tab changes disabled when `embeddedMobile` is true; retain local tab state and the existing standalone Answerlattice behavior. | Connected local Chrome at 390×844; URL and shell containment readback; all role-gated Answerlattice boundary entries; `verify:mobile-shell-route-map`; strict TypeScript; focused ESLint; isolated build | PASS locally — Widget Management remains at `#mobile/more/answerlatticeWidget`, renders its embedded tabs, and does not redirect out of MenuList. | CLOSED_LOCAL / HOSTED_CURRENT-CANDIDATE_RETEST_PENDING |
+| MLRC-508 | Medium | Desktop and mobile printable-theme cards admitted overlapping preference writes and repeated no-op writes | On the authenticated local Assets route, rapidly selecting theme cards started a new optimistic/DAL write while the previous request was still pending. Theme cards did not inherit `stylePreferenceBusyKey`, the handler had no synchronous mutex, and clicking the already-active card wrote the unchanged preference again. Completion order could therefore select an older request while generating avoidable Firestore writes. | Add one synchronous preference-mutation ref on desktop and mobile; reject save/clear entry while held; set and release it around the complete optimistic/DAL lifecycle; disable every theme card while busy and keep the active card disabled after settlement. Preserve explicit menu-theme, business-theme, clear-override, eligibility, and rollback behavior. | Authenticated local browser reproduction against Firestore/Auth emulators; desktop adjacent-card disabled readback; mobile rapid Ember House then Coastal Table tap; persisted-value reload; Craft Kitchen restore plus fresh reload; 39-card desktop interaction pass; all desktop selectors; all 14 enabled mobile selectors; generated action dialogs plus Complete Menu Kit action surface; `verify:printable-asset-templates`; parent-theme preference tests; strict TypeScript; focused ESLint | PASS locally for the write boundary — desktop rendered the pending disabled state; on mobile both rapid DOM taps occurred before repaint but the synchronous mutex persisted only Ember House and not Coastal Table. The active card is non-actionable, and fresh reload retained restored Craft Kitchen. Browser-native ZIP download observation remains separately uncredited. | CLOSED_LOCAL / HOSTED_CURRENT-CANDIDATE_RETEST_PENDING |
+| MLRC-509 | Medium | Mobile Share print actions lost their launch context on Back | At 390×844, open Share, choose Assets, then Back. The owner landed at the More root instead of the Share screen that launched the task. Print Menu had the same cross-tab return behavior. | Retain a transient Share return target only when Share launches Assets or Print Menu; project it into the More-owned print sub-screen Back action; clear it on ordinary tab, route, or More navigation so direct routes and More entry keep their existing return contract. | Current authenticated in-app Chromium before/after; exact hash readback for Share → Assets → Back and Share → Print Menu → Back; screenshot inspection; `verify:mobile-shell-route-map`; strict TypeScript; focused ESLint | PASS locally — both print surfaces still render inside MobileShell at `#mobile/more/...`, and Back restores `#mobile/share` with Share selected. Direct route/More behavior remains unchanged by the scoped return target. | CLOSED_LOCAL / HOSTED_CURRENT-CANDIDATE_RETEST_PENDING |
+| MLRC-510 | Medium | Mobile first-run Add Item CTA was unreachable after creating the first category | In an empty deterministic project, the guided card required `!hasCategories`, while its Add Item control required `hasCategories`. Creating the first category therefore dismissed the guidance before Add Item could render. | Keep first-run guidance while the project has zero items, regardless of whether its first category now exists; retain the category gate only on Add Item itself; pin both sides of the invariant in the route-map verifier. | Authenticated 390×844 empty-state reproduction; disposable category creation; before/after Add Item accessibility-tree readback; Add item sheet open/recovery; deterministic seeded-fixture restore; `verify:mobile-shell-route-map`; strict TypeScript; focused ESLint; inventory verifier | PASS locally — after creating Temporary QA Category, the guided card remains visible, Add Item appears, opens the correctly named form, and Back recovers without saving an item. | CLOSED_LOCAL / HOSTED_CURRENT-CANDIDATE_RETEST_PENDING |
+| MLRC-511 | Medium | Mobile Print Menu job, style, and density choices did not expose their selected state | Home Print/WhatsApp PDF/Print-shop packet/Table Menu, Compact/Premium/Classic, and Comfort/Balanced/Compact changed visually, but each mutually exclusive button omitted `aria-pressed`; keyboard and assistive-technology users could not identify the active choice. | Add `aria-pressed={active}` to all three governed choice maps and make the maintained Menu Card verifier require all three semantics. Document the mobile selected-state regression. | Authenticated local browser at 390×844; exact before/change/restore `aria-pressed` readback; all four job presets, three styles, three densities, and four output switches; `verify:menu-card-export`; focused ESLint; strict TypeScript; inventory verifier | PASS locally — every group exposes one exact pressed choice during transitions and after restoration to Home Print, Premium, and Comfort; all four output options were restored enabled. | CLOSED_LOCAL / HOSTED_CURRENT-CANDIDATE_RETEST_PENDING |
+| MLRC-512 | Medium | Mobile Official Page abrupt close could leave unsaved cover/gallery objects orphaned in Firebase Storage | Immediate uploads entered only an in-memory cleanup queue. A real tab close ended the page before asynchronous unmount deletion completed, and no persisted cleanup authority survived the component lifecycle. The pre-fix reproduction observed three orphan fixture objects; the controlled post-fix reproduction observed two unsaved objects remain immediately after close. | Journal returned immutable media URLs synchronously in bounded tenant/store-scoped browser storage before draft admission. On the next exact-scope mount, filter candidates against committed `publicPresence`, retry only unreferenced Storage deletes, retain only failures, and clear the journal after acknowledgement. Preserve the existing save-before-delete and retained-reference boundaries. | Authenticated 390×844 browser; cover/gallery upload, adjust, preview, close/reopen, save/remove lifecycle; exact Storage-emulator counts; `test:obp-media-reference-boundary`; `verify:official-business-page-boundary`; complete `verify:storage-paths` including immutable-media Storage Rules; feature-flag runtime; inventory; strict TypeScript; full lint; isolated production build | PASS locally — clean baseline 0 → two unsaved objects → abrupt-close immediate count 2 → exact-scope reopen count 0. One acknowledged saved cover remained count 1 across close/reopen, then Remove + acknowledged Save returned count 0. | CLOSED_LOCAL / HOSTED_CURRENT-CANDIDATE_RETEST_PENDING |
+| MLRC-513 | High | Read-only Mobile Share entry silently created a default menu project | `MobileProjectsProvider` always called the legacy project reader that creates a default project when none exists. Opening Share, Today, or More for an empty owner therefore mutated canonical menu state before the owner chose Menu or Create Menu. | Add an explicit provider boundary: read-only shells use `getExistingProjectsListWithoutLoader`; only the active Menu tab opts into `getProjectsListWithoutLoader` and its intentional first-menu creation contract. Pin the separation in three maintained project/public-truth verifiers. | Authenticated 390×844 empty-fixture Share reproduction; exact Admin project/summary readback before and after Create Menu; adjacent Share project selectors, parent-theme controls, Digital Screens, POS setup, and Feedback QR native boundary; deterministic fixture restore; project-editor, special-menu lifecycle, public-business-truth, strict TypeScript, focused ESLint, feature-registry, and inventory gates | PASS locally — Share renders `No menu yet` while exact readback remains zero projects/no summary. Create Menu hands off to Menu, after which exact readback finds one default project. Adjacent Share controls remain functional and the deterministic fixture is restored. | CLOSED_LOCAL / HOSTED_CURRENT-CANDIDATE_RETEST_PENDING |
+| MLRC-514 | High | Resized Creative Editor designs saved successfully but could not reopen from Saved designs | The owner-facing editor intentionally supports six common canvas presets and bounded custom dimensions, and persisted the selected canvas size. Rehydration nevertheless required the original asset's exact canonical dimensions, so a valid 900×1200 Single Table Card was stored but rejected on reopen with `Printable asset editor document size does not match the selected asset`. | Admit saved editor canvases only within the maintained 120–4096px safety range instead of requiring the original asset dimensions. Preserve schema validation and asset identity. Add bounded diagnostic logging to the owner reopen failure while keeping private document data out of logs. | Authenticated local owner save/reopen reproduction against Auth, Firestore, and Storage emulators; 900×1200 admission/rehydration regression; 10,000×10,000 fail-closed regression; printable-template verifier; complete Menu Card chain; strict TypeScript; focused zero-warning ESLint; aggregate inventory verifier | PASS locally — the exact saved 900×1200 design reopens in Creative Editor, saves again, and closes cleanly. Its named delete confirmation opened and was cancelled; deletion is not claimed. Unsupported oversized documents still fail closed. | CLOSED_LOCAL / HOSTED_CURRENT-CANDIDATE_RETEST_PENDING |
+| MLRC-515 | High | Printable reusable-design save admitted dimensions that its reopen boundary rejects | In the authenticated owner editor, typing `8` into the canvas Width field changed the document to 8×1200 despite the HTML `min=120`. `Save reusable design` then succeeded and replaced the Saved designs record with an unusable 8×1200 document. The generic Creative Editor schema intentionally supports a wider product-agnostic range, while the MenuList printable reopen boundary requires 120–4096px. | Re-admit the attribution-stripped document against the selected printable asset immediately inside the MenuList persistence handler, before reserving an ID or calling the Storage/Firestore DAL. Persist and baseline only the admitted document; retain the generic editor contract for other product surfaces. | Authenticated local negative save against Auth/Firestore/Storage emulators; 8×1200 fail-closed regression; 900×1200 recovery/readback; 10,000×10,000 rejection; printable-template verifier; complete Menu Card chain; strict TypeScript; focused zero-warning ESLint; inventory verifier | PASS locally — 8×1200 now returns the calm `Template save failed.` recovery state, no 8×1200 Saved designs card appears, Undo restores 900×1200, and the persisted gallery remains 900×1200. | CLOSED_LOCAL / HOSTED_CURRENT-CANDIDATE_RETEST_PENDING |
+| MLRC-516 | High | Desktop External Sync could not be enabled for a first-time store | The enable handler correctly required a validated provider URL, but the Provider connection URL field rendered only after `enabled === true`. A clean owner therefore could neither enter the prerequisite URL nor complete enablement. | Keep the URL field and its validation/save action visible while sync is off; retain secret, test, delivery, and provider-helper controls behind the enabled state. Make the POS verifier require the URL field before the enabled-only block. Reset POS config and both fixture secret documents in the deterministic seeder. | Authenticated local clean-store reproduction; invalid and valid URL drafts; save while off; local enable/disable; secret reveal/hide; rotation cancellation; history refresh; invalid provider-email recovery; exact emulator cleanup/readback; fresh reload; `verify:pos-sync-boundary`; `test:pos-sync-boundaries`; inventory verifier | PASS locally — the off state now exposes the URL field, valid setup enables successfully, and deterministic cleanup restores no `posSync` field and no server secret. External provider execution remained excluded. | CLOSED_LOCAL / HOSTED_CURRENT-CANDIDATE_RETEST_PENDING |
 
 ## E. Firebase cost audit
+
+### Avoided invalid reusable-design operations — MLRC-515
+
+- Before correction, one acknowledged invalid save could upload an immutable
+  reusable-design document and write or replace its Firestore template
+  metadata, even though every later MenuList reopen rejected the 8×1200 canvas.
+- After correction, printable admission runs before reservation and before the
+  DAL. Invalid dimensions therefore perform zero Storage uploads and zero
+  Firestore template writes; the prior valid 900×1200 record remains intact.
+- The correction adds no read, listener, Function, API route, cache, or retry.
+  It reuses the existing printable admission contract at the persistence trust
+  boundary.
+
+### Saved-design reopen operation assessment — MLRC-514
+
+- Before correction, one acknowledged reusable-template write and one immutable
+  Storage object could create a design that every later reopen read but then
+  rejected client-side. Retrying did not repair the record and could encourage
+  redundant reads or replacement writes.
+- After correction, the same existing Firestore record and Storage JSON object
+  reopen successfully. The fix adds no Firestore read, write, listener,
+  Function invocation, Storage upload, or cache layer; it only admits the
+  already-supported bounded canvas dimensions at the client trust boundary.
+- This is a correctness and waste-avoidance fix, not a claimed billed-operation
+  reduction. Exact local emulator inspection confirmed one reusable design
+  record and one referenced object; the disposable object was retained because
+  the destructive delete confirmation was intentionally cancelled.
+
+### Confirmed avoided Firestore write — MLRC-513
+
+- Before correction, the first read-only Share/Today/More project load for an
+  empty owner entered the legacy default-project creation path and issued the
+  project/summary write sequence even though the owner had not chosen to create
+  a menu.
+- After correction, exact emulator readback remains at zero project documents
+  and no summary while Share renders its truthful empty state. The same owner
+  action still creates exactly one default project after explicit Create Menu
+  handoff to Menu.
+- The change adds no listener, cache, Function, API route, dependency, or new
+  Firestore query. It removes unintended write fan-out from read-only shell
+  entry while retaining the intentional first-menu write path and tenant/store
+  authorization.
+
+### Investigated, no Firebase optimization claimed — MLRC-510
+
+- The correction changes only the client-side first-run rendering invariant. It does not add or remove a Firestore read, write, listener, Function, Storage operation, provider request, cache entry, or revalidation path.
+- The browser proof used one disposable emulator category write and then restored the deterministic seeded fixture. No cloud Firebase operation occurred, so no billed-operation reduction is claimed.
+
+### Investigated, no Firebase optimization claimed — MLRC-511
+
+- The correction adds selected-state semantics to existing client-rendered buttons and one fail-closed source assertion. It does not add or remove a Firestore read, write, listener, Function, Storage operation, provider request, cache entry, or revalidation path.
+- Job, style, density, and output-option testing changed only local component state. The local Create PDF path produced browser history, but no cloud service or provider was invoked. No billed-operation reduction is claimed.
+
+### Confirmed retained-Storage cost correction — MLRC-512
+
+- Before correction, each abandoned Mobile Official Page edit could retain every immediately uploaded cover/gallery object indefinitely. The initial reproduction exposed three orphan fixture objects; the controlled exact-scope retest observed two objects still present immediately after an abrupt tab close.
+- The new journal adds zero Firestore reads/writes, realtime listeners, Function invocations, cloud documents, rules, indexes, or cache invalidations. It retains at most 48 deduplicated, length-bounded URLs in tenant/store-scoped browser storage and retries only when that exact editor scope mounts again.
+- After correction, the measured lifecycle was `0 uploads retained → 2 unsaved objects → 2 immediately after close → 0 after exact-scope reopen`. A committed cover remained protected at one object across reopen and was deleted only after explicit Remove plus acknowledged Save.
+- The recovery performs one Storage delete per genuine orphan, so it is not presented as a reduction in delete-operation count. It prevents indefinite retained object bytes and cumulative orphan-object storage without weakening tenant isolation, committed-media safety, or public-truth freshness.
+
+### MLRC-508 Printable-theme preference write lock
+
+- Before correction, two rapid theme-card taps could enter two optimistic/DAL
+  mutations, producing up to two billed store-document writes whose completion
+  order—not owner intent—selected the final theme. Clicking the already-active
+  card also produced one unchanged preference write.
+- Desktop and mobile now share the same synchronous mutation-lock contract.
+  A pending theme save or clear permits one DAL call, disables all theme cards,
+  and rejects another entry before optimistic state or Firestore work. The
+  settled active card remains disabled.
+- Expected operation count changes from two writes to one for two rapid taps,
+  and from one write to zero for an active-card repeat. Explicit later changes
+  remain normal single writes; no cache, dependency, collection contract, or
+  public-truth freshness behavior changed.
+- Authenticated emulator evidence confirmed immediate adjacent-card disabling,
+  one acknowledged change, exact Craft Kitchen restoration, and the same value
+  after a fresh route reload. The maintained verifier now fails if either
+  desktop or mobile loses the ref lock or card-disabled boundary.
+
+### MLRC-498 Mobile project-distribution readiness
+
+- Before correction, an unpublished project could initiate public navigation,
+  clipboard work, or QR rendering even though no customer-facing menu existed.
+  Those actions did not write Firestore, but they created avoidable owner work
+  and dead public-route rendering.
+- Readiness now derives exclusively from the already-loaded project and store
+  state. The correction adds zero Firestore reads or writes, zero listeners,
+  zero Storage operations, zero Functions calls, and zero provider calls.
+  Invalid controls are absent; the valid publish path remains unchanged.
+- Configured and missing public-address fixture states were verified only
+  against local emulators. The fixture changes add no production operation.
+
+### Create-menu link and expired-draft recovery continuation
+
+- Unsafe-link rejection, ownership-permission gating, valid-link admission,
+  and expired-draft recovery used only client state plus the existing bounded
+  authenticated draft-status GET.
+- The absent valid-format draft returned truthful expiry recovery. No import
+  request, external fetch, draft write, Storage transfer, Function invocation,
+  provider call, or cache entry was created. Upload list returned to the intake
+  route without mutation.
+
+### MLRC-497 Reseller-management invalid-draft preflight
+
+- Before correction, each malformed mobile reseller draft issued one
+  authenticated management POST and entered the server/API validation path
+  before returning a generic failure. The rejected reproduction created zero
+  Auth users and zero Firestore reseller profiles.
+- The same invalid email, zero activation cap, and short edit-password cases
+  now stop in the mobile client with specific recovery at zero requests, zero
+  Auth operations, zero Firestore reads/writes, zero Functions, and zero
+  provider calls. Valid mutations and the server trust-boundary schema remain
+  unchanged, so correctness and authorization are not weakened.
+
+### MLRC-490/491/492/493 Creative Editor corrections
+
+- These corrections add zero Firestore reads, listeners, writes, Storage
+  operations, Functions, provider calls, or cache entries. They affect only
+  local editor filtering, generated-image normalization, page reachability, and
+  in-memory Fabric/document synchronization.
+- The browser tests used the internal local smoke route with deterministic
+  fixtures. No Save, Bundle download, Firebase, provider, payment, staging, or
+  production action was invoked.
+
+### MLRC-485/486/487 Locale Settings clarity and clearance
+
+- Both corrections are presentation-only. They add zero Firestore reads,
+  listeners, writes, Storage operations, Functions, provider calls, persisted
+  fields, or cache entries.
+- Browser verification used reversible drafts followed by Reset. Save Changes
+  remained disabled after restoration, so the pass issued no store write or
+  public-cache invalidation.
+
+### Missing-token owner invitation recovery
+
+- The exercised decline path performs one bounded public admission and clears
+  only the referral-attribution cookie before returning `/create-menu`; source
+  trace confirms zero Firestore reads/writes, Storage operations, Functions,
+  provider calls, subscription mutations, or tenant/store mutations.
+
+### MLRC-484 Staff email preflight
+
+- Before correction, each malformed non-empty email generated one authenticated
+  staff-create request and one `AUTH_SENSITIVE` rate-limit admission. Server
+  schema validation rejected it before authority resolution and before any
+  Firestore read or write, so no Firebase operation reduction is claimed.
+- Mobile now rejects the same malformed value locally at zero requests and zero
+  rate-limit operations. The shared server schema remains authoritative for
+  bypassed clients; no listener, cache, dependency, Function, Storage, or
+  persistence path was added.
+
+### MLRC-480/481/482 Printable owner UI and local rendering
+
+- The responsive gallery/strip corrections are presentation-only and add zero
+  Firestore reads, listeners, writes, Storage operations, Functions, provider
+  calls, or persisted fields.
+- The Lankan safe field and glyph-bound checks run in the deterministic local
+  renderer/test pipeline. The 221 PNGs and 17 PDFs remain local QA artifacts and
+  are not uploaded or persisted to Firebase.
+
+### Owner-workflow website delta
+
+- The section uses one immutable local WebP plus existing local MenuList product
+  assets. It adds zero Firestore reads/listeners/writes, Storage operations,
+  Functions, provider calls, polling, persisted state, or cache-invalidation
+  paths; therefore there is no Firebase operation-count increase to optimize.
+
+### MLRC-476 Current scanner reconciliation
+
+- The parent-theme normalization module increased the runtime-file scanner
+  denominator from 536 to 537 but introduced no listener, broad public read,
+  query-scope risk, high-volume write, Function, Storage, or scheduler path.
+  Risk totals remain nine listener, two public-read, two query-scope, and 53
+  write-volume files. The docs-only correction prevents a stale count from
+  hiding a later real cost regression.
+
+### MLRC-477 Salon/spa theme recommendations
+
+- Recommendation resolution consumes the already-loaded business type and the
+  existing static registry. It introduces zero Firestore reads, listeners,
+  Functions calls, Storage operations, or new persisted fields. Selecting a
+  recommended theme still uses the same single parent-theme leaf write as any
+  other governed theme selection.
+- The three source artwork masters are immutable local assets reused by every
+  renderer. The change does not upload duplicate generated assets or persist the
+  17 PDF/182 compact QA fixtures to Firebase. Exact-type matching prevents a
+  speculative or incorrect vertical classification from causing unnecessary
+  owner correction writes.
+- The exact-current Firebase scale/cost verifier remains PASS at 537 runtime
+  files with unchanged risk bands: nine listener-risk, two public-read-risk, two
+  query-scope-risk, and 53 write-volume-risk files.
+
+### MLRC-474 Parent-theme persistence
+
+- Theme resolution consumes the already-loaded store object and introduces zero
+  download-time Firestore reads, listeners, Functions, Storage operations, cache
+  layers, or new collections. A real owner change remains one changed-leaf
+  `stores/{storeId}` update for the business theme, menu override, or override
+  deletion. Legacy normalization is in-memory and does not fan out one write per
+  asset. This preserves public-truth correctness while avoiding the former risk of
+  maintaining multiple asset-specific preference leaves.
+
+### MLRC-459 Printable asset style preference boundary
+
+- The correction does not reduce a valid Firestore operation. It prevents malformed
+  identifiers from reaching the one existing nested store write and therefore avoids
+  both an unintended write and any later cleanup/read cost. Valid menu-default,
+  business-default, and clear operations remain one scoped store update each; no
+  listener, cache, Function, Storage operation, or dependency was added.
+
+### MLRC-460 Assets prerequisite-state recovery
+
+- The route still performs the same bounded store/project reads needed to render
+  Assets. It no longer encourages a duplicate menu-creation workflow after those
+  reads succeed but URL generation lacks a public address. Trusted tenant/store scope
+  is settled before the project query, and retries remain owner-triggered rather than
+  polling. No new Firestore read, listener, write, cache, Function, or Storage path was
+  added.
+
+### MLRC-447 Temporary Status invalid-draft preflight
+
+- Before correction, an empty Custom draft could reach the authenticated API,
+  consuming one rate-limit operation before returning or normalizing the
+  invalid request; the normal mobile UI required an extra failed tap even when
+  no request was issued.
+- Mobile and desktop now stop invalid Custom/expiry drafts at zero requests,
+  reads, writes, Function invocations, Storage operations, and cache work. The
+  API independently rejects bypassed empty or invisible-only Custom copy before
+  the two-read Firestore transaction and store write. Valid status mutations
+  retain the existing permission, transaction, cache, screen, and assistant
+  invalidation contracts; no cache or dependency was added.
+
+### MLRC-446 Menu Manager oversized-command preflight
+
+- Before correction, an oversized owner draft remained actionable and issued
+  one authenticated command request plus one rate-limit check before the API
+  schema returned `400`. Schema ordering prevented the rejected path from
+  reading the project/store or invoking a model/provider, so no Firestore or AI
+  operation reduction is claimed for that server path.
+- Mobile and desktop now stop the invalid composed command at zero requests.
+  The client DAL repeats the limit before resolving client scope, preserving
+  the same zero-request behavior for non-UI callers. Valid commands retain the
+  existing tenant, permission, idempotency, project-read, provider, and credit
+  contracts without a new cache, listener, dependency, or persistence path.
+
+### MLRC-445 MenuList Help shell navigation
+
+- The correction changes only in-app navigation and adds no Firestore read or
+  write, listener, Function invocation, Storage operation, provider request, or
+  cache entry.
+- Reusing the existing Help Centre component and More state avoids a parallel
+  mobile help data path. No billed-operation reduction is claimed because the
+  reproduced defect was a route/UX failure rather than a measured Firebase
+  over-read.
+
+### MLRC-444 mobile Billing help continuation
+
+- The final correction changes navigation only and reuses the existing
+  shell-native MenuList Contact Us state. It adds zero Firestore reads/writes,
+  listeners, Function invocations, Storage operations, provider calls, or cache
+  entries.
+- Reusing the existing state avoids a second mobile help implementation and its
+  potential duplicate data-loading path. No billed-operation reduction is
+  claimed because the former desktop route was not exercised deeply enough to
+  measure a stable Firebase delta.
+
+### MLRC-443 Time Slot invalid-draft admission
+
+- Before correction, invalid submit clicks performed no Firestore write because
+  the handler rejected them, but they remained repeatedly actionable and could
+  produce unlimited client-side retries.
+- The shared draft boundary now disables invalid submits before the handler.
+  Valid create remains one store write plus cache invalidation; valid edit and
+  delete retain their durable marker/reconciliation writes only when the preset
+  must cascade to referenced categories.
+- No billed-operation reduction is claimed for the already rejected invalid
+  path. The correction adds no read, listener, poll, Function, Storage, or cache.
+
+### MLRC-442 External Menu Sync invalid-draft admission
+
+- Before correction, the shared validator still stopped the unsafe URL before
+  secret creation and store persistence, so the reproduced invalid submit cost
+  zero Firebase reads and writes. The actionable-looking state nevertheless
+  encouraged repeated submit attempts and gave no durable recovery context.
+- The corrected mobile and desktop controls stop invalid drafts before their
+  handlers. This remains zero API calls, zero secret operations, zero Firestore
+  reads/writes, and zero provider requests while preserving server validation as
+  defense in depth. No new listener, cache, query, or persisted validation state
+  was introduced.
+
+### MLRC-440 and MLRC-441 profile truth and no-op request prevention
+
+- MLRC-440 changes label projection only and adds no Firebase operation.
+- Before MLRC-441, an unchanged profile submit still performed one rate-limit
+  admission and one authenticated user-document read before the server returned
+  its existing zero-write response.
+- The corrected mobile and desktop preflight stops that unchanged request at
+  zero API calls, zero Firestore reads, and zero Firestore writes. The existing
+  server no-op boundary remains in place for stale or non-UI callers.
+
+### MLRC-439 NotificationOS saved-state explanation
+
+- The correction changes presentation only. It adds no Firestore read/write,
+  listener, Function invocation, provider request, analytics event, or cache.
+- Existing readiness derivation and the unchanged-write guard remain intact.
+  The calmer saved state reduces unnecessary owner retries without claiming a
+  billed-operation reduction.
+
+### MLRC-437 and MLRC-438 mobile feedback recovery
+
+- MLRC-437 changes layout only. It adds no Firestore read/write, listener,
+  Storage operation, Function invocation, analytics event, or cache request.
+- Before MLRC-438, the store write completed once, but the unresolved client
+  cache request left the interface disabled and encouraged refresh/retry. A
+  retry could issue another store write and another invalidation for already
+  persisted truth.
+- The corrected path retains exactly one intended store update and one public
+  cache-revalidation attempt. A never-settling request is aborted and the
+  caller settles at the existing four-second deadline; no polling, retry,
+  listener, new cache, or additional Firebase operation was introduced.
+- The browser lifecycle intentionally used two emulator writes: one temporary
+  name-required configuration and one cleanup restoration. Fresh public and
+  Admin readbacks proved both propagation and exact final cleanup.
+
+### MLRC-435 and MLRC-436 custom social-link projection
+
+- Original behavior normalized and saved a custom social link through the
+  regular store mutation and public-truth invalidation, but every public
+  renderer and schema projection discarded it. That made the write and
+  invalidation operationally wasteful because the owner-visible action could
+  not produce customer value.
+- Corrected behavior performs bounded validation, formatting, deduplication,
+  sorting, and projection in memory. The same existing store write and cache
+  invalidation now update the public menu, Official Business Page, and schema;
+  no additional Firestore read/write, listener, Function invocation, Storage
+  operation, analytics event, or new cache was added.
+- The browser certification used two intentional isolated-emulator writes:
+  one add and one cleanup removal. Fresh customer reads proved propagation and
+  final fixture cleanup. This is a correctness/value recovery, not a claimed
+  reduction in billed write count.
+
+### MLRC-434 mobile business/contact email validation
+
+- Original behavior admitted a malformed non-empty email into the save path,
+  which could issue the normal store read/write and public-truth invalidation
+  for data the desktop form already rejects.
+- Corrected behavior performs a pure browser-local syntax/length check before
+  optimistic state or `updateStore`. Invalid submissions now remain zero-read,
+  zero-write, zero-invalidation attempts. Admitted non-empty values are trimmed;
+  blank optional values remain supported.
+- No broad cache or DAL change was introduced. The browser retest used only
+  invalid submissions and Reset, so it generated no Firebase operation.
+
+### MLRC-432 and MLRC-433 analytics-guidance truth
+
+- Both corrections change only already-rendered owner guidance and the existing
+  local guide-resource list. They add no Firestore read/write, listener,
+  Storage operation, Function invocation, analytics event, cache invalidation,
+  provider call, retry, polling, or background work.
+- Invalid external-ID saves continue to stop at client validation, and every
+  draft used in the retest was Reset. No billed-operation reduction is claimed;
+  the correction prevents owners from making repeated setup attempts based on
+  unsupported or falsely successful guidance without introducing new backend
+  work.
+
+### MLRC-431 owner Share phone-boundary correction
+
+- The correction reuses the existing pure phone validator while generating
+  browser-local message text. It adds no Firestore read/write, listener,
+  Storage operation, Function invocation, analytics event, cache invalidation,
+  provider request, retry, or background work.
+- No billed-operation reduction is claimed. The populated Share retest changed
+  only local clipboard/UI and isolated browser-tab state; every opened customer
+  destination was inspected and closed without submission.
+
+### MLRC-429 and MLRC-430 mobile dialog naming
+
+- Both corrections add only localized browser accessibility attributes and
+  reuse already-rendered titles. They add no Firestore read/write, listener,
+  Storage operation, Function invocation, analytics event, cache invalidation,
+  provider call, or background job.
+- No Firebase billed-operation reduction is claimed. The adjacent Menu search,
+  filter, category editor, Menu Check, and command-sheet pass performed no
+  persisted mutation.
+
+### MLRC-428 bounded Digital Screens copy recovery
+
+- Original behavior: a browser-local copy action could await the Clipboard API
+  indefinitely and never reach its existing fallback or acknowledgement.
+- Corrected behavior: the same action performs no Firestore read/write,
+  Storage operation, Function invocation, analytics event, or cache
+  invalidation; after 1.2 seconds it proceeds to the already existing local
+  textarea fallback.
+- No Firebase billed-operation reduction is claimed. The correction prevents a
+  trapped owner action without adding a backend retry or introducing a new
+  service/cache.
+
+### MLRC-424 multi-location customer-link recovery
+
+- The correction replaces string construction with an existing pure URL helper.
+  It adds no Firestore or Storage read/write, listener, Function invocation,
+  analytics event, cache invalidation, provider call, or background operation.
+  No billed-operation reduction is claimed.
+- The adjacent branch Directions handoff returned `200` from the local public
+  analytics route. Its bounded cost contract remains the existing target
+  validation (up to two document reads on a cold cache, cached for five
+  minutes) plus one delivery-receipt transaction read and, for a new delivery,
+  one aggregate write and one expiring receipt write. The receipt provides
+  retry idempotency; removing it would weaken correctness, so no optimization
+  is justified or claimed from this pass.
+- The install-prompt dismissal is tenant/store-scoped browser state and remains
+  absent on a fresh branch navigation. Prompt-shown and prompt-dismissed
+  analytics use the same bounded, idempotent public-event writer; the prompt is
+  intentionally not repeated after dismissal, limiting this cost to the
+  governed lifecycle rather than each page view. No cost correction is
+  justified from this pass.
+
+### MLRC-416 website footer recovery
+
+- The correction is browser-state synchronization only. It adds no Firestore or
+  Storage read/write, listener, Function invocation, analytics event, cache,
+  provider call, or invalidation. The passive scroll/resize/history recovery is
+  coalesced to at most one pending animation frame and is fully cleaned up on
+  unmount. Preventing the Analytics control from being intercepted also avoids
+  a false `/create-menu` navigation and the repeated user attempt it invited.
+
+### MLRC-417 platform denial and store-bootstrap recovery
+
+- The platform permission-order correction performs no Firestore or Storage
+  read/write, listener, Function invocation, provider call, cache invalidation,
+  or analytics write. It reuses the already admitted platform session and the
+  existing all-false owner permission defaults.
+- The explicit owner recovery does not poll or retry automatically. A failed
+  store bootstrap remains stopped until the owner selects Try again, preventing
+  an unbounded error loop. No billed-operation reduction is claimed because a
+  deterministic pre-fix Firestore operation count was not captured.
+
+### MLRC-418 published-draft detection and public propagation
+
+- The correction is a pure in-memory comparison over project timestamps. It
+  adds no Firestore or Storage operation, listener, Function invocation,
+  analytics event, provider call, polling, or cache layer.
+- Each acknowledged publish retains the existing precise project/store/public
+  invalidation path. The connected owner/public pass intentionally performed
+  two reversible publications and proved warm-cache convergence after each.
+- No billed-operation reduction is claimed. The fix restores the intended
+  mutation boundary without globally disabling caching or adding recovery
+  reads.
+
+### MLRC-419 local share-link recovery
+
+- The correction changes URL construction only for standards-based local
+  loopback tenant hosts. It performs no Firestore/Storage read or write,
+  listener, Function invocation, provider request, analytics event, cache
+  invalidation, or polling.
+- Hosted custom domains plus QA and production tenant domains retain HTTPS;
+  no hosted URL or routing contract was weakened. No billed-operation
+  reduction is claimed.
+
+### Confirmed optimization — MLRC-420 unchanged profile save
+
+- **Original behavior:** one unchanged profile request performed one scoped
+  user-document read and one `update` containing only normalized identical
+  fields plus a fresh `modifiedOn` timestamp.
+- **Change:** normalized proposed fields are compared with persisted truth at
+  the server boundary. A semantic no-op returns success without adding
+  `modifiedOn` or issuing a write.
+- **Before/after:** one read + one write becomes one read + zero writes for an
+  unchanged request. A real changed request remains one read + one write. The
+  current Chrome no-op submission retained exact emulator `updateTime`
+  `2026-08-29T20:49:38.143160Z` and `modifiedOn`
+  `2026-08-29T20:49:38.134Z` before and after.
+- **Correctness/security:** authentication, owner document scope, validation,
+  and real-change persistence are unchanged. No cache was added and no stale
+  profile state is retained.
+
+### Investigated, no Firebase optimization claimed — MLRC-421 Menu Kit URL
+
+- The correction is a development-only URL-admission change before local
+  browser asset generation. It adds no Firestore/Storage operation, Function
+  invocation, cache, polling, analytics event, or provider request.
+- Hosted and production URL validation remains HTTPS-only. No billed-operation
+  reduction is claimed.
+
+### Investigated, no Firebase optimization claimed — MLRC-422/423 settings and public phone truth
+
+- The App Settings correction replaces one browser control and performs no
+  Firestore/Storage operation, listener, Function invocation, cache
+  invalidation, polling, analytics event, or provider request.
+- The public-phone correction reuses the already computed validated call
+  boundary during render. It adds zero reads, writes, listeners, Function
+  calls, cache entries, or invalidations. No billed-operation reduction is
+  claimed; the change prevents invalid stored data from becoming misleading
+  customer-facing truth.
 
 ### Confirmed optimization — MLRC-333 storeless platform bootstrap
 
@@ -2672,6 +3301,15 @@ keys, leases, and idempotency controls were retained because adding another
 cache or batch would increase stale-truth or operational risk without reducing
 billed operations.
 
+Cost-evidence reconciliation MLRC-469: the current scanner covers 536 runtime
+files, one more than the preceding maintained closeout snapshot. The aggregate
+failed closed until the measured total was reconciled. The risk-band results
+did not move: 9 listener, 2 public-read, 2 query-scope, and 53 write-volume
+findings remain governed, and both platform-daily and maintenance lease
+emulator suites pass. This is evidence maintenance rather than a claimed
+billed-operation reduction; no cache, query, listener, write, Function, or
+Storage behavior changed.
+
 Confirmed optimization MLRC-020: one Billing History activation performs one
 bounded payment-ledger query (limit 50) and one bounded billing-document query
 (limit 50). Before the fix, two rapid activations could start two complete
@@ -2702,6 +3340,20 @@ deployment logs. The intended success path remains one bounded document read;
 no billed-read reduction is claimed. The improvement removes one failed
 credential attempt and its retry/support noise without weakening the fail-open
 contract or adding a cache.
+
+Confirmed saved-person read containment: the selector performs one bounded
+profile-list request when it mounts and refreshes only after lifecycle changes
+that can invalidate the list (withdraw or delete). Creation inserts the returned
+summary into local state, and selection or unrelated generation-setting changes
+do not issue another list request. The stable callback/ref boundary prevents
+parent callback identity changes from repeatedly reloading the same private
+profiles. The current expectation is therefore one initial list operation per
+mounted selector, plus one explicit refresh for each completed withdraw/delete,
+instead of a possible list request on every parent callback churn. The desktop
+and 390x844 browser passes confirmed stable selection while changing adjacent
+state; focused AI accounting, prompt, batch-client, and storage/indexing tests
+passed. This does not cache profiles across users, stores, or sessions and does
+not weaken withdrawal freshness, authorization, or private-reference handling.
 
 ## F. Security and isolation results
 
@@ -2776,17 +3428,68 @@ explicitly authorized staging release.
 
 | Command | Result |
 | --- | --- |
-| `npm run verify:menulist-rc-inventory` | PASS after MLRC-218 — 8,353 rows, including 5,985 MenuList rows; all 28 Function exports (23 MenuList, five Answerlattice boundaries); all 23 MenuList Function rows carry current source-hash-bound local runtime evidence with three complete local retired contracts and twenty explicit partial boundaries; all five recovery-specific dynamic pages carry current source-manifest-bound invalid-state browser evidence; all 11 MenuList layouts, three not-found components, and the root loading component carry source-manifest-bound composed runtime evidence; all three error boundaries carry real-component runtime evidence; 59 private MenuList pages have bounded access/render evidence; 62 sitemap-backed website page patterns are render-evidenced through 186 concrete URLs; all 140 MenuList route handlers have resolved methods/access classes and current anonymous runtime evidence. Of 5,466 MenuList controls, 871 carry local browser interaction, 194 carry hosted interaction, 171 are classified non-shipped, 16 are non-user-triggerable, and 4,214 remain honestly `NOT_RUN`. |
+| `npm run verify:menulist-rc-inventory` (September 1 final local reconciliation) | PASS CURRENT LOCAL SNAPSHOT — generated and verified 6,731 unique rows: 313 pages, 20 layouts, three error files, 297 API routes, five not-found files, one loading file, 5,728 control candidates, 336 feature flags, and 28 Function exports. MenuList owns 4,402 rows and 3,890 controls. The generic current-source interaction-pending count is 187; the superseded checkpoint was 1,946. Every other control has a named pass or bounded final classification rather than an inferred interaction pass. |
+| `npm run test:menulist-component-controls` | PASS CURRENT LOCAL SNAPSHOT — focused deterministic interaction coverage passed for the newly admitted analytics, search, disclosure and recovery controls. Existing Ant Card `bordered` and rc-collapse `children` deprecation diagnostics remain non-failing test-environment warnings. |
+| `npm run verify:menu-card-export`, `npm run verify:printable-asset-templates`, artwork-placement test, and style-preference test | PASS CURRENT LOCAL SNAPSHOT — the complete maintained Menu Card/QR/source/sanitizer/shared/catalog chain and the current 47-theme printable source/geometry contracts pass. |
+| `npm run verify:security-os` and `npm run verify:auth-security-failure-matrix` | PASS CURRENT LOCAL SNAPSHOT — registry/source integrity, authentication failure recovery, tenant/store DAL, claims, logging, storage-path and route-policy boundaries pass. SecurityOS still reports partial/unknown coverage where the registry intentionally lacks runtime or hosted evidence; those entries are not promoted to passes. |
+| `npm run verify:menulist-firestore-rules` | PASS CURRENT LOCAL SNAPSHOT — the generated MenuList deploy rules are byte-current. |
+| `npm run verify:menulist-firebase-rules-predeploy` and `npm run certify:menulist-local -- --start-at verify:menulist-firebase-rules-predeploy` | BLOCKED BY PRESERVED LOCAL SERVICE — both fail before the first assertion because the long-running MenuList QA Firestore emulator already owns `127.0.0.1:8080`. The runner discovered all 43 demo-only rules scripts and confirmed generated-rule freshness, then Firebase CLI returned `Could not start Firestore Emulator, port taken.` The pre-existing emulator was deliberately not stopped or rewritten. This is an environment collision, not a rules-test pass or an observed rules assertion failure. |
+| `npx tsc --noEmit --incremental false --pretty false` | PASS CURRENT LOCAL SNAPSHOT. |
+| `npm run lint` | PASS CURRENT LOCAL SNAPSHOT — zero warnings. |
+| `npm run docs:check-links` | PASS CURRENT LOCAL SNAPSHOT — zero broken links; 64 pre-existing unrelated documentation naming warnings remain. |
+| `npm run build` | PASS CURRENT LOCAL SNAPSHOT — Next.js 16.3.0 compiled successfully, build TypeScript completed, all 454/454 static pages generated, and Serwist bundled 55 precache entries. Existing Sass `@import` deprecations and absent optional Gemini-key diagnostics remained non-failing. No Vercel or remote build was triggered. |
+| `git diff --check` | PASS CURRENT LOCAL SNAPSHOT. |
+| Authenticated create-menu intake, preview-state, validation, recovery, and owner-isolation boundary | PASS CURRENT LOCAL SNAPSHOT — connected Chrome revalidated unsafe-link rejection, ownership-permission gating, valid HTTPS admission, the complete 36-check processing timeout and retry reset, syntactically valid absent-draft expiry, Upload list recovery, owned failed-draft retry, completed extracted-menu rendering, existing-owner business-name validation, new-owner city validation, reversible optional contact drafts, and denial of another owner's draft without business/menu/item leakage. Create official link was clicked only with invalid required fields, so no claim request or business/project/public-truth mutation occurred. The native file chooser remains honestly uncredited. No link import, external fetch, provider, cloud Firebase, or production operation occurred. |
+| Mobile project-distribution MLRC-498 regression and current-source gates | PASS CURRENT LOCAL SNAPSHOT — connected Chrome at 390×844 exercised the unpublished `Not live` state, acknowledged local publish, Preview Menu, Copy Link, Show QR, and the exact tenant customer menu. The project-editor and public-business-truth chains, strict TypeScript, full zero-warning lint, feature-flag registry, 6,723-row inventory, isolated production build, runtime-evidence JSON validation, and diff checking pass. The fixture also passed exact configured/missing custom-domain admission readback. |
+| Mobile Billing MLRC-499/500 regression and current-source gates | PASS CURRENT LOCAL SNAPSHOT — connected Chrome at 390×844 exercised View plans, Upgrade, Monthly/Yearly pressed states, owner-facing plan names, Get Enhancements without pack selection, required cancellation reason/detail validation, selected reason semantics, Continue cancellation, final Keep Subscription recovery, and clean reopening after Close/Keep. Billing, growth/cancellation, global-accessibility, strict TypeScript, focused zero-warning lint, docs-link, 6,723-row inventory, and diff gates pass. No provider plan, pack, checkout, cancellation mutation, payment, cloud Firebase, Git, staging, Vercel, or production action occurred. |
+| `NEXT_DIST_DIR=.next-rc-cert-mlrc500 npm run build` | PASS CURRENT SNAPSHOT — Next.js 16.3.0 compiled in 20.9 seconds, build TypeScript completed in 37.0 seconds, all 454/454 static pages generated in 1.759 seconds, and Serwist bundled 55 precache entries. Existing Sass `@import` deprecations and absent optional Gemini-key diagnostics remained non-failing. Generated TypeScript references were restored byte-for-byte and the isolated output was moved recoverably to `/Users/danny/.Trash/menulist-next-rc-cert-mlrc500-20260831-2025`. No remote or Vercel build was triggered. |
+| `NEXT_DIST_DIR=.next-rc-cert-mlrc498 npm run build` | PASS AT CHECKPOINT, SUPERSEDED BY MLRC-500 BUILD — Next.js 16.3.0 compiled in 24.4 seconds, build TypeScript completed in 56 seconds, all 454/454 static pages generated in 2.2 seconds, and Serwist bundled 55 precache entries. Existing Sass `@import` deprecations and absent optional Gemini-key diagnostics remained non-failing. Generated TypeScript references were restored and the isolated output was moved recoverably to `/Users/danny/.Trash/menulist-next-rc-cert-mlrc498-20260831-1921`. No remote or Vercel build was triggered. |
+| Reseller-management MLRC-497 regression and current-source gates | PASS CURRENT LOCAL SNAPSHOT — connected Chrome reproduced and retested malformed email, zero activation cap, five-character edit password, unchanged edit, required desktop/mobile fields, Cancel/Close recovery, provider-free reseller dashboard, and full desktop onboarding review without invoking its Razorpay handoff. `test:reseller-management-profile`, `verify:reseller-dashboard-boundary`, strict TypeScript, full zero-warning lint, the 6,723-row inventory, and scoped diff checking pass. Exact emulator readback proved the rejected pre-fix draft created no Auth user or reseller profile. |
+| `NEXT_DIST_DIR=.next-rc-cert-mlrc497 npm run build` | PASS AT CHECKPOINT, NOT CURRENT — Next.js 16.3.0 compiled in 26.0 seconds, build TypeScript completed in 54 seconds, all 454/454 static pages generated in 2.6 seconds, and Serwist bundled 55 precache entries. MLRC-498 subsequently changed the mobile project-distribution boundary; its exact-current replacement build is recorded above. No remote or Vercel build was triggered. |
+| Salon Atelier, Ritual Sanctuary, and Performance Circuit focused source/output suite | PASS CURRENT LOCAL APPLICATION SNAPSHOT — style-preference, artwork, printable-template, Menu Card/QR/source/sanitizer/shared/catalog, dependency-freeze, strict TypeScript, focused zero-warning ESLint, scoped diff, and local production build all passed. The build generated 454/454 static pages. The complete governed matrix contains 20 theme PDFs and 260 compact PNGs; all three new themes and every output format passed the owning task's page-by-page/full-matrix visual review. |
+| Authenticated current-source desktop/mobile pass for the three new gated parent themes | PASS — the disposable emulator store was moved only through legitimate Salon, Spa, and Gym states. Salon Atelier, Ritual Sanctuary, and Performance Circuit each became the pressed parent theme on desktop and at 390×844 in the real MobileShell audit route, propagated into the current Single Table Card surface, and retained Complete Menu Kit. The store was restored to Restaurant, the viewport override was reset, and browser warnings/errors were empty. |
+| `npm run test:menulist-api-anonymous-boundary` | PASS — 141 handlers / 162 methods; 200×5, 301×1, 400×15, 401×137, 403×1, 404×3; zero failure, timeout, or 5xx. |
+| `npm run verify:menulist-rc-inventory` | BLOCKED CURRENT SNAPSHOT — generation completes with 6,723 rows, but the verifier correctly reports `local mobile owner control evidence is stale` after four food-theme source additions landed after the last authenticated owner-evidence hash. The last admitted set was 1,406 local-browser and 2,167 `NOT_RUN`; those figures are retained as the checkpoint, not claimed as exact-current. |
+| `npm run verify:creative-editor-smoke` after MLRC-490 through MLRC-496 | PASS CURRENT SNAPSHOT — 253 source-contract checks plus Fabric 7, image-source, and export boundary suites. The connected local default and 79-layer stress fixtures each pass all 15 interaction groups; Page 1 retains its original layers through rapid page switch/lock/unlock, built-in artwork passes readiness, template search admits goal starters, one-page documents can reach Add page, existing images duplicate/delete through document truth, and every enabled floating-toolbar hit target stays outside the inspector. |
+| `NEXT_DIST_DIR=.next-rc-cert-creative npm run build` | PASS CURRENT SNAPSHOT — Next.js 16.3.0 compiled successfully in 23.7 seconds, build TypeScript completed in 41 seconds, all 454/454 static pages generated in 1.988 seconds, and Serwist bundled 55 precache entries. Existing Sass `@import` deprecations and absent optional Gemini-key diagnostics remained non-failing. The generated TypeScript include entries were restored and the isolated build directory moved recoverably to Trash. No Vercel, Git, Firebase deployment, staging, payment, or production action occurred. |
+| `npm run verify:firebase-scale-cost-closeout` plus direct existing-emulator lease tests | STATIC/COST PASS; WRAPPER PORT COLLISION, THEN DIRECT LEASE PASS — all 125 cost checks passed with 538 runtime files, 9 listener-risk, 2 public-read-risk, 2 query-scope-risk, and 54 write-volume-risk files. The wrapper could not start a third Firestore emulator on occupied port 8080; the unchanged platform-daily and maintenance lease suites were run directly against isolated demo-project namespaces on the existing emulator and both passed. |
+| `npx tsc --noEmit --incremental false --pretty false` | PASS CURRENT SNAPSHOT. |
+| `npm run lint` | PASS CURRENT SNAPSHOT — zero warnings. |
+| `git diff --check` | PASS CURRENT SNAPSHOT. |
+| Latest full `npm run certify:menulist-local` attempt after the prior 166/167 checkpoint | INTENTIONALLY INTERRUPTED, NOT CLAIMED AS CURRENT PASS — every completed gate passed, but a user-directed three-theme change reopened shared renderer/catalog source during the Firebase Rules predeploy sequence. The owned runner was stopped cleanly rather than certifying moving source. Current affected gates and the exact application build pass separately above; a fresh uninterrupted full aggregate is still required before certification. |
+| `npm run certify:menulist-local -- --start-at verify:async-data-flow-boundaries`, then resume at `verify:functions-analytics-persistence` | PARTIAL CHECKPOINT — 30 consecutive gates passed before MLRC-476; its standalone corrected gate passed; the resume continued through Menu Extraction's fix-request emulator. A user-directed salon/spa printable-theme expansion then reopened current source, so the running owner-claim emulator was interrupted cleanly and no aggregate completion is claimed. |
+| `npm run verify:firebase-scale-cost-closeout` after MLRC-476 | INITIAL EXACT-COUNT FAILURE, then PASS — 125 source/index/cost checks, two Functions builds, and both platform-daily/maintenance-task Firestore lease emulator suites passed with 537 current runtime files and unchanged risk totals. |
+| `npm run test:menu-card-shared-contracts` and `npm run verify:menu-card-export` after MLRC-475 | PASS — pure tracked-label geometry, renderer source contract, QR, print-source, sanitizer, shared-print, and asset-catalog boundaries passed on exact hashes `506d345d…`, `e92a63cb…`, and `60b93a77…`. |
+| `NEXT_DIST_DIR=.next-rc-cert-mlrc475 npm run build` | PASS AT CHECKPOINT, NOT CURRENT — exact frozen MLRC-475 source compiled in 23.4 seconds, completed build TypeScript in 39.9 seconds, generated 454/454 static pages in 2.3 seconds, and bundled 55 Serwist precache entries. Known Sass and optional Gemini diagnostics remained non-failing; generated references were restored and isolated output moved to Trash. A later user instruction reopened the printable catalog/renderer for salon/spa themes, so a replacement exact-current build is required after that scope stabilizes. |
+| `NEXT_DIST_DIR=.next-rc-cert-mlrc474 npm run build` | PASS AT CHECKPOINT, NOT CURRENT — stable MLRC-474 local source compiled in 22.9 seconds, completed build TypeScript in 46 seconds, generated 454/454 static pages in 2.3 seconds, and bundled 55 Serwist precache entries. The known 14 Sass deprecation warnings and absent optional Gemini-key diagnostics remained non-failing. Generated references were restored and the isolated directory was moved to Trash; no Vercel or hosted build occurred. MLRC-475 subsequently changed the shared renderer; the exact-current replacement build is recorded above. |
+| `npm run certify:menulist-local` (first post-MLRC-474 attempt) | FAIL CLOSED — 5/167 checks passed before `certify:asset-factory-menulist` reported four stale source fingerprints for the intentionally changed `MobileShareScreen.tsx` and `PrintableAssetTemplatesRoute.tsx`. The fingerprints remain unmodified pending current authenticated owner-browser review. A new renderer defect was reported immediately afterward, so the aggregate was not continued against moving source. |
+| `npm run certify:menulist-local` (2026-08-30 current-candidate checkpoint replay) | PASS WITH ONE EXTERNAL BLOCKER — 166/167 registered checks completed across exact checkpoint resumes, including all 163 current child verifier scripts, the 43-script root Firebase Rules predeploy, Firestore/Storage rules, auth/tenant/store boundaries, onboarding/subscription, owner/public truth, cache, mobile shell, multi-location, reseller, simulated Razorpay lifecycle, Functions builds, docs links, strict TypeScript, zero-warning `src` lint, and `git diff --check`. The sole non-pass is `verify:upstash-readiness`, correctly classified `BLOCKED_EXTERNAL` because the required URL/token are absent from this shell; it is not represented as a pass. The run found and closed MLRC-469 at the cost scanner and MLRC-470 at strict TypeScript, then resumed from each exact failed gate; standalone rechecks passed before continuation. No Vercel, staging, Firebase deployment, live provider, Git, or production action occurred. |
+| Authenticated 17-theme desktop/mobile printable-template pass | PASS CURRENT LOCAL SNAPSHOT — desktop exercised 17/17 themes and 15/15 assets; mobile exercised 17/17 themes and 14/14 enabled assets, with Feedback QR correctly disabled for the fixture. Parent-theme inheritance passed for individual assets, Complete Menu Kit, and mobile preview. This pass found and closed MLRC-480 and MLRC-481; exact corrected source hashes are `d48c09f8…` and `2b876889…`. |
+| Complete printable visual/output matrix after MLRC-482 | PASS CURRENT LOCAL SNAPSHOT — 221/221 compact PNGs regenerated with sorted-manifest SHA-256 `59c39aa2fc4d361995b0a7ba7732005b836a64a6e942682d5661c26e6b5eca0e`; all 17 full-menu PDFs were reviewed page-by-page and remain A4, unencrypted, Form none, JavaScript none, with valid pagination. Lankan Block Print safe-field and actual-glyph-bound checks pass on Business Card, Gift Certificate, Postcard, and Product Tag. |
+| `npm run verify:menulist-rc-inventory` after final authenticated printable pass | PASS — 6,705 rows: 313 pages, 20 layouts, 3 error files, 296 API routes, 5 not-found files, 1 loading file, 5,704 controls, 335 feature flags, and 28 Function exports. Product classification remains MenuList 4,376; Answerlattice boundary 1,567; CampaignCue 413; SignalDesk 183; MyCodex 130; Neelvara 36. Current local owner source manifest is `34c6afff…`. |
+| `npm run certify:asset-factory-menulist` after final authenticated printable pass | PASS — 28 MenuList slots; zero errors, warnings, stale or missing assets, disconnected files, approval blockers, or founder-review items. Only the four directly re-reviewed source fingerprints were refreshed. |
+| `npm run certify:menulist-local` (2026-08-31 uninterrupted exact-final-source run) | PASS WITH ONE EXTERNAL BLOCKER — 166/167 checks passed from zero across all 163 child verifier scripts, the 43-script Firebase Rules predeploy, inventory, AssetOS, security/isolation, owner/public truth, cache, Functions builds, docs links, strict TypeScript, zero-warning `src` lint, and `git diff --check`. `verify:upstash-readiness` alone returned `BLOCKED_EXTERNAL` because the required URL/token are absent from this shell. Temporary isolated emulator ports were restored; `firebase.json` returned to SHA-256 `3bb9d843541583e1955911077004cb9e6f67304c21354c53beb73ae6de2608e8`. |
+| `NEXT_DIST_DIR=.next-rc-cert-final npm run build` | PASS CURRENT LOCAL SNAPSHOT — Next.js 16.3.0 compiled in 23.6 seconds, build TypeScript completed in 59 seconds, all 454/454 static pages generated in 2.0 seconds, and Serwist bundled 55 precache entries. The known 14 Sass `@import` deprecation warnings and absent optional Gemini-key diagnostics remained non-failing. Generated references were restored to SHA-256 `1862ac4b…` and `ef0ac59b…`; the 1.3 GB isolated output moved recoverably to `/Users/danny/.Trash/menulist-next-rc-cert-final-20260831-0845`. No Vercel, Git, Firebase deployment, staging, or production action occurred. |
+| Post-aggregate owner-workflow website delta | PASS CURRENT CONSOLIDATED SNAPSHOT — a concurrent Website changes task added one labelled demonstration intake image and a post-hero owner workflow section using real MenuList review/published-output assets. All 15 frozen hashes matched the coordinated handoff. Website locale and public-copy boundaries, full TypeScript, zero-warning `src` lint, diff check, and the 6,705-row inventory passed. AssetOS now reports 29 MenuList slots with zero errors, warnings, stale/missing/disconnected items, or approval/founder-review blockers. The section received a 1440×1000 rendered browser review; no CTA, form, Firebase, provider, payment, tenant, or public-truth mutation path was added. |
+| `NEXT_DIST_DIR=.next-rc-cert-consolidated npm run build` | PASS EXACT CURRENT CONSOLIDATED SNAPSHOT — Next.js 16.3.0 compiled in 23.6 seconds, build TypeScript completed in 45 seconds, all 454/454 static pages generated in 1.982 seconds, and Serwist bundled 55 precache entries. The known 14 Sass `@import` deprecation warnings and optional Gemini-key diagnostics remained non-failing. Generated references were restored to SHA-256 `1862ac4b…` and `ef0ac59b…`; the 1.3 GB isolated output moved recoverably to `/Users/danny/.Trash/menulist-next-rc-cert-consolidated-20260831-0920`. No Vercel, Git, Firebase deployment, staging, or production action occurred. |
+| `npm run verify:public-menu-entry-boundary` and `npm run verify:website-resource-locales` | INITIAL 14-ISSUE FAILURE, then PASS after MLRC-454 — exact 65-key Header parity across all eight active website locales. |
+| `npm run verify:public-truth-tools` | INITIAL SOURCE-SHAPE FAILURES, then PASS after MLRC-455 — all 16 truth tools, five asset tools and runtime boundary tests pass. |
+| `npm run verify:security-os` | INITIAL 47-vs-46 COUNT FAILURE, then PASS after MLRC-456 — registry integrity, internal-only boundary and deterministic registry test pass. |
+| `npm run certify:asset-factory-menulist` | INITIAL TWO-SLOT STALE FAILURE, then PASS after current connected-browser review and targeted fingerprint lock for MLRC-458 — zero errors, zero warnings, zero founder-review items. |
+| `npm run verify:website-public-copy-boundary` | INITIAL JSX-WHITESPACE AND ASSET-FINGERPRINT FAILURES, then PASS after MLRC-457/458. |
+| Firebase CLI reauthentication / current `menulist-qa` disposable reseller fixture | PASS — local Firebase CLI access was reauthenticated as the authorized human operator and directly listed active project `menulist-qa`. Marker `ml-hosted-qa-certification-85ee58de7d` created an expiring amount-zero Pro owner/store fixture only at tenant `12`, store `17`. Admin verification proved one active store, one claim store, and one user-access record; the Firebase Web client proved exact OWNER claims, tenant/store reads, one active subscription through the production query shape, and the shared entitlement predicate. Connected Chrome signed out the previous account, signed in with the disposable credentials, reached `/dashboard` without the subscription wall, and rendered `/projects`. The served hosted build is not the complete current local candidate, so this closes the credential/fixture blocker but not final hosted certification. No payment, Razorpay, Firebase infrastructure deployment, Vercel build, Git mutation, staging push, or production action occurred. |
+| `npm run verify:menulist-rc-inventory` | INITIAL FAIL-CLOSED, THEN PASS — regeneration discovered 6,705 rows, including 5,704 user-control candidates, 335 feature flags and 28 Function exports; MenuList remains 4,376 candidates. The first run correctly rejected the pre-movement `useMenuList` identity and the changed parent-theme controls. After fresh authenticated desktop/mobile execution and semantic current-source rebinding, the complete inventory verified with local-mobile manifest `4fa685e04e1ae2fcffdb0a62f73c95694ff3487efe851ba6223aef7eb3c346e7`. No superseded interaction was transferred without current proof. |
 | External Menu Sync selected-outlet regression | PASS after MLRC-322 — pure scope tests admit the login and mapped branch stores while rejecting unmapped, whitespace-expanded, cross-tenant, and conflicting-alias scope; the source gate retains canonical store permission, server-owned-secret boundaries, valid-URL-before-enable behavior, atomic desktop URL/enable persistence, and no rotation before a first secret exists; the full MenuList API tenant-safety chain passes. Connected Chrome completed the selected-branch provider-free ensure/save, reveal/hide, clipboard copy, rotation cancel, version-2 rotation, disable, clear, cleanup, and fresh missing-state reload. The latest missing-state pass additionally proved blank enabled drafts cannot Save, unsafe input is rejected before any request/write, and Reset restores off/empty. No provider test/delivery ran and deterministic readback proved the branch retained no secret or POS config. |
-| `npm run test:menulist-feature-flag-runtime` | INITIAL SCOPE ASSERTION FAILURE, then PASS; latest source-manifest refresh after MLRC-332 also PASS — final current evidence: 333 declared switches, 288 with runtime readers, 45 dormant, 1,199 reader locations, no undeclared read or direct runtime mutation, helper parity, development-emulator default off, explicit true/false overrides, and production default on. Current feature-manifest SHA-256: `e0856e4f65660804e931262e7c4c9d77a23687bce55288c52fc3f92ee7ef12df`. Individual feature journeys remain separately pending. |
+| `npm run test:menulist-feature-flag-runtime` | PASS after current source-manifest refresh — 335 declared switches, 290 with runtime readers, 45 dormant, 1,205 reader locations, no undeclared read or direct runtime mutation, helper parity, development-emulator default off, explicit true/false overrides, and production default on. Current feature-manifest SHA-256: `f91089457763e6108f11590aa70c2e0a64c7354d58cf80d41062c7d3235280e2`. Individual feature journeys remain separately pending. |
 | `npm run test:ai-service-response-boundary` | INITIAL TEST-HARNESS COMPILE FAILURE, then PASS after MLRC-232 — the first new cleanup used TypeScript `delete` against the global Window declaration and was rejected by TS2790. The harness was corrected to `Reflect.deleteProperty`; the final pass proves zero browser `console.error` calls, one bounded browser diagnostic, and retained server error severity without raw provider detail. |
 | `npm run verify:creative-editor-smoke` and connected-Chrome QA harness | PASS after MLRC-275 — 155 source-contract checks plus Fabric 7, raster image-source, and export boundaries pass. The current desktop browser harness completed all eleven interaction groups, including the new Background status/real-action regression, with 17 final layers, a 10px floating-toolbar gap, and an 84,462-character PNG preview. The verifier fails closed if inspector names disappear or the false Show background checkbox returns. |
-| Connected Chrome website header/navigation pass | PASS after MLRC-328 — current local candidate at 1512×807 and 390×844: optional analytics decline; desktop Features open/Escape/focus restore; modal mobile drawer, body lock, background inertness, backdrop/close/brand recovery, nested Features/Start/Resources accordions, and zero horizontal overflow; authenticated Dashboard; signed-out Login with `/dashboard` callback; signed-out `/create-menu` CTA; Features proof CTA; and exercised desktop/mobile destinations. Pre-fix mobile and desktop Logout cleared the session but remained on `/how-it-works`; the current candidate reaches `/` on both. All 44 exact website/consent element and handler rows are source-manifest-bound. |
+| Connected Chrome website header/navigation pass | PASS after MLRC-328 — current local candidate at 1512×807 and 390×844: optional analytics decline; desktop Features open/Escape/focus restore; modal mobile drawer, body lock, background inertness, backdrop/close/brand recovery, nested Features/Start/Resources accordions, and zero horizontal overflow; authenticated Dashboard; signed-out Login with `/dashboard` callback; signed-out `/create-menu` CTA; Features proof CTA; and exercised desktop/mobile destinations. The August 30 continuation re-ran the current signed-out Login and create-menu destinations plus the current mobile drawer toggle, visible Close menu, brand, representative primary/feature navigation, account Login, CTA, desktop brand, Features proof CTA, and backdrop-dismiss actions, then restored English/light website preferences with zero browser warning/error logs. Pre-fix mobile and desktop Logout cleared the session but remained on `/how-it-works`; the current candidate reaches `/` on both. All 56 exact website/consent element and handler rows are source-manifest-bound. |
+| Connected Chrome public feature-page continuation | PASS LOCALLY — current Business Health story navigation, AI Menu Manager CTAs, generic Official Business Page hero/final CTAs and journey, Features lifecycle/card/CTAs, Multi-location CTAs, Tools hub CTAs, and the shared website-link boundary all reached their governed state or same-origin destination. Business Health and Official Business Page journey steps were repeated at 390×844; Start Public Truth Check also reached its exact tool route at phone width. Browser warning/error readback was empty. Twenty-five exact controls are bound to an eight-source SHA-256 manifest; source drift now fails the inventory verifier. No form, authentication, tenant/store, Firebase, AI/provider, Razorpay, deployment, staging, Vercel, Git, or production mutation occurred. |
 | Connected Chrome website preference pass | PASS — current local candidate at 390×844 and 1280×800: dark, light, and system choices each became selected with system restored; Hindi refreshed the visible home heading and English restored it; the named analytics preference dialog opened and closed without changing the essentials-only choice; desktop scroll-to-top returned y=7670 to y=0. Ten exact controls are source-manifest-bound. No external, Firebase, provider, or deployment action occurred. |
 | Connected Chrome unauthorized recovery pass | PASS — at 390×844 a rejected local dashboard session rendered the bounded Access Denied state with zero warning/error logs; Sign In Again reached `/signin`, and Go Home completed the read-only transition to `https://menulist.digital/` after the cross-origin navigation settled. Both exact controls are source-manifest-bound; no credential was entered. |
 | Connected Chrome generic not-found recovery pass | PASS — current local `/404` at desktop and 390×844: Go Back restored the prior local sign-in URL, Go Home reached `https://menulist.digital/`, both actions retained 44px mobile touch height, and document width remained 390px. Four exact button/handler rows are source-manifest-bound; no credential or mutation was used. |
 | Connected Chrome sign-in/reset-entry pass | PASS — current local candidate at 390×844: empty identifier and short-secret validation, successful uppercased/whitespace-padded disposable emulator-owner sign-in, real logout and protected cross-tab callback recovery, session-expiry return to sign-in, named password visibility state, keyboard-operable mobile brand-home navigation, Forgot callback restoration, malformed reset-email rejection, valid local Auth-emulator `PASSWORD_RESET` emission, Return to sign in, callback-restored Projects login, theme toggles, and Sign up→pricing. Twenty-six exact controls are source-manifest-bound. No real credential or email, cloud Firebase mutation, provider, Razorpay, deployment, staging, Vercel, or production action occurred. |
-| Connected Chrome pricing boundary pass | PASS — at 390×844 USD and monthly selection updated visible values, Pro selection routed to sign-in with exact plan/currency/interval/quantity/type callback state, full comparison expanded, Plans and billing became pressed, and its FAQ disclosure expanded. Ten exact controls are source-manifest-bound. Live Razorpay/provider checkout and onboarding submission were excluded. |
+| Connected Chrome pricing boundary pass | PASS — at 390×844 USD and monthly selection updated visible values, Pro selection routed to sign-in with exact plan/currency/interval/quantity/type callback state, full comparison expanded, Plans and billing became pressed, and its FAQ disclosure expanded. The August 30 current-source continuation independently selected INR/monthly, confirmed that Start with Pro setup reached sign-in with the exact `/pricing` recovery and `menulist_pro`/INR/MONTH/quantity-one/B2C callback state, then restored USD/yearly with zero warning/error logs. Ten exact controls are source-manifest-bound. Live Razorpay/provider checkout and onboarding submission were excluded. |
 | Connected Chrome contact-form pass | PASS — at 390×844 empty submission announced four required recoveries and focused Full Name; populated name/phone/topic/consent plus malformed email and short message reduced the state to the two expected alerts without an admitted enquiry request. Eight exact controls are source-manifest-bound. |
 | Connected Chrome create-menu entry pass | INITIAL INVALID REQUEST REPRODUCED, then PASS — `javascript:` originally entered loading and consumed one local server request. After MLRC-134 it renders localized inline recovery, remains disabled, and performs zero backend work; valid HTTPS input re-enables the action. Upload/link tab switching and mobile width pass. Seven exact controls are source-manifest-bound. |
 | Connected Chrome Hours Check pass | PASS — two browser-local 390×844 runs exercised regular/closed/special hours, location/timezone, late-night states, HTTPS customer link, fallback contact, clear and unclear reports, and Reset. Thirteen exact controls are source-manifest-bound. Copy/download/follow-up submission were deliberately left pending. |
@@ -2818,9 +3521,9 @@ explicitly authorized staging release.
 | App shell composition boundary | PASS — the 11 MenuList layouts were exercised through their exact rendered child-route families; the three not-found files and root loading shell have direct connected-browser evidence. The current root/private-shell source manifest is `d9a0f4b926b6f77df7e26cf891c58b5efd71b90f83e5eae5533e5464316fd33b`. Error boundaries are covered separately below. |
 | `npm run test:menulist-app-special-states` | INITIAL HARNESS SETUP/ASSERTION FAILURES, then PASS — setup was corrected without skipping or weakening assertions: use existing jsdom through a typed `require`, define the read-only navigator and ShadowRoot globals, load repository SVG declarations through `ts-node --files`, and match the actual Ant anchor/localized customer copy. The final real-component runtime pass covers all three `error.tsx` files, reset/retry, hard-refresh fallback scheduling, isolated Help handoff, retry disabling, localized recovery, and bounded diagnostics. Source manifest `2dccd60f4f4fbf194424e87438e316a75fdd73e32f5ac46d7e99699cd8599776`; no network or product mutation. |
 | `npm run verify:menulist-local-browser-fixture` | PASS — the MenuList-only local owner fixture is registered, requires Auth and Firestore emulators, uses reserved tenant/store/user/subscription IDs, creates a reseller-labelled amount-zero manual Pro entitlement, excludes managed credentials and Razorpay clients, never prints credentials, and requires browser-SDK credential readback before reporting readiness |
-| Firebase CLI reauthentication | PASS for direct MenuList QA access on August 29 — the refreshed `firebase projects:list --json` result includes active project `menulist-qa` under the authorized human operator `admin@neelvara.com`. The guarded fixture prepared and verified one fresh marker-scoped QA owner/tenant/store plus amount-zero reseller entitlement through an ephemeral ADC boundary; the registered Web client assertion also passed. No token, authorization code, password, infrastructure deployment, provider execution, or production data was printed or changed. |
+| Firebase CLI reauthentication | PASS for direct MenuList QA access, rechecked August 30 — the refreshed `firebase projects:list --json --non-interactive` result includes active project `menulist-qa` under the authorized human operator. The guarded fixture had already prepared and verified a fresh marker-scoped QA owner/tenant/store plus amount-zero reseller entitlement through an ephemeral ADC boundary; the registered Web client assertion also passed. No duplicate fixture was created during this read-only recheck, and no token, authorization code, password, infrastructure deployment, provider execution, or production data was printed or changed. |
 | `npm run verify:menulist-hosted-qa-certification-fixture` | PASS — the hosted fixture remains hard-bounded to `menulist-qa`, requires explicit project confirmation and operator reauthentication, rejects emulators/production/provider clients, writes a marker-scoped amount-zero reseller entitlement, bounds the lease to 72 hours, keeps credentials in a mode-600 `/tmp` file, and refuses unsafe cleanup when canonical project data exists |
-| Fresh provider-free hosted QA fixture | PASS — marker `ml-hosted-qa-certification-32df613a32` was created only in `menulist-qa` for tenant `9`, HQ store `13`, and branch store `14`; Admin verification passed and the credential file permission is `0600`. The real Firebase Web client authenticated the disposable owner, verified exact OWNER claims and tenant/store shape, and returned the valid provider-free reseller/manual Pro entitlement with three-store capacity and 225 credits through the production subscription query. No Razorpay request, payment, webhook, production data, infrastructure deployment, Git push, or Vercel build occurred. |
+| Current provider-free hosted QA fixture | PASS — after local Firebase CLI reauthentication as `admin@neelvara.com`, marker `ml-hosted-qa-certification-85ee58de7d` was created only in `menulist-qa` for tenant `12` and store `17`, with a bounded 72-hour zero-value reseller/manual Pro entitlement. Admin verification passed with exactly one active store, one claim store, one user-store membership, and exact OWNER claims; the credential file permission is `0600`. The real Firebase Web client authenticated the disposable owner, read the exact tenant/store, returned exactly one active subscription through the production owner-DAL query, and passed the shared entitlement predicate. Connected Chrome then reached `/dashboard` and `/projects` without the subscription wall. No Razorpay request, checkout, payment, webhook, production data, infrastructure deployment, Git mutation, staging push, or Vercel build occurred. |
 | Current repeatable provider-free fixture refresh | PASS on August 29 — marker `ml-hosted-qa-certification-3e1099df5f` was created only in `menulist-qa` for tenant `10` and store `15`, with a 72-hour amount-zero reseller QA lease. Admin verification confirmed one active store, one claim store, one user-store access, and the bounded expiry. The registered Web client command verified OWNER claims, exact tenant/store reads, exactly one active subscription through the owner-DAL query shape, and the shared entitlement gate. The credential remains mode `0600` under `/tmp`; secret content was not logged. Storage probe was not run. No Razorpay, checkout, payment, webhook, deployment, staging, Vercel, or production action occurred. |
 | Hosted QA fixture authenticated re-verification | PASS on August 28 — the guarded `verify --confirm-project=menulist-qa` command read back the existing marker, Auth user, owner claims, tenant `9`, HQ store `13`, both active store memberships, and the provider-free zero-payment lease through August 30. The connected authenticated owner tab independently rendered the QA-only ₹0 Pro entitlement, 225/225 plan credits, no payment method, truthful expiry copy, empty billing-history recovery, and the one existing no-credit extraction ledger row. No new fixture, payment, provider call, deployment, push, or infrastructure mutation was needed. |
 | Hosted provider-free credit readback after failed import | PASS — the isolated fixture retained 225/225 recurring credits, zero used credits, and zero pack credits after the served build rejected the URL import. No credit ledger row, provider request, payment, or duplicate operation was created. |
@@ -2829,7 +3532,9 @@ explicitly authorized staging release.
 | Hosted QA client verifier operator invocation | COMMAND ERROR, then corrected — direct `ts-node` was not on the shell PATH and exited 127 before loading the test. The repository-local `npx ts-node` invocation then passed Firebase Web Auth, claims, tenant/store reads, the production subscription query, and the entitlement predicate. No product assertion failed in the first invocation. |
 | `npm run test:menulist-emulator-ports` | PASS — valid isolated ports are admitted, defaults are preserved, invalid/out-of-range input is rejected, and production CSP behavior is unchanged |
 | `npm run test:use-menulist-state-boundary` | PASS — no-menu, missing-public-address, and ready states remain distinct with the canonical customer-link recovery route |
-| `npm run test:project-first-publish-state` | PASS — never-published projects are publishable and saved privately as `Draft`; unchanged published state remains disabled; later draft changes re-enable publication; saves after publication retain truthful `Live` state |
+| `npm run test:project-first-publish-state` | PASS — never-published projects are publishable and saved privately as `Draft`; unchanged published state remains disabled; a Timestamp-like draft newer than `lastPublishedAt` remains publishable after preview remount; saves after publication retain truthful `Live` state |
+| `npm run test:menulist-host-routing` | PASS after MLRC-419 — local subdomain and local custom-domain fixtures retain HTTP plus port 3000; preview and production host, redirect, tenant, robots, and sitemap contracts remain unchanged |
+| MLRC-419 focused ESLint and strict TypeScript | PASS — `src/constants/urls.ts` plus the host-routing regression pass zero-warning ESLint; `npx tsc --noEmit --incremental false` exits 0 on the current coordinated filesystem |
 | Local MenuList owner fixture TypeScript/diff gates | PASS at the MLRC-122 checkpoint — `npx tsc --noEmit --incremental false --pretty false` exited 0 after the MenuList fixes; final repository `git diff --check` result is recorded below. The later whole-worktree TypeScript rerun is separately recorded because a preserved concurrent Answerlattice edit changed after that checkpoint. |
 | Controlled isolated local owner lifecycle on current source | PASS — the real sign-in form authenticated the disposable reseller owner through Auth 9101/Firestore 8181/Storage 9201; Billing, empty/seeded Projects, malformed import validation, autosave, customer-link setup, truthful Draft→publish→Live state, Use MenuList, QR/share state, and warm public propagation all completed. The same tenant URL converged ₹80→₹82→₹80 after reversible owner edits. The shared/default emulator was not stopped or reconfigured. |
 | Connected Chrome owner MobileShell pass | PASS — a fresh authenticated 390×844 load exercised Today, Menu, Menu help, Share, More, Billing, Billing History, Brand Settings, Official Business Page, and Social Media inside the real MobileShell. All five bottom-navigation targets measured at least 63px high, all tested states retained zero horizontal overflow, menu search/empty recovery and category disclosure worked, the Today explanation dialog opened/closed, and Share exposed the exact tenant link plus QR dialog/copy/download controls without invoking native sharing or downloading. Billing rendered the reseller-labelled ₹0 Pro entitlement, 250 plan credits, zero pack credits, and truthful empty history. Reversible brand/location saves propagated to the correct public routes and were restored. Official-page draft switching/reset and clean-versus-dirty preview truth passed. Social-link malformed/valid normalization and Reset recovery passed without persistence. Twenty-six exact controls are current source-manifest-bound. |
@@ -2839,9 +3544,9 @@ explicitly authorized staging release.
 | `npm run verify:creative-editor-smoke` | PASS after MLRC-410 — 240 source-contract checks plus Fabric 7, raster image-source, and export boundaries passed. Current connected-Chrome evidence covers all twelve contextual/priority/detail Bold, Italic, Underline, and Strikethrough controls with accurate names and pressed state, 700/800 Bold deactivation, pointer-operable contextual Font size 25→27, exact Undo readback to both visible Size 25 fields, and the corrected gradient enable/angle/add-offset-remove lifecycle with clean baseline reload. Advanced shadow/filter/outline/border evidence and the native color-picker exclusions remain unchanged. |
 | `npm run verify:react-icons-exports` | PASS after MLRC-409 — 3,719 named imports across `src` resolved against the pinned `react-icons/*` runtime exports with no missing export or duplicate named binding. |
 | `npm run typecheck:answerlattice` | PASS after MLRC-409 — the product-scoped TypeScript project exited 0 with the preserved Early Access navigation destination and supported `LuUsers` icon. |
-| `npm run lint` | PASS after MLRC-409 — `eslint src --max-warnings=0` exited 0 with zero warnings on the complete current source tree, including the Creative Editor corrections, icon-export regression gate, and preserved sibling work. |
+| `npm run lint` | PASS after MLRC-409 and rechecked after the August 30 hosted-fixture evidence update — `eslint src --max-warnings=0` exited 0 with zero warnings on the complete current source tree, including the Creative Editor corrections, icon-export regression gate, and preserved sibling work. |
 | Focused MLRC-411 ESLint | PASS — `npx eslint src/components/mobile/components/MobileProjectSelectorSheet.tsx scripts/verification/verify-public-business-truth.js --max-warnings=0` exited 0. |
-| `npx tsc --noEmit --incremental false` | PASS after MLRC-412 — the complete current TypeScript snapshot exited 0 with canonical mobile default-state initialization, shared rich-text pressed-state semantics, the corrected navigation compile boundary, icon verifier, explicit Creative Editor gradient-stop preservation, and preserved sibling work present. Earlier MLRC-134/MLRC-167/MLRC-247 intermediate failures remain historical and closed. |
+| `npx tsc --noEmit --incremental false` | PASS after MLRC-412 and rechecked after the August 30 hosted-fixture evidence update — the complete current TypeScript snapshot exited 0 with canonical mobile default-state initialization, shared rich-text pressed-state semantics, the corrected navigation compile boundary, icon verifier, explicit Creative Editor gradient-stop preservation, and preserved sibling work present. Earlier MLRC-134/MLRC-167/MLRC-247 intermediate failures remain historical and closed. |
 | `git diff --check` | PASS after MLRC-412 for the complete current worktree snapshot; no whitespace error remains. |
 | Provider-free reseller contract chain | PASS after MLRC-138 — `test:reseller-client-record`, `test:reseller-confirm-payment-boundary`, `test:reseller-management-profile`, `test:reseller-monthly-summary`, `test:reseller-mutation-state`, `test:reseller-onboarding-boundary`, `test:reseller-onboarding-response`, `test:reseller-provider-subscription`, and `verify:reseller-dashboard-boundary` all exited 0. The transaction/rules bodies for onboarding billing, concurrent manual confirmation, owner claims, profile admission, and reseller privacy also passed against the already-running isolated Firestore 8181/Auth 9101 services under unique demo project IDs; the expected `PERMISSION_DENIED` was an asserted foreign-write denial. The chain covered the maintained reseller onboarding, authority, client, entitlement-response, idempotency, profile, summary, and internal confirmation contracts without invoking Razorpay, starting/stopping an emulator, or touching hosted Firebase data. The first direct emulator attempt exited 127 before loading code because shell `ts-node` was unresolved; rerunning with the pinned `./node_modules/.bin/ts-node` completed all assertions. |
 | Connected Chrome reseller pre-provider journey | PASS after MLRC-219 — one exact active reseller Auth/profile fixture completed sign-in, mobile and desktop zero-client dashboards, refresh, both mobile entry actions, required-field recovery, full business/billing input, Standard/yearly/two-location/three-month selection, truthful confirmation, back-navigation, and owner/reseller negative route isolation at 390×844 and 1512×807. Both provider-submit controls remained uninvoked. Exact Auth user plus `users`/`resellerProfiles` deletion and mode-600 credential-file removal passed with readback. |
@@ -2904,7 +3609,7 @@ explicitly authorized staging release.
 | `npm run test:tenant-store-scoped-rules` | PASS — Firebase demo emulator only |
 | `npm run verify:menulist-firebase-rules-predeploy` | PASS — generated MenuList artifact current; all 42 direct emulator suites passed; no cloud read/write/deploy |
 | Mobile owner source gates | PASS — MobileShell route map, Billing/Help recovery bypass, owner PWA lifecycle, mobile locale boundary, and owner locale boundary |
-| `npm run verify:customer-app-pwa` | PASS after MLRC-303 — Customer App static contract now requires the mobile Home screen name field in addition to the stable desktop language/name/install-link fields; browser-storage, icon Storage, icon commit, and executable PWA-settings projection assertions all pass. Omitted short name remains a no-op; explicit undefined/blank clears delete the override; localized values retain trimming/12-character bounds and boolean updates. Desktop and mobile readiness still require both enablement and a tenant install origin before reporting Active. |
+| `npm run verify:customer-app-pwa` | PASS current after MLRC-424 adjacent public retest — Customer App static verification plus browser-storage, icon Storage, and icon commit boundaries all pass. The branch dismissal action removed the real prompt and remained respected on fresh navigation; the native Install/manual-instructions action remains explicitly `NOT_RUN`. Omitted short name remains a no-op; explicit undefined/blank clears delete the override; localized values retain trimming/12-character bounds and boolean updates. Desktop and mobile readiness still require both enablement and a tenant install origin before reporting Active. |
 | `npm run verify:help-center-boundary` | PASS after MLRC-297 — MenuList root/catch-all/MobileShell routes use only the product-owned FAQ/contact surface; in-shell Back avoids route rewriting; legacy changelog links recover to Help home; the active mobile Release Notes control is forbidden; `/answerlattice/help` retains the governed shared application; runtime and ticket attachment suites pass. |
 | `npm run verify:mobile-shell-route-map` | PASS after MLRC-297 — direct Help paths retain MobileShell recovery, supported FAQ/contact sections keep their route mapping, legacy changelog recovers to Help home, and the removed Release Notes sub-screen is absent. |
 | `npm run test:csp-report-boundary` | PASS — bounded CSP report admission and sensitive-data handling |
@@ -2940,7 +3645,7 @@ explicitly authorized staging release.
 | MLRC-369 component-boundary validation | PASS — the current inventory verifier, focused zero-warning generator/verifier ESLint, complete `npx tsc --noEmit --incremental false --pretty false`, documentation link check, and `git diff --check` exited 0. All 264 controls across the 50 governed legacy Answerlattice component files remain outside MenuList. |
 | MLRC-370 auth-listener teardown validation | PASS — `npx ts-node -r tsconfig-paths/register scripts/verification/test-image-batch-client-boundary.ts`, `node scripts/verification/verify-auth-security-failure-matrix.js`, focused zero-warning ESLint, complete `npx tsc --noEmit --incremental false --pretty false`, current inventory, documentation link check, and `git diff --check` exited 0. Connected Chrome loaded the seeded Projects editor, confirmed logout, and reached sign-in with no listener notice or runtime issue before or after the one-second teardown window; the disposable owner then signed in again. |
 | MLRC-371 local-platform evidence validation | PASS for 143 recorded controls with cleanup complete — connected Chrome logged out, then exact emulator readback proved the Auth UID, users document, and mode-600 temporary password file absent; the regenerated inventory and independent verifier admit the current local platform/reseller controls with local result/status semantics and shared duplicate rejection. The pass covers tenant add/edit, reversible tenant/store drafts, archive cancellation, pricing required-field validation/cancel, reseller-management refresh/create validation/close, Owner Notification Monitor filters/refresh, platform Stores filtering/edit/add-draft cancellation, Platform Users tenant/store filtering/edit/active-draft cancellation, plus Asset Templates, Cost Posture, Entity Blocks, Scheduler/Extraction/Founder monitors, Platform Settings navigation, the corrected Business Health/Cost Posture platform handoffs, Ops and Messaging monitors, the named Website Enquiries filters, and the named Report Leads filters; the provider handoff remained uninvoked. |
-| MLRC-373 platform-monitor navigation validation | One operator command typo failed before execution: `npm run verify:platform-cost-posture` does not exist. The maintained `npm run verify:platform-cost-posture-boundary` then PASSed its source gate plus aggregation/client contract suites; `npm run verify:owner-business-health-boundary`, both focused ESLint runs, and the regenerated inventory PASSed. Connected Chrome reproduced both owner-only blank handoffs, then verified complete Cost Posture and Founder Monitor destinations after correction. |
+| MLRC-373 platform-monitor navigation validation | One shortened operator alias (without the required `-boundary` suffix) failed before execution because it does not exist. The maintained `npm run verify:platform-cost-posture-boundary` then PASSed its source gate plus aggregation/client contract suites; `npm run verify:owner-business-health-boundary`, both focused ESLint runs, and the regenerated inventory PASSed. Connected Chrome reproduced both owner-only blank handoffs, then verified complete Cost Posture and Founder Monitor destinations after correction. |
 | MLRC-374 Website Enquiries accessibility validation | PASS — `npm run verify:public-contact-boundary`, focused zero-warning ESLint, and the regenerated independent inventory exited 0. Connected Chrome exposed distinct type/topic names, completed Contact form and Demo filter states, restored defaults on reload, and retained the truthful zero-enquiry/manual-refresh state without a listener, write, reply, or external handoff. |
 | MLRC-375 Report Leads accessibility validation | PASS — `npm run verify:report-leads-boundary`, focused zero-warning ESLint, and the regenerated independent inventory exited 0. Connected Chrome exposed distinct status/tool names, completed Missing basics, retained the truthful empty All tools state, restored defaults on reload, and refreshed with the disclosed one authorization read plus zero report-lead reads. |
 | MLRC-376 Founder Monitor separation validation | PASS — `npm run verify:platform-founder-monitor-boundary` and all five adjacent Founder Monitor contract suites, `npm run verify:platform-notifications-boundary`, focused zero-warning ESLint, complete `npx tsc --noEmit --incremental false`, and the regenerated independent inventory exited 0. Connected Chrome reproduced the legacy Answerlattice support-route sync failure, then verified the corrected MenuList Platform Notifications destination plus adjacent Cost Posture, Business Health, and Stores handoffs. |
@@ -3036,8 +3741,92 @@ explicitly authorized staging release.
 | Latest documentation gates after MLRC-413 | PASS — the prior `npm run verify:doc-npm-scripts` result confirmed all documented npm commands resolve; the current `npm run docs:check-links` scanned 3,062 files and 5,368 internal links with zero broken links. The 64 disclosed filename-policy warnings remain non-failing and include the task-mandated certification filename plus pre-existing uppercase video working documents. |
 | Current-source recovery and inventory refresh after MLRC-415 | PASS — connected Chrome at 390×844 re-exercised the malformed messaging preview, malformed create-menu preview, direct platform-host `/client` isolation, malformed feedback project, and malformed screen-token boundaries. The refreshed source-manifest evidence then allowed `npm run audit:menulist-rc-inventory && node scripts/verification/verify-menulist-rc-inventory.js` to verify all 6,610 candidates and 28 Function exports. MenuList retains 4,283 candidates and 3,774 controls: 1,837 local browser interactions, 135 hosted interactions, 140 non-shipped classifications, 41 non-user-triggerable controls, and 1,621 honest `NOT_RUN` controls. |
 | MLRC-414/MLRC-415 focused lint and TypeScript | PASS — focused ESLint for the messaging preview, typed publish executor, extraction regression verifier, and inventory generator/verifier exited with zero warnings; `npx tsc --noEmit --incremental false --pretty false` exited 0 against the complete coordinated current snapshot. |
-| Current artifact integrity and documentation readback | PASS WITH DISCLOSED WARNINGS — runtime-evidence JSON parsed successfully; `git diff --check` reported no whitespace errors; `npm run docs:check-links` scanned 3,071 documents and 5,376 internal links with zero broken links. The same 64 non-failing filename-policy warnings remain, including the task-mandated `MENULIST_RC_CERTIFICATION.md` filename and pre-existing uppercase video working documents. |
-| Current complete lint and production build | PASS WITH DISCLOSED WARNINGS — `npm run lint` exited 0 with zero warnings across `src`; `npm run build` compiled successfully in 31.2 seconds, completed build TypeScript in 63 seconds, generated 453/453 static pages in 2.2 seconds, and bundled 55 service-worker precache entries. The existing 14 Sass `@import` deprecation warnings and absent optional Gemini-key diagnostics remain non-failing. This was a local build only: no Vercel request, staging push, deployment, or production mutation occurred. |
+| MLRC-416 sticky CTA footer recovery | PASS LOCALLY — connected Chrome reproduced the desktop overlap and incorrect `/create-menu` activation, then verified the corrected named privacy dialog at the same footer position and at 390×844. `npm run verify:website-sticky-cta-boundary`, focused zero-warning ESLint, strict TypeScript, runtime-evidence JSON parsing, `git diff --check`, and `npm run docs:check-links` pass. Four current-run before/after screenshots are retained under `__docs__/audits/screenshots/menulist-rc-2026-08-30/`. |
+| MLRC-417 platform owner-route recovery | PASS LOCALLY — connected Chrome reproduced a full authenticated platform shell with an empty `/dashboard` main region, then verified all 22 requested permission-governed owner paths settle to purpose-specific named unauthorized states; `/qrCode` canonicalizes to `/qr-code` and `Open help` reaches `/help-center`. `npm run test:session-store-context-boundary`, `node scripts/verification/verify-global-accessibility-boundary.js`, focused zero-warning ESLint, strict TypeScript, and `git diff --check` pass. The platform session retains zero owner permissions. The broader auth-security matrix remains fail-closed on unrelated concurrent service-worker diagnostic drift and is not represented as passing. |
+| Current provider-free local owner fixture refresh and browser journey | PASS — `npm run verify:menulist-local-browser-fixture` and the guarded `menulist:seed-local-browser-fixture` command created/read back the deterministic reseller-labelled amount-zero Pro owner on Auth 9099, Firestore 8080, and Storage 9199 with the seeded canonical menu. Connected Chrome then completed credential sign-in, owner-route rendering, first publication, later 80→81 republish, warm public propagation, and reversible 81→80 restoration. Credential material remains in the existing mode-600 `/tmp` file and was not logged. No Razorpay request, cloud Firebase operation, infrastructure deployment, staging push, Vercel build, Git mutation, or production action occurred. |
+| Current connected-Chrome reseller pre-provider continuation | PASS TO EXCLUDED PROVIDER BOUNDARY — the zero-client dashboard Refresh, both independent onboarding entries, complete required business/billing step, all three pricing tiers, monthly/yearly selection, location increment/reset, commitment selection, confirmation summary, Previous state restoration, and Back recovery were exercised. Twenty-five exact current controls moved from honest `NOT_RUN` to local-browser PASS; country switching, optional address line two/GSTIN, populated-client controls, every post-provider success control, and the provider-submit control remain uncredited. The confirmation truthfully identifies `Online (Razorpay recurring)` and `Create Recurring Payment Link`; that provider-submit control was not invoked. |
+| Current connected-Chrome reseller-management continuation | PASS LOCALLY — both zero-reseller Add entry points opened the governed drawer. An unsaved draft exercised Address, City, State, Postal Code, Country, capacity 20→7, Active off→on, and Internal Notes; Close plus reopen restored capacity 20, Active, and blank notes. Nine additional exact current controls moved from honest `NOT_RUN` to local-browser PASS. No profile/Auth creation, update, Firebase write, provider, staging, Vercel, or production action occurred. |
+| Current connected-Chrome Cost Posture continuation | PASS LOCALLY — Ops, Extraction, Business Health, and Founder Monitor reached their exact populated platform destinations; both rendered Cost Signals Open actions and all three rendered Guardrail Open actions reached their governed detail destinations. Five exact current controls moved from honest `NOT_RUN` to local-browser PASS after source-manifest regeneration. The bounded setup-required state retained zero observed provider calls and no mutation or external handoff occurred. |
+| Current connected-Chrome Help Centre continuation | PASS LOCALLY — Home, FAQ, and Contact rendered MenuList-owned content; all four FAQ disclosures expanded and recovered; both Home entries, FAQ/Contact cross-navigation, both Back to Home controls, Back to Dashboard denial, and Open help recovery reached their exact destinations. Eight current controls moved from honest `NOT_RUN` to local-browser PASS. The support mailto remained visible but uninvoked, so no external mail or provider action is represented as tested. |
+| Current homepage interaction delta | PASS LOCALLY — connected Chrome switched the private-preview example from photo to owned public link with exact `aria-pressed` and preview-copy changes, restored photo, opened and closed all six FAQ disclosures with truthful `aria-expanded` state, and activated the comparison, hero, private-preview, owner-proof, FAQ, and final conversion destinations to their exact route/H1. Current source-manifest evidence binds all ten scanner controls as local-browser PASS; no upload, URL read, form, Firebase, provider, or deployment action ran. |
+| Current shared website verifier after MLRC-416 | BLOCKED BY UNRELATED CONCURRENT SOURCE DRIFT — `node scripts/verification/verify-website-public-copy-boundary.js` stops on the Answerlattice product-job copy assertion `Answerlattice keeps customer answers grounded in approved knowledge.` The focused MenuList sticky-CTA verifier passes; the Answerlattice source was not changed or represented as passing by this MenuList correction. |
+| Current inventory refresh after Projects, Users, Roles, Locations, Transactions, App Settings, owner preview/defaults, public multi-location, Mobile More, Digital Screens, and Special Menus continuation | PASS — `npm run verify:menulist-rc-inventory` regenerated and verified all 6,610 candidates and 28 Function exports. The current matrix contains 4,280 MenuList candidates and 3,771 MenuList controls: 914 local interactions, 130 hosted interactions, 167 non-shipped classifications, 41 non-user-triggerable controls, and 2,546 honest `NOT_RUN` controls. The existing complete owner-preview/defaults, Official Page, policy, App Settings, multi-location, item-editor, Projects, Users, Roles, Locations, and Transactions evidence remains source-manifest bound. The explicit 390×844 pass filtered Mobile More, recovered from no matches, cleared the search, switched HQ→branch→HQ, opened Digital Screens guidance, refreshed TV state, recovered both screen-link copies through MLRC-428, and opened the exact Menu Board/Highlights routes. Special Menus then exercised a disposable name, presentation mode, lifecycle schedule, missing-end recovery, Cancel, and pristine reopen without creating a menu. No screen setting, slide, project/menu write, cloud Firebase write, Razorpay request, staging push, Vercel build, deployment, Git mutation, or production action occurred. |
+| MLRC-422 App Settings accessibility and interaction regression | PASS LOCALLY — the global accessibility source boundary, focused zero-warning ESLint, strict TypeScript, and the current 6,610-row inventory verifier exited 0. Connected Chrome now exposes one named native `Theme Colours: #3B82F6` control instead of unnamed library internals; all 21 credited App Settings actions recovered to baseline. The operating-system chooser and hosted current candidate remain pending. |
+| MLRC-423 public invalid-phone rendering regression | PASS LOCALLY — the phone boundary, complete public-business-truth suite, focused zero-warning ESLint, and strict TypeScript exited 0. After deterministic fixture restoration and acknowledged republish, authenticated emulator readback contained `lastPublishedAt` and menu version 1; a fresh tenant route rendered Published / Filter Coffee / ₹80 while omitting `0000000000`. Evidence: `09-public-menu-invalid-phone-hidden-local.jpg`. |
+| MLRC-424 multi-location customer-link regression | PASS LOCALLY — both location cards use the exact local-aware tenant origin, the headquarters card opens the published menu, and the branch card opens its truthful zero-menu Official Page. The complete Official Business Page boundary, host-routing suite, focused zero-warning ESLint, and strict TypeScript exited 0. Evidence: `10-public-multi-location-links-local.jpg`. |
+| MLRC-425 direct customer-editor deep-link regression | PASS LOCALLY — a hard navigation to the exact customer-editor URL now waits for the selected project, exposes explicit read recovery, and mounts the customer editor only with an active project. The complete project-editor boundary and nine adjacent data-flow suites, focused zero-warning ESLint, strict TypeScript, and `git diff --check` exited 0. |
+| MLRC-426 Official Page semantic no-op regression | PASS LOCALLY — exact restore passes for localized descriptor/known-for copy, blank WhatsApp, blank established year, and default-true Call visibility. Real draft states enabled Publish; restored states disabled it. The Official Business Page boundary, i18n projection, freshness timestamp, focused zero-warning ESLint, strict TypeScript, authenticated emulator no-write readback, and `git diff --check` exited 0. |
+| MLRC-427 mobile policy-editor cancellation regression | PASS LOCALLY — Privacy reproduced the retained cancelled draft and then reopened with empty persisted content after correction. Terms and Refund opened under their exact names; the shared baseline disclosure, local minimum-length Save recovery, and Back/Cancel recovery passed. The compliance-pages boundary, mobile cache boundary, focused zero-warning ESLint, strict TypeScript, and `git diff --check` exited 0. No API or Firebase mutation occurred. |
+| MLRC-428 Digital Screens Clipboard recovery | PASS LOCALLY — both mobile screen-link actions reproduced indefinite no-feedback behavior, then visibly acknowledged Copied after the shared 1.2-second fallback correction. `npm run verify:customer-app-pwa`, its three adjacent storage/commit suites, focused zero-warning ESLint, strict TypeScript, inventory verification, runtime-evidence JSON parsing, and `git diff --check` exited 0. Menu Board and Highlights opened their exact tokenized customer routes; no screen setting or backend state changed. |
+| MLRC-429/430 mobile Menu dialog accessibility regressions | PASS LOCALLY — connected Chrome at 390×844 now exposes `dialog "Find & Fix"` and names both active Drinks category-editor layers. Matching and unmatched search, Clear search, filter apply/clear, category expand/collapse, unchanged item/category editor entry/exit, Menu Check warning navigation, Manage & Control → Categories → Back, and explicit Close recovery passed without a persisted mutation. `npm run verify:global-accessibility-boundary`, focused zero-warning ESLint, and the current inventory verifier exited 0. |
+| MLRC-431 owner Share phone boundary and adjacent flow | PASS LOCALLY — connected Chrome at 390×844 now omits the invalid fixture phone from Official Business Page and Business Info while retaining valid customer links, address, and hours. All nine message Copy actions acknowledged; all four link QR/Open paths, four store/project/outlet QR paths, and three named guide paths passed. `npm run test:phone-number-boundary`, `npm run verify:communication-kit-boundary`, `npm run verify:public-business-truth`, focused zero-warning ESLint, strict TypeScript, runtime-evidence JSON parsing, `git diff --check`, and the 6,690-row inventory verifier exited 0. Native share, WhatsApp send, downloads inspection, live Razorpay, cloud Firebase, staging, Vercel, deployment, Git, and production remained untouched. |
+| MLRC-432/433 mobile Analytics guidance truth and recovery | PASS LOCALLY — connected Chrome at 390×844 traversed all six Setup Wizard steps, both guide tabs, all five tracking disclosures, three exact invalid-ID validations, reversible Approximate location, named close actions, wizard Back, clean Reset, and Back to More. The wizard now requires owner review and Save Changes without claiming an automatic save or healthy configuration; both guides now describe only supported MenuList/public-page activity and omit unsupported sales/e-commerce claims and the GA4 e-commerce resource. `npm run verify:public-business-truth`, focused zero-warning ESLint, strict TypeScript, runtime-evidence JSON parsing, `git diff --check`, and the 6,690-row inventory verifier exited 0. External provider/help links were not invoked in this current pass; no analytics write, Firebase operation, Razorpay, staging, Vercel, deployment, Git, or production action occurred. |
+| MLRC-434 mobile Brand Settings email boundary and adjacent flow | PASS LOCALLY — connected Chrome at 390×844 reproduced enabled Save with no validation for malformed Business Email, then verified exact business/contact-email rejection before any write after the correction. All 17 text fields, both selectors, paired-coordinate recovery, Reset, and About guidance passed reversibly. `npm run test:business-contact-email-boundary`, `npm run verify:public-business-truth`, focused zero-warning ESLint, strict TypeScript, runtime-evidence JSON parsing, `git diff --check`, and the current 6,692-row inventory verifier exited 0. The native logo chooser remained uninvoked; no Firebase, Storage, provider, Razorpay, staging, Vercel, deployment, Git, or production action occurred. |
+| MLRC-435/436 custom social-label and public-projection regression | PASS LOCALLY — connected Chrome at 390×844 reproduced the lower-cased custom platform label, verified exact invalid-name/link recovery, then exercised one reversible emulator add/remove lifecycle. A fresh cache-busted customer menu rendered `Visit our QA Platform` at the exact HTTPS URL after add and omitted it after removal while preserving Filter Coffee / ₹80. `npm run verify:official-business-page-boundary`, `npm run verify:public-business-truth`, focused zero-warning ESLint, strict TypeScript, feature-reader runtime, runtime-evidence JSON parsing, and the 6,692-row inventory verifier exited 0. The external destination was not opened; no provider, Razorpay, cloud Firebase, staging, Vercel, deployment, Git, or production action occurred. |
+| MLRC-437/438 mobile Feedback layout and bounded-save regression | PASS LOCALLY — connected Chrome reproduced the sticky action row covering `Make Email Required` and pointer activation doing nothing while keyboard Space still worked. After correction, the complete field and action row no longer overlap and pointer activation changes state. A reversible name-required save appeared on a fresh public Feedback page; the first pass also reproduced an acknowledged Firestore write trapped indefinitely in Saving. The explicit cache-request deadline then allowed the cleanup save to settle; fresh public and Admin readback restored the exact original defaults. `npm run test:public-client-cache-revalidation-deadline`, `npm run verify:guest-feedback-boundary`, `npm run verify:mobile-shell-route-map`, `npm run verify:public-business-truth`, focused zero-warning ESLint, strict TypeScript, runtime-evidence JSON parsing, and the 6,692-row inventory verifier exited 0. No provider, Razorpay, cloud Firebase, staging, Vercel, deployment, Git, or production action occurred. |
+| MLRC-439 NotificationOS saved-state regression | PASS LOCALLY — connected Chrome at 390×844 reproduced the unchanged combined default with two corrective warnings, then verified the corrected single calm eligible-channel explanation with Save still disabled. About, Preferred available, Email first, WhatsApp first, Back discard, and exact baseline reopen passed without a preference write. NotificationOS source/routing tests, isolated-port Firestore Rules, focused zero-warning ESLint, feature-reader runtime, JSON parsing, `git diff --check`, and the 6,692-row inventory verifier passed. No Firebase data mutation, provider, Razorpay, cloud Firebase, staging, Vercel, deployment, Git, or production action occurred. |
+| MLRC-440/441 profile phone-truth and no-op regression | PASS LOCALLY — connected Chrome at 390×844 reproduced the dial-code-only `+91` profile label and enabled unchanged Save, then verified `No phone added` and disabled unchanged Save after correction. About Profile, Edit profile, Cancel, Account access, empty password recovery, and Back passed without profile/password persistence. `npm run test:phone-number-boundary`, `npm run test:profile-update-noop-boundary`, focused zero-warning ESLint, feature-reader runtime, and the 6,692-row inventory verifier passed. No API request, Firebase mutation, provider, Razorpay, cloud Firebase, staging, Vercel, deployment, Git, or production action occurred. |
+| MLRC-442 External Menu Sync invalid-draft recovery | PASS LOCALLY — connected Chrome at 390×844 reproduced the unsafe URL with an enabled Save and no persistent recovery, then verified the associated HTTPS alert plus disabled Save/Test after correction. A valid HTTPS-shaped draft cleared the alert and enabled Save; Reset restored the exact off/empty fixture. About and Who should use this? open/close paths passed. `npm run verify:pos-sync-boundary`, `npm run test:pos-sync-boundaries`, focused zero-warning ESLint, strict TypeScript, feature-reader runtime, runtime-evidence JSON parsing, and the 6,692-row inventory verifier passed. No secret, API request, store write, provider test/delivery, cloud Firebase, Razorpay, staging, Vercel, deployment, Git, or production action occurred. |
+| Connected Chrome mobile Transactions empty/filter recovery | PASS LOCALLY — the 390×844 owner surface rendered the truthful empty state; the named Filter transactions dialog applied Business copy with pressed state, Reset restored the unfiltered state, Close discarded a clean draft, Refresh settled, and About opened/closed. Connected Chrome could not set the native date-control value, so native picker and reversed-date interaction remain honestly uncredited; source tracing confirms both-dates and end-after-start guards execute before applying filters. The single Refresh issued only the intended bounded emulator history query. No transaction, credit, write, provider, cloud Firebase, Razorpay, staging, Vercel, deployment, Git, or production action occurred. |
+| Current inventory refresh after mobile Menu, Analytics, Brand Settings, Social Media, Feedback Settings, Notifications, External Menu Sync, and Transactions control discovery | PASS — the generator inventories custom SearchBar, FloatingBubble, Popup, Tabs, Collapse, and the current source-bound mobile settings/customer-link controls rather than omitting them. `npm run verify:menulist-rc-inventory` regenerated and verified 6,692 total candidates and 28 Function exports. Current classification contains 4,362 MenuList candidates and 3,853 MenuList controls: 1,001 local interactions, 130 hosted interactions, 141 non-shipped classifications, 41 non-user-triggerable controls, and 2,540 honest `NOT_RUN` controls. The 334-flag runtime registry passed against 1,201 reader locations. |
+| Current Time Slots validation and lifecycle continuation | PASS LOCALLY — connected Chrome at 390×844 verified first-use, About, required-state locking, persistent case-insensitive duplicate recovery, create, edit/cascade, destructive confirmation, delete/cascade, and exact cleanup. `test:time-slot-data-flow`, `verify:working-hours-boundary`, public-business-truth, tenant-safety, focused zero-warning ESLint, strict TypeScript, valid runtime evidence, and the 6,692-row inventory passed. The current matrix now contains 1,020 local interactions and 2,521 honest `NOT_RUN` controls after the adjacent Help and Menu Manager continuation. Native time-picker manipulation and desktop visual interaction remain uncredited. |
+| MLRC-444 Mobile Billing help continuation | PASS LOCALLY — connected Chrome at 390×844 verified the provider-free reseller entitlement, HQ→branch→HQ inherited scope, Billing History, About, and the corrected support action. `Need billing help?` opens the existing MenuList Contact Us screen inside MobileShell with bottom navigation retained and no route-synchronization loop. Billing entitlement, Answerlattice subscription-read isolation, MobileShell route-map, focused zero-warning ESLint, strict TypeScript, current runtime-evidence JSON, `git diff --check`, and the 6,692-row inventory pass. No payment, Razorpay, provider, Firebase, staging, Vercel, deployment, Git, or production action occurred. |
+| MLRC-445 Mobile Help internal navigation | PASS LOCALLY — connected Chrome at 390×844 first reproduced Contact Us → Read FAQ leaving MobileShell for the desktop owner layout. After correction, Contact→FAQ, one FAQ disclosure, FAQ→Contact, Contact→Help home, and Help home→More all retained the shell, bottom navigation, and canonical hash state. The MobileShell route-map verifier, feature-flag runtime, focused zero-warning ESLint, strict TypeScript, current runtime-evidence JSON, `git diff --check`, and the 6,692-row inventory pass. The external mail action was not invoked; no Firebase, provider, Razorpay, staging, Vercel, deployment, Git, or production action occurred. |
+| Connected Chrome provider-free Menu Manager continuation | PASS LOCALLY — the selected default menu rendered its truthful active state and missing-photo attention card. Work on selected Item → Filter Coffee and confirmed the context; a disposable typed draft enabled Send and Clear restored the empty disabled composer. Suggestions exposed every prepared group, `Filter Coffee 90` drafted without sending, and the missing-photo action drafted `Generate image for Filter Coffee`; both drafts were discarded. Six additional current controls moved from `NOT_RUN` to exact local interaction evidence. No Send, AI/provider request, proposal, credit operation, Firestore write, Razorpay action, hosted request, staging push, Vercel build, deployment, Git, or production action occurred. |
+| MLRC-446 Menu Manager command-length recovery | PASS LOCALLY — connected Chrome at 390×844 selected Item → Filter Coffee, entered the raw 1,000-character UI limit, and verified the context-composed command was rejected locally with a persistent exact-limit alert and disabled Send. A short replacement cleared the alert and enabled Send; clearing text and context restored the exact baseline. The complete Menu Manager verifier and its operation, session, inbox JSON, proposal, project, model-route, patch, domain-conversation, API-actor, and presentation suites all pass, together with focused zero-warning ESLint, strict TypeScript, feature-flag runtime, runtime-evidence JSON, `git diff --check`, and the 6,692-row inventory. No command/request, rate-limit operation, provider, AI, credit, Firestore, Razorpay, hosted, staging, Vercel, deployment, Git, or production action occurred during browser verification. |
+| MLRC-447 Temporary Status invalid-draft recovery | PASS LOCALLY — connected Chrome at 390×844 verified the dedicated Temporary Status and Today Custom-message paths, and 1512×807 verified the desktop Business Settings path. Empty copy produced a persistent field-associated alert and disabled Set/Show; valid `QA validation only` copy cleared recovery and enabled the action. Desktop message and expiry fields exposed explicit accessible names. All drafts were reset without publication. The focused Temporary Status suite, public-business-truth suite, zero-warning scoped ESLint, and strict TypeScript pass. No status request, Firestore write, public-truth/cache mutation, provider, Razorpay, staging, Vercel, deployment, Git, or production action occurred. Hosted current-candidate retest remains pending. |
+| MLRC-459 printable style-preference trust boundary and lifecycle | PASS LOCALLY — invalid dotted, slash, and reserved project identifiers now fail before the dynamic Firestore field path is constructed. Connected Chrome verified menu default, business default, clear-to-business-default, reload persistence, and deterministic fixture cleanup. The focused preference test, printable-template verifier, zero-warning scoped ESLint, and strict TypeScript pass. No cloud Firebase, provider, Razorpay, staging, Vercel, deployment, Git, or production action occurred. |
+| MLRC-460 Assets prerequisite-state recovery | PASS LOCALLY — connected Chrome reproduced a seeded menu being mislabeled as no menu when its customer address was absent, then verified the truthful `Set up your customer link` recovery and exact Domain-settings focus. Configured re-seed restored all 15 asset types, nine styles, and Modern Calm Recommended. The browser-SDK fixture readback, printable verifier, contextual-state illustration gate, zero-warning scoped ESLint, strict TypeScript, and inventory verifier pass. Mobile missing-link interaction and hosted current-candidate retest remain pending. |
+| Current inventory after MLRC-472 and the coordinated printable-theme continuation | PASS — 6,711 rows, including 5,710 user-control candidates, 335 feature flags, and 28 Function exports. MenuList remains 4,382 candidates and 3,872 controls: 1,080 local-browser interactions, 131 hosted interactions, 141 non-shipped classifications, 41 non-user-triggerable controls, and 2,479 honest `NOT_RUN` controls. Current Header, Footer, public feature-page, Printable Assets, and Mobile Share evidence is bound to current source identities. The feature registry passes with 335 declarations, 290 runtime readers, 45 dormant declarations, and 1,207 reader locations. |
+| Pre-artwork coordination checkpoint | PASS — `npx tsc --noEmit --incremental false`, `npm run lint`, `verify:printable-asset-templates`, `test:printable-asset-style-preferences`, `verify:website-public-copy-boundary`, the MenuList AssetOS runtime/audit/review chain, the then-current inventory verifier, runtime-evidence JSON use, and `git diff --check` exited zero. This row is retained as historical evidence only; a separately resumed local artwork-helper task subsequently changed bounded render helpers and required the current-source pass below. |
+| Stable Craft Kitchen artwork and current-source pass | PASS — after the artwork task reported its exact stable boundary at 2026-08-30 14:05:17 IST, the two owner UI files retained their agreed hashes; the artwork-placement test, `verify:printable-asset-templates`, complete `verify:menu-card-export` downstream chain, `certify:asset-factory-menulist`, `verify:auth-security-failure-matrix`, current feature-flag runtime registry, and the 6,711-row inventory verifier all exited zero. Connected local Chrome signed into the amount-zero reseller fixture with padded email/password, opened Desktop Assets and forced MobileShell Assets, selected Craft Kitchen, and opened the named card/poster preview surfaces. Original-resolution poster, single-card, table-tent, counter-sticker, and three-page print-menu fixtures retained natural artwork aspect ratios, deliberate edge bleed, legibility, and no visible compression. No download, provider, hosted, cloud Firebase, Razorpay, staging, Vercel, Git, or production action occurred. Full TypeScript/lint/diff/build gates remain separately recorded below and must be rerun after any later source movement. |
+| Earlier Craft Kitchen four-page menu-render checkpoint (superseded by the frozen five-page result below) | PASS AT CHECKPOINT — the bounded 2026-08-30 14:59:41 IST renderer/style/verifier source hashes matched that reported boundary (`7173b4d3…`, `490fcbc7…`, `a093de9e…`), while the two RC-owned owner-screen hashes remained unchanged. The complete Menu Card downstream chain, printable-template gate, artwork placement test, style-preference test, MenuList AssetOS certification, feature-reader registry, 6,711-row inventory, strict TypeScript, full zero-warning `src` lint, and `git diff --check` exited zero. The then-current four-page A4 Craft PDF hash was `b14af30a…`; all four original-resolution pages were rendered and inspected. A later bounded visual pass deliberately replaced this artifact and is the current candidate evidence below; this historical checkpoint is not represented as current source. |
+| Craft Kitchen five-page menu-render checkpoint (invalidated by later concurrent source movement) | PASS AT CHECKPOINT — the renderer, fixture, verifier, and background-art hashes matched the task's then-declared frozen boundary (`3c296405…`, `8f56c4b7…`, `1947ee98…`, `be4e46e4…`). The desktop and mobile owner-screen hashes remained unchanged (`5a744095…`, `5ec2ac6c…`). The complete Menu Card downstream chain, printable-template gate, artwork-placement test, style-preference test, 6,711-row inventory verifier, and `git diff --check` passed against those exact bytes. The A4 Craft PDF was five pages, hash `fdd23e9a…`, 4,553,969 bytes, PDF 1.3, unencrypted, with no form or JavaScript; all pages passed the recorded visual review. At 15:47 IST the concurrent task moved `renderPdf.ts` and `verify-menu-card-export.js` again after declaring the boundary frozen, so this row is preserved only as checkpoint evidence and is not represented as the current-source result. No provider, hosted, cloud Firebase, Razorpay, staging, Vercel, Git, or production action occurred. |
+| Botanical Heritage and cross-theme price-consistency checkpoint (superseded by later concurrent source movement) | PASS AT CHECKPOINT — the renderer, visual-fixture generator, and verifier hashes matched the reported idle boundary: `71d1d370…`, `81ca95ae…`, and `cb738792…`. Generated output hashes were Botanical `ffad35d3…`, Craft `18021a02…`, Classic `8829f829…`, Premium `1db70e8c…`, and Compact `3694f233…`. Programmatic inspection confirmed one governed bold price size per theme and identical tagged/untagged prices; the four-page A4 Botanical artifact passed the recorded visual and structural review. At 16:40–16:41 IST the separately active user-directed task moved the renderer and visual-fixture generator again, so this evidence is retained only as a checkpoint and is not represented as current source. No provider, hosted, cloud Firebase, Razorpay, staging, Vercel, Git, or production action occurred. |
+| Current local FAQ interaction pass | PASS FOR EXECUTED CONTROLS — all 16 FAQ disclosures completed false→true→false `aria-expanded` transitions. Start menu preview reached `/create-menu`; View pricing reached `/pricing`. Three exact source controls are bound to the current FAQ source manifest. No form, credential, provider, Firebase, staging, deployment, Git, or production action occurred. |
+| Current local industry-page interaction pass | PASS FOR EXECUTED CONTROLS — every main-region action on restaurants, cafes-bakeries, takeaway-cloud-kitchens, multi-location-food-businesses, salons-spas, service-list-businesses, and local-service-businesses was activated: 42 total interactions. Primary/final CTAs reached `/create-menu`; secondary/resource links reached their intended same-origin routes and expected headings. Preparatory WhatsApp destinations truthfully rendered their being-prepared recovery. Four shared source controls are bound to the current component/content manifest. No provider handoff occurred. |
+| Current local informational-page CTA pass | PASS FOR EXECUTED CONTROLS — About, both How It Works CTAs, Trust and Security, Refund Policy, Terms, Developers, and Get Started were exercised. Their destinations rendered `/create-menu`, `/pricing`, `/contact`, or `/signin?callbackUrl=%2Fdashboard` as intended; the sign-in destination showed `Welcome back` and no credential was entered. Ten exact source controls, including both shared hero actions, are bound to the current eight-file manifest. External `mailto:` controls remain deliberately `NOT_RUN`. |
+| Current local WhatsApp information-page pass | PASS FOR EXECUTED CONTROLS — both page-owned Start with a photo or link actions reached `/create-menu`, See import flow reached `/features/menu-import`, and See plans reached `/pricing`; every destination rendered its current route-specific heading. The source-manifest-bound page remained truthful that WhatsApp intake is being prepared. Four exact controls pass locally; no WhatsApp/provider handoff was invoked. |
+| Current local Resources article pass | PASS FOR EXECUTED CONTROLS — the menu-engineering article's first table-of-contents link reached `#meaning`, Copy checklist exposed the accessible `Checklist copied` acknowledgement, and the first related-resource link reached `/resources/menu-engineering-worksheet` with its expected heading. Three exact controls are bound to the current three-file resource manifest. No external handoff or data mutation occurred. |
+| Current RC inventory guard after MLRC-473 | PASS — regeneration and the independent verifier retain 6,711 rows and 3,872 MenuList controls. The reviewed printable dependency delta restores the source-manifest-bound owner evidence without changing its control sources; the two owner UI files remain byte-identical and all 14 current PDF outputs passed the complete visual/structural retest. Current counts are 1,104 local, 131 hosted, 141 non-shipped, 41 non-user-triggerable, and 2,455 `NOT_RUN`. Runtime-evidence JSON, focused inventory-tool ESLint, and scoped `git diff --check` pass. |
+| Current local unauthenticated website, pricing, sign-in, and recovery pass | PASS FOR EXECUTED CONTROLS — connected Chrome against the running local candidate exercised the home-page preview-method switch in both directions, the private-preview CTA, `/create-menu` unauthenticated admission, phone-input disabled/validation states, the pricing recovery link, yearly/monthly and INR/USD controls, and Pro plan selection. Plan selection preserved exact currency, interval, plan, quantity, and B2C callback state into `/signin` without invoking Razorpay. The email identifier step visibly trimmed surrounding whitespace; Forgot preserved the full pricing callback, blank and malformed reset inputs recovered with inline validation without sending email, and Return to sign in restored the callback. The source-defined Sign up→pricing transition also matched the maintained inventory contract. No real credential, SMS, reset email, provider, Razorpay, Firebase cloud mutation, deployment, Git, staging, Vercel, or production action occurred. Authenticated disposable-fixture continuation remains gated on action-time credential-entry confirmation. |
+| Connected Chrome mobile Special Menus draft recovery | PASS LOCALLY at 390×844 — the empty state opened the named creation sheet; a disposable name, Replace→overlay mode, immediate→scheduled→immediate lifecycle, and missing end date were exercised. Create recovered with `Set both start and end time`; Cancel discarded the draft; reopening restored blank name, Replace, immediate activation, and fresh governed schedule defaults. The one-option Base Menu and provider-adjacent Translate action remain uncredited. No project/menu or Firebase mutation occurred. |
+| `npm run test:profile-update-noop-boundary` | PASS after MLRC-420 — unchanged normalized profile fields produce an acknowledged zero-write result, while real changed fields remain projected for the scoped server update. |
+| `npm run test:menu-kit-url-boundary` | PASS after MLRC-421 in development and production modes — exact loopback HTTP is admitted only outside production; hosted URLs remain HTTPS-only and hostile suffixes/credentials stay rejected. |
+| Current strict TypeScript and full lint through MLRC-473 | PASS — `npx tsc --noEmit --incremental false --pretty false` and `npm run lint` exited 0 against the corrected 14-theme renderer, printable-price regression, current inventory evidence, and website navigation contract. |
+| Current artifact integrity and documentation readback | PASS WITH DISCLOSED WARNINGS — runtime-evidence JSON parsed successfully; `git diff --check` reported no whitespace errors; `npm run docs:check-links` scanned 3,072 documents and 5,376 internal links with zero broken links. The same 64 non-failing filename-policy warnings remain, including the task-mandated `MENULIST_RC_CERTIFICATION.md` filename and pre-existing uppercase video working documents. |
+| Earlier complete TypeScript, lint, diff, and production-build checkpoint | PASS AT CHECKPOINT — the isolated build generated 454/454 static pages and 55 service-worker precache entries, while strict TypeScript, zero-warning `src` lint, and `git diff --check` exited 0. Later user-directed Craft Kitchen readability work moved the renderer, so this row is historical only; the exact frozen-source build result is recorded below. The existing 14 Sass `@import` deprecation warnings and absent optional Gemini-key diagnostics remain non-failing. No active dev-server directory, Vercel request, staging push, deployment, Git mutation, cloud Firebase, or production state was touched. |
+| Final checkpoint-complete `npm run certify:menulist-local` after MLRC-470 | PASS WITH ONE EXTERNAL BLOCKER — 166/167 checks passed across exact fail-closed checkpoint resumes. `verify:upstash-readiness` alone was correctly classified `BLOCKED_EXTERNAL` because its URL/token are unavailable in this shell. The gate executed all 163 current child verifier scripts, explicitly excluded 48 sibling-product scripts, regenerated and verified the 6,711-row inventory, passed the 43-script Firebase Rules predeploy, Functions builds, Firestore/Storage emulators, auth/tenant/store boundaries, owner/public truth, cache, mobile shell, multi-location, reseller, simulated Razorpay lifecycle, docs links, strict TypeScript, zero-warning lint, and `git diff --check`. The first aggregate segment exposed the stale 535-vs-536 cost-closeout count; after MLRC-469 and its standalone pass, the exact resume reached strict TypeScript and exposed the jsPDF constructor declaration mismatch; after MLRC-470, focused Menu Card regressions and strict TypeScript passed, and the final aggregate segment passed typecheck, lint, and diff. No cloud write, Git mutation, Firebase/Vercel deployment, live provider action, or production action occurred. |
+| Refreshed post-artwork checkpoint `npm run certify:menulist-local -- --start-at verify:menu-card-export` | PASS WITH ONE EXTERNAL BLOCKER — the uninterrupted current-source segment completed 114/115 registered checks and all 163 child verifier scripts. It passed the complete Menu Card downstream chain, 43-script root Firebase Rules predeploy, Firestore/Storage emulators, Functions builds, reseller and mocked subscription boundaries, public-truth/cache checks, tenant/store/role controls, mobile/PWA gates, docs links, strict TypeScript, zero-warning `src` lint, and `git diff --check`. `verify:upstash-readiness` alone remained correctly classified `BLOCKED_EXTERNAL` because this shell has no URL/token. The runner explicitly excluded 48 sibling-product scripts and made no cloud, Git, Firebase-deployment, Vercel, live-provider, staging, or production mutation. |
+| Isolated production-build checkpoint before the 15:47 IST renderer movement | PASS AT CHECKPOINT, NOT CURRENT — `NEXT_DIST_DIR=.next-rc-cert-final npm run build` exited 0 locally under Next.js 16.3.0 against the task's then-declared frozen hashes. Compilation completed in 35.9 seconds, build TypeScript completed in 96 seconds, 454/454 static pages were generated, and Serwist bundled 55 precache entries. The existing 14 Sass `@import` deprecation warnings and absent optional Gemini-key diagnostics remained non-failing. Next's temporary include entries were removed and the 1.3 GB isolated directory was moved out of the workspace. The subsequent concurrent movement of `renderPdf.ts` and `verify-menu-card-export.js` means a current-source build must be rerun after a genuinely stable boundary; this checkpoint is not claimed as final. No active dev-server directory, Vercel request, staging push, deployment, cloud Firebase, Git ref, or production state was touched. |
+| Isolated production-build checkpoint after MLRC-472 | PASS AT CHECKPOINT, NOT CURRENT — `NEXT_DIST_DIR=.next-rc-cert-final-current npm run build` exited 0 under Next.js 16.3.0 against the then-current artwork hashes and corrected website Header. Compilation completed in 21.2 seconds, build TypeScript completed in 54 seconds, 454/454 static pages were generated, and Serwist bundled 55 precache entries. The existing 14 Sass `@import` deprecation warnings and absent optional Gemini-key diagnostics remained non-failing. MLRC-473 subsequently changed the shared renderer, so an exact-current isolated build remains required after its coordinated source task is formally idle. No active dev-server directory, Vercel request, staging push, deployment, cloud Firebase, Git ref, or production state was touched. |
+| Isolated production-build checkpoint after MLRC-473 | PASS AT CHECKPOINT, NOT CURRENT — after the coordinated printable-theme task declared its then-idle boundary, `NEXT_DIST_DIR=.next-rc-cert-mlrc473 npm run build` exited 0 under Next.js 16.3.0 against renderer/fixture/verifier hashes `6586e2c9…`, `46e07e60…`, and `bea6722a…`. Compilation completed in 23.3 seconds, build TypeScript completed in 71 seconds, all 454/454 static pages were generated, and the existing 14 Sass `@import` deprecation warnings plus absent optional Gemini-key diagnostics remained non-failing. Next's temporary generated-type references were restored to the shared `.next` paths, the isolated build directory was moved recoverably to `/Users/danny/.Trash/menulist-next-rc-cert-mlrc473-20260830-1704`, and exact post-cleanup hashes plus `git diff --check` confirmed no build residue in the workspace. A later direct user instruction intentionally reopened the parent-theme/style-preference architecture and its desktop/mobile owner surfaces, so this build is preserved only as checkpoint evidence and a new current-source build is required after that task stabilizes. No active dev server, Vercel request, staging push, deployment, cloud Firebase, Git ref, or production state was touched. |
+| Isolated production build after MLRC-474 | PASS AT CHECKPOINT, NOT CURRENT — `NEXT_DIST_DIR=.next-rc-cert-mlrc474 npm run build` exited 0 under Next.js 16.3.0 after the parent-theme task's two-pass stable boundary. Compilation completed in 22.9 seconds, build TypeScript completed in 46 seconds, all 454/454 static pages were generated in 2.3 seconds, and Serwist bundled 55 precache entries. The existing 14 Sass `@import` deprecation warnings and absent optional Gemini-key diagnostics remained non-failing. Next's temporary `next-env.d.ts` and `tsconfig.json` references were restored through a scoped patch, the isolated output was moved recoverably to `/Users/danny/.Trash/menulist-next-rc-cert-mlrc474-20260830-1759`, and scoped diff integrity confirmed no build residue. MLRC-475 subsequently changed the shared renderer, so this remains historical checkpoint evidence and the current candidate still requires one final isolated build. No active dev server, Vercel request, staging push, deployment, cloud Firebase, Git ref, or production state was touched. |
+| Isolated production build after MLRC-475 | PASS AT CHECKPOINT, NOT CURRENT — `NEXT_DIST_DIR=.next-rc-cert-mlrc475 npm run build` exited 0 under Next.js 16.3.0 on the frozen cover-centering renderer hashes. Compilation completed in 23.4 seconds, build TypeScript completed in 39.9 seconds, all 454/454 static pages were generated in 2.3 seconds, and Serwist bundled 55 precache entries. The existing 14 Sass `@import` deprecation warnings and absent optional Gemini-key diagnostics remained non-failing. Next's temporary generated-type references were restored to `.next`, the isolated output was moved recoverably to `/Users/danny/.Trash/menulist-next-rc-cert-mlrc475-20260830-1817`, and exact readback confirmed `next-env.d.ts` and `tsconfig.json` are restored with no build residue. A later user instruction reopened the printable catalog/renderer for salon/spa themes, so this is preserved only as checkpoint evidence. No active dev server, Vercel request, staging push, deployment, cloud Firebase, Git ref, or production state was touched. |
+| Post-MLRC-473 aggregate replay from `verify:menu-card-export` | INTERRUPTED BY INTENTIONAL SOURCE REOPEN — every completed gate passed through Menu Card and shared-print contracts, menu extraction/recovery emulators, project mutation boundaries, tenant safety, mocked commercial/reseller and Razorpay lifecycle boundaries, AI accounting, and the in-progress 43-script Firebase Rules predeploy sequence. During that local emulator-only run, a separate user instruction intentionally reopened the parent-theme/style-preference architecture and its desktop/mobile owner surfaces. The aggregate was stopped with a clean emulator shutdown rather than spending further compute against a moving candidate. These successful segments remain checkpoint evidence only and are not represented as a completed current-source aggregate. No cloud credential, live provider, deployment, Git, staging, Vercel, or production action occurred. |
+| Stable parent-theme implementation boundary | PASS AT SOURCE/OUTPUT BOUNDARY — at 2026-08-30T17:53:44+05:30 the bounded task reported two matching SHA-256 passes over all 76 scoped files separated by two seconds and no remaining renderer/validator process. `verify:menu-card-export`, `verify:printable-asset-templates`, `test:printable-asset-style-preferences`, `test:menu-kit-url-boundary`, the printable artwork placement test, strict TypeScript, scoped zero-warning ESLint, and scoped diff-check all passed on that exact snapshot. The RC pass independently regenerated and verified the 6,705-row inventory. Superseded per-asset desktop/mobile interaction evidence was removed; replacement one-parent-theme controls remain `NOT_RUN` pending fresh authenticated browser interaction. No cloud Firebase, payment/provider, Razorpay, staging, Vercel, Git, deployment, or production action occurred. |
+| Current RC inventory after MLRC-474 | PASS — `npm run verify:menulist-rc-inventory` regenerated and verified 6,705 rows and 28 Function exports. MenuList contains 4,376 candidates and 3,866 controls: 1,101 local-browser interactions, 127 hosted interactions, 141 non-shipped classifications, 41 non-user-triggerable controls, and 2,456 honest `NOT_RUN` controls. The active local-mobile evidence manifest is `65f08285f2aa945d3e5adedfd45b20305057435d42cb30e51d84fdc57985a7b6`; the retired style-navigation rows were not transferred to replacement controls. |
+| First post-MLRC-474 full local aggregate attempt | FAILED CLOSED AT CHECK 6/167 — the first five registered checks passed: account/tenant lifecycle, agent readiness, AI accounting, AI Menu Manager, and the complete analytics-write boundary including three emulator lifecycles. `certify:asset-factory-menulist` then correctly rejected four stale reviewed-source fingerprints because `MobileShareScreen.tsx` and `PrintableAssetTemplatesRoute.tsx` changed for the parent-theme UI. No fingerprint was auto-approved without a current owner-browser review. A concurrent user-reported cover-subtitle alignment defect then reopened the shared renderer, so no further aggregate work was attempted against the moving snapshot. No cloud Firebase, provider, Razorpay, staging, Vercel, Git, deployment, or production action occurred. |
+| MLRC-475 cover-subtitle rendered-output retest | PASS CURRENT LOCAL SNAPSHOT — the owning task froze renderer/shared-test/verifier hashes `506d345d…`, `e92a63cb…`, and `60b93a77…`; the RC pass independently matched those bytes, reran the shared geometry regression and complete Menu Card downstream chain, rendered all 14 first pages, visually reviewed one contact sheet, and extracted the exact first-page subtitle/business-name centers for all 11 full-page themes. Every subtitle is within the one-point contract. No download handoff, cloud Firebase, provider, Razorpay, staging, Vercel, Git, deployment, or production action occurred. |
+| MLRC-476 Firebase cost-closeout reconciliation | INITIAL FAIL, THEN PASS — the current scanner measured 537 runtime files after the parent-theme preference module, while maintained docs retained 536/533. Both current statements now report 537; all risk-band totals remain unchanged. The source verifier, two Functions builds, 125 static checks, and both Firestore lease emulator suites pass. No cloud Firebase, deployment, or production state changed. |
+| Post-MLRC-476 downstream aggregate continuation | INTERRUPTED BY INTENTIONAL SOURCE REOPEN — 30 gates from `verify:async-data-flow-boundaries` through `verify:env-targets` passed before the exact-count cost gate exposed and closed MLRC-476. The resumed sequence then passed Functions analytics persistence, compiled test paths, Functions deploy preflight, Gemini migration, global accessibility/failure/localization, growth intelligence, guest feedback, health/help/internal-ops, Menu Card, menu correctness/design/export, and the completed Menu Extraction source and early emulator segments through messaging fix-request. A new user instruction then reopened the printable catalog, recommendation, renderer, artwork, UI, docs, and verifiers for salon/spa themes. The active emulator received SIGINT and shut down cleanly; the in-progress owner-claim segment is not represented as passed. All completed results are checkpoint evidence only until the new scope stabilizes. No cloud Firebase, provider, Razorpay, staging, Vercel, Git, deployment, or production action occurred. |
+| MLRC-477 salon/spa frozen-boundary retest | PASS AT SOURCE/OUTPUT BOUNDARY — the owning task declared an exact idle boundary at 2026-08-30 19:10:27 IST. The RC pass independently matched the declared hashes, observed no remaining scoped process, reran printable-template, parent-theme preference, artwork-placement and complete Menu Card downstream suites, passed strict TypeScript, focused zero-warning ESLint and scoped diff-check, and reviewed the three full PDF sets plus all three 13-asset compact sets. A contact-sheet thumbnail initially made Mineral Sanctuary QR blocks appear clipped; original-resolution source fixtures proved complete readable QR geometry, so no false defect was recorded. The exact-type registry admits Salon, Makeup Studio, Spa and Spa Resort while retaining conservative fallback for Pet Grooming Salon. No Firebase read/write, provider, Razorpay, staging, Vercel, Git, deployment or production action occurred. |
+| Post-MLRC-477 inventory refresh | FAIL CLOSED AT AUTHENTICATED OWNER EVIDENCE — `test:menulist-feature-flag-runtime` passed with 335 declarations, 290 runtime-reader flags, 45 dormant flags, 1,203 reader locations and source manifest `21498588…`; the runtime-evidence entry was updated to those exact results. The regenerated 6,705-row matrix then correctly rejected stale authenticated-owner control identity `src/components/templates/main-app/useMenuList/index.tsx|button@1144` after the parent-theme/menu-owner source movement. No old interaction proof was transferred to a new control. Fresh disposable-owner desktop/mobile interaction remains required before inventory admission and AssetOS fingerprint refresh. |
+| Fresh authenticated parent-theme owner pass | PASS LOCALLY — the disposable reseller-labelled amount-zero Pro owner signed in through the real local form and reached `/dashboard` without the subscription wall. Desktop Assets rendered all 14 themes and 15 asset selectors; Rosewater persisted after reload. At 390×844, MobileShell Share → Assets rendered the same governed set; Noir persisted after reload, Business Card inherited it, and Complete Menu Kit rendered one Noir Studio asset set. Salon → Rosewater, Spa → Mineral, and Pet Grooming Salon → conservative Botanical fallback all passed. The deterministic fixture was restored afterward. No provider, Razorpay, cloud Firebase, deployment, staging, Vercel, Git, or production action occurred. |
+| Current RC inventory after authenticated parent-theme pass | PASS — `npm run verify:menulist-rc-inventory` regenerated and verified 6,705 rows and all 28 Function exports. MenuList contains 4,376 candidates and 3,866 controls: 1,106 local-browser interactions, 127 hosted interactions, 141 non-shipped classifications, 41 non-user-triggerable controls, and 2,451 honest `NOT_RUN` controls. The active local-mobile evidence manifest is `4fa685e04e1ae2fcffdb0a62f73c95694ff3487efe851ba6223aef7eb3c346e7`. The shifted `useMenuList` controls were rebound only after confirming the same semantic controls on current source. |
+| Current AssetOS certification after authenticated parent-theme pass | INITIAL FOUR-SLOT STALE FAILURE, THEN PASS — the current desktop/mobile owner-source changes correctly invalidated `menulist.home.public-surfaces.matrix`, `menulist.feature.qr-menu-links.share-kit`, `menulist.feature.print-ready-kit.dashboard`, and `menulist.feature.print-ready-kit.editor`. After the authenticated current-source desktop/mobile visual review, only those four watched-source fingerprints were refreshed through the maintained slot-scoped command. `npm run certify:asset-factory-menulist` then passed with zero runtime-boundary failures, audit errors, audit warnings, blocked review items, founder-review items, or review warnings. No pixels, public media, Git refs, deployment, or external state changed. |
+| Rosewater/Mineral paper-field renderer follow-up | PASS AT CURRENT SOURCE/OUTPUT BOUNDARY — a coordinated user-requested follow-up changed only the shared Menu Card renderer and its fail-closed verifier. The RC pass independently matched current hashes `bd7d0453…` and `bac40481…`, reran the complete `verify:menu-card-export` downstream chain, strict TypeScript, focused zero-warning ESLint, the 6,705-row inventory, and MenuList AssetOS; every check passed. The owning visual pass freshly rendered and reviewed all eight Rosewater and nine Mineral pages with the translucent paper field expanded away from headings, body copy, and prices. No Firebase cost path, provider, Git ref, deployment, staging, Vercel, or production state changed. |
+| Rosewater/Mineral documentation handoff readback | INITIAL COORDINATION MISMATCH, THEN CLOSED — the renderer and verifier hashes matched the delegated stable boundary, but the three delegated documentation hashes did not match the physical files at RC readback. The RC pass added the missing narrow contract directly to the README, implementation guide, and test-case matrix, then reran the complete Menu Card chain, documentation links, and scoped diff validation. No unobserved documentation edit is claimed. |
+| Full local aggregate after Rosewater/Mineral follow-up | INTERRUPTED BY INTENTIONAL SOURCE REOPEN — the clean-port aggregate had progressed from the first gate through the in-progress 43-script Firebase Rules predeploy sequence with every completed gate passing when the coordinated renderer task reported new stable bytes. The run was stopped immediately and its emulator shut down cleanly; it is not represented as a current-source aggregate pass. The earlier default-port attempt was also an environment collision, not a product assertion failure: the disposable browser-fixture emulator occupied port 8080, so it was shut down cleanly before this replay. A from-zero aggregate and exact-current production build remain required after the current source stays frozen. |
+| Isolated production build at the MLRC-477 checkpoint | PASS AT CHECKPOINT, NOT CURRENT — `NEXT_DIST_DIR=.next-rc-cert-mlrc477 npm run build` exited 0 under Next.js 16.3.0 on the frozen salon/spa source. Compilation completed in 22.3 seconds, build TypeScript completed in 41 seconds, all 454/454 static pages were generated in 2.0 seconds, and Serwist bundled 55 precache entries. The existing 14 Sass `@import` deprecation warnings and absent optional Gemini-key diagnostics remained non-failing. `next-env.d.ts` and `tsconfig.json` were restored to exact pre-build SHA-256 values `1862ac4b…` and `ef0ac59b…`; the 1.3 GB isolated directory was moved recoverably to `/Users/danny/.Trash/menulist-next-rc-cert-mlrc477-20260830-1920`, leaving no workspace build residue. The later Rosewater/Mineral renderer follow-up requires a new exact-current build before certification. No active dev server, Vercel request, staging push, deployment, cloud Firebase, Git ref, or production state was touched. |
+| Isolated production build after the Rosewater/Mineral follow-up | PASS AT CHECKPOINT, NOT CURRENT — `NEXT_DIST_DIR=.next-rc-cert-current npm run build` exited 0 under Next.js 16.3.0. Compilation completed in 24.3 seconds, build TypeScript completed in 60 seconds, all 454/454 static pages generated in 2.0 seconds, and Serwist bundled 55 precache entries. The known 14 Sass deprecation warnings and absent optional Gemini-key diagnostics remained non-failing. Generated references were restored and the isolated output moved recoverably to Trash. MLRC-478 subsequently changed owner-visible theme resolution and both owner screens, so the replacement current build is recorded below. |
+| Exact-current isolated production build after the clarified MLRC-478 policy | PASS — `NEXT_DIST_DIR=.next-rc-cert-universal-theme npm run build` exited 0 under Next.js 16.3.0 on frozen hashes `21fec6c6…`, `da6c8302…`, and `7f7e1a24…`. Compilation completed in 23.0 seconds, build TypeScript completed in 47 seconds, all 454/454 static pages generated in 2.4 seconds, and the known 14 Sass deprecation warnings plus absent optional Gemini-key diagnostics remained non-failing. Generated `next-env.d.ts` and `tsconfig.json` references were restored to SHA-256 `1862ac4b…` and `ef0ac59b…`; the 1.3 GB isolated output moved recoverably to `/Users/danny/.Trash/menulist-next-rc-cert-universal-theme-20260830-2113`. No Vercel, Git, Firebase deployment, staging, or production action occurred. |
+| Exact-current Firebase scale/cost closeout after MLRC-477 | PASS — 125 static checks, both Functions builds, and the platform-daily and maintenance-task Firestore lease emulator suites passed. Runtime-file and risk-band counts remain 537 / 9 listener / 2 public-read / 2 query-scope / 53 write-volume. The salon/spa recommendation path uses already-loaded business context and static local artwork, adding no Firebase read, listener, Function, Storage or persisted-field cost. |
+| Exact-current provider-free commercial source chain after clarified MLRC-478 | PASS — `npm run verify:menulist-commercial-readiness:source` passed pricing policy, checkout and purchase-intent validation, plan and master-store boundaries, settlement and billing-document contracts, taxation, product identity, Functions subscription scope, entitlement, environment identity, all ten simulated Razorpay lifecycle events, and the complete AI-accounting chain. A connected local browser independently verified Pricing → Pro preserves exact INR/yearly/quantity-one/B2C callback state into sign-in. No live Razorpay provider execution, checkout, webhook, payment credential, capture, refund, Firebase cloud mutation, deployment, Git, staging, Vercel, or production action occurred. |
+| Gallery Ledger, Vital Current, and Workshop Atlas frozen-boundary retest | PASS AT SOURCE/OUTPUT BOUNDARY — the owning task declared a two-pass stable 17-theme boundary. The RC pass independently matched the declared source hashes, observed no remaining scoped process, and retained passing preference, artwork, printable-template, Menu Card, strict TypeScript, focused zero-warning ESLint, and scoped diff checks. The generated inventory contains 221 compact fixtures (17 themes × 13 asset types); each new theme has a five-page A4 PDF with cover, three content pages, and a dedicated closing/contact page. Authenticated desktop/mobile catalog and recommendation evidence remains pending fresh action-time credential authorization. |
+| MLRC-479 footer-contrast rendered-output retest | PASS CURRENT LOCAL SNAPSHOT — independent original-resolution inspection found low-contrast footer metadata in Vital Current and Workshop Atlas, added only the shared theme-scoped translucent footer field, extended the fail-closed verifier, reran the complete Menu Card downstream chain, regenerated all 20 PDF fixtures, and re-inspected cover/content/closing pages. Corrected hashes are `d458d22c…` and `70ed4ced…`; both files remain five-page A4 with no form, JavaScript, or encryption. No Firebase read/write, provider, Razorpay, Git, staging, Vercel, deployment, or production action occurred. |
+| Exact-current isolated production build after MLRC-479 | PASS — `NEXT_DIST_DIR=.next-rc-cert-3themes npm run build` exited 0 under Next.js 16.3.0 on renderer/verifier hashes `9887a185…` and `9c0eb1d5…`. Compilation completed in 24.4 seconds, build TypeScript completed in 44 seconds, all 454/454 static pages generated in 2.4 seconds, and Serwist bundled 55 precache entries. The known 14 Sass `@import` deprecation warnings and absent optional Gemini-key diagnostics remained non-failing. Generated `next-env.d.ts` and `tsconfig.json` references were restored to SHA-256 `1862ac4b…` and `ef0ac59b…`; the 1.3 GB isolated output moved recoverably to `/Users/danny/.Trash/menulist-next-rc-cert-3themes-20260830-2250`. No Vercel, Git, Firebase deployment, staging, or production action occurred. |
+| Disposable local owner environment restored after MLRC-477 | PASS — the existing app remained live at `http://localhost:3000/signin`; Auth, Firestore and Storage emulators were restarted locally on 9099/8080/9199 under `menulist-qa`. The existing private `/tmp` disposable credential fixture was passed to the maintained seeder without printing either value. After explicit action-time authorization, the disposable owner signed in through the real form; credentials were neither printed nor copied into the report. Seeder client readback, fixture boundary verification, authenticated desktop/mobile owner flows, and emulator-port tests passed. The fixture emulators were then shut down cleanly before the isolated aggregate emulator suites. No cloud Firebase, real credential, provider, Razorpay, Git, staging, Vercel, deployment or production state was touched. |
 | `npm run test:menulist-api-anonymous-boundary` (latest current candidate) | PASS — 140 handlers / 157 methods; 200×5, 301×1, 400×15, 401×132, 403×1, 404×3; zero failure, timeout, protected anonymous 2xx, or 5xx. |
 | `npm --prefix functions run build` | PASS — shared country-data mirror compiles in the MenuList Functions bundle |
 | `npm run test:phone-number-boundary` | PASS after MLRC-182 — app and Functions mirrors reject all-zero, dial-code-only, and too-short public destinations while retaining valid normalized phone actions. |
@@ -3045,8 +3834,12 @@ explicitly authorized staging release.
 | `npm run test:owner-project-selection-scope` and `npm run verify:owner-dashboard-today-boundary` | PASS after MLRC-183 — distinct tenant/store selection keys and the Dashboard's fail-closed scope binding are locked; real Chrome HQ→branch→HQ retest produced no stale read or owner-facing error. |
 | `npm run verify:multi-location-boundary` | PASS after MLRC-186 — Mobile Locations retains store/access/action guards, rejects composite clickable rows containing Rename/Deactivate, requires named location sheets/fields, and real Chrome completed View, rename, deactivate, and deterministic recovery on the disposable fixture. |
 | `npm run verify:global-accessibility-boundary` and Mobile Locations role/name retest | PASS after MLRC-186 — all three location sheets, all three location form fields, and the shared static Deactivate confirmation expose stable programmatic names; 390px width and deterministic mutation recovery pass. |
-| Latest `npm run lint` | PASS after the advanced-inspector continuation — `eslint src --max-warnings=0` exited 0 with zero warnings on the complete coordinated local candidate, including the strengthened Creative Editor evidence/verifier and preserved sibling work. |
-| Latest strict TypeScript | INITIAL MLRC-386 CACHE-PATCH TYPING FAILURE, then PASS after the advanced-inspector continuation — the earlier current-candidate rerun rejected passing typed `ProjectSummaryData` into a generic `Record<string, unknown>` merge because the domain type intentionally has no index signature; the cache helper now accepts `Partial<ProjectSummaryData>`. The latest `npx tsc --noEmit --incremental false` exited 0 with the current Creative Editor evidence/verifier and preserved sibling work. |
+| Latest `npm run lint` | PASS after MLRC-479 — `eslint src --max-warnings=0` exited 0 with zero warnings on the current 17-theme candidate. Focused zero-warning ESLint also passed across the theme catalog, recommendation, preference, renderer, owner surfaces, and regression files. |
+| Latest strict TypeScript | PASS after MLRC-479 — `npx tsc --noEmit --incremental false --pretty false` exited 0 on the current 17-theme renderer, recommendation, preference, DAL, desktop/mobile owner surfaces, and certification evidence. The exact-current isolated production build also passed. |
+| Exact-current Firebase scale/cost closeout after MLRC-479 | PASS — all 125 static checks and both lease emulator suites passed. The default command first met the deliberately preserved port-8080 QA emulator; the unchanged lease tests then passed on isolated Firestore port 8189 without stopping or reconfiguring the shared fixture. The three new themes and footer field are deterministic local rendering only: zero added Firestore reads/writes/listeners, Storage operations, Functions, provider calls, or persisted fields. |
+| Post-MLRC-479 feature registry and inventory | FEATURE REGISTRY PASS / INVENTORY FAIL CLOSED — 335 declarations, 290 runtime-reader flags, 45 dormant flags, 1,203 reader locations, and current source manifest `9d9a713f…` passed and were recorded. The regenerated 6,705-row inventory then correctly rejected stale local mobile/desktop owner evidence after the catalog/renderer source movement. No previous interaction proof was transferred to changed controls. |
+| Post-MLRC-479 AssetOS gate | FAIL CLOSED AS EXPECTED — runtime-boundary checks passed, then four source fingerprints were correctly reported stale for the changed `MobileShareScreen.tsx` and `PrintableAssetTemplatesRoute.tsx` watchers. The four fingerprints remain unchanged pending fresh authenticated desktop/mobile owner review; no visual approval was manufactured. |
+| Exact-current `npm run certify:menulist-local` checkpoint after MLRC-479 | FAIL CLOSED AT CHECK 6/167 — the isolated-port replay passed account/tenant lifecycle, agent readiness, the complete AI-accounting chain, AI Menu Manager, and the complete analytics-write boundary including all three Firestore emulator suites. AssetOS then rejected the same four deliberately stale owner-surface fingerprints before later gates ran. The initial default-port attempt stopped at analytics emulator startup before a product assertion; the unchanged aggregate was rerun with temporary isolated ports, and `firebase.json` was restored to exact SHA-256 `3bb9d843…`. This is an evidence gate awaiting owner-browser review, not a source-test defect or external blocker. No cloud Firebase, provider, Razorpay, Git, staging, Vercel, deployment, or production action occurred. |
 | MLRC-324/325/326 focused lint and diff validation | PASS — focused ESLint for the desktop reseller wizard and its maintained boundary verifier plus `git diff --check` exited 0. |
 | MLRC-327 auth and accessibility regression | PASS — `verify:auth-onboarding-flow` and its email-domain, set-claims, claim-account, and subscription-boundary chain; `test:login-credential-normalization`; focused login/verifier ESLint; strict TypeScript; and `git diff --check` all exited 0. |
 | MLRC-328 website logout regression | PASS — account/tenant lifecycle and global-accessibility boundaries; focused zero-warning ESLint; strict TypeScript; feature-reader registry; 7,874-row RC inventory; JSON parse; and `git diff --check` exited 0. Connected Chrome proves current-source mobile and desktop Logout both clear the disposable session and reach `/`. |
@@ -3075,6 +3868,22 @@ explicitly authorized staging release.
 
 ## I. Residual risks
 
+- The governed catalog now contains 47 themes. Current authenticated desktop/mobile
+  passes cover the prior parent-theme matrix plus the eight newest Salon/Spa themes,
+  their common or exact-type eligibility, Single Table Card inheritance, and
+  Complete Menu Kit inheritance. Petal Studio correctly remains Salon-only and
+  Eucalyptus Retreat Spa-only; Pearl Veil, Terracotta Glow, Glasshouse Garden,
+  Mineral Spring, Lotus Stillness, and Sunlit Ritual remain common. The temporary
+  local credential was removed during certification cleanup and only RC-owned
+  Next/Auth/Storage services were stopped; the pre-existing Firestore emulator
+  remained running and untouched.
+  Native operating-system chooser/share-sheet behavior remains separately
+  uncredited where browser automation cannot complete the external UI.
+- Current mobile evidence includes the real MobileShell at 390×844 for the
+  three newest gated themes, alongside the earlier current-source 17-theme
+  pass. The viewport override was reset after testing. Physical-device Safari
+  execution remains residual environment evidence and is not inferred from
+  Chromium emulation.
 - The desktop item-card Download action generated its browser-local PNG and
   returned `Card downloaded`. Share card reached the native browser/operating-
   system boundary, but connected-Chrome automation could not complete that
@@ -3082,18 +3891,17 @@ explicitly authorized staging release.
   `button@760` remains honestly uncredited; no product defect is inferred from
   this automation-only limitation, and no share/download action changed owner,
   tenant, store, project, public-menu, Firebase, or provider state.
-- The latest complete current-registry aggregate through MLRC-216 passed 159 of
-  160 checks; only the separately classified unavailable-shell-secret Upstash
-  probe remains externally blocked. The gate executed all 160 current child
-  verifier scripts, all 42 Firestore Rules suites, strict TypeScript, lint,
-  documentation, and diff validation. Temporary suite-only emulator ports
-  isolated the run from occupied default services; the original `firebase.json`
-  bytes and SHA-256
-  `3bb9d843541583e1955911077004cb9e6f67304c21354c53beb73ae6de2608e8`
-  were restored afterward. The initial port-8080 stop occurred before a product
-  assertion; the reviewed asset fingerprint and report-only npm-script hygiene
-  stops were corrected and their exact gates passed. No cloud service,
-  deployment, production data, or other worktree was changed.
+- The last uninterrupted historical aggregate passed 166 of 167 checks and is
+  retained as checkpoint evidence, not exact-current proof. On the September 1
+  filesystem, the maintained aggregate cannot pass its Firebase Rules predeploy
+  gate because the preserved long-running MenuList QA Firestore emulator owns
+  port 8080. The current attempt confirmed generated-rule freshness and all 43
+  demo-only rule scripts before failing to start the first isolated emulator;
+  it did not execute a rules assertion. The existing emulator was not stopped,
+  its config was not rewritten, and no cloud service, deployment, production
+  data, or unrelated worktree process was changed. The missing-shell-secret
+  Upstash probe remains a separately known external blocker after the Rules
+  environment collision is resolved.
 - MLRC-114 through MLRC-264 are local-only corrections on top of
   `4586bb852…`. Their focused tests, lint, strict TypeScript, inventory, and
   diff checks pass, but the exact pointer/assistive-technology/inline-editor
@@ -3262,14 +4070,13 @@ explicitly authorized staging release.
   the quality-warning modal and advanced to preview. Because the served host is
   not the current candidate, this is retained as a hosted deployment/runtime
   blocker rather than misclassified as a current-source defect.
-- Of 3,634 page-reachable MenuList control candidates, 135 exact controls carry
-  current hosted registry evidence, 1,823 carry the
-  current local-owner interaction registry
-  evidence, 41 hidden/permanently disabled controls
-  are verified as non-user-triggerable, and 1,635
-  still require individual runtime interaction evidence. The other 140 candidates in 46
-  files are explicitly classified as non-shipped source from the App Router
-  import graph; they are not represented as runtime-tested controls.
+- The current inventory contains 3,866 MenuList controls: 1,106 carry current
+  local-browser interaction evidence, 127 carry hosted interaction evidence,
+  41 hidden or permanently disabled controls are verified
+  non-user-triggerable, 141 are explicitly classified as non-shipped source,
+  and 2,451 remain honestly `NOT_RUN`. Static source inspection, route coverage,
+  or an adjacent workflow pass is not counted as interaction evidence for those
+  remaining controls.
 - The source fixes MLRC-009 through MLRC-012, MLRC-016 through MLRC-022, and
   MLRC-025 through MLRC-029 are present on exact hosted product build
   `c9c08d64cd75e8e2a2f485373f5b3ebf3b784232`. Current-session interaction
@@ -3349,13 +4156,22 @@ explicitly authorized staging release.
   `6269d422-639a-4a83-a020-fc561ee01c43`, updated August 23, 2026, at 132,684
   bytes with SHA-256
   `2059459e3b0263bdeca75f89ad0b490e8cebf1dee19cdef9012e0c02fbab5b89`.
-  Fresh August 29 Firebase CLI readback is authenticated as
-  `admin@neelvara.com`; refreshed broad project enumeration includes active
-  project `menulist-qa`. A new repeatable fixture
+  Fresh August 30 Firebase CLI readback again includes active project
+  `menulist-qa` under the authorized operator; the earlier false access blocker
+  is closed. A new repeatable fixture
   `ml-hosted-qa-certification-3e1099df5f` at tenant `10`, store `15` passed the
   guarded Admin and registered Firebase Web client assertions through September
   1, 2026. Its credential remains in a mode-600 `/tmp` file and secret content
   was not emitted into the repository or certification evidence.
+  After the current Firebase CLI reauthentication, a fresh replacement fixture
+  `ml-hosted-qa-certification-db1567635d` at tenant `11`, store `16` passed the
+  same guarded Admin assertions through September 2, 2026. Connected Chrome
+  signed in and rendered MenuList Pro — QA Certification, amount zero, `No
+  payment — QA only`, Active, and 75/75 credits. The served hosted app still
+  identifies build `59e1dc2561750ed2d97764fa30df7614c3071fd2`, so this proves
+  the provider-free tenant/subscription boundary but not the current local
+  candidate. No checkout, Razorpay, provider, staging push, Vercel build,
+  infrastructure deployment, Git mutation, or production action occurred.
   The current local generated MenuList rules are 133,743 bytes with SHA-256
   `0c1baf1bd730a2c725eed0173d7ef01bf07ed2828ad7f7bbdb30af01ddbaa010`,
   so exact Rules parity is not claimed and no Rules deployment was authorized
@@ -3407,21 +4223,1471 @@ explicitly authorized staging release.
   `@import` deprecation warnings. They do not fail the pinned build but remain
   migration debt under the dependency-freeze contract.
 - Live Razorpay execution remains explicitly excluded.
+- The desktop native operating-system colour chooser remains unexecuted. Its
+  source/DOM accessibility boundary passes, but its inventory input row remains
+  honestly `NOT_RUN` until a real chooser interaction is completed.
 - No Firebase server-parity conclusion is carried forward without current
   authenticated readback.
+- The exact final local source snapshot has no release commit and has not been
+  sent through the one consolidated staging/Vercel QA deployment. Hosted
+  current-candidate verification therefore remains open by policy.
+- Firebase Rules, indexes, Storage Rules, and Functions server parity for this
+  local snapshot remains `SERVER_STATE_UNKNOWN`; no cloud deployment or
+  authenticated release readback was authorized in this pass.
+
+### Exact-current closeout command addendum — 2026-08-31 15:58 IST
+
+| Command or gate | Exact-current result |
+| --- | --- |
+| `npx tsc --noEmit --incremental false --pretty false` | PASS on the exact current 47-theme source. |
+| `npm run lint` | PASS with zero lint warnings on the coordinated candidate; the final printable-theme delta also passed scoped zero-warning ESLint. |
+| `npm run verify:printable-asset-templates` | PASS on final source. |
+| `npm run test:printable-asset-style-preferences` | PASS on final source. |
+| `npm run verify:menu-card-export` | PASS on final source, including QR, print-source, sanitizer, shared-contract, shared-print, and asset-catalog subgates. |
+| Focused reseller boundary suite | PASS on exact current source: dashboard source guard, client record, monthly summary, management profile, mutation state, onboarding response, provider-subscription fixture, manual-confirmation boundary, and onboarding operation/profile authority. No provider call or payment was executed. |
+| `npm run verify:menulist-rc-inventory` | PASS on the exact current source: 6,723 rows and 28 Firebase Function exports. MenuList contains 3,882 controls: 1,419 local-browser interactions, 127 hosted interactions, 141 non-shipped classifications, 41 non-user-triggerable controls, and 2,154 honest `NOT_RUN` controls. |
+| MLRC-501 through MLRC-503 focused regression chain | PASS on exact current source: mutually exclusive mobile project, category, item-editor, image-adjust, QR, and confirmation surfaces; project mutation-authority and upload-boundary subgates; strict TypeScript; focused zero-warning ESLint; evidence JSON parse; 6,723-row inventory; and scoped diff check. |
+| `npm run build` | PASS on the exact current local source under Next.js 16.3.0 after MLRC-500: compiled in 20.9 seconds, build TypeScript finished in 37.0 seconds, 454/454 static pages generated in 1.759 seconds, and 55 Serwist entries precached. Existing Sass `@import` deprecation warnings and absent optional Gemini-key diagnostics remained non-failing. No Vercel or remote build was triggered. |
+| `git diff --check` | PASS after the report and evidence update. |
+| `npm run certify:menulist-local` registered set | 166 PASS plus one `BLOCKED_EXTERNAL` Upstash shell-secret gate across fail-closed resume segments. No product assertion failed; the current printable, inventory, type, lint, diff, and build deltas were rerun after the final source freeze. |
+
+### Current owner-control continuation — 2026-08-31 16:30 IST
+
+Connected local Chrome re-exercised the current-source Official Business Page,
+Filter Coffee item editor, populated Share hub, provider-free Billing, Locations,
+Staff, and populated Mobile Menu surfaces at desktop and 390x844 mobile viewports. The pass covered
+reversible field/switch drafts, compliance editors, invalid HTTPS recovery,
+item availability/visibility/merchandising/nutrition/attribute drafts and Reset,
+local item-card download, four QR sheets, XLSX/JSON exports, printable assets,
+Print Menu, Complete Menu Kit, direct asset actions, customer-message copy,
+three named resource guides, reseller-entitlement/location-capacity truth,
+store switching, outlet policy Undo, owner self-management restrictions, and
+malformed staff-email rejection. The Mobile Menu continuation covered exact
+category/issue choices and the cancelled image-generation boundary. All drafts were cancelled, reset, or restored;
+no destructive confirmation, provider flow, native share completion, cloud
+Firebase mutation, deployment, Git mutation, or production action occurred.
+
+Compared with the preceding report snapshot, exact current
+`PASS_LOCAL_BROWSER_INTERACTION` coverage through the provider-free Billing,
+reseller-onboarding, and final modal-exclusivity rebinding now records 1,419 local-browser,
+127 hosted, 141 non-shipped, 41 non-user-triggerable, and 2,154 honest `NOT_RUN`
+MenuList controls. The same testing chain began this continuation at 2,398
+`NOT_RUN`, for a net reduction of 187 after all intervening evidence rebinding.
+This continuation closed MLRC-488 and MLRC-489 locally for unpublished Preview
+truth and the mobile Today guide's accessible dialog boundary; external file choosers, operating-system share sheets,
+destructive submissions, and unresolved Digital Screen external navigation
+remain deliberately uncredited.
+
+The same exact-current continuation closed MLRC-490 through MLRC-493 in the
+shared Creative Editor. Connected local Chrome exercised 72 additional exact
+controls across background, templates, assets, text, styles, shapes, QR,
+barcode, page lifecycle, layers, image/text inspectors, gradients, readiness,
+preview, history, and recovery. Default and 79-layer stress fixtures both pass
+all fifteen maintained groups. No editor Save, external upload chooser,
+download, Firebase, provider, Razorpay, Git, deployment, staging, or production
+action was credited.
+
+### Creative Editor exact-current closeout — 2026-08-31 18:10 IST
+
+MLRC-494 through MLRC-496 are closed locally on exact current bytes. Connected
+Chrome proved the initially selected layer's floating toolbar has no obstructed
+enabled hit target, then used normal pointer clicks to duplicate and delete the
+existing Illustration layer. It also completed Zoom in/out/Fit,
+Grab/Selection, Help, every enabled single-layer floating action, reversible
+flip/lock, and the named Layers-panel lock/duplicate/delete lifecycle. The
+default seven-layer and 79-layer stress
+fixtures both completed all 15 maintained browser groups. `npm run
+verify:creative-editor-smoke` passed 253 source assertions plus the Fabric 7,
+image-source, and export boundaries; strict TypeScript, zero-warning `src`
+lint, the 6,723-row inventory, and `git diff --check` exited zero.
+
+An isolated `NEXT_DIST_DIR=.next-rc-cert-creative-2 npm run build` passed on
+the same source: compile 22.3 seconds, build TypeScript 43 seconds, 454/454
+static pages in 2.0 seconds, and 55 Serwist precache entries. Its generated
+type references were restored, and the isolated output was moved recoverably
+to `/Users/danny/.Trash/menulist-next-rc-cert-creative-2-20260831-1810`.
+The fixes are entirely local editor state/layout/accessibility changes: they add
+zero Firestore reads or writes, Storage transfers, Function invocations,
+listeners, or provider calls. After the later create-menu, final MobileShell, provider-free Billing,
+mobile reseller-onboarding, and modal-exclusivity continuations, the rebound matrix records 1,419 local
+interactions and 2,154 honest `NOT_RUN` controls. No Firebase, Razorpay, Git, staging, Vercel,
+deployment, or production mutation occurred.
+
+### Reseller management and onboarding continuation — 2026-08-31 19:20 IST
+
+MLRC-497 is closed locally on the exact current mobile source. Connected local
+Chrome at 390×844 reproduced the malformed reseller-email request and generic
+failure, then verified precise zero-request recovery for malformed email, zero
+activation capacity, and a five-character edit password. Unchanged edit still
+returns `No reseller changes to save.` without a request, and Cancel restores a
+clean screen. Exact Auth/Firestore emulator inspection after the rejected
+pre-fix request found only the intended disposable platform/reseller fixture
+and one reseller profile; no additional account or profile was created.
+
+At 1440×1000, the same disposable platform session exercised the desktop
+management refresh, Add required-field recovery, malformed-email and short-
+password field errors, edit no-change recovery, Close, reseller dashboard
+refresh/zero state, both onboarding entry points, and the complete three-step
+provider-adjacent onboarding review. The reversible draft covered Unicode
+business text, optional owner/address/GST fields, Karnataka search, all three
+tiers, monthly/yearly billing, two locations, and six-month commitment. The
+review truthfully rendered the online Razorpay-recurring boundary and
+`Create Recurring Payment Link`; that provider action was not invoked. Previous
+retained the selections and Back discarded the draft. No client, store,
+subscription, payment, provider, cloud Firebase, Git, staging, Vercel,
+deployment, or production state was created or changed. Final guarded cleanup
+deleted only the two named disposable Auth users, their two `users` documents,
+and the one named reseller profile; exact readback found zero target residue,
+one pre-existing Auth owner remaining, and zero local-certification reseller
+profiles. The owned Next, Auth, and Storage processes stopped cleanly while the
+pre-existing shared Firestore emulator on 8080 remained running.
+
+The exact-current mobile continuation then exercised the complete three-step
+Onboard Client draft at 390x844. Empty required fields, malformed invoice email,
+and zero locations stayed blocked; Cake Shop owner/invoice data advanced; all
+three pricing tiers, both billing intervals, Optional and every 3/6/12-month
+commitment choice exposed pressed state. Two Standard locations produced
+₹998/month before GST, the final review retained normalized phone/username and
+online-recurring truth, and Back preserved the draft. `Create Link` was reached
+but deliberately not invoked: current reseller doctrine admits new sales only
+through Razorpay, whose live execution is excluded. Exact emulator readback
+found one disposable Auth user and zero matching client tenant/owner records.
+The fixture was restored, signed out, and cleaned with no provider, payment,
+subscription, client, cloud Firebase, Git, staging, Vercel, deployment, or
+production mutation. This credited 18 exact controls and reduced honest
+`NOT_RUN` controls from 2,167 to 2,149.
+
+### Mobile project-distribution continuation — 2026-08-31 19:20 IST
+
+MLRC-498 is closed locally on the exact current source. At 390×844, an
+unpublished menu now shows `Not live` guidance and does not expose Preview
+Menu, Copy Link, or Show QR. After the existing publish confirmation completed
+against the local emulator, all three controls appeared. Copy Link confirmed
+`Direct menu link copied`; Show QR opened the named Menu QR dialog with the
+tenant URL; Preview opened the correct tenant tab and rendered MenuList Local
+Browser QA, Drinks, Filter Coffee, ₹80.00, the deterministic description, and
+the acknowledged publication state without owner-only fields.
+
+Exact host and parser tracing found that the prior configured fixture carried
+a custom domain without its public-admission flag. The fixture now explicitly
+sets and verifies `domainVerified: true` for configured state and removes the
+domain fields for missing state. Product code also refuses an explicitly
+pending custom domain and falls back to an admitted subdomain or unavailable
+state. Both fixture modes passed exact emulator readback, and the fixture was
+restored to the configured unpublished baseline.
+
+The optional post-publish Menu Health verification logged an expected local
+diagnostic because the Functions emulator on port 5001 was intentionally not
+running. The acknowledged Firestore publish and exact public render both
+passed; no cloud Function or provider action was represented as tested. The
+owned Next, Auth, and Storage processes were stopped, the browser viewport was
+reset, and only the pre-existing shared Firestore emulator on 8080 remains.
+No Firebase cloud, Razorpay, Git, staging, Vercel, deployment, or production
+mutation occurred.
+
+### Create-menu intake recovery continuation — 2026-08-31 19:31 IST
+
+The authenticated local owner switched between Upload file / PDF and Use
+existing link, confirmed that `javascript:` input produces an announced alert,
+and verified that Prepare link preview remains disabled until both a valid
+HTTPS URL and the ownership-permission checkbox are present. The valid draft-
+format UUID with no backing record rendered `Draft expired`; Upload list
+returned to the authenticated intake route. No link import was submitted.
+
+Two bounded emulator drafts then exercised the adjacent recovery and completed
+preview states. The failed draft rendered `Could not read your list`, and Try
+again restored the intake. The completed draft rendered its detected business,
+list name, currency, category, item, description, and price. Whitespace and
+one-character business names were rejected before claim. A separate disposable
+identity with no tenant/store exposed the City or area branch, rejected blank
+and one-character city values, recovered after a valid city, and accepted then
+discarded optional phone/address drafts. The same identity received a 403-backed
+generic recovery for the other owner's draft and saw none of its business or
+menu truth. `Create official link` was never admitted with a valid payload, so
+no claim request or new business/project/public truth was created.
+
+A separate bounded processing draft remained in `Reading your list` throughout
+all 36 checks. At the exact polling limit it rendered the connection recovery;
+Try again immediately started a new processing cycle and removed the retry
+action. The draft was then deleted without extraction, Function, Storage, or
+provider execution.
+
+The native file chooser could not be safely driven by the connected Chrome
+surface, so it remains honestly uncredited. The preview source was added to the
+evidence freshness manifest, and all eight credited preview interactions are
+now invalidated automatically if that source changes. The final current matrix records 1,419
+local interactions and 2,154 honest `NOT_RUN` controls after the adjacent
+MobileShell navigation, reusable QR sheet, Official Business Page preview, and
+Menu Design preview pass. No external fetch,
+claim request, durable draft write, Storage transfer, Function invocation, provider, cloud Firebase,
+Razorpay, Git, staging, Vercel, deployment, or production action occurred.
+
+### Final MobileShell navigation and preview continuation — 2026-08-31 20:00 IST
+
+Connected local Chrome at 390x844 traversed Today, Menu, Menu help, Share, and
+More through the persistent primary navigation; every target wrote its canonical
+`#mobile` hash and exposed pressed state without leaving the shell. Direct Menu
+QR then opened its named reusable sheet, copied the exact local link, completed
+the browser-local download boundary, and closed back to Share. The Official
+Business Page and Menu Design editors each opened their full-height current
+preview sheet with deterministic fixture content and closed back to unchanged
+editors with Save disabled. These six exact controls moved from `NOT_RUN` to
+local-browser evidence. No runtime defect was found in this slice; no owner/public
+write, native share, external destination, provider, cloud Firebase, Razorpay,
+Git, staging, Vercel, deployment, or production operation occurred.
+
+### Authenticated 39-theme printable continuation — 2026-08-31 20:41 IST
+
+Connected local Chrome exercised the frozen 39-theme catalog on the disposable
+provider-free reseller owner at desktop and 390x844 MobileShell viewports. The
+Restaurant fixture exposed 28 common and five food-category themes while hiding
+all six exact-type themes. Ember House, Coastal Table, Sunday Table, and Counter
+Rush each became the pressed parent theme and propagated through Single Table
+Card and Complete Menu Kit with exact theme-specific preview copy. No theme or
+asset preference was persisted. Craft Kitchen and Single Table Card were
+restored, the fixture was deterministically re-seeded, manual amount-zero
+non-payment billing with empty history was read back, the owner was signed out,
+the viewport reset, and the temporary credential removed. Only the RC-owned
+Next/Auth/Storage services were stopped; the pre-existing Firestore emulator was
+left running. The exact-current inventory then passed with 6,723 rows and 28
+Function exports. No provider, cloud Firebase, Razorpay, Git, staging, Vercel,
+deployment, payment, or production action occurred.
+
+### Authenticated 47-theme Salon/Spa continuation — 2026-08-31 21:20 IST
+
+Connected local Chrome reconciled the physical 47-theme catalog and exercised
+the eight themes added after the 39-theme checkpoint on both desktop
+`/use-menulist/print-assets` and the 390x844 MobileShell Share surface. With the
+fixture set to Salon, Petal Studio remained eligible while Eucalyptus Retreat
+remained hidden; Pearl Veil, Terracotta Glow, and Glasshouse Garden remained
+common and were each selected. With the fixture set to Spa, Eucalyptus Retreat
+became eligible while Petal Studio remained hidden; Mineral Spring, Lotus
+Stillness, and Sunlit Ritual remained common and were each selected. Craft
+Kitchen remained hidden in both non-food fixtures.
+
+Sunlit Ritual propagated through Single Table Card and Complete Menu Kit with
+exact theme-specific preview copy. No preference was persisted. The fixture was
+deterministically restored to Restaurant with one active/default Menu and no
+printable preference fields. The owner then signed out through the real Profile
+confirmation and the viewport override was reset. The output inventory contains
+611 per-theme compact PNGs (47 themes x 13 editor-backed assets), five auxiliary
+audit/contact sheets, and 47 governed-theme PDFs. No provider, cloud Firebase,
+Razorpay, Git, staging, Vercel, deployment, payment, or production action
+occurred. Cleanup removed the temporary local credential and stopped only the
+RC-owned Next/Auth/Storage services; the pre-existing Firestore emulator on
+port 8080 remained running.
+
+### Authenticated mobile bulk-actions continuation — 2026-08-31 22:12 IST
+
+MLRC-504 and MLRC-505 are closed locally on the exact current source. Connected
+local Chrome at 390×844 exercised all 23 discovered controls in
+`BulkActionsSheet.tsx`: the standard and AI Repair dialogs, Back, AI Repair
+review/confirmation, pricing rule/unit/value controls, destination category,
+search, status filters, selection shortcuts, select-visible, clear, category
+collapse/expand, category/item selection, and every availability, visibility,
+pricing, and move action.
+
+The owner reviewed Increase, Reduce, Set Price, percentage, and currency modes;
+Filter Coffee previewed from ₹80 to ₹88 at +10%. Availability, Visibility,
+Pricing, Move Items, and AI Repair confirmations each rendered as the only
+active dialog. Cancel restored the prior selection. Successful Mark Available
+and Move Items operations each used the existing single project-document write
+and returned exact Firestore emulator truth. The deterministic seeder then
+restored `available=true`, `active=true`, `price=80`, and `category=qa-drinks`
+and removed the disposable destination category. A fresh owned-server restart
+proved the English singular confirmation `Mark sold out for 1 item?`; Cancel
+performed no write.
+
+The exact focused project-editor chain, 52-locale owner/public localization
+chain, strict TypeScript, focused zero-warning ESLint, and isolated Next.js
+production build pass. The build compiled in 22.6 seconds, completed TypeScript
+in 41 seconds, generated 454/454 static pages in 2.1 seconds, and precached 55
+Serwist entries. Existing Sass `@import` deprecations and absent optional
+Gemini-key diagnostics remained non-failing. The isolated build output was
+moved recoverably to Trash and generated TypeScript include entries were
+removed.
+
+The refreshed 6,723-row matrix now credits all 23 current bulk-action controls,
+but it also correctly invalidates a broad older mobile evidence bundle whose
+source manifest changed during later printable and owner-UI work. Current
+MenuList totals are 4,394 inventory rows and 3,882 user controls: 971 controls
+have current local-browser evidence, 127 have hosted interaction evidence, 141
+are non-shipped, 41 are non-user-triggerable, and 2,602 remain `NOT_RUN`.
+`verify:menulist-rc-inventory` therefore remains blocked at `local mobile owner
+control evidence is stale`; the older controls were not silently rebound to new
+bytes. No provider, payment, live Razorpay, cloud Firebase, Git, staging,
+Vercel, deployment, customer-data, or production operation occurred.
+The connected Chrome tab closed before a final profile-sign-out click could be
+performed; the viewport override was nevertheless reset, the temporary secret
+was removed, and stopping the disposable Auth emulator invalidated that local
+session. Ports 3000, 9099, and 9199 were closed; the pre-existing Firestore
+emulator remained untouched on 8080.
+
+### Authenticated Mobile Menu continuation — 2026-08-31 23:36 IST
+
+The exact-current local Mobile Menu slice now has source-manifest-bound evidence
+for 62 directly exercised controls across `MobileMenuScreen`, `ItemEditSheet`,
+`CategoryManagerSheet`, and `MobileCategoryEditSheet`. The owner journey covered
+project selection and recovery; search, no-results, filters, status guidance,
+expand/collapse, command entry, category editing, item editing, optional details,
+attributes, merchandising, Reset, disabled unchanged Save, provider-boundary
+confirmations, destructive-action cancellation, and Back/discard recovery. The
+remaining 51 controls in these four sources retain `NOT_RUN` because they were
+failure-only, first-run-only, multilingual, reorder, generated-success/failure,
+or otherwise not directly exercised in this fixture.
+
+Four reversible emulator mutations proved public-truth convergence through the
+existing debounced project persistence path: item availability off/on and
+category availability off/on. Immediate reads before the debounce could retain
+the prior public value; after the acknowledged persistence window, both a warm
+public tab and a fresh browser session converged. Final owner and public reads
+show Drinks, Filter Coffee, INR 80, and available state. No duplicate write loop,
+polling loop, or listener multiplication was observed. This pass therefore found
+no new Firebase-cost defect requiring an implementation change.
+
+Two item-card controls retain explicit
+`BLOCKED_BROWSER_NATIVE_BOUNDARY`: Share card reached the native share promise,
+which the in-app browser cannot operate, and Download card did not expose its blob
+as a standard download event for independent artifact inspection. Neither is
+represented as passing. AI Repair, photo generation, description refresh,
+publishing, and deletion stopped before provider, credit, write, or destructive
+execution.
+
+The refreshed 6,723-row matrix contains 4,394 MenuList rows and 3,882 MenuList
+user controls: 1,013 exact-current local-browser interactions, 127 hosted
+interactions, 141 source-unreachable/non-shipped controls, 41 statically
+non-user-triggerable controls, two feature-disabled controls, one safe-execution
+blocker, three browser-native blockers, and 2,554 honest `NOT_RUN` controls.
+Inventory generation passes, while aggregate inventory verification still fails
+closed at the separate older broad `local mobile owner control evidence is stale`
+check. No stale evidence was rebound.
+
+Current-source validation passes: menu-project editor chain, MobileShell route
+map, global accessibility boundary, printable-asset templates, menu-card export
+and subordinate print/QR/source/sanitizer/catalog tests, strict TypeScript, full
+zero-warning source lint, focused certification-tool lint, and documentation
+links with zero broken links (64 pre-existing naming warnings). The isolated
+Next.js 16.3.0 production build also passes: compile 23.4 seconds, TypeScript 46
+seconds, 454/454 static pages in 1.971 seconds, and 55 Serwist precache entries.
+Only existing Sass `@import` deprecations and absent optional Gemini-key
+diagnostics were emitted. Build-generated TypeScript references were restored
+byte-for-byte, and the 1.3 GB isolated output was moved recoverably to
+`/Users/danny/.Trash/menulist-next-rc-mobile-menu-20260831-2335`.
+
+Cleanup completed through governed boundaries: the owner signed out through the
+real UI, the viewport override was reset, the mode-0600 temporary credential was
+removed, and only the Next/Auth/Storage/Emulator UI processes started by this pass
+were stopped. Ports 3000, 4000, 9099, and 9199 are closed. The pre-existing
+Firestore emulators on 8080 and 8181 remain untouched. No Git mutation, staging
+push, Vercel build, Firebase cloud deployment, live Razorpay execution, payment,
+provider action, customer-data mutation, or production action occurred.
+
+### Authenticated Printable Assets concurrency continuation — 2026-09-01 00:08 IST
+
+MLRC-508 is closed locally on the exact current desktop and mobile owner UI
+sources. The authenticated desktop route exercised its eligible theme gallery,
+all fifteen asset selectors, fourteen individual action dialogs, and the Complete
+Menu Kit action surface. The authenticated 390x844 MobileShell audit route
+exercised all fourteen enabled asset selectors; Feedback QR remained truthfully
+disabled for the fixture. Single Table Card was restored as the selected asset.
+
+Before the correction, rapid theme taps could start overlapping optimistic/DAL
+writes, and clicking an active theme could issue an unchanged Firestore write.
+Both owner surfaces now use a synchronous mutation mutex, reject save/clear entry
+while held, disable active and pending theme cards, and release the mutex only
+after the complete success/rollback lifecycle. The desktop pending state disabled
+an adjacent card. On mobile, Ember House and Coastal Table were tapped quickly
+enough that both DOM clicks occurred before React repainted; exact reload readback
+retained Ember House and not Coastal Table, proving the second handler was rejected
+by the synchronous guard. Craft Kitchen was then restored and retained after a
+fresh reload. This changes the rapid-tap path from up to two preference writes to
+one and the active-repeat path from one unchanged write to zero.
+
+The exact two-file Assets evidence slice credits only eight directly exercised
+inventory controls. Desktop Complete Menu Kit `Download ZIP` was invoked and
+returned to enabled, but the in-app browser exposed neither a download event nor
+an independently inspectable artifact. That control therefore carries
+`BLOCKED_BROWSER_NATIVE_BOUNDARY`; renderer/fixture tests remain adjacent evidence,
+not a substitute for the native browser artifact.
+
+Current results on the post-fix bytes:
+
+- printable asset template verifier: PASS;
+- parent-theme preference tests: PASS;
+- complete menu-card export and subordinate QR/source/sanitizer/shared/catalog
+  chain: PASS;
+- strict TypeScript: PASS;
+- focused zero-warning ESLint: PASS;
+- isolated Next.js 16.3.0 production build: PASS; compiled in 24.3 seconds,
+  completed TypeScript in 46 seconds, and generated 454/454 static pages in
+  2.1 seconds with 55 Serwist precache entries;
+- documentation links: PASS with zero broken links and 64 pre-existing naming
+  warnings;
+- inventory generation: PASS at 6,723 rows;
+- aggregate inventory verifier: FAIL-CLOSED at `feature-flag registry runtime
+  evidence is missing or stale`, before the separately known stale broad
+  owner/mobile evidence bundles.
+
+The generated matrix now contains 3,882 MenuList controls: 1,013 exact-current
+local-browser interactions, 127 hosted interactions, 141 non-shipped controls,
+41 statically non-user-triggerable controls, two feature-disabled controls, one
+safe-execution blocker, three browser-native blockers, and 2,554 honest
+`NOT_RUN` controls. The Assets evidence manifest is
+`f9ba1d80139ccafe94e249cbb416fbf23fdc37052944674be8a3a2f4385fbdbf`.
+
+Cleanup was bounded to this pass. The mobile viewport override was reset, the
+browser tab was closed, the mode-0600 temporary credential was removed, and only
+the owned Next/Auth/Storage/Emulator UI processes were stopped. The in-app route
+did not expose its Sign Out control before the tab closed; stopping the disposable
+Auth emulator invalidated that local-only session. Ports 3000, 4000, 9099, and
+9199 are closed. The pre-existing Firestore emulators on 8080 and 8181 remain
+untouched. The generated `.next-rc-share` output was moved recoverably to
+`/Users/danny/.Trash/menulist-next-rc-share-20260901-0002`, and Next-generated
+`tsconfig.json` / `next-env.d.ts` changes were restored exactly. The post-fix
+isolated production output was also moved recoverably to
+`/Users/danny/.Trash/menulist-next-rc-assets-build-20260901-0005`. No Git mutation,
+staging push, Vercel build, Firebase cloud deployment, live Razorpay execution,
+payment, provider action, customer-data mutation, or production action occurred.
 
 ## J. Final release decision
 
 `CERTIFICATION BLOCKED`
 
-This is the current decision while certification remains active. Mandatory
-runtime and external-evidence gates remain open, so the exact current candidate
-is not approved for production deployment. Source fixes, emulator work, and
-certification continue only on the coordinated local candidate. No staging
-push, Vercel build, Firebase deployment, or production mutation is authorized;
-the later consolidated staging release requires Danny's explicit current-turn
-permission and does not convert this blocked decision into production approval.
+The exact current local application snapshot passes the 454/454-page production
+build, strict TypeScript, full zero-warning source lint, the focused 47-theme
+printable contracts, and generation plus verification of the exact-current
+6,731-row inventory.
+The feature-flag registry and broad owner/mobile evidence have been reconciled
+against the current source without duplicate attribution or blanket rebinding.
+The snapshot also passes the
+162-method anonymous API boundary, Firebase cost scanner, deterministic lease
+tests, and the complete 47-theme printable source/render suite. The output tree
+contains 611 per-theme compact PNGs (47 themes x 13 editor-backed assets), five
+auxiliary audit/contact sheets, and 47 theme PDFs. The prior 35-theme evidence includes
+all 35 covers, every page of the twelve
+new cross-category themes, all 156 new compact outputs, and the final long-name Staff
+ID correction. Authenticated desktop and 390x844 MobileShell interaction passes
+current-byte common, food-category, and exact-type visibility, theme selection,
+Single Table Card inheritance, and Complete Menu Kit inheritance. Ember House,
+Coastal Table, Sunday Table, and Counter Rush were each selected on both owner
+surfaces and propagated through the individual card and full asset set. The
+eight newest Salon/Spa themes were then selected across both surfaces under
+their proper fixture contexts; Petal Studio and Eucalyptus Retreat remained
+isolated to their exact business types while the other six stayed common.
+Sunlit Ritual propagated through the individual card and full asset set. The
+disposable fixture was restored to Restaurant with no printable preference and
+one active/default Menu. The owner was signed out, and exact emulator readback
+retained manual amount-zero non-payment billing with an empty history.
+
+The last uninterrupted historical aggregate remains 166 passing gates plus one
+explicitly external `verify:upstash-readiness` blocker. It is not represented
+as exact-current proof. The September 1 exact-current aggregate stops at
+`verify:menulist-firebase-rules-predeploy` because the preserved local QA
+Firestore emulator owns port 8080; the maintained runner cannot start its
+isolated demo emulator. Generated deploy-rule freshness passes, but none of the
+43 current predeploy rule scripts is represented as executed in this attempt.
+Live Razorpay provider execution was not attempted; provider-adjacent pricing,
+entitlement, pending/success/failure and idempotency behavior uses mocks,
+fixtures, or the amount-zero reseller entitlement only.
+
+Certification remains blocked because 187 MenuList controls still retain the
+generic current-source interaction-pending status and many additional controls
+have explicit fixture, provider, native, external-handoff, alternate-lifecycle
+or safety boundaries that are not interaction passes. The exact current
+filesystem also has no release commit or hosted current-candidate QA deployment,
+the current Firebase Rules predeploy aggregate is blocked by the preserved
+port-8080 service, the shell lacks the Upstash readiness secret, and Firebase
+Rules, indexes, Storage Rules, and Functions parity is still
+`SERVER_STATE_UNKNOWN` for this snapshot. The current local snapshot is
+therefore not approved for direct production deployment. No staging push,
+Vercel build, Firebase cloud deployment, Git mutation, payment, or production
+mutation was authorized or performed in this pass. The Vercel build-cost guard
+requires one explicitly authorized consolidated staging push only after the
+local candidate and all worktrees are coordinated.
 
 Required final wording if every non-provider completion gate eventually passes:
 
 > MenuList certified excluding live Razorpay provider execution.
+
+### Authenticated Mobile More continuation — 2026-08-31 22:53 IST
+
+MLRC-506 and MLRC-507 are closed locally on the exact current source. Connected
+Chrome at 390x844 exercised 81 current MenuList controls in
+`MobileMoreScreen.tsx` across owner, two-branch, PLATFORM, and reseller
+fixtures. The owner pass covered every reachable root and nested entry, branch
+switching and HQ restoration, search and Clear search, App settings open/close,
+Refresh app with session restoration, profile open/edit validation and Cancel,
+password mismatch recovery, logout confirmation cancellation, and the final
+real sign-out. The platform pass covered all MenuList monitoring and management
+entries without triggering a diagnostic or mutation. The reseller pass opened
+dashboard, onboarding, and management without submission or activation.
+
+Before MLRC-506, Back from Answerlattice Intake crossed local and controlled
+sub-screen values until React raised `Maximum update depth exceeded` and the
+global error recovery screen replaced MobileShell. The corrected transition
+updates both state holders synchronously and admits `answerlatticeHub` as a
+platform return state. Exact browser retest returned to
+`#mobile/more/answerlatticeHub` without a recursive render. MLRC-507 prevents
+embedded Widget Management route normalization and tab changes from replacing
+the MenuList URL with `/__answerlattice/pricing`; the current embedded screen
+retains its tabs at `#mobile/more/answerlatticeWidget`. All fourteen discovered
+Answerlattice actions were exercised only as route/product-separation
+boundaries and remain outside the MenuList control denominator.
+
+Two current MenuList controls are explicitly classified
+`PASS_FEATURE_DISABLED_BOUNDARY`: Past Activity and GBP Integrations are absent
+because `ENABLE_PAST_ACTIVITY_HISTORY` and `ENABLE_GBP_SYNC` are false. The
+PLATFORM-only Sentry Test is classified `BLOCKED_SAFE_EXECUTION` rather than
+`NOT_RUN`; invoking it would deliberately emit an external-monitoring
+diagnostic, so it was not executed. The current 6,723-row inventory contains
+4,394 MenuList rows and 3,882 MenuList user controls: 943 have exact-current
+local-browser evidence, 127 have hosted interaction evidence, 141 are
+non-shipped, 41 are non-user-triggerable, two are feature-disabled, one is
+safety-blocked, and 2,627 remain `NOT_RUN`.
+
+The feature-registry runtime gate was rerun on the changed reader manifest and
+passes with 336 declared flags, 291 flags with runtime readers, 45 declared
+flags without readers, and 1,210 reader locations. The inventory verifier now
+applies all 84 MenuList Mobile More final statuses and still fails closed at the
+separate broad `local mobile owner control evidence is stale` blocker; no older
+controls were silently rebound. Live Razorpay provider execution, payment,
+provider checkout, Firebase cloud, hosted staging, Vercel, Git, customer data,
+destructive management actions, Answerlattice writes, and production remained
+untouched. Certification remains `CERTIFICATION BLOCKED` pending the remaining
+current-source control coverage and hosted/current infrastructure gates.
+
+Current-source validation for this continuation: `verify:mobile-shell-route-map`
+PASS; `test:menulist-feature-flag-runtime` PASS; focused zero-warning ESLint
+PASS; strict `npx tsc --noEmit --incremental false --pretty false` PASS;
+documentation links PASS with zero broken links and 64 pre-existing naming
+warnings; scoped `git diff --check` PASS. The isolated production build PASSed
+under Next.js 16.3.0: compilation completed in 23.2 seconds, build TypeScript in
+54 seconds, 454/454 static pages in 1.949 seconds, and Serwist generated 55
+precache entries. Existing Sass `@import` deprecations and absent optional
+Gemini-key diagnostics remained non-failing. Generated TypeScript references
+were restored byte-for-byte and the 1.3 GB isolated output was moved
+recoverably to `/Users/danny/.Trash/menulist-next-rc-cert-mobile-more-20260831-2300`.
+No remote or Vercel build was triggered.
+
+Cleanup completed through the product UI and local process boundaries: the
+owner signed out through the real Profile confirmation, the responsive viewport
+override was reset, and the three mode-0600 disposable credential files were
+removed. The RC-owned Next, Auth, Storage, and Emulator UI processes stopped
+cleanly; ports 3000, 4000, 9099, and 9199 are closed. The pre-existing MenuList
+Firestore emulator on port 8080 remains running and was not touched.
+
+### Current-source evidence reconciliation — 2026-09-01 00:12 IST
+
+The maintained feature-registry runtime test passes on the exact current
+candidate: 336 declared flags, 291 flags with runtime readers, 45 declared
+flags without readers, 1,210 reader locations, deterministic emulator and
+production rate-limit defaults, and source manifest
+`b39aaa3962f07ee744a13dfafd2f2229b77619a9b6e46c15fd5e7dddda83c8ef`.
+This remains a registry/helper/reader boundary; it does not falsely certify
+every individual feature-on and feature-off journey.
+
+The owner-evidence timestamp audit found that only four of the broad
+178-file mobile-owner manifest changed after its prior authenticated pass:
+`BulkActionsSheet.tsx`, `MobileMoreScreen.tsx`,
+`PrintableAssetTemplatesRoute.tsx`, and `MobileShareScreen.tsx`. Each changed
+surface has newer focused current-source evidence. Duplicate controls were
+removed from the broad evidence set so Bulk Actions, Mobile More, and Printable
+Assets each own their controls exactly once. Older Mobile Menu, Item Edit,
+Category Manager, and Category Edit duplicates were likewise removed in favor
+of their newer focused evidence. No stale action identifier was shifted and
+claimed without a resolving current inventory row.
+
+The final Mobile More delta was re-exercised against the disposable
+provider-free owner on Auth 9099, Firestore 8080, and Storage 9199 at 390x844.
+Profile Edit rendered unchanged Save disabled; Help Centre moved through FAQ
+and Contact with exact hash synchronization; Back restored the same More root
+without dropping `mobileAudit=1`; and Billing Help opened the in-shell Contact
+view with bottom navigation retained. `verify:help-center-boundary`,
+`verify:mobile-shell-route-map`, `test:phone-number-boundary`,
+`test:profile-update-noop-boundary`, and focused zero-warning ESLint all pass.
+No profile write, email handoff, provider, payment, live Razorpay, cloud
+Firebase, hosted, staging, Vercel, Git, deployment, or production mutation
+occurred.
+
+`npm run verify:menulist-rc-inventory` now passes with 6,723 total rows and all
+28 Function exports. The MenuList denominator is 4,394 rows and 3,882 user
+controls: 1,553 `PASS_LOCAL_BROWSER_INTERACTION`, 127
+`PASS_HOSTED_INTERACTION`, 141 `PASS_NOT_SHIPPED`, 41
+`PASS_NOT_USER_TRIGGERABLE`, 15 `BLOCKED_BROWSER_NATIVE_BOUNDARY`, two
+`PASS_FEATURE_DISABLED_BOUNDARY`, one `BLOCKED_SAFE_EXECUTION`, and 2,002
+`NOT_RUN`. Runtime evidence SHA-256 is
+`2d11fa342b5930f2d02bf4cbe65701471f2bbbfd49c2c66a9c8674067f71e8e2`;
+inventory SHA-256 is
+`e9491b9e0e0e9cf77829c4e91f6daf3457a5b6fdd5f4e3edb9e1bae6685ec99d`.
+Certification remains `CERTIFICATION BLOCKED` because the remaining untested
+controls and hosted/current infrastructure gates have not passed.
+
+### Authenticated Mobile Share continuation — 2026-09-01 00:16 IST
+
+The current authenticated 390x844 Mobile Share surface copied and read back the
+Official Business Link, Direct Menu Link, customer-app install link, Menu Board
+link, Highlights Screen link, and all nine customer communication templates.
+Store Menu QR, Business Profile QR, Project Menu QR, and Local QA Branch QR
+each opened the correct named dialog. Setup, Printing, and Sharing guides each
+opened their exact in-shell dialog and recovered normally. No external share,
+WhatsApp handoff, customer communication, or provider action was sent.
+
+Export XLSX, Export JSON, Complete Menu Kit, Table Tent, Single Table Card,
+Counter Sticker, Entrance Poster, Instagram Story, WhatsApp Status, and Google
+Maps Image were each invoked. Link-card and communication-template native Share
+actions were also invoked without selecting a recipient or sending content.
+The in-app browser exposed neither a standard download artifact nor an
+independently observable completed operating-system share result. All 12 native
+controls therefore carry
+`BLOCKED_BROWSER_NATIVE_BOUNDARY` with final status
+`BLOCKED_NATIVE_DOWNLOAD_ARTIFACT_NOT_INDEPENDENTLY_VERIFIED`; they are not
+misrepresented as successful downloads or shares. The runtime evidence and
+verifier bind these classifications to the exact current Mobile Share,
+MobileLinkCard, and CommunicationKit manifest
+`c691881c1b52959481ab79d80bbacf7f979024e575ec77c9c3cc3f139221e2c4`.
+
+After this slice, focused ESLint and `npm run verify:menulist-rc-inventory`
+pass. The exact current inventory remains 6,723 rows and 28 Function exports,
+with the MenuList control distribution recorded above. No Firebase cloud,
+hosted QA, staging, Vercel, Git, live Razorpay, payment, deployment, production,
+or real customer-data action occurred.
+
+The same current-run audit reproduced MLRC-509: Share → Assets → Back and
+Share → Print Menu → Back both landed at the More root, losing the owner's
+launch context. The smallest MobileShell correction retains a transient return
+tab only for Share-launched print surfaces. Current authenticated browser
+retest proves both flows now restore `#mobile/share` with Share selected, while
+direct More → QR and print assets → Back still restores `#mobile/more`.
+`verify:mobile-shell-route-map`, strict TypeScript, focused ESLint, the refreshed
+feature-registry runtime gate, and the aggregate inventory verifier pass on the
+corrected source. The Product Design audit screenshot used for this finding is
+local evidence only; it contains the disposable fixture identity and is not a
+public or repository artifact.
+
+### Authenticated Mobile Menu first-run continuation — 2026-09-01 01:05 IST
+
+A deterministic empty emulator project proved that Upload Menu Photo or PDF
+opened and recovered, and Add a category created one disposable category. That
+flow exposed MLRC-510: before correction, category creation dismissed the
+first-run card, so the card's own `hasCategories`-guarded Add Item CTA could
+never render. The invariant now keeps guided setup while the project has zero
+items. After creating Temporary QA Category, Add Item rendered, opened the
+named form, and recovered through Back without saving an item. The seeded Menu,
+Drinks, and Filter Coffee fixture was then restored.
+
+The route-map verifier now fails if the contradictory no-category condition
+returns or if the category-gated Add Item branch disappears. The targeted
+route-map gate, feature-registry runtime gate, exact source-manifest evidence,
+and aggregate inventory verifier pass. This correction changes no Firebase
+operation count; the only write used for proof was the disposable emulator
+category, followed by deterministic fixture restoration.
+
+The same authenticated Menu continuation applied the Missing image filter and
+opened its Generate Images quick action. The current one-item batch selector
+and configuration review rendered with the seeded Filter Coffee item selected;
+Back returned to item selection and Close restored Menu. Generate was not
+invoked, so no provider request or credit operation occurred. This credits only
+the provider-free setup and recovery boundary, not image generation execution.
+
+### Authenticated Menu Manager draft continuation — 2026-09-01 01:28 IST
+
+The current MobileShell Menu help surface opened the seeded default Menu and
+retained the explicit Nothing changes before you approve boundary. The
+missing-photo starter drafted a Filter Coffee image request; Work on selected
+the exact item context and cleared it; Suggestions drafted the Filter Coffee
+price prompt, opened the nested menu-style choices, returned through Back, and
+closed cleanly. Keyboard clearing restored the empty composer and disabled
+Send. No Send, AI/provider request, proposal, approval, project write, or
+credit operation was invoked.
+
+### Authenticated Menu Design draft continuation — 2026-09-01 01:36 IST
+
+The current mobile Menu Design editor applied Fast ordering as a local draft,
+rendered its exact unsaved customer preview, closed the preview, and Reset to
+the original Clean & Calm/List state. Fine tune style exercised Grid, Theme
+color, Category tabs, the footer-note suggestion, Warm & Inviting, and the
+price/image/category-icon switches. Back closed the color picker and Reset
+discarded every draft; Save Changes returned disabled. A separate reversible
+local-emulator pass enabled Category tabs and saved the setting, verified the
+checked owner readback, then disabled and saved it again. Final readback
+restored the seeded unchecked state with Save Changes disabled. No upload,
+native share, provider, cloud Firebase, hosted, or production operation
+occurred.
+
+### Authenticated Official Business Page draft continuation — 2026-09-01 01:50 IST
+
+The current mobile Official Business Page editor accepted reversible short
+descriptor, known-for, WhatsApp, and Google Maps drafts; exercised the emoji
+style, all seven quick-action switches, all three policy-link switches, and a
+Fresh Green accent draft; and rendered the exact unsaved customer preview with
+the drafted identity, icons, and location. Close recovered to the editor and
+Reset restored the empty descriptor/known-for/WhatsApp/Maps values, standard
+icons, all original enabled switches, the default `#1677FF` accent, and a
+disabled Save Changes button. Cover generation and both file pickers remained
+uninvoked because provider execution and browser-native file selection are
+separate boundaries. No owner/public write, provider, cloud Firebase, hosted,
+or production operation occurred.
+
+### Exact-current local production build — 2026-09-01 01:58 IST
+
+After the authenticated Menu Design and Official Business Page continuations,
+the task-owned development server was stopped and `npm run build` completed
+with exit code 0 on the same coordinated filesystem. Next.js 16.3.0 compiled
+in 18.0 seconds, build TypeScript completed in 57 seconds, all 454/454 static
+pages generated in 2.0 seconds, and Serwist bundled 55 precache entries. The
+known 14 Sass `@import` deprecations and absent optional Gemini-key diagnostics
+remained non-failing; `next-env.d.ts` and `tsconfig.json` retained no tracked
+diff. No Vercel, staging, Git, Firebase cloud deployment, payment, provider, or
+production action occurred.
+
+The long-lived development server had emitted one Turbopack HMR internal panic
+during extensive hot-reload churn before shutdown, then continued serving the
+authenticated flow. Because the isolated production build passes, this is
+recorded as a development-runtime residual diagnostic rather than production
+build failure; it is not represented as a hosted-browser pass.
+
+### Authenticated Special Menus lifecycle continuation — 2026-09-01 02:20 IST
+
+The current mobile owner flow created one disposable scheduled overlay menu,
+opened its named edit sheet, and proved name, description, activation, Reset,
+Close, and Save Changes behavior. Reset restored the scheduled source values;
+the acknowledged save produced an Active card with the updated public name and
+description. End Now first recovered through Keep Active and then completed;
+the past-menu disclosure showed the ended record and hid it again. A second
+scheduled menu recovered through Keep Scheduled before its confirmed
+cancellation. The guarded local fixture reseed removed both disposable menus;
+fresh readback returned `No special menus`, no past-menu disclosure, and the
+canonical Drinks / Filter Coffee / ₹80 regular menu.
+
+The current evidence credits only the directly exercised dialog, selector,
+edit, reset, save, lifecycle, and past-menu controls. Translation remained
+uninvoked because it is provider-adjacent. Manual datetime fields remain
+uncredited because the browser bridge did not produce a verified value change.
+No cloud Firebase, Razorpay, hosted, staging, Vercel, Git, deployment, payment,
+provider, or production action occurred.
+
+### Authenticated Menu Command Center continuation — 2026-09-01 03:05 IST
+
+The current 390x844 Menu owner surface opened the named Manage & Control Your
+Menu sheet and activated the provider-free availability, bulk-price,
+visibility, move-category, text-case, generation-default, Add Images, Menu
+Languages, Menu PDF, Menu Design, Import Menu, Edit Categories, Add Item,
+Reorder Menu, and Featured section commands. Each reached its exact named
+sheet, dialog, or in-shell destination. Back, Cancel, or Close restored the
+command sheet or Menu without saving.
+
+The import path exposed guarded photo/PDF and permission-confirmed URL intake
+without opening a file chooser. Add Item rendered its empty disabled-submit
+form. Reorder Menu exposed category and item branches. Featured choices
+retained automatic defaults with Save disabled. Menu PDF rendered the seeded
+two-page Filter Coffee menu, and Menu Design rendered the current style with
+Save disabled. View Updated Menu was activated, but the local browser bridge
+produced no independently inspectable destination tab, so that exact control
+remains uncredited. Repair Menu and Add missing descriptions were not invoked
+because provider execution is outside this continuation. No AI generation,
+file selection, public write, publish, menu mutation, cloud Firebase, live
+Razorpay, hosted, staging, Vercel, Git, deployment, or production action
+occurred.
+
+The refreshed aggregate inventory verifier passes with 6,723 total rows and
+all 28 Function exports. MenuList retains 4,394 rows and 3,882 user controls:
+1,568 `PASS_LOCAL_BROWSER_INTERACTION`, 127 `PASS_HOSTED_INTERACTION`, 141
+`PASS_NOT_SHIPPED`, 41 `PASS_NOT_USER_TRIGGERABLE`, 15
+`BLOCKED_BROWSER_NATIVE_BOUNDARY`, two `PASS_FEATURE_DISABLED_BOUNDARY`, one
+`BLOCKED_SAFE_EXECUTION`, and 1,987 `NOT_RUN`. Runtime evidence SHA-256 is
+`ed1e2f05c842aa46c26e68b93e7f9fb1f9c4b3535af5b8dfab00a51371dd68ae`;
+inventory SHA-256 is
+`792d48ff5036fae948d0d278c7dc2c17b11711a814a9f59980108589742e4318`.
+Certification remains `CERTIFICATION BLOCKED`; the reduced but nonzero untested
+control denominator and hosted/current infrastructure gates do not satisfy the
+completion gates.
+
+### Exact-current 47-theme and aggregate gate refresh — 2026-09-01 03:18 IST
+
+The physical coordinated source supersedes the older 35-theme handoff and
+remains the authority: the maintained catalog verifier enforces 47 canonical
+parent themes, comprising 34 common, five food-category, and eight exact-type
+families. No stale handoff byte was restored. On these exact current bytes,
+`test:printable-asset-style-preferences`,
+`verify:printable-asset-templates`, and the complete
+`verify:menu-card-export` chain pass, including QR, print-source, sanitizer,
+shared-contract, shared-print, and catalog boundaries.
+
+Strict `npx tsc --noEmit --incremental false --pretty false` and full
+`npm run lint` pass. An isolated `npm run build` also passes: Next.js 16.3.0
+compiled in 7.4 seconds, build TypeScript completed in 5.1 seconds, all 454/454
+static pages generated in 2.1 seconds, and Serwist emitted 55 precache entries.
+The existing 14 Sass `@import` deprecation warnings and absent optional Gemini
+key diagnostics remain non-failing. The aggregate inventory verifier and
+scoped audit-file diff check pass after the build.
+
+Cleanup closed the local certification browser tab, stopped only the
+task-owned Next development server plus Auth/Storage/UI emulators, and removed
+the mode-600 temporary local fixture credential. Ports 3000, 9099, 9199, and
+4000 are no longer listening. Pre-existing Firestore emulator processes on
+8080 and 8181 were intentionally left untouched. No Git, Vercel, staging,
+Firebase cloud, provider, payment, Razorpay, deployment, or production action
+occurred.
+
+### Authenticated mobile Print Menu continuation — 2026-09-01 03:42 IST
+
+At 390×844, the authenticated local owner Print Menu flow exercised all four
+job presets, all three visual styles, all three density choices, and the four
+cover/description/QR/contact switches. Preview pagination and QR state updated
+with the selections, and the final state was restored to Home Print, Premium,
+Comfort, all four switches enabled, a dedicated cover, two preview pages, and
+Live QR.
+
+The pass exposed MLRC-511: every mutually exclusive job, style, and density
+button changed visually but omitted selected-state semantics. The current
+source now sets `aria-pressed={active}` in each of the three choice maps. Exact
+browser readback proved true/false transitions for Home Print versus WhatsApp
+PDF, Premium versus Compact, and Comfort versus Balanced, followed by the
+restored state. The maintained Menu Card verifier now requires all three
+semantics, and its full subordinate QR, print-source, sanitizer, shared, and
+catalog boundary chain passes. Focused zero-warning ESLint, strict TypeScript,
+the documentation regression, and aggregate inventory verification also pass.
+
+Create PDF generated the named local browser-history entry and current/reusable
+status, but the browser bridge did not expose a downloadable artifact for
+independent inspection. Share entered the browser-native share boundary without
+an independently inspectable completion result. Those exact controls remain
+uncredited. Suggest layout and Apply suggestion remained uninvoked because they
+are provider-adjacent, and the single-project fixture did not admit a project
+selector transition. No provider, cloud Firebase, payment, Razorpay, hosted,
+staging, Vercel, Git, deployment, or production action occurred.
+
+The refreshed aggregate inventory verifier passes with 6,723 rows and all 28
+Function exports. MenuList retains 4,394 rows and 3,882 user controls: 1,575
+`PASS_LOCAL_BROWSER_INTERACTION`, 127 `PASS_HOSTED_INTERACTION`, 141
+`PASS_NOT_SHIPPED`, 41 `PASS_NOT_USER_TRIGGERABLE`, 15
+`BLOCKED_BROWSER_NATIVE_BOUNDARY`, two `PASS_FEATURE_DISABLED_BOUNDARY`, one
+`BLOCKED_SAFE_EXECUTION`, and 1,980 `NOT_RUN`. Runtime evidence SHA-256 is
+`f53cca60303d0c8e5ef1478fa122993d31a9444e094b6327e77e08d7a3c45b62`;
+inventory SHA-256 is
+`ad2e4bb8cd58b290c369ec939bd814c90bf0a9f5bb578c98c4543d4d9d6413c0`.
+Certification remains `CERTIFICATION BLOCKED`; the remaining untested-control
+denominator and hosted/current infrastructure gates still prevent satisfaction
+of the completion gates.
+
+The task-owned browser tab and local Next/Auth/Storage/UI services were then
+closed cleanly, and the mode-600 temporary fixture password was removed. Ports
+3000, 4000, 9099, and 9199 are closed; the pre-existing Firestore emulator
+processes on 8080 and 8181 remain untouched. On the same current source,
+`npm run build` exits 0: Next.js 16.3.0 compiles in 8.9 seconds, build TypeScript
+finishes in 5.7 seconds, and all 454/454 static pages generate in 1.9 seconds.
+The known 14 Sass `@import` deprecations and absent optional Gemini-key
+diagnostics remain non-failing. The complete Menu Card verifier, aggregate
+6,723-row inventory verifier, and scoped diff check also pass immediately before
+the build.
+
+### Authenticated Mobile Official Page media-lifecycle continuation — 2026-09-01 05:20 IST
+
+At 390×844, the authenticated isolated owner uploaded the deterministic local
+image fixture as an Official Page cover and business photo. Cover Upload,
+Adjust, Left/Fit framing, Remove, and acknowledged Save were exercised. The
+photo Add, numbered Preview, row Adjust, popup Adjust, and named Photo 1 popup
+were also exercised. Replacement and failed-upload Retry remain uncredited
+because the browser file-chooser attempt timed out before an independently
+verified selection; provider generation and native share were not invoked.
+
+The pass reproduced MLRC-512. Immediate cover/gallery uploads existed only in
+component memory, so a real abrupt tab close could end the page before
+asynchronous unmount cleanup completed. The initial pre-fix inspection found
+three orphan fixture objects. In the controlled correction retest, exact
+Storage-emulator readback moved from a clean zero to two unsaved objects and
+remained two immediately after close. The corrected tenant/store-scoped browser
+journal then recovered both on exact-scope reopen, returning the count to zero.
+An acknowledged saved cover remained one object across a second close/reopen,
+and explicit Remove plus acknowledged Save returned Storage to zero. The
+deterministic seeded fixture was restored before shutdown.
+
+The journal is bounded to 48 deduplicated length-limited URLs, fails closed on
+invalid tenant/store scope, and filters every retry against committed cover and
+gallery references. It adds no Firestore read/write, Function invocation,
+listener, cloud record, rule, index, or cache path. One Storage delete is
+performed per genuine orphan; the correction prevents indefinite retained
+bytes/object accumulation rather than claiming a reduction in delete billing.
+
+Current-source validation passes: OBP media-reference regression, complete
+Official Business Page boundary plus i18n/freshness tests, the complete Storage
+hardening chain and immutable-media Storage Rules emulator suite, feature-flag
+runtime registry, 6,723-row RC inventory, documentation links with zero broken
+links, scoped diff check, strict TypeScript, and full zero-warning ESLint. The
+isolated Next 16.3.0 production build compiled in 18.1 seconds, completed build
+TypeScript in 6.8 seconds, generated all 454/454 static pages in 1.971 seconds,
+and emitted 55 Serwist precache entries. The known 14 Sass `@import`
+deprecations and absent optional Gemini-key diagnostics remain non-failing.
+
+The refreshed MenuList inventory retains 4,394 rows and 3,882 user controls:
+1,556 `PASS_LOCAL_BROWSER_INTERACTION`, 127 `PASS_HOSTED_INTERACTION`, 141
+`PASS_NOT_SHIPPED`, 41 `PASS_NOT_USER_TRIGGERABLE`, 15
+`BLOCKED_BROWSER_NATIVE_BOUNDARY`, two `PASS_FEATURE_DISABLED_BOUNDARY`, one
+`BLOCKED_SAFE_EXECUTION`, and 1,999 `NOT_RUN`. Runtime evidence SHA-256 is
+`f1882282cd4b154b9a32412951e386bbc832c2ad77555ad5bb6a5c94b1dbdc6e`;
+inventory SHA-256 is
+`ffa1257a86d5e1eec96426d854789b772db172ccbe1ebcadb7f948abfaac85aa`.
+The lower current-source credited count is intentional: older Official Page
+line identities were removed instead of being represented as current tests;
+only the nine controls directly re-exercised in this pass remain credited.
+
+Cleanup stopped only the task-owned Next development server and
+Auth/Storage/UI emulators, removed the exact mode-600 temporary fixture
+credential, and verified ports 3000, 4000, 9099, and 9199 closed. Pre-existing
+Firestore emulator processes on 8080 and 8181 remain untouched. No Git,
+Vercel, staging, Firebase cloud, provider, payment, live Razorpay, deployment,
+or production action occurred. Certification remains `CERTIFICATION BLOCKED`:
+the nonzero untested-control denominator and hosted/current infrastructure
+gates still prevent the completion gates from being satisfied.
+
+### Mobile Official Page reversible-control and exact-current catalog continuation — 2026-09-01
+
+The authenticated 390×844 local owner pass completed the remaining reversible
+Official Page editor slice. Short Descriptor, Known For, WhatsApp, Maps,
+Established Year, Reservation, Online Order, Google Review URL, rating, review
+count, emoji icons, all seven quick actions, all three policy links, the special
+note suggestion, and Fresh Green accent were changed as an unsaved draft.
+Preview rendered the complete draft with `Not saved yet`, the expected hidden
+actions/policies, rating/count, note, and emoji presentation. Reset then restored
+the exact empty/#1677FF/enabled baseline and disabled both Save and Reset.
+
+The same owner pass uploaded the deterministic local image into Photo 1,
+verified row Remove, uploaded again, verified preview-dialog Replace, then
+verified preview-dialog Remove. Reset left the UI pristine and exact Firebase
+Admin Storage-emulator readback returned zero objects. Re-seeding the isolated
+fixture with a missing customer link exposed `Open Domain settings` and routed
+to the mobile Domain screen; the configured deterministic fixture was restored
+afterward. Hidden file inputs, failed-upload Retry, provider cover generation,
+native share, and localization-only reference controls remain uncredited.
+
+The physical printable catalog is newer than the superseded 35-theme handoff.
+Current repository truth contains 47 governed parent themes: 34 common, five
+food-category, and eight exact-business-type families. No stale handoff bytes
+were restored. On the exact physical source, the parent-theme preference suite,
+printable-template verifier, and complete Menu Card chain all pass, including
+QR, print-source, sanitizer, shared-contract, shared-print, and catalog gates.
+
+Strict TypeScript and full zero-warning source lint pass. The current Next.js
+16.3.0 production build compiled in 6.1 seconds, completed build TypeScript in
+5.0 seconds, generated 454/454 static pages in 1.989 seconds, and emitted 55
+Serwist precache entries. The known Sass `@import` deprecations and absent
+optional Gemini-key diagnostics remain non-failing.
+
+The refreshed aggregate inventory verifier passes with 6,723 rows and all 28
+Function exports. MenuList retains 4,394 rows and 3,882 user controls: 1,586
+`PASS_LOCAL_BROWSER_INTERACTION`, 127 `PASS_HOSTED_INTERACTION`, 141
+`PASS_NOT_SHIPPED`, 41 `PASS_NOT_USER_TRIGGERABLE`, 15
+`BLOCKED_BROWSER_NATIVE_BOUNDARY`, two `PASS_FEATURE_DISABLED_BOUNDARY`, one
+`BLOCKED_SAFE_EXECUTION`, and 1,969 `NOT_RUN`. Runtime evidence SHA-256 is
+`f4b64fe946f59e9e8b9be0247b824fb20fde7a78c7652ac5b7f79c8fb393adee`;
+inventory SHA-256 is
+`dd809d7c8f570703fff926bfc1b734be32294f0fbd9227e672bf4b64179fcd5a`.
+
+The task-owned browser tab and viewport override were closed/reset, the
+task-owned Next/Auth/Storage/UI services were stopped, and the exact mode-600
+temporary fixture credential was removed. Ports 3000, 4000, 9099, and 9199 are
+closed; pre-existing Firestore emulator processes on 8080 and 8181 remain
+untouched. No Git, Vercel, staging, Firebase cloud, provider, payment, live
+Razorpay, deployment, or production action occurred. Certification remains
+`CERTIFICATION BLOCKED`: 1,969 controls and hosted/current infrastructure
+parity still prevent the completion gates from being satisfied.
+
+### Mobile Share creation-boundary and SEO/AEO continuation — 2026-09-01
+
+The authenticated 390×844 local pass reproduced MLRC-513. An empty owner who
+opened the read-only Share shell silently received a default menu project
+because the shared project provider always used the legacy create-when-empty
+reader. The provider now uses the existing-project reader everywhere except the
+active Menu tab; Menu is the only shell destination that opts into intentional
+first-menu creation. Exact emulator readback proves zero projects and no summary
+while Share renders `No menu yet`, followed by exactly one default project only
+after Create Menu hands off to Menu.
+
+The adjacent Share surface remained functional: both project selectors,
+business-theme/project-theme inheritance, Digital Screens setup, copied POS
+setup information, and contained External sync settings navigation passed.
+Feedback QR entered the browser-native boundary without an independently
+inspectable completion and remains classified as such. Temporary POS/feedback
+fixture fields and the disposable extra project were removed, and the
+deterministic seeded/configured fixture was restored.
+
+The same owner then completed the current Mobile SEO/AEO slice. Tagline, Meta
+Title, Meta Description, Keywords, and Canonical URL drafts updated all visible
+previews; all four help disclosures opened; Reset restored the baseline. A
+valid HTTPS canonical URL plus temporary tagline completed the acknowledged
+Firestore save path, after which deterministic reseeding removed the temporary
+truth. The localhost HTTP fixture default correctly produced the precise
+production validation message `Enter a valid HTTPS canonical URL.`; this is a
+local-environment constraint, not a hosted product failure.
+
+Current-source project-editor, special-menu lifecycle, public-business-truth,
+feature-registry, strict TypeScript, full zero-warning source lint, scoped diff,
+and aggregate inventory gates pass for the MLRC-513 boundary. The isolated
+Next.js 16.3.0 production build also exits 0: compilation completed in 17.9
+seconds, build TypeScript in 8.5 seconds, and all 454/454 static pages generated
+in 1.776 seconds. The known Sass `@import` deprecations and absent optional
+Gemini-key diagnostics remain non-failing. The refreshed inventory passes with
+6,723 rows and all 28 Function exports. MenuList retains 4,394 rows and
+3,882 controls: 1,604 `PASS_LOCAL_BROWSER_INTERACTION`, 127
+`PASS_HOSTED_INTERACTION`, 144 `PASS_NOT_SHIPPED`, 41
+`PASS_NOT_USER_TRIGGERABLE`, 16 `BLOCKED_BROWSER_NATIVE_BOUNDARY`, three
+`PASS_FEATURE_DISABLED_BOUNDARY`, one `BLOCKED_SAFE_EXECUTION`, and 1,946
+`NOT_RUN`. Runtime evidence SHA-256 is
+`d0167e2bada293d8af36012250c157a102fa1ed66ac4f3e745129ba72ad50dd5`;
+inventory SHA-256 is
+`9f56445c91205d49768af96a9c0720261b1e6d88c4e84f136e44ce5be8c63fd0`.
+
+No cloud Firebase, Git, Vercel, staging, provider, payment, live Razorpay,
+deployment, or production action occurred. Certification remains
+`CERTIFICATION BLOCKED`: the remaining 1,946 untested controls plus hosted and
+current infrastructure parity prevent satisfaction of the completion gates.
+
+Cleanup reset the temporary 390×844 viewport, closed the task-owned browser
+tab, stopped only the task-owned Next/Auth/Storage/UI services, and removed the
+mode-600 fixture credential. Ports 3000, 4000, 9099, and 9199 are closed. The
+pre-existing Firestore emulator listeners on 8080 and 8181 remain untouched.
+
+### Creative Editor saved-design continuation — 2026-09-01 13:57 IST
+
+The authenticated desktop owner pass exercised 64 additional current Creative
+Editor controls across background sizing, all common presets, business text,
+Brand Kit, selected text and image tools, alignment, gradients, path text,
+layer visibility/order/locking, save, and close. It then reproduced MLRC-514:
+a Single Table Card resized to the supported 900×1200 preset saved to the local
+Firestore/Storage-backed reusable-template registry but failed to reopen from
+Saved designs because rehydration incorrectly required the original canonical
+asset dimensions.
+
+The corrected boundary admits only 120–4096px canvases, preserving every
+canonical print size, the six owner presets, and supported custom sizes while
+continuing to reject a 10,000×10,000 document. Exact browser retest reopened the
+existing 900×1200 design, saved it again, and closed cleanly. Its named delete
+confirmation opened and was cancelled; no deletion is represented as complete.
+The owner reopen failure now emits bounded identifiers through the existing
+runtime logger without document content, URLs, credentials, or private owner
+data.
+
+Current-source validation passes: print shared boundaries, printable-template
+verification, the complete Menu Card chain and subordinate QR/source/sanitizer/
+shared/catalog checks, feature-flag registry runtime, strict TypeScript, focused
+zero-warning ESLint, scoped diff check, and the aggregate RC inventory verifier.
+The refreshed inventory passes with 6,723 rows and all 28 Function exports.
+MenuList retains 4,394 rows and 3,882 controls: 1,670
+`PASS_LOCAL_BROWSER_INTERACTION`, 127 `PASS_HOSTED_INTERACTION`, 144
+`PASS_NOT_SHIPPED`, 41 `PASS_NOT_USER_TRIGGERABLE`, 16
+`BLOCKED_BROWSER_NATIVE_BOUNDARY`, three `PASS_FEATURE_DISABLED_BOUNDARY`, one
+`BLOCKED_SAFE_EXECUTION`, and 1,880 `NOT_RUN`. Runtime evidence SHA-256 is
+`92fce0da7fb37738868c8243664c4c1c5b05a46f08bcf3fca072a3f0ccd5465f`;
+inventory SHA-256 is
+`742993f9b65021b7711cbef1c1212467cb2de7cb511faac03fc02c537c5c0c96`.
+
+No cloud Firebase, Git, Vercel, staging, provider, payment, live Razorpay,
+deployment, or production action occurred. Certification remains
+`CERTIFICATION BLOCKED`: the remaining 1,880 untested controls plus hosted and
+current infrastructure parity prevent satisfaction of the completion gates.
+
+### Exhaustive inventory continuation — 2026-09-01 20:20 IST
+
+The resumed local-only certification reduced current MenuList `NOT_RUN`
+controls from 1,880 to 1,208 without treating source inspection as a browser
+pass. Reversible controls were exercised where the deterministic owner fixture
+made them reachable; unreachable branches received explicit, source-manifest-
+bound results for provider execution, browser-native capabilities, external
+handoffs, safety boundaries, feature-disabled behavior, missing deterministic
+fixtures, or mutually exclusive lifecycle states.
+
+This continuation includes desktop project sharing, Menu Card export,
+subscription lifecycle states, traditional menu/category editing, AI Menu
+Manager, Past Activity feature-disable recovery, AI image edit and batch-result
+boundaries, mobile extraction/menu upload/menu processing, billing, Hours,
+Feedback, Domain settings, phone OTP, GrowthOS, Sentry diagnostics, platform
+font administration, reseller result states, public OBP external links,
+Printable Assets alternate states, login account-claim states, Mobile Share,
+and Use MenuList recovery/alternate states. Live Razorpay, image-generation,
+WhatsApp OTP, DNS-provider, Sentry-event injection, native chooser/download,
+and third-party-console actions remain honestly blocked; none is represented as
+executed.
+
+The current inventory contains 6,729 rows, including all 28 Firebase Function
+exports. MenuList contains 4,400 rows and 3,888 control candidates: 1,971
+`PASS_LOCAL_BROWSER_INTERACTION`, 127 `PASS_HOSTED_INTERACTION`, 149
+`PASS_NOT_SHIPPED`, 41 `PASS_NOT_USER_TRIGGERABLE`, 111
+`BLOCKED_EXTERNAL_PROVIDER_EXECUTION`, 82
+`BLOCKED_BROWSER_NATIVE_BOUNDARY`, 80 `BLOCKED_FIXTURE_STATE`, 34
+`BLOCKED_ALTERNATE_LIFECYCLE_STATE`, 34
+`PASS_FEATURE_DISABLED_BOUNDARY`, 25 `BLOCKED_EXTERNAL_HANDOFF`, 12
+`BLOCKED_BROWSER_NATIVE_OR_EXTRACTION_BOUNDARY`, 10
+`BLOCKED_SAFETY_BOUNDARY`, four `BLOCKED_SAFE_EXECUTION`, and 1,208
+`NOT_RUN`.
+
+Runtime-evidence JSON parsing, inventory regeneration, the independent
+fail-closed inventory verifier, focused zero-warning ESLint for both inventory
+tools, and scoped `git diff --check` pass. Runtime evidence SHA-256 is
+`b8d5f097ac9c946f07d586888b68bafdaba3691e79e1079af76ade2642c9dd3b`;
+inventory SHA-256 is
+`5a66a0fdb642214e6eca11bb58efb83c33e323ed7837bb65c5e2b00fb4b64080`.
+
+No cloud Firebase, Git, Vercel, staging, provider, payment, live Razorpay,
+deployment, or production action occurred. Certification remains
+`CERTIFICATION BLOCKED`: 1,208 controls still require a final status, and hosted
+current-candidate plus authenticated infrastructure readback remains pending.
+
+### 2026-09-01 late continuation — exact-current control closure and MLRC-517
+
+Connected local Chrome and current-source evidence reduced the unresolved
+MenuList control count from 1,208 to 684 without using cloud Firebase, a
+provider, payment, Git, Vercel, staging, deployment, or production. The current
+6,729-row inventory still contains 4,400 MenuList rows and 3,888 MenuList
+control candidates: 2,135 local-browser passes, 127 retained hosted passes, 149
+non-shipped controls, 43 non-user-triggerable controls, 34 feature-disabled
+boundaries, 198 external-provider blockers, 146 native-browser blockers, 227
+alternate-fixture blockers, 53 alternate-lifecycle blockers, 63 external
+handoffs, 13 safety blockers, 12 native/extraction blockers, four safe-execution
+blockers, and 684 honest `NOT_RUN` controls.
+
+| ID | Severity | Affected flow | Reproduction and root cause | Fix and regression | Retest | Status |
+|---|---|---|---|---|---|---|
+| MLRC-517 | Medium | Business Settings → Analytics Setup Wizard at 390×844 | Ant Design automatically changed the six title-less steps to a vertical rail, pushing the pointer footer and Next Step below the visible modal; the footer/step lists also emitted a missing-key React warning. | Keep the six-step progress horizontal with `responsive={false}` and add stable keys to steps and footer actions. `test-public-website-analytics-minimization.ts` now fails closed on both contracts. | At 390×844, all six steps remain visible horizontally; pointer Next advances, keyboard navigation still works, Finish closes, all five analytics switches restore their exact values, and no new missing-key warning appears. | CLOSED LOCALLY |
+
+Additional exact-current closure includes reversible analytics ID/switch drafts;
+special-hours and digital-screen lifecycle evidence; owner media/item draft
+controls; provider-free pricing lifecycle observation; and explicit,
+non-passing classifications for external business-action handoffs, native
+downloads/uploads/shares, AI generation, alternate locale/recommendation/
+proposal/category/feedback states, and destructive asset boundaries. These
+blocked rows are not represented as tested interactions.
+
+The fail-closed inventory verifier passes for all 6,729 rows and 28 Function
+exports. `test-public-website-analytics-minimization.ts`, focused zero-warning
+ESLint, and scoped `git diff --check` pass. Runtime-evidence SHA-256 is
+`cace1bedf292cbf43a8198414ea80e7661976aefb7fe082a1c944aa7069eb6d6`;
+inventory SHA-256 is
+`02c78924e56db422ceebb43e28d8517c2489aa43ab629beab5ba216cd5f93642`.
+Certification remains `CERTIFICATION BLOCKED` while the 684 controls and final
+aggregate/current hosted-infrastructure gates remain open.
+
+### Last verified stable-source control checkpoint, rules coverage, and MLRC-518 — 2026-09-01 22:20 IST
+
+The last verified stable inventory checkpoint contains 6,731 rows, including all 28 Firebase
+Function exports. MenuList contains 4,402 rows and 3,890 user-control
+candidates. No MenuList control retains the ambiguous `NOT_RUN` result. The
+current result partition is:
+
+- 2,194 `PASS_LOCAL_BROWSER_INTERACTION`;
+- 127 `PASS_HOSTED_INTERACTION`;
+- 103 `PASS_LOCAL_CURRENT_CONTRACT`;
+- 100 `PASS_COMPONENT_RUNTIME_INTERACTION`;
+- 149 `PASS_NOT_SHIPPED`;
+- 44 `PASS_NOT_USER_TRIGGERABLE`;
+- 34 `PASS_FEATURE_DISABLED_BOUNDARY`;
+- 222 `BLOCKED_CURRENT_SOURCE_INTERACTION_PENDING`;
+- 310 `BLOCKED_FIXTURE_STATE`;
+- 272 `BLOCKED_EXTERNAL_PROVIDER_EXECUTION`;
+- 164 `BLOCKED_BROWSER_NATIVE_BOUNDARY`;
+- 76 `BLOCKED_EXTERNAL_HANDOFF`;
+- 60 `BLOCKED_ALTERNATE_LIFECYCLE_STATE`;
+- 17 `BLOCKED_SAFETY_BOUNDARY`;
+- 12 `BLOCKED_BROWSER_NATIVE_OR_EXTRACTION_BOUNDARY`; and
+- five `BLOCKED_SAFE_EXECUTION`; and
+- one `BLOCKED_BROWSER_INTERACTION_NOT_CAPTURED`.
+
+The 222 current-source controls are deliberately non-passing. Each is marked
+`CURRENT_SOURCE_CONTROL_REQUIRES_BROWSER_OR_DETERMINISTIC_FIXTURE_INTERACTION`
+and retains `regression_test_added=NO`; source discovery or page reachability
+is not represented as interaction evidence. The fail-closed inventory verifier
+requires exactly this explicit partition and rejects any MenuList control that
+returns to ambiguous `NOT_RUN`. Runtime-evidence SHA-256 is
+`970fd8669d5172d9622e799d73f057586f7905872c888738f3c59ae44e991b8d`;
+inventory SHA-256 is
+`94f83e8a8aa7d3e1c94e9b7e05ff65dd0ebd7946aeffe88dd49e9ffc03db4f02`.
+
+After this checkpoint, the separate Assets builder task resumed and changed
+source while the next inventory pass was running. The provisional generator
+reached 6,740 rows, then the fail-closed verifier rejected the now-stale
+feature-reader manifest. That moving snapshot is not admitted as certification
+evidence. Six additional deterministic component controls (rating, media ratio,
+owner-assistant input/send, and reorder activator/selection) pass locally, but
+their inventory/report count remains pending until the concurrent task is idle
+and the complete source-bound evidence chain is regenerated once.
+
+Repository-wide inventory closure also assigns all 2,329 non-MenuList rows the
+explicit `PASS_OUT_OF_SCOPE_PRODUCT_BOUNDARY` result. There are zero exact
+`NOT_RUN` rows anywhere in the 6,731-row matrix. These separation-only rows do
+not count as MenuList feature certification and cannot be assigned to the
+MenuList product area by the verifier.
+
+The latest current-source continuation exercised Business Health scope,
+Public Truth owner recovery and monitor lifecycle, vertical and horizontal
+sidebars, both breadcrumb layout branches, and deterministic component runtime
+controls for analytics export, project confirmation/recovery/selection,
+AI-search actions/input/results, help-reference preview/full-article recovery,
+credit-pack entitlement/plan routing, pricing interval and plan confirmation,
+special-menu schedule editing, public menu section/language controls,
+transaction diagnostics, unavailable-article recovery, public consent,
+multi-location update/history, the owner welcome dialog, and the pre-provider
+upgrade confirmation. It additionally executes the command-center visibility,
+availability, pricing, and text-case actions; Language Selector add/remove;
+and the Owner App Update prompt dismissal. The refresh action remains an
+explicit browser-native reload boundary. The component suite covers 100 exact controls and stops
+the upgrade flow at its supplied callback; no Razorpay provider execution or
+payment action occurred. The test harness also terminates deterministically so
+Ant Design overlay handles cannot stall the aggregate runner. Test source
+SHA-256 is `940e3ec45769ab36ab05692a2e09b865b9a75901b1e2e9f7aba174b5c4e6fc4f`.
+The signed-out credit-pack redirect and all three privacy-policy email actions
+remain explicit external-handoff boundaries; no browser location or mail client
+handoff is represented as executed.
+
+The authenticated owner continuation closed 33 additional current-source
+controls without retaining disposable fixture state. It generated and revoked
+a Platform Pull API key, exercised notification channel selection, reversible
+business type/attribute/feedback/social-profile drafts, saved and reverted a
+real Business Settings value across reloads, validated/cancelled/saved/reset a
+custom compliance page, entered and restored a working-hours range, opened and
+cancelled the empty preset workflow, and dismissed/reloaded the Google listing
+guide. Business Copy generation was also invoked with the provider key absent;
+the UI failed safely and remained recoverable. Native clipboard writes,
+external Google handoffs and confirmations, WhatsApp consent, generated-copy
+repair gaps, and other unavailable fixture/provider states remain explicit
+non-passing boundaries rather than fabricated successes.
+
+The adjacent continuation also verified the authenticated website-to-dashboard
+handoff and current empty Transactions/Feedback states, retained logout as a
+safety boundary until owner testing finishes, bound the valid-message-preview
+success branches to their missing session fixture, reran the real-component
+App Router error suite, and closed alternate OBP project-count, breadcrumb,
+Creative Editor autosave, and legacy QR-panel states without inventing data.
+
+| ID | Severity | Affected flow | Reproduction and root cause | Fix and regression | Retest | Status |
+|---|---|---|---|---|---|---|
+| MLRC-518 | Medium | Firebase scale/cost closeout aggregate | With an approved Firestore emulator already listening on the configured port, `verify:firebase-scale-cost-closeout` printed `Could not start Firestore Emulator, port taken` and could terminate without executing both lease suites. The aggregate therefore risked a false-positive cost/reliability result. | Added `run-firestore-admin-emulator-test.js`, which requires a demo project, discovers an existing approved emulator on the configured host or maintained local ports, runs the exact TypeScript lease suite, requires its success marker, and exits nonzero for a missing emulator, failed test, or missing marker. Both lease package scripts now use this fail-closed runner after the Functions build. | The complete cost closeout passes 125 static checks, then runs both platform-daily and maintenance lease suites against `127.0.0.1:8181`; both emit their required success markers. Runner SHA-256 is `5126c153cb9ebe14577db1b95c23383d8d79e2c21c2b2ebba2e6a030b733297a`. | CLOSED LOCALLY |
+
+The Firebase cost effect is evidence integrity and duplicate-work avoidance:
+the aggregate now reuses the already approved emulator instead of attempting a
+second conflicting process, and it cannot silently omit the two idempotent
+lease/concurrency suites. This does not change billed Firestore operation
+counts in the cloud and no cloud cost saving is claimed.
+
+Current rules evidence was exercised against the already running local
+emulators without restarting or changing their shared configuration. The
+deterministic MenuList deploy-rules artifact is current. Firestore runtime
+suites pass for tenant/store scoping, guest feedback, billing coordination,
+special-menu lifecycle, analytics, common assets, digital screens, store
+summary identity, pricing plans, reviews/reputation, reseller boundaries,
+owner-control usage transactions, Menu Intelligence private reads, and POS
+secret isolation. Expected `PERMISSION_DENIED` diagnostics are negative
+assertions. Storage runtime rules pass immutable media, owner/store isolation,
+legacy-path denial, content-type and size bounds, platform-only blog assets,
+and user/platform creative-template separation against `127.0.0.1:9199`.
+
+Exact current command results:
+
+| Command | Result |
+|---|---|
+| `npx tsc --noEmit --incremental false --pretty false` | PASS |
+| `npm run lint` | PASS, zero warnings |
+| `npm run build` | PASS, 454/454 static pages; only the existing Sass `@import` deprecations and optional missing-Gemini-key diagnostics |
+| `npm run test:menulist-function-exports-runtime` | PASS: 23 MenuList Function exports partitioned across callable, trigger, watcher, HTTP, and scheduler boundaries |
+| `npm run verify:firebase-scale-cost-closeout` | PASS: 125 static checks plus both lease emulator suites |
+| `npm run verify:menulist-firestore-rules` | PASS: generated MenuList deploy rules are current |
+| Direct Firestore rules runtime matrix on `127.0.0.1:8080` | PASS for 14 high-risk MenuList suites listed above |
+| Direct `test-menulist-media-storage-rules.ts` on `127.0.0.1:9199` | PASS |
+| `npm run verify:public-business-truth` | PASS: public cache deadline, nested store projection, change log, drift, learning, owner dashboard, Use MenuList, and first-publish contracts |
+| `npm run verify:auth-security-failure-matrix` | PASS: credential normalization, exact access scope, bounded diagnostics/logging, upload lifecycle, store switch, claims, Firebase client, routes, and policy boundaries |
+| `npm run verify:menulist-api-tenant-safety` | PASS: API tenant safety, sensitive server store scope, callable scope, and CSP reporting |
+| `node scripts/verification/verify-storage-path-hardening.js` | PASS: immutable uploads, cleanup ordering, typed paths, legacy denial, content admission, and bounded platform asset behavior |
+| `npm run verify:url-routing-boundary` | PASS: canonical host routing and Functions URL contracts, including product separation |
+| `npm run verify:account-tenant-lifecycle` | PASS: source and browser lifecycle contracts |
+| `npm run test:tenant-dal-boundary` | PASS |
+| `npm run test:public-client-cache-revalidation-merge` | PASS |
+| `npm run test:mobile-compliance-cache-boundary` | PASS |
+| `npm run docs:check-links` | PASS with 0 broken links; 64 pre-existing naming warnings, including the user-required uppercase certification filename |
+| `npm run verify:working-hours-boundary` | PASS |
+| `npm run verify:owner-business-health-boundary` | PASS |
+| `npm run verify:official-business-page-boundary` | PASS |
+| `npm run verify:pos-sync-boundary` | PASS |
+| `npm run verify:special-menu-lifecycle` | PASS |
+| `npm run verify:guest-feedback-boundary` | PASS |
+| `npm run verify:owner-referral` | PASS |
+| `npm run test:menulist-component-controls` | PASS: 100 exact current-source controls across export, analytics range selection, icon selection/pagination, mobile temporary-status, command-center visibility/availability/pricing/text-case actions, compliance and scheduler-read actions, project recovery/selection, Language Selector add/remove, AI search, help references, pricing, public menu and provider-free install guidance, owner recovery/consent, update-prompt dismissal, and provider-boundary confirmation |
+| `npm run test:menulist-feature-flag-runtime` | PASS: 336 declared flags, 291 with runtime readers, 45 without readers, 1,210 reader locations, helper/environment parity, and current source manifest `619e22721a7c4a445dbf88ad753574bc0204328f585315b87ab846be8b8e9cda` |
+| `npm run verify:menulist-rc-inventory` | PASS: 6,731 rows and all 28 Function exports; 4,402 MenuList rows, 3,890 MenuList controls, and zero ambiguous MenuList `NOT_RUN` controls |
+| Focused zero-warning ESLint and scoped `git diff --check` | PASS |
+
+No root `unit`, `integration`, or `e2e` script exists; maintained feature,
+boundary, Functions-runtime, rules-runtime, connected-browser, and production-
+build gates are reported individually rather than inventing an aggregate test
+result. The full 43-script rules predeploy wrapper was not started because it
+would attempt to own the already approved shared emulator port; the current
+rules artifact and 15 isolated runtime suites above were executed directly.
+No test was skipped or weakened to obtain a pass.
+
+No Git, Vercel, staging, Firebase cloud, provider, payment, live Razorpay,
+deployment, or production action occurred. The exact local filesystem is not
+safe to deploy yet. Final status remains `CERTIFICATION BLOCKED`: the last
+verified checkpoint retains 222 current-source controls needing browser or deterministic-fixture interaction, the
+external/provider/native boundaries remain unexecuted by design, and hosted
+current-candidate plus authenticated Firebase deployed-state readback is not
+available. MenuList is therefore not claimed production ready. Live Razorpay
+provider execution remains excluded and is not certified.
+
+### Final September 1 reconciliation — supersedes earlier control checkpoints
+
+After the final focused component-control additions and current-source evidence
+reconciliation, `npm run verify:menulist-rc-inventory` passes with 6,731 rows:
+313 pages, 20 layouts, three error files, 297 API routes, five not-found files,
+one loading file, 5,728 controls, 336 feature flags, and 28 Firebase Function
+exports. MenuList owns 4,402 rows and 3,890 controls. The exact current control
+partition is:
+
+- 2,194 `PASS_LOCAL_BROWSER_INTERACTION`;
+- 134 `PASS_COMPONENT_RUNTIME_INTERACTION`;
+- 127 `PASS_HOSTED_INTERACTION`;
+- 103 `PASS_LOCAL_CURRENT_CONTRACT`;
+- 149 `PASS_NOT_SHIPPED`;
+- 44 `PASS_NOT_USER_TRIGGERABLE`;
+- 34 `PASS_FEATURE_DISABLED_BOUNDARY`;
+- 187 `BLOCKED_CURRENT_SOURCE_INTERACTION_PENDING`;
+- 310 `BLOCKED_FIXTURE_STATE`;
+- 272 `BLOCKED_EXTERNAL_PROVIDER_EXECUTION`;
+- 164 `BLOCKED_BROWSER_NATIVE_BOUNDARY`;
+- 77 `BLOCKED_EXTERNAL_HANDOFF`;
+- 60 `BLOCKED_ALTERNATE_LIFECYCLE_STATE`;
+- 17 `BLOCKED_SAFETY_BOUNDARY`;
+- 12 `BLOCKED_BROWSER_NATIVE_OR_EXTRACTION_BOUNDARY`;
+- five `BLOCKED_SAFE_EXECUTION`; and
+- one `BLOCKED_BROWSER_INTERACTION_NOT_CAPTURED`.
+
+This supersedes the historical 1,946, 1,969, 684, 222 and other checkpoint
+counts retained above for audit chronology. The reduction is evidence-backed:
+no source-only control was silently relabelled as an interaction pass, and
+native/provider/external/fixture/safety boundaries remain explicitly
+non-passing.
+
+The exact current `npm run build` passes and generates all 454/454 static pages.
+Strict TypeScript, zero-warning source lint, documentation links with zero
+broken links, SecurityOS, the auth/security failure matrix, Menu Card export,
+printable-template contracts, the component-control suite, inventory, generated
+MenuList Firestore-rule freshness, and `git diff --check` pass. The current
+`verify:menulist-firebase-rules-predeploy` and aggregate resume stop before the
+first rules assertion because the preserved long-running QA Firestore emulator
+owns port 8080. Firebase CLI reports `Could not start Firestore Emulator, port
+taken.` The service was not stopped and shared configuration was not rewritten.
+Earlier isolated/direct rules-runtime results remain useful checkpoint evidence,
+but the exact-current 43-script wrapper is not represented as passing.
+
+Final release decision remains exactly:
+
+`CERTIFICATION BLOCKED`
+
+The exact local filesystem is not safe to deploy. The blockers are the 187
+generic current-source interaction-pending controls, the explicitly non-passing
+fixture/provider/native/external/lifecycle/safety boundaries, the occupied-port
+Rules aggregate, the missing Upstash shell credential, absence of an exact
+current release commit and hosted QA deployment, and `SERVER_STATE_UNKNOWN`
+Firebase Rules/indexes/Storage Rules/Functions parity. Live Razorpay provider
+execution remains excluded and is not certified. No Git mutation, staging push,
+Vercel build, Firebase cloud deployment, payment, or production action was
+performed.
+
+### Final September 2 local control closure — supersedes the 187-control checkpoint
+
+Certification timestamp: `2026-09-02T15:33:47+05:30`. The tested filesystem is
+based on local branch `staging` at `f50737c77ddfd198820940dc44c6bc0e52ebf314`
+plus an attributed but uncommitted shared-worktree snapshot. The repository had
+404 changed/untracked paths at final readback, so this evidence is bound to the
+filesystem and is not represented as an exact deployable commit.
+
+The former 187 generic `BLOCKED_CURRENT_SOURCE_INTERACTION_PENDING` controls are
+fully eliminated. The current fail-closed inventory contains 6,742 rows:
+313 pages, 20 layouts, three error files, 297 API routes, five not-found files,
+one loading file, 5,739 user-control candidates, 336 feature flags, and all 28
+Firebase Function exports. MenuList owns 4,413 rows and 3,901 controls. Exactly
+zero MenuList rows retain the generic current-source interaction-pending result.
+
+The current MenuList control partition is:
+
+- 2,206 `PASS_LOCAL_BROWSER_INTERACTION`;
+- 149 `PASS_COMPONENT_RUNTIME_INTERACTION`;
+- 127 `PASS_HOSTED_INTERACTION`;
+- 103 `PASS_LOCAL_CURRENT_CONTRACT`;
+- one `PASS_SHARED_BROWSER_AND_DETERMINISTIC_MOBILE_INTEGRATION`;
+- 148 `PASS_NOT_SHIPPED`;
+- 54 `PASS_NOT_USER_TRIGGERABLE`;
+- 34 `PASS_FEATURE_DISABLED_BOUNDARY`;
+- 403 `BLOCKED_FIXTURE_STATE`;
+- 281 `BLOCKED_EXTERNAL_PROVIDER_EXECUTION`;
+- 168 `BLOCKED_BROWSER_NATIVE_BOUNDARY`;
+- 91 `BLOCKED_EXTERNAL_HANDOFF`;
+- 82 `BLOCKED_ALTERNATE_LIFECYCLE_STATE`;
+- 36 `BLOCKED_SAFETY_BOUNDARY`;
+- 12 `BLOCKED_BROWSER_NATIVE_OR_EXTRACTION_BOUNDARY`;
+- five `BLOCKED_SAFE_EXECUTION`; and
+- one `BLOCKED_BROWSER_INTERACTION_NOT_CAPTURED`.
+
+These remaining blocked classes are precise lifecycle, provider, native-client,
+external-handoff, safety, or deterministic-fixture boundaries. They are not
+generic undiscovered controls and were not relabelled as passing without an
+interaction. Inventory SHA-256 is
+`e5678647c3798bfe40a6aab188174bcbde6d0f7f56477e2fe8a624e2d0f630b6`;
+runtime-evidence SHA-256 is
+`8d8c903a7fe469f14ab034df6adfb218b5b5d62d87053071f68e0e4eb6fb645d`.
+
+The final control continuation exercised the desktop Decision Choice campaign
+poster in authenticated connected Chrome and opened the prepared poster dialog
+for the saved `Filter Coffee` item. The equivalent mobile
+`Download Campaign Poster` action was executed through the real component with
+a deterministic saved-choice fixture and verified the exact item-scoped URL.
+The fresh mobile browser shell independently returned
+`firebase_auth_session_provider_sync_failed`; it is retained as an environment
+limitation rather than converted into a mobile browser pass. The component
+runtime source is SHA-256
+`a9a47b77ba82079bb0f46763ab5d9087c0c11e7dc0f5ce4b11d556ca4934e5bf`.
+
+The final defect ledger additions are:
+
+| ID | Severity | Affected flow | Root cause and correction | Regression/retest | Status |
+|---|---|---|---|---|---|
+| MLRC-519 | Medium | Printable workflow preview recovery | Error/unavailable states lacked the governed contextual illustration. Added the approved photo-error and empty-workspace illustrations and updated the fail-closed illustration registry. | Contextual-state verifier, printable-template verifier, component runtime and build pass. | CLOSED LOCALLY |
+| MLRC-520 | Medium | Reseller entitlement emulator reruns | Fixed operation IDs collided across repeated certification runs. Added a per-run prefix without weakening idempotency assertions. | Reseller onboarding billing and commercial-readiness emulator suites pass repeatedly. | CLOSED LOCALLY |
+| MLRC-521 | Medium | Firebase rules predeploy reuse | The runner could reuse Firestore once, then continue after the Storage sub-suite had shut down a formerly reusable process. It now rechecks ports before every rule script and falls back to isolated demo emulators. | All 34 rule scripts pass against the exact current rules artifact. | CLOSED LOCALLY |
+| MLRC-522 | Medium | Owner-control usage rules rerun | A prior demo-project document turned the intended create assertion into update evaluation. The suite clears only its isolated demo project before seeding. | Standalone pass and resumed aggregate pass. | CLOSED LOCALLY |
+| MLRC-523 | Medium | Shared-KB generation concurrency rerun | Fixed job IDs allowed historical articles to enter the current `jobId` query. Added per-run job identities. | Emulator suite passes twice consecutively and in the aggregate resume. | CLOSED LOCALLY |
+| MLRC-524 | Medium | Shared-KB publishing rerun | Fixed tenant/store scope retained navigation/cache documents from earlier runs. Added a fresh numeric demo scope per process. | Publishing emulator suite passes twice consecutively and in the aggregate resume. | CLOSED LOCALLY |
+
+Firebase cost review: the runner changes prevent duplicate emulator ownership,
+stale-fixture false failures, and repeated full-suite reruns. They do not change
+cloud Firestore read/write counts, and no cloud cost reduction is claimed. The
+existing 125-check Firebase scale/cost closeout, bounded query/listener checks,
+lease/idempotency suites, and exact 34-script rules matrix all pass locally.
+
+Exact final command results:
+
+| Command | Result |
+|---|---|
+| `npm run certify:menulist-local` plus `--start-at verify:shared-kb-generation-boundary` after deterministic fixture corrections | 166/167 maintained checks satisfied; 166 pass and one explicit external blocker |
+| `npm run verify:upstash-readiness` | `BLOCKED_EXTERNAL` / exit 2: required URL/token are not available in this shell |
+| `npm run verify:menulist-firebase-rules-predeploy` | PASS: all 34 scripts; no cloud read/write/deploy |
+| `npm run verify:menulist-rc-inventory` | PASS: 6,742 rows, 28 Function exports, zero generic MenuList pending controls |
+| `npm run test:menulist-component-controls` | PASS, including the mobile Decision Choice campaign-poster action |
+| `npx tsc --noEmit --incremental false --pretty false` | PASS |
+| `npm run lint` | PASS, zero warnings |
+| Focused ESLint for all changed RC/test runners | PASS, zero warnings |
+| `npm run docs:check-links` | PASS: zero broken links; 64 pre-existing naming warnings |
+| `git diff --check` | PASS |
+| `npm run build` | PASS: Next.js 16.3.0, 454/454 static pages; existing Sass `@import` deprecations and optional local missing-Gemini diagnostics only |
+
+No disposable `/tmp/menulist-rc-owner.*.json` credential artifact remained at
+final cleanup. No Git mutation, commit, push, Vercel build/deployment, Firebase
+cloud deployment, provider execution, payment, or production action occurred.
+
+Final release decision remains exactly:
+
+`CERTIFICATION BLOCKED`
+
+The 187-control assignment is complete, but the exact filesystem snapshot is
+not safe to deploy: it is not an exact coordinated release commit, has not had
+one explicitly authorized consolidated staging deployment and hosted-current-
+candidate pass, retains precise provider/native/external/fixture/lifecycle/
+safety boundaries, lacks Upstash credentials in the test shell, and has
+`SERVER_STATE_UNKNOWN` Firebase Rules/indexes/Storage Rules/Functions parity.
+Live Razorpay provider execution remains excluded and is not certified.

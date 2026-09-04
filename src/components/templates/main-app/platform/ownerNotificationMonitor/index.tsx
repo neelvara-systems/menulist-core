@@ -622,10 +622,6 @@ export default function OwnerNotificationMonitor() {
                     pagination={{ pageSize: 10, hideOnSinglePage: true }}
                     loading={loading}
                     scroll={{ x: 1080 }}
-                    onRow={(record) => ({
-                        onClick: () => openEvent(record),
-                        style: { cursor: 'pointer' },
-                    })}
                 />
             </Card>
 

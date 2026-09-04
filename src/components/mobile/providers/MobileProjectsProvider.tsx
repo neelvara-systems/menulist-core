@@ -1,6 +1,11 @@
 'use client'
 
-import { getProjectDataWithoutLoader, getProjectsListWithoutLoader, type ProjectExpectedScope } from '@database/projects';
+import {
+    getExistingProjectsListWithoutLoader,
+    getProjectDataWithoutLoader,
+    getProjectsListWithoutLoader,
+    type ProjectExpectedScope,
+} from '@database/projects';
 import { useClientAuthSession } from '@hook/useClientAuthSession';
 import { normalizeMultiOutletProjectId } from '@lib/multiOutlet/projectIdBoundary';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
@@ -87,9 +92,11 @@ export function useMobileProjects() {
 
 export default function MobileProjectsProvider({
     children,
+    createDefaultProjectWhenEmpty = false,
     eagerLoadSelectedProject = true,
 }: {
     children: React.ReactNode;
+    createDefaultProjectWhenEmpty?: boolean;
     eagerLoadSelectedProject?: boolean;
 }) {
     const { storeDetails } = useContext(PlatformGlobalDataContext);
@@ -228,7 +235,9 @@ export default function MobileProjectsProvider({
                 setIsLoading(true);
             }
 
-            const result = await getProjectsListWithoutLoader(true, expectedScope);
+            const result = createDefaultProjectWhenEmpty
+                ? await getProjectsListWithoutLoader(true, expectedScope)
+                : await getExistingProjectsListWithoutLoader(true, expectedScope);
             if (
                 latestProjectsRequestRef.current !== requestId
                 || !isExpectedScope(expectedScope)
@@ -303,7 +312,7 @@ export default function MobileProjectsProvider({
                 setIsLoading(false);
             }
         }
-    }, [isExpectedScope, loadProjectIntoCache]);
+    }, [createDefaultProjectWhenEmpty, isExpectedScope, loadProjectIntoCache]);
 
     const refreshCachedProject = useCallback(async (
         projectId?: string | null,

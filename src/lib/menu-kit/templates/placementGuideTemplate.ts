@@ -8,13 +8,14 @@
  */
 
 import { MenuKitInput } from '../types';
-import { resolveMenuKitBrandTokens } from '../brandTokens';
 import { drawMenuListAttribution } from '../platformAttribution';
+import { drawMenuKitThemeBackground, loadMenuKitThemeSurface } from '../themeSurface';
 
 const SIZE = 1080;
 
 export async function generatePlacementGuide(input: MenuKitInput): Promise<Blob> {
-    const brand = resolveMenuKitBrandTokens(input.brandColor);
+    const themeSurface = await loadMenuKitThemeSurface(input);
+    const { brand } = themeSurface;
     const canvas = document.createElement('canvas');
     canvas.width = SIZE;
     canvas.height = SIZE;
@@ -22,9 +23,13 @@ export async function generatePlacementGuide(input: MenuKitInput): Promise<Blob>
     const ctx = canvas.getContext('2d');
     if (!ctx) throw new Error('Failed to get canvas context');
 
-    // Premium paper background
-    ctx.fillStyle = brand.paper;
-    ctx.fillRect(0, 0, SIZE, SIZE);
+    drawMenuKitThemeBackground(ctx, themeSurface, { height: SIZE, width: SIZE, x: 0, y: 0 }, { artworkOpacity: 0.34 });
+
+    ctx.save();
+    ctx.globalAlpha = 0.94;
+    ctx.fillStyle = brand.surface;
+    ctx.fillRect(42, 42, SIZE - 84, SIZE - 84);
+    ctx.restore();
 
     // Brand border
     ctx.strokeStyle = brand.border;

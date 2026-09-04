@@ -10,6 +10,7 @@ export type MenuCardPresetConfig = {
     includeQr: boolean;
     includeDescriptions: boolean;
     includeContactBlock: boolean;
+    includeCoverPage: boolean;
     exposed: boolean;
 };
 
@@ -24,6 +25,7 @@ export const menuCardPresetRegistry: MenuCardPresetConfig[] = [
         includeQr: true,
         includeDescriptions: true,
         includeContactBlock: true,
+        includeCoverPage: true,
         exposed: true,
     },
     {
@@ -36,6 +38,7 @@ export const menuCardPresetRegistry: MenuCardPresetConfig[] = [
         includeQr: true,
         includeDescriptions: false,
         includeContactBlock: true,
+        includeCoverPage: false,
         exposed: true,
     },
     {
@@ -48,6 +51,7 @@ export const menuCardPresetRegistry: MenuCardPresetConfig[] = [
         includeQr: true,
         includeDescriptions: true,
         includeContactBlock: true,
+        includeCoverPage: true,
         exposed: true,
     },
     {
@@ -60,6 +64,7 @@ export const menuCardPresetRegistry: MenuCardPresetConfig[] = [
         includeQr: true,
         includeDescriptions: true,
         includeContactBlock: true,
+        includeCoverPage: true,
         exposed: true,
     },
     {
@@ -72,6 +77,7 @@ export const menuCardPresetRegistry: MenuCardPresetConfig[] = [
         includeQr: true,
         includeDescriptions: false,
         includeContactBlock: true,
+        includeCoverPage: false,
         exposed: false,
     },
     {
@@ -84,6 +90,7 @@ export const menuCardPresetRegistry: MenuCardPresetConfig[] = [
         includeQr: false,
         includeDescriptions: false,
         includeContactBlock: false,
+        includeCoverPage: false,
         exposed: false,
     },
     {
@@ -96,6 +103,7 @@ export const menuCardPresetRegistry: MenuCardPresetConfig[] = [
         includeQr: true,
         includeDescriptions: true,
         includeContactBlock: true,
+        includeCoverPage: true,
         exposed: false,
     },
     {
@@ -108,6 +116,7 @@ export const menuCardPresetRegistry: MenuCardPresetConfig[] = [
         includeQr: true,
         includeDescriptions: true,
         includeContactBlock: true,
+        includeCoverPage: true,
         exposed: false,
     },
     {
@@ -120,6 +129,7 @@ export const menuCardPresetRegistry: MenuCardPresetConfig[] = [
         includeQr: true,
         includeDescriptions: false,
         includeContactBlock: false,
+        includeCoverPage: false,
         exposed: false,
     },
 ];
@@ -128,7 +138,11 @@ export function getMenuCardPreset(id: MenuCardExportPreset): MenuCardPresetConfi
     return menuCardPresetRegistry.find((preset) => preset.id === id) || menuCardPresetRegistry[0];
 }
 
-export function buildDefaultSettings(presetId: MenuCardExportPreset, styleId = 'classic'): MenuCardExportSettings {
+export function buildDefaultSettings(
+    presetId: MenuCardExportPreset,
+    styleId = 'classic',
+    printableThemeId?: string,
+): MenuCardExportSettings {
     const preset = getMenuCardPreset(presetId);
     return {
         preset: preset.id,
@@ -136,11 +150,13 @@ export function buildDefaultSettings(presetId: MenuCardExportPreset, styleId = '
         orientation: preset.defaultOrientation,
         density: preset.defaultDensity,
         styleId,
+        includeCoverPage: preset.includeCoverPage,
         includeLogo: true,
         includeDescriptions: preset.includeDescriptions,
         includePhotos: false,
         includeQr: preset.includeQr,
         includeContactBlock: preset.includeContactBlock,
         includeUpdatedDate: true,
+        ...(printableThemeId ? { printableThemeId } : {}),
     };
 }

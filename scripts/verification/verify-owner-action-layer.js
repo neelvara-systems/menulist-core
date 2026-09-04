@@ -118,9 +118,13 @@ forbidToken(desktopDashboard, 'title="Update what customers see"', 'desktop dash
 forbidToken(mobileDashboard, 'ownerActionLayer.supportingActions', 'mobile dashboard supporting action grid');
 forbidToken(mobileDashboard, 'renderQuickActions', 'mobile dashboard duplicate quick actions');
 [
+  "ownerLabelKey: 'today'",
+  "ownerLabelKey: 'menu'",
+  "ownerLabelKey: 'share'",
+  "ownerLabelKey: 'more'",
   "{ label: 'QR Code', route: NAVIGARIONS_ROUTINGS.QR_CODE",
   "{ label: 'Assets', route: NAVIGARIONS_ROUTINGS.ASSETS",
-].forEach((token) => requireToken(navigations, token, 'dedicated owner navigation module'));
+].forEach((token) => requireToken(navigations, token, 'owner outcome navigation module'));
 
 [
   'selectedProjectSummary as any',

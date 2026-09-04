@@ -31,6 +31,8 @@ export interface ImageGenerationConfigType {
     selectedImageTypes?: string[];
     isMultiMode?: boolean;
     agreeToTerms?: boolean; // Content policy agreement
+    subjectProfileId?: string | null;
+    subjectProfileVersion?: number | null;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -56,6 +58,8 @@ export type GenerateImageViaApiPayloadGenerationConfiType = {
     isMultiMode?: boolean;
     numberOfImages?: number;
     agreeToTerms?: boolean;
+    subjectProfileId?: string | null;
+    subjectProfileVersion?: number | null;
 }
 
 export type GenerateImageViaApiPayloadItemDetailsType = {

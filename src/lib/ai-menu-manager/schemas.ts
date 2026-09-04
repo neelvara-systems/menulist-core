@@ -29,6 +29,7 @@ import {
     normalizeAiMenuManagerSessionSnapshot,
 } from './sessionIntegrity';
 import { isAiMenuManagerPatchAllowedForAction } from './patchPolicy';
+import { AI_MENU_MANAGER_COMMAND_TEXT_MAX_LENGTH } from './commandTextBoundary';
 
 const idSchema = z.string().trim().min(1).max(160);
 const projectIdSchema = z.string()
@@ -68,7 +69,7 @@ export const AiMenuManagerCommandRequestSchema = z.object({
     storeId: z.union([z.string(), z.number()]).transform((value) => String(value)),
     projectId: projectIdSchema,
     inputType: z.enum(['text', 'voice_transcript', 'upload', 'suggested_action']),
-    text: z.string().trim().max(1000).optional(),
+    text: z.string().trim().max(AI_MENU_MANAGER_COMMAND_TEXT_MAX_LENGTH).optional(),
     uploadRefs: z.array(z.object({
         storagePath: z.string().trim().min(1).max(500),
         mimeType: z.string().trim().min(1).max(120),
@@ -130,7 +131,7 @@ const plannerCategorySchema = z.object({
 export const AiMenuManagerPlannerRequestSchema = z.object({
     storeId: z.union([z.string(), z.number()]).transform((value) => String(value)),
     projectId: projectIdSchema,
-    ownerMessage: z.string().trim().min(1).max(1000),
+    ownerMessage: z.string().trim().min(1).max(AI_MENU_MANAGER_COMMAND_TEXT_MAX_LENGTH),
     composerContext: commandContextSchema.optional(),
     allowedActions: z.array(actionTypeSchema).min(1).max(40),
     context: z.object({

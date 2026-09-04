@@ -22,7 +22,35 @@ type PublicCacheRevalidationRequest = {
     options: PublicCacheRevalidationOptions;
 };
 
+export type PublicCacheRevalidationFetchOutcome =
+    | { response: Response; type: 'response' }
+    | { error: unknown; type: 'error' }
+    | { type: 'timeout' };
+
 const pendingRevalidations = new Map<string, PendingPublicCacheRevalidation>();
+
+export const awaitPublicCacheRevalidationRequest = async (
+    request: Promise<Response>,
+    timeoutMs: number,
+    abort: () => void,
+): Promise<PublicCacheRevalidationFetchOutcome> => {
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+    const requestOutcome = request
+        .then((response): PublicCacheRevalidationFetchOutcome => ({ response, type: 'response' }))
+        .catch((error): PublicCacheRevalidationFetchOutcome => ({ error, type: 'error' }));
+    const timeoutOutcome = new Promise<PublicCacheRevalidationFetchOutcome>((resolve) => {
+        timeoutId = setTimeout(() => {
+            abort();
+            resolve({ type: 'timeout' });
+        }, timeoutMs);
+    });
+
+    try {
+        return await Promise.race([requestOutcome, timeoutOutcome]);
+    } finally {
+        if (timeoutId !== undefined) clearTimeout(timeoutId);
+    }
+};
 
 export const mergePendingPublicCacheRevalidation = (
     current: PublicCacheRevalidationRequest,
@@ -69,12 +97,9 @@ const executePublicClientCacheRevalidation = async (
     options: PublicCacheRevalidationOptions,
 ): Promise<void> => {
     const controller = new AbortController();
-    const timeout = window.setTimeout(() => {
-        controller.abort();
-    }, PUBLIC_CACHE_REVALIDATION_TIMEOUT_MS);
 
     try {
-        const response = await fetch('/api/revalidate/menu', {
+        const outcome = await awaitPublicCacheRevalidationRequest(fetch('/api/revalidate/menu', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -88,19 +113,30 @@ const executePublicClientCacheRevalidation = async (
                 ...(options.projectId !== undefined ? { projectId: options.projectId } : {}),
                 touchScreen: options.touchScreen === true,
             }),
-        });
+        }), PUBLIC_CACHE_REVALIDATION_TIMEOUT_MS, () => controller.abort());
 
-        if (!response.ok) {
+        if (outcome.type === 'timeout') {
+            logPublicClientCacheFailure(context, normalizedStoreId, 'request_failed', {
+                errorName: 'TimeoutError',
+            });
+            return;
+        }
+        if (outcome.type === 'error') {
+            logPublicClientCacheFailure(context, normalizedStoreId, 'request_failed', {
+                errorName: getBoundedErrorName(outcome.error) || typeof outcome.error,
+            });
+            return;
+        }
+
+        if (!outcome.response.ok) {
             logPublicClientCacheFailure(context, normalizedStoreId, 'bad_status', {
-                responseStatus: response.status,
+                responseStatus: outcome.response.status,
             });
         }
     } catch (error) {
         logPublicClientCacheFailure(context, normalizedStoreId, 'request_failed', {
             errorName: getBoundedErrorName(error) || typeof error,
         });
-    } finally {
-        window.clearTimeout(timeout);
     }
 };
 

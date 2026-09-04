@@ -1568,6 +1568,126 @@ body[data-menulist-website="true"] {
   text-align: center;
 }
 
+.ws-owner-workflow-section .ws-container {
+  max-width: 1180px;
+}
+
+.ws-owner-workflow__heading {
+  display: grid;
+  justify-items: center;
+}
+
+.ws-owner-workflow__disclosure {
+  margin: var(--ws-space-3) 0 0;
+  color: var(--ws-text-muted);
+  font-size: 0.8rem;
+  font-weight: 700;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.ws-owner-workflow__gallery {
+  display: grid;
+  grid-template-columns: minmax(17.5rem, 0.78fr) minmax(0, 1.22fr);
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+  gap: var(--ws-space-6);
+  margin-top: var(--ws-space-10);
+}
+
+.ws-owner-workflow__slot {
+  min-width: 0;
+}
+
+.ws-owner-workflow__slot--capture {
+  grid-row: 1 / span 2;
+}
+
+.ws-owner-workflow__item {
+  display: grid;
+  min-width: 0;
+  height: 100%;
+}
+
+.ws-owner-workflow__item--capture {
+  grid-template-rows: minmax(0, 1fr) auto;
+}
+
+.ws-owner-workflow__item--review,
+.ws-owner-workflow__item--publish {
+  grid-template-columns: minmax(0, 1.35fr) minmax(13rem, 0.65fr);
+  align-items: center;
+  gap: var(--ws-space-5);
+}
+
+.ws-owner-workflow__media {
+  position: relative;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--ws-border-default);
+  border-radius: var(--ws-radius-xl);
+  background:
+    radial-gradient(circle at 12% 8%, color-mix(in srgb, var(--ws-brand-light) 44%, transparent), transparent 42%),
+    var(--ws-bg-subtle);
+  box-shadow: 0 20px 54px color-mix(in srgb, var(--ws-brand-primary) 10%, transparent);
+  transition: border-color 0.24s ease, box-shadow 0.24s ease, transform 0.24s ease;
+}
+
+.ws-owner-workflow__item:hover .ws-owner-workflow__media {
+  border-color: color-mix(in srgb, var(--ws-brand-secondary) 30%, var(--ws-border-default));
+  box-shadow: 0 24px 64px color-mix(in srgb, var(--ws-brand-primary) 14%, transparent);
+  transform: translateY(-2px);
+}
+
+.ws-owner-workflow__item--capture .ws-owner-workflow__media {
+  aspect-ratio: 4 / 5;
+}
+
+.ws-owner-workflow__item--review .ws-owner-workflow__media,
+.ws-owner-workflow__item--publish .ws-owner-workflow__media {
+  aspect-ratio: 16 / 10;
+}
+
+.ws-owner-workflow__media img {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.ws-owner-workflow__item--capture .ws-owner-workflow__media img {
+  object-fit: cover;
+}
+
+.ws-owner-workflow__item--review .ws-owner-workflow__media img,
+.ws-owner-workflow__item--publish .ws-owner-workflow__media img {
+  object-fit: contain;
+}
+
+.ws-owner-workflow__caption {
+  min-width: 0;
+}
+
+.ws-owner-workflow__item--capture .ws-owner-workflow__caption {
+  padding: var(--ws-space-5) var(--ws-space-2) 0;
+}
+
+.ws-owner-workflow__caption h3 {
+  margin: 0;
+  color: var(--ws-text-primary);
+  font-size: clamp(1.1rem, 1.6vw, 1.35rem);
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  text-wrap: balance;
+}
+
+.ws-owner-workflow__caption p {
+  margin: var(--ws-space-2) 0 0;
+  color: var(--ws-text-secondary);
+  font-size: 0.92rem;
+  line-height: 1.58;
+  text-wrap: pretty;
+}
+
 .ws-create-preview-section .ws-container {
   max-width: 1180px;
 }
@@ -3821,6 +3941,48 @@ body[data-menulist-website="true"] {
   .ws-switch-comparison__arrow {
     justify-self: center;
     transform: rotate(90deg);
+  }
+
+  .ws-owner-workflow__gallery {
+    grid-template-columns: 1fr;
+    grid-template-rows: none;
+    gap: var(--ws-space-8);
+    margin-top: var(--ws-space-8);
+  }
+
+  .ws-owner-workflow__slot--capture {
+    grid-row: auto;
+  }
+
+  .ws-owner-workflow__item--capture,
+  .ws-owner-workflow__item--review,
+  .ws-owner-workflow__item--publish {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto;
+    gap: 0;
+  }
+
+  .ws-owner-workflow__item--capture .ws-owner-workflow__media {
+    aspect-ratio: 4 / 4.35;
+  }
+
+  .ws-owner-workflow__item--review .ws-owner-workflow__media,
+  .ws-owner-workflow__item--publish .ws-owner-workflow__media {
+    aspect-ratio: 16 / 11;
+  }
+
+  .ws-owner-workflow__item--capture .ws-owner-workflow__caption,
+  .ws-owner-workflow__item--review .ws-owner-workflow__caption,
+  .ws-owner-workflow__item--publish .ws-owner-workflow__caption {
+    padding: var(--ws-space-4) var(--ws-space-1) 0;
+  }
+
+  .ws-owner-workflow__caption h3 {
+    font-size: 1.1rem;
+  }
+
+  .ws-owner-workflow__caption p {
+    font-size: 0.9rem;
   }
 
   .ws-create-preview {

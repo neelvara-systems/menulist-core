@@ -1,9 +1,13 @@
 import { getEnabledBlocks } from '@config/decisionBlocks';
 import { useOfferingLabels } from '@hook/useOfferingLabels';
 import { getProjectDefaultLanguage } from '@lib/localization/projectContent';
+import { buildDecisionChoiceCampaignPosterRenderInput } from '@lib/printable-asset-templates/campaignPoster';
+import type { PrintableAssetRenderInput } from '@lib/printable-asset-templates/types';
+import type { StoreDataType } from '@type/platform/store';
 import { Alert, Button, Collapse, Flex, Modal, Select, Switch, Tooltip, Typography, theme } from 'antd';
 import { useMemo, useState } from 'react';
-import { LuHelpCircle, LuPin, LuStar, LuTrendingUp, LuZap } from 'react-icons/lu';
+import { LuDownload, LuHelpCircle, LuPin, LuStar, LuTrendingUp, LuZap } from 'react-icons/lu';
+import CampaignPosterModal from '@/components/shared/printableAssets/CampaignPosterModal';
 import { Project } from '../types';
 import {
     applyDecisionBlockSettings,
@@ -39,8 +43,10 @@ interface DecisionBlocksSettingsModalProps {
     projectData: Project;
     businessType?: string;
     businessCategory?: string;
+    hasUnsavedProjectChanges?: boolean;
     onClose: () => void;
     onApply: (updatedProject: Project) => void;
+    storeDetails?: StoreDataType | null;
 }
 
 const DecisionBlocksSettingsModal = ({
@@ -48,8 +54,10 @@ const DecisionBlocksSettingsModal = ({
     projectData,
     businessType,
     businessCategory,
+    hasUnsavedProjectChanges = false,
     onClose,
-    onApply
+    onApply,
+    storeDetails,
 }: DecisionBlocksSettingsModalProps) => {
     const labels = useOfferingLabels();
     const { token } = theme.useToken();
@@ -65,6 +73,8 @@ const DecisionBlocksSettingsModal = ({
     const [pinnedPopular, setPinnedPopular] = useState<string | undefined>(currentSettings.pinnedPopular);
     const [pinnedQuickPick, setPinnedQuickPick] = useState<string | undefined>(currentSettings.pinnedQuickPick);
     const [pinnedBestValue, setPinnedBestValue] = useState<string | undefined>(currentSettings.pinnedBestValue);
+    const [posterInput, setPosterInput] = useState<PrintableAssetRenderInput | null>(null);
+    const [posterChoiceTitle, setPosterChoiceTitle] = useState('Featured choice');
 
     // Build item options for dropdowns
     const itemOptions = useMemo(() => {
@@ -112,7 +122,6 @@ const DecisionBlocksSettingsModal = ({
         trackDecisionBlockChanges(projectData, nextSettings);
         const updatedProject = applyDecisionBlockSettings(projectData, nextSettings);
         onApply(updatedProject);
-        onClose();
     };
 
     // Filter options for select (remove already pinned items from other blocks)
@@ -153,11 +162,36 @@ const DecisionBlocksSettingsModal = ({
 
         // Check if pinned item is unavailable
         const pinnedStatus = isPinnedItemUnavailable(projectData.files || [], pinnedId);
+        const savedPinnedId = blockType === 'popular'
+            ? currentSettings.pinnedPopular
+            : blockType === 'quickPick'
+                ? currentSettings.pinnedQuickPick
+                : currentSettings.pinnedBestValue;
+        const savedEnabled = blockType === 'popular'
+            ? currentSettings.enablePopular
+            : blockType === 'quickPick'
+                ? currentSettings.enableQuickPick
+                : currentSettings.enableBestValue;
 
         // Don't render if block type is not enabled for this business type.
         if (!isBlockTypeEnabled) return null;
 
         const blockLabels = FEATURED_BLOCK_LABELS[blockType];
+        const isCurrentSavedChoice = Boolean(
+            enabled
+            && savedEnabled
+            && !hasUnsavedProjectChanges
+            && pinnedId
+            && pinnedId === savedPinnedId
+            && !pinnedStatus.unavailable
+        );
+        const choicePosterInput = isCurrentSavedChoice
+            ? buildDecisionChoiceCampaignPosterRenderInput({
+                blockType,
+                project: projectData,
+                store: storeDetails,
+            })
+            : null;
 
         return (
             <Flex
@@ -232,6 +266,26 @@ const DecisionBlocksSettingsModal = ({
                                 style={{ borderRadius: 8, marginTop: 8 }}
                             />
                         )}
+                        {pinnedId && !pinnedStatus.unavailable ? (
+                            <Tooltip
+                                title={choicePosterInput
+                                    ? `Preview, edit, and download the saved ${blockLabels.title} poster.`
+                                    : 'Wait until this project is saved and make sure its public customer link is ready before creating the poster.'}
+                            >
+                                <Button
+                                    block
+                                    disabled={!choicePosterInput}
+                                    icon={<LuDownload />}
+                                    onClick={() => {
+                                        if (!choicePosterInput) return;
+                                        setPosterChoiceTitle(blockLabels.title);
+                                        setPosterInput(choicePosterInput);
+                                    }}
+                                >
+                                    Preview &amp; download poster
+                                </Button>
+                            </Tooltip>
+                        ) : null}
                     </Flex>
                 )}
             </Flex>
@@ -239,6 +293,7 @@ const DecisionBlocksSettingsModal = ({
     };
 
     return (
+        <>
         <Modal
             title={
                 <Flex vertical gap={4}>
@@ -336,6 +391,17 @@ const DecisionBlocksSettingsModal = ({
                 )}
             </Flex>
         </Modal>
+        <CampaignPosterModal
+            input={posterInput}
+            introDescription={`Uses the saved ${posterChoiceTitle}, selected parent theme, current item details, and exact item link. Review it before downloading and placing it in-store.`}
+            introTitle={`Prepared from ${posterChoiceTitle}`}
+            onClose={() => setPosterInput(null)}
+            onDownloaded={() => undefined}
+            open={Boolean(posterInput)}
+            sourceLabel={`Saved ${posterChoiceTitle}`}
+            unavailableDescription="A saved selected item, active public listing, and customer link are required"
+        />
+        </>
     );
 };
 

@@ -1,6 +1,6 @@
 # External Menu Sync — Test Cases
 
-> **Last reviewed:** August 28, 2026
+> **Last reviewed:** September 1, 2026
 
 ## Automated source gate
 
@@ -19,6 +19,7 @@ It must verify:
 - shared project-DAL trigger and loaded-store registration;
 - absence of editor-only trigger and client secret persistence;
 - desktop/mobile test/secret parity;
+- desktop first-time provider URL setup remains reachable while sync is off, before enablement can require that URL;
 - MobileShell routing;
 - maintained docs and pending provider smoke boundary.
 

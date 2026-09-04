@@ -185,6 +185,30 @@ AI tools may help research, structure, draft, localize, suggest links, and check
 contradictions. They do not decide page admission, verify competitor facts,
 resolve cannibalization, approve claims, or publish autonomously.
 
+### Query-led maintenance before new publishing
+
+Use first-party Search Console evidence to improve existing canonical pages
+before creating more URLs. Review four opportunity groups:
+
+- pages already close to the first result page for relevant queries;
+- queries with meaningful impressions but weak qualified clicks;
+- pages whose relevant clicks or impressions have materially declined;
+- multiple thin pages competing for the same reader intent.
+
+Diagnose the cause before changing copy. Check search intent, title-link and
+snippet clarity, visible answer completeness, current proof, internal links,
+technical indexability, seasonality, demand shifts, and cannibalization. Then
+choose the smallest truthful action: strengthen the existing page, improve its
+title or main heading where the query fits naturally, add a missing decision
+asset, consolidate overlapping pages, redirect a superseded URL, or leave the
+page unchanged when evidence does not justify intervention.
+
+Do not insert exact queries mechanically, change dates without substantive
+updates, delete a useful page merely because it is not indexed, or treat a
+recrawl request as guaranteed indexing. Record the baseline, qualified outcome,
+review window, and keep/iterate/consolidate decision through the product's
+execution and measurement owner.
+
 ## AI Discovery And Attribution
 
 - Make public product truth clear, consistent, crawlable where appropriate,
@@ -232,6 +256,27 @@ Repeat a proven underlying problem, promise, proof pattern, or creative concept
 when qualified outcomes support it. Do not repeatedly publish the same or
 near-identical asset, manufacture engagement, or operate duplicate accounts to
 simulate independent demand.
+
+### Launch as a bounded attention event
+
+For a launch, optimize for qualified audience overlap rather than maximum
+one-time reach. A relevant buyer may need to encounter the same truthful
+promise and proof through more than one credible route before acting. Sequence
+founder context, product proof, permissioned customer evidence, creator or
+partner interpretation, community participation, and follow-up in bounded
+waves only when each route has a real audience job.
+
+Keep one central claim and one verifiable product moment, but let each
+participant use their own perspective and wording. Do not synchronize
+identical copy, conceal paid or material relationships, manufacture apparent
+independent consensus, or treat many impressions as proof of demand. The
+response, intake, support, and activation path must be able to absorb the
+attention before the wave begins.
+
+Measure the event through qualified conversations and product-specific
+activation, assisted paths where evidence exists, response capacity, negative
+feedback, and post-launch continuation. Treat impression totals, reposts, and
+the feeling that a product is `everywhere` as diagnostics, not outcomes.
 
 ### Lead Magnets And Permissioned Delivery
 

@@ -60,6 +60,11 @@ requireToken(
   '"verify:communication-kit-boundary": "node scripts/verification/verify-communication-kit-boundary.js"',
   'package scripts',
 );
+requireToken(
+  packageJson,
+  '"test:menu-kit-parent-theme-output": "ts-node --compiler-options',
+  'package scripts',
+);
 
 const features = read('src/config/features.ts');
 [
@@ -87,6 +92,8 @@ const messageTemplates = read('src/lib/communication/messageTemplates.ts');
   'getStoreDayKey',
   'getStoreLocalDateKey',
   'getSpecialHoursEntry',
+  'buildTelHref',
+  'const shareablePhone = input.phone && buildTelHref({ phoneNumber: input.phone })',
   'specialHours?: StoreSpecialHours',
   'const specialEntry = getSpecialHoursEntry(specialHours, getStoreLocalDateKey(timeZone, now));',
   "getBoundedRuntimeStringContext('dayKey', dayKey)",
@@ -261,11 +268,51 @@ const menuKitGenerator = read('src/lib/menu-kit/menuKitGenerator.ts');
   'normalizeMenuKitInput',
   'enrichedInput: { ...normalizedInput, menuUrl: validatedUrl, _logo: logo }',
   'buildPrintInstructions(prepared.enrichedInput.storeName, labels)',
+  'assertCompleteMenuKitAssetRegistry',
+  'Menu Kit asset registry must define every launch-pack asset exactly once',
+  'templateFamilyIds: undefined',
 ].forEach((token) => requireToken(menuKitGenerator, token, 'Menu Kit generator'));
 [
   'enrichedInput: { ...input, menuUrl: validatedUrl, _logo: logo }',
   'buildPrintInstructions(input.storeName, labels)',
 ].forEach((token) => forbidToken(menuKitGenerator, token, 'Menu Kit generator'));
+
+const menuKitThemeSurface = read('src/lib/menu-kit/themeSurface.ts');
+[
+  'normalizePrintableTemplateFamilyId',
+  'resolvePrintableTemplateBrandTokens',
+  'loadPrintableThemeArtwork',
+  'drawPrintableThemeArtwork',
+  'Math.max(',
+  'ctx.clip()',
+  'artwork.width * scale',
+  'artwork.height * scale',
+].forEach((token) => requireToken(menuKitThemeSurface, token, 'Menu Kit parent-theme surface'));
+
+[
+  'src/lib/menu-kit/templates/deliveryBagTemplate.ts',
+  'src/lib/menu-kit/templates/takeawayCardTemplate.ts',
+  'src/lib/menu-kit/templates/instagramStoryTemplate.ts',
+  'src/lib/menu-kit/templates/whatsappStatusTemplate.ts',
+  'src/lib/menu-kit/templates/googleMapsTemplate.ts',
+  'src/lib/menu-kit/templates/placementGuideTemplate.ts',
+].forEach((file) => {
+  const source = read(file);
+  requireToken(source, 'loadMenuKitThemeSurface(input)', `${file} parent-theme inheritance`);
+  requireToken(source, 'drawMenuKitThemeBackground(ctx, themeSurface', `${file} parent-theme inheritance`);
+  forbidToken(source, 'resolveMenuKitBrandTokens(input.brandColor)', `${file} fixed-layout theme bypass`);
+});
+
+[
+  'src/lib/menu-kit/templates/counterStickerTemplate.ts',
+  'src/lib/menu-kit/templates/entrancePosterTemplate.ts',
+  'src/lib/print-menu-surfaces/templates/tableTentTemplate.ts',
+  'src/lib/print-menu-surfaces/templates/singleTableCardTemplate.ts',
+].forEach((file) => {
+  const source = read(file);
+  requireToken(source, 'resolvePrintableTemplateBrandTokens', `${file} parent-theme palette`);
+  requireToken(source, 'loadPrintableThemeArtwork', `${file} parent-theme artwork`);
+});
 
 const browserFileShare = read('src/lib/export/browserFileShare.ts');
 [
@@ -327,7 +374,35 @@ const menuKitReadme = read('__docs__/menu-kit/README.md');
   'maintenance-only',
   'Print Assets',
   'Menu Card Export',
+  'Every generated visual file receives the same singular parent theme.',
+  'not a dump of every registered printable',
 ].forEach((token) => requireToken(menuKitReadme, token, 'Menu Kit README'));
+
+const menuKitHelpdoc = read('__docs__/menu-kit/menu-kit_helpdoc.md');
+const menuKitImpl = read('__docs__/menu-kit/menu-kit_impl.md');
+const menuKitMobile = read('__docs__/menu-kit/menu-kit_mobile-support.md');
+const menuKitSpec = read('__docs__/menu-kit/menu-kit_spec.md');
+const printablePolishLedger = read('__docs__/printable-asset-templates/printable-asset-templates_final-polish-ledger.md');
+
+[
+  [menuKitHelpdoc, 'one coordinated parent theme across every file', 'Menu Kit helpdoc'],
+  [menuKitImpl, 'Every one of the 10 visual files therefore consumes the same parent-theme contract.', 'Menu Kit implementation doc'],
+  [menuKitMobile, 'applies it to every one of the 10 generated visual files', 'Menu Kit mobile doc'],
+  [menuKitSpec, 'Complete Menu Kit inherits one aggregate parent theme.', 'Menu Kit spec'],
+  [printablePolishLedger, 'Complete Menu Kit final inheritance and packaging rules', 'Printable polish ledger'],
+  [printablePolishLedger, 'ZIP inventory is fixed at 10 generated assets plus print instructions.', 'Printable polish ledger'],
+].forEach(([source, token, label]) => requireToken(source, token, label));
+
+[
+  'chooses this separately for each supported print file',
+  'does not force one style onto the whole ZIP',
+  'independently use the current menu override',
+  'Other kit files retain their fixed governed layouts',
+].forEach((token) => {
+  [menuKitReadme, menuKitHelpdoc, menuKitImpl, menuKitMobile, menuKitSpec].forEach((source) => {
+    forbidToken(source, token, 'Menu Kit singular parent-theme documentation');
+  });
+});
 
 const physicalReadme = read('__docs__/physical-surfaces/README.md');
 [

@@ -2,9 +2,9 @@
 
 The current public brand framing is `The official customer-facing version of your business.` with the supporting line `Publish your menu, hours, links, and business information from one owner-approved source.` The implementation keeps the existing official-customer-link conversion story and owner-approved surface boundaries.
 
-**Version:** 3.6.122 (Readable Mobile Navigation)
+**Version:** 3.6.124 (Homepage Owner Workflow Gallery)
 **Status:** ✅ IMPLEMENTED — Canonical
-**Last Updated:** August 29, 2026
+**Last Updated:** August 31, 2026
 **Workflow:** `.codex/workflows/website.md`
 
 ---
@@ -15,12 +15,18 @@ The current implementation is the only default MenuList marketing website.
 
 | Canonical Version | Name | Core Message | Status |
 | ----------------- | ---- | ------------ | ------ |
+| **3.6.124** | **Homepage Owner Workflow Gallery** | **A new post-hero visual demonstration shows the honest path from an existing menu or service list through private owner review to the approved customer link.** | **ACTIVE** |
+| **3.6.123** | **Sticky CTA Footer Recovery** | **The desktop conversion tray resynchronizes after scroll, resize, and browser-history restoration, so it cannot retain stale visibility and cover footer privacy, language, or theme controls.** | **ACTIVE** |
 | **3.6.122** | **Readable Mobile Navigation** | **The MenuList hamburger presents two owner-readable Product and Resources groups, preserves every direct shortcut in a flat list with non-interactive workflow labels, and keeps account/theme/preview actions separate from content navigation.** | **ACTIVE** |
 | **3.6.121** | **Pricing Sign-In Handoff Integrity** | **An unauthenticated plan choice crosses to the canonical owner-app sign-in as a validated non-sensitive plan selection; business and billing details are collected only after authentication on the owner-app host.** | **ACTIVE** |
 | **3.6.120** | **Developer Reference Discoverability** | **The shared public footer links directly to the existing localized `/developers` reference so human and agent journeys can reach the implemented read-only API contract from homepage HTML.** | **ACTIVE** |
 | **3.6.119** | **Operational Proof Placement** | **Weekly Menu Review and outlet launch readiness appear as narrow proof inside existing homepage, Features, Business Health, and Multi-location stories without adding a route or homepage section.** | **ACTIVE** |
 | **3.6.118** | **Website Audit Hardening** | **Public pages load without the authenticated Firebase sign-out chain, closed menus leave the keyboard order, contact submissions have a bounded platform inbox, and dense conversion surfaces remain readable across practical viewports.** | **ACTIVE** |
 | **3.6.117** | **Homepage Private Preview Surface Polish** | **The try-first homepage preview now uses one readable, responsive product surface instead of nested card layers and low-contrast panel text.** | **ACTIVE** |
+
+Version 3.6.124 adds `OwnerWorkflowGallerySection` directly after the homepage hero. Its asymmetric, responsive sequence shows a business owner photographing or uploading the list they already use, reviewing a private MenuList preview, and publishing only the approved customer link. The restaurant-owner photograph is explicitly labelled as a generated demonstration with sample business content, while the review and published-output frames use existing MenuList demo product visuals. It is not customer UGC, a testimonial, or evidence of automatic publishing. Permissioned customer footage may replace the intake demonstration later after consent and usage-rights review without changing the owner-review boundary. The section uses the existing scroll-reveal system, theme tokens, reduced-motion behavior, and English/Hindi locale contract. No intake runtime, extraction, publishing, customer surface, owner data, Firebase, Function, provider, pricing/payment, dependency, Vercel, staging, or production behavior changed.
+
+Version 3.6.123 repairs a stale desktop sticky-CTA state found during local footer interaction testing. `StickyCta` retains its existing start/stop IntersectionObservers, but now also performs requestAnimationFrame-throttled rect synchronization on scroll, resize, and `pageshow`, with complete listener and pending-frame cleanup. The footer Analytics, language, and theme controls therefore remain reachable after abrupt scrolling, history restoration, or hot reload; the CTA remains absent on phone viewports. Connected local Chrome verified the obstructed desktop Analytics control before the correction, the working privacy dialog afterward, and the corrected footer/privacy flow at 390×844. The focused `verify:website-sticky-cta-boundary` gate protects the recovery and cleanup contract. No form, pricing, authentication, owner data, Firebase, Function, provider, Razorpay, Vercel, staging, or production behavior changed.
 
 Version 3.6.122 presents the existing mobile website destinations through the same clean navigation pattern proven on the Answerlattice public site, adapted to MenuList routes and tokens. `Product` keeps Feature overview, How It Works, AI Menu Manager, Multi-Location, and Pricing visible. `Resources` retains the complete existing Resources destination set from the shared header source. Account access is separated below navigation, while the existing theme control and private-preview CTA remain fixed outside the scroll area. Rows retain active-route state, 44px-plus targets, focus treatment, Escape close, focus trapping, localized English/Hindi labels, safe-area spacing, and light/dark support. Desktop navigation, route inventory, product claims, owner runtime, customer surfaces, Firebase, Functions, pricing/payment, Vercel, and deployment behavior are unchanged.
 

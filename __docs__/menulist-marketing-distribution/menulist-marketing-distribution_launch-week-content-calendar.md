@@ -48,6 +48,41 @@ Text-only founder context can go earlier. Public proof should wait for clean dem
 
 ---
 
+## X Qualified-Attention Wave
+
+Use this overlay only after the launch gates and final X account choice are
+approved. The objective is for the relevant owner, partner, and SMB-technology
+audience to encounter the same truthful MenuList claim and product proof through
+several credible perspectives during one bounded window. It is not a target for
+trend manipulation, generic reach, or synchronized engagement.
+
+| Window | Voice and job | Content boundary | Qualified action |
+| --- | --- | --- | --- |
+| T-7 to T-2 | Founder or approved official voice establishes the problem | Why conflicting menus, PDFs, price lists, or customer links create owner cleanup; no launch countdown hype | Relevant owner or setup-partner feedback |
+| T-1 | MenuList proof preview | One approved five-second product moment: current list -> private preview -> owner approval -> customer link | Confirm claim, asset, destination, tracking, and response capacity |
+| Hour 0 | Founder or approved official launch post | Lead with the result and one portable claim; attach the real proof asset; use one primary CTA | Send current list, try the approved route, or give qualified feedback |
+| Hour 1-3 | Permissioned customer or setup partner | Independent experience or workflow angle in their own words; disclose the relationship where material | Owner conversation, partner introduction, or proof question |
+| Hour 2-6 | Relevant niche creator or practitioner | Show one real use case or critique; no supplied identical copy and no required engagement | Qualified owner visit, current-list intake, or useful objection |
+| Hour 4-12 | Founder or official response voice | Reply to substantive questions, clarify boundaries, and show requested proof | Move qualified people into the appropriate intake or partner path |
+| Hour 12-24 | MenuList follow-up | Publish only observed questions, resolved friction, or truthful milestones | Preview, approval, publication, or two-surface activation |
+| T+1 to T+2 | Customer, partner, or founder continuation | Share permissioned outcomes, objections, lessons, and the next proof asset | Continue, change, or stop the tested wave |
+
+Every participant chooses their own wording and opinion. Do not require likes,
+reposts, replies, follows, or quote posts; exchange engagement; reuse duplicate
+copy across accounts; or coordinate activity to inflate prominence. X permits
+authentic coordination but prohibits coordinated inauthentic amplification and
+engagement manipulation under its
+[Authenticity policy](https://help.x.com/en/rules-and-policies/authenticity).
+Money, gifts, free services, commission, or another incentive makes the post a
+paid partnership and requires the platform disclosure described in X's
+[Paid Partnerships Policy](https://help.x.com/en/rules-and-policies/paid-partnerships-policy).
+
+Proof & State is not a default launch-support account. It may name or link
+MenuList only after its maintained product-connection privacy gate is explicitly
+cleared; it must never be used to simulate an independent third-party mention.
+
+---
+
 ## Content Mix
 
 | Content type | Minimum count | Notes |
@@ -83,4 +118,3 @@ Pause launch-week content if:
 - upload/preview path fails for qualified owners;
 - founder cannot respond to Product Hunt and qualified leads;
 - external setup requirements are not ready.
-

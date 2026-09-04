@@ -13,6 +13,7 @@ import { useAppDispatch } from '@hook/useAppDispatch';
 import usePaymentHandler, { isPaymentCheckoutDismissedError } from '@hook/usePaymentHandler';
 import { AUTH_ACCOUNT_REQUEST_POLICY, readAuthAccountResponse } from '@lib/auth/accountClientResponses';
 import { refreshFirebaseAuthClaims } from '@lib/auth/firebaseAuthSync';
+import { resolveOwnerAccessRecoveryState } from '@lib/onboarding/ownerAccessRecovery';
 import { formatBillingHistoryEvents } from '@lib/billing/billingHistoryFormatter';
 import {
     fetchMenuListBillingDocumentSummaries,
@@ -32,6 +33,7 @@ import { Alert, Button, Card, Empty, Flex, Select, Spin, Typography, App } from 
 import { useSession } from 'next-auth/react';
 import { useFormatter, useTranslations } from 'next-intl';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { getPlatformWebsiteBaseUrl } from '@constant/urls';
 import { useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { LuBuilding2, LuHelpCircle, LuMapPin, LuPlusCircle, LuStore, LuZap } from 'react-icons/lu';
 import ActiveSubscriptionCard from './ActiveSubscriptionCard';
@@ -47,6 +49,10 @@ function BillingPage() {
     const t = useTranslations('Billing');
     const searchParams = useSearchParams();
     const router = useRouter();
+    const openPricing = () => {
+        const pricingUrl = new URL('/pricing', getPlatformWebsiteBaseUrl()).toString();
+        window.location.assign(pricingUrl);
+    };
     const sessionId = searchParams?.get('session_id');
     const [billingHistory, setBillingHistory] = useState<BillingHistoryItem[]>([]);
     const { data: session } = useSession();
@@ -113,6 +119,15 @@ function BillingPage() {
     const hasEnhancementPackBillingTerms = Boolean(activeSubscription?.taxSnapshot);
     const canBuyEnhancementPacks = isSignedInBillingContext && hasEnhancementPackBillingTerms;
     const isManualBilling = activeSubscription?.billingMode === 'manual';
+    const accessRecoveryState = resolveOwnerAccessRecoveryState({ activeSubscription, storeDetails });
+    const accessRecoveryTitle = accessRecoveryState === 'starter_expired'
+        ? t('statusExpired')
+        : accessRecoveryState === 'workspace_missing'
+            ? t('noSubscriptionFound')
+            : t('noActiveSubscription');
+    const accessRecoveryDescription = accessRecoveryState === 'starter_expired'
+        ? t('pausedCycleEnded')
+        : t('noActiveSubscriptionDesc');
     const activeStoreCount = tenantStoresList.filter((store: any) => store?.active !== false).length || 1;
     const paidLocationCount = Math.max(1, Number(activeSubscription?.quantity || 1));
     const isMultiLocationPlan = activeSubscription?.planId === MENULIST_B2C_PLAN_IDS.MULTI_LOCATION;
@@ -262,7 +277,7 @@ function BillingPage() {
         }
         if (!activeSubscription) {
             setIsPricingModalOpen({ active: false, action: 'upgrade' });
-            router.push('/pricing');
+            openPricing();
             return;
         }
         try {
@@ -511,9 +526,9 @@ function BillingPage() {
             ) : !isSubscriptionFetching ? (
                 <Flex vertical style={{ justifyContent: 'center', alignItems: 'center', height: '100%', width: '100%' }}>
                     <Alert
-                        message={t('noActiveSubscription')}
-                        description={t('noActiveSubscriptionDesc')}
-                        type="error"
+                        message={accessRecoveryTitle}
+                        description={accessRecoveryDescription}
+                        type="info"
                         showIcon
                         style={{ marginBottom: '10px' }}
                     />
@@ -524,7 +539,7 @@ function BillingPage() {
                         >
                             <Flex justify="center" style={{ marginTop: '24px', width: '100%' }}>
                                 {canManageSelectedSubscription ? (
-                                    <Button type="primary" onClick={() => router.push('/pricing')} icon={<LuZap />}>
+                                    <Button type="primary" onClick={openPricing} icon={<LuZap />}>
                                         {t('viewPlans')}
                                     </Button>
                                 ) : null}

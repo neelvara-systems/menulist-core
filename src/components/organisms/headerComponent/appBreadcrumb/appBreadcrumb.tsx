@@ -14,6 +14,7 @@ const { Text } = Typography;
 
 function AppBreadcrumb() {
     const tNav = useTranslations('Navigation');
+    const tPrimaryNav = useTranslations('MobileNavigation');
     const tHeader = useTranslations('Header');
     const pathname = usePathname();
     const router = useRouter();
@@ -56,18 +57,26 @@ function AppBreadcrumb() {
                     <Space align="center" size={0}>
                         {breadcrumbs.map((breadcrumb) => {
                             const activeSubNav = breadcrumb.subNav.find((subBreadcrumb) => subBreadcrumb.active);
+                            const parentLabel = breadcrumb.ownerLabelKey
+                                ? tPrimaryNav(breadcrumb.ownerLabelKey)
+                                : tNav(breadcrumb.label as never);
                             return (
                                 <Fragment key={breadcrumb.key}>
-                                    <Tooltip title={tHeader('currentlyOnTab', { tab: tNav(breadcrumb.label as never) })}>
+                                    <Tooltip title={tHeader('currentlyOnTab', { tab: parentLabel })}>
                                         <Text className={styles.bradcrumbLabel} style={{ color: token.colorTextBase, background: token.colorFillContent }}>
                                             <breadcrumb.icon />
-                                            {tNav(breadcrumb.label as never)}
+                                            {parentLabel}
                                         </Text>
                                     </Tooltip>
                                     {breadcrumb.subNav.length > 0 ? (
                                         <>
                                             <Text className={styles.bradcrumbLabel} style={{ color: token.colorTextBase, background: token.colorBgBase, padding: '0 5px' }}>{'>'}</Text>
-                                            {breadcrumb.subNav.length > 1 ? (
+                                            {breadcrumb.ownerLabelKey && activeSubNav ? (
+                                                <Text className={styles.bradcrumbLabel} style={{ color: token.colorTextBase, background: token.colorFillContent }}>
+                                                    <activeSubNav.icon style={{ fontSize: 15 }} />
+                                                    {tNav(activeSubNav.label as never)}
+                                                </Text>
+                                            ) : breadcrumb.subNav.length > 1 ? (
                                                 !isVerticalBreadcrumb ? (
                                                     <Flex gap={10}>
                                                         {breadcrumb.subNav.map((subBreadcrumb) => {

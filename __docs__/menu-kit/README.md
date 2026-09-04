@@ -4,7 +4,7 @@
 **Priority:** P0 — Pre-launch essential  
 **Source:** ChatGPT Session #11 → Cascade Review + Codebase Cross-Check  
 **Owner:** Founder
-**Last Updated:** June 25, 2026
+**Last Updated:** August 30, 2026
 
 ---
 
@@ -40,7 +40,9 @@ Menu Kit is an auto-generated "Launch Pack" of print-ready and social-ready asse
 
 ### What's in the Kit (Frozen — 10 Generated Asset Files + Staff Script + Print Instructions)
 
-All visual assets use the store's existing logo and brand accent color when available. Brand color is used for gradient framing, accent panels, and borders; QR modules stay near-black on a high-contrast white scan panel with a generated four-module quiet zone for scan reliability. Printable/downloadable assets carry subtle MenuList attribution with the logo mark, name, and `menulist.ai` domain unless the store's already-loaded active plan is `menulist_multi_location`.
+All visual assets use the store's existing logo and the one parent theme resolved from the current menu theme, business theme, or governed default. The selected family controls palette, background artwork, borders, and accents across all 10 generated files; artwork is cropped with preserved aspect ratio and is never stretched. QR modules stay near-black on a high-contrast scan panel with a generated four-module quiet zone. Printable/downloadable assets carry subtle MenuList attribution with the logo mark, name, and `menulist.ai` domain unless the store's already-loaded active plan is `menulist_multi_location`.
+
+The Complete Menu Kit is a prepared package, not a separately styleable asset. Every generated visual file receives the same singular parent theme. The legacy per-asset family map is accepted only for backward compatibility and is collapsed to one canonical family before rendering, so a ZIP cannot mix visual families.
 
 1. **Table Tent (A5 fold PDF)** — Print Menu Surfaces-owned tabletop card with QR + instruction line + short link fallback + branding
 2. **Single Table / Counter Card (A6 PDF)** — Upright non-folded card for acrylic holders, counters, wall clips, and single-sided stands
@@ -56,6 +58,8 @@ All visual assets use the store's existing logo and brand accent color when avai
 12. **PRINT_INSTRUCTIONS.txt** — Specs for print shops (paper size, material, finish, quantity)
 
 ### What's NOT in the Kit (Permanently Rejected)
+
+The ZIP is the fixed 10-file deployment pack listed above, not a dump of every registered printable. Purpose-specific printables remain in the workflow that owns their required real data: Print Menu/Menu Card Export owns full menu content, Feedback QR owns its feedback destination, Staff Name Badge owns a selected staff member, Product Tag owns a saved item and exact-item URL, and campaign assets own saved campaign or featured-choice context. Gift certificates, business cards, invitations, and postcards remain individual owner-purpose downloads. This prevents blank, stale, or invented fields from entering a bulk ZIP.
 
 - ❌ Offer/discount posters
 - ❌ Review QR cards

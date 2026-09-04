@@ -95,7 +95,7 @@ async function run(): Promise<void> {
         totalTransactions: 0,
     });
 
-    const offlineOperationId = '2b167ac8-c4c1-4c90-aa8b-a2d3df7a4f18';
+    const offlineOperationId = `${prefix}-offline-operation`;
     const offlineSubscriptionId = `manual_${offlineOperationId}`;
     const offlineTransaction = onboardingTransaction({
         amount: 120_000,
@@ -139,7 +139,7 @@ async function run(): Promise<void> {
     assert.equal(profile?.totalRevenueCollectedPaise, 120_000);
     assert.equal(profile?.totalTransactions, 1);
 
-    const cappedOperationId = 'f38313f7-00f7-48dc-a5ac-45530c42c565';
+    const cappedOperationId = `${prefix}-capped-operation`;
     const cappedSubscriptionId = `manual_${cappedOperationId}`;
     await assert.rejects(
         createResellerOnboardingBillingServer({
@@ -162,7 +162,7 @@ async function run(): Promise<void> {
     const malformedProfileRef = firestoreAdmin
         .collection(DB_COLLECTIONS.RESELLER_PROFILES)
         .doc(`${prefix}-malformed-counter-profile`);
-    const malformedOperationId = '7ab59b7d-b6a0-4d63-a4f7-835d24ae93ed';
+    const malformedOperationId = `${prefix}-malformed-operation`;
     const malformedSubscriptionId = `manual_${malformedOperationId}`;
     await malformedProfileRef.set({
         active: true,
@@ -199,7 +199,7 @@ async function run(): Promise<void> {
     const overflowProfileRef = firestoreAdmin
         .collection(DB_COLLECTIONS.RESELLER_PROFILES)
         .doc(`${prefix}-overflow-profile`);
-    const overflowOperationId = 'd42c727c-47db-4a69-b2ee-da0cf77008c5';
+    const overflowOperationId = `${prefix}-overflow-operation`;
     const overflowSubscriptionId = `${prefix}-overflow-subscription`;
     await overflowProfileRef.set({
         active: true,
@@ -231,7 +231,7 @@ async function run(): Promise<void> {
     const foreignInitialProfileRef = firestoreAdmin
         .collection(DB_COLLECTIONS.RESELLER_PROFILES)
         .doc(`${prefix}-foreign-initial-profile`);
-    const foreignInitialOperationId = 'b2b453d3-e1d1-47db-908a-bf4b4a05e866';
+    const foreignInitialOperationId = `${prefix}-foreign-initial-operation`;
     const foreignInitialSubscriptionId = `${prefix}-foreign-initial-subscription`;
     await foreignInitialProfileRef.set({
         active: true,
@@ -262,7 +262,7 @@ async function run(): Promise<void> {
     const provisionalProfileRef = firestoreAdmin
         .collection(DB_COLLECTIONS.RESELLER_PROFILES)
         .doc(`${prefix}-provisional-profile`);
-    const provisionalOperationId = 'f2aeeebd-2d43-4d06-9867-9af65c51c112';
+    const provisionalOperationId = `${prefix}-provisional-operation`;
     const provisionalSubscriptionId = `${prefix}-provisional-subscription`;
     const provisionalTransaction = {
         ...onboardingTransaction({
@@ -333,7 +333,7 @@ async function run(): Promise<void> {
     assert.equal(provisionalReplay.replayed, true);
     assert.equal((await provisionalProfileRef.get()).data()?.totalTransactions, 1);
 
-    const onlineOperationId = 'f56e42da-c45a-4394-bc76-c29f769f4507';
+    const onlineOperationId = `${prefix}-online-operation`;
     const onlineSubscriptionId = `${prefix}-online-subscription`;
     await createResellerOnboardingBillingServer({
         profileId: profileRef.id,

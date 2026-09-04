@@ -5,10 +5,11 @@ import { emitDeploymentBadgeToggle } from '@constant/deploymentDebug';
 import { PERMISSIONS } from '@constant/permissions';
 import { MENULIST_PLATFORM_USER_ROLE, RESELLER_USER_ROLE } from '@constant/user';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
-import { hasStarterWorkspaceAccess, isStarterActivationStore } from '@lib/onboarding/starterActivation';
+import { hasStarterWorkspaceAccess } from '@lib/onboarding/starterActivation';
 import { signOutSession } from '@lib/auth/client';
 import { hasAnyPermission } from '@lib/permissions/permissionRequirements';
 import { hasValidSubscriptionAccess } from '@util/razorpay';
+import { resolveOwnerAccessRecoveryState } from '@lib/onboarding/ownerAccessRecovery';
 import { App as AntApp, theme } from 'antd';
 import { useSession } from 'next-auth/react';
 import dynamic from 'next/dynamic';
@@ -287,6 +288,7 @@ function buildMobileRouteHash(tab: MobileTab, todayScreen: 'main' | 'dashboard' 
 export default function MobileShell() {
     const t = useTranslations('MobileShell');
     const billingT = useTranslations('Billing');
+    const dashboardT = useTranslations('Dashboard');
     const mobileMoreT = useTranslations('MobileMore');
     const profileActionsT = useTranslations('ProfileActions');
     const starterT = useTranslations('StarterActivation');
@@ -307,20 +309,30 @@ export default function MobileShell() {
     const [todayScreen, setTodayScreen] = useState<'main' | 'dashboard' | 'history'>(initialRoute.todayScreen);
     const [moreScreen, setMoreScreen] = useState<MoreSubScreen>(initialRoute.moreScreen);
     const [isMoreRootScreen, setIsMoreRootScreen] = useState(initialRoute.moreScreen === 'main');
+    const [printSurfaceReturnTab, setPrintSurfaceReturnTab] = useState<MobileTab | null>(null);
     const [subscriptionGateConfirmingSignOut, setSubscriptionGateConfirmingSignOut] = useState(false);
     const [subscriptionGateSignOutError, setSubscriptionGateSignOutError] = useState('');
     const [subscriptionGateSigningOut, setSubscriptionGateSigningOut] = useState(false);
     const scrollContainerRef = useRef<HTMLDivElement | null>(null);
     const hasSubscription = hasValidSubscriptionAccess(activeSubscription);
-    const hasPendingSubscription = activeSubscription?.status === 'pending';
     const hasStarterAccess = hasStarterWorkspaceAccess(storeDetails, hasSubscription);
-    const isStarterStore = isStarterActivationStore(storeDetails);
-    const subscriptionGateTitle = hasPendingSubscription
-        ? `${activeSubscription.planName} — ${billingT('title')}`
-        : isStarterStore ? starterT('endingSoonTitle') : t('subscribeTitle');
-    const subscriptionGateDescription = hasPendingSubscription
+    const accessRecoveryState = resolveOwnerAccessRecoveryState({ activeSubscription, storeDetails });
+    const subscriptionGateTitle = accessRecoveryState === 'payment_pending'
+        ? `${activeSubscription?.planName || billingT('subscriptionPayment')} — ${billingT('title')}`
+        : accessRecoveryState === 'starter_expired'
+            ? billingT('statusExpired')
+            : accessRecoveryState === 'workspace_missing'
+                ? dashboardT('noStoreSelected')
+                : accessRecoveryState === 'plan_ended'
+                    ? billingT('noActiveSubscription')
+                    : t('subscribeTitle');
+    const subscriptionGateDescription = accessRecoveryState === 'payment_pending'
         ? billingT('subtitle')
-        : isStarterStore ? starterT('noSubscriptionDescription') : t('subscribeDescription');
+        : accessRecoveryState === 'starter_expired'
+            ? starterT('noSubscriptionDescription')
+            : accessRecoveryState === 'plan_required'
+                ? t('subscribeDescription')
+                : billingT('noActiveSubscriptionDesc');
     const platformRole = (session as any)?.platformRole || (session?.user as any)?.platformRole;
     const isPlatformAdmin = platformRole === MENULIST_PLATFORM_USER_ROLE;
     const isResellerAccount = platformRole === RESELLER_USER_ROLE;
@@ -360,7 +372,6 @@ export default function MobileShell() {
         if (hasStarterAccess) {
             return [
                 ...(canUseMenuTab ? ['menu' as MobileTab] : []),
-                ...(canUseAiMenuManagerTab ? ['aiMenuManager' as MobileTab] : []),
                 ...(canUseShareTab ? ['share' as MobileTab] : []),
                 'more',
             ];
@@ -384,6 +395,7 @@ export default function MobileShell() {
             setTodayScreen(nextRoute.todayScreen);
             setMoreScreen(nextRoute.moreScreen);
             setIsMoreRootScreen(nextRoute.moreScreen === 'main');
+            setPrintSurfaceReturnTab(null);
         };
 
         window.addEventListener('hashchange', handleHashChange);
@@ -411,6 +423,7 @@ export default function MobileShell() {
         setTodayScreen(nextRoute.todayScreen);
         setMoreScreen(nextRoute.moreScreen);
         setIsMoreRootScreen(nextRoute.moreScreen === 'main');
+        setPrintSurfaceReturnTab(null);
     }, [pathname, searchParamKey]);
 
     useEffect(() => {
@@ -442,6 +455,7 @@ export default function MobileShell() {
             return;
         }
         setActiveTab(tab);
+        setPrintSurfaceReturnTab(null);
         if (tab !== 'today') {
             setTodayScreen('main');
         }
@@ -477,6 +491,7 @@ export default function MobileShell() {
             return;
         }
         setActiveTab('share');
+        setPrintSurfaceReturnTab(null);
         setMoreScreen('main');
         setIsMoreRootScreen(true);
         setTodayScreen('main');
@@ -503,15 +518,17 @@ export default function MobileShell() {
         setTodayScreen('main');
     }, []);
 
-    const handleOpenPrintMenu = useCallback(() => {
+    const handleOpenPrintMenu = useCallback((returnTab: MobileTab | null = null) => {
         setActiveTab('more');
+        setPrintSurfaceReturnTab(returnTab);
         setMoreScreen('printMenu');
         setIsMoreRootScreen(false);
         setTodayScreen('main');
     }, []);
 
-    const handleOpenPrintAssets = useCallback(() => {
+    const handleOpenPrintAssets = useCallback((returnTab: MobileTab | null = null) => {
         setActiveTab('more');
+        setPrintSurfaceReturnTab(returnTab);
         setMoreScreen('printAssets');
         setIsMoreRootScreen(false);
         setTodayScreen('main');
@@ -529,6 +546,7 @@ export default function MobileShell() {
 
     const handleOpenMoreScreen = useCallback((target: MoreSubScreen) => {
         setActiveTab('more');
+        setPrintSurfaceReturnTab(null);
         setMoreScreen(target);
         setIsMoreRootScreen(target === 'main');
         setTodayScreen('main');
@@ -608,7 +626,7 @@ export default function MobileShell() {
                     )
         )
         : activeTab === 'share'
-            ? <MobileShareScreen onOpenDomainSettings={() => handleOpenMoreScreen('domainSettings')} onOpenDigitalScreens={handleOpenDigitalScreens} onOpenDesignEditor={handleOpenDesignEditor} onOpenMenuTab={handleOpenMenuTab} onOpenOfficialPage={() => handleOpenMoreScreen('officialPage')} onOpenPosSync={handleOpenPosSync} onOpenPrintAssets={handleOpenPrintAssets} onOpenPrintMenu={handleOpenPrintMenu} />
+            ? <MobileShareScreen onOpenDomainSettings={() => handleOpenMoreScreen('domainSettings')} onOpenDigitalScreens={handleOpenDigitalScreens} onOpenDesignEditor={handleOpenDesignEditor} onOpenMenuTab={handleOpenMenuTab} onOpenOfficialPage={() => handleOpenMoreScreen('officialPage')} onOpenPosSync={handleOpenPosSync} onOpenPrintAssets={() => handleOpenPrintAssets('share')} onOpenPrintMenu={() => handleOpenPrintMenu('share')} />
         : activeTab === 'aiMenuManager'
             ? <MobileAiMenuManagerScreen />
         : activeTab === 'more' && moreScreen === 'businessHealth'
@@ -618,7 +636,7 @@ export default function MobileShell() {
                     ? <MobileBusinessHealthScreen onBack={() => handleOpenMoreScreen('main')} onOpenMenuTab={handleOpenMenuTab} onOpenMoreScreen={handleOpenMoreScreen} onOpenShareTab={handleOpenShareTab} />
                     : <MobileMoreScreen initialScreen="main" onOpenMenuTab={handleOpenMenuTab} onOpenShareTab={handleOpenShareTab} onRootStateChange={setIsMoreRootScreen} onScreenChange={setMoreScreen} />
         : activeTab === 'more'
-            ? <MobileMoreScreen initialScreen={moreScreen} onOpenMenuTab={handleOpenMenuTab} onOpenShareTab={handleOpenShareTab} onRootStateChange={setIsMoreRootScreen} onScreenChange={setMoreScreen} />
+            ? <MobileMoreScreen initialScreen={moreScreen} onExitPrintSurface={printSurfaceReturnTab === 'share' ? handleOpenShareTab : undefined} onOpenMenuTab={handleOpenMenuTab} onOpenShareTab={handleOpenShareTab} onRootStateChange={setIsMoreRootScreen} onScreenChange={setMoreScreen} />
                 : <MobileMenuScreen onOpenDesignEditor={handleOpenDesignEditor} onOpenOfficialPage={() => handleOpenMoreScreen('officialPage')} onOpenPrintMenu={handleOpenPrintMenu} onOpenShare={handleOpenShareTab} />;
 
     if (activeSubscriptionLoading && !hasSubscription && !hasStarterAccess && !shouldBypassSubscriptionGate) {
@@ -657,7 +675,7 @@ export default function MobileShell() {
                                 size="large"
                                 style={{ minHeight: 44 }}
                             >
-                                {hasPendingSubscription ? mobileMoreT('billing') : t('viewPlans')}
+                                {accessRecoveryState === 'payment_pending' ? mobileMoreT('billing') : t('viewPlans')}
                             </Button>
                             {subscriptionGateConfirmingSignOut ? (
                                 <Flex gap={8} style={{ width: '100%' }} vertical>
@@ -717,7 +735,10 @@ export default function MobileShell() {
     return (
         <AntApp>
             <MobileAntdAppBridge />
-            <MobileProjectsProvider eagerLoadSelectedProject={shouldEagerLoadSelectedProject}>
+            <MobileProjectsProvider
+                createDefaultProjectWhenEmpty={activeTab === 'menu'}
+                eagerLoadSelectedProject={shouldEagerLoadSelectedProject}
+            >
             <Flex
                 style={{
                     background: token.colorBgLayout,

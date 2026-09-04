@@ -91,7 +91,8 @@ forbidText(clientHook, 'enabled ? "special-menus-list" : null', 'global special-
 requireText(mobileProjectsProvider, 'resolveMobileProjectScope(storeDetails, loggedInSession)', 'mobile project cache must require session/context scope agreement');
 requireText(mobileProjectsProvider, 'latestProjectsRequestRef.current', 'mobile project list settlement must use latest-request ownership');
 requireText(mobileProjectsProvider, 'inFlightProjectLoadsRef.current[requestKey] !== request', 'mobile project detail settlement must use latest-request ownership');
-requireText(mobileProjectsProvider, 'getProjectsListWithoutLoader(true, expectedScope)', 'mobile project list DAL calls must retain expected scope');
+requireText(mobileProjectsProvider, '? await getProjectsListWithoutLoader(true, expectedScope)', 'mobile menu-management project list DAL calls must retain expected scope');
+requireText(mobileProjectsProvider, ': await getExistingProjectsListWithoutLoader(true, expectedScope);', 'mobile read-only project list DAL calls must retain expected scope without creating a default menu');
 requireText(mobileProjectsProvider, 'getProjectDataWithoutLoader(nextProjectId, expectedScope)', 'mobile project detail DAL calls must retain expected scope');
 requireText(mobileProjectsProvider, 'hydratedScopeKeyRef.current === `${currentScope.tId}:${currentScope.sId}`', 'mobile project output must be masked until exact tenant/store hydration');
 requireText(ownerProjectSelection, '`${OWNER_SELECTED_PROJECT_KEY}:${tenantScope}:${storeScope}`', 'owner project selection storage must be tenant/store partitioned');

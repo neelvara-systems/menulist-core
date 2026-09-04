@@ -842,6 +842,7 @@ function buildApplyPlan(
                 newCategory: {
                     id: cat.generatedId || cat.extractedCategory.id,
                     name: cat.extractedCategory.name,
+                    ...(cat.extractedCategory.icon ? { icon: cat.extractedCategory.icon } : {}),
                     orderIndex: cat.extractedCategory.orderIndex,
                     active: true,
                 },
@@ -912,6 +913,7 @@ function buildApplyPlan(
             plan.outletMutations.upsertLocalCategories.push({
                 id: cat.generatedId || generateLocalCategoryId(),
                 name: cat.extractedCategory.name,
+                ...(cat.extractedCategory.icon ? { icon: cat.extractedCategory.icon } : {}),
                 orderIndex: cat.extractedCategory.orderIndex,
                 active: true,
             });

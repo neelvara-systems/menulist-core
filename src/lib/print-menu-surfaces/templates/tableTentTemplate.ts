@@ -14,6 +14,7 @@ import { getOfferingLabels } from '../../menu-kit/businessTypeLabels';
 import { type PreloadedLogo } from '../../menu-kit/imageLoader';
 import { type MenuKitInput } from '../../menu-kit/types';
 import { resolvePrintableTemplateBrandTokens } from '../../printable-asset-templates/templateStyles';
+import { loadPrintableThemeArtwork } from '../../printable-asset-templates/themeArtwork';
 import { drawPrintMenuCardFace, printMenuMm } from './printMenuCardFace';
 
 type PrintMenuTableTentInput = MenuKitInput & { _logo?: PreloadedLogo | null };
@@ -37,6 +38,7 @@ async function renderPrintMenuTableTentCanvas(input: PrintMenuTableTentInput): P
     const labels = getOfferingLabels(businessType, businessCategory);
     const logo = _logo || null;
     const brand = resolvePrintableTemplateBrandTokens(input.brandColor, input.templateFamilyId);
+    const themeArtwork = await loadPrintableThemeArtwork(input.templateFamilyId);
 
     const faceW = printMenuMm(FACE_W_MM);
     const faceH = printMenuMm(FACE_H_MM);
@@ -70,6 +72,7 @@ async function renderPrintMenuTableTentCanvas(input: PrintMenuTableTentInput): P
         shortLink,
         storeName,
         templateFamilyId: input.templateFamilyId,
+        themeArtwork,
     };
 
     // Left face: rotated so it reads upright from the opposite side of the table.

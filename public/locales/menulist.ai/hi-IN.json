@@ -4540,6 +4540,22 @@
       "aiTeaserLabel": "New: AI Menu Manager",
       "aiTeaserText": "Message से list update करें"
     },
+    "OwnerWorkflowGallery": {
+      "title": "आपकी current list से customers के link तक।",
+      "highlight": "customers के link तक।",
+      "subtitle": "Current menu या service list से reviewed customer link तक का पूरा flow देखें।",
+      "disclosure": "Sample business content के साथ demonstration।",
+      "galleryLabel": "MenuList owner workflow demonstration",
+      "captureTitle": "Photo लें या upload करें",
+      "captureBody": "उस menu या service list से शुरू करें जिसे आपका business अभी use करता है।",
+      "captureAlt": "एक restaurant owner phone से printed menu की illustrative photo लेते हुए",
+      "reviewTitle": "Private preview review करें",
+      "reviewBody": "MenuList owner account में structure prepare करता है। Review से पहले कुछ भी public नहीं होता।",
+      "reviewAlt": "Owner approval की प्रतीक्षा करता prepared menu change दिखाने वाला MenuList sample approval screen",
+      "publishTitle": "Approved customer link publish करें",
+      "publishBody": "Reviewed version customer link और supported MenuList outputs बन जाता है।",
+      "publishAlt": "MenuList sample official business page और customer menu"
+    },
     "RevenuePath": {
       "eyebrow": "Current list से customer action तक",
       "title": "आपकी public list customers को",

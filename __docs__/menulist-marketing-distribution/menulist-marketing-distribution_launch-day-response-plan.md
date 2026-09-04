@@ -58,6 +58,11 @@ Do not treat leaderboard rank as the main success signal.
 | Hour 12-24 | Follow up qualified leads manually; record source, state, and next action |
 | Day +1 | Review metrics, blockers, proof gaps, and next content |
 
+The response clock is subordinate to the approved work-in-progress limit. If
+qualified intake exceeds the number of previews and follow-ups the team can
+serve accurately, pause new promotion, state the delay plainly, and finish the
+existing queue before adding attention.
+
 ---
 
 ## Comment Routing
@@ -114,6 +119,9 @@ Do not use:
 | Founder LinkedIn post ready | See founder post pack |
 | Partner brief ready | Draft ready |
 | Screenshots use demo/permissioned data only | Required |
+| Six launch gates pass | Required; see `launch-research-2026-09-03/report-source.md` |
+| Response owner, hours, WIP limit, escalation, and pause rule confirmed | Required |
+| Every paid, gifted, barter, affiliate, personal, employment, or other material relationship disclosed | Required |
 
 ---
 
@@ -130,4 +138,3 @@ Record:
 - any route/runtime issue;
 - screenshots or assets that confused people;
 - next-day follow-up owner.
-

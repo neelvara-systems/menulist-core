@@ -2552,7 +2552,7 @@
     "hideFromMenu": "Hide from menu",
     "updatePrices": "Update prices",
     "moveItems": "Move Items",
-    "bulkActionConfirm": "{action} for {count} items?",
+    "bulkActionConfirm": "{action} for {count, plural, one {# item} other {# items}}?",
     "itemsUpdated": "{count} items updated",
     "bulkApplyFailed": "Failed to apply changes",
     "undo": "Undo",

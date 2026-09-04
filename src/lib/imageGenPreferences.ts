@@ -15,6 +15,7 @@ import { getTenantStoreStorageKey } from '@lib/browserStorage/tenantStoreKey';
 const STORAGE_KEY_PREFIX = 'imgGenPrefs';
 const MAX_PREFERENCE_ARRAY_LENGTH = 20;
 const MAX_PREFERENCE_VALUE_LENGTH = 100;
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const IMAGE_ASPECT_RATIOS = new Set(['1:1', '16:9', '9:16', '4:3', '3:4']);
 
 export interface ImageGenPreferences {
@@ -32,6 +33,8 @@ export interface ImageGenPreferences {
     foregroundColor?: string | null;
     isMultiMode?: boolean;
     savedAt?: string;
+    subjectProfileId?: string | null;
+    subjectProfileVersion?: number | null;
 }
 
 const isRecord = (value: unknown): value is Record<string, unknown> => (
@@ -59,6 +62,10 @@ const isOptionalBoundedNullableString = (
 
 const isOptionalBoolean = (value: unknown): value is boolean | undefined => (
     value === undefined || typeof value === 'boolean'
+);
+
+const isOptionalPositiveIntegerOrNull = (value: unknown): value is number | null | undefined => (
+    value === undefined || value === null || (Number.isSafeInteger(value) && Number(value) > 0)
 );
 
 const isOptionalAspectRatio = (value: unknown): value is string | undefined => (
@@ -97,6 +104,16 @@ export function parseImageGenPreferences(value: unknown): ImageGenPreferences | 
     ) {
         return null;
     }
+    const subjectProfileId = typeof value.subjectProfileId === 'string' && value.subjectProfileId.length > 0
+        ? value.subjectProfileId
+        : null;
+    const subjectProfileVersion = typeof value.subjectProfileVersion === 'number'
+        ? value.subjectProfileVersion
+        : null;
+    if (
+        Boolean(subjectProfileId) !== Boolean(subjectProfileVersion)
+        || (subjectProfileId && !UUID_PATTERN.test(subjectProfileId))
+    ) return null;
 
     if (
         !isOptionalAspectRatio(value.aspectRatio)
@@ -106,6 +123,8 @@ export function parseImageGenPreferences(value: unknown): ImageGenPreferences | 
         || !isOptionalBoundedNullableString(value.foregroundColor, 50)
         || !isOptionalBoolean(value.transparentBg)
         || !isOptionalBoolean(value.isMultiMode)
+        || !isOptionalBoundedNullableString(value.subjectProfileId, 160)
+        || !isOptionalPositiveIntegerOrNull(value.subjectProfileVersion)
         || !isOptionalStringArray(value.styles)
         || !isOptionalStringArray(value.environments)
         || !isOptionalStringArray(value.lighting)
@@ -131,6 +150,8 @@ export function parseImageGenPreferences(value: unknown): ImageGenPreferences | 
         foregroundColor: value.foregroundColor,
         isMultiMode: value.isMultiMode,
         savedAt: value.savedAt,
+        subjectProfileId,
+        subjectProfileVersion,
     };
 }
 
@@ -197,6 +218,8 @@ export function saveImageGenPreferences(
             foregroundColor: prefs.foregroundColor ?? null,
             isMultiMode: prefs.isMultiMode,
             savedAt: new Date().toISOString(),
+            subjectProfileId: prefs.subjectProfileId ?? null,
+            subjectProfileVersion: prefs.subjectProfileVersion ?? null,
         };
         const projected = parseImageGenPreferences(data);
         if (!projected) return;

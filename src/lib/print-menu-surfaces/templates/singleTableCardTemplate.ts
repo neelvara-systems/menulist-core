@@ -14,6 +14,7 @@ import { getOfferingLabels } from '../../menu-kit/businessTypeLabels';
 import { type PreloadedLogo } from '../../menu-kit/imageLoader';
 import { type MenuKitInput } from '../../menu-kit/types';
 import { resolvePrintableTemplateBrandTokens } from '../../printable-asset-templates/templateStyles';
+import { loadPrintableThemeArtwork } from '../../printable-asset-templates/themeArtwork';
 import { drawPrintMenuCardFace, printMenuMm } from './printMenuCardFace';
 
 type PrintMenuSingleTableCardInput = MenuKitInput & { _logo?: PreloadedLogo | null };
@@ -35,6 +36,7 @@ async function renderPrintMenuSingleTableCardCanvas(input: PrintMenuSingleTableC
     const labels = getOfferingLabels(businessType, businessCategory);
     const logo = _logo || null;
     const brand = resolvePrintableTemplateBrandTokens(input.brandColor, input.templateFamilyId);
+    const themeArtwork = await loadPrintableThemeArtwork(input.templateFamilyId);
 
     const cardW = printMenuMm(CARD_W_MM);
     const cardH = printMenuMm(CARD_H_MM);
@@ -63,6 +65,7 @@ async function renderPrintMenuSingleTableCardCanvas(input: PrintMenuSingleTableC
         shortLink,
         storeName,
         templateFamilyId: input.templateFamilyId,
+        themeArtwork,
     });
 
     return canvas;

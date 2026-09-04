@@ -2,6 +2,8 @@
 
 This is the canonical field contract for local FinanceOS workbooks. Real rows and evidence stay outside Git.
 
+**Current schema version:** 1.1, effective August 31, 2026. This additive revision introduces owner-authorized `restricted-original` evidence while preserving all v1.0 fields and IDs.
+
 ## Provider Accounts
 
 Required fields: `provider_id`, `provider`, `service`, `billing_family`, `cost_centre`, `account_state`, `plan_state`, `plan_name`, `plan_evidence`, `plan_as_of`, `billing_model`, `included_limit`, `current_usage`, `usage_as_of`, `trial_end_date`, `next_renewal_date`, `upgrade_trigger`, `payment_method_present`, `billing_owner`, `review_cadence`, `next_review_date`, `source_reference`, `owner_confirmation_needed`, `notes`.
@@ -52,7 +54,9 @@ Allowed confidence values: `exact`, `estimated`, `unknown`. Allowed approval sta
 
 Required fields: `evidence_id`, `record_ids`, `evidence_type`, `filename`, `source`, `document_date`, `captured_at`, `redaction_status`, `sha256`, `retention_status`, `professional_review_status`, `notes`.
 
-Allowed redaction states: `not-required`, `redacted`, `needs-redaction`, `do-not-share`.
+Allowed redaction states: `not-required`, `redacted`, `needs-redaction`, `do-not-share`, `restricted-original`.
+
+`restricted-original` requires explicit current-request founder authorization, private `Restricted-Originals/` storage, non-identifying filenames, directory mode `0700`, file mode `0600`, a SHA-256 value, and a linked owner decision. It may retain necessary bank-account/IFSC, UPI, tax/KYC, address, phone, proprietor, or comparable non-secret record identifiers. Routine ledger/report fields remain masked and a redacted derivative is retained when practical. Authentication and payment-authorization secrets remain prohibited: PINs, OTPs, passwords, API/private keys, cookies/tokens, recovery codes, QR authorization payloads, CVV, and full payment-card credentials.
 
 A SHA-256 value verifies that the indexed local file has not changed since hashing. It does not prove the document is authentic, paid, reconciled, or tax-valid.
 

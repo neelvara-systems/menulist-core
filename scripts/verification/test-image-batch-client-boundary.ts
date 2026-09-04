@@ -35,6 +35,29 @@ assert.deepEqual(
     },
     'Current project IDs must derive the store scope from the final segment.',
 );
+assert.deepEqual(
+    normalizeImageBatchGenerationConfig({
+        prompt: 'Same salon model with a new hairstyle',
+        subjectProfileId: '123e4567-e89b-12d3-a456-426614174000',
+        subjectProfileVersion: 3,
+    }),
+    {
+        prompt: 'Same salon model with a new hairstyle',
+        subjectProfileId: '123e4567-e89b-12d3-a456-426614174000',
+        subjectProfileVersion: 3,
+    },
+    'Batch generation must retain the exact saved-person profile version without copying private references into the job.',
+);
+assert.equal(
+    normalizeImageBatchGenerationConfig({ subjectProfileId: '123e4567-e89b-12d3-a456-426614174000', subjectProfileVersion: 0 }),
+    null,
+    'Batch generation must reject an invalid saved-person version.',
+);
+assert.equal(
+    normalizeImageBatchGenerationConfig({ subjectProfileId: '123e4567-e89b-12d3-a456-426614174000' }),
+    null,
+    'Batch generation must reject an unversioned saved-person selection before job creation.',
+);
 
 function validJob(): Record<string, unknown> {
     return {

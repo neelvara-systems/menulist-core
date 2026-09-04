@@ -3022,6 +3022,25 @@ notContains(
 );
 
 contains(
+  'src/lib/extraction/comparisonEngine.ts',
+  [
+    'cat.extractedCategory.icon ? { icon: cat.extractedCategory.icon }',
+    'plan.projectMutations.upsertCategories.push',
+    'plan.outletMutations.upsertLocalCategories.push',
+  ],
+  'Approved newly extracted categories preserve inferred category icons in standard and linked-outlet review saves',
+);
+
+contains(
+  'src/lib/extraction/schemas.ts',
+  [
+    'normalizeCategoryIcon',
+    "'Invalid category icon'",
+  ],
+  'Review write validation admits only canonical bounded category icon data',
+);
+
+contains(
   'src/lib/extraction/redistribute.ts',
   [
     'logMenuProcessingFailure',
@@ -4615,10 +4634,13 @@ const messagingEmulatorScriptNames = Object.keys(packageScripts).filter((scriptN
 const messagingEmulatorCredentialIsolationFailures = messagingEmulatorScriptNames.filter(
   (scriptName) => {
     const command = packageScripts[scriptName];
+    const credentialClears = typeof command === 'string'
+      ? command.match(/env -u GOOGLE_APPLICATION_CREDENTIALS/g) || []
+      : [];
     return (
       typeof command !== 'string' ||
       !command.startsWith('env -u GOOGLE_APPLICATION_CREDENTIALS ') ||
-      !command.includes('"env -u GOOGLE_APPLICATION_CREDENTIALS ts-node ')
+      credentialClears.length < 2
     );
   },
 );

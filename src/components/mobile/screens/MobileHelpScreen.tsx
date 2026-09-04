@@ -1,7 +1,10 @@
 'use client'
 
 import { helpCenterTabRouting } from '@constant/navigations';
-import MenuListHelpCenter, { normalizeMenuListHelpSection } from '@template/main-app/menuListHelpCenter';
+import MenuListHelpCenter, {
+    MenuListHelpSection,
+    normalizeMenuListHelpSection,
+} from '@template/main-app/menuListHelpCenter';
 import { theme } from 'antd';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
@@ -13,9 +16,10 @@ import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader
 interface MobileHelpScreenProps {
     initialTab?: string;
     onBack: () => void;
+    onSectionChange: (section: MenuListHelpSection) => void;
 }
 
-export default function MobileHelpScreen({ initialTab, onBack }: MobileHelpScreenProps) {
+export default function MobileHelpScreen({ initialTab, onBack, onSectionChange }: MobileHelpScreenProps) {
     const t = useTranslations('MobileHelp');
     const router = useRouter();
     const { token } = theme.useToken();
@@ -321,7 +325,11 @@ export default function MobileHelpScreen({ initialTab, onBack }: MobileHelpScree
                         padding: 0 !important;
                     }
                 `}</style>
-                <MenuListHelpCenter initialSection={activeSection} />
+                <MenuListHelpCenter
+                    initialSection={activeSection}
+                    onBackToDashboard={handleBack}
+                    onSectionChange={onSectionChange}
+                />
             </div>
         </Flex>
     );

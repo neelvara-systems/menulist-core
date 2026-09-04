@@ -23,7 +23,7 @@ Product Hunt is a credibility, feedback, and partner event. It is not the primar
 | --- | --- |
 | Route | `/launch/product-hunt` |
 | Status | Candidate only |
-| Launch target | Tuesday, August 11, 2026, conditional |
+| Launch target | Unscheduled; choose only after all six launch gates pass |
 | Primary CTA | Send list on WhatsApp |
 | Secondary CTA | View demo examples |
 | Product Hunt tagline candidate | Forward any SMB list into one official customer link |
@@ -148,8 +148,21 @@ Current Product Hunt source constraints reflected in this spec:
 - YouTube video is supported if used;
 - first maker comment should ask for feedback, not upvotes;
 - scheduling is possible up to one month ahead.
+- the best day is when the maker is prepared; there is no guaranteed golden
+  weekday;
+- the normal start-of-Pacific-day schedule maximizes the available Product
+  Hunt window, but response coverage and launch goals decide whether it fits;
+- a personal maker account must be established before launch; company accounts
+  are prohibited and newly created accounts have a waiting period;
+- paid promotion, paid upvotes, contests, spam, and direct upvote requests are
+  prohibited launch behavior.
 
-Source: https://www.producthunt.com/launch/preparing-for-launch
+Sources:
+
+- https://www.producthunt.com/launch/preparing-for-launch
+- https://www.producthunt.com/launch/before-launch
+- https://www.producthunt.com/launch/sharing-your-launch
+- https://help.producthunt.com/en/articles/479557-how-to-post-a-product
 
 ---
 

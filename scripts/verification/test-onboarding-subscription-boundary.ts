@@ -14,6 +14,7 @@ import {
     resolveOnboardingPlanPrice,
 } from '../../src/lib/onboarding/onboardingSubscriptionBoundary';
 import { hasRecoveryOnlyWorkspaceAccess } from '../../src/lib/onboarding/starterActivation';
+import { maskOwnerAccountIdentifier, resolveOwnerAccessRecoveryState } from '../../src/lib/onboarding/ownerAccessRecovery';
 
 const accessNowMs = Date.now();
 assert.equal(hasRecoveryOnlyWorkspaceAccess(null, false, accessNowMs), false, 'unresolved stores must not be forced into billing recovery');
@@ -27,6 +28,29 @@ assert.equal(hasRecoveryOnlyWorkspaceAccess({
     activationDeadline: Timestamp.fromMillis(accessNowMs - 1),
     onboardingSource: 'PUBLIC_MENU_ENTRY',
 }, false, accessNowMs), true, 'expired Starter stores must return to recovery-only access');
+
+assert.equal(resolveOwnerAccessRecoveryState({ storeDetails: null, nowMs: accessNowMs }), 'workspace_missing');
+assert.equal(maskOwnerAccountIdentifier('owner@example.com'), 'ow•••@example.com');
+assert.equal(maskOwnerAccountIdentifier('S-123456'), 'S-••••56');
+assert.equal(maskOwnerAccountIdentifier(''), null);
+assert.equal(resolveOwnerAccessRecoveryState({ storeDetails: {}, nowMs: accessNowMs }), 'plan_required');
+assert.equal(resolveOwnerAccessRecoveryState({
+    activeSubscription: { status: 'pending' },
+    storeDetails: {},
+    nowMs: accessNowMs,
+}), 'payment_pending');
+assert.equal(resolveOwnerAccessRecoveryState({
+    activeSubscription: { status: 'expired' },
+    storeDetails: {},
+    nowMs: accessNowMs,
+}), 'plan_ended');
+assert.equal(resolveOwnerAccessRecoveryState({
+    storeDetails: {
+        activationDeadline: Timestamp.fromMillis(accessNowMs - 1),
+        onboardingSource: 'PUBLIC_MENU_ENTRY',
+    },
+    nowMs: accessNowMs,
+}), 'starter_expired');
 
 const session = {
     authIssuedAt: 1_800_000_000,

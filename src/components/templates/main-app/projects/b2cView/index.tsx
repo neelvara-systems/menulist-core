@@ -7,7 +7,7 @@ import { assertStoreUpdateSucceeded, updateStore } from "@database/stores";
 import { useAppDispatch } from "@hook/useAppDispatch";
 import { resolveRenderLanguage } from "@lib/localization/languageResolver";
 import { getProjectDefaultLanguage } from "@lib/localization/projectContent";
-import { normalizeOwnerPublicPresenceLinks } from "@lib/obp/ownerPublicPresenceBoundary";
+import { hasOwnerPublicPresenceChanges, normalizeOwnerPublicPresenceLinks } from "@lib/obp/ownerPublicPresenceBoundary";
 import { getStoreDeepDifference } from "@lib/store/storeNestedUpdateProjection";
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from "@providers/platformProviders/platformGlobalDataProvider";
 import { ProjectsDataContext, ProjectsDataProviderType } from "@providers/projectsDataProvider";
@@ -81,8 +81,9 @@ const B2CView = forwardRef<B2CViewRef, B2CViewProps>(({ activeDeviceType, setHas
         return hasProjectPublishChanges(projectData, lastPublishedState);
     };
 
-    const hasOfficialPageChanges = () => (
-        JSON.stringify(storeDraft?.publicPresence || {}) !== JSON.stringify(lastPublishedStoreDraft?.publicPresence || {})
+    const hasOfficialPageChanges = () => hasOwnerPublicPresenceChanges(
+        storeDraft?.publicPresence,
+        lastPublishedStoreDraft?.publicPresence,
     );
 
     const hasBusinessCopyPresenceChanges = () => {
@@ -267,7 +268,7 @@ const B2CView = forwardRef<B2CViewRef, B2CViewProps>(({ activeDeviceType, setHas
                 }
 
                 if (updatedProjectCopy || hasOfficialChanges || queuedObpPhotoDeletes.length > 0) {
-                    dispatch(showSuccessToast("Public page changes published"));
+                    dispatch(showSuccessToast("Public page updated. Customers can now see your latest published changes."));
                 }
                 if (updatedProjectCopy) {
                     emitMenuListAnswerlatticeWorkflowEvent(MENULIST_ANSWERLATTICE_EVENTS.MENU_PUBLISH_COMPLETED);

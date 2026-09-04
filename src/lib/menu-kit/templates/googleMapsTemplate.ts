@@ -8,12 +8,12 @@
  */
 
 import QRCode from 'qrcode';
-import { resolveMenuKitBrandTokens } from '../brandTokens';
 import { getOfferingLabels } from '../businessTypeLabels';
 import { truncateCanvasText, wrapCanvasText } from '../canvasPrimitives';
 import { PreloadedLogo } from '../imageLoader';
 import { drawMenuListAttribution, MENU_LIST_MENU_ATTRIBUTION_TEXT } from '../platformAttribution';
 import { MenuKitInput } from '../types';
+import { drawMenuKitThemeBackground, loadMenuKitThemeSurface } from '../themeSurface';
 
 const W = 1200;
 const H = 900;
@@ -24,7 +24,8 @@ export async function generateGoogleMapsImage(input: GoogleMapsInput): Promise<B
     const { storeName, menuUrl, shortLink, businessType, businessCategory, _logo } = input;
     const labels = getOfferingLabels(businessType, businessCategory);
     const logo = _logo || null;
-    const brand = resolveMenuKitBrandTokens(input.brandColor);
+    const themeSurface = await loadMenuKitThemeSurface(input);
+    const { brand } = themeSurface;
 
     const canvas = document.createElement('canvas');
     canvas.width = W;
@@ -33,9 +34,13 @@ export async function generateGoogleMapsImage(input: GoogleMapsInput): Promise<B
     const ctx = canvas.getContext('2d');
     if (!ctx) throw new Error('Failed to get canvas context');
 
-    // Premium paper background
-    ctx.fillStyle = brand.paper;
-    ctx.fillRect(0, 0, W, H);
+    drawMenuKitThemeBackground(ctx, themeSurface, { height: H, width: W, x: 0, y: 0 });
+
+    ctx.save();
+    ctx.globalAlpha = 0.90;
+    ctx.fillStyle = brand.surface;
+    ctx.fillRect(42, 42, W - 84, H - 84);
+    ctx.restore();
 
     // Brand border
     ctx.strokeStyle = brand.border;

@@ -27,9 +27,12 @@ const setClaimsWorkspace = read('src/lib/auth/setClaimsWorkspace.ts');
 const serverUserContext = read('src/lib/auth/serverUserContext.ts');
 const pricingSubscription = read('src/components/website/pricing-pages/SubscriptionManagement.tsx');
 const pricingWrapper = read('src/components/website/pricing/PricingWrapper.tsx');
+const desktopBilling = read('src/components/templates/main-app/billing/index.tsx');
 const desktopBillingSubscription = read('src/components/templates/main-app/billing/ActiveSubscriptionCard.tsx');
 const mobileBilling = read('src/components/mobile/screens/MobileBillingScreen.tsx');
 const onboardingRoute = read('src/app/api/onboarding/create-subscription/route.ts');
+const onboardingModal = read('src/components/website/pricing-pages/OnboardingModal.tsx');
+const ownerAccessRecovery = read('src/lib/onboarding/ownerAccessRecovery.ts');
 const authOnboardingReadme = read('__docs__/auth-onboarding/README.md');
 const tracker = read('__docs__/audits/menulist-feature-flow-audit-tracker.md');
 
@@ -91,7 +94,12 @@ assert.match(mainLayout, /headers\(\)\)\.get\('x-menulist-owner-request-path'\)/
 assert.match(mainLayout, /redirect\(`\/signin\?callbackUrl=\$\{encodeURIComponent\(callbackPath\)\}`\)/);
 assert.match(unauthorizedPage, /callbackParam\.startsWith\('\/'\) && !callbackParam\.startsWith\('\/\/'\)/);
 assert.match(unauthorizedPage, /`\$\{NAVIGARIONS_ROUTINGS\.SIGNIN\}\?callbackUrl=\$\{encodeURIComponent\(safeCallbackUrl\)\}`/);
-assert.match(unauthorizedPage, /router\.push\(signInPath\)/);
+assert.match(unauthorizedPage, /await signOutSession\(signInPath, \{ redirectOnIntentionalSignOut: false \}\);/);
+assert.match(unauthorizedPage, /router\.replace\(signInPath\)/);
+assert.match(unauthorizedPage, /Could not switch accounts\. Please try again\./);
+assert.match(unauthorizedPage, /maskOwnerAccountIdentifier\(session\?\.user\?\.email \|\| session\?\.user\?\.name\)/);
+assert.match(unauthorizedPage, /Try another account/);
+assert.match(unauthorizedPage, /Get help/);
 
 assert.match(setClaimsWorkspace, /export const resolveSetClaimsRole/);
 assert.match(setClaimsWorkspace, /@lib\/permissions\/scopeDocumentId/);
@@ -108,6 +116,15 @@ assert.match(serverUserContext, /const userToAdd = sanitizeForFirestore\(\{/);
 assert.doesNotMatch(serverUserContext, /const sanitizeForAdminFirestore/);
 assert.doesNotMatch(serverUserContext, /constructor\?\.name === 'Timestamp'/);
 
+assert.match(onboardingModal, /const \[step, setStep\] = useState<'business' \| 'billing'>/);
+assert.match(onboardingModal, /if \(collectBusinessDetails && step === 'business'\)/);
+assert.match(onboardingModal, /setStep\('billing'\)/);
+assert.match(onboardingModal, /step === 'billing' \? <div className="grid gap-5 sm:grid-cols-2">/);
+assert.match(onboardingModal, /step === 'business'[\s\S]*?t\('Pricing\.continue'\)/);
+for (const state of ['payment_pending', 'starter_expired', 'plan_ended', 'plan_required', 'workspace_missing']) {
+  assert.match(ownerAccessRecovery, new RegExp(`'${state}'`));
+}
+
 assert.doesNotMatch(pricingSubscription, /normalizeRazorpaySubscriptionCheckoutUrl/);
 assert.match(pricingSubscription, /activeSubscription\.status === 'pending'/);
 assert.match(pricingSubscription, /Complete payment/);
@@ -120,6 +137,11 @@ assert.match(pricingSubscription, /MenuList will not create a second checkout\./
 for (const source of [desktopBillingSubscription, mobileBilling]) {
   assert.match(source, /normalizeRazorpaySubscriptionCheckoutUrl/);
   assert.match(source, /subscriptionCheckoutUrl/);
+}
+for (const source of [desktopBilling, mobileBilling]) {
+  assert.match(source, /new URL\('\/pricing', getPlatformWebsiteBaseUrl\(\)\)\.toString\(\)/);
+  assert.match(source, /window\.location\.assign\(pricingUrl\)/);
+  assert.doesNotMatch(source, /router\.push\(['"]\/pricing['"]\)/);
 }
 
 assert.match(onboardingRoute, /getSubscriptionById\(razorpaySubscription\.id\)/);

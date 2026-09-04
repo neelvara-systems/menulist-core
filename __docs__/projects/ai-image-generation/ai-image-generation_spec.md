@@ -2,7 +2,7 @@
 
 **Feature:** Menu Image Generation & Editing
 **Status:** Source-gate verified; release evidence remains pending
-**Last Updated:** July 16, 2026
+**Last Updated:** August 31, 2026
 **Audience:** Product, engineering, QA, support
 
 ## Purpose
@@ -10,6 +10,29 @@
 MenuList prepares image drafts when an owner has no suitable image or wants to revise an existing one. Generated output is not presumed accurate. Item images stay drafts until the owner selects and saves them; cover flows use the existing media preview/save authority.
 
 Do not describe this feature as professional-photography replacement, guaranteed quality, fixed-speed generation, unlimited full-menu processing, or unchecked publishing.
+
+## Reusable subject profiles
+
+Owners may create a private, store-scoped saved-person profile from two to four adult reference photos when they hold permission for commercial generative use. A profile can be selected for one generation or saved as the current project's image default. The selection supplies an identity anchor to single and batch image generation; it never publishes a reference photo and never changes an existing project unless the owner accepts generated output.
+
+Saved Person is contextual rather than universal. Person-led business types receive a recommended consistency card. Product-led businesses receive a collapsed **Include a saved person** control, and the selector/list request is not mounted until that optional control is opened. Prompt direction is business-aware: salons prioritize hair and face consistency, tattoo studios preserve person/body placement context, fitness preserves the person and pose context, and other categories use neutral catalog language.
+
+The one-off **Reference image** control remains separate. It can guide style, composition, product, or scene for one request. A saved subject establishes the person to keep visually consistent. Both may be used together, with the subject references taking identity priority.
+
+Subject consistency is probabilistic. Owner copy must say **keep this person consistent** or **use this saved person**, never promise an exact clone or guaranteed likeness.
+
+### Consent and truth boundaries
+
+- Initial subject profiles are adults only.
+- Creation requires affirmative confirmation that the uploader owns or is authorized to use every source photo, has the person's permission for commercial generative use, and is not using a public figure or celebrity.
+- Creating, withdrawing, or deleting a profile requires store-management permission. Staff with image-generation permission may select an active owner-approved profile but cannot change its consent lifecycle.
+- Mobile supports the frequent in-flow action of selecting or clearing an existing active profile. Multi-photo creation/consent and withdrawal/deletion are desktop owner governance actions.
+- Active-profile listing and preview require image-generation permission. Withdrawn metadata is returned only to an explicit desktop management request, and withdrawn source previews are unavailable.
+- Withdrawal blocks all new generation immediately. Deletion removes the private reference assets; previously accepted generated catalog images remain ordinary owner-controlled project media.
+- Private reference photos are Admin/API-only Storage objects. They are not public menu media, download-token URLs, prompt-cache sources, logs, or project-document payloads.
+- The eight-profile store cap is rechecked transactionally at document creation so simultaneous sessions cannot cross the cost boundary.
+- Desktop managers may rename a profile without changing its version, or replace all reference photos after repeating consent. Replacement writes a new versioned private reference set, commits only when the expected active version still matches, then attempts cleanup of the prior exact paths. Existing pinned jobs fail closed on version mismatch.
+- Generated hairstyle, tattoo, wellness, fitness, beauty, or body-related drafts are illustrative catalog visuals, not proof of completed work, guaranteed outcomes, or before/after evidence.
 
 ## Runtime scope
 
@@ -22,13 +45,14 @@ Do not describe this feature as professional-photography replacement, guaranteed
 | Project/menu cover | Master flag and the single-generation route; manual owner action or missing-cover preparation after accepted extraction truth | Prepared media upload plus transaction-current `projectImage` authority |
 | Official Business Page cover | Master flag and the single-generation route from desktop/mobile owner settings | Prepared preview and explicit owner save to business-cover Storage/project truth |
 
-Active provider/model truth is `GEMINI_MODELS.IMAGE_GEN` (`gemini-2.5-flash-image`) through `src/app/api/image-generation/generators.ts`. There is no active Imagen branch.
+Active provider/model truth is `GEMINI_MODELS.IMAGE_GEN` (`gemini-3.1-flash-image`) through `src/app/api/image-generation/generators.ts`. There is no active Imagen branch.
 
 ## Owner outcomes
 
 - Owners can keep an existing image, upload their own photo, generate a draft, edit an existing photo, or discard generated output.
 - Batch selection is limited to 50 items in the owner UI and independently enforced by request/server/job boundaries.
 - The UI shows the shared content-credit estimate. Final consumption follows actual successful output accounting.
+- Policy guidance is presented as a neutral safety reminder; generation is not blocked by a punitive local agreement checkbox. Server authorization, validation, Safe Mode, provider safety, and accounting remain authoritative.
 - Desktop and mobile use the same responsive item-image modal, same project persistence helpers, and same batch listener/DAL.
 - AI Menu Manager image task definitions and image-gap suggestions require the same master flag; it cannot advertise or admit a disabled generation action.
 - Linked outlets can act only where the current image-override policy allows it.
@@ -87,6 +111,7 @@ Active provider/model truth is `GEMINI_MODELS.IMAGE_GEN` (`gemini-2.5-flash-imag
 | Batch duplicate delivery | Skip completed/terminal work or retry the same leased/deterministic operation safely |
 | Browser acknowledgement or cleanup interrupted | Preserve generated Storage objects; project/job retries converge without risking a URL already committed elsewhere |
 | Public save fails | Do not report success; keep owner recovery available and preserve current public truth |
+| Single-generation HTTP/provider/network failure | Preserve an owner-safe typed failure and actionable retry copy; never convert the failure into an empty successful result |
 
 ## Security, cost, and scale requirements
 

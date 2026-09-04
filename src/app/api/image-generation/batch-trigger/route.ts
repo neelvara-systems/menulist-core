@@ -9,6 +9,7 @@ import {
     updateImageBatchProcessingJobAdmin,
 } from '@database/imageBatchProcessing/server';
 import { checkAICapacity } from '@lib/ai/capacityCheck';
+import { assertImageSubjectProfileAvailable, ImageSubjectProfileError } from '@lib/ai/imageSubjectProfiles';
 import { normalizeImageBatchJobId, normalizeImageBatchProjectId } from '@lib/ai/imageBatchIdBoundary';
 import { mapWithConcurrency } from '@lib/async/boundedConcurrency';
 import { enqueueImageGenerationTask, getImageGenerationTaskConfigStatus } from '@lib/google/cloudTask';
@@ -90,6 +91,7 @@ function getBatchGenerationConfigSummary(config: Record<string, unknown> | undef
         hasNegativePrompt: Boolean(config?.negativePrompt),
         hasPrompt: typeof config?.prompt === 'string' && config.prompt.length > 0,
         hasReferenceImage: typeof referenceImage?.url === 'string' && referenceImage.url.length > 0,
+        hasSubjectProfile: typeof config?.subjectProfileId === 'string' && config.subjectProfileId.length > 0,
         isMultiMode: Boolean(config?.isMultiMode),
         lightingCount: Array.isArray(config?.lighting) ? config.lighting.length : 0,
         moodCount: Array.isArray(config?.moods) ? config.moods.length : 0,
@@ -241,6 +243,23 @@ export const POST = withAuth(async (request, session) => {
             "Batch image generation",
         );
         if (permissionError) return permissionError;
+
+        if (generationConfig.subjectProfileId && !FEATURE_FLAGS.ENABLE_AI_SUBJECT_PROFILES) {
+            return NextResponse.json({ error: 'Saved person profiles are unavailable.' }, { status: 404 });
+        }
+        try {
+            await assertImageSubjectProfileAvailable({
+                expectedVersion: generationConfig.subjectProfileVersion,
+                profileId: generationConfig.subjectProfileId,
+                sId: String(session.sId),
+                tId: String(session.tId),
+            });
+        } catch (error) {
+            if (error instanceof ImageSubjectProfileError) {
+                return NextResponse.json({ error: 'The selected saved person is no longer available. Choose it again or continue without it.' }, { status: error.code === 'NOT_FOUND' ? 404 : 409 });
+            }
+            throw error;
+        }
 
         const requestedItemIds = itemsList.map((item) => String(item.id));
         const jobPreflight = await prepareImageBatchProcessingJobForTriggerAdmin({

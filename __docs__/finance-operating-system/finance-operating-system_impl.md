@@ -19,6 +19,7 @@ The real ledger is intentionally outside the repository. On August 24, 2026, the
 - one year folder containing month-numbered folders;
 - monthly `Invoices/`, `Payment-Proofs/`, `Refunds-and-Credits/`, and `Reconciliation/` folders;
 - `Contracts-and-Plans/`, `Tax-and-Compliance/`, and `Archive/`;
+- record-specific `Restricted-Originals/` directories for explicitly owner-authorized exact business/KYC evidence, permission-locked separately from routine derivatives;
 - initial Markdown registers implementing `packages/finance-os/templates/ledger-schema.md`, with workbook migration pending the approved spreadsheet runtime.
 
 The initial provider lifecycle register and provider review log are Markdown records because the spreadsheet artifact runtime was not available in this session. They follow the canonical schema and can be migrated into the governed workbook without changing IDs or facts when workbook authoring is available.
@@ -44,7 +45,7 @@ The canonical run order is identity and shared infrastructure, Google Cloud/Fire
 
 Google Cloud/Firebase observations remain separate for MenuList QA and production, Answerlattice QA and production, and SignalDesk QA and production. The live review can observe billing linkage, spend/credit, budgets/alerts, quotas, and service usage. It cannot alter billing, IAM, APIs, quotas, projects, secrets, Firebase configuration, or deployments.
 
-Each provider ends in `CHECKED`, `AUTH_REQUIRED`, `BLOCKED`, or `SKIPPED`. Authentication and MFA remain founder-operated. Screenshots are optional and must be redacted before local storage; ledger facts should be recorded without retaining sensitive browser data.
+Each provider ends in `CHECKED`, `AUTH_REQUIRED`, `BLOCKED`, or `SKIPPED`. Authentication and MFA remain founder-operated. Screenshots are optional and redacted by default. When the founder explicitly authorizes exact retention for future record use, an unredacted business/KYC screenshot may be stored only as `restricted-original` evidence under the private controls in schema v1.1; ledger facts and routine derivatives remain masked.
 
 ## Independent Operation
 
@@ -65,3 +66,5 @@ Reporting currency, fiscal year, FX source, GST, TDS/withholding, capitalization
 When the schema changes, preserve old IDs and values, document the migration, and update the rules, skill, package schema, and relevant docs together. Do not create a second ledger for convenience.
 
 FinanceOS v1 is frozen. Changes require an evidence-backed legal/accounting, security/data-loss, provider-compatibility, or founder-approved material workflow reason recorded in the decision log.
+
+The August 31, 2026 schema v1.1 addition is a founder-approved material workflow improvement. It adds `restricted-original` evidence without changing existing IDs, historical rows, exports, product boundaries, or external-action authorization.

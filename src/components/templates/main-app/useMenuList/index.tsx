@@ -43,6 +43,11 @@ import {
 import { getDigitalScreenModeHealth } from '@lib/screen/screenHealth';
 import { generateOBPUrl } from '@lib/obp/generateOBPUrl';
 import { buildPrintableAssetsUrl } from '@lib/printable-asset-templates/navigation';
+import { renderPrintableAssetDownloadFiles } from '@lib/printable-asset-templates/renderPrintableAsset';
+import { buildPrintableStoreContactFields } from '@lib/printable-asset-templates/storeContact';
+import { resolvePrintableAssetStyle } from '@lib/printable-asset-templates/stylePreferences';
+import { getPrintableTemplateFamily } from '@lib/printable-asset-templates/templateFamilies';
+import type { PrintableAssetRenderInput } from '@lib/printable-asset-templates/types';
 import {
     PRINT_ASSET_REPRINT_GUIDANCE,
     buildPrintReadinessItems,
@@ -206,6 +211,26 @@ export default function UseMenuList({ view = 'overview' }: UseMenuListProps) {
     const storeBrandColor = useMemo(
         () => resolveStoreBrandColor(storeDetails as any),
         [storeDetails],
+    );
+    const printableThemeResolution = useMemo(
+        () => resolvePrintableAssetStyle({
+            assetTypeId: 'print_menu',
+            businessCategory: storeDetails?.businessCategory,
+            businessType: data?.businessType || storeDetails?.businessType,
+            preferences: storeDetails?.printableAssetStylePreferences,
+            projectId: data?.projectId,
+        }),
+        [
+            data?.businessType,
+            data?.projectId,
+            storeDetails?.businessCategory,
+            storeDetails?.businessType,
+            storeDetails?.printableAssetStylePreferences,
+        ],
+    );
+    const printableTheme = useMemo(
+        () => getPrintableTemplateFamily(printableThemeResolution.templateFamilyId),
+        [printableThemeResolution.templateFamilyId],
     );
 
     // Guide modal state
@@ -517,7 +542,47 @@ export default function UseMenuList({ view = 'overview' }: UseMenuListProps) {
             businessType: data.businessType,
             businessCategory: storeDetails?.businessCategory,
             activePlanType: (storeDetails as any)?.activePlanType,
+            templateFamilyId: printableTheme.id,
         };
+    };
+
+    const handleDownloadThemedFeedbackQr = async () => {
+        if (!data?.projectId || !data.feedbackLink) {
+            messageApi.info('Feedback is not enabled');
+            return;
+        }
+        setGeneratingAsset('Feedback QR');
+        try {
+            const input: PrintableAssetRenderInput = {
+                activePlanType: (storeDetails as any)?.activePlanType,
+                assetTypeId: 'feedback_qr',
+                brandColor: storeBrandColor,
+                businessCategory: storeDetails?.businessCategory,
+                businessType: data.businessType || storeDetails?.businessType,
+                ...buildPrintableStoreContactFields(storeDetails),
+                feedbackUrl: data.feedbackQrLink,
+                logoUrl: data.storeLogo || undefined,
+                menuUrl: data.menuLink,
+                obpBaseUrl: data.obpLink,
+                projectId: data.projectId,
+                shortLink: data.feedbackQrLink.replace(/^https?:\/\//, ''),
+                storeName: data.storeName,
+                templateFamilyId: printableTheme.id,
+            };
+            const files = await renderPrintableAssetDownloadFiles({ ...input, outputFormat: 'png' });
+            files.forEach((file) => downloadBlob(file.blob, file.filename));
+            messageApi.success('Feedback QR downloaded');
+        } catch (error) {
+            logUseMenuListFailure('use_menulist_feedback_qr_download_failed', error, {
+                ...getOutputDiagnosticContext(),
+                hasStoreLogo: Boolean(data.storeLogo),
+                ...getBoundedUseMenuListStringContext('feedbackQrLink', data.feedbackQrLink),
+                ...getBoundedUseMenuListStringContext('obpLink', data.obpLink),
+            });
+            messageApi.error('Failed to generate Feedback QR');
+        } finally {
+            setGeneratingAsset(null);
+        }
     };
 
     const handleDownloadMenuKit = async () => {
@@ -687,6 +752,7 @@ export default function UseMenuList({ view = 'overview' }: UseMenuListProps) {
                 brandColor: storeBrandColor,
                 items: items.filter((i: any) => i.active !== false),
                 categories,
+                printableThemeId: printableTheme.id,
             });
             downloadPdf(pdfResult);
             messageApi.success('Menu PDF downloaded');
@@ -729,7 +795,7 @@ export default function UseMenuList({ view = 'overview' }: UseMenuListProps) {
     if (pageState === 'no_menu') {
         return (
             <div style={{ padding: 24 }}>
-                <Title level={3}>Use MenuList</Title>
+                <Title level={3}>Share your menu</Title>
                 <Empty
                     description="Create your first menu to get started"
                     style={{ marginTop: 60 }}
@@ -745,7 +811,7 @@ export default function UseMenuList({ view = 'overview' }: UseMenuListProps) {
     if (pageState === 'missing_public_address') {
         return (
             <div style={{ padding: 24 }}>
-                <Title level={3}>Use MenuList</Title>
+                <Title level={3}>Share your menu</Title>
                 <Empty image={<ContextualStateIllustration color={token.colorPrimary} size={104} treatment="softHalo" variant="emptyWorkspace" />}
                     description="Set up your customer link before sharing your menu, QR code, or printable files."
                     style={{ marginTop: 60 }}
@@ -857,7 +923,7 @@ export default function UseMenuList({ view = 'overview' }: UseMenuListProps) {
                         </Text>
                     </Flex>
                     <Button onClick={() => router.push('/use-menulist')} style={{ minHeight: 40 }}>
-                        Back to Use MenuList
+                        Back to sharing
                     </Button>
                 </Flex>
 
@@ -885,7 +951,9 @@ export default function UseMenuList({ view = 'overview' }: UseMenuListProps) {
                             <AssetCard
                                 icon={<LuFileText size={20} />}
                                 title="Print Menu PDF"
-                                description={FEATURE_FLAGS.ENABLE_MENU_CARD_EXPORT ? 'Preview and create the full printable menu' : 'Download the printable menu file'}
+                                description={FEATURE_FLAGS.ENABLE_MENU_CARD_EXPORT
+                                    ? `Preview and create the full printable menu · ${printableTheme.label}`
+                                    : `Download the printable menu file · ${printableTheme.label}`}
                                 loading={generatingAsset === 'Menu PDF'}
                                 onDownload={FEATURE_FLAGS.ENABLE_MENU_CARD_EXPORT ? handleOpenMenuCardExport : handleDownloadPdf}
                                 actionLabel={FEATURE_FLAGS.ENABLE_MENU_CARD_EXPORT ? 'Open' : 'Download'}
@@ -969,39 +1037,9 @@ export default function UseMenuList({ view = 'overview' }: UseMenuListProps) {
                             <AssetCard
                                 icon={<LuMessageSquare size={20} />}
                                 title="Feedback QR"
-                                description="Use near exit or counter when asking for private feedback"
+                                description={`Use near exit or counter when asking for private feedback · ${printableTheme.label}`}
                                 loading={generatingAsset === 'Feedback QR'}
-                                onDownload={async () => {
-                                    if (!data.feedbackLink) {
-                                        messageApi.info('Feedback is not enabled');
-                                        return;
-                                    }
-                                    setGeneratingAsset('Feedback QR');
-                                    try {
-                                        const { generateBrandedFeedbackQrCode, downloadQrCode, getQrCodeFilename } = await import('@lib/utils/feedbackQrCode');
-                                        const qrDataUrl = await generateBrandedFeedbackQrCode(data.projectId!, {
-                                            brandColor: storeBrandColor,
-                                            footer: data.feedbackQrLink.replace(/^https?:\/\//, ''),
-                                            logoUrl: data.storeLogo || undefined,
-                                            storeName: data.storeName,
-                                            subtitle: t('feedbackLinkDesc'),
-                                            title: t('feedbackQr'),
-                                            activePlanType: (storeDetails as any)?.activePlanType,
-                                        }, data.obpLink);
-                                        downloadQrCode(qrDataUrl, getQrCodeFilename(data.storeName));
-                                        messageApi.success('Feedback QR downloaded');
-                                    } catch (error) {
-                                        logUseMenuListFailure('use_menulist_feedback_qr_download_failed', error, {
-                                            ...getOutputDiagnosticContext(),
-                                            hasStoreLogo: Boolean(data.storeLogo),
-                                            ...getBoundedUseMenuListStringContext('feedbackQrLink', data.feedbackQrLink),
-                                            ...getBoundedUseMenuListStringContext('obpLink', data.obpLink),
-                                        });
-                                        messageApi.error('Failed to generate Feedback QR');
-                                    } finally {
-                                        setGeneratingAsset(null);
-                                    }
-                                }}
+                                onDownload={handleDownloadThemedFeedbackQr}
                                 disabled={!data.projectId}
                                 themeToken={themeToken}
                             />
@@ -1119,7 +1157,7 @@ export default function UseMenuList({ view = 'overview' }: UseMenuListProps) {
 
             {/* Header */}
             <Flex vertical gap={4} style={{ marginBottom: 24 }}>
-                <Title level={3} style={{ margin: 0 }}>Use MenuList</Title>
+                <Title level={3} style={{ margin: 0 }}>Share your menu</Title>
                 <Text type="secondary">
                     {data.hasPublishedMenu
                         ? `Your ${labels.offeringLower} is live and ready to share`
@@ -1666,39 +1704,9 @@ export default function UseMenuList({ view = 'overview' }: UseMenuListProps) {
                         <AssetCard
                             icon={<LuMessageSquare size={20} />}
                             title="Feedback QR"
-                            description="Near exit or counter"
+                            description={`Near exit or counter · ${printableTheme.label}`}
                             loading={generatingAsset === 'Feedback QR'}
-                            onDownload={async () => {
-                                if (!data.feedbackLink) {
-                                    messageApi.info('Feedback is not enabled');
-                                    return;
-                                }
-                                setGeneratingAsset('Feedback QR');
-                                try {
-                                    const { generateBrandedFeedbackQrCode, downloadQrCode, getQrCodeFilename } = await import('@lib/utils/feedbackQrCode');
-                                    const qrDataUrl = await generateBrandedFeedbackQrCode(data.projectId!, {
-                                        brandColor: storeBrandColor,
-                                        footer: data.feedbackQrLink.replace(/^https?:\/\//, ''),
-                                        logoUrl: data.storeLogo || undefined,
-                                        storeName: data.storeName,
-                                        subtitle: t('feedbackLinkDesc'),
-                                        title: t('feedbackQr'),
-                                        activePlanType: (storeDetails as any)?.activePlanType,
-                                    }, data.obpLink);
-                                    downloadQrCode(qrDataUrl, getQrCodeFilename(data.storeName));
-                                    messageApi.success('Feedback QR downloaded');
-                                } catch (error) {
-                                    logUseMenuListFailure('use_menulist_feedback_qr_download_failed', error, {
-                                        ...getOutputDiagnosticContext(),
-                                        hasStoreLogo: Boolean(data.storeLogo),
-                                        ...getBoundedUseMenuListStringContext('feedbackQrLink', data.feedbackQrLink),
-                                        ...getBoundedUseMenuListStringContext('obpLink', data.obpLink),
-                                    });
-                                    messageApi.error('Failed to generate Feedback QR');
-                                } finally {
-                                    setGeneratingAsset(null);
-                                }
-                            }}
+                            onDownload={handleDownloadThemedFeedbackQr}
                             disabled={!data.projectId}
                             themeToken={themeToken}
                         />
@@ -1718,7 +1726,9 @@ export default function UseMenuList({ view = 'overview' }: UseMenuListProps) {
                     <AssetCard
                         icon={<LuFileText size={20} />}
                         title="Print Menu"
-                        description={FEATURE_FLAGS.ENABLE_MENU_CARD_EXPORT ? 'Preview and create PDF' : 'Printable paper version'}
+                        description={FEATURE_FLAGS.ENABLE_MENU_CARD_EXPORT
+                            ? `Preview and create PDF · ${printableTheme.label}`
+                            : `Printable paper version · ${printableTheme.label}`}
                         loading={generatingAsset === 'Menu PDF'}
                         onDownload={FEATURE_FLAGS.ENABLE_MENU_CARD_EXPORT ? handleOpenMenuCardExport : handleDownloadPdf}
                         actionLabel={FEATURE_FLAGS.ENABLE_MENU_CARD_EXPORT ? 'Open' : 'Download'}

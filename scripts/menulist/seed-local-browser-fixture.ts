@@ -5,10 +5,11 @@ import { MENULIST_B2C_PLAN_IDS } from '@constant/menulistPlans';
 import { PRODUCT_IDS } from '@constant/product';
 import { createDefaultRoles, getOwnerRoleId } from '@data/defaultRoles';
 import { buildSummaryProjectPayload } from '@lib/firestore/summaryProjectsWriter';
+import { isCompleteSummaryProject, parseSummaryProjects } from '@lib/firestore/parseSummaryProjects';
 import { isReadableStoreDocument } from '@lib/store/storeDocumentBoundary';
 import { initializeApp } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
-import { getFirestore, Timestamp } from 'firebase-admin/firestore';
+import { FieldValue, getFirestore, Timestamp } from 'firebase-admin/firestore';
 import { deleteApp, initializeApp as initializeClientApp } from 'firebase/app';
 import {
     connectAuthEmulator,
@@ -16,6 +17,12 @@ import {
     signInWithEmailAndPassword,
     signOut,
 } from 'firebase/auth';
+import {
+    connectFirestoreEmulator,
+    doc as clientDoc,
+    getDoc as getClientDoc,
+    getFirestore as getClientFirestore,
+} from 'firebase/firestore';
 
 const PROJECT_ID = 'menulist-qa';
 const USER_ID = 'menulist-local-browser-owner';
@@ -28,6 +35,7 @@ const MAX_FIXTURE_PROJECT_DOCUMENTS = 400;
 const FIXTURE_EMAIL = String(process.env.MENULIST_LOCAL_FIXTURE_EMAIL || '').trim().toLowerCase();
 const FIXTURE_PASSWORD = String(process.env.MENULIST_LOCAL_FIXTURE_PASSWORD || '');
 const FIXTURE_MENU_STATE = String(process.env.MENULIST_LOCAL_FIXTURE_MENU_STATE || 'empty').trim();
+const FIXTURE_PUBLIC_LINK_STATE = String(process.env.MENULIST_LOCAL_FIXTURE_PUBLIC_LINK_STATE || 'configured').trim();
 
 if (!process.env.FIREBASE_AUTH_EMULATOR_HOST || !process.env.FIRESTORE_EMULATOR_HOST) {
     throw new Error('Firebase Auth and Firestore emulator hosts are required.');
@@ -43,6 +51,9 @@ if (FIXTURE_PASSWORD.length < 12) {
 }
 if (!['empty', 'seeded'].includes(FIXTURE_MENU_STATE)) {
     throw new Error('MENULIST_LOCAL_FIXTURE_MENU_STATE must be empty or seeded.');
+}
+if (!['configured', 'missing'].includes(FIXTURE_PUBLIC_LINK_STATE)) {
+    throw new Error('MENULIST_LOCAL_FIXTURE_PUBLIC_LINK_STATE must be configured or missing.');
 }
 
 const app = initializeApp({ projectId: PROJECT_ID }, 'menulist-local-browser-fixture');
@@ -105,10 +116,18 @@ async function seedFirestore(): Promise<void> {
     const batch = db.batch();
     const businessName = 'MenuList Local Browser QA';
     const storeKey = 'menulist-local-browser-qa';
+    const publicAddressFields = FIXTURE_PUBLIC_LINK_STATE === 'configured'
+        ? { customDomain: `${storeKey}.localhost`, domainVerified: true, subdomain: storeKey }
+        : {
+            customDomain: FieldValue.delete(),
+            domainVerified: FieldValue.delete(),
+            subdomain: FieldValue.delete(),
+        };
 
     batch.set(db.collection(DB_COLLECTIONS.TENANTS).doc(String(TENANT_ID)), {
         active: true,
         createdOn: now,
+        customDomain: FieldValue.delete(),
         deleted: false,
         id: TENANT_ID,
         name: businessName,
@@ -137,6 +156,7 @@ async function seedFirestore(): Promise<void> {
         ],
         tId: TENANT_ID,
         tenantId: TENANT_ID,
+        subdomain: FieldValue.delete(),
     }, { merge: true });
 
     batch.set(db.collection(DB_COLLECTIONS.STORES).doc(String(STORE_ID)), {
@@ -150,6 +170,7 @@ async function seedFirestore(): Promise<void> {
         contactPersonName: 'MenuList Local QA Owner',
         contactPersonNumber: '0000000000',
         createdOn: now,
+        ...publicAddressFields,
         currencyCode: 'INR',
         currencySymbol: '₹',
         deleted: false,
@@ -161,7 +182,12 @@ async function seedFirestore(): Promise<void> {
         onboardingSource: 'RESELLER_ONBOARDING',
         pId: PRODUCT_IDS.MENULIST,
         phoneNumber: '0000000000',
+        posSync: FieldValue.delete(),
         productId: PRODUCT_IDS.MENULIST,
+        keywords: FieldValue.delete(),
+        metaDescription: FieldValue.delete(),
+        metaTitle: FieldValue.delete(),
+        printableAssetStylePreferences: FieldValue.delete(),
         roles: createDefaultRoles(STORE_ID, FIXTURE_EMAIL),
         sId: STORE_ID,
         state: 'Karnataka',
@@ -170,6 +196,7 @@ async function seedFirestore(): Promise<void> {
         tId: TENANT_ID,
         tenantId: TENANT_ID,
         tenantName: businessName,
+        tagline: FieldValue.delete(),
         timeZone: 'Asia/Kolkata',
     }, { merge: true });
 
@@ -196,6 +223,7 @@ async function seedFirestore(): Promise<void> {
         outletSlug: 'local-qa-branch',
         pId: PRODUCT_IDS.MENULIST,
         phoneNumber: '0000000000',
+        posSync: FieldValue.delete(),
         productId: PRODUCT_IDS.MENULIST,
         roles: createDefaultRoles(BRANCH_STORE_ID, FIXTURE_EMAIL),
         sId: BRANCH_STORE_ID,
@@ -301,6 +329,8 @@ async function seedFirestore(): Promise<void> {
         batch.delete(projectDocument.ref);
     }
     batch.delete(branchProjectsSummaryRef);
+    batch.delete(db.collection(DB_COLLECTIONS.POS_SYNC_SECRETS).doc(`${TENANT_ID}_${STORE_ID}`));
+    batch.delete(db.collection(DB_COLLECTIONS.POS_SYNC_SECRETS).doc(`${TENANT_ID}_${BRANCH_STORE_ID}`));
 
     if (FIXTURE_MENU_STATE === 'seeded') {
         batch.set(projectRef, {
@@ -381,6 +411,8 @@ async function verifyFixture(): Promise<void> {
         project,
         masterProjects,
         branchProjects,
+        storePosSyncSecret,
+        branchPosSyncSecret,
     ] = await Promise.all([
         auth.getUser(USER_ID),
         db.collection(DB_COLLECTIONS.TENANTS).doc(String(TENANT_ID)).get(),
@@ -397,6 +429,8 @@ async function verifyFixture(): Promise<void> {
             .doc(String(TENANT_ID))
             .collection(String(BRANCH_STORE_ID))
             .get(),
+        db.collection(DB_COLLECTIONS.POS_SYNC_SECRETS).doc(`${TENANT_ID}_${STORE_ID}`).get(),
+        db.collection(DB_COLLECTIONS.POS_SYNC_SECRETS).doc(`${TENANT_ID}_${BRANCH_STORE_ID}`).get(),
     ]);
     if (!tenant.exists || !store.exists || !branchStore.exists || !user.exists || !subscription.exists) {
         throw new Error('Local MenuList browser fixture readback failed.');
@@ -410,8 +444,22 @@ async function verifyFixture(): Promise<void> {
     if (store.data()?.sId !== STORE_ID || store.data()?.tId !== TENANT_ID) {
         throw new Error('Local MenuList browser fixture store alias readback failed.');
     }
+    if (FIXTURE_PUBLIC_LINK_STATE === 'configured') {
+        if (
+            store.data()?.subdomain !== 'menulist-local-browser-qa'
+            || store.data()?.customDomain !== 'menulist-local-browser-qa.localhost'
+            || store.data()?.domainVerified !== true
+        ) {
+            throw new Error('Local MenuList browser fixture public-link readback failed.');
+        }
+    } else if (store.data()?.subdomain || store.data()?.customDomain || store.data()?.domainVerified !== undefined) {
+        throw new Error('Local MenuList browser fixture missing-link readback failed.');
+    }
     if (branchStore.data()?.sId !== BRANCH_STORE_ID || branchStore.data()?.tId !== TENANT_ID) {
         throw new Error('Local MenuList browser fixture branch store alias readback failed.');
+    }
+    if (store.data()?.posSync !== undefined || branchStore.data()?.posSync !== undefined || storePosSyncSecret.exists || branchPosSyncSecret.exists) {
+        throw new Error('Local MenuList browser fixture POS sync cleanup readback failed.');
     }
     if (authUser.customClaims?.pId !== PRODUCT_IDS.MENULIST
         || authUser.customClaims?.platformRole !== 'OWNER'
@@ -450,11 +498,31 @@ async function verifyFixture(): Promise<void> {
         if (credential.user.uid !== USER_ID) {
             throw new Error('Local MenuList browser fixture credential readback returned the wrong user.');
         }
+        const clientDb = getClientFirestore(clientApp);
+        const [firestoreHost, firestorePort] = process.env.FIRESTORE_EMULATOR_HOST!.split(':');
+        connectFirestoreEmulator(clientDb, firestoreHost, Number(firestorePort));
+        const summarySnapshot = await getClientDoc(clientDoc(
+            clientDb,
+            DB_COLLECTIONS.PLATFORM_SUMMARY,
+            `projects_${STORE_ID}`,
+        ));
+        const summaryProjects = parseSummaryProjects(summarySnapshot.data());
+        const summaryProject = summaryProjects[PROJECT_DOCUMENT_ID];
+        if (FIXTURE_MENU_STATE === 'seeded' && (
+            !summarySnapshot.exists()
+            || !isCompleteSummaryProject(summaryProject || {})
+        )) {
+            throw new Error('Local MenuList browser fixture project summary is not client-readable.');
+        }
+        if (FIXTURE_MENU_STATE === 'empty' && summaryProject) {
+            throw new Error('Local MenuList browser fixture empty summary is not client-readable.');
+        }
         await signOut(clientAuth);
-    } catch {
+    } catch (error) {
         throw new Error(
-            'Local MenuList browser fixture is not reachable through the configured Auth emulator. '
-            + 'Verify that port 9099 is running with default project menulist-qa.',
+            'Local MenuList browser fixture is not reachable through the configured Auth/Firestore emulators. '
+            + 'Verify that ports 9099 and 8080 are running with default project menulist-qa.',
+            { cause: error },
         );
     } finally {
         await deleteApp(clientApp);

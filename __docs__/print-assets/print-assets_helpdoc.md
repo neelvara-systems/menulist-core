@@ -1,7 +1,7 @@
 # Assets Help
 
 **Status:** Owner Help
-**Last Updated:** June 25, 2026
+**Last Updated:** September 4, 2026
 
 ## What It Does
 
@@ -27,7 +27,9 @@ Assets gives you the files customers scan, read, or carry from your business.
 
 Check **Print readiness** first. It shows whether the live link, logo, brand color, business name, and feedback QR are ready for printing.
 
-Business cards and ID cards use saved phone, email, and address details when they are available. If a detail is missing, open **Customize in editor** on desktop and replace the placeholder before printing.
+Use **Complete business details** when the Assets readiness card shows missing information. You can add your brand name, location name, logo, tagline, and public contact details without leaving Assets. MenuList saves them to your normal Business Settings profile so future assets reuse the same information.
+
+Business cards use the saved public contact name, phone, email, and address when available. Review these details inside the asset preview before printing; authorized owners can correct them there and the preview refreshes immediately.
 
 Open a template first. The preview appears before download, and the same template can be saved as PDF or image where supported.
 

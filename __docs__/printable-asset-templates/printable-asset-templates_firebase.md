@@ -1,8 +1,10 @@
 # Printable Asset Templates - Firebase Cost Analysis
 
+> **Last Updated:** September 4, 2026
+
 ## Summary
 
-Normal Printable Asset Templates generation has **zero Firestore writes, zero Storage uploads, and zero Cloud Function invocations**. Non-menu printable assets, including flyers, gift certificates, front/back business cards, ID cards, invitations, postcards, product tags, and campaign posters, use the already-loaded project summary/store context. Print Menu needs the full project/menu document once per selected project when it is not already cached.
+Normal Printable Asset Templates generation has **zero Firestore writes, zero Storage uploads, and zero Cloud Function invocations**. An explicit business/menu theme change writes one nested field on the already-loaded store document. An explicit inline business-profile save reuses the existing canonical store write and adds the existing tenant write only when the shared brand name changes; selecting a new logo reuses the existing business-logo Storage pipeline. Normal opening, preview, one-click download, and ZIP generation add no reads or writes. Non-menu printable assets use the already-loaded project summary/store context, except Staff Name Badge: opening that asset with staff-management permission reuses the existing guarded staff-list request once when the provider cache is empty. Print Menu needs the full project/menu document once per selected project when it is not already cached.
 
 An unsubscribed desktop visit performs zero Printable Asset Templates project,
 template, or full-menu reads. The route waits for subscription state and renders
@@ -10,7 +12,11 @@ the shared plan state before the first project-summary call.
 
 The optional **Saved designs** flow uses the Creative Editor Template Registry only after an explicit owner save. It does not create saved documents during preview, download, or editor open. On page load, registry-backed templates use one platform metadata read from `platformAssetTemplates/{businessCategory}` plus one store metadata read from `storeAssetTemplates/{tenantId}/{storeId}/default`; generated template families remain a fallback when either catalog is unavailable. Generic platform templates are mirrored transactionally into each business-category catalog at platform-admin save/update/delete time, so owners still read only their resolved business-category catalog.
 
-The feature reuses already-loaded owner/store/project/menu data where available and generates files in the browser with Canvas, jsPDF, QR rendering, the existing browser-compatible PDF.js preview loader, JSZip, and the shared Creative Editor document renderer. Desktop customization keeps the edited document in browser memory and downloads directly; it does not create an artifact record.
+The feature reuses already-loaded owner/store/project/menu data where available and generates files in the browser with Canvas, jsPDF, QR rendering, the existing browser-compatible PDF.js preview loader, JSZip, and the shared Creative Editor document renderer. Gift Certificate and Event Invitation personalization drafts are also browser-local: bounded values enter the same preview/download/customize input, reset when the selected project changes, and are never persisted. Desktop customization keeps the edited document in browser memory and downloads directly; it does not create an artifact record.
+
+The hardened delivery flow remains local-only. Current drafts are previewed again before output, multi-file images are zipped in browser memory, mobile native sharing receives the generated Blob, and dirty/retry/operation-lock state stays in React/ref state. These changes add no Firestore read/write, Storage upload, API route, Function, provider call, or generated-file retention.
+
+Theme visibility is also local. The catalog uses the business type/category already present in store/project context, so admitting 34 common families, five food-category families, and eight exact-type families adds no read, listener, index, or Function. The Salon/Makeup Studio and Spa/Spa Resort recommendation sets reuse that already-loaded context and add no new persisted field. An ineligible restricted-theme save is rejected before `updateStore()`. A historical restricted preference that becomes ineligible remains dormant in the existing field and is skipped at resolution time, avoiding a cleanup write. All 34 common themes remain universally eligible. An unknown legacy type without an explicit canonical category receives the same common catalog instead of inheriting a guessed category.
 
 There are **No new Cloud Functions** and **No new Firestore indexes** for this feature.
 
@@ -24,8 +30,18 @@ Branded QR Action Templates are also renderer/catalog behavior only. Action labe
 | --- | ---: | ---: | ---: | ---: | --- |
 | Open `/assets` after dashboard data is loaded | Existing project summary read | 0 | 0 | 0 | Reads the summary document without creating a default project. |
 | Select asset type | 0 | 0 | 0 | 0 | Local UI state only. |
+| Select Staff Name Badge | Existing guarded staff-list query when cache is empty | 0 | 0 | 0 | Runs only for a user with staff-management access; desktop and mobile share the existing `/api/staff` DAL response and provider cache. No badge-specific collection or write is added. |
+| Prepare Gift Certificate | 0 | 0 | 0 | 0 | Optional recipient, sender, message, value, validity, and certificate-number text stays in local component state and the admitted renderer input. Blank fields remain writable after printing. |
+| Prepare Event Invitation | 0 | 0 | 0 | 0 | Optional occasion, date, time, and location text stays in local component state and the admitted renderer input. Blank fields remain writable after printing; no invitation collection, persisted document field, upload, or Function is added. |
+| Open Campaign Poster from Today | Existing campaign detail read | 0 | 0 | 0 | Reuses the current campaign, selected project/store context, parent-theme preference, and public project URL. No poster or artifact record is created. |
+| Download Today Campaign Poster | 0 additional | Existing campaign completion write | 0 | 0 | Uses the existing Today completion DAL only after the image/PDF download succeeds; opening or closing the preview performs no write. |
 | Filter or choose action intent | 0 | 0 | 0 | 0 | Uses in-memory template metadata such as menu, order, feedback, booking, offer, or reorder. |
 | Open template actions | 0 | 0 | 0 | 0 | Local UI state only. |
+| Save business profile inline | 0 new | 1 store write, plus 1 tenant write only when brand name changed | Existing logo upload only when replaced | 0 | Uses canonical Business Settings DAL; no asset-specific profile or generated output is stored. |
+| Save Business theme | 0 new | 1 | 0 | 0 | Changed-leaf update to `printableAssetStylePreferences.businessThemeId`; store context is already loaded. |
+| Save Menu theme | 0 new | 1 | 0 | 0 | Sparse project-keyed update under `projectThemeOverrides`; no project document or summary write. |
+| Clear Menu theme | 0 new | 1 | 0 | 0 | Deletes only the selected project theme override. |
+| Legacy style normalization | 0 new | 0 | 0 | 0 | Old `businessDefaults`/`projectOverrides` are folded into a canonical parent theme in memory and never drive separate asset output. |
 | Preview non-menu asset | 0 | 0 | 0 | 0 | Temporary browser blob URL only; modal/sheet preview is generated client-side for QR/display and campaign assets. |
 | Customize non-menu asset in editor | 0 | 0 | 0 | 0 | The Creative Editor document is generated from current input and kept in browser memory until download/close. |
 | List platform templates | 1 | 0 | 0 | 0 | Business-category catalog only; the doc holds all asset types and the route filters by `productId`, `sourceSurface`, and `assetTypeId`. |
@@ -41,7 +57,7 @@ Branded QR Action Templates are also renderer/catalog behavior only. Action labe
 | Preview Print Menu | 0-1 | 0 | 0 | 0 | Reuses cached full project data when available; otherwise reads the selected project once and caches it for subsequent preview/download actions. |
 | Download single PDF/image | 0-1 | 0 | 0 | 0 | Same cached selected-project behavior for Print Menu; other assets stay at 0 reads. |
 | Download Menu Kit ZIP | 0 | 0 | 0 | 0 | Local JSZip generation. |
-| Mobile preview/download | 0 | 0 | 0 | 0 | Same generator as desktop. |
+| Mobile preview/download | 0 additional | 0 | 0 | 0 | Same generator as desktop; Staff Name Badge reuses the cached staff-list response loaded on asset selection. |
 | Premium branding check | 0 new | 0 | 0 | 0 | Uses existing active plan context. |
 
 ## Data Sources
@@ -52,6 +68,7 @@ Branded QR Action Templates are also renderer/catalog behavior only. Action labe
 | Project/menu URL | Existing Use MenuList/Share data. |
 | Menu content and currency for Print Menu | Existing Print Menu / Menu Card Export source. |
 | Feedback URL | Existing feedback setup state. |
+| Gift Certificate and Event Invitation personalization | Browser-local bounded draft values only; no Firebase source. |
 | Plan type | Existing active subscription/session context. |
 
 ## Explicit Cost Rejections
@@ -59,7 +76,7 @@ Branded QR Action Templates are also renderer/catalog behavior only. Action labe
 | Rejected Pattern | Reason |
 | --- | --- |
 | Saving generated PDFs to Firebase Storage | Adds storage cost and cleanup lifecycle. |
-| Persisting default template per project in Firestore | Adds writes for a preference that is not essential. |
+| Copying a complete default map into every project document | Causes redundant project reads/writes, linked-outlet side effects, cache invalidation, and configuration drift. Sparse overrides stay in the existing store settings document. |
 | Saving edited printable designs as project artifacts | The registry stores owner templates only after explicit save; generated artifacts and downloads are still not saved as project artifacts. |
 | Creating a Cloud Function render service | Browser generation is already sufficient. |
 | Writing preview history | Owner value is low and cost is avoidable. |

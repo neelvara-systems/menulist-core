@@ -1,4 +1,6 @@
 import { isValidFirestoreDocumentId } from "@lib/firebase/firestoreDocumentId";
+import { LOGIN_USERNAME_PATTERN } from "@lib/auth/loginIdentifiers";
+import { validateEmail } from "@lib/validation/emailDomainValidator";
 import { isNonNegativeSafeInteger, isPositiveSafeInteger } from "./resellerMutationState";
 
 export type ResellerManagementProfile = {
@@ -46,6 +48,10 @@ export type ResellerManagementEditableDraft = {
     username?: string;
 };
 
+export type ResellerManagementDraftValidationOptions = {
+    isEditing: boolean;
+};
+
 const PROFILE_KEYS = new Set([
     "active", "addressLine", "city", "country", "currentActiveOfflineStores",
     "email", "id", "maxOfflineActivations", "name", "notes", "phone",
@@ -68,6 +74,54 @@ const optionalString = (value: unknown, max: number): value is string | undefine
 const normalizedDraftText = (value: unknown): string => (
     typeof value === "string" ? value.trim() : ""
 );
+
+export const getResellerManagementDraftValidationError = (
+    draft: ResellerManagementEditableDraft,
+    options: ResellerManagementDraftValidationOptions,
+): string | null => {
+    const name = normalizedDraftText(draft.name);
+    const phone = normalizedDraftText(draft.phone);
+    const email = normalizedDraftText(draft.email).toLowerCase();
+    const username = normalizedDraftText(draft.username).toLowerCase();
+    const password = normalizedDraftText(draft.password);
+    const maxOfflineActivations = Number(draft.maxOfflineActivations);
+
+    if (!name || !phone || !email || !username) {
+        return "Name, phone, email, and username are required.";
+    }
+    if (name.length < 2 || name.length > 100) {
+        return "Name must be between 2 and 100 characters.";
+    }
+    if (phone.length < 10 || phone.length > 15) {
+        return "Phone must be between 10 and 15 characters.";
+    }
+    if (!validateEmail(email).valid) {
+        return "Enter a valid reseller email.";
+    }
+    if (!LOGIN_USERNAME_PATTERN.test(username)) {
+        return "Username must use 3 to 50 lowercase letters, numbers, dots, underscores, or hyphens.";
+    }
+    if (
+        (!options.isEditing && password.length < 6)
+        || (options.isEditing && password.length > 0 && password.length < 6)
+        || password.length > 100
+    ) {
+        return options.isEditing
+            ? "New password must be between 6 and 100 characters."
+            : "Password must be between 6 and 100 characters.";
+    }
+    if (!Number.isSafeInteger(maxOfflineActivations) || maxOfflineActivations < 1 || maxOfflineActivations > 100) {
+        return "Maximum offline activations must be between 1 and 100.";
+    }
+    if (normalizedDraftText(draft.addressLine).length > 200) return "Address must be 200 characters or fewer.";
+    if (normalizedDraftText(draft.city).length > 100) return "City must be 100 characters or fewer.";
+    if (normalizedDraftText(draft.state).length > 100) return "State must be 100 characters or fewer.";
+    if (normalizedDraftText(draft.postalCode).length > 10) return "Postal code must be 10 characters or fewer.";
+    if (normalizedDraftText(draft.country).length > 50) return "Country must be 50 characters or fewer.";
+    if (normalizedDraftText(draft.notes).length > 500) return "Internal notes must be 500 characters or fewer.";
+
+    return null;
+};
 
 export const isResellerManagementDraftChanged = (
     draft: ResellerManagementEditableDraft,

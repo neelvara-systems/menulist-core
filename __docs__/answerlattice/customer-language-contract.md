@@ -67,7 +67,9 @@ machine-verification terminology, or competing dashboard/setup choices.
 - Get Live shows Activation, First 10 Answers, Install Support, and Setup Status first.
 - Run Support shows Daily Brief and Ticket Inbox first.
 - Answer Quality shows Trusted Answers first.
-- All tools reveals the remaining authorized items in that group; Show fewer tools restores the compact list.
+- The sidebar groups the frequent owner journeys under Get Live, Improve answers, Run Support, Customer help, and Workspace.
+- All tools in the Advanced section reveals the remaining authorized items across the product; Show fewer tools restores the compact list.
+- A directly opened advanced route remains visible while active, even when the complete advanced list is closed.
 - The reveal is local presentation state. It is not saved to a user, workspace, or browser-storage record.
 - Direct links, bookmarks, and existing routes continue to work. An active deeper tool remains visible while selected.
 - Feature flags and permission checks run before hidden tools are counted or revealed.
@@ -82,7 +84,7 @@ No Firestore reads, writes, listeners, collections, indexes, Functions, Storage 
 
 ## Mobile Contract
 
-The same labels apply on desktop and mobile. The Activation support loop stacks vertically on smaller screens, preserves 44 px actions, and does not add a separate mobile route or data load. In the mobile drawer, All tools expands the current group without closing the drawer; selecting a destination then follows the existing navigation behavior.
+The same labels apply on desktop and mobile. The Activation support loop stacks vertically on smaller screens, preserves 44 px actions, and does not add a separate mobile route or data load. In the mobile drawer, All tools expands the complete authorized advanced list without closing the drawer; selecting a destination then follows the existing navigation behavior.
 
 ## Verification
 

@@ -7,7 +7,10 @@ import {
     resolvePublicMenuCurrencySymbol,
 } from '@lib/pricing/publicCurrency';
 import { normalizeExtractedMenuPriceTruth, normalizeProjectPriceTruth } from '@lib/pricing/projectPriceTruth';
-import { hasPublicItemDisplayPrice } from '@lib/pricing/publicItemPricePresentation';
+import {
+    getPublicItemDisplayOptions,
+    hasPublicItemDisplayPrice,
+} from '@lib/pricing/publicItemPricePresentation';
 import {
     formatScreenPrice,
     getScreenItemPrice,
@@ -97,6 +100,17 @@ assert.equal(resolvePublicMenuCurrencySymbol(`$\u202e`, 'USD'), '$');
 assert.equal(hasPublicItemDisplayPrice({ price: 'Market Price' }), true);
 assert.equal(hasPublicItemDisplayPrice({ price: '', attributes: [{ active: true, price: '149' }] }), true);
 assert.equal(hasPublicItemDisplayPrice({ price: '', attributes: [{ active: false, price: '149' }] }), false);
+assert.deepEqual(getPublicItemDisplayOptions({
+    attributes: [
+        { id: 'small', active: true, name: { en: 'Small', hi: 'छोटा' }, price: '100' },
+        { id: 'oat', name: { en: 'Oat milk' }, price: '' },
+        { id: 'retired', active: false, name: { en: 'Retired' }, price: '1' },
+        { id: 'nameless', active: true, name: { en: '' }, price: '20' },
+    ],
+}, 'hi', '₹'), [
+    { id: 'small', name: 'छोटा', priceLabel: '₹100.00' },
+    { id: 'oat', name: 'Oat milk' },
+]);
 assert.equal(parseScreenPrice('Market Price'), 'Market Price');
 assert.equal(formatScreenPrice('199-249', '₹'), '₹199-249');
 assert.equal(hasScreenPrice('Market Price'), true);
@@ -123,6 +137,25 @@ const printProjection = sanitizeMenuForPrint([
 ], [], 'en');
 assert.equal(printProjection.missingPriceCount, 0);
 assert.equal(printProjection.categories[0].items[0].attributes.length, 1);
+
+const completeOptionProjection = sanitizeMenuForPrint([{
+    id: 'forty-option-item',
+    name: { en: 'Choose a size' },
+    attributes: [
+        ...Array.from({ length: 40 }, (_, index) => ({
+            active: true,
+            name: { en: `Option ${index + 1}` },
+            price: index % 2 === 0 ? String(100 + index) : '',
+        })),
+        { active: false, name: { en: 'Inactive option' }, price: '999' },
+    ],
+}], [], 'en');
+assert.equal(completeOptionProjection.categories[0].items[0].attributes.length, 40);
+assert.equal(completeOptionProjection.categories[0].items[0].attributes[39]?.name, 'Option 40');
+assert.equal(
+    completeOptionProjection.categories[0].items[0].attributes.some((attribute) => attribute.name === 'Inactive option'),
+    false,
+);
 
 const bulkItems = [
     {

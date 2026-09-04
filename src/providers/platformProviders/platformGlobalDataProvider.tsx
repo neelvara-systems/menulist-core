@@ -12,6 +12,10 @@ import type { PlatformStoreSummaryOption } from '@lib/platform/storeSummaryOptio
 import { registerPosSyncDeliveryConfig, unregisterPosSyncDeliveryConfig } from '@lib/posSync/eventBuilder';
 import type { StaffUserSummary } from '@lib/staffManagement/types';
 import type { EffectiveRolePermissions } from '@type/platform/roles';
+import {
+    createEmptyImageSubjectProfileCache,
+    type ImageSubjectProfileCacheState,
+} from '@type/imageSubjectProfile';
 import { Timestamp } from 'firebase/firestore';
 import { createContext, type Dispatch, type ReactNode, type SetStateAction, useEffect } from 'react';
 
@@ -39,6 +43,9 @@ export type PlatformGlobalDataProviderType = {
     setActiveSubscription: Dispatch<SetStateAction<FirestoreSubscriptionDoc | null>>;
     activeSubscriptionLoading: boolean;
     setActiveSubscriptionLoading: Dispatch<SetStateAction<boolean>>;
+
+    cachedImageSubjectProfiles: ImageSubjectProfileCacheState;
+    setCachedImageSubjectProfiles: Dispatch<SetStateAction<ImageSubjectProfileCacheState>>;
 
     // Multi-Outlet Session Context (Feature #4C — T20/T21)
     isMasterUser: boolean;
@@ -89,6 +96,9 @@ const InititalState: PlatformGlobalDataProviderType = {
     setActiveSubscription: () => { },
     activeSubscriptionLoading: false,
     setActiveSubscriptionLoading: () => { },
+
+    cachedImageSubjectProfiles: createEmptyImageSubjectProfileCache(),
+    setCachedImageSubjectProfiles: () => { },
 
     isMasterUser: false,
     activeStoreContext: null,

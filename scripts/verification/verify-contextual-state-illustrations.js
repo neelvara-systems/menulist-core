@@ -47,6 +47,7 @@ const approvedConsumers = new Map([
   ['src/components/mobile/screens/MobileUsersScreen.tsx', { count: 1, softHaloCount: 1, variant: 'teamContext' }],
   ['src/components/mobile/sheets/MenuUploadSheet.tsx', { count: 1, softHaloCount: 0, variant: 'photoErrorContext' }],
   ['src/app/sites/answerlattice/early-access/EarlyAccessForm.tsx', { count: 1, softHaloCount: 0, variant: 'onboardingSuccessContext' }],
+  ['src/app/sites/answerlattice/offline/page.tsx', { count: 1, softHaloCount: 0, variant: 'serverErrorContext' }],
   ['src/components/templates/answerlattice/AnswerlatticeTeamAccess.tsx', { count: 2, softHaloCount: 2, variants: ['roleStructureContext', 'teamContext'] }],
   ['src/components/templates/answerlattice/answerTests/AnswerlatticeAnswerTests.tsx', { count: 2, softHaloCount: 2, variants: ['analyticsContext', 'feedbackContext'] }],
   ['src/components/templates/answerlattice/content/AnswerlatticeSurfaceReadinessMatrix.tsx', { count: 1, softHaloCount: 1, variant: 'roleStructureContext' }],
@@ -71,10 +72,12 @@ const approvedConsumers = new Map([
   ['src/components/templates/main-app/dashboard/OwnerDashboard/WeeklyView.tsx', { count: 1, softHaloCount: 1, variant: 'analyticsContext' }],
   ['src/components/templates/main-app/feedback/index.tsx', { count: 1, softHaloCount: 0, variant: 'feedbackContext' }],
   ['src/components/templates/main-app/projects/EmptyProjectState.tsx', { count: 1, softHaloCount: 1, variant: 'emptyWorkspace' }],
+  ['src/components/templates/main-app/printableAssetTemplates/PrintableAssetTemplatesRoute.tsx', { count: 2, softHaloCount: 1, variants: ['emptyWorkspace', 'serverErrorContext'] }],
   ['src/components/templates/main-app/projects/SpecialMenuCard.tsx', { count: 1, softHaloCount: 1, variant: 'scheduleContext' }],
   ['src/components/templates/main-app/projects/editorView/AiImageGenerator/batchImageGeneration/BatchImageGenerationResultView.tsx', { count: 4, softHaloCount: 3, variants: ['photoErrorContext', 'photoLoadingContext', 'photoSuccessContext'] }],
   ['src/components/templates/main-app/projects/editorView/uploadedImagesList.tsx', { count: 1, softHaloCount: 1, variant: 'uploadContext' }],
   ['src/components/templates/main-app/projects/jobScreens/ExtractionJobFailureModal.tsx', { count: 1, softHaloCount: 0, variant: 'photoErrorContext' }],
+  ['src/components/shared/printableAssets/PrintableAssetWorkflowModal.tsx', { count: 2, softHaloCount: 1, variants: ['emptyWorkspace', 'photoErrorContext'] }],
   ['src/components/templates/main-app/reseller/OnboardingWizard.tsx', { count: 1, softHaloCount: 1, variant: 'onboardingSuccessContext' }],
   ['src/components/templates/main-app/settings/DigitalScreenSettings/OwnerUploads.tsx', { count: 1, softHaloCount: 1, variant: 'uploadContext' }],
   ['src/components/templates/main-app/users/permissions/index.tsx', { count: 1, softHaloCount: 1, variant: 'roleStructureContext' }],
@@ -147,9 +150,9 @@ const expectedMyCodexStateLikeJsxText = new Map([
   ['No documents match your query', 1],
   ['No India voice is installed in this browser. MyCodex will use the device default until an Indian English, Hindi, or other India voice is available.', 1],
 ]);
-const expectedGlobalAntEmptyRenderCount = 161;
-const expectedGlobalAntEmptyFileCount = 111;
-const expectedGlobalAntEmptyInventoryFingerprint = 'bd884ce3c5096a4ab2cf85eff09d48fd89d709d317b7785ec19ca60a28836f50';
+const expectedGlobalAntEmptyRenderCount = 163;
+const expectedGlobalAntEmptyFileCount = 112;
+const expectedGlobalAntEmptyInventoryFingerprint = '1f2977e00a37174592fc046ec598f7073ac2effafbb0232199e1a3835f03e848';
 const codexIllustrationRulePath = '.codex/rules/CONTEXTUAL_STATE_ILLUSTRATION_RULES.md';
 const cascadeIllustrationRulePath = '.cascade/rules/CONTEXTUAL_STATE_ILLUSTRATION_RULES.md';
 
@@ -232,7 +235,7 @@ assert(componentSource.includes('uploadContext: UploadContextIllustration'), 'Up
 assert(componentSource.includes('warningContext: WarningContextIllustration'), 'Warning-context variant is missing');
 
 const actualConsumers = listSourceFiles('src')
-  .filter((relativePath) => /from ['"]@atoms\/contextualStateIllustration['"]/.test(read(relativePath)))
+  .filter((relativePath) => /from ['"](?:@atoms\/contextualStateIllustration|@\/components\/atoms\/contextualStateIllustration)['"]/.test(read(relativePath)))
   .sort();
 const expectedConsumers = [...approvedConsumers.keys()].sort();
 assert(
@@ -525,12 +528,12 @@ assert(
 );
 
 assert(
-  contextualIllustrationAudit.length === 79,
-  `Expected 79 reviewed contextual illustration renders, found ${contextualIllustrationAudit.length}`,
+  contextualIllustrationAudit.length === 84,
+  `Expected 84 reviewed contextual illustration renders, found ${contextualIllustrationAudit.length}`,
 );
 assert(
-  contextualIllustrationAudit.filter(({ treatment }) => treatment === 'softHalo').length === 58,
-  'Expected 58 positive, first-use, or spacious recovery illustrations to use the branded soft halo',
+  contextualIllustrationAudit.filter(({ treatment }) => treatment === 'softHalo').length === 60,
+  'Expected 60 positive, first-use, or spacious recovery illustrations to use the branded soft halo',
 );
 
 const actualResultRenderCounts = new Map();
@@ -646,4 +649,4 @@ assert(
   'State illustrations must not be exposed as a public asset library',
 );
 
-console.log('Cross-product contextual state boundary verified (79 illustrations; MenuList Result, Answerlattice Empty, CampaignCue, SignalDesk, and MyCodex inventories reviewed).');
+console.log('Cross-product contextual state boundary verified (84 illustrations; MenuList Result, Answerlattice Empty, CampaignCue, SignalDesk, and MyCodex inventories reviewed).');

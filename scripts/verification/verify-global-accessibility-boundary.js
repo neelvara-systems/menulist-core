@@ -342,6 +342,8 @@ assert(
 const sharedMobileAntdSource = read('src/components/mobile/antd.tsx');
 assert(sharedMobileAntdSource.includes('<Drawer\n            aria-label={ariaLabel}'), 'mobile Popup must forward its accessible name to the Drawer dialog');
 assert(sharedMobileAntdSource.includes('aria-pressed={ariaPressed}'), 'interactive mobile Card must forward selected state');
+assert(sharedMobileAntdSource.includes("function ListItem({ 'aria-pressed': ariaPressed"), 'interactive mobile List item must accept selected state');
+assert(sharedMobileAntdSource.includes('<AntList.Item\n            aria-pressed={ariaPressed}'), 'interactive mobile List item must forward selected state');
 [
   'function AccessibleStaticDialogContent(',
   "closest('[role=\"dialog\"]')",
@@ -385,6 +387,23 @@ assert(mobileAppSettingsSource.includes('aria-pressed={activeThemeColor === colo
 assert(mobileAppSettingsSource.includes("aria-label={`${t('themeColors')}: ${activeThemeColor?.toUpperCase()}`}"), 'mobile App settings custom color picker must retain a unique accessible name');
 assert(mobileAppSettingsSource.includes('type="color"'), 'mobile App settings custom color control must retain native color-input semantics');
 assert(mobileAppSettingsSource.includes("height: 44") && mobileAppSettingsSource.includes("width: 44"), 'mobile App settings custom color control must retain a 44px touch target');
+const desktopAppSettingsColorSource = read('src/components/organisms/appSettings/EnhancedColorPicker.tsx');
+assert(
+  desktopAppSettingsColorSource.includes('aria-label={`${ariaLabel}: ${selectedColor.toUpperCase()}`}'),
+  'desktop App settings custom color picker must retain a unique accessible name',
+);
+assert(
+  desktopAppSettingsColorSource.includes('type="color"'),
+  'desktop App settings custom color control must retain native color-input semantics',
+);
+assert(
+  desktopAppSettingsColorSource.includes("height: 44") && desktopAppSettingsColorSource.includes("width: 44"),
+  'desktop App settings custom color control must retain a 44px target',
+);
+assert(
+  !desktopAppSettingsColorSource.includes('ColorPicker as AntColorPicker'),
+  'desktop App settings must not restore the unnamed library color-panel controls',
+);
 const mobileSeoAnalyticsSource = read('src/components/mobile/screens/MobileSeoAnalyticsScreen.tsx');
 const mobileCustomerAppSource = read('src/components/mobile/screens/MobileCustomerAppScreen.tsx');
 const mobileShareSource = read('src/components/mobile/screens/MobileShareScreen.tsx');
@@ -495,10 +514,23 @@ assert(
 const aiDefaultsSource = read('src/components/mobile/sheets/AIDefaultsSheet.tsx');
 assert(aiDefaultsSource.includes('aria-label="Use transparent image backgrounds"'), 'mobile transparent-background switch must retain an accessible name');
 const mobileMenuScreenSource = read('src/components/mobile/screens/MobileMenuScreen.tsx');
+const mobileCategoryEditSheetSource = read('src/components/mobile/sheets/MobileCategoryEditSheet.tsx');
 assert(mobileMenuScreenSource.includes("<Button aria-label={t('close')} fill=\"none\" onClick={() => setIsFilterSheetOpen(false)}"), 'mobile Find & Fix close control must retain an accessible name');
 assert(
   mobileMenuScreenSource.includes("<Popup\n                aria-label={t('filters')}\n                bodyStyle={{ maxHeight: '72vh', overflow: 'hidden', padding: 0 }}"),
   'mobile menu status legend dialog must retain its visible localized title as its accessible name',
+);
+assert(
+  mobileMenuScreenSource.includes("<Popup\n                aria-label={t('findAndFix')}\n                bodyStyle={{ maxHeight: '92vh', overflow: 'hidden', padding: 0 }}"),
+  'mobile Find & Fix dialog must retain its visible localized title as its accessible name',
+);
+assert(
+  mobileCategoryEditSheetSource.includes("const sheetTitle = mode === 'add' ? t('addCategoryLabel') : (category?.name || t('categoriesTitle'));"),
+  'mobile category editor must derive one title for both visible and accessible naming',
+);
+assert(
+  mobileCategoryEditSheetSource.includes('<Popup\n            aria-label={sheetTitle}'),
+  'mobile category editor dialog must retain its visible localized title as its accessible name',
 );
 const nestedMobileMenuControls = findNestedInteractiveCompositeRows('src/components/mobile/screens/MobileMenuScreen.tsx');
 assert(
@@ -580,12 +612,12 @@ assert(
   'global access-denied copy must not render encoded apostrophe text',
 );
 assert(
-  unauthorizedPage.includes("You don't have permission to access this page."),
+  unauthorizedPage.includes('This account does not have access to this business.'),
   'global access-denied primary recovery copy must remain readable',
 );
 assert(
-  unauthorizedPage.includes("Make sure you're signed in with the correct account."),
-  'global access-denied secondary recovery copy must remain readable',
+  unauthorizedPage.includes('You are signed in, but this account is not connected to this business.'),
+  'global access-denied secondary recovery copy must explain the business access mismatch',
 );
 assert(
   unauthorizedPage.includes("style={{ width: '100%', maxWidth: 560, padding: 0 }}"),
@@ -596,13 +628,18 @@ assert(
   'global access-denied recovery actions must wrap on narrow mobile viewports',
 );
 assert(
-  unauthorizedPage.includes("import { PLATFORM_URL } from '@constant/urls';"),
+  unauthorizedPage.includes("import { getPlatformWebsiteBaseUrl } from '@constant/urls';"),
   'global access-denied recovery must use the environment-governed public website URL',
 );
 assert(
-  unauthorizedPage.includes('onClick={() => window.location.assign(PLATFORM_URL)}'),
-  'global access-denied home action must leave the owner-app host for the public website',
+  unauthorizedPage.includes('onClick={openProductHelp}'),
+  'global access-denied help action must leave the owner-app host for the public website contact route',
 );
+assert(unauthorizedPage.includes('isAnswerlatticeProductHostname(window.location.hostname)'), 'global access-denied help must preserve the AnswerLattice product boundary');
+assert(unauthorizedPage.includes('Try another account'), 'global access-denied recovery must offer an explicit account switch');
+assert(unauthorizedPage.includes('Signed in as {maskedAccount}'), 'global access-denied recovery must identify the active account without exposing it in full');
+assert(unauthorizedPage.includes('await signOutSession(signInPath, { redirectOnIntentionalSignOut: false });'), 'global access-denied account switch must clear Firebase, NextAuth, and authenticated browser state');
+assert(unauthorizedPage.includes('aria-live="assertive"'), 'global access-denied account-switch failure must be announced');
 assert(
   !unauthorizedPage.includes('router.push(HOME_ROUTING)'),
   'global access-denied home action must not route into the protected owner dashboard',
@@ -683,6 +720,7 @@ const sessionProvider = read('src/providers/sessionProvider.tsx');
 [
   '<StoreAccessRecovery',
   'setFirebaseAuthRetryNonce((current) => current + 1)',
+  'setStoreBootstrapRetryNonce((current) => current + 1)',
   "signOut({ callbackUrl: '/signin' })",
   'firebaseAuthRetryNonce,',
 ].forEach((token) => assert(

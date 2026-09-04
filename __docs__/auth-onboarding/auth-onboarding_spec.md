@@ -69,7 +69,14 @@ Let a non-technical owner establish one eligible identity, create one business w
 | No workspace | Pricing collects business details and resumes after authentication |
 | Workspace plus pending subscription | Payment pending, starts after payment, complete payment/Open Billing |
 | Active subscription | Dashboard and current billing details |
+| Workspace plus expired setup or ended plan | Preserve business/menu truth, name the exact recovery state, open Plans & Billing |
+| Signed in but workspace missing | Explain that account access succeeded but business setup is incomplete; do not describe it as a payment failure |
 | Blocked/inactive/revoked | Generic unavailable/unauthorized behavior; no internal detail leakage |
+| Wrong account for business | Show only a masked active account, offer **Try another account**, preserve the safe callback, and provide a product help route |
+
+Business identity and private billing details are two progressive steps in the pricing setup modal. The owner must not face the complete tax-address form before the two workspace details are valid.
+
+Every recovery action must lead somewhere usable. Billing recovery stays inside the owner app; plan selection opens `/pricing` on the environment-matching public MenuList origin rather than assuming the owner-app host serves the marketing route.
 
 ## Non-goals
 

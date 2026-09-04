@@ -91,7 +91,7 @@ const CUSTOM_DOMAIN_AVAILABILITY_RESPONSE_MAX_BYTES = 8 * 1024;
 
 type StoreMutationData = Omit<
     Partial<StoreDataType>,
-    'analytics' | 'businessAttributes' | 'externalLocationIdentity' | 'posSync' | 'publicPresence' | 'specialHours' | 'workingHours'
+    'analytics' | 'businessAttributes' | 'externalLocationIdentity' | 'posSync' | 'printableAssetStylePreferences' | 'publicPresence' | 'specialHours' | 'workingHours'
 > & {
     [key: string]: unknown;
     analytics?: Record<string, unknown>;
@@ -102,6 +102,7 @@ type StoreMutationData = Omit<
     imageType?: string;
     posSync?: Record<string, unknown>;
     preparedMedia?: PreparedMediaImage;
+    printableAssetStylePreferences?: unknown;
     publicPresence?: Record<string, unknown>;
     specialHours?: unknown;
     storeId?: number;
@@ -459,6 +460,7 @@ export const addStore = async (data: StoreMutationData, from: string = "") => {
                 data.logo = newUrl;
                 delete data.imageToUpdate;
                 delete data.imageType;
+                delete data.preparedMedia;
             }
 
             const businessCategory = resolveStoreBusinessCategory(data.businessType || '', data.businessCategory);
@@ -527,9 +529,23 @@ export const addStore = async (data: StoreMutationData, from: string = "") => {
     );
 }
 
-export const updateStore = async (data: StoreMutationData) => {
+type UpdateStoreOptions = Readonly<{
+    privateConfigurationField?: 'printableAssetStylePreferences';
+}>;
+
+export const updateStore = async (data: StoreMutationData, options: UpdateStoreOptions = {}) => {
     return await apiCallComposer(
         async () => {
+            const privateConfigurationField = options.privateConfigurationField;
+            if (privateConfigurationField) {
+                const requestedKeys = Object.keys(data);
+                if (
+                    !Object.prototype.hasOwnProperty.call(data, privateConfigurationField)
+                    || requestedKeys.some((key) => key !== 'storeId' && key !== privateConfigurationField)
+                ) {
+                    throw new Error('store_private_configuration_update_invalid');
+                }
+            }
             const storeId = Number(data.storeId);
             if (!Number.isSafeInteger(storeId) || storeId <= 0) {
                 throw new Error('store_update_scope_invalid');
@@ -568,6 +584,7 @@ export const updateStore = async (data: StoreMutationData) => {
                 data.logo = newUrl;
                 delete data.imageToUpdate;
                 delete data.imageType;
+                delete data.preparedMedia;
             }
 
             // G-08 (§11 + §7 PUBLIC-ROUTING-DOCTRINE): subdomain is a permanent
@@ -698,12 +715,18 @@ export const updateStore = async (data: StoreMutationData) => {
             }
 
             const directStoreUpdate = { ...data };
+            if (privateConfigurationField) {
+                delete directStoreUpdate.storeId;
+                delete directStoreUpdate.id;
+            }
             if (propagationHandledByServer && propagationChanges) {
                 for (const field of Object.keys(propagationChanges)) delete directStoreUpdate[field];
                 delete directStoreUpdate.modifiedOn;
             }
             if (subdomainHandledByServer) delete directStoreUpdate.subdomain;
-            const composedDirectStoreUpdate = await requestBodyComposer(directStoreUpdate, { isNew: false });
+            const composedDirectStoreUpdate = privateConfigurationField
+                ? directStoreUpdate
+                : await requestBodyComposer(directStoreUpdate, { isNew: false });
 
             // Sync to storesSummary for Cloud Function optimization
             // See: __docs__/patterns/summary-document-pattern.md
@@ -812,7 +835,7 @@ export const updateStore = async (data: StoreMutationData) => {
             // Public OBP/menu/screen store lookup uses shared Data Cache tags.
             // Revalidate after summary propagation so the next SSR/read cannot
             // refill from stale store summary data.
-            if (data.storeId) {
+            if (data.storeId && !privateConfigurationField) {
                 await revalidatePublicClientCache(data.storeId, "updateStore", {
                     touchScreen: hasDigitalScreenStoreOutputFieldChanges(data),
                 });

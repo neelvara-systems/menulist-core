@@ -273,6 +273,7 @@ are maintained in the owner editor, not by extraction.
 ## Food & Beverage businesses
 - "dietaryTags": array of strings — extract ONLY from explicit labels/icons. Values: "vegetarian", "non-vegetarian", "vegan", "gluten-free", "halal", "kosher", "keto", "dairy-free", "organic"
 - "spiceLevel": single string — extract ONLY from spice indicators (🌶️, chili icons, "Mild"/"Medium"/"Hot" labels). Values: "none", "mild", "medium", "hot", "very-hot"
+- Spice normalization: explicit "Less Spicy" or "Low Spice" labels -> "mild". A word such as "hot" inside an item name or promotional phrase is not a spice label.
 - Dietary label normalization: "VEG", "V", green-dot vegetarian symbols -> "vegetarian"; "NON-VEG", "NV", red-dot non-veg symbols, "non vegetarian" -> "non-vegetarian"; "GF" -> "gluten-free"; "DF" -> "dairy-free"; "KETO" -> "keto".
 
 ## Service businesses (Salons, Spas, Cleaning, etc.)

@@ -23,14 +23,16 @@ const loginPageSource = fs.readFileSync(
 );
 assert.match(
     loginPageSource,
-    /<Text[^>]*>Need help\? Contact the owner\.<\/Text>/,
-    'non-interactive owner-contact guidance must render as text',
+    /<Text[^>]*>Having trouble signing in\?<\/Text>/,
+    'sign-in recovery guidance must explain the problem in owner language',
 );
-assert.doesNotMatch(
+assert.match(
     loginPageSource,
-    /<Button[^>]*>Need help\? Contact the owner\.<\/Button>/,
-    'owner-contact guidance must not render as an inert button',
+    /<Button[^>]*onClick=\{openProductHelp\}[^>]*>Get help<\/Button>/,
+    'sign-in recovery guidance must provide a working help action',
 );
+assert.match(loginPageSource, /placeholder="name@example\.com, phone number, or staff ID"/);
+assert.match(loginPageSource, />Continue<\/Button>/);
 assert.doesNotMatch(
     loginPageSource,
     /<Input\.Password\b/,

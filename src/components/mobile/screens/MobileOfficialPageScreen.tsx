@@ -12,6 +12,12 @@ import { getBrandName } from '@lib/businessIdentity/names';
 import { generateBusinessCoverCandidate } from '@lib/image/projectImageGeneration';
 import { updateLocalizedText } from '@lib/localization/text';
 import { getMediaProfileAcceptAttribute } from '@lib/media/imageProfiles';
+import {
+    enqueueObpMediaCleanupJournal,
+    readObpMediaCleanupJournal,
+    writeObpMediaCleanupJournal,
+    type ObpMediaCleanupJournalScope,
+} from '@lib/media/obpMediaCleanupJournal';
 import { collectObpMediaReferences } from '@lib/media/obpMediaReferences';
 import { prepareMediaImage, type MediaImageCropIntent, type PreparedMediaImage } from '@lib/media/prepareMediaImage';
 import MediaImageCard from '@/components/shared/media/MediaImageCard';
@@ -575,6 +581,14 @@ function MobileOfficialPageScreenContent({
     const persistedPublicPresenceRef = useRef(storeDetails?.publicPresence);
     const componentActiveRef = useRef(true);
     const presenceSaveInFlightRef = useRef(false);
+    const cleanupJournalScope = useMemo<ObpMediaCleanupJournalScope | null>(() => {
+        const tenantId = session?.tId || storeDetails?.tenantId;
+        const storeId = session?.sId || storeDetails?.storeId;
+        return tenantId && storeId ? { storeId, tenantId } : null;
+    }, [session?.sId, session?.tId, storeDetails?.storeId, storeDetails?.tenantId]);
+    const getCleanupJournalStorage = useCallback(() => (
+        typeof window === 'undefined' ? null : window.localStorage
+    ), []);
     const officialPageUrl = useMemo(
         () => generateConfiguredStoreOBPUrl(storeDetails, tenantDetails?.storesList),
         [storeDetails, tenantDetails?.storesList]
@@ -711,12 +725,19 @@ function MobileOfficialPageScreenContent({
 
     const queuePhotoDelete = useCallback((photoUrl?: string) => {
         if (!photoUrl || photoUrl.startsWith('data:')) return;
+        if (cleanupJournalScope) {
+            enqueueObpMediaCleanupJournal(
+                getCleanupJournalStorage(),
+                cleanupJournalScope,
+                photoUrl,
+            );
+        }
         setPhotoDeleteQueue((previous) => {
             const nextQueue = previous.includes(photoUrl) ? previous : [...previous, photoUrl];
             photoDeleteQueueRef.current = nextQueue;
             return nextQueue;
         });
-    }, []);
+    }, [cleanupJournalScope, getCleanupJournalStorage]);
 
     useEffect(() => {
         componentActiveRef.current = true;
@@ -729,17 +750,36 @@ function MobileOfficialPageScreenContent({
         photoDeleteQueueRef.current = photoDeleteQueue;
     }, [photoDeleteQueue]);
 
+    useEffect(() => {
+        if (!cleanupJournalScope) return;
+        const storage = getCleanupJournalStorage();
+        const cleanupCandidates = readObpMediaCleanupJournal(storage, cleanupJournalScope);
+        if (cleanupCandidates.length === 0) return;
+
+        void deleteOBPPhotos(
+            cleanupCandidates,
+            collectObpMediaReferences(storeDetails?.publicPresence),
+        ).then((failedPhotoDeletes) => {
+            writeObpMediaCleanupJournal(storage, cleanupJournalScope, failedPhotoDeletes);
+        });
+    }, [cleanupJournalScope, getCleanupJournalStorage, storeDetails?.publicPresence]);
+
     useEffect(() => () => {
         if (
             embedded
             || presenceSaveInFlightRef.current
             || photoDeleteQueueRef.current.length === 0
         ) return;
+        const cleanupCandidates = [...photoDeleteQueueRef.current];
+        const storage = getCleanupJournalStorage();
         void deleteOBPPhotos(
-            photoDeleteQueueRef.current,
+            cleanupCandidates,
             collectObpMediaReferences(persistedPublicPresenceRef.current),
-        );
-    }, [embedded]);
+        ).then((failedPhotoDeletes) => {
+            if (!cleanupJournalScope) return;
+            writeObpMediaCleanupJournal(storage, cleanupJournalScope, failedPhotoDeletes);
+        });
+    }, [cleanupJournalScope, embedded, getCleanupJournalStorage]);
 
     const updatePresence = useCallback(async (nextPresence: typeof formData) => {
         if (
@@ -799,6 +839,13 @@ function MobileOfficialPageScreenContent({
             if (!componentActiveRef.current) return;
             photoDeleteQueueRef.current = failedPhotoDeletes;
             setPhotoDeleteQueue(failedPhotoDeletes);
+            if (cleanupJournalScope) {
+                writeObpMediaCleanupJournal(
+                    getCleanupJournalStorage(),
+                    cleanupJournalScope,
+                    failedPhotoDeletes,
+                );
+            }
             setOriginalFormData(nextPresence);
             setOriginalLocalizedDrafts(submittedLocalizedDrafts);
             Toast.show({ content: tMobile('saved'), duration: 1000 });
@@ -824,10 +871,17 @@ function MobileOfficialPageScreenContent({
                     : previous
             ));
             if (!componentActiveRef.current) {
-                await deleteOBPPhotos(
+                const failedPhotoDeletes = await deleteOBPPhotos(
                     submittedPhotoDeleteQueue,
                     collectObpMediaReferences(previousPublicPresence),
                 );
+                if (cleanupJournalScope) {
+                    writeObpMediaCleanupJournal(
+                        getCleanupJournalStorage(),
+                        cleanupJournalScope,
+                        failedPhotoDeletes,
+                    );
+                }
             }
             if (componentActiveRef.current) {
                 Toast.show({ content: tMobile('failedToSave'), duration: 1500 });
@@ -836,7 +890,7 @@ function MobileOfficialPageScreenContent({
             presenceSaveInFlightRef.current = false;
             if (componentActiveRef.current) setIsSaving(false);
         }
-    }, [localizedDrafts, photoDeleteQueue, setStoreDetails, storeDetails, tMobile]);
+    }, [cleanupJournalScope, getCleanupJournalStorage, localizedDrafts, photoDeleteQueue, setStoreDetails, storeDetails, tMobile]);
 
     const handleSave = useCallback(() => {
         void updatePresence(formData);
@@ -1160,6 +1214,13 @@ function MobileOfficialPageScreenContent({
                 queuedPhotoDeletes,
                 collectObpMediaReferences(storeDetails?.publicPresence),
             ).then((failedPhotoDeletes) => {
+                if (cleanupJournalScope) {
+                    writeObpMediaCleanupJournal(
+                        getCleanupJournalStorage(),
+                        cleanupJournalScope,
+                        failedPhotoDeletes,
+                    );
+                }
                 if (failedPhotoDeletes.length === 0) return;
                 setPhotoDeleteQueue((previous) => {
                     const nextQueue = Array.from(new Set([...previous, ...failedPhotoDeletes]));
@@ -1171,7 +1232,7 @@ function MobileOfficialPageScreenContent({
         setIsCoverAdjustOpen(false);
         setAdjustingPhotoIndex(null);
         setActivePhotoIndex(null);
-    }, [embedded, originalFormData, originalLocalizedDrafts, storeDetails?.publicPresence]);
+    }, [cleanupJournalScope, embedded, getCleanupJournalStorage, originalFormData, originalLocalizedDrafts, storeDetails?.publicPresence]);
 
     const withSource = useCallback((url: string, src: 'copy' | 'direct' | 'qr' | 'share') => (
         withAnalyticsSource(

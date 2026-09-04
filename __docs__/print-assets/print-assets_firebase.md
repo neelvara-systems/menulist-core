@@ -1,9 +1,9 @@
 # Print Assets Firebase Cost
 
 **Status:** Implemented
-**Last Updated:** June 25, 2026
+**Last Updated:** September 4, 2026
 
-Print Assets adds no Firestore collection, Storage path, Cloud Function, API route, rule, or index.
+Print Assets adds no Firestore collection, Storage path, Cloud Function, API route, rule, or index. Normal opening, preview, and download remain read-only/local. An explicit inline business-profile save reuses the existing Business Settings store/tenant update paths; a replacement logo reuses the existing business-logo media pipeline rather than adding an Assets-specific Storage path.
 
 ## Cost Table
 
@@ -11,6 +11,8 @@ Print Assets adds no Firestore collection, Storage path, Cloud Function, API rou
 | --- | --- | --- |
 | Open desktop Assets route | Existing dashboard context + project summary read | Uses the existing summary document and does not create a default project. |
 | Open mobile Assets screen | Existing mobile project provider data | Same pattern as mobile Share. |
+| Save inline business details | 1 store write, plus 1 tenant write only when the shared brand name changed | Explicit owner action through the existing canonical Business Settings DAL. No per-asset copy is created. |
+| Replace logo inline | Existing store write plus existing business-logo Storage upload | Uses the same prepared-image validation and media profile as Business Settings. Browser-only preparation data is removed before persistence; generated assets are still not uploaded. |
 | Download table/counter/entrance/campaign files | 0 reads/writes | Client-side renderer downloads the requested file in the browser; editor-backed assets render from `CreativeEditorDocument` without storing output. |
 | Preview table/counter/entrance/campaign files | 0 reads/writes | Client-side renderer opens a temporary browser blob URL; no generated preview is uploaded. |
 | Copy print-shop handoff | 0 reads/writes | Uses already-loaded store/project context and clipboard only. |
@@ -22,7 +24,7 @@ Print Assets adds no Firestore collection, Storage path, Cloud Function, API rou
 
 ## Storage Policy
 
-Generated print assets are not uploaded to Firebase Storage. Temporary browser blobs live only in the owner browser session and disappear when the browser releases them.
+Generated print assets are not uploaded to Firebase Storage. Temporary browser blobs live only in the owner browser session and disappear when the browser releases them. A logo selected in the inline business-profile editor is business profile media, not generated output, and follows the existing canonical logo upload lifecycle.
 
 Do not add scan preview-page logs, WhatsApp-open logs, or placement A/B ledgers to Print Assets without a separate analytics/privacy/Firebase cost design. Current placement attribution uses existing UTM/page-view analytics, not generated-asset Firestore writes.
 

@@ -188,6 +188,7 @@ function verifyWebsiteAuditHardeningBoundary() {
   const websiteLayout = read('src/app/(website)/layout.tsx');
   const productPathProvider = read('src/components/website/shared/WebsiteProductPathProvider.tsx');
   const footer = read('src/components/website/Footer.tsx');
+  const schemaMarkup = read('src/components/website/SchemaMarkup.tsx');
   const stickyCta = read('src/components/website/shared/StickyCta.tsx');
   const websiteStyles = read('src/styles/website.css');
   const englishLocale = read('public/locales/menulist.ai/en-US.json');
@@ -201,10 +202,40 @@ function verifyWebsiteAuditHardeningBoundary() {
     'MenuList website path provider',
   );
   assertNotIncludes(footer, 'https://twitter.com/menulistai', 'MenuList website footer');
+  assertNotIncludes(
+    footer,
+    'https://instagram.com/menulistai',
+    'MenuList website footer unavailable Instagram profile',
+  );
+  assertNotIncludes(
+    schemaMarkup,
+    'https://instagram.com/menulistai',
+    'MenuList organization schema unavailable Instagram profile',
+  );
   assertIncludes(
     stickyCta,
     "window.matchMedia('(min-width: 1024px) and (min-height: 780px)')",
     'MenuList sticky CTA viewport boundary',
+  );
+  assertIncludes(
+    stickyCta,
+    "window.addEventListener('scroll', scheduleSync, { passive: true });",
+    'MenuList sticky CTA scroll recovery boundary',
+  );
+  assertIncludes(
+    stickyCta,
+    "window.addEventListener('pageshow', scheduleSync);",
+    'MenuList sticky CTA history recovery boundary',
+  );
+  assertIncludes(
+    stickyCta,
+    'window.requestAnimationFrame(() => {',
+    'MenuList sticky CTA scroll throttling boundary',
+  );
+  assertIncludes(
+    stickyCta,
+    "window.removeEventListener('scroll', scheduleSync);",
+    'MenuList sticky CTA listener cleanup boundary',
   );
   assertIncludes(
     websiteStyles,
@@ -241,7 +272,8 @@ function verifyCrossProductTaglineBoundary() {
   assertIncludes(neelvaraHome, 'NEELVARA_TAGLINE', 'Neelvara homepage tagline binding');
   assertIncludes(neelvaraHome, 'NEELVARA_SUPPORTING_LINE', 'Neelvara homepage supporting-line binding');
   assertIncludes(neelvaraHome, 'MenuList keeps public business information official.', 'Neelvara MenuList product job');
-  assertIncludes(neelvaraHome, 'Answerlattice keeps customer answers grounded in approved knowledge.', 'Neelvara Answerlattice product job');
+  assertIncludes(neelvaraHome, 'Answerlattice keeps customer answers grounded in approved', 'Neelvara Answerlattice product job');
+  assertIncludes(neelvaraHome, 'knowledge. Each product has its own website, policies, and', 'Neelvara product-separation continuation');
   assertIncludes(neelvaraGenerator, 'The official customer-facing version of your business.', 'Neelvara generated product tagline');
   assertNotIncludes(neelvaraGenerator, 'The source of truth behind every customer answer.', 'Neelvara generated stale absolute tagline');
 

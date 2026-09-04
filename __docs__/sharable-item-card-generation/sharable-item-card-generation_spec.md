@@ -21,3 +21,7 @@ Owners sometimes need a quick item image for WhatsApp or staff sharing. This bel
 - Do not write analytics counters for card generation.
 - Do not add templates, captions, scheduling, platform selection, or customization.
 - Do not show Copy Link or Download Card in public PDP.
+- Project active named item options from the same localized source as the public menu.
+- Keep unpriced options visible and show a price only when that option has one.
+- Use neutral `Options` wording; never add `+` or imply that every option is an additional charge.
+- Preserve the real description when present, then show up to three options plus the truthful remaining count according to the available card space.

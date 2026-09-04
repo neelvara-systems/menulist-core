@@ -264,7 +264,10 @@ function verifyMobileBoundary() {
   assertIncludes(mobileMoreScreen, 'Email MenuList support or review common answers.', 'MenuList More contact copy matches the static product-owned support surface');
   assertIncludes(mobileHelpScreen, "const isDirectHelpCenterRoute = pathSegments[0] === 'help-center';", 'Mobile Help Center direct route awareness');
   assertIncludes(mobileHelpScreen, 'normalizeMenuListHelpSection(requestedTab || requestedPathTab || initialTab)', 'Mobile Help Center product-owned route normalization');
-  assertIncludes(mobileHelpScreen, '<MenuListHelpCenter initialSection={activeSection} />', 'Mobile Help Center renders the MenuList-owned surface');
+  assertIncludes(mobileHelpScreen, '<MenuListHelpCenter', 'Mobile Help Center renders the MenuList-owned surface');
+  assertIncludes(mobileHelpScreen, 'initialSection={activeSection}', 'Mobile Help Center passes the normalized MenuList section');
+  assertIncludes(mobileHelpScreen, 'onBackToDashboard={handleBack}', 'Mobile Help Center preserves the shell-aware dashboard recovery');
+  assertIncludes(mobileHelpScreen, 'onSectionChange={onSectionChange}', 'Mobile Help Center preserves section navigation in the owner shell');
   assertNotIncludes(mobileHelpScreen, "@template/main-app/helpCenter'", 'Mobile Help Center excludes the Answerlattice Help Center');
   assertIncludes(mobileHelpScreen, "if (isDirectHelpCenterRoute) {", 'Mobile Help Center direct-route-only canonical back target');
   assertIncludes(mobileHelpScreen, "window.history.replaceState(null, '', '/dashboard#mobile/more');", 'Mobile Help Center direct route back target');

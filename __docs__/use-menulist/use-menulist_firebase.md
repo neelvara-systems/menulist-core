@@ -34,7 +34,7 @@ Mobile Share uses `MobileProjectsProvider` project state and the same screen-sta
 
 | Data | Reads | Notes |
 | --- | ---: | --- |
-| Project summaries | Usually already loaded by the mobile shell | The mobile provider may intentionally auto-create the first project when entering menu management, not when using read-only output actions. |
+| Project summaries | Usually already loaded by the mobile shell | The provider uses the no-write existing-project reader on Share, Today, More, and other read-only surfaces. It may intentionally auto-create the first project only after the owner enters the Menu tab. |
 | Screen state | 1 | Same `getScreenState()` summary doc read. |
 | Full selected project | 0-1 on tap | Only when PDF/export generation needs uncached full data. |
 

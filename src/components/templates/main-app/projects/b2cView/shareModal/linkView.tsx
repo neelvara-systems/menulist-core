@@ -28,7 +28,7 @@ function LinkView({ shareUrl }: LinkViewProps) {
     const handleCopyLink = async () => {
         try {
             await copyExportTextToClipboard(copyUrl);
-            messageApi.success('Link copied to clipboard!');
+            messageApi.success('Customer menu link copied. It opens the latest published menu.');
         } catch (error) {
             logExportFailure('project_share_legacy_link_copy_failed', error, {
                 ...getBoundedExportStringContext('shareUrl', shareUrl),

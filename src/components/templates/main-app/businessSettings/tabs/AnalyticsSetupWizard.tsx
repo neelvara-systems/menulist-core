@@ -273,25 +273,25 @@ const AnalyticsSetupWizard: React.FC<AnalyticsSetupWizardProps> = ({ open, onClo
             onCancel={onClose}
             width={800}
             footer={[
-                currentStep > 0 && (
+                currentStep > 0 ? (
                     <Button key="back" onClick={prev} icon={<LuArrowLeft />}>
                         Back
                     </Button>
-                ),
+                ) : null,
                 !isLastStep ? (
-                    <Button type="primary" onClick={next} icon={<LuArrowRight />}>
+                    <Button key="next" type="primary" onClick={next} icon={<LuArrowRight />}>
                         Next Step
                     </Button>
                 ) : (
-                    <Button type="primary" onClick={onClose} icon={<LuCheckCircle />}>
+                    <Button key="finish" type="primary" onClick={onClose} icon={<LuCheckCircle />}>
                         Finish Setup
                     </Button>
                 )
             ]}
         >
-            <Steps current={currentStep} style={{ marginBottom: '24px' }}>
-                {steps.map(item => (
-                    <Step key={item.title} title={item.title} />
+            <Steps current={currentStep} responsive={false} style={{ marginBottom: '24px' }}>
+                {steps.map((item, index) => (
+                    <Step key={`analytics-step-${index}`} title={item.title} />
                 ))}
             </Steps>
             <div style={{ maxHeight: '60vh', overflow: 'auto', padding: '0 16px' }}>

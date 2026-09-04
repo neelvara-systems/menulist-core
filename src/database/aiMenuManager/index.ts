@@ -7,6 +7,7 @@ import {
     buildAiMenuManagerContextPacket,
 } from '@lib/ai-menu-manager/contextPacket';
 import { resolveAiMenuManagerCommand } from '@lib/ai-menu-manager/commandResolver';
+import { getAiMenuManagerCommandTextIssue } from '@lib/ai-menu-manager/commandTextBoundary';
 import {
     aiMenuManagerPatchesConflict,
     resolveAiMenuManagerCompoundCommand,
@@ -721,13 +722,17 @@ export async function sendAiMenuManagerCommand(
 ): Promise<AiMenuManagerClientCommandResponse> {
     assertAiMenuManagerEnabled();
 
+    const text = (request.text || '').trim();
+    if (getAiMenuManagerCommandTextIssue(text) === 'too_long') {
+        throw new Error('Menu Manager message is too long');
+    }
+
     if (!request.project) {
         const scope = await resolveClientScope(request.storeId);
         const response = await sendAiMenuManagerServerCommand(request, scope);
         return { ...response, operations: [] };
     }
 
-    const text = (request.text || '').trim();
     if (!text) throw new Error('Tell Menu Manager what changed');
 
     const scope = await resolveClientScope(request.storeId);

@@ -1,6 +1,6 @@
 import { useOfferingLabels } from '@hook/useOfferingLabels';
 import { Button, Flex, Modal, Steps, Typography, theme } from 'antd';
-import { LuFileText, LuPen, LuShare, LuSparkles, LuUpload } from 'react-icons/lu';
+import { LuCheckCircle2, LuLink, LuSparkles, LuUpload } from 'react-icons/lu';
 
 interface WelcomeModalProps {
     isOpen: boolean;
@@ -26,7 +26,7 @@ export const WelcomeModal = ({ isOpen, onClose, onStart }: WelcomeModalProps) =>
                 <Flex vertical align="center" gap={8}>
                     <LuSparkles size={48} color={token.colorPrimary} />
                     <Typography.Title level={3} style={{ margin: 0 }}>Welcome to Your {offeringName}</Typography.Title>
-                    <Typography.Text type="secondary">Get started with {labels.digitalLabel} in 4 easy steps</Typography.Text>
+                    <Typography.Text type="secondary">Get started with {labels.digitalLabel} in 3 clear steps</Typography.Text>
                 </Flex>
 
                 <div style={{ width: '100%', maxWidth: 480 }}>
@@ -38,28 +38,27 @@ export const WelcomeModal = ({ isOpen, onClose, onStart }: WelcomeModalProps) =>
                         }}
                         items={[
                             {
-                                title: 'Upload',
-                                description: `Upload your ${labels.offeringLower} images or PDFs.`,
+                                title: `Add your ${labels.offeringLower}`,
+                                description: `Add your current ${labels.offeringLower} images or PDFs.`,
                                 icon: <LuUpload size={20} />
                             },
                             {
-                                title: 'Review',
-                                description: 'We extract your data automatically.',
-                                icon: <LuFileText size={20} />
-                            },
-                            {
-                                title: 'Edit',
-                                description: `Customize and organize your ${labels.offeringLower}.`,
-                                icon: <LuPen size={20} />
+                                title: 'Check the prepared draft',
+                                description: 'Check the items, prices, and details MenuList prepared.',
+                                icon: <LuCheckCircle2 size={20} />
                             },
                             {
                                 title: 'Publish',
-                                description: `Export and share your ${labels.offeringLower}.`,
-                                icon: <LuShare size={20} />
+                                description: 'Approve your official customer link when everything looks right.',
+                                icon: <LuLink size={20} />
                             },
                         ]}
                     />
                 </div>
+
+                <Typography.Text strong style={{ color: token.colorSuccess, textAlign: 'center' }}>
+                    Nothing is public until you approve it.
+                </Typography.Text>
 
                 <Flex gap={12} style={{ width: '100%', marginTop: 12 }} justify="center">
                     <Button size="large" onClick={onClose}>

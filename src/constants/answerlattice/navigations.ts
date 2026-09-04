@@ -188,6 +188,18 @@ export interface AnswerlatticeNavItem {
     subNav?: AnswerlatticeNavItem[];
 }
 
+export interface AnswerlatticePrimarySidebarItem {
+    route: string;
+    label?: string;
+    icon?: IconType;
+}
+
+export interface AnswerlatticePrimarySidebarSection {
+    key: string;
+    label: string;
+    items: AnswerlatticePrimarySidebarItem[];
+}
+
 export const ANSWERLATTICE_LAUNCH_SETUP_SUB_NAV: AnswerlatticeNavItem[] = [
     { key: 'launch-activation', label: 'Activation', route: ANSWERLATTICE_ROUTES.ACTIVATION, icon: LuRocket, managementOnly: true, requiredPermission: ANSWERLATTICE_PERMISSION_KEYS.VIEW_READINESS, featureFlag: 'ENABLE_ANSWERLATTICE_ACTIVATION_COMMAND_CENTER' },
     { key: 'launch-first-answers', label: 'First 10 Answers', route: ANSWERLATTICE_ROUTES.LAUNCH_ANSWERS, icon: LuClipboardCheck, managementOnly: true, requiredPermission: ANSWERLATTICE_PERMISSION_KEYS.MANAGE_GOVERNANCE, featureFlag: 'ENABLE_ANSWERLATTICE_ANSWER_TESTS' },
@@ -255,6 +267,71 @@ export const ANSWERLATTICE_SIDEBAR_NAV: AnswerlatticeNavItem[] = [
     { key: 'team', label: 'Team & Access', route: ANSWERLATTICE_ROUTES.TEAM, icon: LuUsers, group: 'team', managementOnly: true, requiredPermission: ANSWERLATTICE_PERMISSION_KEYS.MANAGE_TEAM, featureFlag: 'ENABLE_ANSWERLATTICE_STAFF_ACCESS', subNav: ANSWERLATTICE_TEAM_SUB_NAV },
     { key: 'billing', label: 'Billing', route: ANSWERLATTICE_ROUTES.BILLING, icon: LuCreditCard, group: 'billing', managementOnly: true, requiredPermission: ANSWERLATTICE_PERMISSION_KEYS.MANAGE_BILLING, subNav: ANSWERLATTICE_BILLING_SUB_NAV },
     { key: 'governance', label: ANSWERLATTICE_CUSTOMER_LANGUAGE.navigation.answerQuality, route: ANSWERLATTICE_ROUTES.GOVERNANCE, icon: LuShield, group: 'governance', managementOnly: true, requiredPermission: ANSWERLATTICE_PERMISSION_KEYS.MANAGE_GOVERNANCE, featureFlag: 'ENABLE_ANSWERLATTICE_GOVERNANCE_UI', subNav: ANSWERLATTICE_GOVERNANCE_SUB_NAV },
+];
+
+/**
+ * Founder-first navigation projection.
+ *
+ * The complete permission-filtered registry above remains authoritative. This
+ * projection controls only the always-visible grouped sidebar presentation;
+ * every other authorized route remains available through All tools.
+ */
+export const ANSWERLATTICE_PRIMARY_SIDEBAR_SECTIONS: AnswerlatticePrimarySidebarSection[] = [
+    {
+        key: 'get-live',
+        label: ANSWERLATTICE_CUSTOMER_LANGUAGE.navigation.getLive,
+        items: [
+            { route: ANSWERLATTICE_ROUTES.ACTIVATION },
+            { route: ANSWERLATTICE_ROUTES.LAUNCH_ANSWERS },
+            { route: ANSWERLATTICE_ROUTES.INSTALL_CENTER },
+            { route: ANSWERLATTICE_ROUTES.DASHBOARD },
+        ],
+    },
+    {
+        key: 'improve-answers',
+        label: ANSWERLATTICE_CUSTOMER_LANGUAGE.navigation.improveAnswers,
+        items: [
+            { route: getAnswerlatticeGovernanceRoute(ANSWERLATTICE_GOVERNANCE_TABS.ANSWERS) },
+            { route: getAnswerlatticeGovernanceRoute(ANSWERLATTICE_GOVERNANCE_TABS.SIGNAL_QUEUE) },
+            { route: getAnswerlatticeGovernanceRoute(ANSWERLATTICE_GOVERNANCE_TABS.DRIFT) },
+        ],
+    },
+    {
+        key: 'run-support',
+        label: ANSWERLATTICE_CUSTOMER_LANGUAGE.navigation.runSupport,
+        items: [
+            { route: ANSWERLATTICE_ROUTES.SUPPORT_ASSISTANT },
+            { route: ANSWERLATTICE_ROUTES.SUPPORT_BOARD },
+            { route: ANSWERLATTICE_ROUTES.TICKETS },
+        ],
+    },
+    {
+        key: 'customer-help',
+        label: ANSWERLATTICE_CUSTOMER_LANGUAGE.navigation.customerHelp,
+        items: [
+            {
+                route: getAnswerlatticeWidgetRoute(ANSWERLATTICE_WIDGET_TABS.UI),
+                label: 'Widget & Hosted Help',
+                icon: LuCode,
+            },
+        ],
+    },
+    {
+        key: 'workspace',
+        label: ANSWERLATTICE_CUSTOMER_LANGUAGE.navigation.workspace,
+        items: [
+            {
+                route: getAnswerlatticeTeamRoute(ANSWERLATTICE_TEAM_TABS.MEMBERS),
+                label: 'Team & Access',
+                icon: LuUsers,
+            },
+            {
+                route: ANSWERLATTICE_ROUTES.BILLING,
+                label: 'Billing',
+                icon: LuCreditCard,
+            },
+        ],
+    },
 ];
 
 // Group labels for sidebar section dividers

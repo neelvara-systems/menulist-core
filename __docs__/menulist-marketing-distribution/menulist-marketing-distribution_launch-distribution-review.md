@@ -60,7 +60,7 @@ Do not add `/global`, `/in`, `/ae`, `/us`, `/partners`, `/audit`, `/examples`, o
 | --- | --- | --- |
 | "WhatsApp-first, not WhatsApp-only" | Agree | Adopt as launch doctrine. WhatsApp is the strongest India/GCC/LATAM front door, not the whole product category. |
 | "Forward your current list. Make it official." | Agree with wording discipline | Use as campaign line. Public product copy should continue saying official customer link. |
-| Tuesday, August 11, 2026 Product Hunt date | Conditional | Valid target date. Do not schedule unless readiness gates pass by the one-month scheduling window. |
+| Product Hunt date | Unscheduled | The expired August 11, 2026 target is retired. Select a new day only after all six gates in `launch-research-2026-09-03/report-source.md` pass. |
 | "100 SMB Lists in 100 Hours" | Agree | Better than restaurant-only wording. Run only after intake capacity, permission script, tracking board, and proof workflow are ready. |
 | Old PDF Graveyard / QR Reality Check / Rate Card Roast / Market Walk | Agree | Use as content pillars with demo or permissioned examples only. No insulting real businesses. |
 | Public List Drift Score | Partial | Start as a manual audit worksheet, not an automated score, until inputs, risk labels, and claims are documented. No ranking promise. |
@@ -76,11 +76,13 @@ Do not add `/global`, `/in`, `/ae`, `/us`, `/partners`, `/audit`, `/examples`, o
 
 ---
 
-## Recommended Launch Target
+## Launch-Date Decision
 
-**Target date:** Tuesday, August 11, 2026  
-**Target time:** 12:01am Pacific / 12:31pm IST  
-**Status:** Recommended target, not scheduled.
+**Target date:** Unscheduled
+
+**Target time:** Decide with the date; the normal start-of-Pacific-day schedule is a default only when response coverage fits
+
+**Status:** No date until all six launch gates pass.
 
 Readiness gates before scheduling:
 
@@ -92,7 +94,10 @@ Readiness gates before scheduling:
 6. Manual follow-up board ready to tag chats, lists received, previews, approvals, public links, partner leads, and paid conversions.
 7. Founder has launch-day response blocks reserved.
 
-If these gates are not met by the Product Hunt scheduling window, move the launch. The date is useful only if the proof system is ready.
+Use the expanded six-gate decision in
+`launch-research-2026-09-03/report-source.md`. Select and schedule a date only
+after the proof system, product, intake capacity, identities, compliance,
+assets, measurement, and continuation plan are ready.
 
 ---
 

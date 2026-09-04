@@ -1,6 +1,6 @@
 # Decision Intelligence — Implementation
 
-**Last verified:** July 21, 2026
+**Last verified:** September 2, 2026
 **Authority:** Current codebase.
 
 **Launch boundary:** Not current launch certification or deploy approval. This implementation is local source evidence only; release still requires current production-readiness audit and External Certification Runbook evidence, `npm run verify:production-readiness-local`, `npm run verify:agent-readiness`, scoped scheduler deploy evidence, browser/mobile customer-menu QA, public-cache evidence, and production-host smoke.
@@ -14,6 +14,7 @@
 | Item boundary | `functions/src/intelligence/shared/itemExtractor.ts` | Current active catalog only; alias continuity; normalized bounded fields |
 | Scoring | `functions/src/decisionBlocksScoring.ts` | Eligible candidates, TTL, project projection, manual recovery |
 | Owner settings | `decisionBlocks.shared.ts` | One desktop/mobile settings shape and pin normalization |
+| Choice poster projection | `src/lib/printable-asset-templates/campaignPoster.ts` | Fail-closed projection of one saved explicit pin into the existing exact-item Campaign Poster renderer |
 | Public runtime | `DecisionBlocks.tsx` | TTL/data/availability/time-slot/duplicate/price/minimum-block gates |
 | Public route | `src/app/client/[[...slug]]/page.tsx` | Embedded projection load through tagged public cache |
 
@@ -43,6 +44,8 @@ project.publicDecisionBlocks = {
 ```
 
 The generated projection is not accepted from owner project mutation payloads.
+
+Saved explicit pins can be projected into a Campaign Poster without another database read. `buildDecisionChoiceCampaignPosterRenderInput()` reads the persisted pin from the already loaded project, resolves the current active/available item by ID or extraction alias, uses `getBlockLabels()` for the existing business-aware public headline, inherits the project/business parent theme, and reuses the canonical `?item=` destination. It returns `null` for automatic, disabled, missing, hidden, unavailable, unsupported, or linkless choices. The setting surfaces then reuse `CampaignPosterModal`; they do not create a poster document, campaign record, public projection, or completion side effect.
 
 ## Catalog-first extraction
 

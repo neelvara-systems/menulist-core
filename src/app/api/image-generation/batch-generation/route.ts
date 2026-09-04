@@ -20,6 +20,7 @@ import {
     reserveAiCapacity,
 } from "@lib/ai/capacityCheck";
 import { normalizeImageBatchJobId, normalizeImageBatchProjectId } from "@lib/ai/imageBatchIdBoundary";
+import { resolveImageSubjectProfileForGeneration } from '@lib/ai/imageSubjectProfiles';
 import {
     areImageBatchJsonValuesEquivalent,
     getImageBatchOperationId,
@@ -138,6 +139,7 @@ function summarizeBatchGenerationConfig(config: Record<string, unknown> | undefi
         hasNegativePrompt: Boolean(config?.negativePrompt),
         hasPrompt: typeof config?.prompt === 'string' && config.prompt.length > 0,
         hasReferenceImage: typeof referenceImage?.url === 'string' && referenceImage.url.length > 0,
+        hasSubjectProfile: typeof config?.subjectProfileId === 'string' && config.subjectProfileId.length > 0,
         isMultiMode: Boolean(config?.isMultiMode),
         lightingCount: Array.isArray(config?.lighting) ? config.lighting.length : 0,
         moodCount: Array.isArray(config?.moods) ? config.moods.length : 0,
@@ -323,6 +325,12 @@ export async function POST(request: Request) {
     }
 
     const { generationConfig, projectId: requestedProjectId, itemDetails, businessType, jobId: requestedJobId } = validation.data;
+    if (generationConfig.subjectProfileId && !FEATURE_FLAGS.ENABLE_AI_SUBJECT_PROFILES) {
+        return NextResponse.json(
+            { error: 'Saved person generation is temporarily unavailable.' },
+            { status: 503, headers: { 'Retry-After': '60' } },
+        );
+    }
     const projectScope = normalizeImageBatchProjectId(requestedProjectId);
     const jobId = normalizeImageBatchJobId(requestedJobId);
     if (!projectScope || !jobId) {
@@ -521,6 +529,15 @@ export async function POST(request: Request) {
             return NextResponse.json({ success: true, message: 'Image generation completed for this item.' }, { status: 200 });
         }
 
+        const subjectProfile = generationConfig.subjectProfileId
+            ? await resolveImageSubjectProfileForGeneration({
+                expectedVersion: generationConfig.subjectProfileVersion,
+                profileId: generationConfig.subjectProfileId,
+                sId,
+                tId,
+            })
+            : null;
+
         let promptCacheImage: GeneratedImagePayload | null = null;
         if (isImagePromptCacheEligible({ generationConfig, prompts: promptsToExecute })) {
             promptCacheImage = await copyCachedImagePromptToStore({
@@ -592,6 +609,7 @@ export async function POST(request: Request) {
                 logFile: LOG_FILE,
                 prompts: promptsToExecute,
                 referenceImageStorageScope: { sId, tId },
+                subjectReferences: subjectProfile?.references,
             });
         let generatedImages = promptRun.images;
         const generatedImagesResponse = promptRun.responses;

@@ -9,6 +9,7 @@
 
 import { FEATURE_FLAGS } from '@config/features';
 import { shareBrowserFile, type BrowserFileShareResult } from '@lib/export/browserFileShare';
+import { normalizePrintableTemplateFamilyId } from '@lib/printable-asset-templates/templateFamilies';
 import JSZip from 'jszip';
 import { loadLogo, PreloadedLogo } from './imageLoader';
 import { generateCounterSticker } from './templates/counterStickerTemplate';
@@ -25,28 +26,18 @@ import { getOfferingLabels } from './businessTypeLabels';
 import {
     buildMenuKitUrl,
     buildPrintInstructions,
+    MENU_KIT_ASSET_KEYS,
     MENU_KIT_UTM_SOURCES,
     MenuKitAsset,
+    type MenuKitAssetKey,
     MenuKitInput,
     MenuKitResult,
     normalizeMenuKitInput,
     validateMenuUrl,
 } from './types';
 
-export const MENU_KIT_ASSET_KEYS = [
-    'table_tent',
-    'counter_sticker',
-    'entrance_poster',
-    'delivery_bag',
-    'takeaway_card',
-    'instagram_story',
-    'whatsapp_status',
-    'google_maps',
-    'placement_guide',
-    'single_table_card',
-] as const;
-
-export type MenuKitAssetKey = typeof MENU_KIT_ASSET_KEYS[number];
+export { MENU_KIT_ASSET_KEYS };
+export type { MenuKitAssetKey };
 
 type PreparedMenuKitInput = MenuKitInput & { _logo: PreloadedLogo | null };
 
@@ -60,6 +51,22 @@ type MenuKitAssetDefinition = {
     suffix: string;
     utmMedium?: string;
 };
+
+export function resolveMenuKitAssetTemplateFamilyId(
+    input: Pick<MenuKitInput, 'templateFamilyId' | 'templateFamilyIds'>,
+    _assetKey: MenuKitAssetKey,
+): string | undefined {
+    const legacyTheme = MENU_KIT_ASSET_KEYS
+        .map((assetKey) => input.templateFamilyIds?.[assetKey])
+        .find(Boolean);
+    return normalizePrintableTemplateFamilyId(input.templateFamilyId || legacyTheme);
+}
+
+export function resolveMenuKitZipTemplateFamilyId(
+    input: Pick<MenuKitInput, 'templateFamilyId' | 'templateFamilyIds'>,
+): string | undefined {
+    return resolveMenuKitAssetTemplateFamilyId(input, 'table_tent');
+}
 
 const MENU_KIT_ASSET_DEFINITIONS: MenuKitAssetDefinition[] = [
     {
@@ -149,6 +156,24 @@ const MENU_KIT_ASSET_DEFINITIONS: MenuKitAssetDefinition[] = [
     },
 ];
 
+function assertCompleteMenuKitAssetRegistry(): void {
+    const definitionKeys = MENU_KIT_ASSET_DEFINITIONS.map(({ key }) => key);
+    const uniqueDefinitionKeys = new Set(definitionKeys);
+    const missingKeys = MENU_KIT_ASSET_KEYS.filter((key) => !uniqueDefinitionKeys.has(key));
+    const unknownKeys = definitionKeys.filter((key) => !MENU_KIT_ASSET_KEYS.includes(key));
+
+    if (
+        definitionKeys.length !== MENU_KIT_ASSET_KEYS.length
+        || uniqueDefinitionKeys.size !== definitionKeys.length
+        || missingKeys.length > 0
+        || unknownKeys.length > 0
+    ) {
+        throw new Error('Menu Kit asset registry must define every launch-pack asset exactly once');
+    }
+}
+
+assertCompleteMenuKitAssetRegistry();
+
 /**
  * Build per-surface input with UTM-tagged menuUrl if flag is enabled.
  * Falls back to plain menuUrl when UTM tracking is disabled.
@@ -215,10 +240,17 @@ async function prepareMenuKitInput(input: MenuKitInput): Promise<{
 function buildPreparedSurfaceInput(
     preparedInput: PreparedMenuKitInput,
     logo: PreloadedLogo | null,
+    assetKey: MenuKitAssetKey,
     utmMedium?: string,
 ): PreparedMenuKitInput {
     const surfaceInput = utmMedium ? buildSurfaceInput(preparedInput, utmMedium) : preparedInput;
-    return { ...surfaceInput, _logo: logo };
+    const templateFamilyId = resolveMenuKitAssetTemplateFamilyId(preparedInput, assetKey);
+    return {
+        ...surfaceInput,
+        ...(templateFamilyId ? { templateFamilyId } : {}),
+        templateFamilyIds: undefined,
+        _logo: logo,
+    };
 }
 
 async function renderMenuKitAsset(
@@ -230,7 +262,7 @@ async function renderMenuKitAsset(
     },
     preferredOutputFormat?: 'pdf' | 'png',
 ): Promise<MenuKitAsset> {
-    const assetInput = buildPreparedSurfaceInput(prepared.enrichedInput, prepared.logo, definition.utmMedium);
+    const assetInput = buildPreparedSurfaceInput(prepared.enrichedInput, prepared.logo, definition.key, definition.utmMedium);
     const useNativeImage = preferredOutputFormat === 'png' && Boolean(definition.generateImage);
     const blob = await (useNativeImage && definition.generateImage
         ? definition.generateImage(assetInput)
@@ -261,7 +293,8 @@ export async function generateMenuKitAsset(
 }
 
 /**
- * Generate complete Menu Kit with all assets + ZIP bundle
+ * Generate the complete 10-asset deployment pack plus print instructions.
+ * Purpose-specific printable assets remain in their context-owning workflows.
  */
 export async function generateMenuKit(input: MenuKitInput): Promise<MenuKitResult> {
     const prepared = await prepareMenuKitInput(input);
@@ -288,7 +321,7 @@ export async function generateMenuKit(input: MenuKitInput): Promise<MenuKitResul
         zipBlob,
         zipFilename: buildMenuKitZipFilename(
             prepared.enrichedInput.storeName,
-            prepared.enrichedInput.templateFamilyId,
+            resolveMenuKitZipTemplateFamilyId(prepared.enrichedInput),
         ),
     };
 }

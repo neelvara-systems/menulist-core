@@ -28,6 +28,10 @@ import {
 } from '../utils/mobileOwnerDiagnostics';
 import { AUTH_BROWSER_REQUEST_POLICY } from '@lib/auth/browserRequestPolicy';
 import { type TempStatusAction, readTempStatusResponse } from '@lib/tempStatus/clientResponse';
+import {
+    getTempStatusDraftIssue,
+    getTempStatusDraftIssueMessage,
+} from '@lib/tempStatus/draftValidation';
 import { useActiveTempStatus } from '@hook/useActiveTempStatus';
 import { getBoundedErrorStatus, getBoundedErrorCode } from '@lib/monitoring/boundedLogContext';
 
@@ -106,6 +110,13 @@ function MobileTempStatusScreenContent({ onBack }: MobileTempStatusScreenProps) 
     const previewMessage = statusType === 'custom'
         ? (customMessage.trim() || 'Enter a custom message')
         : (MOBILE_TEMP_STATUS_OPTIONS.find((option) => option.value === statusType)?.defaultMsg || statusType);
+    const draftExpiresAt = fromNativeDateTimeInputValue(exactExpiryAt);
+    const draftIssue = getTempStatusDraftIssue({
+        customMessage,
+        expiresAt: draftExpiresAt,
+        statusType,
+    });
+    const draftIssueMessage = draftIssue ? getTempStatusDraftIssueMessage(draftIssue) : undefined;
 
     const handleSet = useCallback(async () => {
         if (
@@ -113,14 +124,15 @@ function MobileTempStatusScreenContent({ onBack }: MobileTempStatusScreenProps) 
             || !storeDetails?.storeId
             || tempStatusActionInFlightRef.current
         ) return;
-        if (statusType === 'custom' && !customMessage.trim()) {
-            Toast.show({ content: 'Enter a custom message.', duration: 2000 });
-            return;
-        }
         const sourceStoreDetails = storeDetails;
         const expectedTenantId = sourceStoreDetails.tenantId;
         const expectedStoreId = sourceStoreDetails.storeId;
         const expiresAt = fromNativeDateTimeInputValue(exactExpiryAt);
+        const currentDraftIssue = getTempStatusDraftIssue({ customMessage, expiresAt, statusType });
+        if (currentDraftIssue) {
+            Toast.show({ content: getTempStatusDraftIssueMessage(currentDraftIssue), duration: 2000 });
+            return;
+        }
         const exactExpiryDate = toDate(expiresAt);
         if (!exactExpiryAt || Number.isNaN(exactExpiryDate.getTime()) || exactExpiryDate.getTime() <= Date.now()) {
             Toast.show({ content: 'Choose a future end date and time.', duration: 2000 });
@@ -336,6 +348,8 @@ function MobileTempStatusScreenContent({ onBack }: MobileTempStatusScreenProps) 
                         expiryLabel={t('expiresAfter')}
                         expiresLabel={t('expires')}
                         expiryOptions={MOBILE_TEMP_STATUS_EXPIRY_OPTIONS}
+                        draftIssue={draftIssue}
+                        draftIssueMessage={draftIssueMessage}
                         isActive={isActive}
                         isLoading={isLoading}
                         onClear={() => void handleClear()}

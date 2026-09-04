@@ -383,6 +383,7 @@ type ListProps = {
 };
 
 type ListItemProps = {
+    'aria-pressed'?: boolean;
     arrow?: boolean;
     children?: ReactNode;
     description?: ReactNode;
@@ -401,7 +402,7 @@ function ListComponent({ children, className, style }: ListProps) {
     );
 }
 
-function ListItem({ arrow, children, description, extra, onClick, prefix, style, title }: ListItemProps) {
+function ListItem({ 'aria-pressed': ariaPressed, arrow, children, description, extra, onClick, prefix, style, title }: ListItemProps) {
     const { token } = theme.useToken();
     const handleKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
         if (!onClick || (event.key !== 'Enter' && event.key !== ' ')) return;
@@ -411,6 +412,7 @@ function ListItem({ arrow, children, description, extra, onClick, prefix, style,
 
     return (
         <AntList.Item
+            aria-pressed={ariaPressed}
             extra={(
                 <Flex align="center" gap={8}>
                     {extra}
@@ -1251,7 +1253,10 @@ export function Picker({
 }
 
 export function Input({
+    'aria-describedby': ariaDescribedBy,
+    'aria-invalid': ariaInvalid,
     'aria-label': ariaLabel,
+    'aria-required': ariaRequired,
     autoCapitalize,
     autoComplete,
     autoFocus,
@@ -1272,7 +1277,10 @@ export function Input({
     type,
     value,
 }: {
+    'aria-describedby'?: string;
+    'aria-invalid'?: React.AriaAttributes['aria-invalid'];
     'aria-label'?: string;
+    'aria-required'?: React.AriaAttributes['aria-required'];
     autoCapitalize?: string;
     autoComplete?: string;
     autoFocus?: boolean;
@@ -1321,7 +1329,10 @@ export function Input({
 
     return (
         <AntInput
+            aria-describedby={ariaDescribedBy}
+            aria-invalid={ariaInvalid}
             aria-label={ariaLabel}
+            aria-required={ariaRequired}
             autoCapitalize={autoCapitalize}
             autoComplete={autoComplete}
             autoFocus={autoFocus}

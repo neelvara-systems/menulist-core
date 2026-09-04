@@ -15,6 +15,7 @@ const navLine = key => navigation.split('\n').find(line => line.includes(`{ key:
 const language = read('src/constants/answerlattice/customerLanguage.ts');
 const navigation = read('src/constants/answerlattice/navigations.ts');
 const sidebar = read('src/components/answerlattice/AnswerlatticeSidebar.tsx');
+const sidebarProjection = read('src/lib/answerlattice/sidebarNavigation.ts');
 const activation = read('src/components/templates/answerlattice/activation/AnswerlatticeActivationCommandCenter.tsx');
 const setupStatus = read('src/app/(answerlattice)/answerlattice/dashboard/page.tsx');
 const onboarding = read('src/app/sites/answerlattice/get-started/OnboardingForm.tsx');
@@ -42,7 +43,11 @@ const packageJson = JSON.parse(read('package.json'));
 
 for (const value of [
     "getLive: 'Get Live'",
+    "improveAnswers: 'Improve answers'",
     "runSupport: 'Run Support'",
+    "customerHelp: 'Customer help'",
+    "workspace: 'Workspace'",
+    "advanced: 'Advanced'",
     "answerQuality: 'Answer Quality'",
     "trustedAnswers: 'Trusted Answers'",
     "productTopics: 'Product Topics'",
@@ -124,21 +129,33 @@ includes(ownerSupportAssistant, "label: 'Open Setup Status'", 'Daily Brief readi
 includes(ownerSupportAssistant, "label: 'Open Get Live'", 'Daily Brief install action');
 
 for (const value of [
-    'const [revealedToolGroups, setRevealedToolGroups]',
+    'const [allToolsRevealed, setAllToolsRevealed]',
     'const authorizedNav = useMemo',
     'subNav: nav.subNav?.filter(canShowNavItem)',
-    'revealedToolGroups[nav.route] === true || hasActiveAdvancedTool',
-    'key: `${nav.route}::all-tools`',
+    'const authorizedItems = useMemo',
+    'projectAnswerlatticeSidebarNavigation(authorizedItems, selectedKey, allToolsRevealed)',
+    "key: 'answerlattice-all-tools'",
+    'sectionLabel: ANSWERLATTICE_CUSTOMER_LANGUAGE.navigation.advanced',
     'ANSWERLATTICE_CUSTOMER_LANGUAGE.navigation.showFewerTools',
     'ANSWERLATTICE_CUSTOMER_LANGUAGE.navigation.allTools',
-    'setRevealedToolGroups',
+    'setAllToolsRevealed',
 ]) {
     includes(sidebar, value, 'permission-aware All tools sidebar');
 }
 assert(
-    sidebar.indexOf('const authorizedNav = useMemo') < sidebar.indexOf('const visibleNav = useMemo'),
-    'sidebar must authorize navigation before applying progressive disclosure',
+    sidebar.indexOf('const authorizedNav = useMemo') < sidebar.indexOf('const authorizedItems = useMemo')
+        && sidebar.indexOf('const authorizedItems = useMemo') < sidebar.indexOf('projectAnswerlatticeSidebarNavigation(authorizedItems, selectedKey, allToolsRevealed)'),
+    'sidebar must authorize navigation before applying grouped presentation',
 );
+for (const value of [
+    'ANSWERLATTICE_PRIMARY_SIDEBAR_SECTIONS',
+    'const primarySections = ANSWERLATTICE_PRIMARY_SIDEBAR_SECTIONS',
+    'const advancedItems = authorizedItems.filter',
+    'const activeAdvancedItem = advancedItems.find',
+    'const visibleAdvancedItems = allToolsRevealed',
+]) {
+    includes(sidebarProjection, value, 'permission-filtered navigation projection');
+}
 for (const forbidden of ['localStorage', 'sessionStorage', 'fetch(', 'getDocs(', 'onSnapshot(', '@google/genai']) {
     excludes(sidebar, forbidden, 'local-only All tools sidebar');
 }
@@ -166,7 +183,10 @@ for (const value of [
 
 for (const value of [
     'ANSWERLATTICE_CUSTOMER_LANGUAGE.navigation.getLive',
+    'ANSWERLATTICE_CUSTOMER_LANGUAGE.navigation.improveAnswers',
     'ANSWERLATTICE_CUSTOMER_LANGUAGE.navigation.runSupport',
+    'ANSWERLATTICE_CUSTOMER_LANGUAGE.navigation.customerHelp',
+    'ANSWERLATTICE_CUSTOMER_LANGUAGE.navigation.workspace',
     'ANSWERLATTICE_CUSTOMER_LANGUAGE.navigation.answerQuality',
     'ANSWERLATTICE_CUSTOMER_LANGUAGE.knowledge.trustedAnswers',
     'ANSWERLATTICE_CUSTOMER_LANGUAGE.knowledge.productTopics',
@@ -255,10 +275,10 @@ excludes(language, '@google/genai', 'customer-language static contract');
 includes(languageDoc, 'No Firestore reads, writes, listeners, collections, indexes, Functions, Storage objects, or AI calls', 'customer-language cost boundary');
 includes(languageDoc, 'Internal routes, schemas, permissions, feature flags, event names, and stored fields do not change', 'customer-language architecture boundary');
 includes(languageDoc, 'The reveal is local presentation state', 'customer-language local reveal boundary');
-includes(activationHelp, 'Select **All tools** inside a group', 'Activation All tools guidance');
+includes(activationHelp, 'Select **All tools** in the **Advanced** section', 'Activation All tools guidance');
 includes(activationHelp, '**Copy coding-agent install**', 'Activation coding-agent guidance');
 includes(activationFirebase, 'Compact navigation and All tools are static projections', 'Activation navigation cost boundary');
-includes(activationMobile, 'All tools expands only the selected group', 'Activation mobile navigation contract');
+includes(activationMobile, 'All tools expands the complete authorized advanced list', 'Activation mobile navigation contract');
 includes(activationTests, 'All tools is built after permission and feature-flag filtering', 'Activation permission test contract');
 assert(
     packageJson.scripts?.['verify:answerlattice-customer-language']

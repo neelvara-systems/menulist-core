@@ -26,6 +26,7 @@ const OWNER_VISIBLE_STATUS_VALUES = new Set<BatchImageGenerationJobStatusType>([
 const IMAGE_ASPECT_RATIOS = new Set(['1:1', '16:9', '9:16', '4:3', '3:4']);
 const IMAGE_BATCH_MAX_IMAGE_BYTES = 15 * 1024 * 1024;
 const IMAGE_BATCH_IMAGE_MIME_TYPES = new Set<string>(MEDIA_ACCEPTED_IMAGE_MIME_TYPES);
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 type ExpectedImageBatchClientScope = {
     projectId?: unknown;
@@ -190,6 +191,16 @@ export function normalizeImageBatchGenerationConfig(
         if (referenceImage === undefined) return null;
         result.referanceImage = referenceImage;
     }
+    if (value.subjectProfileId !== undefined) {
+        const subjectProfileId = normalizeOptionalString(value.subjectProfileId, 160);
+        if (subjectProfileId === null || (subjectProfileId !== undefined && subjectProfileId !== '' && !UUID_PATTERN.test(subjectProfileId))) return null;
+        result.subjectProfileId = subjectProfileId || null;
+    }
+    if (value.subjectProfileVersion !== undefined) {
+        if (value.subjectProfileVersion !== null && (!Number.isSafeInteger(value.subjectProfileVersion) || Number(value.subjectProfileVersion) < 1)) return null;
+        result.subjectProfileVersion = value.subjectProfileVersion === null ? null : Number(value.subjectProfileVersion);
+    }
+    if (Boolean(result.subjectProfileId) !== Boolean(result.subjectProfileVersion)) return null;
 
     return result;
 }

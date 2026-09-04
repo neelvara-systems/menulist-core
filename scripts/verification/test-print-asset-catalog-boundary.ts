@@ -5,7 +5,7 @@ import {
     PRINT_ASSET_MENU_KIT_INDEX,
     getPrintAssetById,
 } from '../../src/lib/print-assets/printAssetCatalog';
-import { PRINTABLE_ASSET_TYPES } from '../../src/lib/printable-asset-templates/assetTypes';
+import { PRINTABLE_ASSET_CATALOG_TYPES, PRINTABLE_ASSET_TYPES } from '../../src/lib/printable-asset-templates/assetTypes';
 import {
     renderPrintableAsset,
     renderPrintableAssetDownloadFiles,
@@ -16,6 +16,17 @@ const catalogIds = PRINT_ASSET_CATALOG.map(({ id }) => id);
 
 assert.deepEqual(catalogIds, runtimeIds, 'compatibility catalog IDs must exactly follow the active runtime registry');
 assert.equal(new Set(catalogIds).size, catalogIds.length, 'print asset IDs must remain unique');
+assert.ok(runtimeIds.includes('product_tag'), 'Product Tag remains a canonical renderable asset type');
+assert.equal(
+    PRINTABLE_ASSET_CATALOG_TYPES.some(({ id }) => id === 'product_tag'),
+    false,
+    'context-free owner asset rail excludes Product Tag because it requires a source item',
+);
+assert.equal(
+    PRINTABLE_ASSET_TYPES.find(({ id }) => id === 'product_tag')?.menuKitAssetKey,
+    undefined,
+    'Complete Menu Kit cannot render a context-free Product Tag',
+);
 
 for (const runtimeAsset of PRINTABLE_ASSET_TYPES) {
     const catalogAsset = getPrintAssetById(runtimeAsset.id);

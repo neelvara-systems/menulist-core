@@ -18,6 +18,7 @@ import {
 import { formatClockTime } from '@util/dateTime';
 import { getStoreDayKey, getStoreLocalDateKey } from '@lib/hours/hoursEngine';
 import { getSpecialHoursEntry } from '@lib/hours/specialHours';
+import { buildTelHref } from '@lib/phone/phoneNumber';
 import type { StoreSpecialHours } from '@type/platform/store';
 
 export interface MessageTemplateInput {
@@ -58,6 +59,9 @@ export function generateMessageTemplates(input: MessageTemplateInput): MessageTe
     const templates: MessageTemplate[] = [];
     const offeringReference = getOfferingReference(labels.offeringLower, input.projectName);
     const offeringTitleReference = getOfferingReference(labels.offeringTitle, input.projectName);
+    const shareablePhone = input.phone && buildTelHref({ phoneNumber: input.phone })
+        ? input.phone.trim()
+        : undefined;
 
     // Template 1: Quick Reply (Primary — most used)
     templates.push({
@@ -92,7 +96,7 @@ export function generateMessageTemplates(input: MessageTemplateInput): MessageTe
             input.obpLink,
         ];
         if (input.address) officialPageLines.push('', `📍 ${input.address}`);
-        if (input.phone) officialPageLines.push(`📞 ${input.phone}`);
+        if (shareablePhone) officialPageLines.push(`📞 ${shareablePhone}`);
         if (input.isClosedToday) {
             officialPageLines.push('🕐 Closed today');
         } else if (input.todayHours) {
@@ -171,7 +175,7 @@ export function generateMessageTemplates(input: MessageTemplateInput): MessageTe
     const infoLines = [`*${input.storeName}*`, ''];
     infoLines.push(`*${offeringTitleReference}:* ${input.menuLink}`);
     if (input.address) infoLines.push(`📍 ${input.address}`);
-    if (input.phone) infoLines.push(`📞 ${input.phone}`);
+    if (shareablePhone) infoLines.push(`📞 ${shareablePhone}`);
     if (input.isClosedToday) {
         infoLines.push('🕐 Closed today');
     } else if (input.todayHours) {

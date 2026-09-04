@@ -1,7 +1,7 @@
 # Decision Intelligence — Product Specification
 
 **Public name:** Featured Choices
-**Last verified:** July 21, 2026
+**Last verified:** September 2, 2026
 **Status:** Local source-complete for the audited feature; not current launch certification. Firebase QA deployment and release certification remain pending.
 
 This spec is not production approval. Current release clearance still requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md) evidence, scoped scheduler deploy evidence, browser/device/customer-menu QA, public-cache evidence, and production-host smoke.
@@ -71,9 +71,12 @@ Desktop and mobile expose the same controls when `FEATURE_FLAGS.ENABLE_DECISION_
 - show or hide each business-category-supported choice;
 - select one current item for a choice;
 - clear the selection to return to automatic choice; and
-- save through the shared project mutation boundary.
+- save through the shared project mutation boundary; and
+- after that saved truth settles, preview, edit, and download the existing Campaign Poster for the explicit choice from the same setting surface.
 
 An owner-selected item still must be active, available, inside its category time slot, supported by the business category, not duplicated in another rendered choice, and priced when used for Value choice. If it cannot be shown, another eligible automatic choice may appear; otherwise that choice stays hidden.
+
+The static poster path is narrower than public runtime fallback: it is available only for a saved explicit pin, never for automatic selection. It uses the existing business-aware public block label, current localized item name and optional description, selected parent theme, and canonical exact-item URL. Missing, hidden, unavailable, disabled, unsupported, unsaved, or linkless input fails closed. No new Decision Intelligence read/write, poster record, generated-file persistence, or campaign completion state is introduced.
 
 ## Runtime stale behavior
 
@@ -112,6 +115,7 @@ An owner-selected item still must be active, available, inside its category time
 - Automatic popular wording is neutral and has per-item behavioral evidence.
 - Scheduler and manual writes invalidate public cache once per affected store.
 - Desktop and mobile controls use one settings shape and are feature-gated.
+- Desktop and mobile saved explicit pins open one shared Campaign Poster preview/editor/download contract; automatic and unsaved choices cannot print.
 - Public output stays available only while safe, current, and eligible.
 
 Historical pre-audit specification: `_archive/pre-2026-07-16/decision-intelligence_spec.md`.

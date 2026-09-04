@@ -12,6 +12,7 @@ import { getMediaProfileAcceptAttribute } from '@lib/media/imageProfiles';
 import { prepareMediaImage, toPreparedUploadName, type MediaImageCropIntent } from '@lib/media/prepareMediaImage';
 import { DEFAULT_PHONE_COUNTRY_CODE, getDialCodeForCountry, getUniquePhoneCountries, normalizePhoneNumberForStorage } from '@lib/phone/phoneNumber';
 import { normalizeGeoCoordinateDraft } from '@lib/businessIdentity/geoCoordinates';
+import { isValidOptionalContactEmail, normalizeOptionalContactEmail } from '@lib/validation/optionalContactEmail';
 import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useCallback, useContext, useEffect, useRef, useState } from 'react';
@@ -171,6 +172,16 @@ function MobileBasicSettingsScreenContent({ onBack }: MobileBasicSettingsScreenP
             Toast.show({ content: t('businessNameRequired'), duration: 1500 });
             return;
         }
+        const normalizedBusinessEmail = normalizeOptionalContactEmail(formData.email);
+        if (!isValidOptionalContactEmail(normalizedBusinessEmail)) {
+            Toast.show({ content: 'Enter a valid business email address.', duration: 1800 });
+            return;
+        }
+        const normalizedContactEmail = normalizeOptionalContactEmail(formData.contactPersonEmail);
+        if (!isValidOptionalContactEmail(normalizedContactEmail)) {
+            Toast.show({ content: 'Enter a valid contact person email address.', duration: 1800 });
+            return;
+        }
 
         const normalizedGeo = normalizeGeoCoordinateDraft(formData.latitude, formData.longitude);
         if (!normalizedGeo.ok) {
@@ -191,14 +202,14 @@ function MobileBasicSettingsScreenContent({ onBack }: MobileBasicSettingsScreenP
             businessCategory,
             businessType: formData.businessType,
             city: formData.city,
-            contactPersonEmail: formData.contactPersonEmail,
+            contactPersonEmail: normalizedContactEmail,
             contactPersonName: formData.contactPersonName,
             contactPersonNumber: formData.contactPersonNumber,
             country: formData.country,
             countryCode: normalizedPhone.phone ? normalizedPhone.countryCode : formData.countryCode,
             dialCode: normalizedPhone.phone ? normalizedPhone.dialCode : formData.dialCode,
             district: formData.district,
-            email: formData.email,
+            email: normalizedBusinessEmail,
             gstn: formData.gstn,
             name: formData.name.trim(),
             tenantName: formData.tenantName.trim(),

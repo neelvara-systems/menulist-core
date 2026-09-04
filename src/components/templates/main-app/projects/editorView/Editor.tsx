@@ -1402,6 +1402,7 @@ function Editor({ selectedProject, onRemove, addFileButton, initialQualityAction
                         selectedItemId={selectedItemId}
                         setSelectedItemId={setSelectedItemId}
                         itemStates={itemStates}
+                        categoryStates={categoryStates}
                         isMasterLinked={isMasterLinked}
                     />
                 )}
@@ -1419,6 +1420,7 @@ function Editor({ selectedProject, onRemove, addFileButton, initialQualityAction
                         setSelectedItemId={setSelectedItemId}
                         keyboardSelectedCategoryId={keyboardSelectedCategoryId}
                         itemStates={itemStates}
+                        categoryStates={categoryStates}
                         isMasterLinked={isMasterLinked}
                     />
                 )}
@@ -1437,6 +1439,7 @@ function Editor({ selectedProject, onRemove, addFileButton, initialQualityAction
                         setProjectData={setProjectData}
                         onImageUpload={onImageUpload}
                         itemStates={itemStates}
+                        categoryStates={categoryStates}
                         isMasterLinked={isMasterLinked}
                     />
                 )}
@@ -1609,8 +1612,10 @@ function Editor({ selectedProject, onRemove, addFileButton, initialQualityAction
                     projectData={projectData}
                     businessType={storeDetails?.businessType || tenantDetails?.businessType}
                     businessCategory={storeDetails?.businessCategory}
+                    hasUnsavedProjectChanges={hasChanges || isSaving}
                     onClose={() => setIsDecisionBlocksModalOpen(false)}
                     onApply={stageProjectUpdateForPersistence}
+                    storeDetails={storeDetails}
                 />
             ) : null}
 

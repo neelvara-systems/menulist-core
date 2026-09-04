@@ -1177,21 +1177,22 @@ export default function AnswerlatticeWidgetManagement({ embeddedMobile = false, 
             activePathTab !== nextTab
         );
 
-        if (shouldNormalizeRoute) {
+        if (!embeddedMobile && shouldNormalizeRoute) {
             router.replace(
                 toAnswerlatticeDashboardRoute(getAnswerlatticeWidgetRoute(nextTab), currentHostname),
                 { scroll: false },
             );
         }
-    }, [currentHostname, legacyRequestedTab, normalizedPathname, requestedTab, router]);
+    }, [currentHostname, embeddedMobile, legacyRequestedTab, normalizedPathname, requestedTab, router]);
 
     const handleTabChange = useCallback((key: string) => {
         setActiveTab(key);
+        if (embeddedMobile) return;
         router.replace(
             toAnswerlatticeDashboardRoute(getAnswerlatticeWidgetRoute(key), currentHostname),
             { scroll: false },
         );
-    }, [currentHostname, router]);
+    }, [currentHostname, embeddedMobile, router]);
 
     if (loading) {
         return <Skeleton active paragraph={{ rows: 8 }} />;

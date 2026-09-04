@@ -453,7 +453,7 @@ const BatchImageGenerationResultView: FC<BatchImageGenerationResultViewProps> = 
                     )
                 )}
 
-                <Divider orientation="left" style={{ margin: 0 }}>Generated Images</Divider>
+                <Divider orientation="left" style={{ margin: 0 }}>Generated photos</Divider>
 
                 {Boolean(activeJobData?.itemsList?.length) &&
                     <Card size='small'>
@@ -468,17 +468,16 @@ const BatchImageGenerationResultView: FC<BatchImageGenerationResultViewProps> = 
                                 item.images.map((image, imageIndex) => (
                                     <Card
                                         key={`${item.id}-${image.uid || imageIndex}`}
-                                        onClick={(e) => {
-                                            handleImageSelect(itemIndex, imageIndex);
-                                            e.stopPropagation();
-                                        }}
                                         variant="outlined"
                                         size='small'
-                                        hoverable
                                         style={{ width: isMobile ? '100%' : "calc(50% - 8px)" }}
                                     >
                                         <Flex align="center" gap={16} style={{ width: '100%' }}>
-                                            <Checkbox checked={image.isSelected} />
+                                            <Checkbox
+                                                aria-label={`${image.isSelected ? 'Deselect' : 'Select'} generated photo for ${item.name}`}
+                                                checked={image.isSelected}
+                                                onChange={() => handleImageSelect(itemIndex, imageIndex)}
+                                            />
                                             <Image
                                                 preview={{ mask: <LuEye size={24} /> }}
                                                 src={image.url}
@@ -514,7 +513,7 @@ const BatchImageGenerationResultView: FC<BatchImageGenerationResultViewProps> = 
                                 onClick={onUploadGeneratedImages}
                                 disabled={!activeJobData?.itemsList?.some(item => item.images.some(img => img.isSelected))}
                             >
-                                Upload {totalSelectedImages} Image{totalSelectedImages !== 1 ? 's' : ''}
+                                Add {totalSelectedImages} selected photo{totalSelectedImages !== 1 ? 's' : ''}
                             </Button>
                         </Flex>
                     )}
@@ -529,7 +528,7 @@ const BatchImageGenerationResultView: FC<BatchImageGenerationResultViewProps> = 
                     <Button key="confirm" ghost danger icon={<LuX />} onClick={() => handleCancelJob("cancel")}>Yes, Cancel</Button>,
                     <Fragment key="upload">
                         {Boolean(activeJobData?.itemsList?.some(item => item.images.some(img => img.isSelected))) && (
-                            <Button key="upload" type="primary" icon={<LuUploadCloud />} onClick={() => handleCancelJob("upload")}>Upload Selected & Cancel</Button>
+                            <Button key="upload" type="primary" icon={<LuUploadCloud />} onClick={() => handleCancelJob("upload")}>Add selected photos and cancel</Button>
                         )}
                     </Fragment>
                 ]}

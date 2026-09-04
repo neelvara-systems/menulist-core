@@ -1,6 +1,6 @@
 # Decision Intelligence (Featured Choices)
 
-**Last verified:** July 16, 2026
+**Last verified:** September 2, 2026
 **Source status:** Local source-complete for item 15; Firebase QA deployment, browser/device QA, and release certification remain pending.
 
 **Launch boundary:** Not current launch certification or deploy approval. Source completion still requires current production-readiness audit and External Certification Runbook evidence, `npm run verify:production-readiness-local`, `npm run verify:agent-readiness`, scoped scheduler deploy evidence, browser/mobile customer-menu QA, public-cache evidence, and production-host smoke before release.
@@ -28,6 +28,8 @@ eligible Featured section or no section
 ```
 
 Owner controls live at `project.menuSettings.decisionBlocks`. Generated output lives at `project.publicDecisionBlocks`; owner project writes strip the generated field.
+
+For a saved explicit Featured, Quick, or Value pin, the same desktop/mobile owner setting also exposes the existing MenuList Campaign Poster preview/edit/download flow. The poster uses the business-aware public choice label, current localized item truth, selected parent theme, and canonical exact-item URL. Automatic or unsaved choices cannot produce a static poster because their public item is not stable enough for print. This reuses the loaded project/store context and creates no Decision Intelligence read, write, projection, or scheduler path.
 
 ## Current guarantees
 

@@ -7,7 +7,7 @@
 | Shared module has no CampaignCue imports except provider folder | Base editor stays product-neutral. |
 | Feature flags exist | Shared and CampaignCue flags can disable editor surfaces. |
 | Fabric dependency exists | `fabric@7.4.0` is installed and its bundled TypeScript declarations are used; `@types/fabric` stays absent. |
-| Fabric 7 runtime boundary | `npm run verify:creative-editor-smoke` checks left/top origin compatibility, custom clone metadata, Promise APIs, filters, coordinate-safe group/ungroup, collection stacking, PNG export, and async disposal. |
+| Fabric 7 runtime boundary | `npm run verify:creative-editor-smoke` checks left/top origin compatibility, the lowercase `activeselection` runtime type, custom clone metadata, Promise APIs, filters, coordinate-safe group/ungroup, collection stacking, PNG export, and async disposal. |
 | CampaignCue verifier includes editor checks | `npm run verify:campaigncue` catches missing integration. |
 | Design Cue panel is neutral | `DesignCuePanel.tsx` imports shared editor types only and no CampaignCue product types. |
 | Bounded failure notices | `npm run verify:campaigncue` confirms editor runtime/provider/callback failures use `showCreativeEditorFailure()` and do not surface raw exception text in notices or AI findings. |
@@ -15,7 +15,7 @@
 | Full shell verifier | `npm run verify:campaigncue` checks rail, drawer, inspector, bottom controls, dark theme styles, and product-neutral shared defaults. |
 | Smoke QA verifier | `npm run verify:creative-editor-smoke` checks the internal smoke route, stress variant, QA selectors, focus restoration, and documentation guardrails. |
 | Internal smoke route | `/creative-editor-smoke` renders only outside production and returns 404 in production. |
-| Browser smoke QA route | `/creative-editor-smoke?qa=1` completes with `data-creative-editor-qa-status="passed"` after validating real canvas paint, top-bar toggles, rail switching, drawer insertions, keyboard creation shortcuts, floating toolbar anchoring, modal focus, preview export, layer panel rows, text-field focus retention, and staged Escape. |
+| Browser smoke QA route | `/creative-editor-smoke?qa=1` completes with `data-creative-editor-qa-status="passed"` after validating real canvas paint, top-bar toggles, rail switching, drawer insertions, keyboard creation shortcuts, Fabric multi-select distribution/duplicate/delete/group/ungroup, floating toolbar anchoring, both shortcut close paths, preview export, layer panel rows, text-field focus retention, and staged Escape. |
 | Browser stress QA route | `/creative-editor-smoke?qa=1&variant=stress` completes with `data-creative-editor-qa-status="passed"` while rendering a large mixed-layer design. |
 | MyCodex local preview route | `http://localhost:3000/__mycodex/creative-editor-test` renders only when `FEATURE_FLAGS.ENABLE_CAMPAIGNCUE_EDITOR_TEST_ROUTE` is enabled; otherwise it fails closed. |
 

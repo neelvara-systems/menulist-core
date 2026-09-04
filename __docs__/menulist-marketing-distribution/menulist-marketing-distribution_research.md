@@ -59,7 +59,7 @@ Research-backed guardrail:
 
 | Finding | Source | MenuList implication |
 | --- | --- | --- |
-| Product Hunt says 12:01am Pacific gives a full 24-hour homepage cycle and launches can be scheduled up to one month ahead. | https://www.producthunt.com/launch/preparing-for-launch | Tuesday, August 11, 2026 at 12:01am Pacific / 12:31pm IST is a valid target only if readiness gates pass before scheduling. |
+| Product Hunt says the best day is when the maker is prepared; its normal start-of-Pacific-day schedule provides the full daily cycle, and launches can be scheduled up to one month ahead. | https://www.producthunt.com/launch/preparing-for-launch | The expired August 11, 2026 target is retired. Choose a new day only after the six launch gates pass and use the normal start time only when response coverage fits. |
 | Product Hunt says makers can hunt their own products and warns not to ask directly for upvotes. | https://www.producthunt.com/launch | Founder-led Product Hunt launch is acceptable. Outreach should ask for feedback, comments, or real product action, not votes. |
 | Product Hunt preparation materials call for a direct URL, clear tagline, thumbnail, gallery, video, maker comment, pricing, and promo details. | https://www.producthunt.com/launch/preparing-for-launch | Current asset pack is useful but incomplete until final visuals, video, launch URL, offer, and response coverage exist. |
 | Hacker News Show HN guidelines require something users can try and say not to submit landing pages, lists, fundraisers, or signup/email-gated demos. | https://news.ycombinator.com/showhn.html | Show HN should wait for public demo pages or a tryable flow, not the Product Hunt landing page. |
@@ -131,7 +131,9 @@ Market-pod decision:
 - Use paid ads only after funnel measurement is live.
 - Use WhatsApp-first, not WhatsApp-only, as the launch-channel doctrine.
 - Use market pods for international acquisition instead of launching everywhere at once.
-- Treat Tuesday, August 11, 2026 as a conditional Product Hunt target, not a scheduled launch.
+- Keep Product Hunt unscheduled until the six gates in
+  `launch-research-2026-09-03/report-source.md` pass. Readiness and response
+  coverage outrank weekday folklore.
 
 ### Modified
 

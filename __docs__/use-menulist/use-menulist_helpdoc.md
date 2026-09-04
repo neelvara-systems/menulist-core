@@ -6,13 +6,13 @@
 
 ### Share your menu link
 
-1. Open **Use MenuList** from the sidebar
+1. Open **Share** from the sidebar
 2. Tap **Copy Menu Link**
 3. Paste it in WhatsApp, Instagram bio, or Google Business Profile
 
 ### Set up digital screens
 
-1. Open **Use MenuList**
+1. Open **Share**
 2. Copy the **Menu Board** link
 3. Open the link on your TV's browser
 4. Enable fullscreen. Saved menu changes refresh on the screen after the
@@ -23,7 +23,7 @@
 
 ### Download print materials
 
-1. Open **Use MenuList**
+1. Open **Share**
 2. Scroll to **Print for Your Restaurant**
 3. Download individual assets or the complete **Menu Kit**
 4. Print posters on A4 paper and table tents on A5 landscape 300 GSM matte card
@@ -31,7 +31,7 @@
 
 ### Create a menu PDF or print-shop packet
 
-1. Open **Use MenuList**
+1. Open **Share**
 2. Scroll to **Print for Your Restaurant**
 3. Open **Print Menu**
 4. Check the preview and warnings

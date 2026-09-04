@@ -57,6 +57,8 @@ Jobs now store root-level `timings` plus `result.summary` so platform ops can se
 
 Owner desktop/mobile listeners treat the job document as an untrusted runtime boundary. Canonical job/project IDs, status, bounded result metrics, localized menu data, per-file results, and preview limits are normalized before any consumer receives them. Review comparison excludes orphan items, duplicate extraction identities, and multiple extraction rows that resolve to the same persisted category/item. Weak category matches are review-only, configured thresholds control both category and item classification, and apply plans use field-level patches so omitted order/metadata and retained translations are not erased. Invalid prices are warned and excluded from writes; safe new items preserve extracted variant and structured item metadata.
 
+After extraction hardening, the worker assigns a business/category-aware default icon only when a category has no valid icon. The browser result boundary admits only bounded canonical `lu:Lu...` or `emoji:...` icon data. For a new category approved during re-extraction, the comparison/apply plan preserves that inferred icon through both standalone/master and linked-outlet persistence. Matched existing categories keep their owner-selected icon because review updates never patch the icon from extraction defaults.
+
 ## Security Contract
 
 Browser clients cannot create extraction jobs directly. Owner uploads go

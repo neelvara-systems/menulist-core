@@ -4,12 +4,13 @@ import useMenuCardExportController, {
     resolveMenuCardProjectName,
     type MenuCardExportNotice,
 } from '@hook/useMenuCardExportController';
+import { buildPrintableAssetsUrl } from '@lib/printable-asset-templates/navigation';
 import { formatDateTime } from '@util/dateTime';
 import { Alert, Button, Card, Empty, Flex, List, App, Modal, Segmented, Skeleton, Space, Switch, Tag, theme, Typography } from 'antd';
 import { useFormatter } from 'next-intl';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useState } from 'react';
-import { LuAlertTriangle, LuCheck, LuDownload, LuHistory, LuPackage, LuPrinter, LuQrCode, LuShare2, LuSparkles } from 'react-icons/lu';
+import { LuAlertTriangle, LuCheck, LuDownload, LuHistory, LuPackage, LuPalette, LuPrinter, LuQrCode, LuShare2, LuSparkles } from 'react-icons/lu';
 import { ProjectSelectorList, ProjectSelectorTrigger } from '../../../shared/ProjectSelector';
 import styles from './menu-card-export.module.scss';
 
@@ -21,6 +22,7 @@ export default function MenuCardExportRoute() {
 
 function DesktopMenuCardExportRoute() {
     const { message: messageApi } = App.useApp();
+    const router = useRouter();
     const searchParams = useSearchParams();
     const { token } = theme.useToken();
     const formatter = useFormatter();
@@ -56,6 +58,8 @@ function DesktopMenuCardExportRoute() {
         isHistoryEnabled,
         loading,
         preview,
+        printableTheme,
+        printableThemeSource,
         projects,
         rendering,
         requestDesignAdvice,
@@ -174,7 +178,50 @@ function DesktopMenuCardExportRoute() {
 
                     <div>
                         <Flex align="center" justify="space-between" gap={8}>
-                            <Text strong>Style</Text>
+                            <div>
+                                <Text strong>Brand look</Text>
+                                <br />
+                                <Text type="secondary" style={{ fontSize: 12 }}>
+                                    Applied to this menu and every matching print asset.
+                                </Text>
+                            </div>
+                            <Button
+                                icon={<LuPalette />}
+                                onClick={() => router.push(buildPrintableAssetsUrl(selectedProject.projectId))}
+                                size="small"
+                            >
+                                Change
+                            </Button>
+                        </Flex>
+                        <Flex
+                            align="center"
+                            gap={8}
+                            justify="space-between"
+                            style={{
+                                background: token.colorFillQuaternary,
+                                border: `1px solid ${token.colorBorderSecondary}`,
+                                borderRadius: token.borderRadiusLG,
+                                marginTop: 8,
+                                padding: '10px 12px',
+                            }}
+                        >
+                            <Space size={8}>
+                                <LuPalette color={token.colorPrimary} size={16} />
+                                <Text strong>{printableTheme.label}</Text>
+                            </Space>
+                            <Tag color={printableThemeSource === 'recommended' ? 'default' : 'green'}>
+                                {printableThemeSource === 'project-theme'
+                                    ? 'This menu'
+                                    : printableThemeSource === 'business-theme'
+                                        ? 'All menus'
+                                        : 'Recommended'}
+                            </Tag>
+                        </Flex>
+                    </div>
+
+                    <div>
+                        <Flex align="center" justify="space-between" gap={8}>
+                            <Text strong>Layout</Text>
                             {autoDesign && settings.styleId === autoDesign.settings.styleId ? <Tag color="green">Auto picked</Tag> : null}
                         </Flex>
                         <Segmented
@@ -250,6 +297,14 @@ function DesktopMenuCardExportRoute() {
 
                     <Flex vertical gap={8}>
                         <Flex align="center" justify="space-between" className={styles.toggleRow}>
+                            <div>
+                                <Text>Dedicated cover page</Text>
+                                <br />
+                                <Text type="secondary" style={{ fontSize: 12 }}>Logo, business name, live-menu QR, and available contact details.</Text>
+                            </div>
+                            <Switch aria-label="Include dedicated cover page" checked={settings.includeCoverPage === true} onChange={(checked) => updateToggle('includeCoverPage', checked)} />
+                        </Flex>
+                        <Flex align="center" justify="space-between" className={styles.toggleRow}>
                             <Text>Include descriptions</Text>
                             <Switch aria-label="Include descriptions" checked={settings.includeDescriptions} onChange={(checked) => updateToggle('includeDescriptions', checked)} />
                         </Flex>
@@ -276,8 +331,10 @@ function DesktopMenuCardExportRoute() {
                         </Flex>
                         <Space style={{ marginTop: 16, marginBottom: 16 }} wrap>
                             <Tag>{settings.preset.replace(/_/g, ' ')}</Tag>
-                            <Tag>{settings.styleId}</Tag>
+                            <Tag icon={<LuPalette size={12} />}>{printableTheme.label}</Tag>
+                            <Tag>Layout: {settings.styleId}</Tag>
                             <Tag>{preview.plan.mode.replace(/_/g, ' ')}</Tag>
+                            {settings.includeCoverPage ? <Tag color="green">Cover page</Tag> : null}
                         </Space>
                         <List
                             size="small"
@@ -285,9 +342,15 @@ function DesktopMenuCardExportRoute() {
                             renderItem={(page) => (
                                 <List.Item>
                                     <Flex vertical gap={4} style={{ width: '100%' }}>
-                                        <Text strong>Page {page.pageNumber}</Text>
+                                        <Text strong>{page.kind === 'cover'
+                                            ? 'Cover page'
+                                            : settings.includeCoverPage
+                                                ? `Menu page ${page.pageNumber - 1}`
+                                                : `Page ${page.pageNumber}`}</Text>
                                         <Text type="secondary">
-                                            {page.categories.map((category) => `${category.name} (${category.itemCount})`).join(', ') || 'No visible items'}
+                                            {page.kind === 'cover'
+                                                ? 'Business identity, QR, and available contact details'
+                                                : page.categories.map((category) => `${category.name} (${category.itemCount})`).join(', ') || 'No visible items'}
                                         </Text>
                                     </Flex>
                                 </List.Item>

@@ -86,7 +86,10 @@
       font-weight: 600;
       letter-spacing: 0;
       line-height: 1.2;
+      overflow: hidden;
       padding: 10px 2px 2px;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
 
     .subNavPanel {

@@ -137,6 +137,11 @@ assert.ok(!analyticsWizardSource.includes('start seeing data in about 24 hours')
 assert.ok(analyticsWizardSource.includes("const analytics = Form.useWatch('analytics', form) || {};"));
 assert.ok(analyticsWizardSource.includes('if (open) setCurrentStep(0);'));
 assert.ok(analyticsWizardSource.includes('save your changes'));
+assert.ok(analyticsWizardSource.includes('<Button key="next"'));
+assert.ok(analyticsWizardSource.includes('<Button key="finish"'));
+assert.ok(analyticsWizardSource.includes('key={`analytics-step-${index}`}'));
+assert.ok(analyticsWizardSource.includes('<Steps current={currentStep} responsive={false}'));
+assert.ok(!analyticsWizardSource.includes('<Step key={item.title}'));
 assert.ok(!clientWebsiteSource.includes('EnhancedEcommerce'));
 assert.equal(
     existsSync(resolve(process.cwd(), 'src/components/templates/website/clientWebsite/EnhancedEcommerce.tsx')),

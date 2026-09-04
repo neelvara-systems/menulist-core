@@ -310,8 +310,24 @@ function verifyDesktopAndMobileParity(desktopPosSync, mobilePosSync, testRespons
     "requestPosSyncSecret({ action: 'read', storeId, tenantId })",
     "requestPosSyncSecret({ action: 'ensure', storeId, tenantId })",
     "requestPosSyncSecret({ action: 'rotate', storeId, tenantId })",
+    "aria-describedby={webhookUrlError ? 'desktop-pos-sync-webhook-error' : undefined}",
+    'aria-invalid={Boolean(webhookUrlError)}',
+    'id="desktop-pos-sync-webhook-error"',
+    'disabled={!webhookUrl.trim() || !webhookUrlValidation.valid}',
     'disabled={!webhookUrl.trim() || !webhookSecret || secretLoading}',
   ].forEach((token) => assertIncludes(desktopPosSync, token, 'Desktop POS sync boundary'));
+  const desktopEnableConfigSection = desktopPosSync.slice(
+    desktopPosSync.indexOf('{/* Section 3: Enable & Config */}'),
+  );
+  assertOrder(
+    desktopEnableConfigSection,
+    [
+      '<Switch aria-label={t(\'enablePosSync\')}',
+      'aria-label={t(\'webhookUrl\')}',
+      '{enabled && (',
+    ],
+    'Desktop POS first-time URL setup visibility',
+  );
   assertNotIncludes(desktopPosSync, "updates['posSync.webhookSecret']", 'Desktop POS sync client secret persistence');
 
   assertOrder(
@@ -345,9 +361,12 @@ function verifyDesktopAndMobileParity(desktopPosSync, mobilePosSync, testRespons
     "action: 'ensure'",
     "action: 'rotate'",
     '}) || (enabled && !webhookSecret);',
+    "aria-describedby={webhookUrlError ? 'mobile-pos-sync-webhook-error' : undefined}",
+    'aria-invalid={Boolean(webhookUrlError)}',
+    'id="mobile-pos-sync-webhook-error"',
     'disabled={!webhookSecret || secretLoading}',
-    'disabled={!isDirty || isSaving || (enabled && !webhookUrl.trim())}',
-    'disabled={!enabled || !webhookUrl.trim() || !webhookSecret || secretLoading}',
+    'disabled={!isDirty || isSaving || (enabled && (!webhookUrl.trim() || !webhookUrlValidation.valid))}',
+    'disabled={!enabled || !webhookUrl.trim() || !webhookUrlValidation.valid || !webhookSecret || secretLoading}',
   ].forEach((token) => assertIncludes(mobilePosSync, token, 'Mobile POS sync boundary'));
   assertIncludes(desktopPosSync, 'disabled={!webhookSecret || secretLoading}', 'Desktop POS sync must not offer regeneration before a first secret exists');
   assertIncludes(desktopPosSync, 'if (checked) {\n            const validation = validatePosSyncWebhookUrl(normalizedWebhookUrl);', 'Desktop POS sync must validate the provider URL before enabling');

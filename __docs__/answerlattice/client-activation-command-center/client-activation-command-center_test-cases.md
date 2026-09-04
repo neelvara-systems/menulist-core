@@ -58,13 +58,15 @@
 - Mobile Content Control actions stack without horizontal scroll.
 - Mobile Surface Readiness and Test-as-Customer cards stack without horizontal scroll.
 - Activation, Readiness, Surface Readiness, and Test-as-Customer command actions retain at least 44px targets.
-- Get Live initially shows Activation, First 10 Answers, Install Support, and Setup Status; its other authorized destinations remain available through All tools.
-- Run Support initially shows Daily Brief and Ticket Inbox, and its parent route opens Daily Brief.
-- Answer Quality initially shows Trusted Answers, while the in-page All tools menu and sidebar reveal retain access to every other authorized governance route.
+- The sidebar presents direct links in this owner sequence: Get Live, Improve answers, Run Support, Customer help, Workspace, then Advanced.
+- Get Live shows Activation, First 10 Answers, Install Support, and Setup Status without a parent accordion.
+- Improve answers shows Trusted Answers, Suggested Updates, and Answers to Recheck; Run Support shows Daily Brief, Support Board, and Ticket Inbox.
+- Customer help shows Widget & Hosted Help; Workspace shows Team & Access and Billing.
+- The in-page Answer Quality All tools menu retains its existing tab behavior, while the sidebar's single Advanced reveal retains access to every other authorized route.
 - All tools is built after permission and feature-flag filtering, reveals no unauthorized destination, and never changes entitlements.
 - Opening All tools does not navigate or close the mobile drawer; choosing a real destination follows the existing route and drawer-close behavior.
-- A bookmarked or directly opened secondary route remains visible and active without requiring a saved reveal preference.
-- Show fewer tools restores the compact list after the operator leaves an active secondary route.
+- A bookmarked or directly opened advanced route remains visible and active without requiring a saved reveal preference.
+- Show fewer tools restores the compact list after the operator leaves an active advanced route.
 - Install Support exposes the existing coding-agent packet and acceptance tests without changing widget credentials or install contracts.
 
 ## Cost
@@ -90,4 +92,8 @@
 ## Focused Gate
 
 - `npm run test:answerlattice-activation-contracts`
+- `npm run test:answerlattice-sidebar-navigation`
+- `npm run test:answerlattice-sidebar-interaction`
+- `npm run test:dashboard-sidebar-shell`
+- `npm run verify:answerlattice-customer-language`
 - `node scripts/verification/verify-answerlattice-runtime-truth.js`

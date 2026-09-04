@@ -201,7 +201,9 @@ The source gates reject known direct-write bypass patterns and lock the public c
 
 Mobile project management uses the same DAL functions as desktop. Mobile-specific code is limited to shell state, project selection, touch UI, and optimistic cache updates.
 
-The mobile provider intentionally auto-creates the first default project when the owner enters the menu-management shell. Mobile read-only output surfaces should use `getExistingProjectsListWithoutLoader()`.
+`MobileProjectSelectorSheet` applies the same canonical `isPublishedMenuProject()` presence boundary used by Today and Dashboard before it renders Preview, Copy Link, or Show QR. Inactive, deleted, never-published, scheduled, expired, and cancelled menus receive calm `Not live` guidance instead of a customer action that can open or distribute a dead public route. Each handler repeats the readiness guard so a stale rendered action cannot bypass it. A custom domain with explicit `domainVerified: false` is not emitted as a customer link; the configured subdomain remains the safe fallback until verification succeeds.
+
+The mobile provider intentionally auto-creates the first default project only when the owner enters the Menu tab. Mobile Share, Today, More, and other read-only output surfaces use `getExistingProjectsListWithoutLoader()` so mounting the mobile shell cannot create menu truth or add a write.
 
 Project-list and selected-project failures are terminal for that request but
 not for the mobile shell. `MobileProjectsProvider` marks the exact scope as

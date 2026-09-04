@@ -315,6 +315,10 @@ function MobilePosSyncScreenContent({ onBack }: MobilePosSyncScreenProps) {
         enabled: originalDraft.enabled,
         webhookUrl: originalDraft.webhookUrl.trim(),
     }) || (enabled && !webhookSecret);
+    const webhookUrlValidation = validatePosSyncWebhookUrl(webhookUrl);
+    const webhookUrlError = enabled && webhookUrl.trim() && !webhookUrlValidation.valid
+        ? webhookUrlValidation.error || 'Enter a valid provider connection URL.'
+        : '';
 
     const handleSave = async () => {
         const expectedStoreId = storeDetails?.storeId;
@@ -725,12 +729,23 @@ function MobilePosSyncScreenContent({ onBack }: MobilePosSyncScreenProps) {
                     <Flex gap={10} vertical>
                         <Text strong>{t('webhookUrl')}</Text>
                         <TextArea
+                            aria-describedby={webhookUrlError ? 'mobile-pos-sync-webhook-error' : undefined}
+                            aria-invalid={Boolean(webhookUrlError)}
                             aria-label={t('webhookUrl')}
                             autoSize={{ minRows: 2, maxRows: 4 }}
                             onChange={setWebhookUrl}
                             placeholder={t('webhookUrlPlaceholder')}
                             value={webhookUrl}
                         />
+                        {webhookUrlError ? (
+                            <Text
+                                id="mobile-pos-sync-webhook-error"
+                                role="alert"
+                                style={{ color: token.colorError }}
+                            >
+                                {webhookUrlError}
+                            </Text>
+                        ) : null}
                         <Text type="secondary">{t('webhookUrlHelp')}</Text>
                     </Flex>
                 </Card>
@@ -771,7 +786,7 @@ function MobilePosSyncScreenContent({ onBack }: MobilePosSyncScreenProps) {
 
                 <Card>
                     <Flex gap={10} vertical>
-                        <Button block disabled={!enabled || !webhookUrl.trim() || !webhookSecret || secretLoading} fill="outline" loading={isTesting} onClick={() => void handleTest()}>
+                        <Button block disabled={!enabled || !webhookUrl.trim() || !webhookUrlValidation.valid || !webhookSecret || secretLoading} fill="outline" loading={isTesting} onClick={() => void handleTest()}>
                             <Flex align="center" gap={6}>
                                 <LuSend size={16} />
                                 <Text>{t('sendTest')}</Text>
@@ -804,7 +819,7 @@ function MobilePosSyncScreenContent({ onBack }: MobilePosSyncScreenProps) {
                     <Button block disabled={!isDirty || isSaving} fill="outline" onClick={handleReset} size="large">
                         {tMobile('reset')}
                     </Button>
-                    <Button block disabled={!isDirty || isSaving || (enabled && !webhookUrl.trim())} loading={isSaving} onClick={() => void handleSave()} size="large">
+                    <Button block disabled={!isDirty || isSaving || (enabled && (!webhookUrl.trim() || !webhookUrlValidation.valid))} loading={isSaving} onClick={() => void handleSave()} size="large">
                         {tMobile('saveChanges')}
                     </Button>
                 </Flex>

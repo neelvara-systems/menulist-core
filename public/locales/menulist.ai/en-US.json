@@ -2680,7 +2680,7 @@
     "hideFromMenu": "Hide from menu",
     "updatePrices": "Update prices",
     "moveItems": "Move Items",
-    "bulkActionConfirm": "{action} for {count} items?",
+    "bulkActionConfirm": "{action} for {count, plural, one {# item} other {# items}}?",
     "itemsUpdated": "{count} items updated",
     "bulkApplyFailed": "Failed to apply changes",
     "undo": "Undo",
@@ -4761,6 +4761,22 @@
       "surfaceCustomerApp": "Saved customer shortcut",
       "aiTeaserLabel": "New: AI Menu Manager",
       "aiTeaserText": "Update your list by message"
+    },
+    "OwnerWorkflowGallery": {
+      "title": "From the list you have to the link customers use.",
+      "highlight": "the link customers use.",
+      "subtitle": "See the complete path from current menu or service list to one reviewed customer link.",
+      "disclosure": "Demonstration with sample business content.",
+      "galleryLabel": "MenuList owner workflow demonstration",
+      "captureTitle": "Photograph or upload",
+      "captureBody": "Start with the menu or service list your business already uses.",
+      "captureAlt": "Illustrative restaurant owner photographing a printed menu with a phone",
+      "reviewTitle": "Review the private preview",
+      "reviewBody": "MenuList prepares the structure inside the owner's account. Nothing becomes public before review.",
+      "reviewAlt": "MenuList sample approval screen showing a prepared menu change waiting for owner approval",
+      "publishTitle": "Publish the approved customer link",
+      "publishBody": "The reviewed version becomes the customer link and supported MenuList outputs.",
+      "publishAlt": "MenuList sample official business page and customer menu"
     },
     "RevenuePath": {
       "eyebrow": "Upload, review, publish, share",

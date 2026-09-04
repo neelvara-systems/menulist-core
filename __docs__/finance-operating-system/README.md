@@ -36,7 +36,7 @@ The private files are the operational source of truth. FinanceOS remains readabl
 - Review usage/prepaid balances weekly and more frequently after threshold crossings.
 - Review free plans and trials monthly and before any evidence-backed trial, quota, retention, or seat threshold.
 - Run a weekly quick console review for active prepaid/usage services and a monthly full provider review after the founder approves the run and opens the `admin@neelvara.com` Chrome profile.
-- After payment, link the original invoice and redacted payment proof to one record ID.
+- After payment, link the original invoice and redacted payment proof to one record ID. When the founder explicitly requires exact future-use evidence, also index an owner-authorized `restricted-original` in the private restricted area; routine views remain redacted.
 - Reconcile by the third day of the following month.
 - Keep unknown dates, missing evidence, and professional-review questions visibly open.
 - Treat provider notifications as supporting signals; use dated, read-only console observations as current-state evidence and never claim continuous monitoring.

@@ -1,11 +1,15 @@
 #!/usr/bin/env ts-node
 
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { writePublicAnalyticsEventAdmin } from '../../src/lib/analytics/serverWrite';
 import { firestoreAdmin } from '../../src/lib/firebase/firebaseAdmin';
 
 const DOCUMENT_ID = '1_101_menu-project_daily_2026-07-11';
 const documentRef = firestoreAdmin.collection('analytics').doc(DOCUMENT_ID);
+const deliveryReceiptRef = (deliveryId: string) => firestoreAdmin
+    .collection('analyticsDeliveryReceipts')
+    .doc(createHash('sha256').update(`1:101:menu-project:2026-07-11:${deliveryId}`).digest('hex'));
 
 const write = (updateData: Record<string, unknown>, deliveryId: string) => writePublicAnalyticsEventAdmin({
     updateData,
@@ -20,7 +24,10 @@ const write = (updateData: Record<string, unknown>, deliveryId: string) => write
 
 async function run(): Promise<void> {
     if (!process.env.FIRESTORE_EMULATOR_HOST) throw new Error('FIRESTORE_EMULATOR_HOST is required');
-    await documentRef.delete().catch(() => undefined);
+    await Promise.all([
+        documentRef.delete().catch(() => undefined),
+        ...['a', 'b', 'c', 'd'].map((value) => deliveryReceiptRef(value.repeat(32)).delete().catch(() => undefined)),
+    ]);
 
     await Promise.all([
         write({ totalViews: 2, 'viewsByItem.item_1': 2, 'itemNames.item_1': 'Lunch' }, 'a'.repeat(32)),

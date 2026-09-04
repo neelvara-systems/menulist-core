@@ -96,7 +96,7 @@ assert.equal(SecurityOsEvidenceMapSchema.safeParse(invalidEvidence).success, fal
 
 const result = runSecurityOsAudit();
 assert.deepEqual(result.errors, []);
-assert.equal(result.evidenceCount, 46);
+assert.equal(result.evidenceCount, 47);
 assert.equal(result.bundleCount, 7);
 assert.equal(result.surfaceCount, 22);
 

@@ -23,6 +23,8 @@ import {
 } from '@lib/export/exportDiagnostics';
 import { getOfferingLabels } from '@lib/menu-kit/businessTypeLabels';
 import { downloadBlob, generateMenuKit, generateMenuKitAsset, type MenuKitAssetKey, shareBlob } from '@lib/menu-kit/menuKitGenerator';
+import { resolvePrintableAssetStyle } from '@lib/printable-asset-templates/stylePreferences';
+import type { PrintableAssetStylePreferences } from '@lib/printable-asset-templates/stylePreferences';
 import { toDate, type DateLike } from '@util/dateTime';
 import { Button, Card, Flex, App, theme, Tooltip, Typography } from 'antd';
 import { useEffect, useState } from 'react';
@@ -41,6 +43,8 @@ interface MenuKitSectionProps {
     activePlanType?: string | null;
     brandColor?: string;
     locale?: string;
+    printableAssetStylePreferences?: PrintableAssetStylePreferences;
+    projectId?: string;
 }
 
 export default function MenuKitSection({
@@ -54,12 +58,21 @@ export default function MenuKitSection({
     activePlanType,
     brandColor,
     locale,
+    printableAssetStylePreferences,
+    projectId,
 }: MenuKitSectionProps) {
     const { message: messageApi } = App.useApp();
     const { token } = theme.useToken();
     const [generating, setGenerating] = useState(false);
     const [supportsNativeShare, setSupportsNativeShare] = useState(false);
     const labels = getOfferingLabels(businessType, businessCategory);
+    const templateFamilyId = resolvePrintableAssetStyle({
+        assetTypeId: 'table_tent',
+        businessCategory,
+        businessType,
+        preferences: printableAssetStylePreferences,
+        projectId,
+    }).templateFamilyId;
 
     useEffect(() => {
         setSupportsNativeShare(typeof navigator !== 'undefined' && !!navigator.share);
@@ -97,6 +110,7 @@ export default function MenuKitSection({
                 businessCategory,
                 activePlanType,
                 locale,
+                templateFamilyId,
             });
 
             downloadBlob(result.zipBlob, result.zipFilename);
@@ -123,6 +137,7 @@ export default function MenuKitSection({
                 businessCategory,
                 activePlanType,
                 locale,
+                templateFamilyId,
             }, assetKey);
             const shareResult = await shareBlob(asset.blob, asset.filename, label);
             if (shareResult === 'cancelled') return;

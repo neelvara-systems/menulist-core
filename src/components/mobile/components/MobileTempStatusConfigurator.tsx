@@ -2,9 +2,11 @@
 
 import { theme } from 'antd';
 import { useFormatter } from 'next-intl';
+import { useId } from 'react';
 import { LuAlertTriangle, LuCheck, LuClock, LuX } from 'react-icons/lu';
 import { formatDateTime, toNativeDateTimeInputValue } from '@util/dateTime';
 import { Button, Card, Flex, Input, Tag, Text } from '../antd';
+import type { TempStatusDraftIssue } from '@lib/tempStatus/draftValidation';
 
 export type TempStatusOption = {
     defaultMsg: string;
@@ -86,6 +88,8 @@ interface MobileTempStatusConfiguratorProps {
     statusType: string;
     statusTypeLabel: string;
     expiryOptions?: TempStatusExpiryOption[];
+    draftIssue?: TempStatusDraftIssue | null;
+    draftIssueMessage?: string;
 }
 
 export default function MobileTempStatusConfigurator({
@@ -120,9 +124,12 @@ export default function MobileTempStatusConfigurator({
     statusType,
     statusTypeLabel,
     expiryOptions = MOBILE_TEMP_STATUS_EXPIRY_OPTIONS,
+    draftIssue,
+    draftIssueMessage,
 }: MobileTempStatusConfiguratorProps) {
     const { token } = theme.useToken();
     const formatter = useFormatter();
+    const draftErrorId = useId();
     const minExpiryAt = getMinTempStatusDateTime();
     const activeCardStyle = activeCardVariant === 'warning'
         ? {
@@ -130,6 +137,11 @@ export default function MobileTempStatusConfigurator({
             borderColor: token.colorWarningBorder,
         }
         : undefined;
+    const customMessageIsInvalid = draftIssue === 'custom_message_required'
+        || draftIssue === 'custom_message_too_long';
+    const expiryIsInvalid = draftIssue === 'expiry_required'
+        || draftIssue === 'expiry_invalid'
+        || draftIssue === 'expiry_not_future';
 
     if (isActive && currentStatus) {
         return (
@@ -210,7 +222,10 @@ export default function MobileTempStatusConfigurator({
                 <Flex gap={6} vertical>
                     <Text strong>{customMessageLabel}</Text>
                     <Input
+                        aria-describedby={customMessageIsInvalid ? draftErrorId : undefined}
+                        aria-invalid={customMessageIsInvalid}
                         aria-label={customMessageLabel}
+                        aria-required="true"
                         maxLength={100}
                         onChange={onCustomMessageChange}
                         placeholder={customPlaceholder}
@@ -240,6 +255,8 @@ export default function MobileTempStatusConfigurator({
                     ))}
                     <div style={{ flex: '1 1 190px', marginLeft: 'auto', minWidth: 190, width: 'clamp(190px, 52vw, 240px)' }}>
                         <Input
+                            aria-describedby={expiryIsInvalid ? draftErrorId : undefined}
+                            aria-invalid={expiryIsInvalid}
                             aria-label={expiryLabel}
                             min={minExpiryAt}
                             onChange={onExactExpiryAtChange}
@@ -262,7 +279,22 @@ export default function MobileTempStatusConfigurator({
                 </Card>
             </Flex>
 
-            <Button block color={setButtonColor} loading={isLoading} onClick={onSet} size="large" style={{ minHeight: 44 }}>
+            {draftIssue && draftIssueMessage ? (
+                <Text id={draftErrorId} role="alert" type="danger">
+                    {draftIssueMessage}
+                </Text>
+            ) : null}
+
+            <Button
+                aria-describedby={draftIssue ? draftErrorId : undefined}
+                block
+                color={setButtonColor}
+                disabled={Boolean(draftIssue)}
+                loading={isLoading}
+                onClick={onSet}
+                size="large"
+                style={{ minHeight: 44 }}
+            >
                 <Flex align="center" gap={8} justify="center">
                     <LuCheck size={16} />
                     <Text>{setStatusLabel}</Text>

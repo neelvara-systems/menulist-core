@@ -1,5 +1,8 @@
 # AI Image Generation — Help Documentation
 
+**Status:** Source-backed owner guidance; target release QA remains pending
+**Last Updated:** August 31, 2026
+
 ## Quick Summary
 Prepare image drafts for selected menu items where the feature, plan, credits, provider, and safety checks allow. Review each draft before using it on a customer-facing menu.
 
@@ -89,6 +92,26 @@ A missing menu cover may also be prepared after accepted menu extraction truth. 
 - 💡 Use supported batch generation for selected groups of items when available
 - 💡 You can always replace a generated image with your own photo later
 - 💡 Review generated drafts before applying them to the public menu
+
+## Keep the same person across image drafts
+
+1. Open an item or service and choose **Generate Photo**.
+2. On the desktop owner app, under **Saved person**, choose **Add person**.
+3. Add two to four clear photos of the same adult. Front, three-quarter, and side views work best.
+4. Enter a short internal label. Do not use confidential identity details.
+5. Confirm that you have permission to use the photos for commercial image generation and that the person is not a public figure.
+6. Save and select the person, then generate the draft.
+7. Review the person's appearance and the service details before saving any result.
+
+For salons, spas, tattoo studios, gyms, fashion, and photography businesses, this option appears as a recommended consistency step. For other businesses, open **Include a saved person** only when a person is relevant to that item.
+
+On desktop, use **Rename** to change the private label. Use **Update photos** to replace all two to four references; you must confirm permission again, and older in-progress generations pinned to the previous version will ask you to choose the person again.
+
+Use **Withdraw permission** to stop all new generations with that profile. Use **Delete saved person** to remove its private source photos. Previously accepted catalog images are not removed automatically; review and replace those separately when needed.
+
+Before starting, the button shows the maximum content credits for the requested photos. Credits are charged only for photos that complete successfully. If generation fails, MenuList shows a safe recovery message instead of treating the request as an empty successful result.
+
+On mobile, you can select or clear an existing active saved person while generating. Create, withdraw, and delete saved people from the desktop owner app because those actions include multi-photo consent and privacy governance.
 
 ## Related Features
 - **[Data Editor]** — Where you view and manage item images

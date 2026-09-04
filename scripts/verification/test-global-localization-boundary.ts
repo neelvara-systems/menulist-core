@@ -4,6 +4,8 @@ import {
     defaultLocale,
     defaultTimeFormatString,
     defaultTimezone,
+    DATE_FORMATS,
+    TIME_FORMATS,
     getDateFormatOptions,
     getLocaleDirection,
     getTimeFormatOptions,
@@ -76,9 +78,13 @@ assert.equal(normalizeTimeZone('x'.repeat(101)), defaultTimezone);
 assert.equal(normalizeDateFormatPreference('2-digit|short|numeric'), '2-digit|short|numeric');
 assert.equal(normalizeDateFormatPreference('day|month|year'), defaultDateFormatString);
 assert.deepEqual(getDateFormatOptions('day|month|year'), getDateFormatOptions(defaultDateFormatString));
+assert.equal(DATE_FORMATS.some((option) => option.label === defaultDateFormatString), true);
+assert.equal(new Set(DATE_FORMATS.map((option) => option.labelHelper)).size, DATE_FORMATS.length);
 assert.equal(normalizeTimeFormatPreference('2-digit|2-digit|false'), '2-digit|2-digit|false');
 assert.equal(normalizeTimeFormatPreference('hour|minute|maybe'), defaultTimeFormatString);
 assert.deepEqual(getTimeFormatOptions('hour|minute|maybe'), getTimeFormatOptions(defaultTimeFormatString));
+assert.equal(new Set(TIME_FORMATS.map((option) => option.labelHelper)).size, TIME_FORMATS.length);
+assert.equal(TIME_FORMATS.every((option) => option.labelHelper.includes('leading zero')), true);
 
 assert.equal(fromNativeDateInputValue('2026-02-29', 'UTC'), '');
 assert.equal(fromNativeDateInputValue('2024-02-29', 'UTC'), '2024-02-29T00:00:00.000Z');

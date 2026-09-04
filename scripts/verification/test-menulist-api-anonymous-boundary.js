@@ -106,8 +106,8 @@ async function run() {
     ))
     .filter((row) => row.product_area === 'MenuList' && row.item_type === 'api-route');
 
-  if (handlers.length !== 140) {
-    throw new Error(`Expected 140 MenuList route handlers, found ${handlers.length}.`);
+  if (handlers.length !== 141) {
+    throw new Error(`Expected 141 MenuList route handlers, found ${handlers.length}.`);
   }
 
   const specs = handlers.flatMap((row) => row.control_or_action.split('|').map((method) => ({

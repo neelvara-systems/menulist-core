@@ -10,6 +10,7 @@ import { z } from 'zod';
 import { normalizeMenuExtractionJobId } from '@lib/menu-extraction/jobIdBoundary';
 import { normalizeMenuExtractionProjectId } from '@lib/menu-extraction/projectIdBoundary';
 import { priceStringSchema } from '@lib/validation/pricing.schema';
+import { normalizeCategoryIcon } from '@data/shared/categoryIconSuggestions';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // COMMON SCHEMAS
@@ -87,6 +88,10 @@ export const NewItemSchema = z.object({
 export const NewCategorySchema = z.object({
     id: z.string().min(1),
     name: MultilingualNameSchema,
+    icon: z.string()
+        .transform((value) => normalizeCategoryIcon(value))
+        .refine((value) => value.length > 0, 'Invalid category icon')
+        .optional(),
     orderIndex: z.number().optional(),
     active: z.boolean().default(true),
 }).strict();

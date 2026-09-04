@@ -11,6 +11,7 @@ import './iconPicker.scss';
 
 interface IconPickerProps {
     ariaLabel?: string;
+    disabled?: boolean;
     value?: string;
     onChange?: (value: string) => void;
     suggestedIcons?: string[];
@@ -25,6 +26,7 @@ interface IconPickerProps {
 
 const IconPicker = ({
     ariaLabel = 'Choose icon',
+    disabled = false,
     value,
     onChange,
     suggestedIcons = [],
@@ -47,6 +49,7 @@ const IconPicker = ({
     const searchLabel = activeMode === 'icons' ? 'Search icon for category...' : 'Search emoji for category...';
 
     const handleSelect = (selectedValue: string) => {
+        if (disabled) return;
         onChange?.(selectedValue);
         setOpen(false);
     };
@@ -54,6 +57,7 @@ const IconPicker = ({
     const handleClear = (event: React.MouseEvent<HTMLElement>) => {
         event.preventDefault();
         event.stopPropagation();
+        if (disabled) return;
         onChange?.('');
     };
 
@@ -169,12 +173,15 @@ const IconPicker = ({
         <div className="icon-picker-trigger">
             <Button
                 aria-label={ariaLabel}
+                disabled={disabled}
                 icon={<CategoryIcon icon={value || ''} defaultIcon="LuImagePlus" size={resolvedIconSize} />}
-                onClick={() => setOpen(true)}
+                onClick={() => {
+                    if (!disabled) setOpen(true);
+                }}
                 size={buttonSize}
                 style={buttonStyle}
             />
-            {allowClear && value ? (
+            {allowClear && value && !disabled ? (
                 <Button
                     aria-label="Remove selected icon"
                     className="icon-picker-trigger__clear"
@@ -199,7 +206,7 @@ const IconPicker = ({
                     bodyStyle={{ maxHeight: '94vh', overflow: 'hidden', padding: 0 }}
                     destroyOnClose
                     onMaskClick={() => setOpen(false)}
-                    visible={open}
+                    visible={!disabled && open}
                 >
                     <Flex style={{ maxHeight: '94vh' }} vertical>
                         <NavBar onBack={() => setOpen(false)}>
@@ -218,8 +225,8 @@ const IconPicker = ({
         <Popover
             content={content}
             trigger="click"
-            open={open}
-            onOpenChange={setOpen}
+            open={!disabled && open}
+            onOpenChange={(nextOpen) => setOpen(disabled ? false : nextOpen)}
             placement={placement}
         >
             {trigger}

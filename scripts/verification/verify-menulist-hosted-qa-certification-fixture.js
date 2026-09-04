@@ -22,6 +22,11 @@ const requiredTokens = [
     "const QA_PROJECT_ID = 'menulist-qa'",
     "const OPERATOR_EMAIL = 'admin@neelvara.com'",
     "const MAX_LEASE_HOURS = 72",
+    "const PERSISTENT_OWNER_EMAIL = 'menulist.qa.owner.85ee58de7d@neelvara.com'",
+    "command === 'make-persistent'",
+    "readArg('confirm-persistent-owner') !== PERSISTENT_OWNER_EMAIL",
+    "'qaCertification.purpose': 'menulist_persistent_phone_owner'",
+    "'qaCertification.persistentOwner': true",
     "readArg('confirm-project') !== QA_PROJECT_ID",
     "process.env.FIRESTORE_EMULATOR_HOST || process.env.FIREBASE_AUTH_EMULATOR_HOST",
     "type: 'authorized_user'",
@@ -96,7 +101,7 @@ assert.ok(clientSource.includes("await uploadString("));
 assert.ok(clientSource.includes("'data_url'"));
 assert.ok(clientSource.includes('await deleteObject(dataUrlProbeRef)'));
 assert.ok(subscriptionTypeSource.includes("projectId: 'menulist-qa' | 'neelvara-answerlattice-qa'"));
-assert.ok(subscriptionTypeSource.includes("purpose: 'menulist_hosted_release_candidate' | 'answerlattice_hosted_release_candidate'"));
+assert.ok(subscriptionTypeSource.includes("purpose: 'menulist_hosted_release_candidate' | 'menulist_persistent_phone_owner' | 'answerlattice_hosted_release_candidate'"));
 for (const surfacePath of billingSurfacePaths) {
     const surfaceSource = fs.readFileSync(surfacePath, 'utf8');
     assert.ok(surfaceSource.includes("sub.qaCertification.projectId === 'menulist-qa'")

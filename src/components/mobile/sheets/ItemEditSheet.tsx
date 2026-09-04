@@ -11,10 +11,12 @@ import { getProjectDescriptionContentLength, getProjectDescriptionTone } from '@
 import { getCanonicalProjectSourceLanguage } from '@lib/localization/languagePolicy';
 import { hasAnyNonEmptyDescription } from '@lib/menu/descriptionQuality';
 import { getDecisionFactValue, setDecisionFactValue } from '@lib/menu/itemDecisionFacts';
+import { resolveItemDecisionSymbolIds } from '@lib/menu/itemDecisionSymbols';
 import { downloadSharableItemCard, shareSharableItemCard, type SharableItemCardInput } from '@lib/menu/sharableItemCard';
 import { getMediaProfileAcceptAttribute } from '@lib/media/imageProfiles';
 import { prepareMediaImage } from '@lib/media/prepareMediaImage';
-import { getPublicItemListPriceLabel } from '@lib/pricing/publicItemPricePresentation';
+import { getPublicItemDisplayOptions, getPublicItemListPriceLabel } from '@lib/pricing/publicItemPricePresentation';
+import { buildItemProductTagRenderInput } from '@lib/printable-asset-templates/itemProductTag';
 import { MENU_PRICE_TEXT_MAX_LENGTH, normalizeOptionalMenuPrice } from '@lib/validation/pricing.schema';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
@@ -27,7 +29,9 @@ import type { InheritanceState, OutletPolicy } from '@type/multiOutlet.types';
 import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { LuCamera, LuClock, LuDownload, LuLanguages, LuMinus, LuPlus, LuShare2, LuSparkles, LuStar, LuTrash2, LuTrendingUp } from 'react-icons/lu';
+import { LuCamera, LuClock, LuDownload, LuLanguages, LuMinus, LuPlus, LuShare2, LuSparkles, LuStar, LuTag, LuTrash2, LuTrendingUp } from 'react-icons/lu';
+import ItemProductTagModal from '@/components/shared/printableAssets/ItemProductTagModal';
+import ItemDecisionSymbolGroup from '@/components/shared/menu/ItemDecisionSymbolGroup';
 import type { ExtractedDataAttribute, ExtractedDataItem, NewItemMetadataAPIParams, Project, ProjectFileType } from '../../templates/main-app/projects/types';
 import { runSingleItemDescriptionGeneration } from '../../templates/main-app/projects/editorView/descriptionGeneration.shared';
 import { translateItem } from '../../templates/main-app/projects/utils/translationsUtils';
@@ -217,11 +221,17 @@ export default function ItemEditSheet({
     const canEditAvailability = !isInheritedOutletItem || outletPolicy?.availabilityOverride !== false;
     const canDeleteItem = !isInheritedOutletItem;
     const [draftItem, setDraftItem] = useState<ExtractedDataItem>(() => createDraftItem({ item, initialCategoryId, languages: selectedLanguages }));
+    const decisionSymbolPreview = useMemo(
+        () => resolveItemDecisionSymbolIds(draftItem),
+        [draftItem],
+    );
     const [imagePreview, setImagePreview] = useState<string | null>(item?.image || null);
     const [activeLanguageKey, setActiveLanguageKey] = useState<string[]>([primaryLanguage]);
     const [isSaving, setIsSaving] = useState(false);
     const [isAiWorking, setIsAiWorking] = useState(false);
     const [isCardWorking, setIsCardWorking] = useState(false);
+    const [isProductTagOpen, setIsProductTagOpen] = useState(false);
+    const [isConfirmationOpen, setIsConfirmationOpen] = useState(false);
     const imageInputRef = useRef<HTMLInputElement | null>(null);
     const canEditImageInline = (isAddMode || !onManageImages) && canEditImages;
 
@@ -286,6 +296,7 @@ export default function ItemEditSheet({
         const itemName = getLocalizedValue(draftItem.name, primaryLanguage).trim() || item?.name || 'Menu item';
         const description = getLocalizedValue(draftItem.description, primaryLanguage).trim();
         const price = getPublicItemListPriceLabel(draftItem, currencySymbol) || '';
+        const options = getPublicItemDisplayOptions(draftItem, primaryLanguage, currencySymbol);
         const store = storeDetails as any;
         const projectName = getLocalizedValue((projectData as any)?.metadata?.name, primaryLanguage);
 
@@ -299,9 +310,24 @@ export default function ItemEditSheet({
             imageUrl: itemImagePreviews[0],
             accentColor: store?.publicPresence?.accentColor || (projectData as any)?.config?.design?.brand?.accentColor,
             updatedLabel: 'Current menu',
+            options,
         };
     }, [currencySymbol, draftItem.attributes, draftItem.description, draftItem.name, draftItem.price, item?.name, itemImagePreviews, primaryLanguage, projectData, selectedCategory?.name, storeDetails]);
     const canGenerateSharableCard = FEATURE_FLAGS.ENABLE_SHARABLE_ITEM_CARD_GENERATION && !isAddMode && Boolean(draftItem.id);
+    const productTagInput = useMemo(() => buildItemProductTagRenderInput({
+        item: {
+            detail: sharableCardInput.description,
+            itemId: draftItem.id,
+            name: sharableCardInput.itemName,
+            options: sharableCardInput.options,
+            price: sharableCardInput.price,
+        },
+        project: projectData,
+        store: storeDetails,
+    }), [draftItem.id, projectData, sharableCardInput.description, sharableCardInput.itemName, sharableCardInput.options, sharableCardInput.price, storeDetails]);
+    const canGenerateProductTag = FEATURE_FLAGS.ENABLE_PRINTABLE_ASSET_TEMPLATES
+        && !isAddMode
+        && Boolean(productTagInput);
 
     const handleShareCard = async () => {
         if (!canGenerateSharableCard || isCardWorking) return;
@@ -381,13 +407,18 @@ export default function ItemEditSheet({
             return;
         }
 
-        const confirmed = await Dialog.confirm({
-            cancelText: 'Keep editing',
-            confirmText: 'Discard changes',
-            content: 'Your unsaved item changes will be lost.',
-            title: 'Discard unsaved item changes?',
-        });
-        if (confirmed) onClose();
+        setIsConfirmationOpen(true);
+        try {
+            const confirmed = await Dialog.confirm({
+                cancelText: 'Keep editing',
+                confirmText: 'Discard changes',
+                content: 'Your unsaved item changes will be lost.',
+                title: 'Discard unsaved item changes?',
+            });
+            if (confirmed) onClose();
+        } finally {
+            setIsConfirmationOpen(false);
+        }
     };
 
     const handleImageInputChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -609,12 +640,13 @@ export default function ItemEditSheet({
         }
 
         if (hasSourceDescription) {
+            setIsConfirmationOpen(true);
             const confirmed = await Dialog.confirm({
                 cancelText: 'Cancel',
                 confirmText: 'Refresh descriptions',
                 content: `Uses ${CONTENT_CREDIT_OPERATION_COSTS.DESCRIPTION_REWRITE} enhancement credit. Your current generated descriptions will be replaced.`,
                 title: "Refresh this item's descriptions?",
-            });
+            }).finally(() => setIsConfirmationOpen(false));
             if (!confirmed) return;
         }
 
@@ -933,6 +965,7 @@ export default function ItemEditSheet({
     };
 
     return (
+        <>
         <Popup
             aria-label={isAddMode ? t('addItemTitle') : t('editItemTitle')}
             bodyStyle={MENU_SHEET_ROUNDED_BODY_STYLE}
@@ -941,7 +974,7 @@ export default function ItemEditSheet({
                 void handleClose();
             }}
             position="bottom"
-            visible
+            visible={!isConfirmationOpen}
             zIndex={1300}
         >
             <Flex style={MENU_SHEET_CONTAINER_STYLE} vertical>
@@ -1046,6 +1079,17 @@ export default function ItemEditSheet({
                                         </Button>
                                     </Flex>
                                 ) : null}
+                                {canGenerateProductTag ? (
+                                    <Flex gap={4} vertical>
+                                        <Button disabled={hasChanges} fill="outline" onClick={() => setIsProductTagOpen(true)} size="small">
+                                            <Flex align="center" gap={6}>
+                                                <LuTag size={14} />
+                                                <Text>Product Tag</Text>
+                                            </Flex>
+                                        </Button>
+                                        {hasChanges ? <Text type="secondary">Save item changes before creating the Product Tag.</Text> : null}
+                                    </Flex>
+                                ) : null}
                             </Flex>
 
                             {!(draftItem.attributes || []).length ? (
@@ -1101,7 +1145,7 @@ export default function ItemEditSheet({
                                             <Text type="secondary">
                                                 {[
                                                     selectedCategory?.name,
-                                                    draftItem.attributes?.length ? 'Has options' : sharableCardInput.price,
+                                                    sharableCardInput.options?.length ? 'Has options' : sharableCardInput.price,
                                                     draftItem.available === false ? availabilityLabels.unavailable : null,
                                                     draftItem.active === false ? t('hidden') : null,
                                                 ].filter(Boolean).join(' · ') || 'Saved item details'}
@@ -1268,6 +1312,12 @@ export default function ItemEditSheet({
                                 >
                                     <Flex gap={14} vertical>
                                         <Text type="secondary">Only add details you know are correct.</Text>
+                                        {decisionSymbolPreview.length > 0 ? (
+                                            <Flex gap={6} style={inlineSurfaceStyle} vertical>
+                                                <Text type="secondary">Shown beside this item on the customer menu and printed menu</Text>
+                                                <ItemDecisionSymbolGroup labelled size={16} symbols={decisionSymbolPreview} />
+                                            </Flex>
+                                        ) : null}
                                         {metadataFields.map(renderDecisionFactControl)}
                                     </Flex>
                                 </Collapse.Panel>
@@ -1333,13 +1383,14 @@ export default function ItemEditSheet({
                                     fill="outline"
                                     onClick={() => {
                                         if (isSaving) return;
-                                        Dialog.confirm({
+                                        setIsConfirmationOpen(true);
+                                        void Dialog.confirm({
                                             title: t('deleteItemTitle'),
                                             content: t('deleteItemConfirm', { item: item.name }),
                                             confirmText: t('delete'),
                                             cancelText: t('cancel'),
                                             onConfirm: () => onDelete(item.id),
-                                        });
+                                        }).finally(() => setIsConfirmationOpen(false));
                                     }}
                                     size="large"
                                     style={{ minWidth: 52, paddingInline: 0 }}
@@ -1367,5 +1418,11 @@ export default function ItemEditSheet({
                 </div>
             </Flex>
         </Popup>
+        <ItemProductTagModal
+            input={productTagInput}
+            onClose={() => setIsProductTagOpen(false)}
+            open={isProductTagOpen}
+        />
+        </>
     );
 }

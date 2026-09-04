@@ -63,6 +63,7 @@ const pricingEngine = read('src/lib/pricing/integrityEngine.ts');
 const pricingPdfQueue = read('src/lib/pricing/pdfQueue.ts');
 const pricingIndex = read('src/lib/pricing/index.ts');
 const pricingFormatter = read('src/lib/pricing/formatMenuPrice.ts');
+const publicItemPricePresentation = read('src/lib/pricing/publicItemPricePresentation.ts');
 const pricingSchema = read('src/lib/validation/pricing.schema.ts');
 const projectPriceTruth = read('src/lib/pricing/projectPriceTruth.ts');
 const outletSaveRoute = read('src/app/api/projects/outlet-save/route.ts');
@@ -85,6 +86,7 @@ const screenTypes = read('src/types/campaigns.ts');
 const screenDisplay = read('src/app/screen/[token]/ScreenDisplay.tsx');
 const menuBoardDisplay = read('src/app/screen/[token]/MenuBoardDisplay.tsx');
 const printSanitizer = read('src/lib/menu-card-export/source/sanitizeMenuForPrint.ts');
+const sharableItemCard = read('src/lib/menu/sharableItemCard.ts');
 const priceBoundaryTest = read('scripts/verification/test-menu-price-boundary.ts');
 const projectShareModal = read('src/components/templates/main-app/projects/b2cView/shareModal/index.tsx');
 const menuPdfGenerator = read('src/lib/export/menuPdfGenerator.ts');
@@ -111,7 +113,7 @@ requireToken(
 requireToken(packageJson, '"test:menu-price-boundary":', 'menu price behavioral test script');
 requireToken(
   packageJson,
-  '"test:pricing-plans:rules": "GCLOUD_PROJECT=demo-pricing-plans-rules firebase emulators:exec --only firestore',
+  '"test:pricing-plans:rules": "env -u GOOGLE_APPLICATION_CREDENTIALS GCLOUD_PROJECT=demo-pricing-plans-rules FIRESTORE_EMULATOR_HOST=127.0.0.1:8080 ts-node',
   'pricing plan rules test script',
 );
 
@@ -298,9 +300,21 @@ forbidToken(pricingPdfQueue, 'const ENABLE_BACKGROUND_PDF_REGEN = true;', 'Prici
 [
   "export { formatMenuPrice, normalizeMenuPrice, parseSingleMenuPrice } from './formatMenuPrice';",
   'getActivePublicItemPriceAttributes,',
+  'getPublicItemDisplayOptions,',
   'getPublicItemListPriceLabel,',
   'hasPublicItemDisplayPrice,',
 ].forEach((token) => requireToken(pricingIndex, token, 'Active pricing module exports'));
+[
+  'export function getPublicItemDisplayOptions(',
+  "readOwnValue(attribute, 'active') === false",
+  'getLocalizedText(',
+  'priceLabel',
+].forEach((token) => requireToken(publicItemPricePresentation, token, 'Public item option display projection'));
+[
+  'options?: readonly SharableItemCardOption[];',
+  "ctx.fillText('OPTIONS'",
+  'more options',
+].forEach((token) => requireToken(sharableItemCard, token, 'Sharable item option presentation'));
 [
   'runPricingIntegrity',
   'markPDFFailed',
@@ -322,6 +336,7 @@ forbidToken(pricingPdfQueue, 'const ENABLE_BACKGROUND_PDF_REGEN = true;', 'Prici
   'normalizeOptionalMenuPrice(attribute.price)',
   'maxLength: MENU_PRICE_TEXT_MAX_LENGTH',
   'getPublicItemListPriceLabel(itemData',
+  'getPublicItemDisplayOptions(itemData',
 ].forEach((token) => requireToken(desktopItemEditor, token, 'Desktop item price editor'));
 [
   'normalizeOptionalMenuPrice(draftItem.price)',
@@ -329,6 +344,7 @@ forbidToken(pricingPdfQueue, 'const ENABLE_BACKGROUND_PDF_REGEN = true;', 'Prici
   'price: normalizedItemPrice.data ||',
   'maxLength={MENU_PRICE_TEXT_MAX_LENGTH}',
   'getPublicItemListPriceLabel(draftItem',
+  'getPublicItemDisplayOptions(draftItem',
 ].forEach((token) => requireToken(mobileItemEditor, token, 'Mobile item price editor'));
 forbidToken(mobileItemEditor, 'parseFloat(attribute.priceValue', 'Mobile option price coercion');
 forbidToken(mobileItemEditor, 'parseFloat(String(draftItem.price', 'Mobile base price coercion');

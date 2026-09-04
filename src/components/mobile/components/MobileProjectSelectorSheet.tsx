@@ -22,6 +22,7 @@ import MediaImageAdjustModal from '@/components/shared/media/MediaImageAdjustMod
 import { applyLocalizedProjectDraftMap, getLocalizedProjectValue, getProjectLanguageLabel, getProjectManagedLanguages, getProjectPreferredLanguage, hasMissingProjectPublicDraftContent } from '@lib/localization/projectContent';
 import { CANONICAL_SOURCE_LANGUAGE } from '@lib/localization/languagePolicy';
 import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
+import { isPublishedMenuProject } from '@lib/menuPresence/presenceReadiness';
 import { buildQrCodeFilename } from '@lib/utils/qrCode';
 import { generateProjectUrl } from '@lib/utils/slugify';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
@@ -59,6 +60,7 @@ type ProjectSheetProject = {
     description?: string | Record<string, string>;
     isDefault?: boolean;
     isSpecialMenu?: boolean;
+    lastPublishedAt?: unknown;
     languages?: string[];
     name: string | Record<string, string>;
     projectImage?: string | null;
@@ -184,6 +186,16 @@ const getResolvedSpecialMenuStatus = (
     return project.specialMenuStatus || 'scheduled';
 };
 
+const isProjectReadyForCustomerDistribution = (
+    project: ProjectSheetProject | null | undefined,
+): boolean => (
+    isPublishedMenuProject(project)
+    && (
+        project?.isSpecialMenu !== true
+        || getResolvedSpecialMenuStatus(project) === 'active'
+    )
+);
+
 const formatScheduleDateTime = (value: string | null | undefined, formatter: IntlFormatter) => {
     if (!value) return null;
     const label = formatDateTime(value, 'datetime', formatter);
@@ -265,6 +277,7 @@ export default function MobileProjectSelectorSheet({
     const { isLoading, projectsById, projectsList, removeCachedProject, upsertCachedProject } = useMobileProjects();
     const [managingProjectId, setManagingProjectId] = useState<string | null>(null);
     const [formMode, setFormMode] = useState<FormMode>(null);
+    const [isManagingConfirmationOpen, setIsManagingConfirmationOpen] = useState(false);
     const [formScope, setFormScope] = useState<ProjectOwnerScope | null>(null);
     const [formProjectId, setFormProjectId] = useState<string | null>(null);
     const [formLanguages, setFormLanguages] = useState<string[]>([storeDetails?.defaultLanguage || CANONICAL_SOURCE_LANGUAGE]);
@@ -1423,7 +1436,9 @@ export default function MobileProjectSelectorSheet({
         if (!projectName || project.deleted === true) return null;
 
         const subdomain = storeDetails.subdomain || '';
-        const customDomain = storeDetails.customDomain;
+        const customDomain = storeDetails.domainVerified === false
+            ? undefined
+            : storeDetails.customDomain;
         if (!subdomain && !customDomain) return null;
 
         try {
@@ -1438,6 +1453,10 @@ export default function MobileProjectSelectorSheet({
     );
 
     const handleCopyProjectLink = async (project: ProjectSheetProject) => {
+        if (!isProjectReadyForCustomerDistribution(project)) {
+            Toast.show({ content: 'Publish this menu before sharing its customer link.', duration: 1800 });
+            return;
+        }
         const shareUrl = getProjectShareUrl(project);
         if (!shareUrl) {
             Toast.show({ content: tShare('domainNotSetHelp'), duration: 1600 });
@@ -1471,6 +1490,10 @@ export default function MobileProjectSelectorSheet({
     };
 
     const handlePreviewProject = (project: ProjectSheetProject) => {
+        if (!isProjectReadyForCustomerDistribution(project)) {
+            Toast.show({ content: 'Publish this menu before opening its customer link.', duration: 1800 });
+            return;
+        }
         const shareUrl = getProjectShareUrl(project);
         if (!shareUrl) {
             Toast.show({ content: tShare('domainNotSetHelp'), duration: 1600 });
@@ -1486,6 +1509,10 @@ export default function MobileProjectSelectorSheet({
     };
 
     const handleShowProjectQr = (project: ProjectSheetProject) => {
+        if (!isProjectReadyForCustomerDistribution(project)) {
+            Toast.show({ content: 'Publish this menu before showing its customer QR.', duration: 1800 });
+            return;
+        }
         const shareUrl = getProjectShareUrl(project);
         const projectName = resolveProjectName(project.name, labels.offeringTitle);
         const storeName = getStoreContextName(storeDetails as any, 'menu');
@@ -1504,7 +1531,8 @@ export default function MobileProjectSelectorSheet({
     };
 
     const managingProjectShareUrl = managingProject ? getProjectShareUrl(managingProject) : null;
-    const quickShareItems: ActionItem[] = managingProject && managingProject.deleted !== true && managingProjectShareUrl ? [
+    const managingProjectIsCustomerReady = isProjectReadyForCustomerDistribution(managingProject);
+    const quickShareItems: ActionItem[] = managingProject && managingProjectIsCustomerReady && managingProjectShareUrl ? [
         {
             key: 'preview',
             label: `Preview ${labels.offeringTitle}`,
@@ -1585,6 +1613,7 @@ export default function MobileProjectSelectorSheet({
                 iconBackground: managingProject.active === false ? token.colorSuccessBg : token.colorErrorBg,
                 labelStyle: { color: managingProject.active === false ? token.colorSuccess : token.colorError },
                 onClick: () => {
+                    setIsManagingConfirmationOpen(true);
                     void Dialog.confirm({
                         cancelText: t('cancel'),
                         confirmText: managingProject.active === false ? t('activate') : t('inactivate'),
@@ -1592,7 +1621,7 @@ export default function MobileProjectSelectorSheet({
                             ? t('activateCatalogConfirm')
                             : t('inactivateCatalogConfirm'),
                         onConfirm: () => void handleToggleActive(managingProject),
-                    });
+                    }).finally(() => setIsManagingConfirmationOpen(false));
                 },
             },
             {
@@ -1603,12 +1632,13 @@ export default function MobileProjectSelectorSheet({
                 iconBackground: token.colorFillTertiary,
                 labelStyle: undefined,
                 onClick: () => {
+                    setIsManagingConfirmationOpen(true);
                     void Dialog.confirm({
                         cancelText: t('cancel'),
                         confirmText: 'Reset catalog',
                         content: `Reset "${resolveProjectName(managingProject.name)}" and remove its uploaded files and extracted menu data? You can keep the catalog itself, but you will need to upload and build it again.`,
                         onConfirm: () => void handleResetProject(managingProject),
-                    });
+                    }).finally(() => setIsManagingConfirmationOpen(false));
                 },
             },
         ]),
@@ -1627,12 +1657,13 @@ export default function MobileProjectSelectorSheet({
             icon: <LuTrash2 color={token.colorError} size={16} />,
             iconBackground: token.colorErrorBg,
             onClick: () => {
+                setIsManagingConfirmationOpen(true);
                 void Dialog.confirm({
                     cancelText: t('cancel'),
                     confirmText: 'Delete catalog',
                     content: `Delete "${resolveProjectName(managingProject.name)}" permanently? This removes the catalog, its files, and its menu data. This action cannot be undone.`,
                     onConfirm: () => void handleDeleteProject(managingProject),
-                });
+                }).finally(() => setIsManagingConfirmationOpen(false));
             },
         },
     ] : [];
@@ -1644,7 +1675,7 @@ export default function MobileProjectSelectorSheet({
                 bodyStyle={{ borderTopLeftRadius: 20, borderTopRightRadius: 20 }}
                 onMaskClick={onClose}
                 position="bottom"
-                visible={visible}
+                visible={visible && !managingProject && !formMode && !isQrSheetOpen}
             >
                 <Flex gap={16} style={{ maxHeight: 'min(82vh, 720px)', overflowY: 'auto' }} vertical>
                     <Flex gap={8} vertical>
@@ -1709,7 +1740,7 @@ export default function MobileProjectSelectorSheet({
                 bodyStyle={{ borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingTop: 0 }}
                 onMaskClick={() => setManagingProjectId(null)}
                 position="bottom"
-                visible={Boolean(managingProject)}
+                visible={Boolean(managingProject) && !formMode && !isQrSheetOpen && !isManagingConfirmationOpen}
             >
                 <Flex gap={12} vertical>
                     <Flex
@@ -1736,7 +1767,10 @@ export default function MobileProjectSelectorSheet({
                             {managingProject ? (
                                 <Flex align="center" gap={6} wrap="wrap">
                                     {managingProject.isDefault ? <Tag color="primary">Default</Tag> : null}
-                                    {!managingProjectShareUrl && managingProject.deleted !== true ? (
+                                    {managingProject.deleted !== true && !managingProjectIsCustomerReady ? (
+                                        <Tag color="warning">Not live</Tag>
+                                    ) : null}
+                                    {managingProjectIsCustomerReady && !managingProjectShareUrl ? (
                                         <Tag color="default">No public link</Tag>
                                     ) : null}
                                 </Flex>
@@ -1750,6 +1784,13 @@ export default function MobileProjectSelectorSheet({
                         <Card style={sheetCardStyle}>
                             <Text type="secondary" style={{ fontSize: 13 }}>
                                 {managingProjectSpecialMenuSummary}
+                            </Text>
+                        </Card>
+                    ) : null}
+                    {managingProject?.deleted !== true && !managingProjectIsCustomerReady ? (
+                        <Card style={sheetCardStyle} title={<Text strong>Share</Text>}>
+                            <Text type="secondary">
+                                This menu is not live for customers. Preview, link, and QR actions will appear here after it is published and active.
                             </Text>
                         </Card>
                     ) : null}
@@ -1805,7 +1846,7 @@ export default function MobileProjectSelectorSheet({
                 bodyStyle={{ borderTopLeftRadius: 20, borderTopRightRadius: 20, overflowY: 'auto', paddingTop: 0 }}
                 onMaskClick={() => resetFormState()}
                 position="bottom"
-                visible={Boolean(formMode)}
+                visible={Boolean(formMode) && !isProjectImageAdjustOpen}
             >
                 <Flex gap={16} style={{ paddingBottom: 8 }} vertical>
                     <Flex

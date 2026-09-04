@@ -11,8 +11,12 @@ const requiredFiles = [
   'src/lib/menu-card-export/index.ts',
   'src/lib/menu-card-export/navigation.ts',
   'src/lib/menu-card-export/render/artifactMetadata.ts',
+  'src/lib/menu-card-export/render/renderCategoryIcon.ts',
   'src/lib/menu-card-export/render/renderPdf.ts',
   'src/lib/menu-card-export/render/renderPreviewModel.ts',
+  'src/lib/menu/itemDecisionSymbols.ts',
+  'src/components/shared/menu/ItemDecisionSymbolGroup.tsx',
+  'src/lib/menu-card-export/layout/resolveColumnCount.ts',
   'src/lib/menu-card-export/repository/artifactStorage.ts',
   'src/lib/menu-card-export/repository/menuCardExportRepository.ts',
   'src/lib/export/browserFileShare.ts',
@@ -45,6 +49,7 @@ const requiredFiles = [
   'src/components/mobile/components/MobileMenuCommandSheet.tsx',
   'src/components/templates/main-app/useMenuList/useMenuListDiagnostics.ts',
   'scripts/verification/test-print-export-browser-boundaries.ts',
+  'scripts/verification/render-menu-card-visual-fixtures.ts',
   'src/components/mobile/screens/MobileMoreScreen.tsx',
   'src/app/(main)/use-menulist/print-assets/page.tsx',
   '__docs__/menu-card-export/menu-card-export_firebase.md',
@@ -87,6 +92,7 @@ const features = fs.readFileSync(path.join(root, 'src/config/features.ts'), 'utf
   'ENABLE_MENU_CARD_EXPORT_PRINT_SHOP',
   'ENABLE_MENU_CARD_EXPORT_BATCH',
   'ENABLE_MENU_CARD_EXPORT_AI_ADVISOR',
+  'ENABLE_CATEGORY_ICONS',
   'MENU_CARD_EXPORT_AI_ADVISOR_PLAN_IDS',
   'ENABLE_MULTI_LOCATION_MENULIST_BRANDING_REMOVAL',
   'ENABLE_PRINT_MENU_SURFACES',
@@ -541,6 +547,10 @@ const route = fs.readFileSync(path.join(root, 'src/components/templates/main-app
   'autoDesign',
   'Auto picked',
   'Pro layout suggestion',
+  'Brand look',
+  'Layout',
+  'printableTheme.label',
+  'buildPrintableAssetsUrl',
   'No Firebase writes are used',
 ].forEach((token) => {
   if (!route.includes(token)) failures.push(`Route missing token: ${token}`);
@@ -560,6 +570,11 @@ const designAdvisorClient = fs.readFileSync(path.join(root, 'src/services/ai/men
   'manualSettingsTouchedRef',
   'resolveAutoPrintDesign',
   'resolveMenuCardBusinessPrintProfile',
+  'resolvePrintableAssetStyle',
+  "assetTypeId: 'print_menu'",
+  'getPrintableTemplateFamily',
+  'effectiveSettings',
+  'printableThemeSource',
   'autoDesignLabel',
   'autoDesignReason',
   'isMenuCardPresetAvailable',
@@ -580,9 +595,9 @@ const designAdvisorClient = fs.readFileSync(path.join(root, 'src/services/ai/men
   'artifactInFlightRef',
   'currentAdviceSourceHashRef.current !== requestSourceHash',
   'currentArtifactScopeRef.current !== operationScope',
-  'isMenuCardAdvisorPreset(settings.preset)',
-  'isMenuCardAdvisorStyle(settings.styleId)',
-  'isMenuCardAdvisorDensity(settings.density)',
+  'isMenuCardAdvisorPreset(effectiveSettings.preset)',
+  'isMenuCardAdvisorStyle(effectiveSettings.styleId)',
+  'isMenuCardAdvisorDensity(effectiveSettings.density)',
 ].forEach((token) => {
   if (!controller.includes(token)) failures.push(`Shared controller missing token: ${token}`);
 });
@@ -640,11 +655,18 @@ const mobileExportScreen = fs.readFileSync(path.join(root, 'src/components/mobil
   'autoDesign',
   'Auto picked',
   'Pro layout suggestion',
+  'Brand look',
+  'Layout',
+  'printableTheme.label',
+  'onOpenPrintAssets',
   'No Firebase writes are used',
   'position: \'fixed\'',
 ].forEach((token) => {
   if (!mobileExportScreen.includes(token)) failures.push(`Mobile export screen missing token: ${token}`);
 });
+if ((mobileExportScreen.match(/aria-pressed=\{active\}/g) || []).length !== 3) {
+  failures.push('Mobile export screen must expose selected state for job, style, and density choices');
+}
 
 const parityForbiddenSurfaceCalls = [
   'renderPdf(',
@@ -669,6 +691,7 @@ const parityForbiddenSurfaceCalls = [
     "updateToggle('includeDescriptions'",
     "updateToggle('includeQr'",
     "updateToggle('includeContactBlock'",
+    "updateToggle('includeCoverPage'",
   ].forEach((token) => {
     if (!source.includes(token)) failures.push(`${label} missing shared-output token: ${token}`);
   });
@@ -691,9 +714,9 @@ const mobileShell = fs.readFileSync(path.join(root, 'src/components/mobile/Mobil
   "'printAssets'",
   "'printMenu'",
   'handleOpenPrintAssets',
-  'onOpenPrintAssets={handleOpenPrintAssets}',
+  "onOpenPrintAssets={() => handleOpenPrintAssets('share')}",
   'handleOpenPrintMenu',
-  'onOpenPrintMenu={handleOpenPrintMenu}',
+  "onOpenPrintMenu={() => handleOpenPrintMenu('share')}",
 ].forEach((token) => {
   if (!mobileShell.includes(token)) failures.push(`Mobile shell Print Menu routing missing token: ${token}`);
 });
@@ -717,9 +740,13 @@ const mobileShare = fs.readFileSync(path.join(root, 'src/components/mobile/scree
   'buildPrintReadinessItems',
   'buildPrintShopHandoffMessage',
   'PRINT_ASSET_REPRINT_GUIDANCE',
-  'PRINTABLE_ASSET_TYPES',
-  'getPrintableTemplateFamiliesForAsset',
+  'PRINTABLE_ASSET_CATALOG_TYPES',
+  '[getPrintableTemplateFamily(effectiveThemeId)]',
+  'templateFamilyId: effectiveThemeId',
   'renderPrintableAsset',
+  "buildPrintableRenderInput('feedback_qr', effectiveThemeId)",
+  "outputFormat: 'png'",
+  'printableThemeId: effectiveThemeId',
   'selectedPrintableAssetId',
   'availablePrintableTemplateFamilies',
   'printableActionTemplateId',
@@ -815,12 +842,18 @@ const mobileMore = fs.readFileSync(path.join(root, 'src/components/mobile/screen
   "openSubScreen('printMenu')",
   "subScreen === 'printMenu'",
   'initialProjectId={selectedProjectId}',
+  "printMenuBackTarget === 'printAssets'",
+  "setPrintMenuBackTarget('printAssets')",
+  'onOpenPrintAssets={() =>',
   "key: 'printMenu'",
   "label: 'Print Menu'",
   "if (screen === 'printMenu') return canManageDailyActions && FEATURE_FLAGS.ENABLE_MENU_CARD_EXPORT;",
 ].forEach((token) => {
   if (!mobileMore.includes(token)) failures.push(`Mobile More entry missing token: ${token}`);
 });
+if (mobileMore.includes("setInternalSubScreen(initialScreen);\n        setPrintMenuBackTarget('main');")) {
+  failures.push('Mobile More mirrored parent screen updates must not erase the nested Assets return target');
+}
 
 if (!mobileExportScreen.includes('{isProjectSheetOpen ? (') || !mobileExportScreen.includes('aria-label="Select menu"')) {
   failures.push('Mobile export project selector must stay unmounted while closed and expose an accessible dialog name');
@@ -874,6 +907,7 @@ if (!preflight.includes('runPrintPreflight')) failures.push('Preflight runner mi
 const artifactMetadata = fs.readFileSync(path.join(root, 'src/lib/menu-card-export/render/artifactMetadata.ts'), 'utf8');
 [
   'MENU_CARD_EXPORT_RENDERER_VERSION',
+  "menu-card-export-jspdf-v28",
   'buildArtifactFilename',
   'buildPdfDocumentProperties',
   'shortSourceReference',
@@ -885,7 +919,167 @@ const artifactMetadata = fs.readFileSync(path.join(root, 'src/lib/menu-card-expo
   if (!artifactMetadata.includes(token)) failures.push(`Artifact metadata helper missing token: ${token}`);
 });
 
+const printSourceHashVersionSource = fs.readFileSync(path.join(root, 'src/lib/menu-card-export/source/buildPrintSourceHash.ts'), 'utf8');
+[
+  "import { MENU_CARD_EXPORT_RENDERER_VERSION } from '../render/artifactMetadata'",
+  'rendererVersion: MENU_CARD_EXPORT_RENDERER_VERSION',
+  'tagline: source.business.tagline || null',
+  'phone: source.business.phone || null',
+  'address: source.business.address || null',
+  'decisionSymbols: item.decisionSymbols || []',
+].forEach((token) => {
+  if (!printSourceHashVersionSource.includes(token)) failures.push(`Print source hash missing renderer-version token: ${token}`);
+});
+
 const pdfRenderer = fs.readFileSync(path.join(root, 'src/lib/menu-card-export/render/renderPdf.ts'), 'utf8');
+const itemDecisionSymbolRenderer = fs.readFileSync(path.join(root, 'src/components/shared/menu/ItemDecisionSymbolGroup.tsx'), 'utf8');
+const itemDecisionSymbolDefinitions = fs.readFileSync(path.join(root, 'src/lib/menu/itemDecisionSymbols.ts'), 'utf8');
+const publicMenuRenderer = fs.readFileSync(path.join(root, 'src/components/templates/main-app/projects/b2cView/menuPage/menuPageNew.tsx'), 'utf8');
+const visualFixtureRenderer = fs.readFileSync(path.join(root, 'scripts/verification/render-menu-card-visual-fixtures.ts'), 'utf8');
+if (visualFixtureRenderer.includes('decisionSymbols: [')) {
+  failures.push('Print Menu visual fixtures must not hardcode a generic decision-symbol matrix');
+}
+[
+  'resolveItemDecisionSymbolIds',
+  'decisionSymbols: resolveItemDecisionSymbolIds(item)',
+  'only facts on',
+  'this item may create symbols',
+].forEach((token) => {
+  if (!visualFixtureRenderer.includes(token)) failures.push(`Print Menu visual fixture missing source-derived symbol token: ${token}`);
+});
+[
+  'itemDecisionSymbolsByItem',
+  'collectUsedItemDecisionSymbolIds(',
+  'menuDecisionSymbolLegend.length > 0',
+  'data-menu-decision-symbol-legend="true"',
+  '<ItemDecisionSymbolGroup',
+  'labelled',
+  'symbols={menuDecisionSymbolLegend}',
+].forEach((token) => {
+  if (!publicMenuRenderer.includes(token)) failures.push(`Public menu missing used-only decision-symbol legend token: ${token}`);
+});
+[
+  'FULL_PAGE_PANEL_EDGE_INSET = 14',
+  'FULL_PAGE_PANEL_CONTENT_PADDING = 10',
+  'getBalancedFullPageThemePanel',
+  'widthInset: FULL_PAGE_PANEL_EDGE_INSET * 2',
+  'heightInset: FULL_PAGE_PANEL_EDGE_INSET + bottomInset',
+  'getFullPageThemeContentMargin',
+  'getFullPageThemeContentTop',
+].forEach((token) => {
+  if (!pdfRenderer.includes(token)) failures.push(`PDF content-panel geometry missing balanced-inset token: ${token}`);
+});
+[
+  'GiChiliPepper',
+  'LuVegan',
+  'LuWheat',
+  'FaMars',
+  'FaVenus',
+  'FaVenusMars',
+  'FaChildReaching',
+  'FaPerson',
+  'FaPersonCane',
+  'data-item-decision-symbol-visual="lucide-vegan"',
+  'data-item-decision-symbol-visual="lucide-wheat"',
+  "red: ['#b91c1c', '#f87171']",
+  'resolveReadableColor(',
+  'backgroundColor?: string',
+].forEach((token) => {
+  if (!itemDecisionSymbolRenderer.includes(token)) failures.push(`Web decision-symbol renderer missing standard visual token: ${token}`);
+});
+[
+  'maxSymbols = 6',
+  'getPublicItemDecisionSymbolLabels',
+  "'gluten-free': 'menu.glutenFree'",
+  "'spice-hot': 'menu.spiceHot'",
+].forEach((token) => {
+  if (!itemDecisionSymbolDefinitions.includes(token)) failures.push(`Decision-symbol registry missing production visibility/localization token: ${token}`);
+});
+[
+  'labels={itemDecisionSymbolLabels}',
+  'backgroundColor={moodConfig.background}',
+  'color={moodConfig.bodyColor}',
+].forEach((token) => {
+  if (!publicMenuRenderer.includes(token)) failures.push(`Public menu missing localized theme-aware symbol token: ${token}`);
+});
+[
+  "'spice-mild': { id: 'spice-mild', kind: 'spice', label: 'Mild', semanticColor: 'red', spiceMarks: 1 }",
+  "'spice-medium': { id: 'spice-medium', kind: 'spice', label: 'Medium', semanticColor: 'red', spiceMarks: 2 }",
+  "'spice-hot': { id: 'spice-hot', kind: 'spice', label: 'Hot', semanticColor: 'red', spiceMarks: 3 }",
+  "'spice-very-hot': { id: 'spice-very-hot', kind: 'spice', label: 'Very hot', semanticColor: 'red', spiceMarks: 4 }",
+].forEach((token) => {
+  if (!itemDecisionSymbolDefinitions.includes(token)) failures.push(`Decision-symbol registry must keep every chilli intensity red: ${token}`);
+});
+if (itemDecisionSymbolDefinitions.includes("semanticColor: 'amber'") || pdfRenderer.includes("definition.semanticColor === 'amber'")) {
+  failures.push('Chilli intensity must not fall back to amber in the shared registry or PDF renderer');
+}
+['FaPepperHot', 'FaSeedling', 'vegan-v-sprout', 'gluten-free-gf', 'LuWheatOff', 'LuFlame', 'LuLeaf', 'definition.letter'].forEach((token) => {
+  if (itemDecisionSymbolRenderer.includes(token)) failures.push(`Web decision-symbol renderer must not retain ambiguous legacy visual: ${token}`);
+});
+[
+  'drawPrintLucideVeganSymbol',
+  'drawPrintLucideWheatSymbol',
+  'Commit the green outline before another symbol changes the active colour.',
+  'Commit the neutral/theme outline before another symbol changes the active colour.',
+  'drawPrintGameIconChilliSymbol',
+  'shared semantic red is preserved.',
+  'doc.fill();',
+  'drawPrintMarsSymbol',
+  'drawPrintVenusSymbol',
+  'drawPrintUnisexSymbol',
+  'drawPrintPersonSymbol',
+  'drawPrintAudienceSymbol',
+].forEach((token) => {
+  if (!pdfRenderer.includes(token)) failures.push(`PDF decision-symbol renderer missing standard visual token: ${token}`);
+});
+if (!/function drawPrintLucideVeganSymbol[\s\S]*?doc\.path\(\[[\s\S]*?\]\);\s*\/\/ Commit the green outline[\s\S]*?doc\.stroke\(\);/.test(pdfRenderer)) {
+  failures.push('PDF vegan renderer must commit its green outline before another symbol changes colour');
+}
+if (!/function drawPrintLucideWheatSymbol[\s\S]*?doc\.path\(\[[\s\S]*?\]\);\s*\/\/ Commit the neutral\/theme outline[\s\S]*?doc\.stroke\(\);/.test(pdfRenderer)) {
+  failures.push('PDF gluten-free renderer must commit its neutral/theme outline before another symbol changes colour');
+}
+if (!/function drawPrintGameIconChilliSymbol[\s\S]*?doc\.path\(\[[\s\S]*?\]\);[\s\S]*?shared semantic red is preserved\.[\s\S]*?doc\.fill\(\);/.test(pdfRenderer)) {
+  failures.push('PDF chilli renderer must commit its red fill before another symbol changes colour');
+}
+[
+  'drawPrintVeganSymbol',
+  'drawPrintGlutenFreeSymbol',
+  'drawPrintChilliSymbol',
+  "doc.text('GF'",
+  "doc.text('V'",
+  'const flameWidth',
+  'definition.letter',
+].forEach((token) => {
+  if (pdfRenderer.includes(token)) failures.push(`PDF decision-symbol renderer must not retain ambiguous legacy visual: ${token}`);
+});
+[
+  'fallbackLogoDataUrl: undefined',
+  'Every parent-theme fixture exercises the production no-logo',
+  "tagline: 'Thoughtful care, beautifully finished'",
+  "publicMenuUrl: 'https://aster-oak.menulist.online'",
+  "shortUrl: 'aster-oak.menulist.online'",
+].forEach((token) => {
+  if (!visualFixtureRenderer.includes(token)) failures.push(`Print Menu visual fixture missing truthful all-theme identity token: ${token}`);
+});
+if (visualFixtureRenderer.includes("themeId === 'terracotta-glow' ? undefined : menuListLogoDataUrl")) {
+  failures.push('Print Menu visual fixtures must exercise the truthful no-logo initials contract for every parent theme');
+}
+const qrImageAliasUses = (pdfRenderer.match(/MENU_CARD_QR_IMAGE_ALIAS/g) || []).length;
+if (!pdfRenderer.includes("const MENU_CARD_QR_IMAGE_ALIAS = 'menulist-menu-qr';") || qrImageAliasUses < 4) {
+  failures.push('PDF renderer must use one explicit QR image alias at every QR placement to prevent jsPDF image-cache collisions');
+}
+[
+  'getCenteredTrackedTextStartX',
+  'drawCenteredTrackedText(',
+  'textWidth: doc.getTextWidth(text)',
+  'tracked label from its',
+  'complete rendered width',
+].forEach((token) => {
+  if (!pdfRenderer.includes(token)) failures.push(`PDF renderer missing centered tracked-cover boundary: ${token}`);
+});
+if (/doc\.text\(getHeaderSubtitle\(source\)\.toUpperCase\(\), centerX, labelY, \{[\s\S]{0,180}?charSpace:\s*1\.55/.test(pdfRenderer)) {
+  failures.push('PDF renderer must not use jsPDF center alignment for the tracked cover subtitle');
+}
 [
   'doc.setCreationDate(generatedAt)',
   'doc.setProperties(buildPdfDocumentProperties',
@@ -908,11 +1102,172 @@ const pdfRenderer = fs.readFileSync(path.join(root, 'src/lib/menu-card-export/re
   'businessTone === \'service-list\'',
   'getHeaderSubtitle',
   'drawPageBase',
+  'drawContentPageBackground',
+  'drawCoverPageBackgroundArtwork',
+  'drawCraftKitchenPaperTexture',
+  'drawFullPageThemeCoverPage',
+  'drawFullPageThemeClosingPage',
+  'if (isFullPageThemeStyle(style))',
+  'getMenuCardBusinessInitials',
+  'FULL_PAGE_THEME_INITIALS_MARK_RADIUS_RATIO = 0.48',
+  'FULL_PAGE_THEME_INITIALS_FONT_SIZE_RATIO = 0.78',
+  'doc.circle(centerX, centerY, boxSize * FULL_PAGE_THEME_INITIALS_MARK_RADIUS_RATIO',
+  'setTextRgb(doc, textColorForFill(style.accentColor))',
+  'boxSize * FULL_PAGE_THEME_INITIALS_FONT_SIZE_RATIO',
+  'getConciseQrLabel',
+  'source.business.tagline?.trim()',
+  'isCraftKitchenStyle',
+  'doc.GState({ opacity })',
+  "hasContact ? 'CONTACT & LOCATION' : 'VIEW ONLINE'",
+  'hasDedicatedClosingPage',
+  'MENU_CARD_CRAFT_KITCHEN_PAGE_PATH',
+  'MENU_CARD_THEME_PAGE_PATHS',
+  'FULL_PAGE_THEME_IDS',
+  'DARK_EDITORIAL_THEME_IDS',
+  'FULL_PAGE_THEME_LAYOUTS',
+  "'ember-house': {",
+  "'coastal-table': {",
+  "'sunday-table': {",
+  "'counter-rush': {",
+  "'roastery-ledger': {",
+  "'patisserie-conservatory': {",
+  "'gelateria-riviera': {",
+  "'ink-vine': {",
+  "'salon-atelier': {",
+  "'petal-studio': {",
+  "'pearl-veil': {",
+  "'terracotta-glow': {",
+  "'glasshouse-beauty': {",
+  "'ritual-sanctuary': {",
+  "'eucalyptus-retreat': {",
+  "'mineral-spring': {",
+  "'lotus-stillness': {",
+  "'sunlit-ritual': {",
+  "'performance-circuit': {",
+  "'rosewater-editorial': {",
+  "'mineral-sanctuary': {",
+  'panel: { x: 18, y: 10, widthInset: 36, heightInset: 46, color: [247, 241, 236], opacity: 0.74 }',
+  'panel: { x: 18, y: 10, widthInset: 36, heightInset: 48, color: [241, 236, 226], opacity: 0.76 }',
+  "'noir-studio': {",
+  "'bombay-chronicle': {",
+  "'japanese-night-luxe': {",
+  "'tea-salon-heritage': {",
+  "'lankan-block-print': {",
+  "'gallery-ledger': {",
+  "'vital-current': {",
+  "'workshop-atlas': {",
+  "'neighbourhood-standard': {",
+  "'field-notes': {",
+  "'boutique-window': {",
+  "'market-label': {",
+  "'civic-letterpress': {",
+  "'modern-practice': {",
+  "'studio-contact-sheet': {",
+  "'maker-ledger': {",
+  "'clinical-calm': {",
+  "'mindful-motion': {",
+  "'hospitality-house': {",
+  "'future-workshop': {",
+  'footerPanelOpacity: 0.86',
+  'drawFullPageThemeFooterPanel',
+  'const panelHeight = hasDecisionSymbolLegend ? FULL_PAGE_LEGEND_FOOTER_HEIGHT : 19',
+  'const FULL_PAGE_LEGEND_BASELINE_SAFE_GAP = 5.2',
+  'const FULL_PAGE_LEGEND_FOOTER_HEIGHT = 23',
+  'const FULL_PAGE_LEGEND_FOOTER_CONTENT_RECLAIM = 6',
+  'const FULL_PAGE_LEGEND_MIN_BOTTOM_RESERVE = 32',
+  'footerRuleLowerY + FULL_PAGE_LEGEND_BASELINE_SAFE_GAP',
+  'FULL_PAGE_LEGEND_FOOTER_HEIGHT + 1',
+  'fullPageBottomReserve',
+  'FULL_PAGE_LEGEND_FOOTER_CONTENT_RECLAIM',
+  "?? (isDarkEditorialStyle(style) ? 0.92 : undefined)",
+  'drawDarkThemeHeaderPanel',
+  'if (hasSupportingContent) return descriptionGap * 7',
+  'const ITEM_DESCRIPTION_GAP_SCALE = 0.75',
+  'return getBaseItemDescriptionGap(settings, style) * ITEM_DESCRIPTION_GAP_SCALE',
+  "usesStructuredServiceLayout(style)) return settings.density === 'compact' ? 0.7 : 0.9",
+  "isReadableEditorialStyle(style)) return settings.density === 'compact' ? 0.9 : 1.2",
+  'SANS_DISPLAY_THEME_IDS',
+  'STRUCTURED_SERVICE_THEME_IDS',
+  'usesSansDisplayStyle',
+  'usesStructuredServiceLayout',
+  'getFullPageThemeLayout',
+  'getFullPageThemeContentTop(style)',
+  'fullPageThemeLayout?.bottomReserve',
+  'addFullBleedArtwork',
+  'READABLE_EDITORIAL_ITEM_FONT_SIZE',
+  'READABLE_EDITORIAL_DESCRIPTION_FONT_SIZE',
+  'STRUCTURED_EDITORIAL_ITEM_FONT_SIZE',
+  'STRUCTURED_EDITORIAL_DESCRIPTION_FONT_SIZE',
+  'getEditorialItemFontSize',
+  'getEditorialDescriptionFontSize',
+  'getEditorialNameLineHeight',
+  'getEditorialDescriptionLineHeight',
+  'bodyColor',
+  'isReadableEditorialStyle',
+  'shouldUseEditorialBackground',
+  'MAX_MENU_CARD_EMBEDDED_ARTWORK_DATA_URL_LENGTH',
+  "backgroundArtworkDataUrls?.botanicalCorner",
+  "backgroundArtworkDataUrls?.botanicalRail",
+  "backgroundArtworkDataUrls?.themePage",
+  'themeArtworkPaths?.page',
+  "'/images/printable-themes/ember-house/universal-background.png'",
+  "'/images/printable-themes/coastal-table/universal-background.png'",
+  "'/images/printable-themes/sunday-table/universal-background.png'",
+  "'/images/printable-themes/counter-rush/universal-background.png'",
+  "'/images/printable-themes/roastery-ledger/universal-background.png'",
+  "'/images/printable-themes/patisserie-conservatory/universal-background.png'",
+  "'/images/printable-themes/gelateria-riviera/universal-background.png'",
+  "'/images/printable-themes/salon-atelier/editorial-page-background.png'",
+  "'/images/printable-themes/petal-studio/universal-background.png'",
+  "'/images/printable-themes/pearl-veil/universal-background.png'",
+  "'/images/printable-themes/terracotta-glow/universal-background.png'",
+  "'/images/printable-themes/glasshouse-beauty/universal-background.png'",
+  "'/images/printable-themes/ritual-sanctuary/editorial-page-background.png'",
+  "'/images/printable-themes/eucalyptus-retreat/universal-background.png'",
+  "'/images/printable-themes/mineral-spring/universal-background.png'",
+  "'/images/printable-themes/lotus-stillness/universal-background.png'",
+  "'/images/printable-themes/sunlit-ritual/universal-background.png'",
+  "'/images/printable-themes/performance-circuit/editorial-page-background.png'",
+  "'/images/printable-themes/neighbourhood-standard/universal-background.png'",
+  "'/images/printable-themes/field-notes/universal-background.png'",
+  "'/images/printable-themes/boutique-window/universal-background.png'",
+  "'/images/printable-themes/market-label/universal-background.png'",
+  "'/images/printable-themes/civic-letterpress/universal-background.png'",
+  "'/images/printable-themes/modern-practice/universal-background.png'",
+  "'/images/printable-themes/studio-contact-sheet/universal-background.png'",
+  "'/images/printable-themes/maker-ledger/universal-background.png'",
+  "'/images/printable-themes/clinical-calm/universal-background.png'",
+  "'/images/printable-themes/mindful-motion/universal-background.png'",
+  "'/images/printable-themes/hospitality-house/universal-background.png'",
+  "'/images/printable-themes/future-workshop/universal-background.png'",
+  'const variant = (contentPageIndex - 1) % 3',
   'firstPageContentTop',
   'getColumnTop',
   'pageIndex === 1',
   'labelLines',
-  'boxHeight',
+  'getCategoryTitleHeight',
+  'minimumStartHeight',
+  'drawContinuationHeader',
+  'getCoverBackedContentPageTop',
+  'firstPageContentTop = getCoverBackedContentPageTop(style)',
+  'hasCoverPage\n                ? getCoverBackedContentPageTop(style)',
+  'if (layout.coverContentTop) return layout.coverContentTop',
+  'coverContentTop: 26',
+  'coverContentTop: 24',
+  'getContentPageFooterLabel',
+  'source.business.name,\n                pageLabel',
+  'panel: { x: 18, y: 8, widthInset: 36, heightInset: 38, color: [14, 9, 5], opacity: 0.78 }',
+  'drawCoverPage',
+  'MAX_MENU_CARD_EMBEDDED_LOGO_DATA_URL_LENGTH',
+  "fallbackLogoDataUrl.startsWith('data:image/png;base64,')",
+  'settings.includeCoverPage === true',
+  'hasCoverPage && page === 1',
+  'resolveMenuCardColumnCount(settings, categories)',
+  "style.categoryMode === 'boxed' ? 6 : 4",
+  'drawPrintDecisionSymbolCluster',
+  'drawPrintDecisionSymbolLegend',
+  'getMenuDecisionSymbolLegend',
+  'item.decisionSymbols',
   'postNameGap',
   'paperColor',
   'categoryMode',
@@ -926,10 +1281,72 @@ const pdfRenderer = fs.readFileSync(path.join(root, 'src/lib/menu-card-export/re
   'source.business.activePlanType',
   'MENU_LIST_MENU_ATTRIBUTION_TEXT',
   'createMenuListLogoMarkDataUrl',
-  'Generated: ${formatArtifactDate(generatedAt)}',
+  'Menu updated ${formatArtifactDate(updated)}',
+  'settings.includeUpdatedDate',
   'buildArtifactFilename({ source, settings, template, sourceHash, extension: \'pdf\', generatedAt })',
 ].forEach((token) => {
   if (!pdfRenderer.includes(token)) failures.push(`PDF renderer missing metadata/naming token: ${token}`);
+});
+[
+  'drawCraftKitchenClosingPage',
+  'drawTerracottaGlowCoverPage',
+  'drawTerracottaGlowClosingPage',
+  'isTerracottaGlowStyle',
+  'isBotanicalHeritageStyle',
+].forEach((token) => {
+  if (pdfRenderer.includes(token)) failures.push(`PDF renderer retains retired single-theme identity branch: ${token}`);
+});
+[
+  [/['"]ember-house['"]:\s*\{[\s\S]{0,300}?margin: 34[\s\S]{0,300}?contentTop: 50[\s\S]{0,300}?bottomReserve: 72/, 'Ember House must preserve its fire-art copy field'],
+  [/['"]coastal-table['"]:\s*\{[\s\S]{0,300}?margin: 34[\s\S]{0,300}?contentTop: 48[\s\S]{0,300}?bottomReserve: 72/, 'Coastal Table must preserve its marine-art copy field'],
+  [/['"]sunday-table['"]:\s*\{[\s\S]{0,300}?margin: 36[\s\S]{0,300}?contentTop: 52[\s\S]{0,300}?bottomReserve: 78/, 'Sunday Table must preserve its bistro-art copy field'],
+  [/['"]counter-rush['"]:\s*\{[\s\S]{0,300}?margin: 38[\s\S]{0,300}?contentTop: 50[\s\S]{0,300}?bottomReserve: 76/, 'Counter Rush must preserve its fast-casual copy field'],
+  [/['"]roastery-ledger['"]:\s*\{[\s\S]{0,260}?margin: 36[\s\S]{0,260}?contentTop: 50[\s\S]{0,260}?bottomReserve: 82/, 'Roastery Ledger must preserve its coffee-art copy field'],
+  [/['"]patisserie-conservatory['"]:\s*\{[\s\S]{0,260}?margin: 42[\s\S]{0,260}?contentTop: 58[\s\S]{0,260}?bottomReserve: 108/, 'Patisserie Conservatory must preserve its pastry-art copy field'],
+  [/['"]gelateria-riviera['"]:\s*\{[\s\S]{0,260}?margin: 44[\s\S]{0,260}?contentTop: 52[\s\S]{0,260}?bottomReserve: 94/, 'Gelateria Riviera must preserve its gelato-art copy field'],
+  [/['"]salon-atelier['"]:\s*\{[\s\S]{0,180}?margin: 34[\s\S]{0,180}?contentTop: 48[\s\S]{0,180}?bottomReserve: 80/, 'Salon Atelier must preserve its editorial copy field'],
+  [/['"]petal-studio['"]:\s*\{[\s\S]{0,180}?margin: 34[\s\S]{0,180}?contentTop: 50[\s\S]{0,180}?bottomReserve: 84/, 'Petal Studio must preserve its beauty copy field'],
+  [/['"]pearl-veil['"]:\s*\{[\s\S]{0,180}?margin: 38[\s\S]{0,180}?contentTop: 54[\s\S]{0,180}?bottomReserve: 82/, 'Pearl Veil must preserve its bridal beauty copy field'],
+  [/['"]terracotta-glow['"]:\s*\{[\s\S]{0,180}?margin: 36[\s\S]{0,180}?contentTop: 52[\s\S]{0,180}?bottomReserve: 106/, 'Terracotta Glow must preserve its lower artwork copy field'],
+  [/['"]glasshouse-beauty['"]:\s*\{[\s\S]{0,180}?margin: 43[\s\S]{0,180}?contentTop: 56[\s\S]{0,180}?bottomReserve: 106/, 'Glasshouse Garden must preserve its architectural-art copy field'],
+  [/['"]ritual-sanctuary['"]:\s*\{[\s\S]{0,180}?margin: 40[\s\S]{0,180}?contentTop: 54[\s\S]{0,180}?bottomReserve: 104/, 'Ritual Sanctuary must preserve its ritual-object copy field'],
+  [/['"]eucalyptus-retreat['"]:\s*\{[\s\S]{0,180}?margin: 38[\s\S]{0,180}?contentTop: 54[\s\S]{0,180}?bottomReserve: 112/, 'Eucalyptus Retreat must preserve its ritual copy field'],
+  [/['"]mineral-spring['"]:\s*\{[\s\S]{0,180}?margin: 42[\s\S]{0,180}?contentTop: 58[\s\S]{0,180}?bottomReserve: 94/, 'Mineral Spring must preserve its water-art copy field'],
+  [/['"]lotus-stillness['"]:\s*\{[\s\S]{0,180}?margin: 42[\s\S]{0,180}?contentTop: 58[\s\S]{0,180}?bottomReserve: 116/, 'Lotus Stillness must preserve its floral copy field'],
+  [/['"]sunlit-ritual['"]:\s*\{[\s\S]{0,220}?margin: 40[\s\S]{0,220}?contentTop: 70[\s\S]{0,220}?bottomReserve: 112[\s\S]{0,220}?headerY: 40/, 'Sunlit Ritual must preserve its hospitality copy field and clear the upper botanical art'],
+  [/['"]performance-circuit['"]:\s*\{[\s\S]{0,180}?margin: 36[\s\S]{0,180}?contentTop: 50[\s\S]{0,180}?bottomReserve: 106/, 'Performance Circuit must preserve its training-art copy field'],
+  [/['"]neighbourhood-standard['"]:\s*\{[\s\S]{0,260}?margin: 32[\s\S]{0,260}?contentTop: 48[\s\S]{0,260}?bottomReserve: 64/, 'Neighbourhood Standard must preserve its service copy field'],
+  [/['"]field-notes['"]:\s*\{[\s\S]{0,260}?margin: 34[\s\S]{0,260}?contentTop: 48[\s\S]{0,260}?bottomReserve: 66/, 'Field Notes must preserve its practical-service copy field'],
+  [/['"]boutique-window['"]:\s*\{[\s\S]{0,260}?margin: 37[\s\S]{0,260}?contentTop: 52[\s\S]{0,260}?bottomReserve: 70/, 'Boutique Window must preserve its retail copy field'],
+  [/['"]market-label['"]:\s*\{[\s\S]{0,260}?margin: 36[\s\S]{0,260}?contentTop: 50[\s\S]{0,260}?bottomReserve: 72/, 'Market Label must preserve its retail copy field'],
+  [/['"]civic-letterpress['"]:\s*\{[\s\S]{0,260}?margin: 36[\s\S]{0,260}?contentTop: 50[\s\S]{0,260}?bottomReserve: 62/, 'Civic Letterpress must preserve its professional copy field'],
+  [/['"]modern-practice['"]:\s*\{[\s\S]{0,260}?margin: 32[\s\S]{0,260}?contentTop: 46[\s\S]{0,260}?bottomReserve: 58/, 'Modern Practice must preserve its professional copy field'],
+  [/['"]studio-contact-sheet['"]:\s*\{[\s\S]{0,260}?margin: 38[\s\S]{0,260}?contentTop: 50[\s\S]{0,260}?bottomReserve: 68/, 'Studio Contact Sheet must preserve its creative copy field'],
+  [/['"]maker-ledger['"]:\s*\{[\s\S]{0,260}?margin: 36[\s\S]{0,260}?contentTop: 50[\s\S]{0,260}?bottomReserve: 72/, 'Maker Ledger must preserve its creative copy field'],
+  [/['"]clinical-calm['"]:\s*\{[\s\S]{0,260}?margin: 32[\s\S]{0,260}?contentTop: 46[\s\S]{0,260}?bottomReserve: 58/, 'Clinical Calm must preserve its health copy field'],
+  [/['"]mindful-motion['"]:\s*\{[\s\S]{0,260}?margin: 34[\s\S]{0,260}?contentTop: 48[\s\S]{0,260}?bottomReserve: 64/, 'Mindful Motion must preserve its wellness copy field'],
+  [/['"]hospitality-house['"]:\s*\{[\s\S]{0,260}?margin: 36[\s\S]{0,260}?contentTop: 50[\s\S]{0,260}?bottomReserve: 70/, 'Hospitality House must preserve its guest-service copy field'],
+  [/['"]future-workshop['"]:\s*\{[\s\S]{0,260}?margin: 36[\s\S]{0,260}?contentTop: 48[\s\S]{0,260}?bottomReserve: 64/, 'Future Workshop must preserve its technical copy field'],
+].forEach(([pattern, failure]) => {
+  if (!pattern.test(pdfRenderer)) failures.push(failure);
+});
+['roastery-ledger', 'patisserie-conservatory', 'gelateria-riviera'].forEach((themeId) => {
+  const footerPattern = new RegExp(`['"]${themeId}['"]:\\s*\\{[\\s\\S]{0,360}?footerPanelOpacity: 0\\.92`);
+  if (!footerPattern.test(pdfRenderer)) failures.push(`${themeId} must preserve its protected footer panel`);
+});
+if ((pdfRenderer.match(/footerPanelOpacity: 0\.86/g) || []).length !== 2) {
+  failures.push('PDF renderer must protect both Vital Current and Workshop Atlas footer contrast');
+}
+if (!/if \(price\) \{[\s\S]*?doc\.setFont\('helvetica', 'bold'\);[\s\S]*?doc\.setFontSize\(itemFontSize\);[\s\S]*?doc\.text\(price,/.test(pdfRenderer)) {
+  failures.push('PDF renderer must reset the price font and size after drawing item decision symbols');
+}
+
+const columnResolver = fs.readFileSync(path.join(root, 'src/lib/menu-card-export/layout/resolveColumnCount.ts'), 'utf8');
+[
+  "settings.preset === 'whatsapp' || settings.styleId === 'premium'",
+  "countMenuCardItems(categories) >= 40 ? 3 : 2",
+].forEach((token) => {
+  if (!columnResolver.includes(token)) failures.push(`Menu Card column resolver missing quality token: ${token}`);
 });
 if (pdfRenderer.includes('doc.text(sourceHash')) {
   failures.push('PDF renderer should not print the source hash in the visible footer');
@@ -1004,12 +1421,22 @@ const useMenuListDiagnostics = fs.readFileSync(path.join(root, 'src/components/t
   'businessCategory: (storeDetails as any)?.businessCategory',
   'brandColor: storeBrandColor',
   'currencyCode: (storeDetails as any)?.currencyCode',
+  'renderPrintableAssetDownloadFiles',
+  'handleDownloadThemedFeedbackQr',
+  'printableThemeId: printableTheme.id',
+  'templateFamilyId: printableTheme.id',
   'downloadBlob(result.zipBlob, result.zipFilename)',
 ].forEach((token) => {
   if (!desktopUseMenuList.includes(token)) failures.push(`Desktop Use MenuList print copy missing brand PDF context token: ${token}`);
 });
 if (desktopUseMenuList.includes('result.assets[')) {
   failures.push('Desktop Use MenuList must generate individual Menu Kit files by asset key, not result.assets[index]');
+}
+if (desktopUseMenuList.includes('generateBrandedFeedbackQrCode')) {
+  failures.push('Desktop Use MenuList Feedback QR must use the canonical themed printable renderer');
+}
+if (mobileShare.includes('generateBrandedFeedbackQrCode')) {
+  failures.push('Mobile Share Feedback QR must use the canonical themed printable renderer');
 }
 [
   { label: 'Desktop Use MenuList', source: desktopUseMenuList },
@@ -1087,6 +1514,10 @@ const projectShareModal = fs.readFileSync(path.join(root, 'src/components/templa
   'logoUrl: storeLogo',
   'businessCategory,',
   'brandColor,',
+  'resolvePrintableAssetStyle',
+  "assetTypeId: 'print_menu'",
+  'preferences: storeData?.printableAssetStylePreferences',
+  'printableThemeId,',
 ].forEach((token) => {
   if (!projectShareModal.includes(token)) failures.push(`Project Share modal print copy missing brand PDF context token: ${token}`);
 });
@@ -1332,13 +1763,22 @@ const publicMenuListAttribution = fs.readFileSync(path.join(root, 'src/component
   },
 ].forEach(({ label, file, noQr, delegatesPaper }) => {
   const source = fs.readFileSync(path.join(root, file), 'utf8');
-  if (!source.includes('resolveMenuKitBrandTokens') && !source.includes('resolvePrintableTemplateBrandTokens')) {
+  if (
+    !source.includes('resolveMenuKitBrandTokens')
+    && !source.includes('resolvePrintableTemplateBrandTokens')
+    && !source.includes('loadMenuKitThemeSurface')
+  ) {
     failures.push(`${label} missing premium brand token resolver`);
   }
   [...(noQr ? [] : ['brand.qrDark'])].forEach((token) => {
     if (!source.includes(token)) failures.push(`${label} missing premium brand token: ${token}`);
   });
-  if (!delegatesPaper && !source.includes('brand.paper') && !source.includes('brand.paperRgb')) {
+  if (
+    !delegatesPaper
+    && !source.includes('brand.paper')
+    && !source.includes('brand.paperRgb')
+    && !source.includes('drawMenuKitThemeBackground')
+  ) {
     failures.push(`${label} missing premium brand paper token`);
   }
 });
@@ -1416,7 +1856,7 @@ const menuKitGenerator = fs.readFileSync(path.join(root, 'src/lib/menu-kit/menuK
   'normalizeMenuKitInput',
   'enrichedInput: { ...normalizedInput, menuUrl: validatedUrl, _logo: logo }',
   'prepared.enrichedInput.storeName',
-  'prepared.enrichedInput.templateFamilyId',
+  'resolveMenuKitZipTemplateFamilyId(prepared.enrichedInput)',
   "key: 'table_tent'",
   "key: 'single_table_card'",
   'TableTent_A5_Fold.pdf',
@@ -1431,7 +1871,6 @@ const menuKitGenerator = fs.readFileSync(path.join(root, 'src/lib/menu-kit/menuK
 [
   'enrichedInput: { ...input, menuUrl: validatedUrl, _logo: logo }',
   'buildPrintInstructions(input.storeName, labels)',
-  'zipFilename: buildMenuKitZipFilename(input.storeName, input.templateFamilyId)',
 ].forEach((token) => {
   if (menuKitGenerator.includes(token)) failures.push(`Menu Kit generator retains unprojected input token: ${token}`);
 });
@@ -1603,12 +2042,12 @@ const menuCardHistoryRepository = fs.readFileSync(path.join(root, 'src/lib/menu-
   {
     label: 'Desktop Use MenuList',
     source: desktopUseMenuList,
-    tokens: ['resolveStoreBrandColor', 'generateBrandedQrCodeDataUrl', 'generateBrandedFeedbackQrCode', 'getQrCodeFilename', 'getQrCodeFilename(data.storeName)', 'brandColor: storeBrandColor', 'activePlanType: (storeDetails as any)?.activePlanType'],
+    tokens: ['resolveStoreBrandColor', 'generateBrandedQrCodeDataUrl', 'renderPrintableAssetDownloadFiles', 'handleDownloadThemedFeedbackQr', 'templateFamilyId: printableTheme.id', 'brandColor: storeBrandColor', 'activePlanType: (storeDetails as any)?.activePlanType'],
   },
   {
     label: 'Mobile Share',
     source: mobileShare,
-    tokens: ['resolveStoreBrandColor', 'generateBrandedFeedbackQrCode', 'getQrCodeFilename', 'getQrCodeFilename(data.storeName)', 'brandColor={storeBrandColor}', 'brandColor: storeBrandColor', 'activePlanType: (storeDetails as any)?.activePlanType'],
+    tokens: ['resolveStoreBrandColor', 'renderPrintableAssetDownloadFiles', "buildPrintableRenderInput('feedback_qr', effectiveThemeId)", 'brandColor={storeBrandColor}', 'brandColor: storeBrandColor', 'activePlanType: (storeDetails as any)?.activePlanType'],
   },
   {
     label: 'Project Share modal',
@@ -1737,6 +2176,8 @@ const printSanitizer = fs.readFileSync(path.join(root, 'src/lib/menu-card-export
   'snapshotArray',
   'resolveScalarId',
   '`category-${index}`',
+  'normalizeCategoryIcon',
+  'includeCategoryIcons',
 ].forEach((token) => {
   if (!printSanitizer.includes(token)) failures.push(`Print sanitizer boundary missing token: ${token}`);
 });
@@ -1744,9 +2185,21 @@ const printSanitizer = fs.readFileSync(path.join(root, 'src/lib/menu-card-export
 [
   'const maxDescriptionLines =',
   'Math.min((doc.splitTextToSize(desc, width - 4) as string[]).length, maxDescriptionLines)',
-  'const attributeLines = Math.min(item.attributes.length, 6)',
+  'expandPrintOptionSegments(',
+  'PRINT_OPTION_SEGMENT_SIZE',
+  'getPrintAttributeLayouts(',
 ].forEach((token) => {
   if (!pdfRenderer.includes(token)) failures.push(`PDF layout estimate boundary missing token: ${token}`);
+});
+if (!printSanitizer.includes('PUBLIC_MENU_DRAFT_DATA_LIMITS.MAX_ATTRIBUTES_PER_ITEM')) {
+  failures.push('Print option preservation boundary must use the public item option cap');
+}
+[
+  'item.attributes.slice(0, 6)',
+  '`+ ${attribute.name}',
+  "doc.text('OPTIONS'",
+].forEach((token) => {
+  if (pdfRenderer.includes(token)) failures.push(`PDF renderer must not silently truncate or mislabel neutral options: ${token}`);
 });
 
 const brandTokens = fs.readFileSync(path.join(root, 'src/lib/menu-card-export/source/buildBrandTokens.ts'), 'utf8');
@@ -1768,8 +2221,27 @@ const printSourceHash = fs.readFileSync(path.join(root, 'src/lib/menu-card-expor
   'offeringKind: source.business.offeringKind || null',
   'currency: source.menu.currency || null',
   'currencyCode: source.menu.currencyCode || null',
+  'icon: category.icon || null',
 ].forEach((token) => {
   if (!printSourceHash.includes(token)) failures.push(`Print source hash missing brand freshness token: ${token}`);
+});
+
+const categoryIconRenderer = fs.readFileSync(path.join(root, 'src/lib/menu-card-export/render/renderCategoryIcon.ts'), 'utf8');
+[
+  'normalizePrintableCategoryIcon',
+  'createPrintableCategoryIconDataUrl',
+  'normalizeCategoryIcon',
+  'URL.revokeObjectURL(objectUrl)',
+].forEach((token) => {
+  if (!categoryIconRenderer.includes(token)) failures.push(`Category icon renderer missing bounded raster token: ${token}`);
+});
+[
+  'createPrintableCategoryIconDataUrl',
+  'categoryIconDataUrls',
+  'CATEGORY_TITLE_ICON_SIZE',
+  'Boolean(categoryIconDataUrl)',
+].forEach((token) => {
+  if (!pdfRenderer.includes(token)) failures.push(`PDF renderer missing category icon layout token: ${token}`);
 });
 
 const businessPrintProfiles = fs.readFileSync(path.join(root, 'src/lib/menu-card-export/templates/businessPrintProfiles.ts'), 'utf8');

@@ -1,7 +1,7 @@
 # Website Image & Asset Requirements
 
 **Status:** ✅ CURRENT — Market-first product-proof asset plan plus selected clean feature screenshot proof assets
-**Last Updated:** August 11, 2026
+**Last Updated:** August 31, 2026
 **Primary Stage Output:** `website-prep-codex-prompts/stage-06-output-screenshot-asset-production-system.md`
 **Latest Asset Output:** `asset-production/launch-pack-2026-07/menulist-launch-pack.md`
 
@@ -18,6 +18,7 @@ Market-first correction, July 2026:
 - Treat the next conversion pass as a product-proof pass, not a copy-expansion pass: add or replace visuals with real routed demo screenshots where they matter most, then keep the page short.
 - Use static AVIF/WebP screenshots for first-viewport and feature-page proof, short muted WebM/MP4 loops only for workflows that need sequence, SVG/HTML only for source-to-surface system logic, and a short product video only after screenshot proof is already present.
 - Do not describe fictional or synthetic visuals as real customer screenshots, testimonials, customer proof, or live usage evidence.
+- The active post-hero `OwnerWorkflowGallerySection` uses `owner-workflow-intake-demo.webp` as an explicitly disclosed generated intake demonstration, followed by existing fictional MenuList review and Official Business Page visuals. It illustrates the owner-controlled sequence but is not customer UGC or a testimonial.
 
 Asset production must preserve MenuList's current positioning:
 
@@ -52,6 +53,7 @@ Use lowercase kebab-case filenames:
 
 ```text
 public/images/website/
+├── owner-workflow-intake-demo.webp
 ├── menulist-hero-official-source.webp
 ├── menulist-hero-service-source.webp
 ├── menulist-og-official-source.png
@@ -75,6 +77,13 @@ Approved service-business industry hero (August 11, 2026):
 - `/public/images/website/menulist-hero-service-source.webp` is a fictional Urban Glow Studio service-list/public-page proof used by the salon, service-list, and local-service industry hero variants.
 - It follows the existing official-source visual family while replacing restaurant-specific Daily Plate content on non-food routes.
 - The asset deliberately avoids appointment-booking claims, activity metrics, and restaurant-only menu language. It is governed by `menulist.industry.service-businesses.hero-source` in AssetOS.
+
+Approved homepage owner-workflow intake demonstration (August 31, 2026):
+
+- `/public/images/website/owner-workflow-intake-demo.webp` is a generated illustrative restaurant-owner scene used only as the intake frame of the post-hero owner workflow gallery.
+- The visible section labels the complete sequence as a demonstration with sample business content. Do not describe this image as real customer UGC, a customer testimonial, or evidence of live usage.
+- The image contains no MenuList logo, readable customer identity, invented metric, or automatic-publishing claim. Permissioned customer footage may replace it only after consent and usage-rights review.
+- The asset is governed by `menulist.home.owner-workflow.intake-demonstration` in AssetOS.
 
 Approved public screenshot exception (June 15, 2026):
 

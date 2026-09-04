@@ -18,6 +18,7 @@ const PROJECT_AI_DESCRIPTION_TONES = new Set(['Professional', 'Friendly', 'Premi
 const PROJECT_AI_LIST_MAX_ITEMS = 20;
 const PROJECT_AI_LIST_ITEM_MAX_LENGTH = 120;
 const PROJECT_AI_TEXT_MAX_LENGTH = 500;
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 function normalizeExactString<T extends string>(
     value: unknown,
@@ -100,6 +101,8 @@ export function getRecommendedProjectAIPreferences(businessType?: string, busine
                 styles: ['Food Photography', 'Natural Light'],
                 stylesCategory: DEFAULT_PROJECT_IMAGE_STYLE_CATEGORY,
                 transparentBg: false,
+                subjectProfileId: null,
+                subjectProfileVersion: null,
             },
         };
     }
@@ -124,6 +127,8 @@ export function getRecommendedProjectAIPreferences(businessType?: string, busine
                 styles: ['Shallow Depth of Field / Bokeh', 'Natural Light'],
                 stylesCategory: DEFAULT_PROJECT_IMAGE_STYLE_CATEGORY,
                 transparentBg: false,
+                subjectProfileId: null,
+                subjectProfileVersion: null,
             },
         };
     }
@@ -148,6 +153,8 @@ export function getRecommendedProjectAIPreferences(businessType?: string, busine
                 styles: ['Product Photography', 'Studio Lighting'],
                 stylesCategory: DEFAULT_PROJECT_IMAGE_STYLE_CATEGORY,
                 transparentBg: false,
+                subjectProfileId: null,
+                subjectProfileVersion: null,
             },
         };
     }
@@ -172,6 +179,8 @@ export function getRecommendedProjectAIPreferences(businessType?: string, busine
                 styles: ['Natural Light', 'Macro Photography'],
                 stylesCategory: DEFAULT_PROJECT_IMAGE_STYLE_CATEGORY,
                 transparentBg: false,
+                subjectProfileId: null,
+                subjectProfileVersion: null,
             },
         };
     }
@@ -196,6 +205,8 @@ export function getRecommendedProjectAIPreferences(businessType?: string, busine
                 styles: ['Natural Light', 'Studio Lighting'],
                 stylesCategory: DEFAULT_PROJECT_IMAGE_STYLE_CATEGORY,
                 transparentBg: false,
+                subjectProfileId: null,
+                subjectProfileVersion: null,
             },
         };
     }
@@ -219,6 +230,8 @@ export function getRecommendedProjectAIPreferences(businessType?: string, busine
             styles: DEFAULT_PROJECT_IMAGE_STYLES,
             stylesCategory: DEFAULT_PROJECT_IMAGE_STYLE_CATEGORY,
             transparentBg: false,
+            subjectProfileId: null,
+            subjectProfileVersion: null,
         },
     };
 }
@@ -245,6 +258,11 @@ export function getResolvedProjectAIPreferences(projectData?: Project | null, bu
     const recommended = getRecommendedProjectAIPreferences(businessType, businessCategory);
     const savedDescription = projectData?.aiPreferences?.description;
     const savedImage = projectData?.aiPreferences?.image;
+    const savedSubjectProfileId = normalizeBoundedString(savedImage?.subjectProfileId, '', true);
+    const savedSubjectProfileVersion = Number.isSafeInteger(savedImage?.subjectProfileVersion) && Number(savedImage?.subjectProfileVersion) > 0
+        ? Number(savedImage?.subjectProfileVersion)
+        : null;
+    const hasCompleteSavedSubject = Boolean(savedSubjectProfileId && UUID_PATTERN.test(savedSubjectProfileId) && savedSubjectProfileVersion);
 
     return {
         description: {
@@ -288,6 +306,8 @@ export function getResolvedProjectAIPreferences(projectData?: Project | null, bu
             transparentBg: typeof savedImage?.transparentBg === 'boolean'
                 ? savedImage.transparentBg
                 : recommended.image.transparentBg,
+            subjectProfileId: hasCompleteSavedSubject ? savedSubjectProfileId : null,
+            subjectProfileVersion: hasCompleteSavedSubject ? savedSubjectProfileVersion : null,
         },
     };
 }
@@ -331,6 +351,13 @@ export function mergeProjectAIPreferences(
 }
 
 export function extractImagePreferencePatch(config: Partial<ImageGenerationConfigType>): ProjectAIImagePreferences {
+    const subjectProfileId = typeof config.subjectProfileId === 'string' && UUID_PATTERN.test(config.subjectProfileId)
+        ? config.subjectProfileId
+        : null;
+    const subjectProfileVersion = Number.isSafeInteger(config.subjectProfileVersion) && Number(config.subjectProfileVersion) > 0
+        ? Number(config.subjectProfileVersion)
+        : null;
+    const hasCompleteSubject = Boolean(subjectProfileId && subjectProfileVersion);
     return {
         aspectRatio: config.aspectRatio || DEFAULT_PROJECT_IMAGE_ASPECT_RATIO,
         backgroundColor: config.backgroundColor ?? null,
@@ -345,6 +372,8 @@ export function extractImagePreferencePatch(config: Partial<ImageGenerationConfi
         styles: config.styles?.length ? config.styles : DEFAULT_PROJECT_IMAGE_STYLES,
         stylesCategory: config.stylesCategory || DEFAULT_PROJECT_IMAGE_STYLE_CATEGORY,
         transparentBg: config.transparentBg || false,
+        subjectProfileId: hasCompleteSubject ? subjectProfileId : null,
+        subjectProfileVersion: hasCompleteSubject ? subjectProfileVersion : null,
     };
 }
 
@@ -371,5 +400,7 @@ export function applyProjectImagePreferencesToGenerationConfig(
         styles: resolved.image.styles,
         stylesCategory: resolved.image.stylesCategory,
         transparentBg: resolved.image.transparentBg,
+        subjectProfileId: resolved.image.subjectProfileId,
+        subjectProfileVersion: resolved.image.subjectProfileVersion,
     };
 }

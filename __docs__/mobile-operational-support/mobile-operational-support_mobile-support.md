@@ -18,6 +18,8 @@
 
 **Decision:** ✅ FULL MOBILE SUPPORT — This IS the mobile feature.
 
+First-run Menu guidance remains visible while the selected project has no items. After the owner creates the first category, the same guided card exposes **Add Item** immediately; category creation must not dismiss setup before the first item exists.
+
 ---
 
 ## Mobile Screens Implemented
@@ -139,6 +141,8 @@ AntdLayoutWrapper (src/components/antdComponent/layoutWrapper/index.tsx)
 ```
 
 Route parity contract: handheld users remain in `MobileShell` for canonical owner desktop paths. Mobile shell route-map source gate: `npm run verify:mobile-shell-route-map`; Today/dashboard source gate: `npm run verify:owner-dashboard-today-boundary`. `/dashboard` and `/today` both enter the Today tab; `/today/history` enters Today history when Past Activity is enabled; `/projects` enters Menu; `/menu-manager` enters the Menu Manager tab when enabled; `/use-menulist`, `/qr-code`, and `/qrCode` enter Share; `/business-health`, `/feedback`, `/billing`, `/transactions`, `/locations`, `/users`, and `/users/permissions` enter More sub-screens; `/business-settings` enters the More hub; `/platform/*`, `/ops/*`, and `/reseller/*` enter platform, ops, or reseller More sub-screens for eligible roles.
+
+More controlled-state boundary: `MobileMoreScreen` must publish each local transition to `MobileShell` in the same callback and use incoming `initialScreen` only to synchronize local state. A separate local-to-parent synchronization effect is forbidden because crossed Back values can recurse into the global error boundary. `platformHub` and `answerlatticeHub` are valid role-gated return states. Answerlattice components mounted as embedded mobile sub-screens must keep tab and recovery navigation local; standalone route normalization must not replace the MenuList MobileShell URL.
 
 Transactions parity note: `MobileTransactionsScreen` keeps the existing mobile More-tab placement, but now carries the desktop transaction essentials on phone: action filter, date-range filter, reset, refresh, infinite scroll, credits/tokens summary, and tap-through transaction details. It still uses the same `getPaginatedAiOperations` DAL as desktop; no mobile-only transaction data path exists.
 
@@ -345,3 +349,21 @@ This means mobile edits (toggle availability, edit price, add/delete item) are *
 This folder contains **design specifications and UX constitution docs** — not feature implementations. These are rules for how the B2C output should look (readability, pricing transparency, navigation ergonomics, etc.).
 
 **Decision:** No code changes needed. These are design principles that apply to the public B2C View, which is already mobile-responsive. The constitution guides desktop editor and B2C renderer — not the owner mobile shell.
+
+---
+
+## Share-owned print navigation recovery (September 1, 2026)
+
+Assets and Print Menu are Share-owned owner actions. They remain valid
+MobileShell sub-screens for direct-route compatibility, but they are not
+duplicated in the More root. When either surface opens from Share, Back restores
+Share; direct routes still enter the governed sub-screen without bypassing
+MobileShell. This keeps the owner inside the shell without making them learn two
+places for the same output.
+
+Desktop owner navigation mirrors the same model: Today, Menu, Share, Feedback,
+and More. Share groups the output center, QR, and Assets. More groups
+dashboard/status, settings, account, team, billing, help, and advanced owner
+modules. Mobile Today starts with one contextual next action instead of
+repeating Dashboard, Share, Preview, and History navigation already available
+elsewhere.

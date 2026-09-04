@@ -188,6 +188,21 @@ export const getPublicBaseUrl = (): string => {
     return PLATFORM_URL;
 };
 
+/**
+ * MenuList marketing-site origin for owner-app handoffs such as plan choice.
+ * Hosted app origins must never retain `app.` for website-only routes. Local
+ * browser sessions stay on their current loopback/LAN origin for local QA.
+ */
+export const getPlatformWebsiteBaseUrl = (): string => {
+    if (typeof window !== 'undefined' && window.location?.origin) {
+        const currentHostname = window.location.hostname.toLowerCase();
+        if (isLocalhostHost(currentHostname)) {
+            return stripTrailingSlashes(window.location.origin);
+        }
+    }
+    return PLATFORM_URL;
+};
+
 // ═══════════════════════════════════════════════════════════════
 // Subdomains (Platform Services)
 // ═══════════════════════════════════════════════════════════════
@@ -240,7 +255,30 @@ export const getMenuUrl = (subdomain: string): string => {
     const normalizedSubdomain = subdomain.trim().toLowerCase();
     if (!normalizedSubdomain) return getPublicBaseUrl();
 
+    const isLocalTenantDomain = MENULIST_TENANT_BASE_DOMAIN === 'localhost'
+        || MENULIST_TENANT_BASE_DOMAIN.endsWith('.localhost');
+    if (isLocalTenantDomain) {
+        const ownerAppPort = new URL(OWNER_APP_URL).port || '3000';
+        return normalizeBaseUrl(
+            `http://${normalizedSubdomain}.${MENULIST_TENANT_BASE_DOMAIN}:${ownerAppPort}`,
+        );
+    }
+
     return normalizeBaseUrl(`https://${normalizedSubdomain}.${MENULIST_TENANT_BASE_DOMAIN}`);
+};
+
+const normalizeLocalTenantHost = (value?: string): string => {
+    const normalized = normalizeBaseUrl(value);
+    if (!normalized) return '';
+    try {
+        const parsed = new URL(normalized);
+        const hostname = parsed.hostname.toLowerCase();
+        if (hostname !== 'localhost' && !hostname.endsWith('.localhost')) return '';
+        const ownerAppPort = new URL(OWNER_APP_URL).port || '3000';
+        return `http://${hostname}:${parsed.port || ownerAppPort}`;
+    } catch {
+        return '';
+    }
 };
 
 /** Build a customer-facing tenant root URL from either custom domain or subdomain */
@@ -249,6 +287,8 @@ export const getTenantBaseUrl = (
     customDomain?: string,
 ): string => {
     if (customDomain) {
+        const localTenantUrl = normalizeLocalTenantHost(customDomain);
+        if (localTenantUrl) return localTenantUrl;
         return normalizeBaseUrl(customDomain);
     }
 

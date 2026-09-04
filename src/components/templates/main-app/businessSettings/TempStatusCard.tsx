@@ -12,7 +12,7 @@
 import { Button, Card, DatePicker, Flex, Input, Modal, Tag, Typography, message as antdMessage, theme } from 'antd';
 import dayjs from 'dayjs';
 import { useFormatter, useTimeZone } from 'next-intl';
-import { useCallback, useRef, useState, type Dispatch, type SetStateAction } from 'react';
+import { useCallback, useId, useRef, useState, type Dispatch, type SetStateAction } from 'react';
 import { LuAlertTriangle, LuCheck, LuClock, LuX } from 'react-icons/lu';
 import {
     formatDateTime,
@@ -22,6 +22,10 @@ import {
 } from '@util/dateTime';
 import { AUTH_BROWSER_REQUEST_POLICY } from '@lib/auth/browserRequestPolicy';
 import { readTempStatusResponse } from '@lib/tempStatus/clientResponse';
+import {
+    getTempStatusDraftIssue,
+    getTempStatusDraftIssueMessage,
+} from '@lib/tempStatus/draftValidation';
 import { useActiveTempStatus } from '@hook/useActiveTempStatus';
 import { getBoundedBusinessSettingsStringContext, logBusinessSettingsFailure } from './utils/businessSettingsDiagnostics';
 import type { StoreDataType } from '@type/platform/store';
@@ -69,6 +73,7 @@ export default function TempStatusCard({ storeDetails, setStoreDetails }: TempSt
     const { token } = theme.useToken();
     const formatter = useFormatter();
     const timeZone = useTimeZone();
+    const draftErrorId = useId();
     const storedStatus = storeDetails?.tempStatus;
     const currentStatus = useActiveTempStatus(storedStatus);
     const isActive = Boolean(currentStatus);
@@ -94,19 +99,23 @@ export default function TempStatusCard({ storeDetails, setStoreDetails }: TempSt
             ? fromNativeDateTimeInputValue(value.format('YYYY-MM-DDTHH:mm'), timeZone)
             : ''
     ), [timeZone]);
+    const draftExpiryInstant = resolveExpiryInstant(expiresAt);
+    const draftIssue = getTempStatusDraftIssue({
+        customMessage,
+        expiresAt: draftExpiryInstant,
+        statusType,
+    });
+    const draftIssueMessage = draftIssue ? getTempStatusDraftIssueMessage(draftIssue) : null;
 
     const handleSet = useCallback(() => {
         const expectedTenantId = storeDetails.tenantId;
         const expectedStoreId = storeDetails.storeId;
-        if (statusType === 'custom' && !customMessage.trim()) {
-            setError('Enter a custom message');
-            return;
-        }
-        if (!expiresAt) {
-            setError('Please set an expiry time');
-            return;
-        }
         const expiryInstant = resolveExpiryInstant(expiresAt);
+        const currentDraftIssue = getTempStatusDraftIssue({ customMessage, expiresAt: expiryInstant, statusType });
+        if (currentDraftIssue) {
+            setError(getTempStatusDraftIssueMessage(currentDraftIssue));
+            return;
+        }
         const expiryDate = toDate(expiryInstant);
         if (!expiryInstant || Number.isNaN(expiryDate.getTime()) || expiryDate.getTime() <= Date.now()) {
             setError('Expiry must be in the future');
@@ -360,6 +369,10 @@ export default function TempStatusCard({ storeDetails, setStoreDetails }: TempSt
 
                     {statusType === 'custom' && (
                         <Input
+                            aria-describedby={draftIssue?.startsWith('custom_message_') ? draftErrorId : undefined}
+                            aria-invalid={draftIssue?.startsWith('custom_message_') || undefined}
+                            aria-label="Custom status message"
+                            aria-required="true"
                             value={customMessage}
                             onChange={(e) => {
                                 setCustomMessage(e.target.value);
@@ -375,6 +388,9 @@ export default function TempStatusCard({ storeDetails, setStoreDetails }: TempSt
                         <Flex vertical style={{ flex: 1 }}>
                             <Text type="secondary" style={{ fontSize: 12, marginBottom: 4 }}>Expires at</Text>
                             <DatePicker
+                                aria-describedby={draftIssue?.startsWith('expiry_') ? draftErrorId : undefined}
+                                aria-invalid={draftIssue?.startsWith('expiry_') || undefined}
+                                aria-label="Temporary status expiry"
                                 showTime
                                 value={expiresAt}
                                 onChange={(val) => setExpiresAt(val)}
@@ -399,8 +415,10 @@ export default function TempStatusCard({ storeDetails, setStoreDetails }: TempSt
                         </Flex>
                     </div>
 
-                    {error && (
-                        <Text role="alert" type="danger" style={{ fontSize: 13 }}>{error}</Text>
+                    {(draftIssueMessage || error) && (
+                        <Text id={draftErrorId} role="alert" type="danger" style={{ fontSize: 13 }}>
+                            {draftIssueMessage || error}
+                        </Text>
                     )}
 
                     <Button
@@ -408,6 +426,7 @@ export default function TempStatusCard({ storeDetails, setStoreDetails }: TempSt
                         icon={<LuCheck size={15} />}
                         onClick={handleSet}
                         loading={isLoading}
+                        disabled={Boolean(draftIssue)}
                         size="large"
                         block
                         style={{ background: token.colorWarning, borderColor: token.colorWarning, color: token.colorTextLightSolid }}

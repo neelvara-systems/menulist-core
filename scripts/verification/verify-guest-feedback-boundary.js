@@ -348,6 +348,8 @@ function verifyPublicPageAndForm() {
   assertIncludes(mobileAdvancedSettings, "<Switch aria-label={t('enableFeedback')}", 'Guest Feedback mobile master-toggle accessible name');
   assertIncludes(mobileAdvancedSettings, '<Switch aria-label={label}', 'Guest Feedback mobile field-toggle accessible name');
   assertIncludes(mobileAdvancedSettings, '<Switch aria-label={mandatoryLabel}', 'Guest Feedback mobile required-toggle accessible name');
+  assertIncludes(mobileAdvancedSettings, 'paddingBottom: `calc(16px + ${MOBILE_BOTTOM_NAV_CLEARANCE})`', 'Guest Feedback mobile content clears the sticky action bar and bottom navigation');
+  assertIncludes(mobileAdvancedSettings, 'scrollPaddingBottom: `calc(68px + ${MOBILE_BOTTOM_NAV_CLEARANCE})`', 'Guest Feedback mobile lower controls scroll above the sticky action bar');
 }
 
 function verifyFirestoreDalAndRetention() {

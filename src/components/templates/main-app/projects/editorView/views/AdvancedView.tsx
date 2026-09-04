@@ -38,6 +38,7 @@ interface AdvancedViewProps {
     setSelectedItemId: (id: string | null) => void;
     // Multi-outlet props
     itemStates?: Record<string, InheritanceState>;
+    categoryStates?: Record<string, InheritanceState>;
     isMasterLinked?: boolean;
 }
 
@@ -58,6 +59,7 @@ export const AdvancedView = ({
     setSelectedItemId,
     // Multi-outlet props
     itemStates,
+    categoryStates,
     isMasterLinked,
 }: AdvancedViewProps) => {
     return (
@@ -131,6 +133,7 @@ export const AdvancedView = ({
                                 setSelectedItemId={setSelectedItemId}
                                 // Multi-outlet props
                                 itemStates={itemStates}
+                                categoryStates={categoryStates}
                                 isMasterLinked={isMasterLinked}
                             />
                         </Splitter.Panel>

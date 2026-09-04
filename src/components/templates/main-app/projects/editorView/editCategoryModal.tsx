@@ -98,7 +98,7 @@ const EditCategoryModal = ({
     // Multi-outlet governance: Determine if fields should be locked
     // Inherited/overridden categories have locked brand-critical fields (name, images)
     const isInheritedCategory = inheritanceState === 'inherited' || inheritanceState === 'overridden';
-    const isNameLocked = FEATURE_FLAGS.ENABLE_MULTI_OUTLET && isMasterLinked && isInheritedCategory;
+    const isMasterControlledCategory = FEATURE_FLAGS.ENABLE_MULTI_OUTLET && isMasterLinked && isInheritedCategory;
 
     // Get store details from context
     const { storeDetails, setStoreDetails } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext);
@@ -389,7 +389,7 @@ const EditCategoryModal = ({
         };
 
         // Multi-outlet: Lock name field for inherited categories
-        if (isNameLocked) {
+        if (isMasterControlledCategory) {
             return (
                 <Tooltip title="This field is controlled by master menu and cannot be edited">
                     <Input
@@ -409,7 +409,7 @@ const EditCategoryModal = ({
                 placeholder={`Enter name in ${lang}`}
             />
         );
-    }, [isNameLocked]);
+    }, [isMasterControlledCategory]);
 
     return (
         <Modal
@@ -521,7 +521,9 @@ const EditCategoryModal = ({
                                 <Flex vertical gap={2}>
                                     <Typography.Text strong>Category icon</Typography.Text>
                                     <Typography.Text type="secondary">
-                                        Pick an icon or emoji to help this category stand out.
+                                        {isMasterControlledCategory
+                                            ? 'This icon is controlled by the main menu.'
+                                            : 'Pick an icon or emoji to help this category stand out.'}
                                     </Typography.Text>
                                 </Flex>
                                 <Flex align="center" gap={8} style={{ flexShrink: 0 }}>
@@ -529,6 +531,7 @@ const EditCategoryModal = ({
                                         allowClear
                                         buttonSize="large"
                                         buttonStyle={{ height: 56, minWidth: 56 }}
+                                        disabled={isMasterControlledCategory}
                                         iconSize={26}
                                         onChange={(value) => {
                                             const normalizedIcon = normalizeCategoryIconValue(value);

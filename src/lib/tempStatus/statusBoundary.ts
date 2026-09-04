@@ -27,6 +27,16 @@ const DEFAULT_TEMP_STATUS_MESSAGES: Record<TempStatusType, string> = {
     custom: 'Temporary notice',
 };
 
+export function normalizeTempStatusCustomMessage(value: unknown): string {
+    return typeof value === 'string'
+        ? value
+            .replace(/[\u0000-\u001F\u007F\u200B-\u200F\u202A-\u202E\u2060-\u206F]+/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim()
+            .slice(0, TEMP_STATUS_MESSAGE_MAX_LENGTH)
+        : '';
+}
+
 function readOwnValue(record: object, key: PropertyKey): unknown {
     try {
         return Object.prototype.hasOwnProperty.call(record, key)
@@ -44,13 +54,7 @@ export function normalizeTempStatusType(value: unknown): TempStatusType | null {
 }
 
 export function normalizeTempStatusMessage(type: TempStatusType, value: unknown): string {
-    const normalized = typeof value === 'string'
-        ? value
-            .replace(/[\u0000-\u001F\u007F\u200B-\u200F\u202A-\u202E\u2060-\u206F]+/g, ' ')
-            .replace(/\s+/g, ' ')
-            .trim()
-            .slice(0, TEMP_STATUS_MESSAGE_MAX_LENGTH)
-        : '';
+    const normalized = normalizeTempStatusCustomMessage(value);
     return normalized || DEFAULT_TEMP_STATUS_MESSAGES[type];
 }
 

@@ -9,7 +9,7 @@ type PrintableAssetPreviewLabels = {
 
 export const PRINTABLE_ASSET_TYPES: PrintableAssetType[] = [
     {
-        defaultTemplateId: 'classic-luxe',
+        defaultTemplateId: 'botanical-heritage',
         description: 'Full paper file for in-house printing or print shops.',
         id: 'print_menu',
         outputFormat: 'pdf',
@@ -20,7 +20,7 @@ export const PRINTABLE_ASSET_TYPES: PrintableAssetType[] = [
         title: 'Print Menu',
     },
     {
-        defaultTemplateId: 'classic-luxe',
+        defaultTemplateId: 'botanical-heritage',
         description: 'Folded display for table centers, readable from both sides.',
         id: 'table_tent',
         menuKitAssetKey: 'table_tent',
@@ -31,7 +31,7 @@ export const PRINTABLE_ASSET_TYPES: PrintableAssetType[] = [
         title: 'Table Tent',
     },
     {
-        defaultTemplateId: 'modern-calm',
+        defaultTemplateId: 'botanical-heritage',
         description: 'Upright card for acrylic holders, counters, and wall clips.',
         id: 'single_table_card',
         menuKitAssetKey: 'single_table_card',
@@ -42,7 +42,7 @@ export const PRINTABLE_ASSET_TYPES: PrintableAssetType[] = [
         title: 'Single Table Card',
     },
     {
-        defaultTemplateId: 'qr-first',
+        defaultTemplateId: 'botanical-heritage',
         description: 'Sticker for billing, pickup, reception, or service counters.',
         id: 'counter_sticker',
         menuKitAssetKey: 'counter_sticker',
@@ -53,7 +53,7 @@ export const PRINTABLE_ASSET_TYPES: PrintableAssetType[] = [
         title: 'Counter Sticker',
     },
     {
-        defaultTemplateId: 'brand-banner',
+        defaultTemplateId: 'botanical-heritage',
         description: 'Door, window, entrance, or host-stand poster.',
         id: 'entrance_poster',
         menuKitAssetKey: 'entrance_poster',
@@ -64,7 +64,7 @@ export const PRINTABLE_ASSET_TYPES: PrintableAssetType[] = [
         title: 'Entrance Poster',
     },
     {
-        defaultTemplateId: 'soft-curve',
+        defaultTemplateId: 'botanical-heritage',
         description: 'Private feedback QR for exits, counters, or receipts.',
         id: 'feedback_qr',
         outputFormat: 'png',
@@ -75,7 +75,7 @@ export const PRINTABLE_ASSET_TYPES: PrintableAssetType[] = [
         title: 'Feedback QR',
     },
     {
-        defaultTemplateId: 'local-bold',
+        defaultTemplateId: 'botanical-heritage',
         description: 'Offer, launch, event, or delivery insert.',
         id: 'campaign_flyer',
         outputFormat: 'pdf',
@@ -85,7 +85,7 @@ export const PRINTABLE_ASSET_TYPES: PrintableAssetType[] = [
         title: 'Flyer',
     },
     {
-        defaultTemplateId: 'classic-luxe',
+        defaultTemplateId: 'botanical-heritage',
         description: 'Voucher for gifts, credits, or prepaid offers.',
         id: 'gift_certificate',
         outputFormat: 'pdf',
@@ -95,7 +95,7 @@ export const PRINTABLE_ASSET_TYPES: PrintableAssetType[] = [
         title: 'Gift Certificate',
     },
     {
-        defaultTemplateId: 'soft-curve',
+        defaultTemplateId: 'botanical-heritage',
         description: 'Front and back card; PDF stays paired, image download gives both sides.',
         id: 'business_card',
         outputFormat: 'pdf',
@@ -105,17 +105,17 @@ export const PRINTABLE_ASSET_TYPES: PrintableAssetType[] = [
         title: 'Business Card',
     },
     {
-        defaultTemplateId: 'soft-curve',
-        description: 'Portrait staff, owner, or service ID card with photo area.',
+        defaultTemplateId: 'botanical-heritage',
+        description: 'Portrait staff or owner name badge with a premium initials monogram.',
         id: 'staff_id_card',
         outputFormat: 'pdf',
         placement: 'identity',
         size: '54 x 85 mm',
         supportedOutputFormats: ['pdf', 'png'],
-        title: 'ID Card',
+        title: 'Staff Name Badge',
     },
     {
-        defaultTemplateId: 'soft-curve',
+        defaultTemplateId: 'botanical-heritage',
         description: 'Invite card for events, openings, workshops, or specials.',
         id: 'event_invitation',
         outputFormat: 'pdf',
@@ -125,7 +125,7 @@ export const PRINTABLE_ASSET_TYPES: PrintableAssetType[] = [
         title: 'Invitation',
     },
     {
-        defaultTemplateId: 'classic-luxe',
+        defaultTemplateId: 'botanical-heritage',
         description: 'Small mailer-style card for offers, thanks, and reminders.',
         id: 'postcard',
         outputFormat: 'pdf',
@@ -135,7 +135,7 @@ export const PRINTABLE_ASSET_TYPES: PrintableAssetType[] = [
         title: 'Postcard',
     },
     {
-        defaultTemplateId: 'clean-utility',
+        defaultTemplateId: 'botanical-heritage',
         description: 'Small tag for retail, bakery, pickup, or counter items.',
         id: 'product_tag',
         outputFormat: 'pdf',
@@ -145,7 +145,7 @@ export const PRINTABLE_ASSET_TYPES: PrintableAssetType[] = [
         title: 'Product Tag',
     },
     {
-        defaultTemplateId: 'brand-banner',
+        defaultTemplateId: 'botanical-heritage',
         description: 'Offer poster for windows, counters, and local campaigns.',
         id: 'campaign_poster',
         outputFormat: 'pdf',
@@ -155,7 +155,7 @@ export const PRINTABLE_ASSET_TYPES: PrintableAssetType[] = [
         title: 'Campaign Poster',
     },
     {
-        defaultTemplateId: 'modern-calm',
+        defaultTemplateId: 'botanical-heritage',
         description: 'All print and social files in one download.',
         id: 'complete_menu_kit',
         outputFormat: 'zip',
@@ -165,6 +165,25 @@ export const PRINTABLE_ASSET_TYPES: PrintableAssetType[] = [
         title: 'Complete Menu Kit',
     },
 ];
+
+/**
+ * Assets that owners can start without first selecting a menu item.
+ * Product Tag remains a first-class renderable asset, but its owner entry
+ * point lives beside the source item so its name, description, price, and
+ * direct link always come from real project data.
+ */
+export const PRINTABLE_ASSET_CATALOG_TYPES: PrintableAssetType[] = PRINTABLE_ASSET_TYPES.filter(
+    (asset) => asset.id !== 'product_tag',
+);
+
+export const PRINTABLE_BRAND_KIT_PREVIEW_ASSET_IDS: readonly PrintableAssetTypeId[] = Object.freeze([
+    'print_menu',
+    'table_tent',
+    'feedback_qr',
+    'entrance_poster',
+    'gift_certificate',
+    'business_card',
+]);
 
 export function getPrintableAssetType(id?: string | null): PrintableAssetType {
     return PRINTABLE_ASSET_TYPES.find((asset) => asset.id === id) || PRINTABLE_ASSET_TYPES[1];
@@ -186,13 +205,13 @@ export function getPrintableAssetPreviewCopy(
         case 'campaign_flyer':
             return { actionLabel: 'WEEKEND OFFER', instructionLabel: 'Scan for details' };
         case 'gift_certificate':
-            return { actionLabel: 'GIFT CERTIFICATE', instructionLabel: 'Scan to redeem' };
+            return { actionLabel: 'GIFT CERTIFICATE', instructionLabel: 'Add gift details before download' };
         case 'business_card':
             return { actionLabel: 'CONTACT CARD', instructionLabel: 'PDF paired, image split' };
         case 'staff_id_card':
-            return { actionLabel: 'STAFF ID', instructionLabel: 'Owner or staff identity card' };
+            return { actionLabel: 'STAFF BADGE', instructionLabel: 'Owner or staff name badge' };
         case 'event_invitation':
-            return { actionLabel: 'YOU ARE INVITED', instructionLabel: 'Scan for details' };
+            return { actionLabel: 'YOU ARE INVITED', instructionLabel: 'Add or handwrite event details' };
         case 'postcard':
             return { actionLabel: 'THANK YOU', instructionLabel: 'Scan for your latest' };
         case 'product_tag':

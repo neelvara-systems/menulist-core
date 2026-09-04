@@ -38,6 +38,7 @@ function verifyStaffRolesRouteParity() {
   const staffServer = read('src/lib/staffManagement/server.ts');
   const staffConcurrencyBoundary = read('src/lib/staffManagement/concurrencyBoundary.ts');
   const staffFormMappingBoundary = read('src/lib/staffManagement/formMappingBoundary.ts');
+  const staffInputBoundary = read('src/lib/staffManagement/inputBoundary.ts');
   const staffScopeBoundary = read('src/lib/staffManagement/scopeBoundary.ts');
   const desktopUsersScreen = read('src/components/templates/main-app/users/usersList/index.tsx');
   const desktopUsersTable = read('src/components/templates/main-app/users/usersList/usersListTable.tsx');
@@ -132,6 +133,9 @@ function verifyStaffRolesRouteParity() {
     'item.id === user.id && item === user ? response.user : item',
     'setSelectedUser((current) => current === user ?',
     "const optionalEmailLabel = t('emailLabel').split('*', 1)[0]?.trim() || t('emailLabel');",
+    "import { isValidOptionalStaffEmail } from '@lib/staffManagement/inputBoundary';",
+    'if (!isValidOptionalStaffEmail(submittedEmail))',
+    "Toast.show({ content: 'Invalid email address', duration: 1800 });",
     'aria-label={t(\'name\')}',
     'aria-label={optionalEmailLabel}',
     'aria-label={t(\'phone\')}',
@@ -144,6 +148,14 @@ function verifyStaffRolesRouteParity() {
   ].forEach((token) => {
     assertIncludes(mobileUsersScreen, token, 'Mobile staff screen parity');
   });
+  [
+    'export const optionalStaffEmailSchema = z.string()',
+    'export const isValidOptionalStaffEmail',
+    "'Invalid email address'",
+  ].forEach((token) => {
+    assertIncludes(staffInputBoundary, token, 'Shared Staff email boundary');
+  });
+  assertIncludes(staffServer, 'email: optionalStaffEmailSchema,', 'Staff server shared email boundary');
   assert(
     !mobileUsersScreen.includes('|| (user as any).active === false\n            || !canManageTarget(user)'),
     'Mobile staff activation must not reject an already inactive account before the owner can reactivate it',

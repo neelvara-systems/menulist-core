@@ -279,6 +279,7 @@ export async function renderPrintableAsset(input: PrintableAssetRenderInput): Pr
         const { generateMenuPdf } = await import('@lib/export/menuPdfGenerator');
         const result = await generateMenuPdf({
             ...admittedInput.printMenuOptions,
+            printableThemeId: admittedInput.templateFamilyId,
             styleId: mapPrintableTemplateToMenuCardStyle(admittedInput.templateFamilyId),
         });
         return convertResultFormat({

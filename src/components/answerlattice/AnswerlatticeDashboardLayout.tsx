@@ -35,12 +35,13 @@ import AntdThemeProvider from '@providers/antdThemeProvider';
 import { AnswerlatticeAccessProvider, useAnswerlatticeAccess } from '@providers/answerlatticeAccessProvider';
 import NetworkStatusProvider from '@providers/NetworkStatusProvider';
 import { getSidebarState } from '@reduxSlices/clientThemeConfig';
-import { Alert, Drawer, Grid, Layout, Spin, theme, unstableSetRender } from 'antd';
+import { Alert, Button, Drawer, Grid, Layout, Spin, theme, unstableSetRender } from 'antd';
 import { useSession } from 'next-auth/react';
 import dynamic from 'next/dynamic';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
+import { LuX } from 'react-icons/lu';
 import AnswerlatticeSidebar from './AnswerlatticeSidebar';
 import AnswerlatticeHeader from './AnswerlatticeHeader';
 
@@ -103,7 +104,6 @@ function AnswerlatticeDashboardLayoutContent({ children }: { children: React.Rea
     const isMobile = !isDesktop;
     const [mobileNavOpen, setMobileNavOpen] = useState(false);
     const [appSettingsOpen, setAppSettingsOpen] = useState(false);
-    const [sidebarShellExpanded, setSidebarShellExpanded] = useState(false);
     const [firebaseAuthReady, setFirebaseAuthReady] = useState(false);
     const [firebaseAuthError, setFirebaseAuthError] = useState(false);
     const { access, error: accessError, errorCode: accessErrorCode, loading: accessLoading } = useAnswerlatticeAccess();
@@ -225,7 +225,7 @@ function AnswerlatticeDashboardLayoutContent({ children }: { children: React.Rea
         (!accessLoading && Boolean(requiredPermission) && !access)
     );
     const shouldShowContentLoader = status === 'loading' || accessLoading || (!shouldRedirectAway && !firebaseAuthReady);
-    const sidebarOffset = isCollapsed && !sidebarShellExpanded
+    const sidebarOffset = isCollapsed
         ? DASHBOARD_SIDEBAR_COLLAPSED_WIDTH
         : ANSWERLATTICE_DASHBOARD_SIDEBAR_EXPANDED_WIDTH;
 
@@ -312,7 +312,7 @@ function AnswerlatticeDashboardLayoutContent({ children }: { children: React.Rea
                     }}
                 >
                     {isDesktop && (
-                        <AnswerlatticeSidebar onExpandedChange={setSidebarShellExpanded} />
+                        <AnswerlatticeSidebar />
                     )}
                     <Drawer
                         title={null}
@@ -326,11 +326,31 @@ function AnswerlatticeDashboardLayoutContent({ children }: { children: React.Rea
                             header: { display: 'none' },
                         }}
                     >
-                        <AnswerlatticeSidebar
-                            mobile
-                            onNavigate={() => setMobileNavOpen(false)}
-                            onOpenAppSettings={() => setAppSettingsOpen(true)}
-                        />
+                        <div style={{ height: '100%', position: 'relative' }}>
+                            <AnswerlatticeSidebar
+                                mobile
+                                onNavigate={() => setMobileNavOpen(false)}
+                                onOpenAppSettings={() => setAppSettingsOpen(true)}
+                            />
+                            <Button
+                                aria-label="Close navigation"
+                                icon={<LuX size={20} />}
+                                onClick={() => setMobileNavOpen(false)}
+                                style={{
+                                    background: token.colorBgBase,
+                                    border: `1px solid ${token.colorBorderSecondary}`,
+                                    color: token.colorTextBase,
+                                    height: 44,
+                                    minWidth: 44,
+                                    padding: 0,
+                                    position: 'absolute',
+                                    right: 12,
+                                    top: 'calc(env(safe-area-inset-top) + 12px)',
+                                    zIndex: 13,
+                                }}
+                                type="text"
+                            />
+                        </div>
                     </Drawer>
                     <Layout
                         style={{

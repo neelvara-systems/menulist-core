@@ -9,16 +9,22 @@ Provide the vendor, purpose, expected amount/currency, due date if known, cost c
 Provide:
 
 1. the original invoice or receipt;
-2. a redacted payment proof;
+2. a redacted payment proof for normal viewing;
 3. the actual charged amount and currency if not visible safely;
 4. the payment date;
 5. any refund, credit, or renewal information.
 
-Do not provide PINs, OTPs, full account/card numbers, passwords, API keys, recovery codes, or unrelated personal balances.
+If an exact record will be needed later, explicitly say that FinanceOS may keep the unredacted original. It will be indexed as `restricted-original`, permission-locked in the private store, and kept separate from the redacted working copy. Necessary bank-account/IFSC, UPI, tax/KYC, registered-address, phone, and proprietor identifiers may remain in that exact record.
+
+Never provide PINs, OTPs, passwords, API/private keys, cookies/tokens, recovery codes, QR authorization payloads, CVV, full payment-card credentials, or unrelated personal balances. These are prohibited secrets, not record evidence, and owner authorization does not make them admissible.
+
+## Restricted Originals
+
+Use restricted originals only when the exact source will materially help a later KYC, tax, banking, provider, reconciliation, or audit task. The ordinary evidence and ledger remain redacted or masked. Restricted originals use non-identifying filenames, mode `0600` inside a mode-`0700` `Restricted-Originals/` directory, a SHA-256 index entry, and a linked owner decision. Do not share them through chat, Git, product runtime, Firebase, public/cloud evidence surfaces, or ordinary shared folders.
 
 ## For A Free Plan Or Trial
 
-Provide a dated billing/usage screenshot showing the provider, plan name, included limit, current usage, trial end if any, and billing state. Redact identifiers and payment details. FinanceOS records the plan separately, reviews it monthly by default, and warns before an evidence-backed limit. A warning never authorizes an upgrade or billing-method change.
+Provide a dated billing/usage screenshot showing the provider, plan name, included limit, current usage, trial end if any, and billing state. Redact identifiers and payment details for routine use; use the Restricted Originals process only when exact future-use evidence is necessary and explicitly authorized. FinanceOS records the plan separately, reviews it monthly by default, and warns before an evidence-backed limit. A warning never authorizes an upgrade or billing-method change.
 
 ## For GCP, AI, Or Other Prepaid Services
 

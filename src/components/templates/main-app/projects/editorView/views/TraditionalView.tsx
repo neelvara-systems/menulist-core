@@ -74,6 +74,7 @@ interface TraditionalViewProps {
     keyboardSelectedCategoryId?: string | null;
     // Multi-outlet props
     itemStates?: Record<string, InheritanceState>;
+    categoryStates?: Record<string, InheritanceState>;
     isMasterLinked?: boolean;
 }
 
@@ -90,6 +91,7 @@ export const TraditionalView = ({
     keyboardSelectedCategoryId,
     // Multi-outlet props
     itemStates,
+    categoryStates,
     isMasterLinked,
 }: TraditionalViewProps) => {
     const { token } = theme.useToken();
@@ -1259,8 +1261,8 @@ export const TraditionalView = ({
                     fileData={editCategoryModalState.file}
                     projectData={projectData}
                     onPreviewFile={setPreviewFile}
-                    // Multi-outlet governance props - categories use same pattern as items
-                    inheritanceState={editCategoryModalState.category?.id ? itemStates?.[editCategoryModalState.category.id] : undefined}
+                    // Multi-outlet governance props - category state is separate from item state.
+                    inheritanceState={editCategoryModalState.category?.id ? categoryStates?.[editCategoryModalState.category.id] : undefined}
                     isMasterLinked={isMasterLinked}
                 />
             )}

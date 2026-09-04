@@ -7424,6 +7424,7 @@ No Firebase source/configuration changes. Firestore Rules, indexes, Storage Rule
 | Answerlattice production / `neelvara-answerlattice-prod` | Cloud Functions | same Answerlattice Functions tree / unchanged | not read back this window | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
 
 - Razorpay boundary: no checkout, charge, payment webhook completion, refund, subscription mutation, or money movement is authorized or performed.
+
 - Attribution confidence: exact for the current snapshot, validation and release operation; historical per-file authorship is retained as `unknown` unless an earlier ledger entry provides exact attribution.
 
 #### Consolidated Answerlattice/MenuList staging release performed result — `2026-08-26T22:02:00+05:30`
@@ -7506,3 +7507,59 @@ Server inventory and deployed-source readback were not authorized or performed i
 
 - Planned post-operation proof: commit SHA/message, one push result, direct `git ls-remote` server SHA for `staging` and `main`, exact divergence, final worktree counts, and automatic Vercel QA status only if observable without mutating deployment state.
 - Razorpay boundary: no checkout, charge, payment webhook completion, refund, subscription mutation, or money movement is authorized or performed.
+
+#### Observed closeout for `GIT-20260830-003218-consolidated-staging-release` — `2026-09-04T21:07:53+05:30`
+
+- Record type: `OBSERVED` (historical closeout reconstructed from immutable Git commit, reflog, and current direct remote readback; no claim is made about an unrecorded hosted deployment result).
+- Commit `f50737c77ddfd198820940dc44c6bc0e52ebf314` (`feat(release): consolidate product readiness updates`) was created on local `staging` at `2026-08-30T00:35:19+05:30`. Git records author and committer as `Neelvara Systems <313562323+neelvara-admin@users.noreply.github.com>`; the operating session that performed the mutation is not independently established here and remains `unknown`.
+- Current direct `git ls-remote` readback returns `refs/heads/staging` at `f50737c77ddfd198820940dc44c6bc0e52ebf314` and `refs/heads/main` at `fe625d5bbf527c1b7e537b00ab32a4f655905c35`. Local branches match those server refs with `0/0` divergence.
+- The historical release therefore reached the intended Git destination. No Firebase deployment, Vercel deployment/redeploy, or `main` mutation is attributed to the historical operation without a contemporaneous authenticated record.
+- Attribution confidence: exact for commit metadata and current direct server state; historical operator and hosted-deployment state remain `unknown`.
+
+### GIT-20260904-210753-consolidated-staging-release
+
+- Timestamp: `2026-09-04T21:07:53+05:30`
+- Operation ID: `GIT-20260904-210753-consolidated-staging-release`
+- Record type: `PLANNED`
+- Actor/session/thread ID: Codex `/root`; task `01a04dcf-0d2e-7113-a268-d6633fe67045`.
+- Authorization: Danny explicitly authorized, in the current turn, a consolidated release of all intended local changes from every registered worktree to `staging`, including lint, strict TypeScript, production build, fixes for discovered failures, one commit, and one non-force staging push. This does not authorize `main`, Firebase infrastructure deployment, a manual Vercel deploy/redeploy, provider/customer messages, or payment execution.
+- Registered worktrees: one (`primary`), `/Users/danny/Projects/MenuListAi/menulist-core`, branch `staging`, HEAD `f50737c77ddfd198820940dc44c6bc0e52ebf314`. App session inventory found no other active repository writer; the current Assets builder task is the only active task and the other loaded repository task is idle.
+- Starting filesystem state: `0` staged, `445` tracked unstaged paths, and `75` untracked status entries before this ledger append. Status SHA-256 was `f3dd4e2dc1b61f5aef67f1bac85e159fce2e404451d1cafc93b65e246c066cfc`; tracked binary-diff SHA-256 was `6b7394fa478454fa7e1fa6cbbb7a829045765ffd7307b5f880be715ed322583d`.
+- Release scope: every stable intended tracked and untracked product, UI, runtime, documentation, test, verifier, evidence, and public asset change in the sole registered worktree, spanning the accumulated MenuList Assets/menu/public/mobile/settings/extraction work and the other current cross-product repository flows.
+- Excluded local/generated artifacts: `.tmp-menulist-firestore-local.json` (machine-local emulator configuration) and `output/` (approximately 1.2 GB of generated review PDFs/PNGs). These remain preserved locally and untracked; they are not source release inputs.
+- Intended command class: validate the stable complete candidate, stage the exact intended set, validate the staged diff and bounded secret/large-file boundaries, create one commit, execute one non-force `git push origin staging`, and prove server state using direct `git ls-remote`. Any automatic Vercel QA build may be observed read-only; no manual deployment or retry is permitted.
+
+#### Branch matrix before
+
+| Branch | Local full SHA | Direct server ref/full SHA | Tracking ref | Ahead/behind | Owning worktree path/ID | Staged/unstaged/untracked | Status |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `staging` | `f50737c77ddfd198820940dc44c6bc0e52ebf314` | `refs/heads/staging` / `f50737c77ddfd198820940dc44c6bc0e52ebf314` | `origin/staging` | `0/0` | `/Users/danny/Projects/MenuListAi/menulist-core` / `primary` | `0/445/75` before ledger append | `IN_SYNC` |
+| `main` | `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `refs/heads/main` / `fe625d5bbf527c1b7e537b00ab32a4f655905c35` | `origin/main` | `0/0` | none | n/a | `IN_SYNC` |
+
+#### Firebase matrix before
+
+No Firebase deployment or authenticated server inventory/readback is authorized in this Git operation. `NO_INFRA_CHANGE` therefore does not assert parity. Directory hashes are deterministic SHA-256 over sorted relative source paths and bytes, excluding dependencies, compiled output, and local environment files. The untracked `firebase-menulist-rules-test.json` is test-only configuration and is not a deploy target.
+
+| Target | Component | Local source/config and SHA-256 / bytes | Local validation before release | Firebase project/codebase | Authenticated server evidence/readback | Delta | Deployment state |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| MenuList QA | Firestore Rules | `firestore-menulist.rules` `0c1baf1bd730a2c725eed0173d7ef01bf07ed2828ad7f7bbdb30af01ddbaa010` / `133743` | unchanged in candidate | `menulist-qa` / default | not read back | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| MenuList QA | Firestore indexes | `firestore.indexes.json` `5629ae4d5004bc59c82528f2e7f9b7e5bb1ffbf74e0fc2e2e5e5252abf0744e0` / `78310` | unchanged in candidate | `menulist-qa` / default | not read back | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| MenuList QA | Storage Rules | `storage.rules` `226d2a206d7de8a442bf356a61ad048118322acb993eb89fa45744ed78ed1838` / `18176` | unchanged in candidate | `menulist-qa` / default | not read back | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| MenuList QA | Cloud Functions | `functions/` tree `f2045b3afe7204f7a418fd50c0df05f1dfa70a9ee3a0ab56e54d3fc1aeb3e717` / `3598735` across `230` files | dedicated build pending | `menulist-qa` / default | not read back | `INFRA_CHANGE` | `LOCAL_NOT_VALIDATED` |
+| MenuList production | Firestore Rules | same MenuList Rules artifact | unchanged in candidate | `menulist-prod` / default | not read back | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| MenuList production | Firestore indexes | same MenuList indexes artifact | unchanged in candidate | `menulist-prod` / default | not read back | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| MenuList production | Storage Rules | same MenuList Storage artifact | unchanged in candidate | `menulist-prod` / default | not read back | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| MenuList production | Cloud Functions | same changed MenuList Functions tree | dedicated build pending | `menulist-prod` / default | not read back | `INFRA_CHANGE` | `LOCAL_NOT_VALIDATED` |
+| Answerlattice QA | Firestore Rules | `firestore-answerlattice.rules` `ce88db732b2cbff02f911d34eb8f05f48a0deafdef85027238f6a616de0375e4` / `117281` | unchanged in candidate | `neelvara-answerlattice-qa` / `answerlattice` | not read back | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| Answerlattice QA | Firestore indexes | `firestore-answerlattice.indexes.json` `4568ed15eb6a49b1557d846c2b91e4f4489e6da617d79fa2024dad79f44e2347` / `52433` | unchanged in candidate | `neelvara-answerlattice-qa` / `answerlattice` | not read back | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| Answerlattice QA | Storage Rules | `storage-answerlattice.rules` `5fc8f980f289889da557ac69c91edd61f8e8646b066c9b0101b87141d67106cc` / `6948` | unchanged in candidate | `neelvara-answerlattice-qa` / `answerlattice` | not read back | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| Answerlattice QA | Cloud Functions | `functions-answerlattice/` tree `55b4662f7104bc64ad6fc9c7e2600f0af8fd3237c75ae56179ce18caa0987a7a` / `1222677` across `100` files | unchanged in candidate | `neelvara-answerlattice-qa` / `answerlattice` | not read back | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| Answerlattice production | Firestore Rules | same Answerlattice Rules artifact | unchanged in candidate | `neelvara-answerlattice-prod` / `answerlattice` | not read back | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| Answerlattice production | Firestore indexes | same Answerlattice indexes artifact | unchanged in candidate | `neelvara-answerlattice-prod` / `answerlattice` | not read back | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| Answerlattice production | Storage Rules | same Answerlattice Storage artifact | unchanged in candidate | `neelvara-answerlattice-prod` / `answerlattice` | not read back | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+| Answerlattice production | Cloud Functions | same Answerlattice Functions tree | unchanged in candidate | `neelvara-answerlattice-prod` / `answerlattice` | not read back | `NO_INFRA_CHANGE` | `SERVER_STATE_UNKNOWN` |
+
+- Validation pending: complete root lint, strict TypeScript, production build, MenuList Functions build, targeted release checks required by discovered failures, unstaged/staged whitespace checks, and bounded secret/large-file scans.
+- Firebase deployment blocker: changed MenuList Functions require a separately authorized QA-then-production Firebase release after local validation. This Git authorization does not permit that deployment.
+- Razorpay boundary: no checkout, charge, payment webhook completion, refund, subscription mutation, or money movement is authorized or performed.
+- Attribution confidence: exact for the current worktree/session inventory and operation boundary; historical per-file authorship remains `unknown` unless already recorded.

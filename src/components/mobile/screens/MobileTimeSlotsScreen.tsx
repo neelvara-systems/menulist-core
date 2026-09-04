@@ -2,7 +2,7 @@
 
 import ContextualStateIllustration from '@atoms/contextualStateIllustration';
 import { assertTimeSlotPresetUpdateSucceeded, generatePresetId, updateTimeSlotPresets } from '@database/stores';
-import { isValidClockRange } from '@lib/menu/timeSlotPresetBoundary';
+import { getTimeSlotPresetDraftIssue } from '@lib/menu/timeSlotPresetBoundary';
 import { reconcileTimeSlotPresetCascade } from '@lib/menu/reconcileTimeSlotPresetCascade';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { TimeSlotPreset } from '@type/platform/store';
@@ -44,6 +44,16 @@ function MobileTimeSlotsScreenContent({ onBack }: MobileTimeSlotsScreenProps) {
     const activeScopeRef = useRef(scopeKey);
     const componentActiveRef = useRef(true);
     const recoveryAttemptedOperationRef = useRef<string | null>(null);
+    const formIssue = getTimeSlotPresetDraftIssue({
+        endTime: formEnd,
+        label: formLabel,
+        startTime: formStart,
+    }, presets, editingPreset?.id);
+    const formValidationMessage = formIssue === 'duplicate_label'
+        ? t('duplicateName')
+        : formIssue === 'invalid_range'
+            ? t('endAfterStart')
+            : undefined;
 
     activeScopeRef.current = scopeKey;
     useEffect(() => {
@@ -150,12 +160,9 @@ function MobileTimeSlotsScreenContent({ onBack }: MobileTimeSlotsScreenProps) {
 
     const handleSave = async () => {
         const label = formLabel.trim();
-        if (!label) return Toast.show({ content: t('enterName'), duration: 1500 });
-
-        const isDuplicate = presets.some((preset) => preset.label.toLowerCase() === label.toLowerCase() && preset.id !== editingPreset?.id);
-        if (isDuplicate) return Toast.show({ content: t('duplicateName'), duration: 1500 });
-
-        if (!isValidClockRange(formStart, formEnd)) {
+        if (formIssue === 'missing_label') return Toast.show({ content: t('enterName'), duration: 1500 });
+        if (formIssue === 'duplicate_label') return Toast.show({ content: t('duplicateName'), duration: 1500 });
+        if (formIssue === 'invalid_range') {
             return Toast.show({
                 content: 'Enter valid, different start and end times.',
                 duration: 1500,
@@ -406,9 +413,18 @@ function MobileTimeSlotsScreenContent({ onBack }: MobileTimeSlotsScreenProps) {
                     <Flex gap={12} style={{ overflowY: 'auto', padding: 12 }} vertical>
                         <Card>
                             <Flex gap={8} vertical>
-                                <Text strong>{t('name')}</Text>
+                                <Text strong>{t('name')} *</Text>
                                 <Text type="secondary">Choose a short label customers and staff can understand quickly, like Lunch, Happy Hour, or Dinner.</Text>
-                                <Input aria-label={t('name')} maxLength={30} onChange={setFormLabel} placeholder={t('namePlaceholder')} value={formLabel} />
+                                <Input
+                                    aria-describedby={formValidationMessage ? 'mobile-time-slot-draft-error' : undefined}
+                                    aria-invalid={formIssue === 'duplicate_label'}
+                                    aria-label={t('name')}
+                                    aria-required="true"
+                                    maxLength={30}
+                                    onChange={setFormLabel}
+                                    placeholder={t('namePlaceholder')}
+                                    value={formLabel}
+                                />
                             </Flex>
                         </Card>
 
@@ -417,15 +433,21 @@ function MobileTimeSlotsScreenContent({ onBack }: MobileTimeSlotsScreenProps) {
                                 <Flex style={{ flex: 1 }} vertical>
                                     <Text strong>{t('startTime')}</Text>
                                     <Text type="secondary">When this slot begins.</Text>
-                                    <Input aria-label={t('startTime')} onChange={setFormStart} type="time" value={formStart} />
+                                    <Input aria-describedby={formValidationMessage ? 'mobile-time-slot-draft-error' : undefined} aria-invalid={formIssue === 'invalid_range'} aria-label={t('startTime')} onChange={setFormStart} type="time" value={formStart} />
                                 </Flex>
                                 <Flex style={{ flex: 1 }} vertical>
                                     <Text strong>{t('endTime')}</Text>
                                     <Text type="secondary">When this slot ends.</Text>
-                                    <Input aria-label={t('endTime')} onChange={setFormEnd} type="time" value={formEnd} />
+                                    <Input aria-describedby={formValidationMessage ? 'mobile-time-slot-draft-error' : undefined} aria-invalid={formIssue === 'invalid_range'} aria-label={t('endTime')} onChange={setFormEnd} type="time" value={formEnd} />
                                 </Flex>
                             </Flex>
                         </Card>
+
+                        {formValidationMessage ? (
+                            <Text id="mobile-time-slot-draft-error" role="alert" type="danger">
+                                {formValidationMessage}
+                            </Text>
+                        ) : null}
 
                         <Card title={t('color')}>
                             <Flex gap={8} wrap>
@@ -472,7 +494,7 @@ function MobileTimeSlotsScreenContent({ onBack }: MobileTimeSlotsScreenProps) {
                         <Button block disabled={isSaving} fill="outline" onClick={handleResetForm} size="large" style={{ minHeight: 44 }}>
                             Reset
                         </Button>
-                        <Button block loading={isSaving} onClick={() => void handleSave()} size="large" style={{ minHeight: 44 }}>
+                        <Button block disabled={Boolean(formIssue)} loading={isSaving} onClick={() => void handleSave()} size="large" style={{ minHeight: 44 }}>
                             {t('save')}
                         </Button>
                     </Flex>

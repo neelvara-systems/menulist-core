@@ -2,6 +2,9 @@
 
 import { getEnabledBlocks } from '@config/decisionBlocks';
 import { getProjectDefaultLanguage } from '@lib/localization/projectContent';
+import { buildDecisionChoiceCampaignPosterRenderInput } from '@lib/printable-asset-templates/campaignPoster';
+import type { PrintableAssetRenderInput } from '@lib/printable-asset-templates/types';
+import type { StoreDataType } from '@type/platform/store';
 import {
     applyDecisionBlockSettings,
     buildAllItemOptions,
@@ -17,7 +20,8 @@ import { Alert, theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import type { ReactNode } from 'react';
 import { useEffect, useMemo, useState } from 'react';
-import { LuHelpCircle, LuPin, LuStar, LuTrendingUp, LuZap } from 'react-icons/lu';
+import { LuDownload, LuHelpCircle, LuPin, LuStar, LuTrendingUp, LuZap } from 'react-icons/lu';
+import CampaignPosterModal from '@/components/shared/printableAssets/CampaignPosterModal';
 import { Button, Card, Collapse, Flex, NavBar, Popup, Select, Switch, Text, Title, Toast } from '../antd';
 import {
     getBoundedMobileProjectStringContext,
@@ -36,8 +40,9 @@ interface SmartRecommendationsSheetProps {
     businessType?: string;
     businessCategory?: string;
     onClose: () => void;
-    onSaved: (updatedProject: Project) => void;
+    onSaved: (updatedProject: Project) => Promise<void>;
     projectData: Project;
+    storeDetails?: StoreDataType | null;
     visible: boolean;
 }
 
@@ -47,10 +52,12 @@ export default function SmartRecommendationsSheet({
     onClose,
     onSaved,
     projectData,
+    storeDetails,
     visible,
 }: SmartRecommendationsSheetProps) {
     const { token } = theme.useToken();
     const t = useTranslations('MobileMenu');
+    const tCommon = useTranslations('Common');
     const sectionCardStyle = {
         border: `1px solid ${token.colorBorderSecondary}`,
         borderRadius: 14,
@@ -66,6 +73,8 @@ export default function SmartRecommendationsSheet({
     const [pinnedQuickPick, setPinnedQuickPick] = useState<string | undefined>(initialSettings.pinnedQuickPick);
     const [pinnedBestValue, setPinnedBestValue] = useState<string | undefined>(initialSettings.pinnedBestValue);
     const [isSaving, setIsSaving] = useState(false);
+    const [posterInput, setPosterInput] = useState<PrintableAssetRenderInput | null>(null);
+    const [posterChoiceTitle, setPosterChoiceTitle] = useState('Featured choice');
 
     useEffect(() => {
         if (!visible) return;
@@ -158,7 +167,7 @@ export default function SmartRecommendationsSheet({
         try {
             trackDecisionBlockChanges(projectData, nextSettings);
             const updatedProject = applyDecisionBlockSettings(projectData, nextSettings);
-            onSaved(updatedProject);
+            await onSaved(updatedProject);
             Toast.show({ content: t('smartRecommendationsSaved'), duration: 1200 });
         } catch (error) {
             const files = projectData.files || [];
@@ -192,6 +201,30 @@ export default function SmartRecommendationsSheet({
         const [enabled, setEnabled] = blockToggleMap[blockType];
         const pinnedId = blockPickerValueMap[blockType];
         const pinnedStatus = isPinnedItemUnavailable(projectData.files || [], pinnedId);
+        const savedPinnedId = blockType === 'popular'
+            ? initialSettings.pinnedPopular
+            : blockType === 'quickPick'
+                ? initialSettings.pinnedQuickPick
+                : initialSettings.pinnedBestValue;
+        const savedEnabled = blockType === 'popular'
+            ? initialSettings.enablePopular
+            : blockType === 'quickPick'
+                ? initialSettings.enableQuickPick
+                : initialSettings.enableBestValue;
+        const isCurrentSavedChoice = Boolean(
+            enabled
+            && savedEnabled
+            && pinnedId
+            && pinnedId === savedPinnedId
+            && !pinnedStatus.unavailable
+        );
+        const choicePosterInput = isCurrentSavedChoice
+            ? buildDecisionChoiceCampaignPosterRenderInput({
+                blockType,
+                project: projectData,
+                store: storeDetails,
+            })
+            : null;
 
         return (
             <Card key={blockType} style={sectionCardStyle}>
@@ -265,6 +298,22 @@ export default function SmartRecommendationsSheet({
                                     type="warning"
                                 />
                             ) : null}
+
+                            {pinnedId && !pinnedStatus.unavailable ? (
+                                <Button
+                                    block
+                                    disabled={!choicePosterInput}
+                                    onClick={() => {
+                                        if (!choicePosterInput) return;
+                                        setPosterChoiceTitle(labels.title);
+                                        setPosterInput(choicePosterInput);
+                                    }}
+                                    size="large"
+                                >
+                                    <LuDownload aria-hidden size={18} />
+                                    {tCommon('download')} Campaign Poster
+                                </Button>
+                            ) : null}
                         </Flex>
                     ) : null}
                 </Flex>
@@ -280,7 +329,7 @@ export default function SmartRecommendationsSheet({
                 destroyOnClose
                 onMaskClick={onClose}
                 position="bottom"
-                visible={visible}
+                visible={visible && !posterInput}
             >
                 <Flex style={MENU_SHEET_CONTAINER_STYLE} vertical>
                     <NavBar onBack={onClose}>{t('smartRecommendationsTitle')}</NavBar>
@@ -354,6 +403,16 @@ export default function SmartRecommendationsSheet({
                     </div>
                 </Flex>
             </Popup>
+            <CampaignPosterModal
+                input={posterInput}
+                introDescription={`Uses the saved ${posterChoiceTitle}, selected parent theme, current item details, and exact item link. Review it before downloading and placing it in-store.`}
+                introTitle={`Prepared from ${posterChoiceTitle}`}
+                onClose={() => setPosterInput(null)}
+                onDownloaded={() => undefined}
+                open={Boolean(posterInput)}
+                sourceLabel={`Saved ${posterChoiceTitle}`}
+                unavailableDescription="A saved selected item, active public listing, and customer link are required"
+            />
         </>
     );
 }

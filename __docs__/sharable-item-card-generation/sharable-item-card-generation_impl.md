@@ -12,3 +12,5 @@
 Editor state -> `SharableItemCardInput` -> canvas PNG -> native share or browser download.
 
 No server renderer exists for this feature.
+
+`getPublicItemDisplayOptions()` is the shared projection for desktop and mobile. It resolves localized active names, preserves valid unpriced options, formats valid option prices with the store currency, and excludes inactive or nameless records. `SharableItemCardInput.options` preserves a real description when supplied, renders up to three option values plus an exact remaining count according to available space, and never horizontally stretches copy.

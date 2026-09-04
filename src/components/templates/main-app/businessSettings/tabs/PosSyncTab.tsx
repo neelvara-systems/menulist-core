@@ -53,7 +53,7 @@ import {
 import { collection, getDocs, limit, orderBy, query } from "firebase/firestore";
 import { useSession } from "next-auth/react";
 import { useFormatter, useTranslations } from 'next-intl';
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
     LuArrowRight,
     LuCheck,
@@ -236,6 +236,13 @@ const PosSyncTab: React.FC<PosSyncTabProps> = ({
     const [regeneratingSecret, setRegeneratingSecret] = useState(false);
     const [providerEmail, setProviderEmail] = useState('');
     const [sendingInstructions, setSendingInstructions] = useState(false);
+    const webhookUrlValidation = useMemo(
+        () => validatePosSyncWebhookUrl(webhookUrl),
+        [webhookUrl],
+    );
+    const webhookUrlError = enabled && webhookUrl.trim() && !webhookUrlValidation.valid
+        ? webhookUrlValidation.error || 'Enter a valid provider connection URL.'
+        : '';
 
     const visibleDeliveryEntries = deliveryEntriesScopeKey === posSyncScopeKey
         ? deliveryEntries
@@ -1025,25 +1032,37 @@ const PosSyncTab: React.FC<PosSyncTabProps> = ({
                     <Switch aria-label={t('enablePosSync')} checked={enabled} disabled={secretLoading} onChange={(checked) => void handleToggle(checked)} />
                 </Flex>
 
+                <Flex vertical gap={8}>
+                    <Text strong>{t('webhookUrl')}</Text>
+                    <Space.Compact style={{ width: '100%' }}>
+                        <Input
+                            aria-describedby={webhookUrlError ? 'desktop-pos-sync-webhook-error' : undefined}
+                            aria-invalid={Boolean(webhookUrlError)}
+                            aria-label={t('webhookUrl')}
+                            value={webhookUrl}
+                            onChange={e => setWebhookUrl(e.target.value)}
+                            placeholder={t('webhookUrlPlaceholder')}
+                        />
+                        <Button disabled={!webhookUrl.trim() || !webhookUrlValidation.valid} onClick={handleSaveUrl} type="primary">
+                            {t('save' as any)}
+                        </Button>
+                    </Space.Compact>
+                    {webhookUrlError ? (
+                        <Text
+                            id="desktop-pos-sync-webhook-error"
+                            role="alert"
+                            style={{ color: token.colorError, fontSize: 12 }}
+                        >
+                            {webhookUrlError}
+                        </Text>
+                    ) : null}
+                    <Text type="secondary" style={{ fontSize: 12 }}>
+                        {t('webhookUrlHelp')}
+                    </Text>
+                </Flex>
+
                 {enabled && (
                     <>
-                        <Flex vertical gap={8}>
-                            <Text strong>{t('webhookUrl')}</Text>
-                            <Space.Compact style={{ width: '100%' }}>
-                                <Input
-                                    value={webhookUrl}
-                                    onChange={e => setWebhookUrl(e.target.value)}
-                                    placeholder={t('webhookUrlPlaceholder')}
-                                />
-                                <Button onClick={handleSaveUrl} type="primary">
-                                    {t('save' as any)}
-                                </Button>
-                            </Space.Compact>
-                            <Text type="secondary" style={{ fontSize: 12 }}>
-                                {t('webhookUrlHelp')}
-                            </Text>
-                        </Flex>
-
                         <Flex vertical gap={8}>
                             <Flex justify="space-between" align="center">
                                 <Text strong>{t('signingSecret')}</Text>

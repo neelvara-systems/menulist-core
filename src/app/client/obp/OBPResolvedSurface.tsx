@@ -29,6 +29,7 @@ import { getSpecialHoursEntry, getUpcomingSpecialHours } from "@lib/hours/specia
 import { normalizeOBPFreshnessDate } from "@lib/obp/freshnessTimestamp";
 import type { StoreDataType, StoreSpecialHours } from "@type/platform/store";
 import { normalizeOBPExternalHttpsUrl, normalizeOBPGoogleMapsUrl, normalizeOBPReviewUrl, normalizeOBPSocialUrl, normalizeOBPWebsiteUrl } from "@lib/obp/publicLinks";
+import { getOwnerCustomSocialMediaLinks } from "@lib/obp/ownerSocialMediaBoundary";
 import { normalizeOBPPublicPhotoUrls } from "@lib/obp/publicPhotos";
 import { buildTelHref, buildWhatsAppPhoneParam } from "@lib/phone/phoneNumber";
 import { hasPublicHoursTruth, resolveHoursOutput } from "@lib/outputControl";
@@ -758,6 +759,7 @@ export default function OBPResolvedSurface({
     const twitter = normalizeOBPSocialUrl('twitter', socialMedia.twitter);
     const linkedin = normalizeOBPSocialUrl('linkedin', socialMedia.linkedin);
     const youtube = normalizeOBPSocialUrl('youtube', socialMedia.youtube);
+    const customSocialLinks = getOwnerCustomSocialMediaLinks(socialMedia);
     const socialWhatsApp = socialMedia.whatsapp;
     const website = normalizeOBPWebsiteUrl(store?.url) || normalizeOBPWebsiteUrl(socialMedia.website);
     const starterPlaceholderSocials = showStarterPlaceholders ? [
@@ -767,7 +769,7 @@ export default function OBPResolvedSurface({
         ...(!website ? ['website' as const] : []),
         ...(!socialWhatsApp && !showWhatsApp ? ['whatsapp' as const] : []),
     ] : [];
-    const hasSocials = !!(instagram || facebook || twitter || linkedin || youtube || socialWhatsApp || website || starterPlaceholderSocials.length);
+    const hasSocials = !!(instagram || facebook || twitter || linkedin || youtube || socialWhatsApp || website || customSocialLinks.length || starterPlaceholderSocials.length);
     const attributeConfig = getBusinessAttributeConfigForType(store?.businessType, store?.businessCategory);
     const isEnabledBusinessAttribute = (key: string): boolean => {
         const attributes = store.businessAttributes;
@@ -1361,6 +1363,7 @@ export default function OBPResolvedSurface({
                                         youtube={youtube}
                                         whatsapp={socialWhatsApp}
                                         website={website}
+                                        customLinks={customSocialLinks}
                                     />
                                 </div>
                             )}

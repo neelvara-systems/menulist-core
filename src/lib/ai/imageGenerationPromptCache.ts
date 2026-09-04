@@ -115,6 +115,7 @@ export function isImagePromptCacheEligible(params: {
     prompts: string[];
 }): boolean {
     if (params.generationConfig?.referanceImage?.url) return false;
+    if (params.generationConfig?.subjectProfileId) return false;
     if (params.prompts.length !== 1) return false;
     if (Number(params.generationConfig?.numberOfImages || 1) !== 1) return false;
     return params.prompts[0].trim().length > 0;

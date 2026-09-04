@@ -96,8 +96,7 @@ export default function AntdLayoutWrapper(props: any) {
         (hasStarterAccess && !isStarterWorkspaceRoute(pathname))
         || (hasRecoveryOnlyAccess && !isStarterRecoveryRoute(pathname))
     );
-    const [sidebarShellExpanded, setSidebarShellExpanded] = useState(false);
-    const verticalSidebarOffset = isCollapsed && !sidebarShellExpanded
+    const verticalSidebarOffset = isCollapsed
         ? DASHBOARD_SIDEBAR_COLLAPSED_WIDTH
         : DASHBOARD_SIDEBAR_EXPANDED_WIDTH;
 
@@ -184,7 +183,7 @@ export default function AntdLayoutWrapper(props: any) {
                 >
                     {!isHandheldDesktopRoute ? <HeaderComponent /> : null}
                     {!isHandheldDesktopRoute ? (isVerticalSidebar ? (
-                        <SidebarComponent onExpandedChange={setSidebarShellExpanded} />
+                        <SidebarComponent />
                     ) : <HorizontalSidebar />) : null}
                     {!isHandheldDesktopRoute ? <AppSettingsPanel /> : null}
                     <Content

@@ -1441,6 +1441,9 @@ function verifyDigitalScreenDiagnostics() {
   assertIncludes(screenDiagnostics, 'copyScreenTextToClipboard', 'digital screen copy acknowledgement helper');
   assertIncludes(screenDiagnostics, 'SCREEN_CLIPBOARD_COPY_UNAVAILABLE', 'digital screen unavailable clipboard code');
   assertIncludes(screenDiagnostics, 'SCREEN_CLIPBOARD_COPY_FALLBACK_FAILED', 'digital screen fallback failure code');
+  assertIncludes(screenDiagnostics, 'SCREEN_CLIPBOARD_WRITE_TIMEOUT_MS = 1200', 'digital screen bounded clipboard timeout');
+  assertIncludes(screenDiagnostics, 'Promise.race([', 'digital screen bounded clipboard recovery');
+  assertIncludes(screenDiagnostics, 'screen_clipboard_write_timed_out', 'digital screen clipboard timeout diagnostic');
   assertIncludes(screenDiagnostics, 'const copied = document.execCommand("copy");', 'digital screen textarea copy acknowledgement');
   assertIncludes(screenSettings, 'digital_screen_settings_load_failed', 'desktop screen settings load diagnostics');
   assertIncludes(screenSettings, 'digital_screen_settings_override_toggle_failed', 'desktop screen settings override diagnostics');

@@ -43,6 +43,7 @@ import type { ReactNode } from 'react';
 import { LuChevronDown, LuChevronRight, LuHome, LuMenu, LuMoon, LuPanelLeftClose, LuPanelLeftOpen, LuSun } from 'react-icons/lu';
 
 const { Text } = Typography;
+const DESKTOP_HEADER_CONTROL_HEIGHT = 36;
 
 interface AnswerlatticeHeaderProps {
     showMenuButton?: boolean;
@@ -196,7 +197,12 @@ export default function AnswerlatticeHeader({ showMenuButton = false, onMenuClic
                     aria-label={isCollapsed ? 'Expand navigation' : 'Collapse navigation'}
                     icon={isCollapsed ? <LuPanelLeftOpen /> : <LuPanelLeftClose />}
                     onClick={() => dispatch(toggleSidbar(!isCollapsed))}
-                    style={{ fontSize: 20, padding: 0 }}
+                    style={{
+                        fontSize: 20,
+                        height: DESKTOP_HEADER_CONTROL_HEIGHT,
+                        minWidth: DESKTOP_HEADER_CONTROL_HEIGHT,
+                        padding: 0,
+                    }}
                     type="text"
                 />
             )}
@@ -205,7 +211,7 @@ export default function AnswerlatticeHeader({ showMenuButton = false, onMenuClic
                 <>
                     <Divider
                         plain
-                        style={{ borderInlineStartWidth: 2, height: 32, margin: 0, top: 2 }}
+                        style={{ borderInlineStartWidth: 1, height: 28, margin: 0, top: 2 }}
                         type="vertical"
                     />
 
@@ -214,14 +220,19 @@ export default function AnswerlatticeHeader({ showMenuButton = false, onMenuClic
                             aria-label="Answerlattice home"
                             icon={<LuHome />}
                             onClick={handleReturn}
-                            style={{ fontSize: 20, padding: 0 }}
+                            style={{
+                                fontSize: 20,
+                                height: DESKTOP_HEADER_CONTROL_HEIGHT,
+                                minWidth: DESKTOP_HEADER_CONTROL_HEIGHT,
+                                padding: 0,
+                            }}
                             type="text"
                         />
                     </Tooltip>
 
                     <Divider
                         plain
-                        style={{ borderInlineStartWidth: 2, height: 32, margin: 0, top: 2 }}
+                        style={{ borderInlineStartWidth: 1, height: 28, margin: 0, top: 2 }}
                         type="vertical"
                     />
                 </>
@@ -247,15 +258,15 @@ export default function AnswerlatticeHeader({ showMenuButton = false, onMenuClic
                         <Button
                             style={{
                                 alignItems: 'center',
-                                background: token.colorFillContent,
+                                background: token.colorFillTertiary,
                                 borderRadius: 6,
-                                color: token.colorTextBase,
+                                color: token.colorTextSecondary,
                                 display: 'inline-flex',
                                 flexDirection: 'row',
                                 flexWrap: 'nowrap',
                                 fontSize: 12,
                                 gap: 6,
-                                height: 44,
+                                height: DESKTOP_HEADER_CONTROL_HEIGHT,
                                 justifyContent: 'center',
                                 lineHeight: 1.25,
                                 maxWidth: 180,
@@ -316,7 +327,7 @@ export default function AnswerlatticeHeader({ showMenuButton = false, onMenuClic
                                         flexWrap: 'nowrap',
                                         fontSize: 12,
                                         gap: 6,
-                                        height: 44,
+                                        height: DESKTOP_HEADER_CONTROL_HEIGHT,
                                         justifyContent: 'center',
                                         lineHeight: 1.25,
                                         maxWidth: 240,
@@ -365,7 +376,11 @@ export default function AnswerlatticeHeader({ showMenuButton = false, onMenuClic
                             aria-label={isDarkMode ? 'Use light mode' : 'Use dark mode'}
                             icon={isDarkMode ? <LuSun /> : <LuMoon />}
                             onClick={() => dispatch(toggleDarkMode(!isDarkMode))}
-                            style={{ height: 44, minWidth: 44, padding: 0 }}
+                            style={{
+                                height: DESKTOP_HEADER_CONTROL_HEIGHT,
+                                minWidth: DESKTOP_HEADER_CONTROL_HEIGHT,
+                                padding: 0,
+                            }}
                             type="text"
                         />
                     </Tooltip>
@@ -376,8 +391,8 @@ export default function AnswerlatticeHeader({ showMenuButton = false, onMenuClic
                 signOutCallbackUrl={answerlatticeSignOutCallbackUrl}
                 userData={userData}
             >
-                <Button
-                    aria-label="Open profile"
+                <span
+                    aria-hidden="true"
                     style={{
                         alignItems: 'center',
                         display: 'inline-flex',
@@ -386,7 +401,6 @@ export default function AnswerlatticeHeader({ showMenuButton = false, onMenuClic
                         minWidth: 44,
                         padding: 0,
                     }}
-                    type="text"
                 >
                     <Badge dot status="success" style={{ right: 8, top: 3 }}>
                         <Avatar
@@ -401,7 +415,7 @@ export default function AnswerlatticeHeader({ showMenuButton = false, onMenuClic
                             {initials}
                         </Avatar>
                     </Badge>
-                </Button>
+                </span>
             </ProfileActionsModal>
         </div>
     );

@@ -212,12 +212,22 @@ assert.match(
     /activeSubscriptionSyncError && expectedSubscriptionScopeKeyForRender[\s\S]*<StoreAccessRecovery[\s\S]*setActiveSubscriptionRetryNonce/,
     'a failed entitlement read must expose retry recovery instead of an unpaid redirect',
 );
+assert.match(
+    providerSource,
+    /setStoreBootstrapSyncError\(new Error\('Store access could not be loaded'\)\)[\s\S]*storeBootstrapSyncError && expectedStoreIdForRender[\s\S]*<StoreAccessRecovery[\s\S]*prevSessionKeyRef\.current = undefined;[\s\S]*setStoreBootstrapRetryNonce/,
+    'a failed store bootstrap must expose retry recovery instead of leaving owner content blank',
+);
 assert.match(providerSource, /activeSubscriptionRequestScopeKeyRef\.current === requestScopeKey/);
 assert.match(providerSource, /activeSubscriptionScopeKeyRef\.current !== requestScopeKey/);
 assert.match(providerSource, /providerStateMatchesCurrentSession \? activeSubscription : null/);
 assert.match(providerSource, /providerStateMatchesCurrentSession \? tenantDetails : null/);
 assert.match(providerSource, /firebaseAuthReadyScopeKey === firebaseAuthRequiredScopeKey/);
 assert.match(providerSource, /setFirebaseAuthReadyScopeKey\(firebaseAuthRequiredScopeKey\)/);
+assert(
+    providerSource.indexOf("session?.user?.platformRole === MENULIST_PLATFORM_USER_ROLE")
+        < providerSource.indexOf("!objectNullCheck(authorityStoreDetails) || !Array.isArray(authorityStoreDetails?.roles)"),
+    'trusted platform permissions must resolve before store-role validation so a platform operator cannot receive a blank owner route',
+);
 assert.match(
     providerSource,
     /applyActiveStoreContextValueToSession\([\s\S]*normalizeActiveStoreContextValue\([\s\S]*storeId: activeStoreContext/,

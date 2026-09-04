@@ -17,6 +17,21 @@ import type { NormalizedMessage } from "../../functions/src/types/messagingOnboa
 const db = firestoreAdmin;
 const Timestamp = admin.firestore.Timestamp;
 const inbound = db.collection(DB_COLLECTIONS.MESSAGING_ONBOARDING_INBOUND_MESSAGES);
+const sessions = db.collection(DB_COLLECTIONS.MESSAGING_ONBOARDING_SESSIONS);
+const rates = db.collection(DB_COLLECTIONS.MESSAGING_ONBOARDING_RATE_LIMITS);
+const users = db.collection(DB_COLLECTIONS.USERS);
+
+async function clearCollection(
+  collection: FirebaseFirestore.CollectionReference,
+): Promise<void> {
+  while (true) {
+    const snapshot = await collection.limit(200).get();
+    if (snapshot.empty) return;
+    const batch = db.batch();
+    for (const document of snapshot.docs) batch.delete(document.ref);
+    await batch.commit();
+  }
+}
 
 function buildMessage(id: string, type: NormalizedMessage["messageType"] = "text"): NormalizedMessage {
   return {
@@ -416,6 +431,12 @@ async function verifyStaleClaimRecovery(): Promise<void> {
 
 async function main(): Promise<void> {
   assert(process.env.FIRESTORE_EMULATOR_HOST, "FIRESTORE_EMULATOR_HOST is required");
+  await Promise.all([
+    clearCollection(inbound),
+    clearCollection(sessions),
+    clearCollection(rates),
+    clearCollection(users),
+  ]);
   await verifyDedupAndConcurrentClaim();
   await verifyBulkEnqueuePreservesBatch();
   await verifyHandlerCheckpointSurvivesDeliveryRetry();

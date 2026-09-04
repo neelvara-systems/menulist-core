@@ -25,6 +25,19 @@ const db = firestoreAdmin;
 const Timestamp = admin.firestore.Timestamp;
 const sessions = db.collection(DB_COLLECTIONS.MESSAGING_ONBOARDING_SESSIONS);
 const rates = db.collection(DB_COLLECTIONS.MESSAGING_ONBOARDING_RATE_LIMITS);
+const users = db.collection(DB_COLLECTIONS.USERS);
+
+async function clearCollection(
+  collection: FirebaseFirestore.CollectionReference,
+): Promise<void> {
+  while (true) {
+    const snapshot = await collection.limit(200).get();
+    if (snapshot.empty) return;
+    const batch = db.batch();
+    for (const document of snapshot.docs) batch.delete(document.ref);
+    await batch.commit();
+  }
+}
 
 function buildMessage(providerMessageId: string, userId: string): NormalizedMessage {
   return {
@@ -581,6 +594,11 @@ async function verifySessionAndExistingStoreLookupBoundaries(): Promise<void> {
 
 async function main(): Promise<void> {
   assert(process.env.FIRESTORE_EMULATOR_HOST, "FIRESTORE_EMULATOR_HOST is required");
+  await Promise.all([
+    clearCollection(sessions),
+    clearCollection(rates),
+    clearCollection(users),
+  ]);
   verifyUploadPersistenceProjection();
   await verifyAtomicSessionAdmission();
   await verifyConcurrentUploadAppend();

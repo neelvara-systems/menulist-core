@@ -1,8 +1,8 @@
 # Menu Kit — Mobile Support Assessment
 
-**Version:** 1.2
+**Version:** 1.3
 **Status:** ✅ IMPLEMENTED — Desktop ZIP flow complete, mobile Share tab assets live
-**Last Updated:** June 3, 2026
+**Last Updated:** August 30, 2026
 **Companion:** `menu-kit_spec.md`
 
 ---
@@ -130,6 +130,8 @@ The table tent and single table/counter card downloads use the same Print Menu S
 - no separate mobile generator or mobile-only design variant
 
 Menu Kit ZIP filename boundary: Mobile Share uses the shared `generateMenuKit()` `result.zipFilename` for complete ZIP downloads, matching desktop Use MenuList, project Share Modal, and printable-template output. Mobile must not reintroduce hand-rolled store-name filename derivation for Menu Kit ZIP downloads.
+
+Mobile also uses the shared prepared-set resolver. The Complete Menu Kit resolves one parent theme from the current menu theme, then business theme, then governed default, and applies it to every one of the 10 generated visual files. A legacy per-asset family map is collapsed to that one family before rendering. The package sheet is one **Your asset set** view, not a carousel of aggregate ZIP styles, and the ZIP itself has no misleading per-file default control.
 
 ## Mobile Implementation Notes
 

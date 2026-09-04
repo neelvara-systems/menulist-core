@@ -12,6 +12,7 @@ const layout: NavItemType[] = [
     {
         icon: Icon,
         label: 'Users',
+        ownerLabelKey: 'more',
         route: '/users',
         subNav: [
             { icon: Icon, label: 'Users List', route: '/users/list' },
@@ -28,6 +29,7 @@ const originalLayout = structuredClone(layout.map((item) => ({
 const usersBreadcrumb = resolveAppBreadcrumb('/users/permissions', layout);
 assert.equal(usersBreadcrumb.length, 1);
 assert.equal(usersBreadcrumb[0]?.label, 'Users');
+assert.equal(usersBreadcrumb[0]?.ownerLabelKey, 'more');
 assert.equal(usersBreadcrumb[0]?.key, '1:1');
 assert.equal(usersBreadcrumb[0]?.subNav[0]?.active, false);
 assert.equal(usersBreadcrumb[0]?.subNav[1]?.active, true);
@@ -55,6 +57,13 @@ const headerSource = readFileSync(
     resolve(process.cwd(), 'src/components/organisms/headerComponent/index.tsx'),
     'utf8',
 );
+const breadcrumbSource = readFileSync(
+    resolve(process.cwd(), 'src/components/organisms/headerComponent/appBreadcrumb/appBreadcrumb.tsx'),
+    'utf8',
+);
+assert.ok(breadcrumbSource.includes("const tPrimaryNav = useTranslations('MobileNavigation');"));
+assert.ok(breadcrumbSource.includes('breadcrumb.ownerLabelKey && activeSubNav'));
+assert.ok(breadcrumbSource.includes('tPrimaryNav(breadcrumb.ownerLabelKey)'));
 for (const source of [profileSource, notificationSource]) {
     assert.ok(source.includes('open={isOpen}'));
     assert.ok(source.includes('onOpenChange={setIsOpen}'));
@@ -112,5 +121,14 @@ assert.ok(websiteHeaderSource.includes('className="ws-mobile-feature-sections"')
 assert.ok(websiteHeaderSource.includes('websiteFeatureNavGroups.map((featureGroup)'));
 assert.ok(websiteHeaderSource.includes('featureGroup.links.map((featureLink)'));
 assert.ok(!websiteHeaderSource.includes('mobileFeatureShortcutsOpen'));
+assert.ok(
+    websiteHeaderSource.includes('if (event.detail > 0) {')
+    && websiteHeaderSource.includes('setOpenDesktopMenu("features");'),
+    'a pointer click must keep the hover-open Features menu open',
+);
+assert.ok(
+    websiteHeaderSource.includes('setOpenDesktopMenu((current) => current === "features" ? null : "features");'),
+    'keyboard activation must retain toggle behavior',
+);
 
 console.log('Header navigation boundary tests passed.');

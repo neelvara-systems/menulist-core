@@ -16,7 +16,12 @@ interface LucideIconGridProps {
     width?: number;
 }
 
-const allIcons = Object.keys(LuIcons);
+// Some CommonJS/ESM interop paths expose a synthetic `default` object beside
+// the actual icon components. Keep only renderable exports so the picker is
+// stable in both the app bundle and component-test runtime.
+const allIcons = Object.entries(LuIcons)
+    .filter(([, icon]) => typeof icon === 'function')
+    .map(([iconName]) => iconName);
 const allIconNames = new Set(allIcons);
 
 const LucideIconGrid = ({

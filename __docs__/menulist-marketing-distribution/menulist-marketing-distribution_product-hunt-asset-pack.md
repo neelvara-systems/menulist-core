@@ -246,7 +246,7 @@ Use these for common Product Hunt questions. Keep responses factual and bounded.
 | Follow-up board | Recommended | Drafted in `menulist-marketing-distribution_post-launch-follow-up-board.md` |
 | YouTube walkthrough | Optional but useful | Script planned in `menulist-marketing-distribution_launch-video-scripts.md` |
 | Launch URL | Yes | Not created; `/launch/product-hunt` needs route-specific docs/content approval first |
-| Launch date | No | Tuesday, August 11, 2026 is a conditional target only |
+| Launch date | No | The expired August 11, 2026 target is retired; choose a new date only after all six launch gates in `launch-research-2026-09-03/report-source.md` pass |
 
 ---
 

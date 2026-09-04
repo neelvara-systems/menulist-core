@@ -21,6 +21,7 @@ import {
 import { NextRequest, NextResponse } from "next/server";
 import { hashPublicRateLimitValue } from "src/middleware/publicApi";
 import { z } from "zod";
+import { retainChangedProfileFields } from "./profileUpdate";
 
 const UpdateProfileSchema = z.object({
   countryCode: z.string().trim().max(8).optional(),
@@ -90,7 +91,7 @@ export async function updateCurrentUserProfile(request: NextRequest, session: an
     }
 
     const existingData = userDoc.data() || {};
-    const updates: Record<string, any> = {};
+    let updates: Record<string, unknown> = {};
     if (data.name !== undefined) updates.name = data.name;
     if (data.displayEmail !== undefined) updates.displayEmail = data.displayEmail.toLowerCase();
 
@@ -115,6 +116,15 @@ export async function updateCurrentUserProfile(request: NextRequest, session: an
 
     if (Object.keys(updates).length === 0) {
       return NextResponse.json({ error: "No valid fields to update" }, { status: 400 });
+    }
+
+    updates = retainChangedProfileFields(existingData, updates);
+    if (Object.keys(updates).length === 0) {
+      return NextResponse.json({
+        success: true,
+        updated: [],
+        updates: {},
+      });
     }
 
     updates.modifiedOn = admin.firestore.Timestamp.now();

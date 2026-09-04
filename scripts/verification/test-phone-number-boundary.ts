@@ -7,6 +7,7 @@ import {
     normalizePhoneDigits,
     normalizePhoneNumberForStorage,
 } from '../../src/lib/phone/phoneNumber';
+import { generateMessageTemplates } from '../../src/lib/communication/messageTemplates';
 import {
     buildWhatsAppPhoneParam as buildFunctionsWhatsAppPhoneParam,
 } from '../../functions/src/utils/phoneNumber';
@@ -35,6 +36,8 @@ const unprefixedInternational = normalizePhoneNumberForStorage({
 assert.equal(unprefixedInternational.internationalDigits, '919876543210');
 assert.equal(unprefixedInternational.phoneNumber, '9876543210');
 assert.equal(unprefixedInternational.displayNumber, '+91 9876543210');
+assert.equal(normalizePhoneNumberForStorage({ countryCode: 'IN', dialCode: '+91', phoneNumber: '' }).displayNumber, '');
+assert.equal(normalizePhoneNumberForStorage({ countryCode: 'IN', dialCode: '+91', phoneNumber: '0000000000' }).displayNumber, '');
 
 assert.equal(buildWhatsAppPhoneParam({ phoneNumber: `+${'1'.repeat(16)}` }), '');
 assert.equal(buildFunctionsWhatsAppPhoneParam({ phoneNumber: `+${'1'.repeat(16)}` }), '');
@@ -48,6 +51,22 @@ for (const invalidPublicPhone of [
     assert.equal(buildFunctionsWhatsAppPhoneParam(invalidPublicPhone), '');
     assert.equal(buildTelHref(invalidPublicPhone), null);
 }
+const invalidPhoneMessages = generateMessageTemplates({
+    businessType: 'restaurant',
+    menuLink: 'https://example.test/menu',
+    obpLink: 'https://example.test',
+    phone: '0000000000',
+    storeName: 'Example',
+});
+assert.equal(invalidPhoneMessages.some((template) => template.message.includes('0000000000')), false);
+const validPhoneMessages = generateMessageTemplates({
+    businessType: 'restaurant',
+    menuLink: 'https://example.test/menu',
+    obpLink: 'https://example.test',
+    phone: '9876543210',
+    storeName: 'Example',
+});
+assert.equal(validPhoneMessages.some((template) => template.message.includes('9876543210')), true);
 assert.equal(normalizePhoneDigits({
     toString() {
         throw new Error('must not execute');

@@ -1,5 +1,8 @@
 import type { LocalizedText, PrintAttribute, PrintCategory, PrintItem } from '../models/printModel';
+import { PUBLIC_MENU_DRAFT_DATA_LIMITS } from '@data/shared/publicMenuDraftData';
 import { normalizeOptionalMenuPrice } from '@lib/validation/pricing.schema';
+import { resolveItemDecisionSymbolIds } from '@lib/menu/itemDecisionSymbols';
+import { normalizeCategoryIcon } from '@data/shared/categoryIconSuggestions';
 
 export const MENU_CARD_PRINT_TEXT_LIMITS = Object.freeze({
     ID: 1_500,
@@ -9,6 +12,7 @@ export const MENU_CARD_PRINT_TEXT_LIMITS = Object.freeze({
     ATTRIBUTE_NAME: 160,
     TAG: 80,
     MENU_TITLE: 240,
+    BUSINESS_TAGLINE: 200,
 });
 
 function readOwnField(value: unknown, key: string): unknown {
@@ -104,6 +108,7 @@ export function sanitizeMenuForPrint(
     items: any[],
     categories: any[],
     language = 'en',
+    includeCategoryIcons = true,
 ): {
     categories: PrintCategory[];
     hiddenExcludedCount: number;
@@ -115,21 +120,27 @@ export function sanitizeMenuForPrint(
             readOwnField(category, 'active') !== false
             && readOwnField(category, 'deleted') !== true
         ))
-        .map((category, index) => ({
-            id: resolveScalarId(
-                readOwnField(category, 'id')
-                    ?? readOwnField(category, 'categoryId')
-                    ?? readOwnField(readOwnField(category, 'name'), 'en')
-                    ?? readOwnField(category, 'name'),
-                `category-${index}`,
-            ),
-            name: stripUnsupported(resolveText(
-                readOwnField(category, 'name'),
-                language,
-                'Other',
-                MENU_CARD_PRINT_TEXT_LIMITS.CATEGORY_NAME,
-            )),
-        }));
+        .map((category, index) => {
+            const icon = includeCategoryIcons
+                ? normalizeCategoryIcon(readOwnField(category, 'icon'))
+                : '';
+            return {
+                id: resolveScalarId(
+                    readOwnField(category, 'id')
+                        ?? readOwnField(category, 'categoryId')
+                        ?? readOwnField(readOwnField(category, 'name'), 'en')
+                        ?? readOwnField(category, 'name'),
+                    `category-${index}`,
+                ),
+                name: stripUnsupported(resolveText(
+                    readOwnField(category, 'name'),
+                    language,
+                    'Other',
+                    MENU_CARD_PRINT_TEXT_LIMITS.CATEGORY_NAME,
+                )),
+                ...(icon ? { icon } : {}),
+            };
+        });
 
     const categoryMap = new Map<string, PrintCategory>();
     activeCategories.forEach((category) => {
@@ -155,9 +166,11 @@ export function sanitizeMenuForPrint(
             return;
         }
 
-        const attributes: PrintAttribute[] = snapshotArray(readOwnField(item, 'attributes'), 8)
+        const attributes: PrintAttribute[] = snapshotArray(
+            readOwnField(item, 'attributes'),
+            PUBLIC_MENU_DRAFT_DATA_LIMITS.MAX_ATTRIBUTES_PER_ITEM,
+        )
             .filter((attribute) => readOwnField(attribute, 'active') !== false)
-            .slice(0, 8)
             .map((attribute) => ({
                 id: resolveScalarId(readOwnField(attribute, 'id'), '') || undefined,
                 name: stripUnsupported(resolveText(
@@ -197,6 +210,7 @@ export function sanitizeMenuForPrint(
                 ? undefined
                 : resolveScalarId(categoryId, '') || undefined,
             attributes,
+            decisionSymbols: resolveItemDecisionSymbolIds(item),
             tags: normalizeTags(item),
         };
 

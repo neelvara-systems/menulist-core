@@ -7,6 +7,7 @@ import { useAppDispatch } from '@hook/useAppDispatch';
 import { useAppSelector } from '@hook/useAppSelector';
 import { shouldShowGrowthOSNavigation } from '@lib/growthos/entitlements';
 import { canManageLocationSettings } from '@lib/multiOutlet/locationAccess';
+import { resolveVisibleNavigationTarget } from '@lib/navigation/resolveVisibleNavigationTarget';
 import { hasRecoveryOnlyWorkspaceAccess, hasStarterWorkspaceAccess, isStarterRecoveryRoute, isStarterWorkspaceRoute } from '@lib/onboarding/starterActivation';
 import { getPermissionRequirementForPath, satisfiesPermissionRequirement } from '@lib/permissions/permissionRequirements';
 import ClientOnlyProvider from '@providers/clientOnlyProvider';
@@ -21,12 +22,9 @@ import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { MdDarkMode, MdLightMode, MdOutlineSettingsSuggest } from 'react-icons/md';
 import { TbPhoneCalling } from 'react-icons/tb';
 
-interface SidebarComponentProps {
-    onExpandedChange?: (expanded: boolean) => void;
-}
-
-const SidebarComponent = ({ onExpandedChange }: SidebarComponentProps) => {
+const SidebarComponent = () => {
     const tNav = useTranslations('Navigation');
+    const tPrimaryNav = useTranslations('MobileNavigation');
     const tSupport = useTranslations('SupportMenu');
     const tAppSettings = useTranslations('AppSettings');
     const tSettings = useTranslations('Settings');
@@ -61,6 +59,11 @@ const SidebarComponent = ({ onExpandedChange }: SidebarComponentProps) => {
     const hasPaidAccess = hasValidSubscriptionAccess(activeSubscription);
     const hasStarterAccess = hasStarterWorkspaceAccess(storeDetails, hasPaidAccess);
     const hasRecoveryOnlyAccess = hasRecoveryOnlyWorkspaceAccess(storeDetails, hasPaidAccess);
+    const canShowGrowthKitsNavigation = shouldShowGrowthOSNavigation({
+        activeSubscription,
+        storeDetails,
+        storeId: storeDetails?.storeId,
+    });
 
     useEffect(() => {
         const navFeatureAllowed = (nav: NavItemType) => {
@@ -86,7 +89,11 @@ const SidebarComponent = ({ onExpandedChange }: SidebarComponentProps) => {
             const parentPermissionAllowed = canShowNavForPermissions(nav);
 
             return nav.subNav?.filter(subnav => {
+                if (hasRecoveryOnlyAccess && !isStarterRecoveryRoute(subnav.route)) return false;
+                if (hasStarterAccess && !isStarterWorkspaceRoute(subnav.route)) return false;
                 if (!navFeatureAllowed(subnav)) return false;
+                if (subnav.route === NAVIGARIONS_ROUTINGS.LOCATIONS && !canManageLocations) return false;
+                if (subnav.route === NAVIGARIONS_ROUTINGS.GROWTH_KITS && !canShowGrowthKitsNavigation) return false;
                 const platformRoleAllowed = !subnav.allowedPlatformRoles?.length || subnav.allowedPlatformRoles.includes(platformRole);
                 const subNavPermissionAllowed = canShowNavForPermissions(subnav)
                     || (Boolean(nav.defaultRoute) && subnav.route === nav.defaultRoute && parentPermissionAllowed);
@@ -96,10 +103,12 @@ const SidebarComponent = ({ onExpandedChange }: SidebarComponentProps) => {
 
         // Filter nav items based on user context
         const filteredLayout = SIDEBAR_DASHBOARD_LAYOUT.filter(nav => {
-            if (hasRecoveryOnlyAccess && !isStarterRecoveryRoute(nav.route)) {
+            const hasRecoveryChild = nav.subNav?.some((subnav) => isStarterRecoveryRoute(subnav.route));
+            const hasStarterChild = nav.subNav?.some((subnav) => isStarterWorkspaceRoute(subnav.route));
+            if (hasRecoveryOnlyAccess && !isStarterRecoveryRoute(nav.route) && !hasRecoveryChild) {
                 return false;
             }
-            if (hasStarterAccess && !isStarterWorkspaceRoute(nav.route)) {
+            if (hasStarterAccess && !isStarterWorkspaceRoute(nav.route) && !hasStarterChild) {
                 return false;
             }
             // Hide Locations for non-master users or when feature is disabled
@@ -107,11 +116,7 @@ const SidebarComponent = ({ onExpandedChange }: SidebarComponentProps) => {
                 return canManageLocations;
             }
             if (nav.route === NAVIGARIONS_ROUTINGS.GROWTH_KITS) {
-                return shouldShowGrowthOSNavigation({
-                    activeSubscription,
-                    storeDetails,
-                    storeId: storeDetails?.storeId,
-                }) && canShowNavForPermissions(nav);
+                return canShowGrowthKitsNavigation && canShowNavForPermissions(nav);
             }
             if (nav.route === NAVIGARIONS_ROUTINGS.RESELLER) {
                 return FEATURE_FLAGS.ENABLE_RESELLER_DASHBOARD
@@ -165,7 +170,7 @@ const SidebarComponent = ({ onExpandedChange }: SidebarComponentProps) => {
 
         if (currentNav) setActiveNav(currentNav);
         setSidebarMenusList(menuCopy);
-    }, [pathname, canManageLocations, hasRecoveryOnlyAccess, hasStarterAccess, platformRole, userPermissions])
+    }, [pathname, canManageLocations, canShowGrowthKitsNavigation, hasRecoveryOnlyAccess, hasStarterAccess, platformRole, userPermissions])
 
     const onClickNav = (navItem: NavItemType, menuLevel: number, navIndex: number, subNavIndex: number = -1) => {
         if (menuLevel === 1) {
@@ -173,9 +178,11 @@ const SidebarComponent = ({ onExpandedChange }: SidebarComponentProps) => {
                 const menuCopy = [...sidebarMenusList];
                 menuCopy[navIndex].showSubNav = !menuCopy[navIndex].showSubNav;
                 setSidebarMenusList(menuCopy);
-                if (navItem.defaultRoute) router.push(`${navItem.defaultRoute}`);
+                const visibleTarget = resolveVisibleNavigationTarget(navItem);
+                if (visibleTarget) router.push(visibleTarget);
             } else {
-                router.push(`${navItem.route}`);
+                const visibleTarget = resolveVisibleNavigationTarget(navItem);
+                if (visibleTarget) router.push(visibleTarget);
             }
         } else {
             router.push(`${navItem.route}`);
@@ -289,7 +296,7 @@ const SidebarComponent = ({ onExpandedChange }: SidebarComponentProps) => {
     const navItems = useMemo<DashboardSidebarShellItem[]>(() => (
         sidebarMenusList.map((nav: NavItemType, navIndex: number) => ({
             key: nav.route,
-            label: tNav(nav.label as any),
+            label: nav.ownerLabelKey ? tPrimaryNav(nav.ownerLabelKey) : tNav(nav.label as any),
             icon: nav.icon,
             sectionLabel: nav.sectionLabel ? tNav(nav.sectionLabel as any) : undefined,
             active: nav.active,
@@ -304,7 +311,7 @@ const SidebarComponent = ({ onExpandedChange }: SidebarComponentProps) => {
                 onClick: () => onClickNav(subNav, 2, navIndex, subnavIndex),
             })),
         }))
-    ), [sidebarMenusList, tNav]);
+    ), [sidebarMenusList, tNav, tPrimaryNav]);
 
     const actionItems = useMemo<DashboardSidebarShellItem[]>(() => (
         ACTION_MENUS.map((nav: NavItemType) => {
@@ -344,7 +351,6 @@ const SidebarComponent = ({ onExpandedChange }: SidebarComponentProps) => {
                 logoCollapsed={<MenuListIconLogo />}
                 logoExpanded={<MenuListHorizontalLogo color={token.colorText} />}
                 navItems={navItems}
-                onExpandedChange={onExpandedChange}
             />
         </ClientOnlyProvider>
     )

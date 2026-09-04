@@ -18,6 +18,7 @@ Audit continuity marker: current-authority and payment-effect hardening remains 
 6. The browser refreshes NextAuth from current Firestore truth and opens Razorpay. Payment verification or the webhook moves the local subscription to the provider-confirmed state.
 7. `/api/auth/set-claims` re-reads the current user and canonical store, then mints Firebase claims for the exact tenant/store membership and store role.
 8. A returning owner with a pending onboarding subscription sees a clear payment-pending state and can resume the allowlisted Razorpay checkout from Pricing or Billing.
+9. The pricing setup uses progressive disclosure: business identity is completed first, then private billing details. An authenticated recovery screen distinguishes pending payment, ended plan, expired seven-day setup, missing workspace, and a ready business without an active plan instead of presenting one generic subscription failure.
 
 ## Supported authentication entries
 
@@ -53,6 +54,8 @@ All entries converge on the same NextAuth session, Firebase claim sync, user/sto
 | Checkout is dismissed | A previously validated pending subscription remains visible; the owner can complete the same allowlisted payment link from Pricing or Billing |
 | Claim cache invalidation fails after commit | Failure is logged; the claim remains successful and Firebase claim mirroring continues |
 | Firebase claim mirror fails after account claim | Failure is logged; normal sign-in `/api/auth/set-claims` repairs the mirror |
+
+Owner-facing sign-in uses one neutral **Continue** action for email, phone, or staff ID. Business-access recovery shows a masked active account, lets the owner switch accounts without carrying the old session forward, and links directly to the correct product help route instead of telling a non-technical owner to contact an administrator.
 | Claim/OTP limiter provider is unavailable | Public identity-changing or paid OTP work returns 503 before side effects |
 
 ## Verification

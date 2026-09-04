@@ -3558,7 +3558,32 @@ function ProjectsPage() {
                             </Flex>
                         </>}
 
-                        {currentView == 3 && <>
+                        {currentView == 3 && selectedProject && (projectLoading || (!activeProject && !projectError)) && (
+                            <Flex align="center" justify="center" style={{ minHeight: 240, width: '100%' }}>
+                                <Spin />
+                            </Flex>
+                        )}
+
+                        {currentView == 3 && selectedProject && projectError && (
+                            <Flex align="center" gap={12} justify="center" style={{ minHeight: 240, width: '100%' }} vertical>
+                                <Typography.Text strong>Could not load this menu</Typography.Text>
+                                <Typography.Text type="secondary">Try again, or return to your menus and choose another one.</Typography.Text>
+                                <Flex gap={8} wrap>
+                                    <Button onClick={() => setCurrentView(1)}>
+                                        Back to menus
+                                    </Button>
+                                    <Button
+                                        icon={<LuRefreshCw size={18} />}
+                                        onClick={() => void mutateProject()}
+                                        type="primary"
+                                    >
+                                        Try again
+                                    </Button>
+                                </Flex>
+                            </Flex>
+                        )}
+
+                        {currentView == 3 && selectedProject && activeProject && <>
                             <Flex gap={10} vertical align='center' justify='center' style={{ width: '100%' }}>
                                 <Suspense fallback={<Spin size="large" />}>
                                     {tenantDetails?.businessEntityType == 'B2B' ?

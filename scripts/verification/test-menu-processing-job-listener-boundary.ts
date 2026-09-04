@@ -139,7 +139,7 @@ for (const reviewParentSource of [desktopProjectsSource, mobileMenuSource]) {
 
 const validResult = {
     combinedData: {
-        categories: [{ id: 1, sourceFileIndex: 0, name: { en: ' Starters ' } }],
+        categories: [{ id: 1, sourceFileIndex: 0, name: { en: ' Starters ' }, icon: 'lu:LuSoup' }],
         items: [{
             id: 2,
             sourceFileIndex: 0,
@@ -230,6 +230,7 @@ assert.equal(validPreview.issueCode, undefined);
 assert.equal(validPreview.job.status, 'preview_ready');
 assert.equal(validPreview.job.currentStep, 'Ready');
 assert.equal(validPreview.job.result?.combinedData?.categories[0].id, '1');
+assert.equal(validPreview.job.result?.combinedData?.categories[0].icon, 'lu:LuSoup');
 assert.deepEqual(validPreview.job.result?.combinedData?.items[0].name, { en: 'Soup' });
 assert.equal(validPreview.job.result?.combinedData?.items[0].categoryId, '1');
 assert.equal(validPreview.job.result?.combinedData?.items[0].categoryName, 'Starters');
@@ -301,7 +302,7 @@ const comparison = runComparisonEngine({
     mode: 'SINGLE_STORE',
     primaryLang: 'en',
     extracted: {
-        categories: [{ id: '1', name: { en: 'Starters' }, sourceFileIndex: 0 }],
+        categories: [{ id: '1', name: { en: 'Starters' }, icon: 'lu:LuSoup', sourceFileIndex: 0 }],
         items: [
             {
                 id: '1',
@@ -325,6 +326,11 @@ assert.equal(comparison.preview.newItems.length, 1);
 assert.equal(comparison.preview.ignored.length, 2);
 assert.equal(comparison.preview.warnings.filter((warning) => warning.severity === 'HIGH').length, 2);
 assert.equal(comparison.applyPlan.projectMutations?.upsertItems.length, 1, 'unsafe items must not enter the Firestore apply plan');
+assert.equal(
+    comparison.applyPlan.projectMutations?.upsertCategories[0]?.newCategory?.icon,
+    'lu:LuSoup',
+    'an inferred icon on a newly extracted category must survive review persistence',
+);
 assert.deepEqual(
     comparison.applyPlan.projectMutations?.upsertItems[0].newItem,
     {
@@ -352,6 +358,18 @@ const invalidPriceComparison = runComparisonEngine({
 });
 assert.equal(invalidPriceComparison.preview.warnings.length, 1);
 assert.equal(invalidPriceComparison.applyPlan.projectMutations?.upsertItems[0].newItem?.price, undefined, 'a price reported as skipped must not enter a new-item write');
+assert.equal(validateSaveExtractionReview({
+    projectId: '1-1234567890-2',
+    jobId,
+    mode: 'SINGLE_STORE',
+    projectMutations: {
+        upsertCategories: [{
+            newCategory: { id: 'category-1', name: { en: 'Soup' }, icon: 'emoji:<script>' },
+            targetFileUid: 'file-1',
+        }],
+        upsertItems: [],
+    },
+}).success, false, 'review writes must reject category-icon markup outside the canonical data contract');
 
 const firstReviewSession = updateReviewPreviewSession(
     createReviewPreviewSession('project-a', 'job-a', comparison.preview),

@@ -1,17 +1,16 @@
 import { UserUploadedFileType } from '@type/common';
 import useDeviceType from '@hook/useDeviceType';
+import { CONTENT_CREDIT_OPERATION_COSTS } from '@data/shared/contentCreditPolicy';
 import { Button, Card, Flex, Image, Input, Tag, Typography, theme, Tooltip } from 'antd';
-import React, { Fragment, useEffect, useState } from 'react';
+import React, { Fragment } from 'react';
 import { LuSparkles, LuWand2, LuX } from 'react-icons/lu';
 import { ImageGenerationConfigType } from '../../types';
 
 const PROMPT_EXAMPLES = [
-    'e.g., "on a rustic wooden table"',
-    'e.g., "with steam rising"',
+    'e.g., "on a clean neutral background"',
+    'e.g., "show the most important detail clearly"',
     'e.g., "bright natural lighting"',
-    'e.g., "with fresh garnish"',
-    'e.g., "minimalist background"',
-    'e.g., "cozy cafe setting"',
+    'e.g., "in the real business setting"',
 ];
 
 // UX-31: Quick quality enhancer tags
@@ -19,13 +18,13 @@ const QUICK_ENHANCERS = [
     { label: 'HD Quality', value: 'high resolution, sharp focus' },
     { label: 'Professional', value: 'professional photography, studio quality' },
     { label: 'Vibrant', value: 'vibrant colors, well-lit' },
-    { label: 'Appetizing', value: 'appetizing, food photography' },
+    { label: 'Clear detail', value: 'clear subject detail, realistic texture' },
 ];
 
 export interface ChatWidgetUiProps {
     generationConfig: ImageGenerationConfigType;
     setGenerationConfig: (config: ImageGenerationConfigType) => void;
-    onGenerateImage: () => Promise<void>;
+    onGenerateImage: (configOverride?: ImageGenerationConfigType) => Promise<void>;
     onSelecteRefImage: (image: UserUploadedFileType | null) => void;
     setShowStyleSelector: (show: boolean) => void;
     isDesktopSidebar?: boolean;
@@ -41,17 +40,12 @@ const ChatWidgetUi: React.FC<ChatWidgetUiProps> = ({
 }) => {
     const { token } = theme.useToken();
     const { isMobile } = useDeviceType();
-    const [exampleIndex, setExampleIndex] = useState(0);
     const selectedStyleLabel = generationConfig.styles?.filter(Boolean).join(', ');
     const selectedModeLabel = generationConfig.isMultiMode ? 'Multiple photos' : 'Single photo';
-
-    // Rotate prompt examples every 4 seconds
-    useEffect(() => {
-        const interval = setInterval(() => {
-            setExampleIndex(prev => (prev + 1) % PROMPT_EXAMPLES.length);
-        }, 4000);
-        return () => clearInterval(interval);
-    }, []);
+    const requestedImageCount = generationConfig.isMultiMode
+        ? Math.max(generationConfig.selectedImageTypes?.length || 0, 1)
+        : 1;
+    const requestedCredits = requestedImageCount * CONTENT_CREDIT_OPERATION_COSTS.GENERATED_MENU_IMAGE;
 
     return (
         <Card
@@ -175,24 +169,27 @@ const ChatWidgetUi: React.FC<ChatWidgetUiProps> = ({
                                     ) : null}
                                 </Flex>
                                 {(generationConfig.stylesCategory || selectedStyleLabel) ? (
-                                    <Flex
-                                        gap={6}
+                                    <Button
+                                        aria-label="Change selected image style"
+                                        block
                                         onClick={() => setShowStyleSelector(true)}
-                                        style={{ cursor: 'pointer' }}
-                                        vertical
+                                        style={{ height: 'auto', padding: 0, textAlign: 'start', whiteSpace: 'normal' }}
+                                        type="text"
                                     >
-                                        <Typography.Text type="secondary" style={{ fontSize: 12, lineHeight: 1.2 }}>
-                                            Selected style
-                                        </Typography.Text>
-                                        <Typography.Text style={{ lineHeight: 1.35, wordBreak: 'break-word' }}>
-                                            {generationConfig.stylesCategory ? (
-                                                <Fragment>
-                                                    {generationConfig.stylesCategory}
-                                                    {selectedStyleLabel ? `: ${selectedStyleLabel}` : ''}
-                                                </Fragment>
-                                            ) : selectedStyleLabel}
-                                        </Typography.Text>
-                                    </Flex>
+                                        <Flex gap={6} vertical>
+                                            <Typography.Text type="secondary" style={{ fontSize: 12, lineHeight: 1.2 }}>
+                                                Selected style
+                                            </Typography.Text>
+                                            <Typography.Text style={{ lineHeight: 1.35, wordBreak: 'break-word' }}>
+                                                {generationConfig.stylesCategory ? (
+                                                    <Fragment>
+                                                        {generationConfig.stylesCategory}
+                                                        {selectedStyleLabel ? `: ${selectedStyleLabel}` : ''}
+                                                    </Fragment>
+                                                ) : selectedStyleLabel}
+                                            </Typography.Text>
+                                        </Flex>
+                                    </Button>
                                 ) : null}
                             </Flex>
                         </Flex>
@@ -213,7 +210,7 @@ const ChatWidgetUi: React.FC<ChatWidgetUiProps> = ({
                                 id="prompt-input"
                                 allowClear
                                 autoSize={{ minRows: 3, maxRows: 5 }}
-                                placeholder={`Optional, ${PROMPT_EXAMPLES[exampleIndex]}`}
+                                placeholder={`Optional, ${PROMPT_EXAMPLES[0]}`}
                                 value={generationConfig.prompt}
                                 onChange={(e) => setGenerationConfig({ ...generationConfig, prompt: e.target.value })}
                                 style={{
@@ -227,17 +224,18 @@ const ChatWidgetUi: React.FC<ChatWidgetUiProps> = ({
                         </Tooltip>
                         <Flex gap={6} wrap="wrap">
                             {QUICK_ENHANCERS.map((enhancer) => (
-                                <Tag
+                                <Button
+                                    aria-pressed={generationConfig.prompt?.includes(enhancer.value) || false}
                                     key={enhancer.label}
+                                    size="small"
                                     style={{
                                         background: token.colorBgContainer,
                                         border: `1px solid ${generationConfig.prompt?.includes(enhancer.value) ? token.colorPrimary : token.colorBorderSecondary}`,
                                         borderRadius: 8,
                                         color: generationConfig.prompt?.includes(enhancer.value) ? token.colorPrimary : undefined,
-                                        cursor: 'pointer',
                                         fontSize: 11,
-                                        margin: 0,
-                                        padding: '2px 10px',
+                                        height: 28,
+                                        paddingInline: 10,
                                     }}
                                     onClick={() => {
                                         const currentPrompt = generationConfig.prompt || '';
@@ -255,7 +253,7 @@ const ChatWidgetUi: React.FC<ChatWidgetUiProps> = ({
                                     }}
                                 >
                                     {enhancer.label}
-                                </Tag>
+                                </Button>
                             ))}
                         </Flex>
                     </Flex>
@@ -273,7 +271,7 @@ const ChatWidgetUi: React.FC<ChatWidgetUiProps> = ({
                         width: '100%',
                     }}
                 >
-                    <Tooltip title="Generate with smart defaults - no customization needed">
+                    <Tooltip title="Replace the current prompt and style with recommended general-purpose settings">
                         <Button
                             size='large'
                             type="default"
@@ -286,20 +284,18 @@ const ChatWidgetUi: React.FC<ChatWidgetUiProps> = ({
                                 paddingInline: isMobile ? 6 : 14,
                             }}
                             onClick={() => {
-                                // Quick generate with smart defaults
                                 setGenerationConfig({
                                     ...generationConfig,
                                     prompt: 'professional photography, high quality, well-lit',
-                                    styles: generationConfig.styles?.length ? generationConfig.styles : ['Food Photography'],
-                                    stylesCategory: generationConfig.stylesCategory || 'Photography'
+                                    styles: ['Natural Light'],
+                                    stylesCategory: 'Photorealism',
                                 });
-                                setTimeout(() => onGenerateImage(), 100);
                             }}
                             loading={generationConfig.loading}
                             disabled={generationConfig.loading}
                             icon={<LuSparkles />}
                         >
-                            {isMobile ? 'Quick' : 'Quick Generate'}
+                            Use defaults
                         </Button>
                     </Tooltip>
                     <Button
@@ -313,14 +309,17 @@ const ChatWidgetUi: React.FC<ChatWidgetUiProps> = ({
                             minWidth: 0,
                             paddingInline: isMobile ? 6 : 14,
                         }}
-                        onClick={onGenerateImage}
+                        onClick={() => void onGenerateImage()}
                         loading={generationConfig.loading}
                         disabled={generationConfig.loading}
                         icon={<LuWand2 />}
                     >
-                        {isMobile ? 'Generate' : 'Generate Image'}
+                        Generate {requestedImageCount === 1 ? 'photo' : `${requestedImageCount} photos`} · {requestedCredits} credits
                     </Button>
                 </Flex>
+                <Typography.Text type="secondary" style={{ fontSize: 11, textAlign: 'center' }}>
+                    Credits are charged only for completed photos.
+                </Typography.Text>
             </Flex>
         </Card>
     );

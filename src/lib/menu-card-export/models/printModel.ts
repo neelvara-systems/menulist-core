@@ -1,4 +1,5 @@
 import type { BusinessCatalogKind, BusinessOfferingKind } from '@data/shared/businessTypes';
+import type { ItemDecisionSymbolId } from '@lib/menu/itemDecisionSymbols';
 
 export type LocalizedText = string | Record<string, string> | undefined | null;
 
@@ -15,12 +16,14 @@ export type PrintItem = {
     description?: string;
     categoryId?: string;
     attributes: PrintAttribute[];
+    decisionSymbols?: ItemDecisionSymbolId[];
     tags: string[];
 };
 
 export type PrintCategory = {
     id: string;
     name: string;
+    icon?: string;
     items: PrintItem[];
 };
 
@@ -38,6 +41,7 @@ export type MenuCardPrintSource = {
     menuSnapshotId: string | null;
     business: {
         name: string;
+        tagline?: string;
         logoUrl?: string;
         phone?: string;
         address?: string;
@@ -69,6 +73,7 @@ export type MenuCardPrintSource = {
         hasDescriptions: boolean;
         hasVariants: boolean;
         hasDietaryTags: boolean;
+        hasCategoryIcons: boolean;
         hasMissingPrices: boolean;
     };
 };

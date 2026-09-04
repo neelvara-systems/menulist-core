@@ -13,6 +13,18 @@ import {
 const secret = process.env.NEXTAUTH_SECRET;
 assert(secret, 'NEXTAUTH_SECRET is required');
 
+const clearCollection = async (
+    collection: FirebaseFirestore.CollectionReference,
+): Promise<void> => {
+    while (true) {
+        const snapshot = await collection.limit(200).get();
+        if (snapshot.empty) return;
+        const batch = firestoreAdmin.batch();
+        for (const document of snapshot.docs) batch.delete(document.ref);
+        await batch.commit();
+    }
+};
+
 const verifyCanonicalPhoneIdentity = (): void => {
     const phone = '+919876543210';
     const expectedDigest = crypto.createHmac('sha256', secret).update(`user:${phone}`).digest('hex');
@@ -150,6 +162,10 @@ const verifyScopedOrMismatchedOwnerRejects = async (): Promise<void> => {
 
 const run = async (): Promise<void> => {
     assert(process.env.FIRESTORE_EMULATOR_HOST, 'FIRESTORE_EMULATOR_HOST is required');
+    await Promise.all([
+        clearCollection(firestoreAdmin.collection(DB_COLLECTIONS.USERS)),
+        clearCollection(firestoreAdmin.collection(DB_COLLECTIONS.TENANTS)),
+    ]);
     verifyCanonicalPhoneIdentity();
     await verifyExistingOwnerClaimSerializes();
     await verifyNewOwnerClaimSerializes();

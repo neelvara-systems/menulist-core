@@ -236,7 +236,9 @@ function verifyPublicSurfaces() {
         'getPublicCustomerLanguageDirection(activeLanguage)',
         'dir={languageDirection}',
         'lang={activeLanguage}',
-        'getPublicSpiceLevelLabel(spiceLevel, t)',
+        'menuDecisionSymbolLegend',
+        'data-menu-decision-symbol-legend="true"',
+        '<ItemDecisionSymbolGroup',
         "t('menu.viewOfferingFrom'",
       ],
     },
@@ -347,11 +349,15 @@ function verifyPublicSurfaces() {
   assertIncludes(viewer, 'insetInlineEnd', 'public image viewer logical next control');
 
   const itemDetails = read('src/components/templates/main-app/projects/b2cView/output/PDPModal.tsx');
-  assertIncludes(
+  [
+    'resolveItemDecisionSymbolIds(item)',
+    '<ItemDecisionSymbolGroup',
+    'symbols={itemDecisionSymbols}',
+  ].forEach((token) => assertIncludes(
     itemDetails,
-    'getPublicSpiceLevelLabel(spiceLevel, t)',
-    'public item-details spice-level localization',
-  );
+    token,
+    'public item-details decision-symbol presentation',
+  ));
 
   const obpSurface = read('src/app/client/obp/OBPResolvedSurface.tsx');
   assertIncludes(obpSurface, '<OBPCustomerAppMount', 'OBP customer app mount');

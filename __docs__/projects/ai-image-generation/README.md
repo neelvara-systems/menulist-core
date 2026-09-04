@@ -2,8 +2,8 @@
 
 > **Feature:** Menu Image Generation & Editing
 > **Status:** Source-gate verified; target deployment, provider smoke, and authenticated owner QA remain release evidence
-> **Last Updated:** August 25, 2026
-> **Version:** 2.9
+> **Last Updated:** August 31, 2026
+> **Version:** 3.3
 
 ---
 
@@ -19,12 +19,13 @@
 | **Firebase**   | [\_firebase.md](./ai-image-generation_firebase.md)         | Reads, writes, Storage, and retention costs |
 | **Mobile**     | [\_mobile-support.md](./ai-image-generation_mobile-support.md) | Mobile shell behavior and parity         |
 | **QA**         | [\_verification.md](./ai-image-generation_verification.md) | Verification report, findings, improvements |
+| **QA Cases**   | [\_test-cases.md](./ai-image-generation_test-cases.md)     | Saved-person acceptance and abuse cases      |
 
 ---
 
 ## What Is This Feature?
 
-**One-liner:** A review-first image preparation system for menu items, menu covers, and Official Business Page covers using the shared Gemini image model.
+**One-liner:** A review-first image preparation system for menu items and covers, with optional private saved-person identity references for consistent business catalog drafts.
 
 **Problem Solved:** Owners may have missing, outdated, or inconsistent images and need a bounded way to prepare replacement drafts without publishing unchecked output.
 
@@ -34,8 +35,11 @@
 2. **Batch item generation** — asynchronous processing for 1–50 selected items using Cloud Tasks.
 3. **Image editing** — owner-invoked edits of an existing item image, returned as drafts.
 4. **Menu and business covers** — manual draft generation for project/Official Business Page covers; a missing project cover may also be prepared after an accepted extraction result.
+5. **Saved person profiles** — an owner can privately save 2–4 authorized photos of one adult, then reuse that person across single or batch drafts while keeping the separate one-off visual reference control.
 
 Generated item previews are not added to project truth until the owner accepts them. Cover generation uses the same guarded route/accounting path; generated public cover writes use the existing media preparation, authority, and cache-invalidation contracts.
+
+The owner flow is business-aware: Saved Person is recommended and visible for person-led catalogs, while restaurant, retail, and other product-led businesses see it as a collapsed optional input. Single and batch actions show the maximum content credits before generation and state that only completed photos are charged.
 
 ---
 
@@ -59,6 +63,10 @@ Generated item previews are not added to project truth until the owner accepts t
 │  User → EditImageModal → /api/image-editing → Gemini AI          │
 │       → Preview Edits → Select → Upload                          │
 │                                                                  │
+│  SAVED PERSON (Optional input to single or batch)                 │
+│  Owner → Private profile API → Admin-only Storage references     │
+│       → Exact profile version → Gemini identity references       │
+│                                                                  │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -76,6 +84,9 @@ Generated item previews are not added to project truth until the owner accepts t
 | **Batch Trigger API**     | `src/app/api/image-generation/batch-trigger/route.ts`                                                                            |
 | **Batch Worker API**      | `src/app/api/image-generation/batch-generation/route.ts`                                                                         |
 | **Image Editing API**     | `src/app/api/image-editing/route.ts`                                                                                             |
+| **Saved Person API**      | `src/app/api/image-subject-profiles/route.ts`                                                                                    |
+| **Saved Person Store**    | `src/lib/ai/imageSubjectProfiles.ts`                                                                                              |
+| **Saved Person UI**       | `src/components/templates/main-app/projects/editorView/AiImageGenerator/SubjectProfileSelector.tsx`                              |
 | **Prompt Construction**   | `src/app/api/image-generation/prompt.ts`                                                                                         |
 | **Cloud Task Client**     | `src/lib/google/cloudTask/index.ts`                                                                                              |
 | **Batch Job Listener**    | `src/hooks/useImageBatchJobListener.ts`                                                                                          |
@@ -95,9 +106,10 @@ Generated item previews are not added to project truth until the owner accepts t
 ```typescript
 // src/config/features.ts
 ENABLE_AI_IMAGE_GENERATION: true; // Implementation complete - enabled
+ENABLE_AI_SUBJECT_PROFILES: true; // Private saved-person profiles enabled
 ```
 
-The flag is enforced by the single, edit, batch-trigger, and authenticated batch-worker routes; item, project-cover, business-cover, desktop, and mobile owner entry points; and AI Menu Manager image actions/suggestions. Changing this source flag requires the normal app deployment. When disabled, already-created batch jobs remain visible; worker requests return a retryable `503` without provider, accounting, Storage, or job-state work.
+The master flag is enforced by the single, edit, batch-trigger, and authenticated batch-worker routes; item, project-cover, business-cover, desktop, and mobile owner entry points; and AI Menu Manager image actions/suggestions. The saved-person flag independently gates its selector/API and single/batch admission; an already-enqueued saved-person worker remains retryable while that flag is off. Changing either source flag requires the normal app deployment.
 
 ---
 
@@ -115,6 +127,9 @@ The flag is enforced by the single, edit, batch-trigger, and authenticated batch
 
 | Version | Date         | Changes                                                                                                                                                       |
 | ------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 3.2     | Aug 31, 2026 | Added a lazy, five-minute, tenant/store/visibility-scoped saved-person summary cache to the existing global data provider; mutations update it in memory and session/store changes clear it without moving private truth into the Store document |
+| 3.1     | Aug 31, 2026 | Cross-checked the saved-person lifecycle: mobile keeps fast selection while desktop owns setup/governance, withdrawn metadata/previews are management-only/blocked, validation failures are security-logged, and concurrent creates cannot exceed the profile cap |
+| 3.0     | Aug 31, 2026 | Added consent-gated, store-scoped saved-person profiles with private reference storage, exact-version single/batch generation, withdrawal/deletion, mobile selection, desktop lifecycle controls, project/local preference persistence, prompt-cache exclusion, tests, and docs |
 | 2.9     | Aug 25, 2026 | Moved batch-worker project/secret admission before SAFE_MODE so unauthorized traffic returns 403 with zero Firebase reads while admitted worker behavior remains unchanged |
 | 2.8     | Jul 15, 2026 | Rotated the daily retention scan across every active store, distributed prompt-cache cleanup hourly with bounded backlog evidence, and capped Cloud Task creation at eight concurrent requests without changing batch results or accounting |
 | 2.7     | Jul 14, 2026 | Enforced the master flag across every provider/UI entry, capped batch selection at 50 before request admission, corrected mobile generation routing, added project-reference-protected orphan cleanup, refreshed mobile/docs/verification truth |

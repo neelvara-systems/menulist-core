@@ -1,5 +1,6 @@
 import { antdTagsColorCodes } from '@data/common';
 import { getClockTimeInputFormat } from '@util/dateTime';
+import type { TimeSlotPresetDraftIssue } from '@lib/menu/timeSlotPresetBoundary';
 import { Button, Flex, Input, TimePicker, Typography } from 'antd';
 import dayjs from 'dayjs';
 import { LuCheck } from 'react-icons/lu';
@@ -22,6 +23,8 @@ interface TimeSlotPresetFormProps {
     compact?: boolean;
     showLabels?: boolean;
     showCharCount?: boolean;
+    validationIssue?: TimeSlotPresetDraftIssue | null;
+    validationMessage?: string;
 }
 
 const TimeSlotPresetForm: React.FC<TimeSlotPresetFormProps> = ({
@@ -29,7 +32,9 @@ const TimeSlotPresetForm: React.FC<TimeSlotPresetFormProps> = ({
     onChange,
     compact = false,
     showLabels = true,
-    showCharCount = false
+    showCharCount = false,
+    validationIssue = null,
+    validationMessage,
 }) => {
     const timePickerFormat = getClockTimeInputFormat();
 
@@ -41,6 +46,8 @@ const TimeSlotPresetForm: React.FC<TimeSlotPresetFormProps> = ({
         return (
             <Flex vertical gap={12}>
                 <Input
+                    aria-describedby={validationMessage ? 'desktop-time-slot-draft-error' : undefined}
+                    aria-invalid={validationIssue === 'missing_label' || validationIssue === 'duplicate_label'}
                     placeholder="Label (e.g., Breakfast)"
                     value={formData.label}
                     onChange={e => handleChange('label', e.target.value)}
@@ -105,6 +112,7 @@ const TimeSlotPresetForm: React.FC<TimeSlotPresetFormProps> = ({
                     onChange={e => handleChange('label', e.target.value)}
                     maxLength={30}
                     showCount={showCharCount}
+                    status={validationIssue === 'missing_label' || validationIssue === 'duplicate_label' ? 'error' : undefined}
                 />
             </div>
 
@@ -112,24 +120,36 @@ const TimeSlotPresetForm: React.FC<TimeSlotPresetFormProps> = ({
                 <div style={{ flex: 1 }}>
                     {showLabels && <Text strong style={{ display: 'block', marginBottom: 8 }}>Start Time *</Text>}
                     <TimePicker
+                        aria-describedby={validationMessage ? 'desktop-time-slot-draft-error' : undefined}
+                        aria-invalid={validationIssue === 'invalid_range'}
                         format={timePickerFormat}
                         minuteStep={15}
                         value={dayjs(formData.startTime, 'HH:mm')}
                         onChange={time => handleChange('startTime', time?.format('HH:mm') || '09:00')}
                         style={{ width: '100%' }}
+                        status={validationIssue === 'invalid_range' ? 'error' : undefined}
                     />
                 </div>
                 <div style={{ flex: 1 }}>
                     {showLabels && <Text strong style={{ display: 'block', marginBottom: 8 }}>End Time *</Text>}
                     <TimePicker
+                        aria-describedby={validationMessage ? 'desktop-time-slot-draft-error' : undefined}
+                        aria-invalid={validationIssue === 'invalid_range'}
                         format={timePickerFormat}
                         minuteStep={15}
                         value={dayjs(formData.endTime, 'HH:mm')}
                         onChange={time => handleChange('endTime', time?.format('HH:mm') || '17:00')}
                         style={{ width: '100%' }}
+                        status={validationIssue === 'invalid_range' ? 'error' : undefined}
                     />
                 </div>
             </Flex>
+
+            {validationMessage ? (
+                <Text id="desktop-time-slot-draft-error" role="alert" type="danger">
+                    {validationMessage}
+                </Text>
+            ) : null}
 
             <div>
                 {showLabels && <Text strong style={{ display: 'block', marginBottom: 8 }}>Color</Text>}

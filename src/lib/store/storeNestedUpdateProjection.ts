@@ -11,6 +11,7 @@ const STORE_NESTED_PATCH_FIELDS = new Set([
     'metaTitle',
     'posSync',
     'presence',
+    'printableAssetStylePreferences',
     'publicPresence',
     'pwaSettings',
     'socialMedia',

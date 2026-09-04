@@ -121,6 +121,7 @@ type CategorySummary = {
     name: string;
     orderIndex?: number;
     timeSlotPresetIds?: string[];
+    isMasterControlled?: boolean;
     translationMissing?: boolean;
 };
 
@@ -2081,6 +2082,11 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
                         nameByLanguage: typeof category.name === 'object' ? removeObjRef(category.name) : undefined,
                         orderIndex: category.orderIndex,
                         timeSlotPresetIds: getCategoryTimeSlotPresetIds(category),
+                        isMasterControlled: Boolean(
+                            menuData.masterProjectId
+                            && (categoryInheritanceStates[category.id] === 'inherited'
+                                || categoryInheritanceStates[category.id] === 'overridden')
+                        ),
                         translationMissing: hasMissingCategoryTranslationForLanguage(category, primaryLang, displayLanguage),
                     });
                 }
@@ -2092,7 +2098,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
             if (aIndex !== bIndex) return aIndex - bIndex;
             return a.name.localeCompare(b.name);
         });
-    }, [displayLanguage, menuData?.files, primaryLang, uncategorizedLabel]);
+    }, [categoryInheritanceStates, displayLanguage, menuData?.files, menuData?.masterProjectId, primaryLang, uncategorizedLabel]);
 
     const missingCategoryIconCategoryIds = useMemo(() => {
         if (!showCategoryIcons) return [];
@@ -2498,7 +2504,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
     );
     const hasCategories = categorySummary.length > 0;
     const categoryCount = useMemo(() => categorySummary.length, [categorySummary.length]);
-    const isFirstRunProject = Boolean(menuData?.projectId) && !hasCategories && menuItems.length === 0 && !searchQuery && appliedFilterCount === 0;
+    const isFirstRunProject = Boolean(menuData?.projectId) && menuItems.length === 0 && !searchQuery && appliedFilterCount === 0;
 
     const orderedCategorySections = useMemo(() => {
         const itemsByCategory = new Map<string, MenuItemType[]>();
@@ -2645,14 +2651,31 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
         );
 
         if (isInheritedOutletCategory) {
+            const currentCategory = updated.files
+                ?.flatMap((file: any) => toArray<ExtractedDataCategory>(file.extractedData?.data?.categories))
+                .find((category: ExtractedDataCategory) => category.id === categoryId);
+            const currentPresetIds = getCategoryTimeSlotPresetIds(currentCategory).sort();
+            const nextPresetIds = [...presetIds].sort();
+            const scheduleChanged = currentPresetIds.length !== nextPresetIds.length
+                || currentPresetIds.some((presetId, index) => presetId !== nextPresetIds[index]);
+            const nextTimeSlots = presetIds
+                .map((presetId) => presets.find((preset: any) => preset.id === presetId))
+                .filter(Boolean)
+                .map((preset: any) => ({
+                    presetId: preset.id,
+                    startTime: preset.startTime,
+                    endTime: preset.endTime,
+                }));
+            const nextCategoryOverride = {
+                ...(updated.overrides?.categories?.[categoryId] || {}),
+                active,
+                ...(scheduleChanged ? { timeSlots: nextTimeSlots } : {}),
+            };
             updated.overrides = {
                 items: updated.overrides?.items || {},
                 categories: {
                     ...(updated.overrides?.categories || {}),
-                    [categoryId]: {
-                        ...(updated.overrides?.categories?.[categoryId] || {}),
-                        active,
-                    },
+                    [categoryId]: nextCategoryOverride,
                 },
                 attributes: updated.overrides?.attributes || {},
             };
@@ -2661,6 +2684,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
                 file.extractedData?.data?.categories?.forEach((category: any) => {
                     if (category.id === categoryId) {
                         category.active = active;
+                        if (scheduleChanged) category.timeSlots = nextTimeSlots;
                     }
                 });
             });
@@ -3555,7 +3579,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
                 </Flex>
             </Card>
 
-            {!isFirstRunProject ? (
+            {!isFirstRunProject && !isImageUploadOpen ? (
                 <Flex
                     gap={8}
                     style={{
@@ -4256,6 +4280,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
             </Popup>
 
             <Popup
+                aria-label={t('findAndFix')}
                 bodyStyle={{ maxHeight: '92vh', overflow: 'hidden', padding: 0 }}
                 onMaskClick={() => setIsFilterSheetOpen(false)}
                 visible={isFilterSheetOpen}
@@ -4590,12 +4615,12 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
                     businessType={storeDetails?.businessType}
                     businessCategory={storeDetails?.businessCategory}
                     onClose={() => handleCommandActionBack(() => setIsSmartRecommendationsOpen(false))}
-                    onSaved={(updatedProject) => {
-                        applyLocalMenuUpdate(updatedProject);
-                        setIsSmartRecommendationsOpen(false);
-                        resetCommandActionFlow();
+                    onSaved={async (updatedProject) => {
+                        const savedProject = await persistMenuProjectImmediately(updatedProject);
+                        applyLocalMenuUpdate(removeObjRef(savedProject || updatedProject));
                     }}
                     projectData={menuData}
+                    storeDetails={storeDetails}
                     visible={isSmartRecommendationsOpen}
                 />
             ) : null}

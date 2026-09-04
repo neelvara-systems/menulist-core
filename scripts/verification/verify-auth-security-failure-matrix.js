@@ -2315,7 +2315,7 @@ assertIncludes(serviceWorkerRegister, "getBoundedRuntimeStringContext('host', wi
 assertIncludes(serviceWorkerRegister, 'service_worker_registration_failed', 'Service worker registration must code failed registration diagnostics.');
 assertIncludes(serviceWorkerRegister, 'service_worker_unregister_failed', 'Service worker unregister must code failed cleanup diagnostics.');
 assertIncludes(serviceWorkerRegister, 'activeWorker: getRegisteredSwLabel(activeUrl)', 'Service worker unregister diagnostics must use bounded active-worker labels.');
-assertIncludes(serviceWorkerRegister, 'targetWorker: getTargetSwLabel(targetUrl)', 'Service worker unregister diagnostics must use bounded target-worker labels.');
+assertIncludes(serviceWorkerRegister, 'targetWorker: getTargetSwLabel(target)', 'Service worker unregister diagnostics must use bounded target-worker labels.');
 assertIncludes(serviceWorkerRegister, 'service_worker_script_url_label_parse_failed', 'Service worker script-label parsing must code bounded diagnostics.');
 assertIncludes(serviceWorkerRegister, 'MAX_SERVICE_WORKER_SCRIPT_LABEL_DIAGNOSTICS', 'Service worker script-label diagnostics must be capped.');
 assertIncludes(serviceWorkerRegister, "getBoundedRuntimeStringContext('scriptUrl', scriptUrl)", 'Service worker script-label diagnostics must bound script URL metadata.');

@@ -50,6 +50,9 @@ function verifySmokeRoute() {
   assertIncludes(client, "Background panel exposes status and real actions only", "Smoke client background action regression");
   assertIncludes(client, "Rail tabs and drawer insertions create editable layers", "Smoke client rail and drawer regression");
   assertIncludes(client, "Keyboard creation shortcuts use normal history", "Smoke client keyboard creation regression");
+  assertIncludes(client, "Multi-selection actions group, distribute, duplicate, delete, and ungroup", "Smoke client Fabric multi-selection regression");
+  assertIncludes(client, "button[title='Group selected layers']:not([disabled])", "Smoke client enabled multi-selection group boundary");
+  assertIncludes(client, "button[title='Ungroup selected layers']:not([disabled])", "Smoke client enabled group recovery boundary");
   assertIncludes(client, "Floating toolbar stays below selection border", "Smoke client floating toolbar bottom-anchor regression");
   assertIncludes(client, "dataset.selectionBottom", "Smoke client reads floating toolbar selection-bottom QA data");
   assertIncludes(client, "Layer panel opens with draggable layer rows", "Smoke client layer drawer regression");
@@ -214,6 +217,14 @@ function verifyEditorQaHooks() {
   assertIncludes(editor, "documentRef.current.activePageId !== startingPageId", "Editor image imports reject a stale page");
   assertIncludes(editor, "loadDocumentQueueRef.current", "Editor serializes Fabric document loads");
   assertIncludes(editor, "generation !== loadDocumentGenerationRef.current", "Editor rejects superseded Fabric load completions");
+  assertIncludes(editor, "if (!canvas || isLoadingRef.current) return documentRef.current;", "Editor never serializes a stale canvas while a page is loading");
+  assertIncludes(editor, "elements: [...documentRef.current.elements, duplicatedElement]", "Editor duplicates a single layer through deterministic document truth");
+  assertIncludes(editor, 'setNotice("Layer duplicated.")', "Editor acknowledges a completed single-layer duplicate");
+  assertIncludes(editor, "if (canvas && activeObject && !isLoadingRef.current)", "Editor deletes through document truth while Fabric is loading");
+  assertIncludes(editor, "canvasWidth - inspectorRect.width", "Editor reserves the open inspector width before its slide-in completes");
+  assertIncludes(editor, "inspectorRect.left - canvasRect.left", "Editor keeps the floating toolbar outside any measured inspector overlap");
+  assertIncludes(editor, 'aria-label="Duplicate selected layer"', "Editor names layer-panel duplicate actions");
+  assertIncludes(editor, 'aria-label="Delete selected layer"', "Editor names layer-panel delete actions");
   assertIncludes(editor, "const bootstrapDocument = documentRef.current", "Editor Fabric bootstrap loads current rather than mount-stale document truth");
   assertIncludes(editor, "if (aiToolOperationRef.current)", "Editor AI tools use an immediate single-flight boundary");
   assertIncludes(editor, "documentRevisionRef.current !== requestRevision", "Editor AI and Design Cue results reject stale document revisions");

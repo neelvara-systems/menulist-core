@@ -1,5 +1,616 @@
 # MenuList — Changelog
 
+## September 3, 2026 — Assets delivery and recovery hardening
+
+- Made runtime details visibly dirty until previewed, and made download, mobile Share/Save, and desktop editor entry refresh the exact current input before continuing.
+- Added fail-closed preview recovery: Retry is explicit, and output/customization stays unavailable until preview succeeds. Synchronous operation guards prevent duplicate generation and modal/sheet dismissal races.
+- Packaged Business Card front/back PNG output into one ZIP across direct download, edited output, and mobile sharing while leaving paired PDF output unchanged.
+- Added native mobile Share/Save with safe download fallback, plus dirty-editor discard and browser-unload protection to the reusable Product Tag/Campaign Poster workflow.
+- Added truthful capability and source disclosure: Gift Certificate has no balance/redemption tracking, Invitation has no RSVP/registration, and Business Card, Staff Badge, Product Tag, and Print Menu show the actual data source and recovery guidance.
+- Added delivery regression coverage and kept generation browser-local with no new Firestore read/write, Storage upload, Function, API route, provider call, deployment, or generated-file persistence.
+
+## September 3, 2026 — Runtime details for personalized print assets
+
+- Added shared browser-local details panels for Gift Certificate and Invitation on desktop and mobile. Gift Certificate accepts optional recipient, sender, personal message, value, valid-until, and certificate-number values; Invitation accepts optional occasion, date, time, and location.
+- Added one bounded, asset-scoped admission contract so supplied values reach generated previews, PNG/PDF downloads, and desktop Creative Editor customization without leaking into unrelated assets. Empty values preserve the existing physical write-in lines.
+- Made every content-bearing desktop asset open its details workflow as the primary action, including Flyer and Postcard, while preserving truthful empty-content fallbacks. Staff Name Badge continues to require a real active staff selection; Business Card and Product Tag continue to derive from their governed source records.
+- Added desktop/mobile project-change resets and updated preview copy so Invitation never promises an unavailable event QR and Gift Certificate never implies a redemption system.
+- Added boundary and renderer regressions, including explicit vertical checks that keep short and long entered values below their labels and above their writing lines. The flow adds no Firestore read/write, generated-file persistence, API route, provider call, or deployment.
+
+## September 3, 2026 — Truthful item decision symbols
+
+- Added one canonical, bounded symbol registry for vegetarian, non-vegetarian, vegan, gluten-free, explicit spice level, and owner-confirmed audience facts. Ordinary names, descriptions, offers, and option labels never create symbols.
+- Added accessible inline marks beside item names on the public menu and item detail, plus the same vector marks beside item names in Print Menu. Print footers now explain only the symbols actually used in that menu.
+- Refined the shared web and print grammar after standards research: symbols follow the final item-name line and share its visual center; vegan uses a green Lucide `Vegan`; gluten-free uses the neutral/theme-coloured Lucide `Wheat` with an explicit footer definition; every spice intensity alone uses one to four red Game Icons chilli peppers; and audience facts use conventional Mars, Venus, combined-gender, child, adult, and person-with-cane pictograms. Each PDF vector path commits its own stroke or fill before the next symbol changes colour. The accepted vegetarian and non-vegetarian marks remain unchanged.
+- Avoided copying endorsement-controlled certification marks: the FSSAI vegan logo requires approval/endorsement and the AOECS Crossed Grain Trademark is licensed. MenuList's generic React Icons pictograms and explicit footer definitions communicate the owner's structured fact without implying third-party certification.
+- Raised option names and prices to a readable print size, reduced the final item-name-to-description spacing by a further 25%, preserved the approved post-description item break, and added protected contrast layers behind dark-theme headers and symbol-bearing footers.
+- Removed the redundant `OPTIONS` heading from printed items. Valid option names and optional prices now follow the item description directly, preserving hierarchy while recovering one line of vertical space.
+- Preserved the approved 5.2 mm interval beneath the footer rules, reduced the symbol-bearing footer from 29 mm to 23 mm, and cut the final legend-row-to-price-metadata interval from 11.9 mm to 5.9 mm. The recovered 6 mm is returned to the menu content area instead of remaining as unused footer space.
+- Removed the repeated business-name/menu-label masthead and its double rule from cover-backed content pages, moved category content into the protected top artwork field, and retained loose-page identity through a compact business-name plus page-number footer label. Coastal Table now begins 4 mm higher, while Midnight Gold begins 6 mm lower and uses a balanced 78%-opacity dark content veil so its gold artwork remains visible without overwhelming prices or supporting text. Midnight Gold now keeps only its single outer border; the competing internal stepped double frame was removed while preserving its stars, arcs, dotted accents, and dark gradient.
+- Reduced the excessive outer gap around full-page contrast fields without crowding the menu. Every configured field now uses the same 14 mm top/left/right page inset and keeps 10 mm of internal content breathing room; each theme's existing bottom/footer clearance remains unchanged.
+- Added live symbol previews to the existing desktop and mobile item-detail editors so owners can see which confirmed facts will appear before saving. Allergens remain textual owner-confirmed facts and are never converted into safety icons.
+- Preserved the extraction boundary: food markers and spice levels require explicit source evidence; explicit `Less Spicy`/`Low Spice` normalizes to `mild`; audience remains owner-confirmed structured data with legacy explicit audience tags supported only for compatibility.
+- Added hostile-input, false-positive, structured-fact, owner-audience, option-isolation, print projection, and source-hash coverage. This adds no Firestore read/write, provider call, generated-file persistence, deployment, Git, or server-lifecycle action.
+- Removed the temporary all-symbol visual-review matrix from Print Menu fixtures. Review PDFs now derive symbols from each fixture item's real admitted tags, matching production: absent facts render no icon, and the footer defines only symbol types actually used by the menu.
+- Added the same used-only explanation strategy to the public live menu. Inline item marks and one compact bottom guide now share the canonical resolver; the guide labels only distinct marks present in the currently available published catalog, stays stable during search/filtering, and disappears completely when unused.
+
+## September 3, 2026 — Item option parity across owner assets
+
+- Added one shared localized projection for active named item options, including valid options without separate prices and excluding inactive or nameless records.
+- Updated desktop/mobile Item Share Cards and context-first Product Tags to show a compact neutral option summary with an exact remaining count. The assets no longer imply that every option is a paid add-on.
+- Removed Print Menu's first-eight sanitization and first-six rendering cuts. Print Menu now admits the complete public-contract set of up to 40 options, wraps long labels, aligns optional prices, and paginates large sets into four-option continued blocks.
+- Added pricing, sanitizer, renderer, desktop/mobile wiring, all-theme Product Tag, and static boundary regressions. No Firestore read/write, generated-file persistence, API route, deployment, Git, or server-lifecycle action was added.
+
+## September 3, 2026 — Brand-look multi-asset preview
+
+- Added an inspect-first six-asset bento to the desktop Change brand look modal so owners can compare the Print Menu, Table Tent, Feedback QR, Entrance Poster, Gift Certificate, and Business Card before applying a theme.
+- Kept application explicit: clicking a theme creates a reversible pending selection, clicking that theme again deselects it, and only the existing menu or business action saves the choice.
+- Separated the visual states in both color modes. Current remains green, pending selection remains light blue, and neutral hover uses a restrained light border and surface shade without replacing either persistent state.
+- Preserved the existing eligible-theme catalog, recommendation/search behavior, guarded preference writes, parent-theme inheritance, and Firebase cost model. No cloud, deployment, Git, or server-lifecycle operation was performed.
+
+## September 2, 2026 — Featured-choice Campaign Poster downloads
+
+- Added a Campaign Poster action beside each saved explicit Featured choice, Quick choice, and Value choice in the existing desktop settings modal and mobile bulk-action sheet.
+- Reused the current Decision Blocks business-aware customer label, current localized item name and optional description, selected project parent theme, canonical exact-item URL, and shared preview → edit → image/PDF download modal.
+- Automatic and unsaved choices do not produce static posters because their selected item is not stable public truth. Disabled, missing, hidden, unavailable, unsupported, or linkless choices also fail closed.
+- Added no parallel poster or campaign record, generated-file persistence, Firestore read/write, index, Function, scheduler, or completion side effect. Added shared-builder and desktop/mobile static regression coverage.
+
+## September 2, 2026 — Campaign Poster current-item and vertical scan refinement
+
+- Updated Today item campaigns to resolve the current visible and available item from the already loaded selected project. Posters now use its current localized name and include its real localized description only when available instead of relying on the campaign's older name snapshot.
+- Kept the exact existing `?item=` public destination and added no Firestore read, poster record, or duplicate item data. Missing, hidden, unavailable, and cross-project item sources fail closed.
+- Rebuilt the Terracotta Glow pilot's scan area as a centered vertical CTA, protected 26%-width QR, and canonical hostname stack. Removed the compressed two-column divider while preserving exact QR padding and long-copy containment.
+- Added current-item, stale-snapshot, unavailable-item, vertical-stack, centering, padding, containment, and no-divider regression checks. The other 46 theme poster layouts remain unchanged until owner approval.
+
+## September 2, 2026 — Terracotta Glow Campaign Poster pilot
+
+- Reworked one owner-review Campaign Poster pilot so it no longer looks like an enlarged Flyer. The selected theme still owns the background, but the A4 composition now gives the real campaign headline and optional promoted item the strongest viewing-distance hierarchy.
+- Kept the real logo/initials, business name, and optional tagline in a compact centered header; removed the generic central capsule and used restrained editorial rules only when the headline fits safely on one line.
+- Added a distinct lower scan ticket with one-line-first business-aware action copy, a 26%-width QR, exactly 24 px decorative QR padding per side, and the canonical hostname beneath it.
+- Added pilot isolation and long-copy reflow checks. Only Terracotta Glow receives this visual structure until owner approval; the other 46 themes retain the verified functional baseline.
+
+## September 2, 2026 — Campaign Poster source and owner workflow
+
+- Connected the existing desktop/mobile Today `print_poster` action to the governed Campaign Poster preview → edit design → download image/PDF flow instead of directly downloading a stale campaign image.
+- Built the poster from the saved current-project campaign, real business identity, selected parent theme, and canonical public destination. Item campaigns reuse the existing exact `?item=` URL; general campaigns use the selected customer page.
+- Kept Campaign Poster in desktop/mobile Assets for manual promotions, sharing the bounded campaign fields with Flyer and blocking edit/download until a real headline exists. No Campaign Poster action was added to item PDP.
+- Removed the poster renderer's invented offer copy, added shared modal reuse, and ensured Today is marked handled only after a successful download. No parallel campaign/poster record, artifact upload, new Firebase index, or Cloud Function was added.
+- Added fail-closed project, URL, input-admission, Today workflow, manual-export, no-legacy-copy, all-theme geometry, and visual-fixture checks.
+
+## September 2, 2026 — Context-first Product Tag workflow
+
+- Moved Product Tag out of the generic desktop/mobile Assets rail and into the saved item editor, where owners already manage the source item.
+- Added one shared preview → edit design → download image/PDF modal. It uses the real localized item name, optional description, exact display price, business identity, canonical tenant host, and direct `?item=` destination without asking the owner to retype data. The cross-business `VIEW DETAILS` action now matches that exact-item destination.
+- Resolved the existing project theme override, business theme, or governed recommendation automatically, then propagated the truthful Product Tag composition through all governed parent themes.
+- Removed the synthetic `NEW` and `Customer favorite` fallback plus the temporary manual Product Tag fields. Product Tag remains a canonical renderer type but is excluded from the context-free catalogue and Complete Menu Kit.
+- Added fail-closed catalogue, direct-item URL, default-theme, input, geometry, no-invented-copy, and visual-fixture checks for the desktop/mobile owner workflow.
+
+## September 2, 2026 — Postcard identity alignment and frame simplification
+
+- Centred the short editorial divider beneath the logo/initials, business name, and optional tagline across all 47 Postcard themes so the complete identity stack shares one visual axis.
+- Removed the shared stationery-field outline because every parent theme already supplies a governed background composition; the translucent content field remains for contrast without adding a redundant second frame.
+- Changed the visual-fixture link contract to render realistic `subdomain.menulist.online` hosts instead of reserved `.example` hosts, with a fail-closed fixture check that rejects regressions.
+- Regenerated and visually reviewed the complete 47-theme Postcard matrix and extended the all-theme geometry suite for divider centring and border removal.
+
+## September 2, 2026 — Postcard premium composition across all themes
+
+- Promoted the owner-approved Terracotta Glow Postcard composition to all 47 governed parent themes; switching themes now changes only the visual system and never falls back to the retired hardcoded postcard.
+- Desktop and mobile expose the same bounded owner headline and optional supporting message for every Postcard theme. The render boundary preserves that content while themes change, and an empty headline still produces a truthful identity-and-link fallback without invented marketing copy.
+- Every theme now uses the three-row centred identity lockup, protected owner-message column, business-aware QR action field, complete canonical QR destination, hostname-only recovery, and face-free Koboyo flower trio in its own colour and responsive artwork system.
+- Removed the legacy `THANK YOU`, generic note, and `SCAN FOR LATEST` renderer. Added all-theme admission, current-source UI, real-logo/initials, long-text glyph bounds, aspect-ratio, artwork provenance, QR containment, no-face, fallback, and no-legacy regressions, then regenerated and visually reviewed all 47 Postcard outputs.
+
+## September 2, 2026 — Terracotta Glow Postcard premium pilot
+
+- Added one owner-review pilot for Terracotta Glow only. The other 46 governed themes retain their existing Postcard renderer and owner flow until this composition is approved.
+- The pilot replaces synthetic campaign copy with a bounded owner-authored headline and optional message shared by desktop and mobile. Empty headline exports a clean brand-and-link Postcard without invented campaign content.
+- Added one original premium A6 landscape composition with real logo or initials, theme display business name, optional real tagline, protected message column, a wider business-aware scan field, 12 px decorative QR padding outside the QR's intrinsic quiet zone, complete canonical QR destination, and hostname-only recovery.
+- Replaced the rejected human gratitude figure with a face-free horizontal trio of locked Koboyo `flower` illustrations. The Terracotta Glow pilot now communicates appreciation through the same symbolic botanical language used across MenuList assets; the flowers share one bottom baseline below the real message, remain outside the scan field, and are not exposed as an icon picker or download. Reworked the pilot identity into three centred rows—real logo or truthful initials, business name, then optional real tagline—with dynamic clearance before the message divider.
+- Added fail-closed input, current-source UI, fallback, logo, wrapping, glyph, artwork provenance/containment, layer-order, scan, canvas, static-verifier, and pilot-isolation checks. The pilot fixture uses natural sample copy for valued customers; it is not hardcoded runtime business content.
+
+## September 1, 2026 — Entrance Poster, Feedback QR, and Flyer all-theme final polish
+
+- Propagated the approved Entrance Poster, Feedback QR, and Flyer compositions through all 47 governed parent themes and regenerated 141 visual fixtures.
+- Removed the remaining legacy poster headline, duplicate feedback instruction, and synthetic flyer offer branches so theme selection changes the visual system without changing the truthful asset hierarchy.
+- Added bounded owner-authored Flyer headline, offer, details, validity, and terms fields to the shared render boundary and both desktop/mobile asset flows. Empty headline now produces a clean brand-and-scan fallback with no invented campaign claim.
+- Preserved per-theme responsive artwork, theme display typography, centered wrapping without horizontal stretching, real logo/initials fallback, optional real tagline, 24 px QR panel padding, full canonical QR destinations, and hostname-only recovery copy.
+- Added fail-closed input, campaign/fallback, all-theme geometry, centered-glyph, QR, destination, and legacy-claim regressions; visually reviewed the three full 47-theme contact sheets plus dark and artwork-heavy full-size representatives.
+
+## September 1, 2026 — Creative Editor Fabric multi-selection recovery
+
+- Fixed a Fabric 7 runtime-type mismatch that left Group and Distribute disabled after a valid multi-layer selection and also blocked the related keyboard, copy/paste, inspector, and grouping branches.
+- Expanded the development browser regression to select 20 unlocked layers, distribute in both directions, duplicate and clean up, group, open Position, ungroup, and re-run the adjacent toolbar, shortcut, preview, layer, inspector, readiness, and Escape flows.
+- Added a fail-closed installed-Fabric assertion for the lowercase `activeselection` contract. The correction is browser-local and adds no Firebase, provider, persistence, deployment, staging, or production operation.
+
+## September 1, 2026 — Terracotta Glow Flyer rulebook pilot
+
+- Applied the established printable-asset rulebook to one A5 Flyer pilot only; the other 46 theme outputs remain unchanged pending owner review.
+- Removed unsupported `WEEKEND OFFER`, `SPECIAL OFFER`, `Limited time`, and terms claims. The printable render contract has no owner-authored campaign-copy fields, so the pilot exports only truthful identity and scan content rather than fabricated promotion data.
+- Added real logo/initials identity, theme display typography, the real optional business tagline, one editorial divider, and a contained two-column scan panel with a centered business-aware CTA and separately protected QR.
+- Reduced QR decoration to 24 px per side, preserved its intrinsic quiet zone and complete canonical destination, and replaced the long displayed path with the truthful hostname only.
+- Added fail-closed claim-removal, identity, optional-tagline, centered-glyph, column-containment, QR, hostname, full-background, and pilot-isolation coverage.
+
+## September 1, 2026 — Terracotta Glow Feedback QR polish pilot
+
+- Prepared one owner-review Feedback QR pilot only; no change was propagated to the other 46 themes.
+- Preserved the full Terracotta Glow artwork and calm content veil while replacing the redundant `Scan to leave feedback` plus `LEAVE FEEDBACK` pair with one warm `TELL US HOW WE DID` action.
+- Added truthful logo/initials identity, theme display typography, a 39%-width QR with 24 px decorative panel padding, the complete feedback destination, and a canonical hostname-only recovery line.
+- Restored the owner's real optional business tagline as a quieter brand line between the business name and action. Missing taglines remove the row and reflow safely; menu/services wording remains excluded so the feedback purpose stays singular.
+- Added a feedback-specific conversation panel with two quiet thought dots and two irregular sparkles, plus the subordinate motivation `Your feedback helps us improve.` This differentiates the asset without using a five-star rating prompt or placing decoration inside the QR-safe area.
+- Added fail-closed name/tagline/action hierarchy, conversation-motif layer order, motivation containment, centered-glyph, optional-copy reflow, QR, destination, lower-artwork, and pilot-isolation coverage.
+
+## September 1, 2026 — Terracotta Glow Entrance Poster polish pilot
+
+- Prepared one owner-review Entrance Poster pilot only; no change was propagated to the other 46 themes.
+- Preserved the full Terracotta Glow A4 artwork and calm content veil while removing the redundant `OUR SERVICES` headline and duplicate legacy scan instruction.
+- Added truthful logo/initials identity, theme display typography, optional owner tagline, one explicit business-aware scan CTA, a distance-readable 42%-width QR with 24 px panel padding, and a canonical hostname recovery line.
+- Added fail-closed geometry, QR, hostname, identity, optional-copy, background, and pilot-isolation coverage and regenerated the Terracotta Glow Entrance Poster fixture for owner review.
+
+## September 1, 2026 — Terracotta Glow Counter Sticker polish pilot
+
+- Prepared one owner-review pilot only; no Counter Sticker change was propagated to the other 46 themes.
+- Preserved the full Terracotta Glow artwork and calm content veil while removing the oversized generic accent circle that obscured the background.
+- Applied truthful logo/initials identity, theme display typography, one business-aware scan CTA, a 40.5%-width QR with 24 px decorative panel padding, and a canonical hostname recovery line.
+- Refined the action after owner review: the business name now remains the strongest text element, while the close-range CTA uses the shorter business-aware `VIEW MENU`, `VIEW SERVICES`, `VIEW CATALOG`, or `VIEW OFFERINGS` wording. The visible QR already supplies the scan affordance, so repeating `SCAN TO` was removed only for this sticker pilot.
+- Omitted the tagline intentionally because the 8 x 8 cm close-range sticker needs a shorter hierarchy than the Table Tent and Single Table Card.
+- Added fail-closed geometry, QR, hostname, identity, content, and pilot-isolation coverage and regenerated the Terracotta Glow Counter Sticker fixture for owner review.
+
+## September 1, 2026 — Printable Single Table Card final polish
+
+- Preserved the owner-approved artwork-rich full-card pattern across all 47 parent themes using responsive aspect-preserving cover placement and each theme's governed calm content field.
+- Adapted the finalized Table Tent identity and scan principles to the one-face card: real client logo or truthful initials, theme-aware business typography, optional owner tagline, one business-aware scan CTA, compact protected QR panel, and truthful hostname-only display.
+- Removed the redundant legacy scan instruction/action pair, preserved the complete canonical QR destination, and kept every centered role on one readable line when safe with a two-line centered fallback and vertical reflow for genuinely oversized copy.
+- Added fail-closed all-theme geometry and content checks, regenerated 47 Single Table Card fixtures, reviewed three complete contact sheets, and inspected full-size dark, border-heavy, artwork-heavy, and long-`OFFERINGS` representatives. Feedback QR remains separately governed and unchanged.
+
+## September 1, 2026 — Printable Table Tent final-polish rules
+
+- Finalized the Table Tent identity-to-scan hierarchy: the tagline now has a measured breathing interval before the business-aware CTA, while the CTA, QR panel, and truthful public hostname remain one visually connected scan group.
+- Enforced centered, non-stretched wrapping independently for every business-name, tagline, CTA, and public-hostname line, including safe hostname breaks after hyphens, dots, and slashes.
+- Converted the printable final-polish notes into an asset-by-asset rules ledger covering every compact asset, Print Menu, and Complete Menu Kit, with stable rule IDs, measured acceptance gates, and controlled cross-theme propagation.
+- Propagated the accepted Table Tent rulebook through all 47 governed parent themes, regenerated the complete fixture matrix, and reviewed three catalog contact sheets plus full-size artwork-heavy, dark, and wrapped-CTA representatives.
+- Added fail-closed all-theme coverage for folded-face parity, centered rendered-glyph bounds, top identity clearance, measured tagline/CTA/QR/hostname rhythm, 24 px QR panel padding, complete QR destinations, and truthful printed hostnames. No Firebase, provider, Git, deployment, or production action was performed.
+- Applied the final owner adjustment across the 47-theme Table Tent matrix: CTA-to-QR spacing now uses a doubled 3.6% target with a 2.8%-4.4% safe range. Centered roles prefer the largest readable one-line fit before using the existing two-line fallback, so `SCAN TO VIEW OFFERINGS` remains on one line without stretching or overflow.
+
+## September 1, 2026 — Mobile first-item setup recovery
+
+- Fixed the Mobile Menu first-run invariant so creating the first category keeps the guided setup card visible and reveals **Add Item**. Previously, the card required no categories while its Add Item control required a category, making that CTA unreachable.
+
+## September 1, 2026 — Share print-surface Back recovery
+
+- Kept Assets and Print Menu inside the existing MobileShell while preserving Share as their launch context.
+- Back now returns an owner to Share when either print surface was opened from Share; direct More or route entry continues to return to More.
+- Added fail-closed route-map verification and authenticated 390 x 844 browser regression coverage. No download, provider, payment, Firebase cloud, Git, staging, Vercel, deployment, or production action occurred.
+
+## August 31, 2026 — Mobile More controlled navigation recovery
+
+- Fixed a recursive controlled/local sub-screen transition that could crash Mobile More when returning from a role-gated internal screen.
+- Restored the Answerlattice operations hub as a valid platform-role return state and kept embedded Widget Management tabs inside the MenuList MobileShell instead of redirecting to a public Answerlattice pricing route.
+- Re-tested the current owner, two-branch, PLATFORM, reseller, feature-disabled, profile-validation, refresh, and logout paths at 390 x 844. The external Sentry diagnostic remains explicitly safety-blocked and was not emitted.
+- Added fail-closed route-map and certification-evidence checks. No provider, Razorpay, Firebase cloud, Git, staging, Vercel, deployment, or production action occurred.
+
+## August 31, 2026 — FinanceOS restricted-original evidence
+
+- Added an owner-authorized `restricted-original` evidence state for exact business, banking, tax/KYC, address, phone, and proprietor records that must remain useful for later operational work.
+- Kept redacted derivatives and masked ledger/report fields as the routine surface. Restricted originals remain outside Git, product runtime, Firebase, public/cloud evidence surfaces, chat output, and ordinary shared folders; they use non-identifying filenames, permission-locked private storage, hashes, and indexed owner decisions.
+- Kept authentication and payment-authorization secrets categorically prohibited. No Razorpay submission, payment, provider mutation, Firebase action, Git operation, staging push, or deployment was performed.
+
+## August 31, 2026 — Artwork-led printable-theme visibility
+
+- Reclassified Pearl Veil, Terracotta Glow, Glasshouse Garden, Mineral Spring, Lotus Stillness, and Sunlit Ritual as common themes because their visible artwork is reusable beyond the Salon/Spa verticals.
+- Kept Salon Atelier and Petal Studio restricted to `Salon` and `Makeup Studio`, and Ritual Sanctuary and Eucalyptus Retreat restricted to `Spa` and `Spa Resort`, because their professional-tool or treatment-stone compositions remain visibly industry-specific.
+- Preserved the same five recommended choices and primary defaults for Salon, Makeup Studio, Spa, and Spa Resort. Visibility broadens without weakening recommendation relevance or changing any saved family ID; `glasshouse-beauty` remains the compatibility ID while its owner-facing label becomes Glasshouse Garden.
+- The 47-theme catalog now contains 34 common, five food-category, and eight exact-business-type families. No renderer, artwork, Firebase data, Git ref, deployment, or dev-server lifecycle changed.
+
+## August 31, 2026 — Light Salon, beauty, and spa printable themes
+
+- Added Petal Studio, Pearl Veil, Terracotta Glow, and Glasshouse Beauty for exact canonical `Salon` and `Makeup Studio` businesses, plus Eucalyptus Retreat, Mineral Spring, Lotus Stillness, and Sunlit Ritual for exact canonical `Spa` and `Spa Resort` businesses.
+- Completed five dedicated light theme families for each vertical by retaining Salon Atelier and Ritual Sanctuary alongside the eight new directions. The governed parent catalog now contains 47 themes: 28 common, five food-category, and fourteen exact-business-type families.
+- Reused one original 1024 x 1536 responsive master per family across Print Menu, all 13 compact assets, previews, downloads, and Complete Menu Kit. Preserved-aspect crops, protected copy fields, light backgrounds, and theme-specific content margins keep artwork away from service names, descriptions, durations, prices, QR codes, and contact details.
+- Added realistic salon/spa fixtures, strict recommendation and visibility regressions, compact-asset geometry coverage, and full-menu rendering checks without adding a Firebase read, listener, write, index, Function, or migration.
+- No Git ref, commit, push, Firebase/Vercel deployment, or dev-server lifecycle changed.
+
+## August 31, 2026 — Mobile billing chooser and cancellation recovery
+
+- Replaced internal plan identifiers in the mobile plan chooser with the existing owner-facing plan names and exposed the selected monthly or yearly interval to assistive technology.
+- Forwarded selected-state semantics through the shared mobile List item so cancellation reasons announce their current choice.
+- Cleared abandoned cancellation drafts when the owner closes the reason sheet or chooses Keep Subscription, preventing stale reasons and free text from appearing in a later attempt.
+- Added fail-closed billing and global-accessibility regressions. Verification used only the local emulator reseller fixture; no provider plan, credit pack, cancellation mutation, payment, Firebase cloud action, Git operation, staging push, or Vercel deployment occurred.
+
+## August 31, 2026 — Restaurant and food printable-theme expansion
+
+- Added Ember House, Coastal Table, Sunday Table, and Counter Rush as four original canonical food-category themes, bringing the governed parent catalog to 39 themes: 28 common, five food-category, and six exact-business-type families.
+- Carried each selected theme through Print Menu, all 13 editor-renderable assets, previews, downloads, and Complete Menu Kit from one responsive 1024 x 1536 master with preserved-aspect cover crops and a protected translucent copy field.
+- Kept all five food families unavailable to non-food businesses and retained the shared canonical business type/category resolver, dormant historical preference behavior, and fail-closed save boundary without adding a Firebase read, listener, index, Function, or cleanup write.
+- Added an explicit jsPDF QR image alias after rendered-page QA exposed image-cache collisions on large food backgrounds. Regenerated 52 compact assets and 28 PDF pages for the new themes and visually checked covers, content pagination, prices, QR safety, and dedicated closing pages.
+- No Git ref, commit, push, Firebase/Vercel deployment, dev-server lifecycle, or production state changed.
+
+## August 31, 2026 — Universal access to cross-category printable themes
+
+- Reclassified Neighbourhood Standard, Field Notes, Boutique Window, Market Label, Civic Letterpress, Modern Practice, Studio Contact Sheet, Maker Ledger, Clinical Calm, Mindful Motion, Hospitality House, and Future Workshop as common themes available to every business.
+- Kept canonical business type/category handling as recommendation order only, so relevant directions still appear first without hiding the other common choices.
+- Kept Craft Kitchen as the only category-gated family and preserved the six literal coffee, bakery, ice cream, salon, spa, and fitness exact-type boundaries.
+- Changed no artwork, renderer, Firebase read/write, Storage, Function, rule, index, deployment, Git ref, or production state.
+
+## August 31, 2026 — Image generation UX, recovery, and cost closeout
+
+- Made Saved Person prominent only for person-led businesses such as salons, spas, tattoo studios, fashion, fitness, and photography; other businesses receive a collapsed optional control and avoid a profile-list read until they open it.
+- Added desktop owner rename and versioned 2–4-photo replacement for active Saved Person profiles, including fresh consent, optimistic version checks, private object cleanup, and the existing exact-scope global summary cache.
+- Replaced restaurant-only quick defaults with neutral **Use defaults** behavior, removed delayed stale-state generation, aligned server image-view lookup with the shared canonical business resolver, and added business-aware Saved Person prompt instructions.
+- Added visible completion-only credit estimates to single and batch start actions, removed the punitive pre-generation agreement gate, and made generated-photo selection explicit and accessible.
+- Removed a responsive React style-conflict warning in the generator card and kept the nested mobile sheet above the item editor while its underlying floating control exits.
+- Preserved typed, owner-safe HTTP/provider/network failures instead of converting request failures into false empty successes.
+- Corrected the active `gemini-3.1-flash-image` fallback ledger to the current paid 1K output list rate of USD 0.067 per completed image; the Cloud Tasks implementation uses ordinary per-item requests and does not claim native Gemini Batch pricing.
+- Added no collection, listener, Firestore rule/index, Cloud Function, public cache, deployment, Git commit, or push. Firebase list reads remain lazy and bounded; photo replacement uses the existing private profile document and versioned Storage prefix.
+
+## August 31, 2026 — Reusable people for consistent image drafts
+
+- Added a private saved-person workflow for owners who have permission to reuse an adult subject across single and batch catalog image drafts.
+- Kept one-off reference images separate, required owner review before project/public use, and added immediate permission withdrawal plus private source-photo deletion.
+- Stored only the selected saved-person ID/version with project image preferences; source photos remain private and are never written to public menu media, logs, prompt cache, or project documents.
+- Kept fast active-profile selection on mobile while reserving multi-photo consent, withdrawal, and deletion for desktop owner governance.
+- Corrected the nested mobile image sheet so it remains above Item Edit and its upload, generation-tab, and saved-person selection controls are touchable at phone widths.
+- Restricted withdrawn metadata to explicit store-management requests, blocked withdrawn previews, security-logged invalid inputs, and made the eight-profile cap safe across concurrent sessions.
+- Reused the existing global data provider for a lazy five-minute, exact-store summary cache, avoiding repeat selector reads without adding saved-person data to the shared Store document or weakening server-side lifecycle checks.
+- Preserved all existing image generation, upload, editing, credit, linked-outlet, cache, and owner-approval behavior when no saved person is selected.
+
+## August 31, 2026 - Homepage owner workflow demonstration
+
+- Added a responsive post-hero gallery that makes the owner journey visible: photograph or upload an existing menu or service list, review the private preview, then publish the approved customer link.
+- Clearly labelled the generated restaurant-owner image as a demonstration with sample business content; the review and output frames use existing MenuList demo product visuals and make no customer UGC, testimonial, metric, or automatic-publishing claim.
+- Reused the current theme tokens, English/Hindi locale contract, scroll-reveal system, and reduced-motion behavior. No intake runtime, Firebase, provider, dependency, Git, staging, Vercel, or production action was performed.
+
+## August 30, 2026 — Cross-category printable themes and footer contrast
+
+- Added Gallery Ledger, Vital Current, and Workshop Atlas as governed parent themes across Print Menu and all 13 editor-renderable assets, bringing the catalog to 17 themes while keeping only Craft Kitchen restricted to canonical food businesses.
+- Added exact recommendation order for supported retail/creative/professional, health/fitness/wellness, and trade/repair business profiles without fuzzy business-type matching or additional Firebase work.
+- Corrected Vital Current and Workshop Atlas footer readability with a restrained theme-scoped translucent paper field behind page metadata and attribution. Regenerated and visually reviewed their cover, content, and closing pages; no Git, staging, Vercel, Firebase deployment, provider, or production action was performed.
+
+## August 30, 2026 — Print cover center-axis correction
+
+- Corrected the letter-spaced cover label so its complete rendered width, including character spacing, shares the exact horizontal center axis of the logo and business name across every full-page printable theme.
+- Added a fail-closed geometry regression and renderer verification for the shared cover composition. No Firebase, provider, Git, deployment, or production action was performed.
+
+## August 30, 2026 — Salon and spa business-type theme families
+
+- Added exact canonical business-type recommendations for Salon, Makeup Studio, Spa, and Spa Resort without duplicating or fuzzy-matching the shared business-type registry.
+- Added three original cross-asset families: Rosewater Editorial, Mineral Sanctuary, and Noir Studio. Their full-page print masters, brand tokens, Print Menu pagination, editor-backed cards/tents/stickers/posters, desktop/mobile ordering, badges, and Complete Menu Kit inheritance use the same parent theme ID.
+- Preserved the owner hierarchy as menu theme, business theme, exact business-type recommendation, then Botanical Heritage fallback. All themes in that 14-theme checkpoint remained available; the later cross-category addition raises the current catalog to 17 themes. Recommended families appear first rather than hiding unrelated choices.
+- Rendered and reviewed all pages of the three new service-menu PDFs plus table tent, single-card, counter-sticker, and entrance-poster representatives. Focused parent-theme, artwork, Menu Card Export, and strict TypeScript checks pass locally. No Firebase, deployment, Git, or production action was performed.
+
+## August 30, 2026 — One parent theme across every printable asset
+
+- Replaced owner-facing per-asset style selection with one parent catalog shared by Print Menu, cards, posters, stickers, campaign/identity assets, and Complete Menu Kit.
+- Added deterministic compatibility aliases that fold previously saved legacy style IDs and per-asset maps into one canonical business/menu theme without allowing mixed output.
+- Updated desktop, mobile, Use MenuList, project Share, and ZIP generation to pass one resolved theme; the complete ZIP now carries the theme in its filename.
+- Added fail-closed checks for identical theme availability on every asset, legacy migration, uniform resolution, and removal of per-asset exception controls. No Firebase rules/index/Function, deployment, Git, or production action was performed.
+
+## August 30, 2026 — Answerlattice navigation finishing pass
+
+- Added a visible 44px close action to the Answerlattice mobile navigation drawer while preserving backdrop dismissal, route selection, safe-area spacing, and the existing light/dark theme behavior.
+- Reduced desktop header controls to a calmer 36px visual height, softened the parent breadcrumb, retained stronger emphasis for the current destination, and reduced separators to 1px.
+- Verified the authenticated local shell at 1280×720 and 390×844, including light/dark drawer rendering, pointer hit-testing, explicit close behavior, route retention, lint, TypeScript, and the maintained Answerlattice navigation contracts.
+- Added no Firebase read, write, listener, Storage operation, Function, route, provider call, staging push, Vercel build/deploy, Git mutation, or production change.
+
+## August 30, 2026 — Printable asset defaults and prepared Menu Kit
+
+- Added owner-controlled business defaults and sparse per-menu overrides for each styleable printable asset, with a single resolution order: menu override, business default, then asset recommendation.
+- Added truthful default badges and save/clear actions to desktop and mobile Assets, including optimistic rollback, disabled saving states, 44px mobile actions, and the existing swipe/Previous/Next flow.
+- Changed Complete Menu Kit from a misleading single-style choice into **Your asset set**. Its four currently style-capable print files resolve independently; fixed-layout kit files keep their governed layouts, and every existing one-click ZIP/asset path receives the same resolved map.
+- Persisted preferences in one optional bounded store field using changed-leaf writes only. No project-document write, new collection, listener, public-cache invalidation, Firestore rule/index/Function change, generated Storage object, deploy, or production action was introduced.
+
+## August 30, 2026 — Local RC aggregate and locale/evidence reconciliation
+
+- Completed all 115 non-external checks in the MenuList local certification
+  aggregate, including Firestore/Storage rules, tenant/store isolation,
+  owner/public truth, cache, mobile shell, multi-location, reseller, simulated
+  Razorpay boundary, strict TypeScript, zero-warning source lint, documentation
+  links, and diff integrity. Upstash shell credentials remain explicitly
+  blocked rather than represented as passing.
+- Restored exact 65-key website Header parity by adding the four current mobile
+  navigation labels to Tamil, Telugu, Marathi, Bengali, Arabic, and Spanish.
+- Reconciled seven stale verifier/evidence contracts with current source while
+  retaining or strengthening their assertions, and re-reviewed the updated
+  Mobile Share printable-style navigation before re-locking only its two
+  affected AssetOS slots.
+- Performed no staging push, Vercel build/deploy, Firebase infrastructure
+  deployment, live provider execution, Git mutation, or production change.
+
+## August 30, 2026 — Mobile printable-style browsing
+
+- Added horizontal swipe plus visible Previous/Next controls inside the open
+  mobile printable preview, removing the repeated close-and-reopen loop between
+  styles.
+- Kept 44px labeled arrow targets, an announced style position, vertical sheet
+  scrolling, bounded first/last behavior, and the existing download-only mobile
+  renderer and MobileShell boundary.
+- Added no Firebase read, write, listener, Storage operation, Function, route,
+  or provider call.
+
+## August 30, 2026 — Menu Manager message-length recovery
+
+- Centralized the 1,000-character Menu Manager command limit across API
+  schemas, client DAL, desktop, and mobile composers.
+- Disabled Send and added persistent recovery when selected context makes the
+  final command exceed the admitted limit, preventing a guaranteed rejected
+  request and rate-limit check.
+- Verified exact-limit failure and short-draft recovery locally without sending
+  a command or invoking Firebase, AI, a provider, credits, Razorpay, staging,
+  Vercel, deployment, Git, or production.
+
+## August 30, 2026 — Mobile Help Centre navigation continuity
+
+- Kept Contact, FAQ, Help home, and dashboard recovery inside MobileShell when
+  the shared MenuList Help Centre is opened from the owner mobile experience.
+- Preserved ordinary desktop Help Centre links when the shared component is
+  rendered outside MobileShell.
+- Verified the full corrected internal journey locally at 390×844. No email,
+  Firebase, provider, Razorpay, staging, Vercel, deployment, Git, or production
+  action occurred.
+
+## August 30, 2026 — Mobile Billing help continuation
+
+- Kept both Billing support actions inside the owner MobileShell by routing
+  them to the existing MenuList Contact Us state.
+- Preserved provider-free reseller entitlement, store scope, Billing History,
+  and bottom navigation while avoiding a duplicate help data path.
+- Verified the correction locally at 390×844. No payment, Razorpay, Firebase,
+  staging, Vercel, deployment, Git, or production action occurred.
+
+## August 30, 2026 — Time Slot draft recovery
+
+- Added one shared Time Slot draft boundary for required names,
+  case-insensitive duplicates, and valid daytime or overnight clock ranges.
+- Disabled invalid mobile and desktop submit actions and kept duplicate/time
+  feedback persistently associated with the affected fields.
+- Verified first-use guidance and a disposable create, edit, cascade, delete,
+  and exact-cleanup lifecycle locally. No cloud Firebase, provider, Razorpay,
+  staging, Vercel, deployment, Git, or production action occurred.
+
+## August 30, 2026 — External Menu Sync invalid-draft recovery
+
+- Added a persistent, input-associated validation message for unsafe provider
+  URLs across mobile and desktop External Menu Sync.
+- Disabled Save and Test while the shared HTTPS/public-endpoint validator
+  rejects the draft, while retaining the handler and server guards as defense
+  in depth.
+- Verified the unsafe URL, valid HTTPS-shaped recovery, Reset, disclosure, and
+  About paths locally. No secret, API request, store write, provider delivery,
+  cloud Firebase, Razorpay, staging, Vercel, deployment, Git, or production
+  action occurred.
+
+## August 30, 2026 — Profile phone truth and unchanged-save prevention
+
+- Stopped mobile and desktop profile summaries from rendering a country dial
+  code or invalid placeholder as if it were a complete phone number.
+- Disabled unchanged mobile profile saves and added the same normalized
+  preflight to desktop, avoiding the profile API and authenticated user read
+  when no field changed while retaining the server no-op guard.
+- Verified Profile, Edit profile, Account access, validation recovery, and the
+  shared phone/no-op regressions locally. No profile/password write, provider,
+  Razorpay, cloud Firebase, staging, Vercel, deployment, Git, or production
+  action occurred.
+
+## August 30, 2026 — Notification saved-state clarity
+
+- Preserved the governed Email and WhatsApp default while replacing corrective
+  consent/readiness warnings on an unchanged saved selection with one calm,
+  truthful eligible-channel explanation.
+- Kept all changed-draft validation, verified-contact checks, consent gates,
+  unchanged-write prevention, and preferred-channel fallback behavior intact
+  across mobile and desktop.
+- Added fail-closed source/inventory coverage and verified About, both mobile
+  selectors, fallback order, Back discard, and baseline restoration locally.
+  No preference write, provider, Razorpay, cloud Firebase, staging, Vercel,
+  deployment, Git, or production action occurred.
+
+## August 30, 2026 — Mobile feedback touch and save recovery
+
+- Removed the Feedback Settings action-row overlap that covered the lowest
+  required-field switch; the complete form now remains pointer/touch reachable
+  above the owner actions and bottom navigation.
+- Added an explicit settled deadline around public-cache revalidation so a
+  successful store write cannot leave Feedback Settings indefinitely disabled
+  in `Saving` when the request transport does not settle after abort.
+- Added deterministic deadline and fail-closed layout coverage, then verified a
+  reversible name-required save, fresh public-form propagation, cleanup save,
+  and exact final emulator readback. No cloud Firebase, provider, Razorpay,
+  staging, Vercel, deployment, Git, or production action occurred.
+
+## August 30, 2026 — Custom social-link public-truth propagation
+
+- Preserved normalized custom-platform storage keys while formatting their
+  owner/customer-facing labels consistently, so `QA Platform` no longer
+  appears as `qa platform` in cards, editors, or accessible names.
+- Projected bounded validated custom HTTPS links through the Official Business
+  Page, public menu footer, and schema `sameAs` instead of accepting a store
+  update that produced no customer-visible result.
+- Added fail-closed boundary coverage and verified a reversible local-emulator
+  add/public-render/remove lifecycle at 390×844. The same existing write and
+  invalidation path now produces public value without extra Firebase work; no
+  cloud Firebase, provider, Razorpay, staging, Vercel, deployment, Git, or
+  production action occurred.
+
+## August 30, 2026 — Mobile business-contact email validation
+
+- Added one shared optional-email boundary before Mobile Brand Settings can
+  send Business Email or Contact Person Email to the store DAL.
+- Malformed values now stop locally with purpose-specific recovery, admitted
+  values are trimmed, and blank optional fields remain valid.
+- Added deterministic boundary coverage and verified all 17 text fields, both
+  selectors, paired-coordinate recovery, Reset, and About guidance at 390×844.
+  No store/tenant write, Firebase, Storage, provider, Razorpay, staging,
+  Vercel, deployment, Git, or production action occurred.
+
+## August 30, 2026 — Analytics setup and reporting truth
+
+- Corrected the mobile Analytics Setup Wizard so tracking choices are clearly
+  drafts that require Save Changes; its final step now asks for review instead
+  of claiming an automatically healthy or ready setup.
+- Aligned Quick Start and Complete Guide with the activity MenuList actually
+  records, removing unsupported sales, cart, purchase, enhanced-ecommerce, and
+  GA4 e-commerce-resource claims.
+- Added fail-closed source assertions and verified the six-step wizard, both
+  guide tabs, all five disclosures, invalid-ID recovery, draft Reset, and clean
+  Back navigation at 390×844. No analytics write, provider call, Firebase
+  operation, Razorpay, staging, Vercel, deployment, Git, or production action
+  occurred.
+
+## August 30, 2026 — Owner Share invalid-phone suppression
+
+- Reused the shared customer phone boundary before adding an optional stored
+  number to Official Business Page or Business Info message templates.
+- Invalid placeholder numbers are omitted while valid numbers remain available;
+  links, address, hours, and every other message template remain unchanged.
+- Added deterministic invalid/valid regressions and verified the populated
+  mobile Share hub locally. No native share, provider send, Firebase write,
+  Razorpay, staging, Vercel, deployment, Git, or production action occurred.
+
+## August 30, 2026 — Mobile Menu dialog accessibility
+
+- Named the Find & Fix filter Popup from its existing localized visible title
+  and reused one localized title for both the category-editor Popup and NavBar.
+- Verified search, no-result recovery, filters, expand/collapse, unchanged item
+  and category editors, Menu Check, and the Manage & Control category journey
+  at 390×844 in connected local Chrome.
+- Expanded the certification inventory to recognize SearchBar, FloatingBubble,
+  and Popup surfaces. No menu/Firebase mutation, provider, Razorpay, staging,
+  Vercel, deployment, Git, or production operation occurred.
+
+## August 30, 2026 — Digital Screens copy recovery
+
+- Added a bounded 1.2-second recovery around the shared Digital Screens
+  Clipboard API attempt so a browser that exposes but does not settle the
+  promise reaches the existing textarea fallback instead of leaving Copy link
+  inert.
+- Verified Menu Board and Highlights copy acknowledgement plus exact tokenized
+  customer-display opens at a 390×844 local MobileShell viewport.
+- Added fail-closed Customer App/Digital Screens coverage. No screen setting,
+  Firebase operation, provider, Razorpay, staging, Vercel, deployment, Git, or
+  production state changed.
+
+## August 30, 2026 — Official Page policy-draft cancellation recovery
+
+- Fixed the shared mobile policy editor so Cancel restores the persisted owner
+  content instead of hiding and retaining an unsaved draft.
+- Verified Privacy, Terms, and Refund entry/back behavior, the baseline-policy
+  disclosure, and short-content validation; no policy save/reset API or
+  Firebase write was invoked.
+- Added a fail-closed compliance regression. No provider, Razorpay, staging,
+  Vercel, deployment, Git, or production operation occurred.
+
+## August 30, 2026 — Customer-editor deep-link and no-op publish recovery
+
+- Prevented valid customer-editor deep links from mounting before their selected
+  project is available; loading and failed reads now have explicit bounded
+  states instead of reaching the global error screen.
+- Replaced raw Official Page object-shape comparison with a semantic boundary,
+  so restoring descriptor, known-for, phone, year, visibility, or expanded
+  default values returns Publish to its disabled clean state while real changes
+  remain publishable.
+- Added fail-closed project-editor and Official Business Page regressions and
+  verified both corrections in connected local Chrome. No Firebase write,
+  provider call, Razorpay execution, staging push, Vercel build, deployment,
+  Git mutation, or production change occurred.
+
+## August 30, 2026 — Local multi-location customer-link recovery
+
+- Replaced the Official Business Page's manual HTTPS tenant-link construction
+  with MenuList's shared local-aware tenant URL builder.
+- The deterministic multi-location selector now opens both the headquarters
+  menu and the branch Official Page over the correct loopback origin and port;
+  hosted subdomains and custom domains retain their governed HTTPS behavior.
+- Added fail-closed Official Business Page coverage and verified both links in
+  connected Chrome. No Firebase operation, provider call, Razorpay execution,
+  staging push, Vercel build, deployment, Git mutation, or production change
+  occurred.
+
+## August 30, 2026 — Public invalid-phone suppression
+
+- Prevented the public menu footer from displaying a raw stored phone number
+  when the shared phone boundary rejects it for customer contact actions.
+- Valid numbers still render when an owner intentionally hides the Call action;
+  invalid, all-zero, and too-short values now render neither an action nor
+  misleading fallback text.
+- Added fail-closed public-truth coverage and verified a fresh local
+  publication in Chrome. No cloud Firebase, provider, Razorpay, staging,
+  Vercel, deployment, or production operation occurred.
+
+## August 30, 2026 — Desktop App Settings colour accessibility
+
+- Replaced the desktop theme-colour library popup, which exposed unnamed
+  internal sliders and fields, with one purpose-named 44×44 native colour
+  input.
+- Preserved presets, recent colours, favourites, reset behavior, and theme
+  persistence, and added fail-closed accessibility regression coverage.
+- Verified 21 reversible App Settings actions locally and restored every
+  original setting. The operating-system chooser remains explicitly untested;
+  no Firebase, provider, Razorpay, staging, Vercel, deployment, or production
+  operation occurred.
+
+## August 30, 2026 — Profile no-op write suppression
+
+- Prevented unchanged owner-profile submissions from appending a fresh
+  `modifiedOn` timestamp and issuing an unnecessary Firestore write.
+- Added a normalized server-side semantic-difference projection that retains
+  authorization, validation, owner scope, and all real profile changes.
+- Added deterministic regression coverage. An unchanged request now remains
+  one scoped read plus zero writes instead of one read plus one write.
+
+## August 30, 2026 — Local Menu Kit loopback recovery
+
+- Fixed Menu Kit download failing against the deterministic local
+  `http://*.localhost:3000` tenant fixture.
+- Limited HTTP admission to exact loopback hosts outside production; hosted
+  QA/production URLs remain HTTPS-only and hostile suffixes, credentials, and
+  unsupported schemes remain rejected.
+- Verified the browser action and both development- and production-mode URL
+  boundary suites. No Firebase, provider, staging, Vercel, deployment, or
+  production operation occurred.
+
+## August 30, 2026 — Local customer-link routing recovery
+
+- Fixed owner Share links for `*.localhost` fixtures opening unreachable HTTPS
+  URLs without the local dev-server port.
+- Local subdomain and custom-domain tenant links now use HTTP and port 3000;
+  hosted QA, production, and real custom domains retain HTTPS.
+- Added host-routing regression coverage and verified Share → Open in Chrome
+  against the exact Filter Coffee / ₹80 public menu. No cloud Firebase,
+  provider, Razorpay, staging push, Vercel build, deployment, or production
+  mutation occurred.
+
+## August 30, 2026 — Published-menu republish recovery
+
+- Fixed the Projects preview disabling Publish after an already-live menu was
+  edited and autosaved, even though the saved draft was newer than its last
+  publication.
+- Added normalized Date, serialized, numeric, and Firestore Timestamp-like
+  comparison to the centralized publish-change predicate and its regression
+  suite.
+- Verified the reseller-entitled local owner path and warm customer menu across
+  ₹80→₹81→₹80 with acknowledged publications and deterministic
+  restoration. No provider, Razorpay, cloud Firebase, staging push, Vercel
+  build, deployment, or production mutation occurred.
+
+## August 30, 2026 — Explicit platform denial and store-bootstrap recovery
+
+- Replaced blank owner-route content for authenticated platform operators with
+  the existing explicit unauthorized state and safe Help recovery, without
+  granting platform sessions any owner permission.
+- Evaluated the trusted platform role before owner store-role data so a
+  storeless operator session cannot remain indefinitely permission-unresolved.
+- Added a bounded `Store access could not be loaded` recovery with Try again
+  and Sign out for genuine owner store-bootstrap failures, plus focused source,
+  accessibility, lint, and strict TypeScript coverage.
+- Verified the corrected direct Dashboard denial and Help route in connected
+  local Chrome. No Firebase cloud operation, provider call, Razorpay execution,
+  staging push, Vercel build, deployment, or production mutation occurred.
+
+## August 30, 2026 — Website sticky CTA footer recovery
+
+- Fixed the desktop homepage conversion tray retaining stale visibility after abrupt scroll or browser-history restoration and covering footer Analytics, language, and theme controls.
+- Added requestAnimationFrame-throttled scroll, resize, and `pageshow` synchronization with complete listener and pending-frame cleanup while retaining the existing section observers.
+- Added a focused source regression gate and verified the corrected Analytics privacy flow in connected local Chrome on desktop and at 390×844.
+- No staging push, Vercel build, Firebase deployment, provider call, Razorpay execution, or production mutation occurred.
+
 ## August 29, 2026 — Governed MenuList asset editor launch hardening
 
 - Limited the embedded MenuList asset editor to Background, owned Images, Text, Styles, and Brand Kit while preserving CampaignCue's complete editor defaults.
@@ -33948,3 +34559,42 @@ TEMPLATE FOR NEW ENTRIES:
 - Added browser-file boundary and fail-closed Communication Kit/Menu Card Export
   regression coverage. No cloud Firebase, provider, live Razorpay, deployment,
   staging, Vercel, or production mutation was performed.
+
+# 2026-08-30 - MenuList Temporary Status draft recovery
+
+- Prevented empty or invisible-only Custom status copy from remaining
+  actionable on mobile Today, mobile Temporary Status, and desktop Business
+  Settings.
+- Added persistent field-associated recovery, disabled invalid publication,
+  and retained submit-time guards for stale or non-UI callers.
+- Rejected bypassed empty Custom copy at the authenticated API boundary before
+  the Firestore transaction while preserving valid status/public-cache flows.
+- Verified both mobile owner paths at 390×844 without submitting a status or
+  changing Firebase/public truth. No provider, live Razorpay, staging, Vercel,
+  deployment, Git, or production action was performed.
+
+# 2026-09-01 - MenuList Official Page interrupted-upload recovery
+
+- Added a bounded tenant/store-scoped browser cleanup journal for Mobile
+  Official Page cover and gallery uploads so an abrupt tab close no longer
+  leaves immutable Storage objects permanently orphaned.
+- The next exact-scope editor mount retries only URLs absent from committed
+  cover/gallery truth; saved media remains protected and failed deletes remain
+  retryable without a Firestore collection, listener, Function, rule, or index.
+- Local emulator proof observed two unsaved objects remain immediately after
+  tab close, fall to zero on exact-scope reopen, and one acknowledged saved
+  cover remain across reopen before Remove + Save returned Storage to zero.
+- No cloud Firebase, provider, live Razorpay, deployment, staging, Vercel, Git,
+  payment, or production action was performed.
+# 2026-09-01 - MenuList desktop External Sync first-time setup recovery
+
+- Kept Provider connection URL visible and validatable while External Sync is
+  off, so a first-time owner can satisfy the URL requirement before enabling
+  the connection.
+- Added a fail-closed source-order regression and deterministic fixture cleanup
+  for both store POS state and server-owned POS secret documents.
+- Verified invalid URL recovery, URL save, local enable/disable, secret
+  visibility, rotation cancellation, delivery refresh, invalid provider email,
+  and exact emulator cleanup. No provider connection test, mail handoff,
+  webhook delivery, cloud Firebase, deployment, staging, Vercel, Git, or
+  production action was performed.

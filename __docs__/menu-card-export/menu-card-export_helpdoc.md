@@ -2,7 +2,7 @@
 
 **Status:** Source-gated support draft; not current launch or support-publication approval
 **Audience:** MenuList owners
-**Last Updated:** July 10, 2026
+**Last Updated:** August 30, 2026
 
 > **Launch boundary:** Not current launch certification or deploy approval. This document records source-gated Menu Card Export evidence only. Current support publication or release approval still requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md), `npm run verify:production-readiness-local`, Digital Menu Output Constitution checks for print/menu outputs, `npm run verify:menu-card-export`, authenticated desktop/mobile browser QA, visual PDF and print-shop artifact review, provider smoke for the AI advisor where enabled, applicable target deploy evidence, and production-host smoke.
 
@@ -52,6 +52,18 @@ Screenshot needed: Menu Card Export route with style picker and preview.
 | Premium | Your menu is shorter and needs more space between items. |
 
 MenuList starts with the style, spacing, and display options that fit the current menu. This keeps the PDF from feeling like a plain data printout while avoiding a design editor.
+
+## Check Item Symbols
+
+Small symbols can appear beside an item name when that item has a saved dietary, spice-level, or audience detail. Their meanings appear automatically in the footer of the printed menu.
+
+Open the item editor to correct these details before exporting. MenuList does not create a symbol from an item name, description, offer, or size/variant label. Allergen information remains written as text; do not rely on symbols for allergy decisions.
+
+## Use The Dedicated Cover Page
+
+Home Print and Print-shop packet files include a dedicated cover by default. It uses your saved logo, business name, live-menu QR, and available phone/address details before the menu pages begin.
+
+Turn **Dedicated cover page** off when you need a shorter, content-first handout. WhatsApp PDF keeps the cover off by default so customers reach the menu immediately.
 
 ## Suggest A Layout
 

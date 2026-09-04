@@ -21,6 +21,13 @@ One-sentence product definition:
 
 > Create print-ready files from the current MenuList menu, service list, or catalog.
 
+### Item option truth
+
+- Print Menu consumes every active named option admitted by the public item contract (currently up to 40 per item), including options that do not carry a separate price.
+- The renderer labels the group `Options` and aligns optional prices separately. It does not prefix entries with `+`, because the saved model does not distinguish a price variant from a paid add-on.
+- Long labels wrap naturally. Large option sets split into continued item blocks of four options so pagination never silently drops the seventh or later value and never compresses text horizontally.
+- Inactive and nameless option records remain excluded, matching public-menu visibility truth.
+
 ---
 
 ## Research Summary
@@ -101,6 +108,8 @@ The live code already proves demand and a basic path:
 
 ## Owner Experience
 
+Printed category headings must stay at parity with the public live menu: use the saved category icon, honor the same `showCategoryIcons` design preference, align the mark with its heading, and fall back to a readable text-only heading when no supported icon exists. Category icons are section identity, not dietary/allergen claims, so they do not appear in the item-symbol footer legend.
+
 ### Entry Points
 
 | Surface | Behavior |
@@ -180,6 +189,7 @@ Allowed:
 - Include photos if template supports them
 - Include QR
 - Include contact block
+- Include dedicated cover page
 - Include updated date
 - Job preset: Home Print, WhatsApp PDF, Print-shop packet when enabled
 - Safe category overrides:
@@ -229,10 +239,14 @@ Auto print design rule:
 Physical-menu rule:
 
 - Output should feel like a real printed business sheet, not a plain table printout.
-- Use controlled template styling only: paper tone, borders, title plaque/editorial heading, category treatment, and price leaders.
-- Classic may use a restaurant-menu plaque and ribbon sections.
-- Premium may use an editorial hierarchy with more whitespace.
-- Compact may use a warm card-like sheet suitable for dense menus and QR handoff.
+- Use controlled template styling only: restrained paper tone, print-safe borders, editorial identity hierarchy, category treatment, and measured price leaders.
+- Classic uses a balanced two-column house-menu composition with clear section markers.
+- Premium uses a single-column editorial hierarchy with more whitespace and deliberate continuation pages.
+- Customer-facing Home Print, Print-shop Packet, and Table Menu presets start with a dedicated brand cover by default. The cover uses only existing business truth: logo or initial fallback, business name, document/menu label, live-menu QR, public link, phone, and address when available. WhatsApp, staff-reference, takeaway-insert, and QR-insert jobs do not add a cover by default.
+- The cover is a separate document page. Menu content starts near a theme-governed top safe margin on the following page without repeating the business-name/menu-label masthead or its rules. Full-page themes with a contrast veil use the same 14 mm top/left/right page inset plus 10 mm internal content padding, while preserving the theme's existing bottom/footer clearance. This widens the usable menu column without letting decoration cross prices or copy. A compact business-name plus page-number footer identifies loose content pages, and menu page numbering excludes the unnumbered cover.
+- Compact uses two columns for ordinary A4 menus and three only for genuinely long menus, preserving legibility instead of shrinking content to fill space.
+- Short sections should remain intact when possible; split sections must repeat their heading with a continuation label. Every cover-backed content page carries a compact business-name plus page-number footer identifier rather than repeating the large masthead.
+- Dietary markers may sit beside item names with a compact legend near the live-menu QR; they must not create a repetitive badge row under every dish.
 - Do not add owner-controlled ornaments, arbitrary fonts, background images, or manual design controls.
 
 ### Pro/Multi-location Layout Suggestion
@@ -284,11 +298,13 @@ Hard rules:
 5. Item name and price stay together.
 6. Item description, variants, and tags stay with the item block.
 7. Category header cannot appear alone at the bottom of a page.
-8. Footer cannot overlap body content.
-9. QR must remain scan-safe.
-10. Same input hash and renderer version must produce the same export output.
-11. Print-shop preset must keep body content inside safe area.
-12. PDFs must preserve text as text where the renderer supports it; screenshot-only text is not acceptable.
+8. A continued category repeats its heading, and every continuation page repeats business/menu identity.
+9. Footer cannot overlap body content.
+10. QR must remain scan-safe.
+11. Same input hash and renderer version must produce the same export output.
+12. Print-shop preset must keep body content inside safe area.
+13. PDFs must preserve text as text where the renderer supports it; screenshot-only text is not acceptable.
+14. A selected cover page must never invent a slogan, service claim, address, phone number, review score, or promotional message.
 
 Layout modes:
 
@@ -325,7 +341,7 @@ PDF and packet identification:
 
 - PDF document properties should include title, subject, author, keywords, and creator.
 - Downloaded filenames should include business/menu name, preset, generated date, and a short source reference.
-- The visible PDF footer should show owner/customer-safe information such as generated date, page count, and menu updated date. It must not print the full source hash.
+- The visible PDF footer should show owner/customer-safe information such as page count, menu updated date, applicable platform attribution, and live-menu QR. It must not print the technical generation timestamp or full source hash.
 - Print-shop instructions may include a source reference, renderer version, template version, and live menu destination for support/audit use.
 
 ---
@@ -378,6 +394,9 @@ Do not show hash values to owners unless support mode is active.
 | MCE-16 | Auto print design is available before paid AI and never consumes AI capacity. |
 | MCE-16 | Generated PDFs include document properties and deterministic filenames for easier local search and support. |
 | MCE-17 | Print-shop packet instructions include owner-safe source summary, generated/menu-updated dates, template version, renderer version, and live menu destination. |
+| MCE-18 | Premium and service/wellness print output uses original, print-safe editorial background variants that never cover the service/item, description, price, QR, or footer reading zones. |
+| MCE-19 | Recognized decision facts render as bounded, print-safe symbols after the final item-name line, vertically centered to the type rather than its baseline, with a dynamic content-page legend. Vegetarian and non-vegetarian retain their accepted square-and-dot marks; vegan uses the green Lucide `Vegan` pictogram; gluten-free uses the neutral/theme-coloured Lucide `Wheat` pictogram with an explicit legend definition; every explicit spice intensity alone uses one to four red Game Icons chilli peppers; and audience facts use conventional Mars, Venus, combined-gender, child, adult, and person-with-cane pictograms. The renderer must not reproduce endorsement-controlled certification logos, infer symbols from item names, descriptions, campaigns, or variant labels, or represent allergens as icons. |
+| MCE-20 | Option labels and optional prices use a readable print size. When supporting copy exists, item-name-to-description spacing uses 75% of the compact baseline while the independently calculated post-description item break remains clearly larger without looking oversized. Dark artwork themes protect header and symbol-legend footer content with theme-colored contrast layers. |
 
 ---
 
@@ -393,6 +412,7 @@ Do not show hash values to owners unless support mode is active.
 | Output identification | Source hashes may be used in metadata/instructions, but full hashes must not be printed as customer-facing menu footer text. |
 | Cache | No public cache invalidation because no public menu/store truth is mutated. |
 | Reliability | If render fails, the route shows a safe retry state without creating a Firestore record or Storage artifact. |
+| Visual safety | Decorative artwork is deterministic, same-origin, bounded, drawn before content, and optional on decode failure; it must not add owner-controlled freeform backgrounds. |
 | Accessibility | Do not claim PDF/UA compliance until tagged PDF, reading order, metadata, and verification tooling are implemented. |
 
 ---

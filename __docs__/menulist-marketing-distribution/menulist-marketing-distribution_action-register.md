@@ -132,6 +132,7 @@
 | MLD-R019 | Current AI sales, marketing, and distribution workflow research | Codex | Done | Created `../menulist-signaldesk/menulist-signaldesk_ai-sales-marketing-distribution-research-2026-07-11.md` and the self-contained AI revenue market brief; compared current platform and practitioner workflows with SignalDesk code/docs and adopted shadow-mode proof before any new runtime or autonomy |
 | MLD-R020 | Signal-led GTM and MenuList distribution use-case refresh | Codex | Done | August 10 primary-source review confirmed the existing signal -> evidence -> matched play -> permission -> activation -> outcome loop; recorded as `ML-MKT-EXT-009`. No new runtime, provider, CRM, public score, auto-publish, send, or spend authority was admitted |
 | MLD-R021 | Gamma AI discovery and dark-attribution review | Codex | Done | Recorded as `ML-MKT-EXT-011` and `PP-DIST-EXT-002`; adopted bounded self-reported attribution, deferred unsupported platform figures and agent surfaces, and rejected agent-only manipulation and autonomous commercial authority |
+| MLD-R022 | Successful-launch deep research and MenuList command plan | Codex | Done | Created `launch-research-2026-09-03/report-source.md`; compared Resend, Dub, Tally, Product Hunt, Superhuman, Linear, Dropbox, and YC patterns with current MenuList truth and current X/Product Hunt/WhatsApp/India disclosure rules; defined six launch gates and a proof-compression sequence without authorizing external action |
 
 ## Learning Cohort and Physical Partner Actions
 
@@ -153,12 +154,13 @@
 | MLD-L003 | Launch-day response plan | Codex + Founder | Done | Created `menulist-marketing-distribution_launch-day-response-plan.md`; founder still must run launch-day replies |
 | MLD-L004 | Launch week content calendar | Codex | Done | Created `menulist-marketing-distribution_launch-week-content-calendar.md`; posts are not scheduled |
 | MLD-L005 | Post-launch follow-up board | Codex | Done | Created `menulist-marketing-distribution_post-launch-follow-up-board.md`; no CRM/runtime automation added |
-| MLD-L006 | Product Hunt target-date readiness gate | Codex + Founder | Done | Gate is defined in `menulist-marketing-distribution_launch-distribution-review.md` and `menulist-marketing-distribution_product-hunt-launch-page-spec.md`; launch remains unscheduled until gates pass |
+| MLD-L006 | Product Hunt target-date readiness gate | Codex + Founder | Done | The expired August 11, 2026 target is retired. The six-gate decision is defined in `launch-research-2026-09-03/report-source.md` and reflected in the Product Hunt spec; launch remains unscheduled until every gate passes |
 | MLD-L007 | Product Hunt launch page spec | Codex | Done | Created `menulist-marketing-distribution_product-hunt-launch-page-spec.md`; no `/launch/product-hunt` route created |
 | MLD-L008 | Show HN tryable-demo gate | Codex | Deferred | Use Show HN only after public demo pages exist without signup barriers; do not post a landing page |
 | MLD-L009 | Directory submissions backlog | Codex | Deferred | BetaList, Uneed, SaaSHub, AlternativeTo, and similar directories wait until proof assets and launch page are ready |
 | MLD-L010 | AppSumo/review-platform evaluation | Founder + Codex | Deferred | Revisit 4-6 months after onboarding cost, support load, pricing, and plan limits are stable |
 | MLD-L011 | Create independent software-review presence | Founder + Codex | Deferred | Consider accurate Capterra/G2 profiles after at least five paid businesses reach day 30 and a response owner is available; requests must be neutral and independent of referral rewards |
+| MLD-L012 | Close six-gate public-launch readiness | Founder + Codex | Blocked | Needs current hosted product certification, final production WhatsApp intake, permissioned owner proof, live workflow smoke, final proof assets, approved sender identity, response capacity, offer ceiling, Product Hunt account readiness, and baseline measurement before a date is selected |
 
 ## International Acquisition Actions
 

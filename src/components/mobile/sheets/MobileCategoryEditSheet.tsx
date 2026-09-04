@@ -91,11 +91,13 @@ export default function MobileCategoryEditSheet({
     const t = useTranslations('MobileMenu');
     const { token } = theme.useToken();
     const primaryLanguage = getCanonicalProjectSourceLanguage(selectedLanguages);
+    const isMasterControlledCategory = mode === 'edit' && category?.isMasterControlled === true;
     const [names, setNames] = useState<Record<string, string>>({});
     const [icon, setIcon] = useState<string>('');
     const [active, setActive] = useState(true);
     const [presetIds, setPresetIds] = useState<string[]>([]);
     const [isSaving, setIsSaving] = useState(false);
+    const [isDiscardConfirmationOpen, setIsDiscardConfirmationOpen] = useState(false);
     const [activeLanguageKey, setActiveLanguageKey] = useState<string[]>([primaryLanguage]);
     const sectionCardStyle = {
         border: `1px solid ${token.colorBorderSecondary}`,
@@ -128,7 +130,7 @@ export default function MobileCategoryEditSheet({
             .some((language) => !names[language]?.trim());
     }, [hasMultipleLanguages, hasPrimaryName, names, primaryLanguage, selectedLanguages]);
     const translationActionState = useMemo(() => {
-        if (!onGenerateContent || !hasMultipleLanguages) return null;
+        if (!onGenerateContent || !hasMultipleLanguages || isMasterControlledCategory) return null;
         if (!hasPrimaryName) {
             return {
                 disabled: true,
@@ -147,7 +149,7 @@ export default function MobileCategoryEditSheet({
             label: t('generateMissingTranslations'),
             mode: 'missing' as const,
         };
-    }, [hasMissingTranslations, hasMultipleLanguages, hasPrimaryName, onGenerateContent, t]);
+    }, [hasMissingTranslations, hasMultipleLanguages, hasPrimaryName, isMasterControlledCategory, onGenerateContent, t]);
     const initialComparisonState = useMemo(() => JSON.stringify(
         normalizeCategoryDraft({
             active: initialDraft.active,
@@ -175,13 +177,18 @@ export default function MobileCategoryEditSheet({
             return;
         }
 
-        const confirmed = await Dialog.confirm({
-            cancelText: 'Keep editing',
-            confirmText: 'Discard changes',
-            content: 'Your unsaved category changes will be lost.',
-            title: 'Discard unsaved category changes?',
-        });
-        if (confirmed) onClose();
+        setIsDiscardConfirmationOpen(true);
+        try {
+            const confirmed = await Dialog.confirm({
+                cancelText: 'Keep editing',
+                confirmText: 'Discard changes',
+                content: 'Your unsaved category changes will be lost.',
+                title: 'Discard unsaved category changes?',
+            });
+            if (confirmed) onClose();
+        } finally {
+            setIsDiscardConfirmationOpen(false);
+        }
     };
 
     const handleGenerateContent = async () => {
@@ -239,27 +246,34 @@ export default function MobileCategoryEditSheet({
     if (!visible) return null;
 
     const suggestedIcons = getSuggestedCategoryIcons(names[primaryLanguage], businessType, businessCategory);
+    const sheetTitle = mode === 'add' ? t('addCategoryLabel') : (category?.name || t('categoriesTitle'));
 
     return (
         <Popup
+            aria-label={sheetTitle}
             bodyStyle={MENU_SHEET_BODY_STYLE}
             destroyOnClose
             onMaskClick={() => {
                 void handleClose();
             }}
             position="bottom"
-            visible={visible}
+            visible={visible && !isDiscardConfirmationOpen}
         >
             <Flex style={MENU_SHEET_CONTAINER_STYLE} vertical>
                 <NavBar onBack={() => {
                     void handleClose();
                 }}>
-                    {mode === 'add' ? t('addCategoryLabel') : (category?.name || t('categoriesTitle'))}
+                    {sheetTitle}
                 </NavBar>
 
                 <Flex gap={12} style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: 12 }} vertical>
                     <Card size="small" style={sectionCardStyle}>
                         <Flex gap={12} vertical>
+                            {isMasterControlledCategory ? (
+                                <Text type="secondary" style={{ fontSize: 12, lineHeight: 1.4 }}>
+                                    Category name and icon come from the main menu. You can still change visibility and schedule for this outlet.
+                                </Text>
+                            ) : null}
                             {FEATURE_FLAGS.ENABLE_CATEGORY_ICONS ? (
                                 <Flex
                                     gap={12}
@@ -276,13 +290,18 @@ export default function MobileCategoryEditSheet({
                                     >
                                         <Flex gap={2} vertical>
                                             <Text strong>Category icon</Text>
-                                            <Text type="secondary">Pick an icon or emoji to help this category stand out.</Text>
+                                            <Text type="secondary">
+                                                {isMasterControlledCategory
+                                                    ? 'This icon is controlled by the main menu.'
+                                                    : 'Pick an icon or emoji to help this category stand out.'}
+                                            </Text>
                                         </Flex>
                                         <Flex align="center" gap={8} style={{ flexShrink: 0 }}>
                                             <IconPicker
                                                 allowClear
                                                 buttonSize="large"
                                                 buttonStyle={{ height: 56, minWidth: 56 }}
+                                                disabled={isMasterControlledCategory}
                                                 iconSize={26}
                                                 onChange={(nextIcon) => setIcon(normalizeCategoryIconValue(nextIcon))}
                                                 suggestedIcons={suggestedIcons.map((entry) => entry.replace('lu:', ''))}
@@ -327,6 +346,7 @@ export default function MobileCategoryEditSheet({
                                             >
                                                 <Input
                                                     autoFocus={mode === 'add' && languageCode === primaryLanguage}
+                                                    disabled={isMasterControlledCategory}
                                                     onChange={(value) => {
                                                         setNames((previous) => ({ ...previous, [languageCode]: value }));
                                                     }}
@@ -342,6 +362,7 @@ export default function MobileCategoryEditSheet({
                                     <Text strong>{t('categoryNamePlaceholder')}</Text>
                                     <Input
                                         autoFocus={mode === 'add'}
+                                        disabled={isMasterControlledCategory}
                                         onChange={(value) => setNames((previous) => ({ ...previous, [primaryLanguage]: value }))}
                                         placeholder={t('categoryNamePlaceholder')}
                                         value={names[primaryLanguage] || ''}

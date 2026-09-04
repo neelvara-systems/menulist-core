@@ -308,6 +308,11 @@ export default function MobileCompliancePagesEditor({
         setIsBaselineExpanded((previous) => !previous);
     };
 
+    const handleCancelEdit = () => {
+        setCustomText(currentData?.customContent || '');
+        setIsEditing(false);
+    };
+
     const handleSave = async () => {
         if (!scope) {
             Toast.show({ content: 'Failed to save.', duration: 1500 });
@@ -563,7 +568,7 @@ export default function MobileCompliancePagesEditor({
                                         <Text>Reset</Text>
                                     </Flex>
                                 </Button>
-                                <Button block disabled={saving} fill="outline" onClick={() => setIsEditing(false)} size="large">
+                                <Button block disabled={saving} fill="outline" onClick={handleCancelEdit} size="large">
                                     Cancel
                                 </Button>
                                 <Button block loading={saving} onClick={() => void handleSave()} size="large">

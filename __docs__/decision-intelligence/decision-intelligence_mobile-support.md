@@ -1,6 +1,6 @@
 # Decision Intelligence (Decision Blocks) — Mobile Support
 
-**Last Updated:** July 16, 2026
+**Last Updated:** September 2, 2026
 **Decision:** ✅ CUSTOMER-FACING + OWNER CONTROL SHEET
 
 ---
@@ -32,6 +32,7 @@ Owner interaction is optional. Decision Blocks work automatically, but owners ca
 - Enable or disable each available block type.
 - Pin a specific item to Popular, Quick Pick, or Best Value.
 - Clear a pinned item and return the block to automatic selection.
+- Preview, edit, and download a Campaign Poster for a saved explicit choice. Automatic, unsaved, hidden, unavailable, and linkless choices cannot emit static print.
 
 Desktop UI: `DecisionBlocksSettingsModal.tsx`.
 
@@ -39,4 +40,4 @@ Mobile UI: `SmartRecommendationsSheet.tsx`.
 
 Both surfaces are hidden when `FEATURE_FLAGS.ENABLE_DECISION_BLOCKS` is disabled and write the same `project.menuSettings.decisionBlocks` shape through shared helpers in `decisionBlocks.shared.ts`. Pinned item values are normalized before display/save so legacy picker payloads and extraction id aliases resolve back to the current item id. When owners edit menu items on mobile (availability, price), runtime filtering and the next scoring run adjust automatically.
 
-An unavailable selected item is not guaranteed a replacement. Another eligible automatic choice may appear; if none qualifies, that choice stays hidden. The mobile and desktop copy state this explicitly.
+An unavailable selected item is not guaranteed a replacement. Another eligible automatic choice may appear; if none qualifies, that choice stays hidden. The mobile and desktop copy state this explicitly. Poster generation reads the same already-loaded selected project and store, inherits the parent theme, and encodes the exact current item URL; it adds no mobile-only Firestore call. The mobile Save action awaits the existing explicit project-persistence path and keeps the sheet open, so the poster action cannot activate against merely local settings.

@@ -116,6 +116,16 @@ const imageGenerationConfigSchema = z.object({
     isMultiMode: z.boolean().optional(),
     numberOfImages: z.number().int().min(1).max(4).optional(),
     agreeToTerms: z.boolean().optional(),
+    subjectProfileId: z.string().uuid().nullable().optional(),
+    subjectProfileVersion: z.number().int().positive().max(1_000_000).nullable().optional(),
+}).superRefine((value, context) => {
+    if (Boolean(value.subjectProfileId) !== Boolean(value.subjectProfileVersion)) {
+        context.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'Saved person ID and version must be provided together',
+            path: ['subjectProfileId'],
+        });
+    }
 });
 
 // ═══════════════════════════════════════════════════════════

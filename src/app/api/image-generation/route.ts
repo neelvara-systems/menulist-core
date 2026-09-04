@@ -6,6 +6,7 @@ import { PERMISSIONS } from "@constant/permissions";
 import { finalizeAiOperationAccounting } from "@lib/ai/accounting";
 import { checkAICapacity, refundAiCapacityReservationSafely, reserveAiCapacity } from "@lib/ai/capacityCheck";
 import { summarizeImageProviderResponse } from "@lib/ai/imageOperationLogging";
+import { ImageSubjectProfileError, resolveImageSubjectProfileForGeneration } from "@lib/ai/imageSubjectProfiles";
 import { genAIClient } from "@lib/google/genAi";
 import { getAIGatewayDiagnostics, getAIRouteLogContext, getAIRouteSecurityContext, logAIRouteFailure } from "@lib/google/genAi/diagnostics";
 import { logger } from "@lib/monitoring/logger";
@@ -46,6 +47,7 @@ const getImageGenerationConfigLogSummary = (value: unknown) => {
         hasNegativePrompt: Boolean(config.negativePrompt),
         hasPrompt: typeof config.prompt === 'string' && config.prompt.length > 0,
         hasReferenceImage: Boolean(referenceImage.url),
+        hasSubjectProfile: typeof config.subjectProfileId === 'string' && config.subjectProfileId.length > 0,
         isMultiMode: Boolean(config.isMultiMode),
         lightingCount: Array.isArray(config.lighting) ? config.lighting.length : 0,
         moodCount: Array.isArray(config.moods) ? config.moods.length : 0,
@@ -201,6 +203,24 @@ export const POST = withAuth(async (request, session) => {
             return NextResponse.json({ error: outletPolicyBlockReason }, { status: 403 });
         }
 
+        if (generationConfig.subjectProfileId && !FEATURE_FLAGS.ENABLE_AI_SUBJECT_PROFILES) {
+            return NextResponse.json({ error: 'Saved person profiles are unavailable.' }, { status: 404 });
+        }
+        let subjectProfile;
+        try {
+            subjectProfile = await resolveImageSubjectProfileForGeneration({
+                expectedVersion: generationConfig.subjectProfileVersion,
+                profileId: generationConfig.subjectProfileId,
+                sId: String(session.sId),
+                tId: String(session.tId),
+            });
+        } catch (error) {
+            if (error instanceof ImageSubjectProfileError) {
+                return NextResponse.json({ error: 'The selected saved person is no longer available. Choose it again or continue without it.' }, { status: error.code === 'NOT_FOUND' ? 404 : 409 });
+            }
+            throw error;
+        }
+
         const promptsToExecute = getImagePrompts({ generationConfig, projectId, fileId, itemDetails, businessType }, AI_MODEL);
         if (!promptsToExecute.length) {
             return NextResponse.json({ error: 'Image generation needs a prompt or item details' }, { status: 400 });
@@ -248,6 +268,7 @@ export const POST = withAuth(async (request, session) => {
                 sId: session.sId,
                 tId: session.tId,
             },
+            subjectReferences: subjectProfile?.references,
         });
         const genratedImages = promptRun.images;
         const generatedImagesResponse = promptRun.responses;

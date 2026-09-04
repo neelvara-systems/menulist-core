@@ -28,7 +28,11 @@ import { touchDigitalScreenContentVersionForStoreServer } from "@lib/screen/serv
 import { readBoundedJsonBody } from "@lib/security/boundedRequestBody";
 import { getSafeZodValidationDetails } from "@lib/security/inputValidation";
 import { isTempStatusMutationScopeCurrent } from "@lib/tempStatus/serverMutationScope";
-import { normalizeTempStatusMessage, TEMP_STATUS_TYPES } from "@lib/tempStatus/statusBoundary";
+import {
+    normalizeTempStatusCustomMessage,
+    normalizeTempStatusMessage,
+    TEMP_STATUS_TYPES,
+} from "@lib/tempStatus/statusBoundary";
 import { revalidateTag } from "next/cache";
 import { NextRequest, NextResponse } from "next/server";
 import { hashPublicRateLimitValue } from "src/middleware/publicApi";
@@ -150,6 +154,13 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         let storeUpdate: FirebaseFirestore.UpdateData<FirebaseFirestore.DocumentData>;
         if (validation.data.action === 'set') {
             const { type, message, expiresAt } = validation.data;
+
+            if (type === 'custom' && !normalizeTempStatusCustomMessage(message)) {
+                return NextResponse.json(
+                    { error: "Custom status message is required" },
+                    { status: 400 }
+                );
+            }
 
             // Validate expiry is in the future
             if (new Date(expiresAt).getTime() <= Date.now()) {

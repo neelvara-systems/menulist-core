@@ -207,9 +207,9 @@ function PlatformAssetTemplates() {
     const [modal, modalHolder] = Modal.useModal();
     const [businessCategory, setBusinessCategory] = useState('generic');
     const [assetTypeId, setAssetTypeId] = useState<PrintableAssetTypeId>('single_table_card');
-    const [templateFamilyId, setTemplateFamilyId] = useState<PrintableTemplateFamilyId>('modern-calm');
+    const [templateFamilyId, setTemplateFamilyId] = useState<PrintableTemplateFamilyId>('botanical-heritage');
     const [status, setStatus] = useState<TemplateStatus>('draft');
-    const [title, setTitle] = useState(makeDefaultTitle('single_table_card', 'modern-calm'));
+    const [title, setTitle] = useState(makeDefaultTitle('single_table_card', 'botanical-heritage'));
     const [description, setDescription] = useState('');
     const [templates, setTemplates] = useState<CreativeEditorTemplateSummary[]>([]);
     const [selectedTemplate, setSelectedTemplate] = useState<CreativeEditorTemplateSummary | null>(null);

@@ -21,6 +21,8 @@ export type MenuCardExportSettings = {
     orientation: MenuCardOrientation;
     density: MenuCardDensity;
     styleId: string;
+    printableThemeId?: string;
+    includeCoverPage?: boolean;
     includeLogo: boolean;
     includeDescriptions: boolean;
     includePhotos: boolean;

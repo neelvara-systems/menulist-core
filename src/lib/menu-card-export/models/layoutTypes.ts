@@ -12,6 +12,7 @@ export type MenuCardLayoutMode =
 
 export type MenuCardPreviewPage = {
     pageNumber: number;
+    kind?: 'cover' | 'menu';
     categories: Array<{
         id: string;
         name: string;

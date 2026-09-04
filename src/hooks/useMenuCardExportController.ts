@@ -35,6 +35,8 @@ import {
 } from '@lib/menu-card-export/ai/designAdvisor';
 import type { MenuCardDesignAdvisorRequest } from '@lib/validation/apiSchemas';
 import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
+import { resolvePrintableAssetStyle } from '@lib/printable-asset-templates/stylePreferences';
+import { getPrintableTemplateFamily } from '@lib/printable-asset-templates/templateFamilies';
 import { generateProjectUrl } from '@lib/utils/slugify';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { AICapacityError } from '@services/ai/capacityError';
@@ -107,8 +109,12 @@ function normalizeProjectOption(storeUrlContext: MenuCardStoreUrlContext, projec
     };
 }
 
-function makeSettings(preset: MenuCardExportPreset, styleId: string): MenuCardExportSettings {
-    return buildDefaultSettings(preset, styleId);
+function makeSettings(
+    preset: MenuCardExportPreset,
+    styleId: string,
+    printableThemeId?: string,
+): MenuCardExportSettings {
+    return buildDefaultSettings(preset, styleId, printableThemeId);
 }
 
 const MENU_CARD_ADVICE_PLAN_REQUIRED_MESSAGE = 'Layout suggestions are included in Pro and Multi-location.';
@@ -243,6 +249,31 @@ export default function useMenuCardExportController({
         () => menuCardPresetRegistry.filter((preset) => preset.exposed && isMenuCardPresetAvailable(preset.id)),
         [],
     );
+    const printableThemeResolution = useMemo(
+        () => resolvePrintableAssetStyle({
+            assetTypeId: 'print_menu',
+            businessCategory: scopedStoreDetails?.businessCategory,
+            businessType: (scopedStoreDetails as any)?.businessType,
+            preferences: scopedStoreDetails?.printableAssetStylePreferences,
+            projectId: selectedProject?.projectId,
+        }),
+        [
+            scopedStoreDetails?.businessCategory,
+            (scopedStoreDetails as any)?.businessType,
+            scopedStoreDetails?.printableAssetStylePreferences,
+            selectedProject?.projectId,
+        ],
+    );
+    const printableTheme = useMemo(
+        () => getPrintableTemplateFamily(printableThemeResolution.templateFamilyId),
+        [printableThemeResolution.templateFamilyId],
+    );
+    const effectiveSettings = useMemo<MenuCardExportSettings>(
+        () => settings.printableThemeId === printableTheme.id
+            ? settings
+            : { ...settings, printableThemeId: printableTheme.id },
+        [printableTheme.id, settings],
+    );
 
     useEffect(() => {
         let mounted = true;
@@ -317,14 +348,14 @@ export default function useMenuCardExportController({
             project: projectData,
             store: { ...scopedStoreDetails, name: storeName },
             menuUrl: selectedProject.url,
-            settings,
+            settings: effectiveSettings,
         });
-    }, [loadedProjectId, projectData, scope, scopedStoreDetails, selectedProject, settings, storeName]);
+    }, [effectiveSettings, loadedProjectId, projectData, scope, scopedStoreDetails, selectedProject, storeName]);
 
     const autoDesign = useMemo<MenuCardAutoPrintDesign | null>(() => {
         if (!source) return null;
-        return resolveAutoPrintDesign(source, settings.preset);
-    }, [settings.preset, source]);
+        return resolveAutoPrintDesign(source, effectiveSettings.preset);
+    }, [effectiveSettings.preset, source]);
 
     const businessProfile = useMemo(() => {
         if (!source) return null;
@@ -340,7 +371,7 @@ export default function useMenuCardExportController({
         const itemCount = source.menu.categories.reduce((total, category) => total + category.items.length, 0);
         return [
             selectedProject.projectId,
-            settings.preset,
+            effectiveSettings.preset,
             source.business.businessCategory || '',
             source.business.catalogKind || '',
             source.business.offeringKind || '',
@@ -350,7 +381,7 @@ export default function useMenuCardExportController({
             source.menu.categories.length,
             itemCount,
         ].join('|');
-    }, [selectedProject, settings.preset, source]);
+    }, [effectiveSettings.preset, selectedProject, source]);
 
     useEffect(() => {
         if (!autoDesign || !autoDesignKey || manualSettingsTouchedRef.current) return;
@@ -368,13 +399,13 @@ export default function useMenuCardExportController({
 
     const preview = useMemo(() => {
         if (!source) return null;
-        return renderPreviewModel(source, settings, overrides);
-    }, [source, settings, overrides]);
+        return renderPreviewModel(source, effectiveSettings, overrides);
+    }, [effectiveSettings, source, overrides]);
 
     const sourceHash = useMemo(() => {
         if (!source) return '';
-        return buildPrintSourceHash(source, settings, overrides);
-    }, [source, settings, overrides]);
+        return buildPrintSourceHash(source, effectiveSettings, overrides);
+    }, [effectiveSettings, source, overrides]);
     currentArtifactScopeRef.current = `${storeRouteKey}:${selectedProject?.projectId || ''}:${sourceHash}`;
     currentAdviceSourceHashRef.current = sourceHash;
 
@@ -406,8 +437,12 @@ export default function useMenuCardExportController({
         if (!isMenuCardPresetAvailable(preset)) return;
         autoDesignKeyRef.current = '';
         manualSettingsTouchedRef.current = false;
-        setSettings((current) => makeSettings(preset, current.styleId));
-    }, []);
+        setSettings((current) => makeSettings(
+            preset,
+            current.styleId,
+            current.printableThemeId || printableTheme.id,
+        ));
+    }, [printableTheme.id]);
 
     const updateStyle = useCallback((styleId: string) => {
         manualSettingsTouchedRef.current = true;
@@ -433,9 +468,9 @@ export default function useMenuCardExportController({
     const buildDesignAdvisorPayload = useCallback((): MenuCardDesignAdvisorRequest | null => {
         if (!source || !preview || !selectedProject || !sourceHash) return null;
         if (
-            !isMenuCardAdvisorPreset(settings.preset)
-            || !isMenuCardAdvisorStyle(settings.styleId)
-            || !isMenuCardAdvisorDensity(settings.density)
+            !isMenuCardAdvisorPreset(effectiveSettings.preset)
+            || !isMenuCardAdvisorStyle(effectiveSettings.styleId)
+            || !isMenuCardAdvisorDensity(effectiveSettings.density)
         ) return null;
         const itemCount = source.menu.categories.reduce((total, category) => total + category.items.length, 0);
 
@@ -443,12 +478,12 @@ export default function useMenuCardExportController({
             projectId: selectedProject.projectId,
             sourceHash,
             currentSettings: {
-                preset: settings.preset,
-                styleId: settings.styleId,
-                density: settings.density,
-                includeDescriptions: settings.includeDescriptions,
-                includeQr: settings.includeQr,
-                includeContactBlock: settings.includeContactBlock,
+                preset: effectiveSettings.preset,
+                styleId: effectiveSettings.styleId,
+                density: effectiveSettings.density,
+                includeDescriptions: effectiveSettings.includeDescriptions,
+                includeQr: effectiveSettings.includeQr,
+                includeContactBlock: effectiveSettings.includeContactBlock,
             },
             sourceSummary: {
                 businessName: source.business.name,
@@ -473,7 +508,7 @@ export default function useMenuCardExportController({
                 message: warning.message,
             })).slice(0, 20),
         };
-    }, [autoDesign, businessProfile, preview, selectedProject, settings, source, sourceHash]);
+    }, [autoDesign, businessProfile, effectiveSettings, preview, selectedProject, source, sourceHash]);
 
     const requestDesignAdvice = useCallback(async () => {
         if (!FEATURE_FLAGS.ENABLE_MENU_CARD_EXPORT_AI_ADVISOR) {
@@ -527,18 +562,18 @@ export default function useMenuCardExportController({
         const preset = isMenuCardPresetAvailable(designAdvice.preset) ? designAdvice.preset : 'home_print';
         manualSettingsTouchedRef.current = true;
         setSettings({
-            ...makeSettings(preset, designAdvice.styleId),
+            ...makeSettings(preset, designAdvice.styleId, printableTheme.id),
             density: designAdvice.density,
             includeDescriptions: designAdvice.includeDescriptions,
             includeQr: designAdvice.includeQr,
             includeContactBlock: designAdvice.includeContactBlock,
         });
         notify?.({ content: 'Layout suggestion applied', type: 'success' });
-    }, [designAdvice, notify]);
+    }, [designAdvice, notify, printableTheme.id]);
 
     const createArtifact = useCallback(async (share = false) => {
         if (!source || !selectedProject || artifactInFlightRef.current) return false;
-        if (!isMenuCardPresetAvailable(settings.preset)) {
+        if (!isMenuCardPresetAvailable(effectiveSettings.preset)) {
             notify?.({ content: 'This export option is not enabled', type: 'error' });
             return false;
         }
@@ -551,9 +586,9 @@ export default function useMenuCardExportController({
         artifactInFlightRef.current = true;
         setRendering(true);
         try {
-            const artifact = settings.preset === 'print_shop_packet'
-                ? await buildPrintShopPacket(source, settings, overrides)
-                : await renderPdf(source, settings, overrides);
+            const artifact = effectiveSettings.preset === 'print_shop_packet'
+                ? await buildPrintShopPacket(source, effectiveSettings, overrides)
+                : await renderPdf(source, effectiveSettings, overrides);
             if (currentArtifactScopeRef.current !== operationScope) return false;
 
             let delivery: 'downloaded' | 'shared' = 'downloaded';
@@ -577,16 +612,16 @@ export default function useMenuCardExportController({
                     projectId: selectedProject.projectId,
                     projectName: resolveMenuCardProjectName(selectedProject.name, 'Menu'),
                     storeName,
-                    preset: settings.preset,
+                    preset: effectiveSettings.preset,
                     storageScope: historyStorageScope,
-                    styleId: settings.styleId,
+                    styleId: effectiveSettings.styleId,
                     artifact,
                 });
                 setHistory(nextHistory);
             }
 
             notify?.({
-                content: settings.preset === 'print_shop_packet'
+                content: effectiveSettings.preset === 'print_shop_packet'
                     ? `Print-shop packet ${delivery}`
                     : `PDF ${delivery}`,
                 type: 'success',
@@ -599,7 +634,7 @@ export default function useMenuCardExportController({
             artifactInFlightRef.current = false;
             if (currentArtifactScopeRef.current === operationScope) setRendering(false);
         }
-    }, [historyStorageScope, notify, overrides, preview?.preflight.status, selectedProject, settings, source, storeName]);
+    }, [effectiveSettings, historyStorageScope, notify, overrides, preview?.preflight.status, selectedProject, source, storeName]);
 
     return {
         adviceError,
@@ -616,13 +651,15 @@ export default function useMenuCardExportController({
         isHistoryEnabled: FEATURE_FLAGS.ENABLE_MENU_CARD_EXPORT_HISTORY,
         loading,
         projects,
+        printableTheme,
+        printableThemeSource: printableThemeResolution.source,
         rendering,
         requestDesignAdvice,
         reusableExport,
         selectProject,
         selectedProject,
         selectedProjectId,
-        settings,
+        settings: effectiveSettings,
         source,
         sourceHash,
         storeName,

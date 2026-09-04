@@ -1,7 +1,7 @@
 # AI Image Generation - Website Content
 
 **Status:** Source-backed website draft; not current publication or launch certification
-**Last Updated:** July 14, 2026
+**Last Updated:** August 31, 2026
 
 ## Current Public Website Placement
 
@@ -55,3 +55,7 @@ Customer-facing menus should show images the owner has reviewed and accepted.
 ## Approved Language
 ### USE: "Prepare image drafts", "review before publishing", "approved images", "where plan and credits allow"
 ### NEVER USE: "AI-powered", "one click", "in seconds", "every item", "professional photos without a photographer", "no photoshoot needed", "replace photographers", "use anywhere", "guaranteed quality"
+
+## Saved-person public-copy hold
+
+Do not add reusable-subject claims to the public website until the target release has authenticated desktop consent/withdrawal/deletion, private-reference, multi-reference provider, mobile active-profile selection, and representative salon/spa/tattoo/fitness output evidence. When cleared, use bounded language such as **reuse an authorized adult subject across selected image drafts**. Never promise an exact likeness or present a generated service visual as completed customer work.

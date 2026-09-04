@@ -24,7 +24,8 @@ The verifier covers `src/app/client/obp/OBPResolvedSurface.tsx`, menu and feedba
 | Expiry exactly equal to now | Inactive. |
 | Malformed expiry/type/value | Hidden from public and browser projections. |
 | Custom message with controls/extra whitespace | Controls removed, whitespace collapsed, maximum 100 characters. |
-| Missing/empty message | Safe type default. |
+| Missing/empty message for a predefined type | Safe type default. |
+| Missing, whitespace-only, or invisible-only Custom message | Owner clients show persistent field-associated recovery and disable publication; the API rejects a bypass before the store transaction. |
 | Mounted banner reaches expiry | Hides without reload. |
 | `closed_today` in Asia/Kolkata | Store-local current day closure schema. |
 | `kitchen_closed` | Banner allowed; whole-business closure schema omitted. |
@@ -35,6 +36,12 @@ The verifier covers `src/app/client/obp/OBPResolvedSurface.tsx`, menu and feedba
 | Store/tenant deactivated, deleted, blocked, reassigned, or permission-revoked before commit | Transaction rejects before the status write and no post-commit effect runs. |
 
 Deterministic coverage lives in `scripts/verification/test-temporary-status-boundary.ts`. Public browser projection tests also assert that expired state is omitted.
+
+The August 30, 2026 release-candidate pass also exercised both mobile owner
+entry points at 390×844. Selecting Custom with an empty message immediately
+announced `Enter a custom message.` and disabled Set/Show; entering valid copy
+cleared the alert and restored the action. Both drafts were discarded without
+submitting a request or changing store/public truth.
 
 ## Security and Cost Evidence
 

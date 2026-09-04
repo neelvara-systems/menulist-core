@@ -282,7 +282,7 @@ function verifyMobileSurface(screen, mobileShell, mobileMore) {
     "key: 'opsControlRoom'",
     "label: 'Ops Control Room'",
     "description: 'SAFE_MODE, alerts, adoption pulse, integrity, and recovery controls.'",
-    "['platformHub', 'opsControlRoom', 'extractionMonitor', 'schedulerMonitor'].includes(screen)",
+    "['platformHub', 'answerlatticeHub', 'opsControlRoom', 'extractionMonitor', 'schedulerMonitor'].includes(screen)",
     "subScreen === 'opsControlRoom'",
     '<MobileOpsControlRoomScreen',
   ].forEach((token) => assertIncludes(mobileMore, token, 'Mobile More ops surface'));

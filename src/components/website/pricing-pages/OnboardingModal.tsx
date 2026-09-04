@@ -18,7 +18,7 @@ import { IMAGE_VIEW_TYPES } from '@template/main-app/projects/editorView/AiImage
 import { useSession } from 'next-auth/react';
 import { useTranslations } from 'next-intl';
 import React, { useEffect, useState } from 'react';
-import { LuArrowRight, LuBuilding2 } from 'react-icons/lu';
+import { LuArrowLeft, LuArrowRight, LuBuilding2 } from 'react-icons/lu';
 import { buildCurrentWebsiteSignInPath } from '@/lib/website/signInLinks';
 
 interface OnboardingModalProps {
@@ -39,11 +39,13 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({
     collectBusinessDetails = true,
 }) => {
     const t = useTranslations('Website');
+    const commonT = useTranslations('Common');
     const { toast } = useToast();
     const [businessName, setBusinessName] = useState('');
     const [businessIndustry, setBusinessIndustry] = useState('');
     const [timeZone, setTimeZone] = useState('');
     const [selfReportedDiscoveryChannel, setSelfReportedDiscoveryChannel] = useState<SelfReportedDiscoveryChannel | ''>('');
+    const [step, setStep] = useState<'business' | 'billing'>(collectBusinessDetails ? 'business' : 'billing');
     const [billingProfile, setBillingProfile] = useState<BillingProfile>({
         legalName: '', email: '', countryCode: currency === 'INR' ? 'IN' : 'US', addressLine1: '',
         city: '', region: '', indianStateCode: currency === 'INR' ? '' : undefined, postalCode: '',
@@ -67,6 +69,10 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({
         }));
     }, [currency, session?.user?.email]);
 
+    useEffect(() => {
+        if (isOpen) setStep(collectBusinessDetails ? 'business' : 'billing');
+    }, [collectBusinessDetails, isOpen]);
+
     const handleSubmit = () => {
         const normalizedName = businessName.trim();
         const normalizedIndustry = businessIndustry.trim();
@@ -76,6 +82,11 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({
         }
         if (collectBusinessDetails && !normalizedIndustry) {
             toast({ variant: 'destructive', title: t('Pricing.setupErrorTitle'), description: t('Pricing.businessIndustryRequired') });
+            return;
+        }
+
+        if (collectBusinessDetails && step === 'business') {
+            setStep('billing');
             return;
         }
 
@@ -120,15 +131,15 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({
                         <LuBuilding2 size={22} />
                     </div>
                     <DialogTitle className="text-2xl font-bold">
-                        {collectBusinessDetails ? t('Pricing.setupModalTitle') : t('Pricing.billingDetailsTitle')}
+                        {step === 'business' ? t('Pricing.setupModalTitle') : t('Pricing.billingDetailsTitle')}
                     </DialogTitle>
                     <DialogDescription>
-                        {collectBusinessDetails ? t('Pricing.setupModalBody') : t('Pricing.billingDetailsBody')}
+                        {step === 'business' ? t('Pricing.setupModalBody') : t('Pricing.billingDetailsBody')}
                     </DialogDescription>
                 </DialogHeader>
 
                 <div className="grid gap-5 py-4">
-                    {collectBusinessDetails ? <div className="grid w-full items-center gap-2">
+                    {step === 'business' ? <div className="grid w-full items-center gap-2">
                         <Label htmlFor="businessName">{t('Pricing.businessNameLabel')}</Label>
                         <Input
                             id="businessName"
@@ -139,7 +150,7 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({
                         />
                     </div> : null}
 
-                    {collectBusinessDetails ? <div className="grid w-full items-center gap-2">
+                    {step === 'business' ? <div className="grid w-full items-center gap-2">
                         <Label htmlFor="businessIndustry">{t('Pricing.businessIndustryLabel')}</Label>
                         <Select onValueChange={setBusinessIndustry} value={businessIndustry}>
                             <SelectTrigger id="businessIndustry" className="industry-dropdown w-full justify-between">
@@ -162,7 +173,7 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({
                         </Select>
                     </div> : null}
 
-                    {collectBusinessDetails && FEATURE_FLAGS.ENABLE_MENULIST_SELF_REPORTED_DISCOVERY && (
+                    {step === 'business' && FEATURE_FLAGS.ENABLE_MENULIST_SELF_REPORTED_DISCOVERY && (
                         <div className="grid w-full items-center gap-2">
                             <Label htmlFor="selfReportedDiscoveryChannel">{t('Pricing.discoverySourceLabel')}</Label>
                             <Select
@@ -187,12 +198,7 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({
                         </div>
                     )}
 
-                    {collectBusinessDetails ? <div className="border-t pt-5">
-                        <h3 className="text-base font-semibold">{t('Pricing.billingDetailsTitle')}</h3>
-                        <p className="mt-1 text-sm text-muted-foreground">{t('Pricing.billingDetailsBody')}</p>
-                    </div> : null}
-
-                    <div className="grid gap-5 sm:grid-cols-2">
+                    {step === 'billing' ? <div className="grid gap-5 sm:grid-cols-2">
                         <div className="grid gap-2 sm:col-span-2">
                             <Label htmlFor="billingLegalName">{t('Pricing.billingLegalNameLabel')}</Label>
                             <Input id="billingLegalName" autoComplete="organization" value={billingProfile.legalName} onChange={(event) => setBillingProfile((current) => ({ ...current, legalName: event.target.value }))} placeholder={businessName || t('Pricing.billingLegalNamePlaceholder')} />
@@ -246,14 +252,26 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({
                             <Label htmlFor="billingTaxId">{currency === 'INR' ? t('Pricing.billingGstinLabel') : t('Pricing.billingTaxIdLabel')}</Label>
                             <Input id="billingTaxId" value={billingProfile.taxId || ''} onChange={(event) => setBillingProfile((current) => ({ ...current, taxId: event.target.value || undefined, taxIdType: event.target.value ? (currency === 'INR' ? 'GSTIN' : 'OTHER') : undefined }))} />
                         </div>
+                    </div> : null}
+
+                    <p className="text-sm text-muted-foreground">
+                        {step === 'business' ? t('Pricing.setupModalNote') : t('Pricing.billingDetailsBody')}
+                    </p>
+
+                    <div className="flex flex-col-reverse gap-3 sm:flex-row">
+                        {collectBusinessDetails && step === 'billing' ? (
+                            <Button className="sm:w-auto" onClick={() => setStep('business')} size="lg" type="button" variant="outline">
+                                <LuArrowLeft className="mr-2 h-5 w-5" />
+                                {commonT('back')}
+                            </Button>
+                        ) : null}
+                        <Button onClick={handleSubmit} className="flex-1 text-base" size="lg">
+                            {step === 'business'
+                                ? t('Pricing.continue')
+                                : Boolean(session?.user) ? t('Pricing.continue') : t('Pricing.continueToSignIn')}
+                            <LuArrowRight className="ml-2 h-5 w-5" />
+                        </Button>
                     </div>
-
-                    <p className="text-sm text-muted-foreground">{t('Pricing.setupModalNote')}</p>
-
-                    <Button onClick={handleSubmit} className="w-full text-base" size="lg">
-                        {Boolean(session?.user) ? t('Pricing.continue') : t('Pricing.continueToSignIn')}
-                        <LuArrowRight className="ml-2 h-5 w-5" />
-                    </Button>
 
                     {!session?.user ? <p className="text-center text-sm text-muted-foreground">
                         {t('Pricing.haveAccount')}{' '}

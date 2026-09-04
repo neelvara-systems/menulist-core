@@ -283,6 +283,12 @@ assert(
   "Desktop settings must avoid unchanged or invalid writes",
 );
 assert(
+  desktopSettings.includes("hasChanges && modeNeedsWhatsApp(mode) && !whatsappConsent") &&
+    desktopSettings.includes("hasChanges && !selectionReady && !revokingConsent") &&
+    desktopSettings.includes("savedSelectionHasUnavailableChannel"),
+  "Desktop settings must reserve corrective warnings for drafts and explain unavailable channels in a saved selection calmly",
+);
+assert(
   desktopSettings.includes("const [messageApi, messageContextHolder] = message.useMessage();") &&
     desktopSettings.includes("{messageContextHolder}") &&
     desktopSettings.includes("messageApi.success('Notification settings saved')") &&
@@ -305,6 +311,12 @@ assert(
 assert(
   mobileSettings.includes("disabled={!hasChanges || !selectionReady}"),
   "Mobile settings must avoid unchanged or invalid writes",
+);
+assert(
+  mobileSettings.includes("hasChanges && modeNeedsWhatsApp(mode) && !whatsappConsent") &&
+    mobileSettings.includes("hasChanges && !selectionReady && !revokingConsent") &&
+    mobileSettings.includes("savedSelectionHasUnavailableChannel"),
+  "Mobile settings must reserve corrective warnings for drafts and explain unavailable channels in a saved selection calmly",
 );
 assert(
   mobileSettings.includes("Toast.show({ content: 'Could not save notification settings.'") &&

@@ -13,16 +13,7 @@ import {
 import type { CreativeEditorDocument, CreativeEditorElement } from "@/modules/creative-editor/types";
 import CreativeEditorSmokeClient from "./CreativeEditorSmokeClient";
 
-const smokeImage = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(`
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 180">
-        <rect width="240" height="180" rx="18" fill="#f4f3ff"/>
-        <path d="M42 124 C78 66 132 50 196 110 C162 162 88 162 42 124Z" fill="#4744a4"/>
-        <circle cx="86" cy="80" r="20" fill="#ef6680"/>
-        <rect x="112" y="64" width="62" height="82" rx="24" fill="#ffffff"/>
-        <path d="M110 78 C122 54 154 54 176 78" fill="none" stroke="#3c3a55" stroke-width="10" stroke-linecap="round"/>
-        <circle cx="188" cy="58" r="8" fill="#6563ff"/>
-    </svg>
-`)}`;
+const smokeImage = "/images/menu-card-export/botanical-corner-watercolor.png";
 
 export const dynamic = "force-dynamic";
 
@@ -144,7 +135,7 @@ function buildStressElements(): CreativeEditorElement[] {
 }
 
 function buildSmokeDocument(variant: "default" | "stress"): CreativeEditorDocument {
-    return createCreativeEditorDocument({
+    const documentValue = createCreativeEditorDocument({
         backgroundColor: variant === "stress" ? "#fff9df" : "#ffffff",
         elements: variant === "stress" ? buildStressElements() : buildBaseSmokeElements(),
         height: 427,
@@ -156,6 +147,15 @@ function buildSmokeDocument(variant: "default" | "stress"): CreativeEditorDocume
         title: variant === "stress" ? "Fabric stress asset" : "Fabric smoke asset",
         width: 620,
     });
+    return {
+        ...documentValue,
+        id: `creative-editor-smoke-${variant}`,
+        metadata: {
+            ...documentValue.metadata,
+            createdAt: "2026-01-01T00:00:00.000Z",
+            updatedAt: "2026-01-01T00:00:00.000Z",
+        },
+    };
 }
 
 export default async function CreativeEditorSmokePage(

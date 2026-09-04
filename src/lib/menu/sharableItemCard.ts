@@ -1,3 +1,10 @@
+import { PUBLIC_MENU_DRAFT_DATA_LIMITS } from '@data/shared/publicMenuDraftData';
+
+export type SharableItemCardOption = {
+    name: string;
+    priceLabel?: string;
+};
+
 export interface SharableItemCardInput {
     itemName: string;
     description?: string;
@@ -8,6 +15,7 @@ export interface SharableItemCardInput {
     imageUrl?: string;
     accentColor?: string;
     updatedLabel?: string;
+    options?: readonly SharableItemCardOption[];
 }
 
 const CARD_WIDTH = 1200;
@@ -42,7 +50,7 @@ function drawWrappedText(
             continue;
         }
 
-        ctx.fillText(line, x, y);
+        ctx.fillText(fitTextWithEllipsis(ctx, line, maxWidth), x, y);
         y += lineHeight;
         lines += 1;
         line = words[index];
@@ -57,7 +65,7 @@ function drawWrappedText(
     }
 
     if (line && lines < maxLines) {
-        ctx.fillText(line, x, y);
+        ctx.fillText(fitTextWithEllipsis(ctx, line, maxWidth), x, y);
         y += lineHeight;
     }
 
@@ -73,6 +81,15 @@ function roundedRect(ctx: CanvasRenderingContext2D, x: number, y: number, width:
     ctx.arcTo(x, y + height, x, y, r);
     ctx.arcTo(x, y, x + width, y, r);
     ctx.closePath();
+}
+
+function fitTextWithEllipsis(ctx: CanvasRenderingContext2D, value: string, maxWidth: number): string {
+    if (ctx.measureText(value).width <= maxWidth) return value;
+    let fitted = value;
+    while (fitted.length > 1 && ctx.measureText(`${fitted}…`).width > maxWidth) {
+        fitted = fitted.slice(0, -1).trimEnd();
+    }
+    return `${fitted}…`;
 }
 
 async function loadImage(url?: string): Promise<HTMLImageElement | null> {
@@ -98,6 +115,13 @@ export async function generateSharableItemCardBlob(input: SharableItemCardInput)
     if (!ctx) throw new Error('Canvas is not available.');
 
     const accent = input.accentColor || '#0f172a';
+    const options = (Array.isArray(input.options) ? input.options : [])
+        .map((option) => ({
+            name: String(option?.name || '').trim(),
+            priceLabel: String(option?.priceLabel || '').trim() || undefined,
+        }))
+        .filter((option) => option.name)
+        .slice(0, PUBLIC_MENU_DRAFT_DATA_LIMITS.MAX_ATTRIBUTES_PER_ITEM);
     ctx.fillStyle = '#f8fafc';
     ctx.fillRect(0, 0, CARD_WIDTH, CARD_HEIGHT);
 
@@ -145,17 +169,55 @@ export async function generateSharableItemCardBlob(input: SharableItemCardInput)
     drawWrappedText(ctx, input.categoryName || input.projectName || 'Menu item', textX, 164, textW, 30, 1);
 
     ctx.fillStyle = '#0f172a';
-    ctx.font = `${input.itemName.length > 42 ? '800 54px' : '860 64px'} system-ui, -apple-system, Segoe UI, sans-serif`;
-    let y = drawWrappedText(ctx, input.itemName || 'Menu item', textX, 238, textW, input.itemName.length > 42 ? 58 : 68, 2);
+    const itemNameFont = options.length > 0
+        ? (input.itemName.length > 42 ? '800 44px' : '860 54px')
+        : (input.itemName.length > 42 ? '800 54px' : '860 64px');
+    const itemNameLineHeight = options.length > 0
+        ? (input.itemName.length > 42 ? 48 : 54)
+        : (input.itemName.length > 42 ? 58 : 68);
+    ctx.font = `${itemNameFont} system-ui, -apple-system, Segoe UI, sans-serif`;
+    let y = drawWrappedText(ctx, input.itemName || 'Menu item', textX, options.length > 0 ? 226 : 238, textW, itemNameLineHeight, 2);
 
     if (input.price) {
         ctx.fillStyle = accent;
-        ctx.font = '850 44px system-ui, -apple-system, Segoe UI, sans-serif';
-        ctx.fillText(input.price, textX, y + 12);
-        y += 62;
+        ctx.font = `${options.length > 0 ? '850 38px' : '850 44px'} system-ui, -apple-system, Segoe UI, sans-serif`;
+        ctx.fillText(input.price, textX, y + (options.length > 0 ? 8 : 12));
+        y += options.length > 0 ? 50 : 62;
     }
 
-    if (input.description) {
+    if (options.length > 0) {
+        if (input.description) {
+            ctx.fillStyle = '#334155';
+            ctx.font = '500 21px system-ui, -apple-system, Segoe UI, sans-serif';
+            ctx.fillText(fitTextWithEllipsis(ctx, input.description.replace(/\s+/g, ' ').trim(), textW), textX, y + 4);
+            y += 34;
+        }
+        ctx.fillStyle = '#64748b';
+        ctx.font = '800 18px system-ui, -apple-system, Segoe UI, sans-serif';
+        ctx.fillText('OPTIONS', textX, y + 4);
+
+        const visibleOptions = options.slice(0, input.description ? 2 : 3);
+        let optionY = y + 30;
+        visibleOptions.forEach((option) => {
+            ctx.fillStyle = '#334155';
+            ctx.font = '650 21px system-ui, -apple-system, Segoe UI, sans-serif';
+            ctx.textAlign = 'left';
+            ctx.fillText(fitTextWithEllipsis(ctx, option.name, textW - 150), textX, optionY);
+            if (option.priceLabel) {
+                ctx.fillStyle = accent;
+                ctx.font = '750 21px system-ui, -apple-system, Segoe UI, sans-serif';
+                ctx.textAlign = 'right';
+                ctx.fillText(option.priceLabel, textX + textW, optionY);
+            }
+            optionY += 24;
+        });
+        ctx.textAlign = 'left';
+        if (options.length > visibleOptions.length) {
+            ctx.fillStyle = '#64748b';
+            ctx.font = '650 19px system-ui, -apple-system, Segoe UI, sans-serif';
+            ctx.fillText(`${options.length - visibleOptions.length} more options`, textX, optionY);
+        }
+    } else if (input.description) {
         ctx.fillStyle = '#334155';
         ctx.font = '400 26px system-ui, -apple-system, Segoe UI, sans-serif';
         drawWrappedText(ctx, input.description, textX, y + 12, textW, 35, 3);

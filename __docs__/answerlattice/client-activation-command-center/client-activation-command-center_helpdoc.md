@@ -2,7 +2,7 @@
 
 Open **Get Live**, then select **Activation**.
 
-The navigation starts with the tools most owners need. Select **All tools** inside a group only when a checklist or support decision sends you to a deeper workflow. This does not unlock a different plan; it reveals tools your current role can already use. Select **Show fewer tools** to return to the compact list.
+The navigation starts with grouped owner journeys: Get Live, Improve answers, Run Support, Customer help, and Workspace. Select **All tools** in the **Advanced** section only when a checklist or support decision sends you to a deeper workflow. This does not unlock a different plan; it reveals tools your current role can already use. Select **Show fewer tools** to return to the compact list.
 
 The page first shows the complete support loop: add product knowledge, approve important answers, test as a customer, install support, and return only when something needs attention. This is the compact system snapshot for normal onboarding. Open technical details only when a checklist item requires diagnosis.
 

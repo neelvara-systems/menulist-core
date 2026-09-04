@@ -205,6 +205,11 @@ function verifyBillingEntitlementBoundary() {
   const billingRecordProductIdentityTest = read('scripts/verification/test-billing-record-product-identity.ts');
   const billingHistoryFormatter = read('src/lib/billing/billingHistoryFormatter.ts');
   const websiteSubscriptionManagement = read('src/components/website/pricing-pages/SubscriptionManagement.tsx');
+  [desktopSubscriptionCard, mobileBilling, websiteSubscriptionManagement].forEach((surface, index) => {
+    assertIncludes(surface, "purpose === 'menulist_persistent_phone_owner'", `persistent MenuList QA owner billing surface ${index + 1}`);
+    assertIncludes(surface, 'persistent QA owner access', `persistent MenuList QA owner label ${index + 1}`);
+    assertIncludes(surface, 'No payment was processed', `persistent MenuList QA owner payment truth ${index + 1}`);
+  });
   const razorpaySandboxReadiness = read('scripts/verification/verify-razorpay-sandbox-readiness.mjs');
   const razorpayReadmeDoc = read('__docs__/razorpay/README.md');
   const razorpayImplDoc = read('__docs__/razorpay/razorpay_impl.md');
@@ -463,6 +468,17 @@ function verifyBillingEntitlementBoundary() {
     "aria-label={t('getMoreAiEnhancements')}",
     "aria-label={t('billingHistory')}",
   ].forEach((token) => assertIncludes(mobileBilling, token, 'Mobile billing popup accessible-name contract'));
+  [
+    "aria-pressed={billingInterval === 'MONTH'}",
+    "aria-pressed={billingInterval === 'YEAR'}",
+    "aria-pressed={cancellationReason === option.code}",
+    "const planDisplayName = plan.name.replace(/ \\((Yearly|Monthly)\\)$/, '');",
+    '{`${planDisplayName} Plan`}',
+    'onCancel: resetCancellationDraft',
+    'onMaskClick={dismissCancellationReasons}',
+    'onBack={dismissCancellationReasons}',
+  ].forEach((token) => assertIncludes(mobileBilling, token, 'Mobile billing owner-facing selection and cancellation recovery contract'));
+  assertNotIncludes(mobileBilling, '{`${plan.planId} Plan`}', 'Mobile billing plan chooser must not expose internal plan identifiers');
   assertNotIncludes(desktopBilling, 'getBillingHistoryForStore(Number(session?.user?.tenantId)', 'Desktop billing history must not coerce nullable session scope');
   assertNotIncludes(mobileBilling, 'getBillingHistoryForStore(Number(session?.user?.tenantId)', 'Mobile billing history must not coerce nullable session scope');
   [
@@ -495,11 +511,12 @@ function verifyBillingEntitlementBoundary() {
   assertNotIncludes(mobileBilling, '<Button fill="outline" onClick={fetchHistory}', 'Mobile billing must not duplicate the canonical Billing History action inside the subscription card');
   [
     'aria-label={t(\'needBillingHelp\')}',
-    "router.push('/help-center/contact-us')",
+    'onClick={onOpenHelp}',
     'Open MenuList support options in Help Center.',
     'type="button"',
     "width: '100%'",
   ].forEach((token) => assertIncludes(mobileBilling, token, 'Mobile billing help keyboard-navigation contract'));
+  assertNotIncludes(mobileBilling, "router.push('/help-center/contact-us')", 'Mobile billing help must stay inside the MobileShell');
   [
     "where('pId', '==', PRODUCT_IDS.ANSWERLATTICE)",
     "where('productId', '==', PRODUCT_IDS.ANSWERLATTICE)",
@@ -2039,7 +2056,8 @@ function verifyBillingEntitlementBoundary() {
   [
     'const { onUpgradePlan, handleTopupPurchase } = usePaymentHandler(dispatch);',
     'await onUpgradePlan(activeSubscription, newPlan, currency)',
-    "router.push('/pricing');",
+    "new URL('/pricing', getPlatformWebsiteBaseUrl()).toString();",
+    'window.location.assign(pricingUrl);',
     'await handleTopupPurchase(pack',
     "activeSubscription?.status === 'active' && canManageSelectedSubscription && !isManualBilling && !isInheritedBilling",
   ].forEach((token) => assertIncludes(desktopBilling, token, 'desktop billing payment hook parity'));
@@ -2111,13 +2129,16 @@ function verifyBillingEntitlementBoundary() {
     'onContinuePendingSubscriptionCheckout,',
     '} = usePaymentHandler(noopDispatcher);',
     'await onUpgradePlan(sub, plan, currency)',
-    "router.push('/pricing');",
+    "new URL('/pricing', getPlatformWebsiteBaseUrl()).toString();",
+    'window.location.assign(pricingUrl);',
     'await handleTopupPurchase(pack, currency)',
     'await onCancelSubscription({',
     'reason: cancellationReason',
     'otherReason: cancellationReason === CANCELLATION_REASON.OTHER',
     "sub.status === 'active' && canManageSelectedSubscription && !isManualBilling && !isInheritedBilling",
   ].forEach((token) => assertIncludes(mobileBilling, token, 'mobile billing payment hook parity'));
+  assertNotIncludes(desktopBilling, "router.push('/pricing')", 'desktop owner pricing must leave the app host through the canonical public origin');
+  assertNotIncludes(mobileBilling, "router.push('/pricing')", 'mobile owner pricing must leave the app host through the canonical public origin');
   [
     "sub?.status === 'active'",
     '!hasVerifiedSubscriptionPaymentEvidence(sub)',

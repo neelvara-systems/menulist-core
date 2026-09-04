@@ -54,5 +54,8 @@
 | GL-48 | Corrupt generated dashboard copy | Repeated CJK alternatives, leaked `%s`, invented numbers, unrelated extra sentences, and configured mixed-script output fail or enter reviewed repair. |
 | GL-49 | Business Health assistant in a non-English locale | Localized checks remain available, but English-only free-text/suggested question submission is unavailable with an explicit language boundary. |
 | GL-50 | Public-truth report export | The localized UI labels the downloaded text report as English; it does not imply localized report content. |
+| GL-51 | Date/time preview renders two patterns identically in the active locale | Every time-format choice retains a unique leading-zero description so desktop and mobile owners can distinguish all four stored patterns. |
+| GL-52 | Mobile business-locale form reaches its final Currency control | Scroll clearance keeps Currency fully targetable above the sticky Reset/Save row and fixed bottom navigation. |
+| GL-53 | Date-format selector loads its default and renders locale-equivalent patterns | The allowlist includes `numeric|short|numeric`, and every option carries a unique padding/month/year description so desktop and mobile never leak an internal token or present duplicate choices. |
 
 Automated coverage: `scripts/verification/test-global-localization-boundary.ts`, `scripts/verification/verify-global-localization-boundary.js`, `scripts/verification/verify-owner-dashboard-locales.js`, and `scripts/verification/verify-public-customer-localization.js`.

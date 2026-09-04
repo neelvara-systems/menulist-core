@@ -72,6 +72,7 @@ Not applicable — this is a CUSTOMER-facing feature, not an owner-operational f
 - Public item URLs must preserve the selected language query and update client head metadata while the PDP is open so mobile browser share sheets render the matching item URL, title, and description.
 - Public item PDPs must expose a quiet share action for installed PWAs, using native device sharing when available and copy-link fallback when unavailable. The shared URL must be the item URL with the current `?lang=` value.
 - Active public menu temporary status belongs in the bottom trust zone as a centered pill, not above the business identity header where it can compete with sticky controls. Expired status data must render nothing and reserve no space.
+- Item decision marks remain inline after item names. When the currently available menu uses any admitted dietary, spice, or audience marks, one compact wrapping guide appears before the bottom trust footer and labels only the distinct marks actually used. Search and filters never make the guide jump; menus without marks render no guide or reserved gap.
 
 ## Owner Mobile Interaction
 

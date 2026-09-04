@@ -1,5 +1,14 @@
 # Shared Creative Editor - Validation Record
 
+## September 1, 2026 - Fabric 7 multi-selection runtime-type recovery
+
+- Reproduced command/control-A creating a real Fabric multi-selection while Group and Distribute remained disabled.
+- Confirmed the installed Fabric 7.4.0 runtime exposes `ActiveSelection.type` as lowercase `activeselection`; the editor had retained camel-case `activeSelection` comparisons from the older runtime contract.
+- Centralized the pinned runtime type and corrected selection, grouping, distribution, copy/paste, inspector, and keyboard-command branches that depended on it.
+- Expanded the development browser harness to select 20 unlocked layers, distribute both axes, duplicate and clean up the selection, group, open Position, ungroup, and verify adjacent toolbar, shortcut, preview, layer, inspector, readiness, and Escape flows.
+- Added a fail-closed installed-runtime assertion to the Fabric 7 boundary test. `npm run verify:creative-editor-smoke` and `/creative-editor-smoke?qa=1` pass on the corrected bytes.
+- This is browser-local editor behavior and regression coverage only. It adds no Firebase read/write, Storage operation, Function call, provider call, product persistence, deployment, or public-output mutation.
+
 ## August 29, 2026 - MenuList governed embedded mode
 
 - Added product adapter controls for rail/workspace allowlists, initial drawer and selection state, embedded recovery-draft opt-in, and readiness-gated product header actions.

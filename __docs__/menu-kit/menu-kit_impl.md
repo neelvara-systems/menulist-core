@@ -9,7 +9,7 @@
 
 ## Architecture Overview
 
-Menu Kit is **100% client-side**. No server endpoints. No Firebase writes. No storage uploads.
+Menu Kit generation is **100% client-side**. No server endpoints, generation writes, or storage uploads are introduced. Explicit style-default changes are owned by Printable Asset Templates and update one nested store leaf; downloading the kit remains write-free.
 
 ```
 Owner clicks "Download Menu Kit"
@@ -41,6 +41,7 @@ src/lib/menu-kit/
 ├── brandTokens.ts                  # Shared premium logo/color/QR readability tokens
 ├── imageLoader.ts                  # Logo preloader used once per generation request
 ├── menuKitGenerator.ts            # Asset definitions, single-asset generation, and ZIP bundle
+├── themeSurface.ts                 # Singular parent-theme palette/artwork adapter for every bundle surface
 ├── businessTypeLabels.ts          # BusinessType-aware labels (menu/services/catalog)
 ├── templates/
 │   ├── tableTentTemplate.ts       # Compatibility wrapper for Print Menu Surfaces table tent
@@ -109,6 +110,8 @@ export interface MenuKitInput {
   businessCategory?: string;
   activePlanType?: string | null; // Multi-location hides visible MenuList attribution
   locale?: string;
+  templateFamilyId?: string; // Singular parent theme for every generated visual asset
+  templateFamilyIds?: Partial<Record<MenuKitAssetKey, string>>; // Legacy compatibility input; collapsed to one theme
 }
 
 export interface MenuKitAsset {
@@ -195,12 +198,21 @@ export async function generateMenuKit(input: MenuKitInput): Promise<MenuKitResul
     assets,
     staffScript: labels.staffScript,
     zipBlob,
-    zipFilename: buildMenuKitZipFilename(input.storeName, input.templateFamilyId),
+    zipFilename: buildMenuKitZipFilename(
+      input.storeName,
+      resolveMenuKitZipTemplateFamilyId(input),
+    ),
   };
 }
 ```
 
 Use `generateMenuKitAsset()` for single file actions. Use `generateMenuKit()` only for the complete ZIP. This prevents a table card, social image, or counter sticker action from rendering every Menu Kit file first.
+
+`resolveMenuKitAssetTemplateFamilyId()` resolves one canonical parent theme from the singular field or, for backward compatibility, the first admitted legacy-map value. Desktop Use MenuList, project Share, mobile Share, and Printable Assets pass the singular theme from the shared resolver. Complete Menu Kit does not expose its own family selector; every generated visual surface receives the same value.
+
+`themeSurface.ts` resolves that family into the governed palette and artwork once per renderer. Page artwork uses clipped, aspect-preserving cover placement; corner and rail artwork retain their governed contained placement. The six formerly fixed-layout generators—Delivery Bag, Takeaway Card, Instagram Story, WhatsApp Status, Google Maps, and Placement Guide—now use this adapter, joining the four already theme-aware print surfaces. Every one of the 10 visual files therefore consumes the same parent-theme contract.
+
+`resolveMenuKitZipTemplateFamilyId()` returns that same canonical theme, so prepared bundles use `{Store}_MenuKit_{theme}.zip` and truthfully identify the unified asset system.
 
 Menu Kit ZIP filename boundary: `generateMenuKit()` returns `result.zipFilename` for the complete ZIP, built through the shared Menu Kit filename helpers. Desktop Use MenuList, mobile Share, project Share Modal, and printable-template complete ZIP paths must pass `result.zipFilename` to `downloadBlob()` instead of using hand-rolled store-name filename derivation.
 
@@ -351,8 +363,9 @@ npm install jszip
 ```
 
 **Package:** `jszip` — ~100KB gzipped. Widely used, well-maintained.
-**Purpose:** Bundle 9 files into single ZIP download.
-**Alternative considered:** Individual file downloads. Rejected because 6 separate downloads is bad UX.
+**Purpose:** Bundle the fixed 10-file deployment pack plus `PRINT_INSTRUCTIONS.txt` into one ZIP download.
+**Boundary:** This is not every registered printable asset. Staff, item, feedback, campaign, full-menu, and other owner-purpose assets remain in their context-owning workflows so the bundle never invents required data.
+**Alternative considered:** Individual file downloads only. Rejected because repeated downloads are poor UX for the deployment pack; contextual assets still remain individually available from their owning workflows.
 
 ---
 
@@ -382,6 +395,8 @@ npm install jszip
 7. Verify Instagram Story dimensions (1080×1920)
 8. Verify Google Maps image dimensions (1200×900)
 9. Verify staff script text is shown and copyable
+
+Automated parent-theme output coverage: `npm run test:menu-kit-parent-theme-output` generates two visually distinct parent-theme packs, opens each ZIP, asserts the exact 11-entry inventory, validates every raster asset, confirms every corresponding file changes with the selected parent theme, and writes contact sheets to a temporary QA directory for visual inspection.
 
 ### Edge Cases
 

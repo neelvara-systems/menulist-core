@@ -4,11 +4,12 @@ import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@prov
 import { GenerateImageViaApiPayloadGenerationConfiType } from '@template/main-app/projects/types';
 import { Button, Card, Checkbox, ColorPicker, Flex, Input, Skeleton, Switch, Tag, theme, Tooltip, Typography } from 'antd';
 import React, { Fragment, useContext, useState } from 'react';
-import { LuBadgeInfo, LuPen, LuSparkles } from 'react-icons/lu';
+import { LuBadgeInfo, LuPen, LuShieldCheck, LuSparkles } from 'react-icons/lu';
 import AspectRatioSelector from '../AspectRatioSelector';
 import { getImageViewTypeForBusiness } from '../imageViewType';
 import MultiSelectAttributeSelector from '../MultiSelectAttributeSelector';
 import StyleSelector from '../StyleSelector';
+import SubjectProfileSection from '../SubjectProfileSection';
 
 interface BatchImageGenerationViewProps {
     generationConfig: GenerateImageViaApiPayloadGenerationConfiType;
@@ -19,7 +20,7 @@ const BatchImageGenerationView: React.FC<BatchImageGenerationViewProps> = ({ gen
 
     const { token } = theme.useToken();
     const { isMobile } = useDeviceType();
-    const { storeDetails } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext)
+    const { storeDetails, userPermissions } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext)
     const selectedBusinessData = getImageViewTypeForBusiness(storeDetails?.businessType, storeDetails?.businessCategory);
     const [showStyleSelector, setShowStyleSelector] = useState(false)
     const [useRecommendedDefaults, setUseRecommendedDefaults] = useState(true)
@@ -74,6 +75,18 @@ const BatchImageGenerationView: React.FC<BatchImageGenerationViewProps> = ({ gen
                         <Typography.Text type="secondary" italic style={{ fontSize: '0.8em', marginTop: '4px' }}>
                             Selected items&apos; name, category, and description (if available) will be used to generate the image.
                         </Typography.Text>
+
+                        <SubjectProfileSection
+                                businessType={storeDetails?.businessType}
+                                canManage={userPermissions?.canManageStore === true}
+                                subjectProfileId={generationConfig.subjectProfileId}
+                                subjectProfileVersion={generationConfig.subjectProfileVersion}
+                                onChange={(subjectProfileId, subjectProfileVersion) => setGenerationConfig((current) => ({
+                                    ...current,
+                                    subjectProfileId,
+                                    subjectProfileVersion,
+                                }))}
+                        />
 
                         <Card
                             size="small"
@@ -260,7 +273,6 @@ const BatchImageGenerationView: React.FC<BatchImageGenerationViewProps> = ({ gen
                             </>
                         )}
 
-                        {/* Content Policy Agreement */}
                         <Flex
                             vertical
                             gap={8}
@@ -269,25 +281,20 @@ const BatchImageGenerationView: React.FC<BatchImageGenerationViewProps> = ({ gen
                                 padding: 16,
                                 backgroundColor: token.colorBgContainerDisabled,
                                 borderRadius: token.borderRadiusLG,
-                                border: `1px solid ${generationConfig.agreeToTerms ? token.colorPrimary : token.colorBorder}`
+                                border: `1px solid ${token.colorBorder}`
                             }}
                         >
-                            <Checkbox
-                                checked={generationConfig.agreeToTerms || false}
-                                onChange={(e) => setGenerationConfig({ ...generationConfig, agreeToTerms: e.target.checked })}
-                                style={{ alignItems: 'flex-start' }}
-                            >
+                            <Flex gap={8} align="flex-start">
+                                <LuShieldCheck aria-hidden style={{ color: token.colorPrimary, flex: '0 0 auto', marginTop: 2 }} />
                                 <Flex vertical gap={4}>
                                     <Typography.Text strong style={{ fontSize: 14 }}>
-                                        Content Policy Agreement
+                                        Keep every draft suitable for your business
                                     </Typography.Text>
                                     <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                                        I agree to not generate inappropriate content including but not limited to:
-                                        violence, hate speech, NSFW content, or copyrighted material.
-                                        I understand that violations may result in account suspension.
+                                        Use only content and reference photos you have permission to use. MenuList and the image provider still apply safety checks to every request.
                                     </Typography.Text>
                                 </Flex>
-                            </Checkbox>
+                            </Flex>
                         </Flex>
                     </Flex>
                 </>}

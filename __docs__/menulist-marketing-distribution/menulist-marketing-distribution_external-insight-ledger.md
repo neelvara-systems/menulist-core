@@ -1016,6 +1016,83 @@ Apply the internal-category versus owner-promise distinction across current lang
 - August 27, 2026 - Updated language governance, video production authority and handoffs, internal project memory, marketing doctrine, owner-facing link copy, staff-share copy, and the active HyperFrames truth-loop source.
 - August 27, 2026 - Extended the website public-copy verifier to block the internal category phrase on public website surfaces and preserve the latest-published-version wording in owner-facing link surfaces.
 
+### ML-MKT-EXT-013 - Qualified Launch-Day Attention Overlap
+
+- **Status:** `APPLY_NOW` for bounded qualified-audience overlap; `ALREADY_COVERED` for the claim, product-proof, channel-role, response, and activation disciplines; `DEFERRED_REFERENCE` for creator-wave execution; `RESEARCH_REQUIRED` for the source's performance and causality assertions.
+- **Shared:** September 3, 2026
+- **Source:** Founder-supplied full text attributed to Juan (`@0xfJuan`), titled `Why Some Startups Become "Everywhere" Overnight`; no stable URL, campaign roster, analytics export, attribution method, or independent verification was supplied.
+- **Source type:** X article/post
+- **Topics:** launch, attention-overlap, launch-waves, portable-claim, product-proof, creator-distribution, trusted-voices, response-plan, activation, disclosure, manufactured-consensus
+- **Use when:** Finalizing a MenuList public launch day, Product Hunt proof event, partner-supported announcement, or post-launch response and conversion plan.
+- **Revalidate:** Current launch readiness, approved product proof, creator or partner audience fit, relationship disclosure, platform rules, founder response capacity, intake capacity, first-party assisted-path evidence, and the source's claimed campaign results before citing any number or causal conclusion.
+
+**Source idea**
+
+The article argues that a launch feels larger when the same simple claim and
+visible product moment reach a relevant audience several times through
+different trusted voices within a compressed window. It proposes distinct
+roles for the founder, large creators, niche experts, customers, smaller
+accounts, teams, and communities, followed by response, reaction, and milestone
+content intended to convert coordinated attention into organic continuation.
+
+**MenuList verdict**
+
+The portable-claim, immediate-proof, channel-role, launch-week sequencing,
+launch-day response, and activation parts are already covered. MenuList already
+has:
+
+- one owner-facing promise around turning the current list into one
+  owner-approved customer link;
+- a five-second proof requirement and a current list -> private preview ->
+  owner approval -> published link product moment;
+- founder, Product Hunt, X, LinkedIn, Instagram/Reels, partner, response, and
+  follow-up roles;
+- a launch-week calendar and launch-day response plan; and
+- qualified outcomes based on uploads, previews, approvals, publications,
+  two-surface activation, partner conversations, and useful objections rather
+  than impressions alone.
+
+Add one reusable refinement: launch planning should optimize for qualified
+audience overlap in bounded waves, not maximum one-time reach. Each participant
+may interpret the same truthful claim and proof in their own voice. Identical
+copy, undisclosed paid or material relationships, artificial comments,
+engagement groups, duplicate-account repetition, and manufactured independent
+consensus remain rejected.
+
+Do not adopt the article's implied creator volume or timing as a MenuList
+default. A broad creator wave remains deferred until the product is currently
+launch-certified, the proof asset is approved, audience fit and disclosure are
+clear, and founder intake, response, support, and activation capacity can
+absorb the attention. The author's `6 million impressions` and `tens of
+thousands of reposts` remain self-reported source assertions and do not prove
+causality, qualified demand, activation, retention, or repeatability.
+
+**Current decision**
+
+Improve the portfolio Bible with the bounded qualified-overlap rule and add the
+X-specific qualified-attention wave to the maintained launch-week calendar.
+Keep the existing MenuList launch claim, product moment, response plan, channel
+boundaries, and activation metrics. Do not create a creator CRM, marketplace,
+automated posting or reply system, synchronized copy pack, outreach run, spend,
+account action, launch schedule, or public campaign from this source.
+
+**Related MenuList truth**
+
+- [Marketing and Distribution Bible](../distribution-operating-system/distribution-operating-system_bible.md)
+- [MenuList marketing and distribution operating home](./README.md)
+- [Launch distribution review](./menulist-marketing-distribution_launch-distribution-review.md)
+- [Launch week content calendar](./menulist-marketing-distribution_launch-week-content-calendar.md)
+- [Launch-day response plan](./menulist-marketing-distribution_launch-day-response-plan.md)
+- [Distribution workflow research](./menulist-marketing-distribution_distribution-workflow-research-2026-07-11.md)
+- [Launch video scripts](./menulist-marketing-distribution_launch-video-scripts.md)
+- [PresenceOS](../founder-public-presence/README.md)
+
+**Outcome history**
+
+- September 3, 2026 - Compared the founder-supplied article with the current DistributionOS Bible, MenuList launch calendar, response plan, creator workflow, video proof rules, PresenceOS boundaries, SignalDesk ownership, and production-readiness gates.
+- September 3, 2026 - Added only the reusable qualified-overlap launch rule; retained current proof, disclosure, capacity, activation, and external-execution gates without authorizing a campaign.
+- September 3, 2026 - On founder clarification that the pattern is specifically important for X, added a gated X launch-wave overlay with distinct voice roles, independent wording, disclosure, response capacity, qualified actions, and current X authenticity boundaries. No post, creator contact, schedule, account action, or campaign execution was authorized.
+
 ## Maintenance
 
 - Add entries sequentially as `ML-MKT-EXT-001`, `ML-MKT-EXT-002`, and so on.

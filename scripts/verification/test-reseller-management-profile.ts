@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import {
+    getResellerManagementDraftValidationError,
     isResellerManagementDraftChanged,
     isResellerManagementProfilesResponse,
     projectResellerManagementProfile,
@@ -53,6 +54,52 @@ assert.equal(isResellerManagementDraftChanged({
     ...projected,
     active: false,
 }, projected), true, "lifecycle changes remain writable");
+const validCreateDraft = {
+    active: true,
+    addressLine: "1 Market Road",
+    city: "Bengaluru",
+    country: "India",
+    email: "new.reseller@neelvara.com",
+    maxOfflineActivations: "20",
+    name: "New Reseller",
+    notes: "Local fixture",
+    password: "LocalOnly!234",
+    phone: "919876543210",
+    postalCode: "560001",
+    state: "Karnataka",
+    username: "new_reseller",
+};
+assert.equal(
+    getResellerManagementDraftValidationError(validCreateDraft, { isEditing: false }),
+    null,
+    "a valid reseller create draft must pass the shared mobile validation boundary",
+);
+assert.equal(
+    getResellerManagementDraftValidationError({ ...validCreateDraft, email: "invalid-email" }, { isEditing: false }),
+    "Enter a valid reseller email.",
+);
+assert.equal(
+    getResellerManagementDraftValidationError({ ...validCreateDraft, username: "Invalid User" }, { isEditing: false }),
+    "Username must use 3 to 50 lowercase letters, numbers, dots, underscores, or hyphens.",
+);
+assert.equal(
+    getResellerManagementDraftValidationError({ ...validCreateDraft, maxOfflineActivations: "0" }, { isEditing: false }),
+    "Maximum offline activations must be between 1 and 100.",
+);
+assert.equal(
+    getResellerManagementDraftValidationError({ ...validCreateDraft, password: "" }, { isEditing: false }),
+    "Password must be between 6 and 100 characters.",
+);
+assert.equal(
+    getResellerManagementDraftValidationError({ ...validCreateDraft, password: "" }, { isEditing: true }),
+    null,
+    "an unchanged password remains optional during reseller profile edits",
+);
+assert.equal(
+    getResellerManagementDraftValidationError({ ...validCreateDraft, password: "short" }, { isEditing: true }),
+    "New password must be between 6 and 100 characters.",
+    "a non-empty replacement password must satisfy the same lower bound",
+);
 assert.equal(projectResellerManagementProfile({ ...persisted, totalTransactions: -1 }), null);
 assert.equal(projectResellerManagementProfile({ ...persisted, totalRevenueCollectedPaise: 1.5 }), null);
 assert.equal(projectResellerManagementProfile({ ...persisted, maxOfflineActivations: "20" }), null);

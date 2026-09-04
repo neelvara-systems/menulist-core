@@ -2,10 +2,14 @@
 
 **Feature:** Menu Image Generation & Editing
 **Status:** Source-gate hardened; target app/Functions deployment, provider smoke, and authenticated owner QA remain pending
-**Last Updated:** August 25, 2026
+**Last Updated:** August 31, 2026
 **Audience:** Developers, Future Maintainers
 
 ---
+
+August 31 UX/reliability closeout: single and batch generation now share a business-aware Saved Person section, the canonical normalized image-view resolver, explicit completion-only credit copy, neutral safety guidance, and semantic generated-photo selection. The former delayed Quick Generate path was replaced with **Use defaults**, preventing generation from reading a stale React configuration. `generateImageViaApi()` now preserves bounded typed HTTP/provider/network errors instead of returning an empty array for failures. Active model fallback accounting is USD 0.067 for a completed 1K `gemini-3.1-flash-image` output; Cloud Tasks still invokes standard per-item generation rather than the provider's native Batch API.
+
+Saved Person lifecycle now supports a metadata-only rename and a complete reference-set replacement. Rename is a version-checked transaction and does not increment the image-reference version. Replacement prepares a new `v{n+1}` set, rechecks active status and expected version transactionally, records renewed consent, swaps the reference metadata atomically, and cleans the prior exact objects after commit. Failed or conflicting replacement attempts clean only their newly staged paths. The existing lazy `PlatformGlobalDataContext` summary cache is updated from mutation responses; no Store-document field, eager global fetch, second listener, or additional collection is introduced.
 
 August 25 worker-admission follow-up: `/api/image-generation/batch-generation`
 now validates the Cloud Tasks project header and timing-safe shared secret
@@ -82,7 +86,7 @@ The July 14 runtime notes, architecture sections, and code evidence are authorit
 │  │  POST /api/image-generation                                         │    │
 │  │       │                                                              │    │
 │  │       ▼                                                              │    │
-│  │  Gemini 2.5 Flash Image                                             │    │
+│  │  Gemini 3.1 Flash Image                                             │    │
 │  │       │                                                              │    │
 │  │       ▼                                                              │    │
 │  │  Base64 Image → Preview → Select → Upload to Storage                │    │
@@ -123,7 +127,7 @@ The July 14 runtime notes, architecture sections, and code evidence are authorit
 │  │  POST /api/image-editing                                            │    │
 │  │       │                                                              │    │
 │  │       ▼                                                              │    │
-│  │  Gemini 2.5 Flash Image (with reference image)                      │    │
+│  │  Gemini 3.1 Flash Image (with reference image)                      │    │
 │  │       │                                                              │    │
 │  │       ▼                                                              │    │
 │  │  Preview → Select → Upload                                          │    │
@@ -137,7 +141,7 @@ The July 14 runtime notes, architecture sections, and code evidence are authorit
 
 | Model                                       | Use Case                    | Notes                       |
 | ------------------------------------------- | --------------------------- | --------------------------- |
-| `gemini-2.5-flash-image`                    | Primary generation, editing | Supports text prompts and reference images |
+| `gemini-3.1-flash-image`                    | Primary generation, editing | Supports text prompts and multiple identity/reference images |
 
 ### Reference Image Fetch Guard
 
@@ -823,7 +827,7 @@ const enhancedPrompt = `
 | **Context Caching**     | Not used               | Use Gemini explicit context caching for repeated prompts | 20-40%          |
 | **Batch Inference**     | Cloud Tasks, maximum 50 items | Keep current architecture unless measured target-provider evidence justifies a migration | Unverified |
 | **Image Deduplication** | None                   | Hash prompts, cache results for identical requests       | Variable        |
-| **Model Selection**     | Always Gemini image model | Keep `gemini-2.5-flash-image` as default until `gemini-3.1-flash-image` passes output and billing regression checks | Risk control |
+| **Model Selection**     | Always shared Gemini image model | Use the source-pinned `gemini-3.1-flash-image`; later changes require output, safety, latency, and billing regression evidence | Risk control |
 
 #### Vertex AI Batch Prediction (Alternative to Cloud Tasks)
 
@@ -1545,5 +1549,20 @@ July 5 follow-up: Batch image result stored-error display boundary. Failed batch
 **Net result**: Product documentation is stronger. Technical debt is inventoried. Strategic gaps are surfaced.
 
 ---
+
+## Reusable subject profile implementation contract — August 31, 2026
+
+- `imageSubjectProfiles/{tId}/{sId}/{profileId}` is a server-only profile document. Browser Firestore access remains denied by the existing default-deny rules.
+- Private reference objects use `system/imageSubjectProfiles/{tId}/{sId}/{profileId}/v{version}/{referenceId}.webp` without Firebase download tokens.
+- `src/app/api/image-subject-profiles/route.ts` owns authenticated list/create/update/withdraw/delete and protected reference preview reads through `withAuth()`, `GENERATE_IMAGES`, bounded bodies, Zod schemas, fail-closed rate limits, and exact session scope.
+- Project `aiPreferences.image` stores only `subjectProfileId` and `subjectProfileVersion`. The existing visual defaults and one-off `referanceImage` contract remain backward compatible.
+- `/api/image-generation` and the authenticated batch worker resolve a selected profile server-side, require active consent and exact version, checksum every downloaded private object, and pass two to four reference parts to the existing Gemini image call.
+- The batch trigger preflights the selected profile before Cloud Tasks are enqueued. Reference-backed work remains ineligible for the shared prompt-image cache.
+- Provider and accounting diagnostics record only profile presence/version/reference count, never profile labels, source paths, image bytes, reference URLs, or consent text.
+- Source-photo sets are immutable in this release. To change the person or reference set, create a new profile; every generation and batch job remains pinned to the selected profile ID and exact version.
+- Profile creation does a fast cap check and repeats the eight-profile check inside the Firestore create transaction, so concurrent owner sessions cannot exceed the document boundary. Failed admission immediately attempts exact cleanup of any just-prepared private objects; a persistent Storage deletion failure is recorded as a bounded operational failure rather than being silently swallowed or treated as a successful profile.
+- Ordinary image-generation access lists active profiles only and can preview active references only. A desktop management request must explicitly ask for withdrawn rows and pass `MANAGE_STORE`; withdrawal immediately blocks preview as well as provider resolution.
+- Mobile keeps the frequent action—selecting an existing active profile—in the shared generation flow. Multi-photo creation and consent, withdrawal, and deletion are desktop owner governance actions.
+- `PlatformGlobalDataContext` carries only a lazy summary cache: profile ID/version, label, status, bounded reference summary/preview URLs, exact tenant/store/visibility scope, and load time. It performs no eager request. The selector fetches on first use or after the five-minute TTL, reuses the result across remounts, updates it after create/withdraw/delete, discards late cross-scope responses, and the session provider clears it on account/store scope reset. Consent records, Storage paths, and source bytes remain server-only.
 
 _Document follows `IDE_PROMPTS/6. DOCUMENTATION STRUCTURE PROMPT.md` impl template._

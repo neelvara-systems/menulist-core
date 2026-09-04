@@ -84,6 +84,10 @@ moduleWithLoad._load = function loadForSpecialStateTest(
 const AppError = require('../../src/app/error').default as React.ComponentType<ErrorBoundaryProps>;
 const ClientMenuError = require('../../src/app/client/error').default as React.ComponentType<ErrorBoundaryProps>;
 const GlobalPagesError = require('../../src/app/(global-pages)/error').default as React.ComponentType<ErrorBoundaryProps>;
+const StoreAccessRecovery = require('../../src/components/auth/StoreAccessRecovery').default as React.ComponentType<{
+    onRetry: () => void;
+    onSignOut: () => void;
+}>;
 
 interface ErrorBoundaryProps {
     error: Error & { digest?: string };
@@ -202,10 +206,33 @@ async function testClientMenuError(): Promise<void> {
     }
 }
 
+async function testStoreAccessRecovery(): Promise<void> {
+    let retryCount = 0;
+    let signOutCount = 0;
+    const host = document.createElement('div');
+    document.body.appendChild(host);
+    const root = createRoot(host);
+    await act(async () => {
+        root.render(
+            <StoreAccessRecovery
+                onRetry={() => { retryCount += 1; }}
+                onSignOut={() => { signOutCount += 1; }}
+            />,
+        );
+    });
+    assert.match(host.textContent || '', /Store access could not be loaded/);
+    await act(async () => findButton(host, 'Try again').click());
+    await act(async () => findButton(host, 'Sign out').click());
+    assert.equal(retryCount, 1, 'Store-access Try again must invoke its callback exactly once.');
+    assert.equal(signOutCount, 1, 'Store-access Sign out must invoke its callback exactly once.');
+    await unmountBoundary(host, root);
+}
+
 async function main(): Promise<void> {
     await testGlobalPagesError();
     await testAppError();
     await testClientMenuError();
+    await testStoreAccessRecovery();
     moduleWithLoad._load = originalModuleLoad;
     dom.window.close();
     process.stdout.write('MenuList App Router error-boundary runtime tests passed.\n');

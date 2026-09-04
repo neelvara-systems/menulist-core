@@ -1,7 +1,7 @@
 # Print Assets Mobile Support
 
 **Status:** Implemented
-**Last Updated:** July 9, 2026
+**Last Updated:** September 4, 2026
 
 ## Admission Test
 
@@ -24,6 +24,8 @@
 - Mobile and desktop use the same printable renderer for individual downloads and previews, including front/back business cards and ID cards.
 - Readiness, print-shop handoff, and reprint guidance come from shared print-assets helpers.
 - Preview appears inside the template bottom sheet first, with separate PDF/image download actions for single assets.
+- The dashboard shows reusable business-profile readiness. Authorized owners can open a mobile sheet to update the canonical brand name, location name, logo, tagline, and applicable public contact fields without leaving Assets.
+- A successful inline save updates shared store/tenant context and rebuilds the currently open asset preview from the acknowledged values. Unsaved edits require an explicit discard decision.
 
 ## Non-Goals
 

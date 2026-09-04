@@ -3,6 +3,8 @@ import {
     normalizeOBPGoogleMapsUrl,
     normalizeOBPReviewUrl,
 } from './publicLinks';
+import { toLocalizedText } from '../localization/text';
+import { getStoreDeepDifference } from '../store/storeNestedUpdateProjection';
 
 export type OwnerPublicPresenceLinkKey =
     | 'googleMapsUrl'
@@ -15,6 +17,66 @@ type OwnerPublicPresenceLinkDraft = Partial<Record<OwnerPublicPresenceLinkKey, u
 type OwnerPublicPresenceDraft = OwnerPublicPresenceLinkDraft & {
     accentColor?: unknown;
 };
+
+const DEFAULT_TRUE_KEYS = new Set([
+    'showCall',
+    'showDirections',
+    'showFeedback',
+    'showGoogleReview',
+    'showOrder',
+    'showPrivacyLink',
+    'showRefundLink',
+    'showReservation',
+    'showTermsLink',
+    'showWhatsApp',
+]);
+
+const EMPTY_STRING_KEYS = new Set([
+    'accentColor',
+    'businessCover',
+    'googleMapsUrl',
+    'googleReviewUrl',
+    'orderUrl',
+    'pwaIconOverrideUrl',
+    'reservationUrl',
+    'whatsappNumber',
+]);
+
+const LOCALIZED_TEXT_KEYS = new Set([
+    'descriptor',
+    'knownFor',
+    'specialNote',
+]);
+
+function normalizePublicPresenceEntry(key: string, value: unknown): unknown {
+    if (value == null) return undefined;
+    if (LOCALIZED_TEXT_KEYS.has(key)) return toLocalizedText(value, 'en');
+    if (DEFAULT_TRUE_KEYS.has(key) && value === true) return undefined;
+    if (key === 'iconVariant' && value === 'icons') return undefined;
+    if (key === 'photos' && Array.isArray(value) && value.length === 0) return undefined;
+    if (EMPTY_STRING_KEYS.has(key) && typeof value === 'string' && !value.trim()) return undefined;
+    return value;
+}
+
+/**
+ * Compares owner public truth by rendered meaning instead of draft shape.
+ * The editor intentionally expands omitted defaults after the first input;
+ * those defaults must not create a false publish state or a no-op write.
+ */
+export function hasOwnerPublicPresenceChanges(
+    draftPresence: Record<string, unknown> | null | undefined,
+    savedPresence: Record<string, unknown> | null | undefined,
+): boolean {
+    const normalize = (presence: Record<string, unknown> | null | undefined) => Object.fromEntries(
+        Object.entries(presence || {})
+            .map(([key, value]) => [key, normalizePublicPresenceEntry(key, value)] as const)
+            .filter(([, value]) => value !== undefined),
+    );
+    const draft = normalize(draftPresence);
+    const saved = normalize(savedPresence);
+
+    return Object.keys(getStoreDeepDifference(draft, saved, { detectRemovedRootKeys: true })).length > 0;
+}
 
 const LINK_NORMALIZERS: Record<OwnerPublicPresenceLinkKey, (value: unknown) => string | null> = {
     googleMapsUrl: normalizeOBPGoogleMapsUrl,

@@ -9,6 +9,11 @@ import {
 } from '@lib/ai-menu-manager/actions/projectPatches';
 import { getAiMenuManagerCardEditPrompt } from '@lib/ai-menu-manager/cardEditPrompt';
 import {
+    AI_MENU_MANAGER_COMMAND_TEXT_MAX_LENGTH,
+    getAiMenuManagerCommandTextError,
+    getAiMenuManagerCommandTextIssue,
+} from '@lib/ai-menu-manager/commandTextBoundary';
+import {
     buildAiMenuManagerComposerPrompt,
     canUseAiMenuManagerComposerContext,
     filterAiMenuManagerComposerEntities,
@@ -219,6 +224,21 @@ export default function AiMenuManagerRoute() {
         data: composerContextData,
         selection: composerContext,
     }), [composerContext, composerContextData]);
+    const composedDraftText = useMemo(() => {
+        const rawText = input.trim();
+        if (!rawText) return '';
+        return composerContext.target
+            ? buildAiMenuManagerComposerPrompt({
+                data: composerContextData,
+                input: rawText,
+                selection: composerContext,
+            }).trim()
+            : rawText;
+    }, [composerContext, composerContextData, input]);
+    const commandTextError = useMemo(
+        () => getAiMenuManagerCommandTextError(composedDraftText),
+        [composedDraftText],
+    );
     const activeComposerTarget = useMemo(() => (
         composerContextData.targets.find((entry) => entry.target === composerContext.target) || null
     ), [composerContext.target, composerContextData.targets]);
@@ -546,6 +566,10 @@ export default function AiMenuManagerRoute() {
                 selection: composerContext,
             }).trim()
             : rawText;
+        if (getAiMenuManagerCommandTextIssue(text) === 'too_long') {
+            message.error(getAiMenuManagerCommandTextError(text) || 'Menu Manager message is too long');
+            return;
+        }
         let commandContext: AiMenuManagerCommandContextSelection | undefined;
         if (options?.composerContext?.target) {
             commandContext = {
@@ -1720,6 +1744,7 @@ export default function AiMenuManagerRoute() {
                                 autoSize={{ minRows: 1, maxRows: 4 }}
                                 value={input}
                                 disabled={isComposerUnavailable || submitting}
+                                maxLength={AI_MENU_MANAGER_COMMAND_TEXT_MAX_LENGTH}
                                 onChange={(event) => setInput(event.target.value)}
                                 onPressEnter={(event) => {
                                     if (!event.shiftKey) {
@@ -1741,7 +1766,7 @@ export default function AiMenuManagerRoute() {
                             />
                             <Button
                                 aria-label="Send"
-                                disabled={isComposerUnavailable || submitting || !input.trim()}
+                                disabled={isComposerUnavailable || submitting || !input.trim() || Boolean(commandTextError)}
                                 icon={<LuSend size={18} />}
                                 loading={submitting}
                                 onClick={() => submitPrompt()}
@@ -1755,6 +1780,11 @@ export default function AiMenuManagerRoute() {
                                 type="primary"
                             />
                         </div>
+                        {commandTextError ? (
+                            <Text aria-live="polite" role="alert" type="danger">
+                                {commandTextError}
+                            </Text>
+                        ) : null}
                         {composerContext.target ? (
                             <div
                                 style={{

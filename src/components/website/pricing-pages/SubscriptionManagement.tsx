@@ -52,11 +52,16 @@ const SubscriptionManagementRenderer: React.FC<SubscriptionManagementRendererPro
                 && activeSubscription.qaCertification.projectId === 'menulist-qa'
             )
         );
+    const isPersistentQaOwner = isQaCertificationEntitlement
+        && activeSubscription.qaCertification?.persistentOwner === true
+        && activeSubscription.qaCertification.purpose === 'menulist_persistent_phone_owner';
     const billedQuantity = activeSubscription.quantity || 1;
     const displayedAmount = isManualBilling
         ? activeSubscription.amount
         : activeSubscription.amount * billedQuantity;
-    const billingPeriod = isQaCertificationEntitlement
+    const billingPeriod = isPersistentQaOwner
+        ? 'persistent QA owner access'
+        : isQaCertificationEntitlement
         ? 'QA certification lease'
         : isManualBilling
         ? `one-time prepaid${activeSubscription.commitmentPeriodMonths ? ` / ${activeSubscription.commitmentPeriodMonths} months` : ''}`
@@ -188,6 +193,8 @@ const SubscriptionManagementRenderer: React.FC<SubscriptionManagementRendererPro
                             <CardDescription style={{ fontSize: '14px', color: 'var(--ws-text-secondary)' }}>
                                 {isPaymentPending
                                     ? 'Your workspace is ready. Complete payment to activate this plan.'
+                                    : isPersistentQaOwner
+                                    ? 'Persistent QA-only owner access. No payment was processed, and this does not certify Razorpay.'
                                     : 'Your active subscription details.'}
                             </CardDescription>
                         </div>

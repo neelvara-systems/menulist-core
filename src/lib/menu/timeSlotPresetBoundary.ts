@@ -19,6 +19,24 @@ export const isValidClockRange = (startTime: unknown, endTime: unknown): boolean
     return startMinutes !== null && endMinutes !== null && startMinutes !== endMinutes;
 };
 
+export type TimeSlotPresetDraftIssue = "missing_label" | "duplicate_label" | "invalid_range";
+
+export const getTimeSlotPresetDraftIssue = (
+    draft: Pick<TimeSlotPreset, "label" | "startTime" | "endTime">,
+    presets: readonly TimeSlotPreset[],
+    editingPresetId?: string,
+): TimeSlotPresetDraftIssue | null => {
+    const label = draft.label.trim();
+    if (!label) return "missing_label";
+    if (presets.some((preset) => (
+        preset.id !== editingPresetId
+        && preset.label.trim().toLocaleLowerCase("en-US") === label.toLocaleLowerCase("en-US")
+    ))) {
+        return "duplicate_label";
+    }
+    return isValidClockRange(draft.startTime, draft.endTime) ? null : "invalid_range";
+};
+
 export const isMinuteWithinClockRange = (
     currentMinutes: number,
     startTime: unknown,

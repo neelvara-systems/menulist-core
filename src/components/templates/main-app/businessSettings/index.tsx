@@ -1288,7 +1288,7 @@ function BusinessSettingsContent({ storeDetails, setStoreDetails, tenantDetails 
             if (!Boolean(isPresent)) {
                 const [day, month, year] = currentDateFormat.split("|");
                 setAvailableDateFormats([
-                    { label: currentDateFormat, value: { day, month, year } },
+                    { label: currentDateFormat, labelHelper: 'Saved format', value: { day, month, year } },
                     ...DATE_FORMATS,
                 ]);
             }

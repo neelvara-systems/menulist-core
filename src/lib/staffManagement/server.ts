@@ -59,6 +59,7 @@ import {
     normalizeStaffStoreScopeDocumentId,
     staffTargetHasOwnerAccess,
 } from "./scopeBoundary";
+import { optionalStaffEmailSchema } from "./inputBoundary";
 
 const USERS_COLLECTION = DB_COLLECTIONS.USERS;
 const STORES_COLLECTION = DB_COLLECTIONS.STORES;
@@ -72,14 +73,6 @@ const STAFF_EMAIL_QUERY_LIMIT = 2;
 const FIREBASE_AUTH_SEND_OOB_CODE_URL = "https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode";
 const MAX_STAFF_STORE_MAPPINGS = FEATURE_FLAGS.MAX_OUTLETS_PER_TENANT + 1;
 const STAFF_TENANT_STORE_QUERY_LIMIT = MAX_STAFF_STORE_MAPPINGS + 1;
-
-const optionalEmailSchema = z.string()
-    .trim()
-    .toLowerCase()
-    .max(254)
-    .optional()
-    .default("")
-    .refine((value) => !value || z.string().email().safeParse(value).success, "Invalid email address");
 
 const optionalTrimmedStringSchema = (max: number) => z.preprocess((value) => {
     if (value === undefined || value === null) return undefined;
@@ -108,7 +101,7 @@ const StoreMappingSchema = z.object({
 });
 
 export const CreateStaffSchema = z.object({
-    email: optionalEmailSchema,
+    email: optionalStaffEmailSchema,
     name: optionalTrimmedStringSchema(160),
     tenantId: StaffScopeIdSchema,
     storeId: StaffScopeIdSchema,

@@ -810,6 +810,7 @@ function verifyMonitor(monitor, responseHelper) {
     '.json().catch',
     'error.message',
     'await navigator.clipboard.writeText',
+    'onRow={(record) => ({',
   ].forEach((token) => assertNotIncludes(monitor + responseHelper, token, 'Owner notification monitor client boundary'));
 }
 

@@ -1,4 +1,5 @@
 import { getBusinessCatalogKind, getBusinessOfferingKind, resolveBusinessCategory } from '@data/shared/businessTypes';
+import { FEATURE_FLAGS } from '@config/features';
 import { resolveStorePermissionScopeDocumentIdAliases } from '@lib/permissions/scopeDocumentId';
 import type { MenuCardExportSettings } from '../models/exportTypes';
 import type { MenuCardPrintSource } from '../models/printModel';
@@ -147,6 +148,17 @@ function resolveStoreActivePlanType(store: any): string | null {
         || null;
 }
 
+function resolveStoreTagline(store: unknown, language: string): string | undefined {
+    const publicPresence = readOwnField(store, 'publicPresence');
+    const tagline = resolveText(
+        readOwnField(store, 'tagline') ?? readOwnField(publicPresence, 'tagline'),
+        language,
+        '',
+        MENU_CARD_PRINT_TEXT_LIMITS.BUSINESS_TAGLINE,
+    );
+    return tagline || undefined;
+}
+
 function appendUnique(target: any[], seen: Set<string>, entries: any[]) {
     entries.forEach((entry, index) => {
         if (!entry) return;
@@ -192,7 +204,17 @@ export function buildPrintSource(input: BuildPrintSourceInput): MenuCardPrintSou
         store?.language ||
         'en';
 
-    const sanitized = sanitizeMenuForPrint(extractedData.items, extractedData.categories, language);
+    const projectConfig = readOwnField(project, 'config');
+    const projectDesign = readOwnField(projectConfig, 'design');
+    const menuDesign = readOwnField(projectDesign, 'menu');
+    const showCategoryIcons = FEATURE_FLAGS.ENABLE_CATEGORY_ICONS
+        && readOwnField(menuDesign, 'showCategoryIcons') !== false;
+    const sanitized = sanitizeMenuForPrint(
+        extractedData.items,
+        extractedData.categories,
+        language,
+        showCategoryIcons,
+    );
     const brandTokens = buildBrandTokens(resolveBrandColor(project, store));
     const businessType = resolveStoreBusinessType(store);
     const storedBusinessCategory = resolveStoreBusinessCategory(store);
@@ -217,6 +239,7 @@ export function buildPrintSource(input: BuildPrintSourceInput): MenuCardPrintSou
         menuSnapshotId: null,
         business: {
             name: store?.name || store?.storeName || store?.businessName || 'Menu',
+            tagline: resolveStoreTagline(store, language),
             logoUrl: resolveLogoUrl(store),
             phone: store?.phone || store?.phoneNumber || undefined,
             address: buildAddress(store),
@@ -252,7 +275,15 @@ export function buildPrintSource(input: BuildPrintSourceInput): MenuCardPrintSou
             hasPhotos: false,
             hasDescriptions: sanitized.categories.some((category) => category.items.some((item) => !!item.description)),
             hasVariants: sanitized.categories.some((category) => category.items.some((item) => item.attributes.length > 0)),
-            hasDietaryTags: sanitized.categories.some((category) => category.items.some((item) => item.tags.length > 0)),
+            hasDietaryTags: sanitized.categories.some((category) => category.items.some((item) => (
+                item.decisionSymbols?.some((symbol) => (
+                    symbol === 'vegetarian'
+                    || symbol === 'non-vegetarian'
+                    || symbol === 'vegan'
+                    || symbol === 'gluten-free'
+                ))
+            ))),
+            hasCategoryIcons: sanitized.categories.some((category) => Boolean(category.icon)),
             hasMissingPrices: sanitized.missingPriceCount > 0,
         },
     };

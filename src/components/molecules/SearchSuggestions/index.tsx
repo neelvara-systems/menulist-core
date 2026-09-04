@@ -33,6 +33,11 @@ const SearchSuggestions: React.FC<SearchSuggestionsProps> = ({
 }) => {
     const { token } = theme.useToken();
 
+    const selectArticle = (article: ArticleSuggestion) => {
+        onArticleSelect(article);
+        onClose?.();
+    };
+
     if (!searchTerm) return null;
 
     const limitedSuggestions = suggestions.slice(0, maxSuggestions);
@@ -105,10 +110,15 @@ const SearchSuggestions: React.FC<SearchSuggestionsProps> = ({
                 dataSource={limitedSuggestions}
                 renderItem={(article) => (
                     <List.Item
-                        onClick={() => {
-                            onArticleSelect(article);
-                            onClose?.();
+                        aria-label={`Open ${article.title}`}
+                        onClick={() => selectArticle(article)}
+                        onKeyDown={(event) => {
+                            if (event.key !== 'Enter' && event.key !== ' ') return;
+                            event.preventDefault();
+                            selectArticle(article);
                         }}
+                        role="button"
+                        tabIndex={0}
                         style={{
                             padding: '12px 16px',
                             cursor: 'pointer',

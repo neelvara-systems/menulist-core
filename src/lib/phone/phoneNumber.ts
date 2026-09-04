@@ -185,7 +185,7 @@ export const normalizePhoneNumberForStorage = (input: PhoneNumberStorageInput): 
     return {
         countryCode,
         dialCode,
-        displayNumber: phoneNumber ? `${dialCode} ${phoneNumber}`.trim() : '',
+        displayNumber: internationalDigits ? `${dialCode} ${phoneNumber}`.trim() : '',
         internationalDigits,
         phone,
         phoneNumber,

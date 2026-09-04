@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import net from 'node:net';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
@@ -70,7 +71,46 @@ function discoverRuleScripts() {
   return scripts;
 }
 
-function main() {
+function canConnect(port) {
+  return new Promise((resolve) => {
+    const socket = net.createConnection({ host: '127.0.0.1', port });
+    const finish = (connected) => {
+      socket.destroy();
+      resolve(connected);
+    };
+    socket.setTimeout(500, () => finish(false));
+    socket.once('connect', () => finish(true));
+    socket.once('error', () => finish(false));
+  });
+}
+
+function unwrapEmulatorCommand(command) {
+  const emulatorIndex = command.indexOf('firebase emulators:exec');
+  const innerStart = command.indexOf('"', emulatorIndex);
+  const innerEnd = command.lastIndexOf('"');
+  if (emulatorIndex < 0 || innerStart < 0 || innerEnd <= innerStart) {
+    fail('Could not unwrap a discovered Firebase emulator command.');
+  }
+  const prefix = command.slice(0, emulatorIndex);
+  const inner = command.slice(innerStart + 1, innerEnd).replace(/\\"/g, '"');
+  return `${prefix}${inner}`.trim();
+}
+
+function readDemoProjectId(command) {
+  const match = command.match(/(?:--project|GCLOUD_PROJECT=)(?:\s+)?(demo-[A-Za-z0-9-]+)/);
+  if (!match) fail('Could not resolve the demo project for a discovered rule script.');
+  return match[1];
+}
+
+async function clearFirestoreProject(projectId) {
+  const endpoint = `http://127.0.0.1:8080/emulator/v1/projects/${encodeURIComponent(projectId)}/databases/(default)/documents`;
+  const response = await fetch(endpoint, { method: 'DELETE' });
+  if (!response.ok) {
+    fail(`Could not clear reused Firestore fixture ${projectId}: HTTP ${response.status}.`);
+  }
+}
+
+async function main() {
   const generatedRulesCheck = spawnSync(process.execPath, [
     path.join(ROOT, 'scripts/verification/generate-menulist-firestore-rules.mjs'),
     '--check',
@@ -97,14 +137,46 @@ function main() {
     return;
   }
 
+  const reuseFirestore = await canConnect(8080);
+  const reuseStorage = await canConnect(9199);
+  if (reuseFirestore) {
+    console.log('Reusing the approved Firestore emulator on 127.0.0.1:8080.');
+  }
+  if (reuseStorage) {
+    console.log('Reusing the approved Storage emulator on 127.0.0.1:9199.');
+  }
+
   const npmCommand = process.platform === 'win32' ? 'npm.cmd' : 'npm';
-  for (const [name] of scripts) {
+  for (const [name, command] of scripts) {
     console.log(`\n[MenuList Firebase rules predeploy] npm run ${name}`);
-    const result = spawnSync(npmCommand, ['run', name], {
+    const requiresFirestore = command.includes('--only firestore');
+    const requiresStorage = command.includes('--only storage') || command.includes('--only firestore,storage');
+    // A separately managed emulator can disappear during this long gate. Recheck
+    // the cached reuse decision before every script so a vanished Storage process
+    // falls back to that script's isolated emulators:exec configuration instead of
+    // leaving the rules client waiting forever on a dead port.
+    const currentReuseFirestore = reuseFirestore && await canConnect(8080);
+    const currentReuseStorage = reuseStorage && await canConnect(9199);
+    const canReuse = (!requiresFirestore || currentReuseFirestore)
+      && (!requiresStorage || currentReuseStorage);
+    if (canReuse && requiresFirestore) {
+      await clearFirestoreProject(readDemoProjectId(command));
+    }
+    const result = canReuse
+      ? spawnSync('/bin/sh', ['-c', unwrapEmulatorCommand(command)], {
+        cwd: ROOT,
+        env: {
+          ...process.env,
+          FIRESTORE_EMULATOR_HOST: '127.0.0.1:8080',
+          FIREBASE_STORAGE_EMULATOR_HOST: '127.0.0.1:9199',
+        },
+        stdio: 'inherit',
+      })
+      : spawnSync(npmCommand, ['run', name], {
       cwd: ROOT,
       env: process.env,
       stdio: 'inherit',
-    });
+      });
 
     if (result.error) {
       fail(`${name} could not start: ${result.error.message}`);
@@ -117,4 +189,7 @@ function main() {
   console.log(`\nMenuList root Firebase rules predeploy passed (${scripts.length} scripts).`);
 }
 
-main();
+main().catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});

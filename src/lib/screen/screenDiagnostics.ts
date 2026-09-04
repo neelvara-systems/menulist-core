@@ -10,6 +10,7 @@ type ScreenLogContext = Record<string, boolean | number | string | null | undefi
 
 export const SCREEN_CLIPBOARD_COPY_UNAVAILABLE = "screen_clipboard_copy_unavailable";
 export const SCREEN_CLIPBOARD_COPY_FALLBACK_FAILED = "screen_clipboard_copy_fallback_failed";
+export const SCREEN_CLIPBOARD_WRITE_TIMEOUT_MS = 1200;
 
 export const getBoundedScreenStringContext = (
     label: string,
@@ -36,7 +37,15 @@ export const copyScreenTextToClipboard = async (value: string): Promise<void> =>
 
     if (hasScreenClipboardWrite()) {
         try {
-            await navigator.clipboard.writeText(value);
+            await Promise.race([
+                navigator.clipboard.writeText(value),
+                new Promise<never>((_, reject) => {
+                    window.setTimeout(
+                        () => reject(new Error("screen_clipboard_write_timed_out")),
+                        SCREEN_CLIPBOARD_WRITE_TIMEOUT_MS,
+                    );
+                }),
+            ]);
             return;
         } catch (error) {
             clipboardWriteError = error;

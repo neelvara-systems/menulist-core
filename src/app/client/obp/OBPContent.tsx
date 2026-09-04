@@ -10,7 +10,7 @@
 
 import { DB_COLLECTIONS } from "@constant/database";
 import { FEATURE_FLAGS } from "@config/features";
-import { MENULIST_TENANT_BASE_DOMAIN } from "@constant/urls";
+import { getTenantBaseUrl } from "@constant/urls";
 import { firestoreAdmin } from "@lib/firebase/firebaseAdmin";
 import {
     getStoreByCustomDomain,
@@ -264,9 +264,10 @@ export default async function OBPContent({
             () => withTimeout(countActiveStoresForTenant(storeData.tenantId)),
         );
         if (outletCount > 1) {
-            const baseUrl = customDomain
-                ? `https://${customDomain}`
-                : `https://${subdomain}.${MENULIST_TENANT_BASE_DOMAIN}`;
+            const baseUrl = getTenantBaseUrl(
+                subdomain ?? undefined,
+                customDomain ?? undefined,
+            );
             return (
                 <BrandOBPContent
                     store={storeData}

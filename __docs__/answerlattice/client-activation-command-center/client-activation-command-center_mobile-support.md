@@ -21,7 +21,7 @@ The activation screen uses the Answerlattice dashboard shell and Ant Design resp
 - Bottom padding keeps content clear of mobile browser controls.
 - Technical evidence and setup details remain collapsed by default so widget, scheduler, context, notification, license, and evidence panels do not overwhelm first use.
 - First-value evidence uses a wrapping one-column/two-column grid inside technical details; labels and first-observed timestamps must not overflow narrow screens.
-- The navigation drawer shows the compact owner toolset first. All tools expands only the selected group's authorized destinations without closing the drawer; selecting a real destination closes it through the existing callback.
+- The navigation drawer shows the same grouped owner toolset as desktop. All tools expands the complete authorized advanced list without closing the drawer; selecting a real destination closes it through the existing callback.
 - Install Support and Copy coding-agent install remain explicit text actions with at least 44px target height; the owner is not expected to reconstruct the widget setup manually on mobile.
 
 ## Required Checks
@@ -39,5 +39,5 @@ The activation screen uses the Answerlattice dashboard shell and Ant Design resp
 - Ticket detail Knowledge Loop card in `/answerlattice/tickets`
 - Widget runtime card
 - Navigation drawer link for Activation
-- Navigation drawer All tools / Show fewer tools behavior and direct access to an active secondary route
+- Navigation drawer grouped sections, global All tools / Show fewer tools behavior, and direct access to an active advanced route
 - Install Support coding-agent handoff at mobile width

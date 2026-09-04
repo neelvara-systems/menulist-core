@@ -15,6 +15,7 @@ import { renderPdf } from '@lib/menu-card-export/render/renderPdf';
 import { buildPrintSource, normalizeMenuCardLogoUrl } from '@lib/menu-card-export/source/buildPrintSource';
 import { normalizeMenuCardQrDestination } from '@lib/menu-card-export/source/buildQrDestination';
 import { resolveAutoPrintDesign } from '@lib/menu-card-export/templates/autoPrintDesign';
+import { isPrintableThemeFamilyId } from '@lib/printable-asset-templates/templateFamilies';
 
 interface MenuItem {
     id: string;
@@ -65,6 +66,7 @@ export interface MenuPdfOptions {
     showUpdatedOn?: boolean;
     updatedAt?: unknown;
     styleId?: string;
+    printableThemeId?: string;
 }
 
 export interface GeneratedPdf {
@@ -166,6 +168,8 @@ export function normalizeLegacyMenuPdfOptions(value: unknown): MenuPdfOptions | 
     const styleId = styleIdCandidate === 'classic' || styleIdCandidate === 'compact' || styleIdCandidate === 'premium'
         ? styleIdCandidate
         : undefined;
+    const printableThemeCandidate = optionalText('printableThemeId', 64);
+    const printableThemeId = isPrintableThemeFamilyId(printableThemeCandidate) ? printableThemeCandidate : undefined;
     const presetCandidate = optionalText('preset', 64);
     const preset = menuCardPresetRegistry.some((entry) => entry.id === presetCandidate)
         ? presetCandidate as MenuCardExportPreset
@@ -197,6 +201,7 @@ export function normalizeLegacyMenuPdfOptions(value: unknown): MenuPdfOptions | 
         ...(typeof showQrCode === 'boolean' ? { showQrCode } : {}),
         ...(typeof showUpdatedOn === 'boolean' ? { showUpdatedOn } : {}),
         ...(styleId ? { styleId } : {}),
+        ...(printableThemeId ? { printableThemeId } : {}),
         ...(preset ? { preset } : {}),
         ...(updatedAt !== undefined || projectDataUpdatedAt !== undefined
             ? { updatedAt: updatedAt ?? projectDataUpdatedAt }
@@ -329,6 +334,7 @@ function normalizeSettings(options: MenuPdfOptions) {
             ),
             includeContactBlock: true,
             includeUpdatedDate: options.showUpdatedOn ?? true,
+            ...(options.printableThemeId ? { printableThemeId: options.printableThemeId } : {}),
         },
     };
 }

@@ -5,13 +5,14 @@
  * Both single generation and batch worker share these exact same model calls.
  * 
  * Model used:
- * - Gemini 2.5 Flash Image: Production image generation and editing path.
+ * - Gemini 3.1 Flash Image: Production image generation and editing path.
  */
 
 import { ContentListUnion, GenerateContentResponse, HarmBlockThreshold, HarmCategory, Modality } from "@google/genai";
 import { GEMINI_MODELS } from "@constant/AI/models";
 import { normalizeGeneratedImagesFromProvider } from "@lib/ai/generatedImageOutput";
 import { summarizeImageProviderResponse } from "@lib/ai/imageOperationLogging";
+import type { ResolvedImageSubjectReference } from "@lib/ai/imageSubjectProfiles";
 import { getImageAsBase64, type ImageFetchStorageScope } from "@lib/apiUtils";
 import { mapWithConcurrency } from "@lib/async/boundedConcurrency";
 import { genAIClient } from "@lib/google/genAi";
@@ -32,6 +33,7 @@ export type GeneratedImagePayload = {
 export type ImageProviderResponse = GenerateContentResponse;
 export type ImageGenerationPromptRunOptions = {
     referenceImageStorageScope?: ImageFetchStorageScope;
+    subjectReferences?: ResolvedImageSubjectReference[];
 };
 
 export const IMAGE_AI_MODELS = {
@@ -87,19 +89,27 @@ export async function generateGeminiImageViaFlash(
     try {
         logger.info('Image generation started (Gemini Flash)', { promptLength: prompt.length });
         let contents: ContentListUnion = `${SYSTEM_INSTRUCTION}\n\n${prompt}\n\nDo not include any text in image unless specifically requested.`;
-        if (generationConfig.referanceImage) {
-            const { base64ImageData, mimeType } = await getImageAsBase64(generationConfig.referanceImage, {
-                storageScope: options.referenceImageStorageScope,
-            });
-            contents = [
-                {
+        if (options.subjectReferences?.length || generationConfig.referanceImage) {
+            const parts: ContentListUnion = [];
+            options.subjectReferences?.forEach((reference) => {
+                parts.push({
                     inlineData: {
-                        mimeType: mimeType,
-                        data: base64ImageData,
+                        mimeType: reference.mimeType,
+                        data: reference.base64ImageData,
                     },
-                },
-                { text: `${SYSTEM_INSTRUCTION}\n\nEdit the image based on the given prompt: ${prompt}\n\nMaintain professional quality and ensure the result is appropriate for business use.` }
-            ];
+                });
+            });
+            if (generationConfig.referanceImage) {
+                const { base64ImageData, mimeType } = await getImageAsBase64(generationConfig.referanceImage, {
+                    storageScope: options.referenceImageStorageScope,
+                });
+                parts.push({ inlineData: { mimeType, data: base64ImageData } });
+            }
+            const identityInstruction = options.subjectReferences?.length
+                ? `The first ${options.subjectReferences.length} images are authorized identity references for the same adult person. Preserve that person's recognizable identity, facial structure, skin tone, and stable distinguishing features. If a person appears, show only this saved person unless the prompt explicitly requests other people. Change only the requested hairstyle, clothing, pose, activity, scene, or treatment. ${generationConfig.referanceImage ? 'The final image is a separate visual/style reference; never replace the saved person with the person in that final image.' : ''}`
+                : 'Use the supplied image only as the requested visual reference.';
+            parts.push({ text: `${SYSTEM_INSTRUCTION}\n\n${identityInstruction}\n\nCreate or edit the image based on this prompt: ${prompt}\n\nMaintain professional quality and ensure the result is appropriate for business use.` });
+            contents = parts;
         }
         const response = await genAIClient.models.generateContent({
             model: IMAGE_AI_MODELS.GEMINI,
@@ -126,6 +136,7 @@ export async function generateGeminiImageViaFlash(
     } catch (error) {
         logAIRouteFailure('image_generation_gemini_flash_failed', error, {
             hasReferenceImage: Boolean(generationConfig.referanceImage?.url),
+            subjectReferenceCount: options.subjectReferences?.length || 0,
             model: IMAGE_AI_MODELS.GEMINI,
             promptLength: prompt.length,
         });
@@ -139,11 +150,13 @@ export async function runImageGenerationPrompts({
     logFile,
     prompts,
     referenceImageStorageScope,
+    subjectReferences,
 }: {
     generationConfig: GenerateImageViaApiPayloadGenerationConfiType;
     logFile: string;
     prompts: string[];
     referenceImageStorageScope?: ImageFetchStorageScope;
+    subjectReferences?: ResolvedImageSubjectReference[];
 }): Promise<{
     failedPromptCount: number;
     images: GeneratedImagePayload[];
@@ -162,6 +175,7 @@ export async function runImageGenerationPrompts({
     const runPrompt = async (prompt: string) => {
         const result = await generateGeminiImageViaFlash(prompt, generationConfig, logFile, {
             referenceImageStorageScope,
+            subjectReferences,
         });
         return result || null;
     };

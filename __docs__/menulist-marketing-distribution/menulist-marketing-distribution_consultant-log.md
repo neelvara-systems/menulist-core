@@ -1823,3 +1823,39 @@ Kept `public-business truth infrastructure` as MenuList's internal category and 
 ### Boundary
 
 No public claim may imply that MenuList silently updates unsupported external platforms. Owner review, publication, supported MenuList outputs, and latest-published-version language remain explicit.
+
+---
+
+## September 3, 2026 - Successful Launch Deep Research And MenuList Command Plan
+
+### Decision
+
+Adopt the mechanism behind concentrated launch attention—one portable claim,
+one visible proof moment, relevant voices with distinct jobs, bounded waves,
+and fast follow-through—only after MenuList has permissioned owner proof and
+operational capacity. Do not treat one viral post, Product Hunt rank, creator
+volume, or a preferred weekday as the launch engine.
+
+### Evidence
+
+- Compared first-party or founder-written retrospectives from Resend, Dub,
+  Tally, Product Hunt, Superhuman, Linear, Dropbox, and YC.
+- Rechecked current X authenticity and paid-partnership rules, Product Hunt
+  account/sharing/scheduling guidance, WhatsApp opt-in policy, and India
+  influencer disclosure guidance.
+- Distinguished each case's existing audience, product maturity, community,
+  or relaunch advantage from the reusable mechanism.
+
+### MenuList Outcome
+
+- Created the canonical report at
+  `launch-research-2026-09-03/report-source.md`.
+- Defined six launch gates: product/route, proof, intake/capacity,
+  message/assets, channels/compliance, and measurement/continuation.
+- Retired the expired August 11, 2026 Product Hunt target and the unsupported
+  assumption that Tuesday is inherently best.
+- Kept Product Hunt as a credibility/feedback event, X as a qualified-attention
+  layer, WhatsApp as owner-initiated intake, and two-surface activation plus
+  day-30 state as the outcome standard.
+- Preserved the external-action boundary: no account action, outreach,
+  publication, creator contact, spend, scheduling, deploy, or launch occurred.

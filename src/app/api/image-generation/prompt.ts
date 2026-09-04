@@ -1,6 +1,9 @@
 import { ASPECT_RATIOS_LIST } from "@constant/common";
 import type { ImageGenerationRequestInput } from "@lib/validation/apiSchemas";
-import { IMAGE_VIEW_TYPES } from "@template/main-app/projects/editorView/AiImageGenerator/imageViewType";
+import {
+    getImageViewTypeForBusiness,
+    getSavedPersonPromptInstruction,
+} from "@template/main-app/projects/editorView/AiImageGenerator/imageViewType";
 
 /**
  * Sanitizes user input to prevent AI prompt injection attacks
@@ -104,6 +107,7 @@ export function getImagePrompts(inputJson: ImageGenerationRequestInput, model: s
     const moods = (config.moods ?? []).map(m => sanitizeAIPromptInput(m, 50));
     const compositions = (config.compositions ?? []).map(c => sanitizeAIPromptInput(c, 50));
     const referanceImage = config.referanceImage?.url;
+    const hasSubjectProfile = Boolean(config.subjectProfileId);
     const backgroundColor = sanitizeAIPromptInput(config.backgroundColor ?? '', 30);
     const transparentBg = config.transparentBg ?? false; // Default to false
     const aspectRatio = model === 'GEMINI'
@@ -114,11 +118,18 @@ export function getImagePrompts(inputJson: ImageGenerationRequestInput, model: s
     let prompt = "";
     let concludingSentence = "";
 
-    if (Boolean(referanceImage)) {
+    if (Boolean(referanceImage) || hasSubjectProfile) {
 
         // Reference image prompt generation
-        prompt = `Using the provided reference image as the primary visual foundation for subject, composition, and overall scene, create a new ${styleCategory} image. `;
-        prompt += `The image should depict a version of ${itemName.toLowerCase()} as seen or implied in the reference. `;
+        prompt = hasSubjectProfile
+            ? `Using the saved person's identity references, create a new ${styleCategory} image while preserving the same recognizable adult person. `
+            : `Using the provided reference image as the primary visual foundation for subject, composition, and overall scene, create a new ${styleCategory} image. `;
+        prompt += hasSubjectProfile
+            ? getSavedPersonPromptInstruction(businessType, itemName)
+            : `The image should depict a version of ${itemName.toLowerCase()} as seen or implied in the reference. `;
+        if (hasSubjectProfile && referanceImage) {
+            prompt += `Use the separate reference image only for visual direction, not as a replacement identity. `;
+        }
 
         // *** Add Background Instruction ***
         if (transparentBg) {
@@ -171,7 +182,7 @@ export function getImagePrompts(inputJson: ImageGenerationRequestInput, model: s
         const selectedImageTypes = config.selectedImageTypes ?? [];
         if (selectedImageTypes.length > 0) {
             for (const typeName of selectedImageTypes) {
-                const businessInfo = IMAGE_VIEW_TYPES.find((businessInfo) => businessInfo.businessType === businessType);
+                const businessInfo = getImageViewTypeForBusiness(businessType);
                 const imageTypeDefinition = businessInfo?.imageTypes.find((imgType) => imgType.type === typeName);
 
                 if (imageTypeDefinition) {
@@ -252,7 +263,7 @@ export function getImagePrompts(inputJson: ImageGenerationRequestInput, model: s
         const selectedImageTypes = config.selectedImageTypes ?? [];
         if (selectedImageTypes.length > 0) {
             for (const typeName of selectedImageTypes) {
-                const businessInfo = IMAGE_VIEW_TYPES.find((businessInfo) => businessInfo.businessType === businessType);
+                const businessInfo = getImageViewTypeForBusiness(businessType);
                 const imageTypeDefinition = businessInfo?.imageTypes.find((imgType) => imgType.type === typeName);
 
                 if (imageTypeDefinition) {

@@ -13,6 +13,7 @@ export type ResolvedAppBreadcrumb = {
     icon: IconType;
     key: string | number;
     label: string;
+    ownerLabelKey?: NavItemType['ownerLabelKey'];
     route: string;
     subNav: ResolvedAppBreadcrumbSubpath[];
 };
@@ -49,6 +50,7 @@ export const resolveAppBreadcrumb = (
         icon: parent.icon,
         key: activeSubNav?.key ?? parent.key ?? `parent:${parentIndex}`,
         label: parent.label,
+        ownerLabelKey: parent.ownerLabelKey,
         route: parent.route,
         subNav,
     }];

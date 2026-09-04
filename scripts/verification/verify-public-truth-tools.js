@@ -532,7 +532,12 @@ function assertPublicToolInventoryBoundary() {
   );
   assertIncludes(
     desktopBusinessSettings,
-    'const updatedChanges: any = getStoreDeepDifference(',
+    'const updatedChanges: any = applyBusinessCopyManualOverrideMetaToUpdate({',
+    'Desktop Business Settings must preserve manual business-copy override metadata',
+  );
+  assertIncludes(
+    desktopBusinessSettings,
+    'update: getStoreDeepDifference(changesToUpload, storeDetails),',
     'Desktop Business Settings must omit unchanged Maps links from unrelated writes',
   );
   assertIncludes(
@@ -620,14 +625,15 @@ function assertPublicToolInventoryBoundary() {
   assertIncludes(headerComponent, '{ href: "/tools", key: "resourceToolsHub", icon: LuWrench }', 'desktop Resources dropdown Tools Hub link');
   assertIncludes(headerComponent, 'resourceDropdownLinks.map', 'shared resource dropdown renderer');
   assertIncludes(headerComponent, 'ws-header-resource-menu__panel', 'desktop resource dropdown panel');
-  assertIncludes(headerComponent, 'ws-mobile-resource-links', 'mobile hamburger resource links');
-  assertIncludes(headerComponent, 'ws-mobile-resource-link', 'mobile hamburger resource link item');
-  assertIncludes(headerComponent, 'resources: isResourcesPath || isToolsPath', 'mobile hamburger opens Resources on tools routes');
+  assertIncludes(headerComponent, 'key: "mobileLearnLabel",\n    links: resourceDropdownLinks,', 'mobile hamburger resource links');
+  assertIncludes(headerComponent, 'group.links.map', 'mobile hamburger shared group renderer');
+  assertIncludes(headerComponent, 'className="ws-mobile-nav-link"', 'mobile hamburger resource link item');
+  assertIncludes(headerComponent, 'const isActive = isCurrentPath(item.href);', 'mobile hamburger marks active resource and tools routes');
   assertIncludes(footerComponent, "{ href: '/tools', key: 'toolsHub' }", 'footer Tools Hub source link');
   assertIncludes(footerComponent, 'sourceLinks.map', 'footer source link renderer');
   assertIncludes(websiteCss, '@media (max-width: 960px)', 'mobile hamburger breakpoint');
   assertIncludes(websiteCss, '.ws-mobile-nav-toggle', 'mobile hamburger toggle style');
-  assertIncludes(websiteCss, '.ws-mobile-resource-link', 'mobile resource link style');
+  assertIncludes(websiteCss, '.ws-mobile-nav-link', 'mobile resource link style');
   assertIncludes(websiteCss, '.ws-footer-link-grid a', 'footer link mobile touch style');
 
   for (const docDir of ACTIVE_TOOL_DOC_DIRS) {

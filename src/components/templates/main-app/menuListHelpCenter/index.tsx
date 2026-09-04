@@ -19,9 +19,15 @@ export const normalizeMenuListHelpSection = (value?: string | null): MenuListHel
 
 interface MenuListHelpCenterProps {
     initialSection?: string | null;
+    onBackToDashboard?: () => void;
+    onSectionChange?: (section: MenuListHelpSection) => void;
 }
 
-export default function MenuListHelpCenter({ initialSection }: MenuListHelpCenterProps) {
+export default function MenuListHelpCenter({
+    initialSection,
+    onBackToDashboard,
+    onSectionChange,
+}: MenuListHelpCenterProps) {
     const t = useTranslations('HelpCenter');
     const { token } = theme.useToken();
     const section = normalizeMenuListHelpSection(initialSection);
@@ -44,10 +50,20 @@ export default function MenuListHelpCenter({ initialSection }: MenuListHelpCente
                     </div>
                     <Collapse accordion items={faqItems} />
                     <Flex gap={10} wrap>
-                        <Button icon={<LuLifeBuoy aria-hidden="true" />} href={helpCenterTabRouting('contact-us')} type="primary">
+                        <Button
+                            href={onSectionChange ? undefined : helpCenterTabRouting('contact-us')}
+                            icon={<LuLifeBuoy aria-hidden="true" />}
+                            onClick={onSectionChange ? () => onSectionChange('contact-us') : undefined}
+                            type="primary"
+                        >
                             {t('contactUs')}
                         </Button>
-                        <Button href={helpCenterTabRouting('home')}>{t('backToHome')}</Button>
+                        <Button
+                            href={onSectionChange ? undefined : helpCenterTabRouting('home')}
+                            onClick={onSectionChange ? () => onSectionChange('home') : undefined}
+                        >
+                            {t('backToHome')}
+                        </Button>
                     </Flex>
                 </Flex>
             </Card>
@@ -75,10 +91,19 @@ export default function MenuListHelpCenter({ initialSection }: MenuListHelpCente
                         </Flex>
                     </Card>
                     <Flex gap={10} wrap>
-                        <Button icon={<LuBookOpen aria-hidden="true" />} href={helpCenterTabRouting('faq')}>
+                        <Button
+                            href={onSectionChange ? undefined : helpCenterTabRouting('faq')}
+                            icon={<LuBookOpen aria-hidden="true" />}
+                            onClick={onSectionChange ? () => onSectionChange('faq') : undefined}
+                        >
                             {t('readFaq')}
                         </Button>
-                        <Button href={helpCenterTabRouting('home')}>{t('backToHome')}</Button>
+                        <Button
+                            href={onSectionChange ? undefined : helpCenterTabRouting('home')}
+                            onClick={onSectionChange ? () => onSectionChange('home') : undefined}
+                        >
+                            {t('backToHome')}
+                        </Button>
                     </Flex>
                 </Flex>
             </Card>
@@ -95,13 +120,29 @@ export default function MenuListHelpCenter({ initialSection }: MenuListHelpCente
                     <Paragraph type="secondary" style={{ marginBottom: 0 }}>{t('knowledgeBaseDesc')}</Paragraph>
                 </div>
                 <Flex gap={12} wrap>
-                    <Button icon={<LuBookOpen aria-hidden="true" />} href={helpCenterTabRouting('faq')} size="large" type="primary">
+                    <Button
+                        href={onSectionChange ? undefined : helpCenterTabRouting('faq')}
+                        icon={<LuBookOpen aria-hidden="true" />}
+                        onClick={onSectionChange ? () => onSectionChange('faq') : undefined}
+                        size="large"
+                        type="primary"
+                    >
                         {t('readFaq')}
                     </Button>
-                    <Button icon={<LuLifeBuoy aria-hidden="true" />} href={helpCenterTabRouting('contact-us')} size="large">
+                    <Button
+                        href={onSectionChange ? undefined : helpCenterTabRouting('contact-us')}
+                        icon={<LuLifeBuoy aria-hidden="true" />}
+                        onClick={onSectionChange ? () => onSectionChange('contact-us') : undefined}
+                        size="large"
+                    >
                         {t('contactUs')}
                     </Button>
-                    <Button href="/dashboard" icon={<LuLayoutDashboard aria-hidden="true" />} size="large">
+                    <Button
+                        href={onBackToDashboard ? undefined : '/dashboard'}
+                        icon={<LuLayoutDashboard aria-hidden="true" />}
+                        onClick={onBackToDashboard}
+                        size="large"
+                    >
                         {t('backToDashboard')}
                     </Button>
                 </Flex>

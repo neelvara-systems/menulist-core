@@ -42,6 +42,29 @@ import {
     isEditorOnboardingMarker,
 } from '../../src/lib/browserStorage/editorOnboarding';
 import { getCreativeEditorDraftStorageKey } from '../../src/lib/browserStorage/creativeEditorDraft';
+import {
+    createEmptyImageSubjectProfileCache,
+    getImageSubjectProfileCacheScopeKey,
+} from '../../src/types/imageSubjectProfile';
+
+assert.deepEqual(createEmptyImageSubjectProfileCache(), {
+    includeWithdrawn: false,
+    loadedAt: null,
+    profiles: [],
+    scopeKey: null,
+});
+assert.equal(
+    getImageSubjectProfileCacheScopeKey(11, 22, false),
+    JSON.stringify([11, 22, 'active']),
+    'active-only saved-person cache must be scoped to the exact tenant and store',
+);
+assert.equal(
+    getImageSubjectProfileCacheScopeKey(11, 22, true),
+    JSON.stringify([11, 22, 'manager']),
+    'manager saved-person cache must not share the active-only cache key',
+);
+assert.equal(getImageSubjectProfileCacheScopeKey(11, '22x', false), null);
+assert.equal(getImageSubjectProfileCacheScopeKey(11, 0, false), null);
 
 assert.deepEqual(
     normalizeDeploymentDebugIdentity({
@@ -216,8 +239,27 @@ assert.deepEqual(
         foregroundColor: undefined,
         isMultiMode: undefined,
         savedAt: undefined,
+        subjectProfileId: null,
+        subjectProfileVersion: null,
     },
     'valid image preferences should retain their typed values',
+);
+assert.deepEqual(
+    parseImageGenPreferences({
+        stylesCategory: 'portrait',
+        subjectProfileId: '123e4567-e89b-12d3-a456-426614174000',
+        subjectProfileVersion: 2,
+    })?.subjectProfileId,
+    '123e4567-e89b-12d3-a456-426614174000',
+    'valid saved-person preferences should retain their exact profile identity',
+);
+assert.equal(
+    parseImageGenPreferences({
+        stylesCategory: 'portrait',
+        subjectProfileId: '123e4567-e89b-12d3-a456-426614174000',
+    }),
+    null,
+    'partial saved-person preferences must fail closed',
 );
 
 assert.equal(

@@ -214,6 +214,8 @@ export interface ProjectAIImagePreferences {
     transparentBg?: boolean;
     foregroundColor?: string | null;
     isMultiMode?: boolean;
+    subjectProfileId?: string | null;
+    subjectProfileVersion?: number | null;
 }
 
 export interface ProjectAIPreferences {

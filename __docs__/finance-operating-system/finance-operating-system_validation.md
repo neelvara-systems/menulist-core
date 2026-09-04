@@ -23,3 +23,7 @@ The initial governance layer was checked for:
 - provider-exit, unknown accounting-policy, and frozen-schema change-control boundaries.
 
 The founder-controlled Documents structure, complete canonical private register set, provider lifecycle register, and initial provider review log were created on August 24, 2026. The system-control register intentionally leaves owner-selected reminder times, verified backup destination/result, reporting currency, fiscal-year policy, FX policy, tax treatment, and statutory retention unresolved until authoritative input exists. No provider console was opened in this update. No invoice, payment screenshot, bank/UPI/card statement, secret, actual provider quota, payment, scheduled reminder, backup, restore test, subscription change, Firebase change, deployment, commit, or push was performed.
+
+## August 31, 2026 — Schema 1.1 Restricted Originals
+
+The founder-approved additive change was validated for mirrored rule parity, skill/schema/doc alignment, private-only storage, owner-authorization indexing, non-identifying filenames, directory mode `0700`, file mode `0600`, SHA-256 integrity fields, routine redacted derivatives, masked ledger/report fields, and rejection of authentication/payment-authorization secrets. The change does not add product runtime, Firebase, public/cloud storage, automated provider access, payment authority, deployment, commit, or push. Private-store backup and restore remain unverified and therefore remain an open control gap.

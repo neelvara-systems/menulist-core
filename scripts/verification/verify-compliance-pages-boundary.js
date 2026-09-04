@@ -365,6 +365,9 @@ function verifyOwnerEditorsBoundary() {
   assertIncludes(mobile, 'minWidth: 44', 'Mobile compliance icon trigger touch width');
   assertIncludes(mobile, 'aria-expanded={isBaselineExpanded}', 'Mobile compliance baseline disclosure expanded state');
   assertIncludes(mobile, 'onClick={toggleBaselineContent}', 'Mobile compliance baseline disclosure activation');
+  assertIncludes(mobile, "setCustomText(currentData?.customContent || '');", 'Mobile compliance cancel restores persisted custom content');
+  assertIncludes(mobile, 'onClick={handleCancelEdit}', 'Mobile compliance cancel uses draft-discard boundary');
+  assertNotIncludes(mobile, 'onClick={() => setIsEditing(false)}', 'Mobile compliance cancel must not retain a hidden draft');
   assertIncludes(mobile, 'type="button"', 'Mobile compliance baseline disclosure semantic button');
   assertNotIncludes(mobile, 'onKeyDown={handleBaselineKeyDown}', 'Mobile compliance baseline disclosure must use native button keyboard behavior');
   assertIncludes(ownerResponseBoundary, 'key: JSON.stringify([normalizedTenantId, normalizedStoreId])', 'Owner compliance collision-safe tenant/store cache key');

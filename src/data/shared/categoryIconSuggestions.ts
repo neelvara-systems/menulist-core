@@ -42,6 +42,28 @@ export interface CategoryIconItemContext {
     name?: Record<string, string>;
 }
 
+export const CATEGORY_ICON_VALUE_MAX_LENGTH = 80;
+
+/**
+ * Keep persisted category icons inside the documented cross-runtime contract.
+ * Lucide names remain data (never executable markup), while emoji values are
+ * bounded so a malformed extraction cannot inflate owner or public payloads.
+ */
+export function normalizeCategoryIcon(value: unknown): string {
+    if (typeof value !== 'string') return '';
+    const candidate = value.trim();
+    if (!candidate || candidate.length > CATEGORY_ICON_VALUE_MAX_LENGTH || /[\u0000-\u001F\u007F<>]/.test(candidate)) {
+        return '';
+    }
+
+    if (/^lu:Lu[A-Za-z0-9]+$/.test(candidate)) return candidate;
+    if (!candidate.startsWith('emoji:')) return '';
+
+    const emoji = candidate.slice('emoji:'.length).trim();
+    if (!emoji || Array.from(emoji).length > 12 || /^[\x00-\x7F]+$/.test(emoji)) return '';
+    return `emoji:${emoji}`;
+}
+
 const COMMON_SUGGESTIONS: CategoryIconSuggestion[] = [
     { icon: 'lu:LuStore', keywords: ['featured', 'highlights', 'top picks', 'popular', 'special', 'signature'] },
     { icon: 'lu:LuSparkles', keywords: ['new', 'seasonal', 'limited', 'chef special', 'recommended'] },
@@ -195,7 +217,7 @@ function getCategoryId(value: CategoryIconItemContext): string {
 }
 
 function isValidCategoryIcon(value: unknown): value is string {
-    return typeof value === 'string' && (value.startsWith('lu:') || value.startsWith('emoji:'));
+    return normalizeCategoryIcon(value).length > 0;
 }
 
 export function getCategoryIconSuggestions(categoryName?: string, businessCategory?: string, limit = 8): string[] {

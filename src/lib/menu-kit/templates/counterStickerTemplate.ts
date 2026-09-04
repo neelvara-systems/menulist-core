@@ -15,6 +15,7 @@ import { drawMenuListAttribution } from '../platformAttribution';
 import { MenuKitInput } from '../types';
 import { resolvePrintableTemplateBrandTokens } from '../../printable-asset-templates/templateStyles';
 import { normalizePrintableTemplateFamilyId } from '../../printable-asset-templates/templateFamilies';
+import { drawPrintableThemeArtwork, loadPrintableThemeArtwork } from '../../printable-asset-templates/themeArtwork';
 
 type StickerInput = MenuKitInput & { _logo?: PreloadedLogo | null };
 
@@ -184,6 +185,7 @@ export async function generateCounterSticker(input: StickerInput): Promise<Blob>
     const logo = _logo || null;
     const templateFamilyId = normalizePrintableTemplateFamilyId(input.templateFamilyId);
     const brand = resolvePrintableTemplateBrandTokens(input.brandColor, templateFamilyId);
+    const themeArtwork = await loadPrintableThemeArtwork(templateFamilyId);
     const isBanner = templateFamilyId === 'brand-banner';
     const isDark = templateFamilyId === 'executive-dark';
     const qrSize = templateFamilyId === 'qr-first' ? 470 : 420;
@@ -201,7 +203,7 @@ export async function generateCounterSticker(input: StickerInput): Promise<Blob>
     ctx.fillRect(0, 0, SIZE, SIZE);
     if (isBanner) {
         fillRoundedVerticalGradient(ctx, 0, 0, SIZE, 250, 0, brand.gradientFrom, brand.gradientTo);
-    } else if (templateFamilyId === 'classic-luxe' || templateFamilyId === 'botanical-heritage') {
+    } else if (templateFamilyId === 'classic-luxe' || templateFamilyId === 'botanical-heritage' || templateFamilyId === 'craft-kitchen') {
         ctx.save();
         ctx.globalAlpha = 0.18;
         ctx.fillStyle = brand.softAccent;
@@ -213,6 +215,12 @@ export async function generateCounterSticker(input: StickerInput): Promise<Blob>
 
     fillRoundedRect(ctx, PADDING, PADDING, SIZE - PADDING * 2, SIZE - PADDING * 2, templateFamilyId === 'clean-utility' ? 0 : 24, brand.surface);
     strokeRoundedRect(ctx, PADDING, PADDING, SIZE - PADDING * 2, SIZE - PADDING * 2, templateFamilyId === 'clean-utility' ? 0 : 24, brand.border, isDark ? 5 : 3);
+    drawPrintableThemeArtwork(ctx, themeArtwork, {
+        height: SIZE - PADDING * 2,
+        width: SIZE - PADDING * 2,
+        x: PADDING,
+        y: PADDING,
+    }, { cornerOpacity: 0.26, railOpacity: 0.20, templateFamilyId });
     drawStickerDecorations(ctx, templateFamilyId, brand);
 
     const headerX = 84;

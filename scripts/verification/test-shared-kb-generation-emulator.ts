@@ -69,6 +69,11 @@ const waitForStatus = async (jobId: string, status: string): Promise<void> => {
 };
 
 async function run(): Promise<void> {
+    // The maintained runner may execute this suite more than once against the
+    // same approved emulator. Give every run distinct job IDs so historical
+    // articles cannot be counted as products of the current concurrency test.
+    const runPrefix = `shared-kb-${process.pid}-${Date.now()}`;
+
     await Promise.all([
         articles.doc('same-tenant-existing').set({
             id: 'same-tenant-existing',
@@ -94,7 +99,7 @@ async function run(): Promise<void> {
         }),
     ]);
 
-    const concurrentJob = buildJob('shared-kb-concurrent');
+    const concurrentJob = buildJob(`${runPrefix}-concurrent`);
     await jobs.doc(concurrentJob.id).set(concurrentJob);
     let generationCalls = 0;
     const dependencies = {
@@ -130,7 +135,7 @@ async function run(): Promise<void> {
     const createdForJob = await articles.where('jobId', '==', concurrentJob.id).get();
     assert.equal(createdForJob.size, 1, 'Concurrent delivery must not create orphan duplicate articles.');
 
-    const cancelledJob = buildJob('shared-kb-cancelled');
+    const cancelledJob = buildJob(`${runPrefix}-cancelled`);
     await jobs.doc(cancelledJob.id).set(cancelledJob);
     let releaseGeneration: () => void = () => {
         throw new Error('Generation release was not initialized.');
@@ -154,7 +159,7 @@ async function run(): Promise<void> {
     assert.equal(cancelled.status, INGESTION_JOB_STATUS.CANCELLED, 'Completion/failure must not overwrite cancellation.');
     assert.equal((await articles.where('jobId', '==', cancelledJob.id).get()).empty, true);
 
-    const malformedJob = buildJob('shared-kb-malformed', { tId: '01' });
+    const malformedJob = buildJob(`${runPrefix}-malformed`, { tId: '01' });
     await jobs.doc(malformedJob.id).set(malformedJob);
     const malformedResult = await startGenerationLogic(malformedJob.id, malformedJob, dependencies);
     assert.equal(malformedResult.skipped, true);

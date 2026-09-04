@@ -24,6 +24,8 @@ export interface OfferingLabels {
     scanToView: string;
     /** "SCAN TO VIEW CURRENT MENU" / "SCAN TO VIEW CURRENT SERVICES" */
     scanToViewUpper: string;
+    /** Compact print CTA: "SCAN TO VIEW MENU" / "SCAN TO VIEW SERVICES" */
+    scanToViewCompactUpper: string;
     /** "SCAN FOR CURRENT MENU" / "SCAN FOR CURRENT SERVICES" */
     scanForUpper: string;
     /** "MENU IS LIVE" / "SERVICES ARE LIVE" */
@@ -123,7 +125,7 @@ export interface OfferingLabels {
 const CATEGORY_LABELS: Record<string, OfferingLabels> = {
     food: {
         offeringUpper: 'MENU', offeringTitle: 'Menu', offeringLower: 'menu',
-        scanToView: 'Scan to view current menu', scanToViewUpper: 'SCAN TO VIEW CURRENT MENU', scanForUpper: 'SCAN FOR CURRENT MENU',
+        scanToView: 'Scan to view current menu', scanToViewUpper: 'SCAN TO VIEW CURRENT MENU', scanToViewCompactUpper: 'SCAN TO VIEW MENU', scanForUpper: 'SCAN FOR CURRENT MENU',
         isLiveUpper: 'MENU IS LIVE  ✅', updatedTitle: 'Updated Menu  ✅',
         updatedRegularly: 'Menu & prices updated regularly',
         staffScript: 'Menu? Please scan the QR on the table or at the counter.',
@@ -167,7 +169,7 @@ const CATEGORY_LABELS: Record<string, OfferingLabels> = {
     },
     service: {
         offeringUpper: 'SERVICES', offeringTitle: 'Services', offeringLower: 'services',
-        scanToView: 'Scan to view current services', scanToViewUpper: 'SCAN TO VIEW CURRENT SERVICES', scanForUpper: 'SCAN FOR CURRENT SERVICES',
+        scanToView: 'Scan to view current services', scanToViewUpper: 'SCAN TO VIEW CURRENT SERVICES', scanToViewCompactUpper: 'SCAN TO VIEW SERVICES', scanForUpper: 'SCAN FOR CURRENT SERVICES',
         isLiveUpper: 'SERVICES ARE LIVE  ✅', updatedTitle: 'Updated Services  ✅',
         updatedRegularly: 'Services & prices updated regularly',
         staffScript: 'Services? Please scan the QR at the reception.',
@@ -206,7 +208,7 @@ const CATEGORY_LABELS: Record<string, OfferingLabels> = {
     },
     retail: {
         offeringUpper: 'CATALOG', offeringTitle: 'Catalog', offeringLower: 'catalog',
-        scanToView: 'Scan to view current catalog', scanToViewUpper: 'SCAN TO VIEW CURRENT CATALOG', scanForUpper: 'SCAN FOR CURRENT CATALOG',
+        scanToView: 'Scan to view current catalog', scanToViewUpper: 'SCAN TO VIEW CURRENT CATALOG', scanToViewCompactUpper: 'SCAN TO VIEW CATALOG', scanForUpper: 'SCAN FOR CURRENT CATALOG',
         isLiveUpper: 'CATALOG IS LIVE  ✅', updatedTitle: 'Updated Catalog  ✅',
         updatedRegularly: 'Products & prices updated regularly',
         staffScript: 'Products? Please scan the QR to browse our catalog.',
@@ -245,7 +247,7 @@ const CATEGORY_LABELS: Record<string, OfferingLabels> = {
     },
     health: {
         offeringUpper: 'SERVICES', offeringTitle: 'Services', offeringLower: 'services',
-        scanToView: 'Scan to view current services', scanToViewUpper: 'SCAN TO VIEW CURRENT SERVICES', scanForUpper: 'SCAN FOR CURRENT SERVICES',
+        scanToView: 'Scan to view current services', scanToViewUpper: 'SCAN TO VIEW CURRENT SERVICES', scanToViewCompactUpper: 'SCAN TO VIEW SERVICES', scanForUpper: 'SCAN FOR CURRENT SERVICES',
         isLiveUpper: 'SERVICES ARE LIVE  ✅', updatedTitle: 'Updated Services  ✅',
         updatedRegularly: 'Services & pricing updated regularly',
         staffScript: 'Services? Please scan the QR at the front desk.',
@@ -284,7 +286,7 @@ const CATEGORY_LABELS: Record<string, OfferingLabels> = {
     },
     professional: {
         offeringUpper: 'SERVICES', offeringTitle: 'Services', offeringLower: 'services',
-        scanToView: 'Scan to view current services', scanToViewUpper: 'SCAN TO VIEW CURRENT SERVICES', scanForUpper: 'SCAN FOR CURRENT SERVICES',
+        scanToView: 'Scan to view current services', scanToViewUpper: 'SCAN TO VIEW CURRENT SERVICES', scanToViewCompactUpper: 'SCAN TO VIEW SERVICES', scanForUpper: 'SCAN FOR CURRENT SERVICES',
         isLiveUpper: 'SERVICES ARE LIVE  ✅', updatedTitle: 'Updated Services  ✅',
         updatedRegularly: 'Services updated regularly',
         staffScript: 'Services? Please scan the QR for details.',
@@ -323,7 +325,7 @@ const CATEGORY_LABELS: Record<string, OfferingLabels> = {
     },
     creative: {
         offeringUpper: 'SERVICES', offeringTitle: 'Services', offeringLower: 'services',
-        scanToView: 'Scan to view current offerings', scanToViewUpper: 'SCAN TO VIEW CURRENT OFFERINGS', scanForUpper: 'SCAN FOR CURRENT OFFERINGS',
+        scanToView: 'Scan to view current offerings', scanToViewUpper: 'SCAN TO VIEW CURRENT OFFERINGS', scanToViewCompactUpper: 'SCAN TO VIEW OFFERINGS', scanForUpper: 'SCAN FOR CURRENT OFFERINGS',
         isLiveUpper: 'OFFERINGS ARE LIVE  ✅', updatedTitle: 'Updated Offerings  ✅',
         updatedRegularly: 'Offerings & pricing updated regularly',
         staffScript: 'Offerings? Please scan the QR for details.',
@@ -362,7 +364,7 @@ const CATEGORY_LABELS: Record<string, OfferingLabels> = {
     },
     specialty: {
         offeringUpper: 'SERVICES', offeringTitle: 'Services', offeringLower: 'services',
-        scanToView: 'Scan to view current services', scanToViewUpper: 'SCAN TO VIEW CURRENT SERVICES', scanForUpper: 'SCAN FOR CURRENT SERVICES',
+        scanToView: 'Scan to view current services', scanToViewUpper: 'SCAN TO VIEW CURRENT SERVICES', scanToViewCompactUpper: 'SCAN TO VIEW SERVICES', scanForUpper: 'SCAN FOR CURRENT SERVICES',
         isLiveUpper: 'SERVICES ARE LIVE  ✅', updatedTitle: 'Updated Services  ✅',
         // Processing states
         processingTitle: 'Creating Your Service Page',

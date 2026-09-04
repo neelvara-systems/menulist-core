@@ -1605,6 +1605,8 @@ function verifyMultiLocationBoundary() {
     "logStoreDataFailure('store_brand_propagation_scope_missing'",
     'await propagateMasterStoreChangesToOutlets(',
     'const directStoreUpdate = { ...data };',
+    'const composedDirectStoreUpdate = privateConfigurationField',
+    ': await requestBodyComposer(directStoreUpdate, { isNew: false });',
     'for (const field of Object.keys(propagationChanges)) delete directStoreUpdate[field];',
     'delete directStoreUpdate.modifiedOn;',
     'const hasClientSummaryFieldChanges = summaryFields.some((field) => (',
@@ -1614,7 +1616,8 @@ function verifyMultiLocationBoundary() {
     [
       'await propagateMasterStoreChangesToOutlets(',
       'const directStoreUpdate = { ...data };',
-      'const composedDirectStoreUpdate = await requestBodyComposer(directStoreUpdate, { isNew: false });',
+      'const composedDirectStoreUpdate = privateConfigurationField',
+      ': await requestBodyComposer(directStoreUpdate, { isNew: false });',
       'if (hasClientSummaryFieldChanges) {',
     ],
     'Store DAL must commit server-owned master/outlet fields before direct non-propagated fields',

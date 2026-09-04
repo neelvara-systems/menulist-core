@@ -2,7 +2,7 @@
 
 **Feature:** Menu Image Preparation For Review
 **Status:** Source-backed marketing draft; not current sales, publication, or launch certification
-**Last Updated:** July 14, 2026
+**Last Updated:** August 31, 2026
 **Audience:** Sales Team, Marketing, Landing Page Writers
 
 ---
@@ -269,6 +269,12 @@ Do not use testimonials, cost-savings claims, speed claims, customer-behavior cl
 ---
 
 ## Campaign Ideas
+
+## Reusable subject messaging boundary
+
+Approved internal positioning: owners can save an authorized adult subject and reuse that person across relevant image drafts for a more coherent catalog. Useful examples include salon hairstyle catalogs, makeup looks, spa service visuals, tattoo concept previews, studio portraits, and trainer-led fitness services.
+
+Never claim exact identity reproduction, customer consent by default, celebrity cloning, guaranteed service outcomes, real completed work, automatic public use, or replacement of professional photography. Public-facing promotion remains gated by release-specific provider, consent, owner-flow, and output-quality evidence.
 
 ### Launch Campaign
 

@@ -1,7 +1,7 @@
 # Print Assets Spec
 
 **Status:** Implemented
-**Last Updated:** June 25, 2026
+**Last Updated:** September 4, 2026
 
 ## Problem
 
@@ -42,6 +42,7 @@ Create one focused owner workspace for printables while keeping Use MenuList as 
 | Support | Purpose |
 | --- | --- |
 | Print readiness | Shows whether live link, logo, brand color, business name length, and feedback QR state are ready before printing. |
+| Business-profile readiness | Shows which reusable identity/contact details are missing and lets an authorized owner complete them without leaving Assets. |
 | Image-first output preview | Opens a clean image preview of the selected template without browser PDF controls; PDF/image downloads remain separate actions. |
 | Print-shop handoff | Copies plain file specs that can be sent with the ZIP to a local printer. |
 | Reprint guidance | Explains when reprinting is needed and when live QR updates avoid reprinting. |
@@ -53,6 +54,8 @@ Create one focused owner workspace for printables while keeping Use MenuList as 
 - Supported single print assets may open a governed editor document for practical desktop copy/layout fixes.
 - Branded QR action templates can vary the frame, CTA, short link, and surrounding business identity, but the QR source layer remains protected and scan-safe.
 - Reuse existing logo, brand color, menu URL, project selection, and plan-aware MenuList attribution.
+- Save business-profile edits through the canonical store/tenant settings DAL and refresh the current preview; never persist a separate per-asset profile.
+- General assets request brand name, location name, logo, and tagline. Contact-focused Business Card and overall readiness additionally cover public contact name, phone, email, and address.
 - Desktop and mobile outputs must come from the same generator path.
 - Generated artifacts stay client-side unless a separate print-shop fulfillment feature is approved.
 - Explicitly saved editor templates may use the Creative Editor Template Registry; this is separate from generated file storage and does not run on preview/download.
@@ -73,6 +76,7 @@ Create one focused owner workspace for printables while keeping Use MenuList as 
 - Multiple projects use the same project selector behavior as Use MenuList/mobile Share.
 - Menu Kit asset indices are centralized in `src/lib/print-assets/printAssetCatalog.ts`.
 - Readiness, print-shop handoff, and reprint guidance come from shared print-assets helpers on desktop and mobile.
+- Desktop and mobile show the same business-profile completeness model, permission boundary, inline editor, canonical save path, and immediate preview refresh.
 - Table/card/sticker/poster/flyer/gift/business-card/ID-card/invitation/postcard/tag previews render by semantic asset key and do not build the full ZIP.
 - Firebase cost remains zero for generated printable assets. Saved owner templates are optional explicit saves with bounded registry metadata and Storage JSON cost.
 - QR safety verifiers fail when generated QR margins drop below four modules.

@@ -7,6 +7,7 @@ import { getBoundedStaffStringContext, logStaffClientFailure } from '@lib/staffM
 import { canManageStaffTargetForSession } from '@lib/staffManagement/scopeBoundary';
 import { OWNER_ACCESS_NOT_TRANSFER_COPY } from '@lib/staffManagement/ownershipTransferBoundary';
 import { getBoundedErrorCode } from '@lib/monitoring/boundedLogContext';
+import { isValidOptionalStaffEmail } from '@lib/staffManagement/inputBoundary';
 import type { StaffStoreOption, StaffUserSummary } from '@lib/staffManagement/types';
 import {
     buildStaffLoginDetailsText,
@@ -342,6 +343,10 @@ function MobileUsersScreenContent({ onBack }: MobileUsersScreenProps) {
         const submittedEmail = newUserEmail.trim().toLowerCase();
         const submittedPhone = newUserPhone.trim();
         const submittedRole = newUserRole;
+        if (!isValidOptionalStaffEmail(submittedEmail)) {
+            Toast.show({ content: 'Invalid email address', duration: 1800 });
+            return;
+        }
         const submittedCountryCode = submittedPhone ? defaultStaffCountryCode : undefined;
         const submittedDialCode = submittedPhone ? defaultStaffDialCode : undefined;
         staffMutationInFlightRef.current = true;

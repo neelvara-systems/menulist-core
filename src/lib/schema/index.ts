@@ -15,6 +15,7 @@ import {
     resolveBusinessCategory,
 } from '@data/shared/businessTypes';
 import { normalizeOBPSocialUrl, normalizeOBPWebsiteUrl } from '@lib/obp/publicLinks';
+import { getOwnerCustomSocialMediaLinks } from '@lib/obp/ownerSocialMediaBoundary';
 import { parseWorkingHoursRanges } from '@lib/hours/hoursEngine';
 import { normalizeSpecialHours } from '@lib/hours/specialHours';
 import { getActiveTempStatus } from '@lib/tempStatus/statusBoundary';
@@ -361,6 +362,7 @@ export function buildSameAs(storeData: any) {
     addDirectLink(normalizeOBPSocialUrl('twitter', socialMedia.twitter));
     addDirectLink(normalizeOBPSocialUrl('linkedin', socialMedia.linkedin));
     addDirectLink(normalizeOBPSocialUrl('youtube', socialMedia.youtube));
+    getOwnerCustomSocialMediaLinks(socialMedia).forEach((link) => addDirectLink(link.url));
     if (storeData?.url) {
         addDirectLink(normalizeOBPWebsiteUrl(storeData.url));
     } else if (socialMedia.website) {

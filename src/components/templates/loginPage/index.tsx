@@ -5,6 +5,7 @@ import { PRODUCT_IDS } from '@constant/product';
 import { CLIENT_DASHBOARD_ROUTING, HOME_ROUTING, NAVIGARIONS_ROUTINGS } from "@constant/navigations";
 import { ANSWERLATTICE_LOCAL_DEV_PATH_PREFIX, isAnswerlatticeProductHostname } from '@constant/answerlattice/domains';
 import { resolveProductSiteByDevPath, resolveProductSiteByHostname } from '@constant/productDomains';
+import { getPlatformWebsiteBaseUrl } from '@constant/urls';
 import AnswerlatticeLogoMark from '@/components/atoms/answerlatticeLogoMark';
 import BrandWordmark from '@/components/website/shared/BrandWordmark';
 import PhoneOtpAuthPanel from '@/components/auth/PhoneOtpAuthPanel';
@@ -355,6 +356,16 @@ function LoginPage() {
     return isAnswerlatticeProductHostname(loginHostname)
       ? HOME_ROUTING
       : ANSWERLATTICE_LOCAL_DEV_PATH_PREFIX;
+  };
+
+  const openProductHelp = () => {
+    if (isAnswerlatticeExperience) {
+      const productHome = getLoginHomeRoute();
+      router.push(productHome === HOME_ROUTING ? '/contact' : `${productHome}/contact`);
+      return;
+    }
+
+    window.location.assign(new URL('/contact', getPlatformWebsiteBaseUrl()).toString());
   };
 
 	  const getPostLoginRedirect = () => {
@@ -1158,7 +1169,7 @@ function LoginPage() {
                       autoCapitalize="none"
                       autoCorrect="off"
                       spellCheck={false}
-                      placeholder="Enter your credentials"
+                      placeholder="name@example.com, phone number, or staff ID"
                     />
                   </Form.Item>
                   {shouldOfferPhoneOtp ? (
@@ -1241,7 +1252,7 @@ function LoginPage() {
                     {displayErrorMessage}
                   </div>}
                   {!shouldShowSecretInput && !shouldOfferPhoneOtp ? (
-                    <Button type="primary" size="large" htmlType="submit" style={{ width: '100%' }} className="login-form-button">Continue with email</Button>
+                    <Button type="primary" size="large" htmlType="submit" style={{ width: '100%' }} className="login-form-button">Continue</Button>
                   ) : null}
                   {shouldShowSecretInput ? (
                     <Space direction="vertical" align="center" style={{ width: "100%" }} >
@@ -1253,9 +1264,10 @@ function LoginPage() {
                     <Text>Don&apos;t have an account?</Text>
                     <Button type="link" onClick={() => router.push(`/pricing`)}>Sign up</Button>
                   </Flex>
-                  <Space direction="vertical" align="center" style={{ width: "100%", marginTop: 8 }} >
-                    <Text style={{ color: token.colorTextLabel }}>Need help? Contact the owner.</Text>
-                  </Space>
+                  <Flex align="center" justify="center" wrap="wrap" style={{ width: '100%', marginTop: 8 }} gap={2}>
+                    <Text style={{ color: token.colorTextLabel }}>Having trouble signing in?</Text>
+                    <Button type="link" onClick={openProductHelp}>Get help</Button>
+                  </Flex>
                 </Form>
               </>
             )}

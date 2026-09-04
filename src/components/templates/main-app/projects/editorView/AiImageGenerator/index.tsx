@@ -10,11 +10,12 @@ import { ProjectsDataContext, ProjectsDataProviderType } from '@providers/projec
 import { startLoader, stopLoader } from '@reduxSlices/loader';
 import { AICapacityError } from '@services/ai/capacityError';
 import generateImageViaApi from '@services/ai/image/generateImageViaApi';
+import { ImageGenerationRequestError } from '@services/ai/image/imageGenerationError';
 import { UserUploadedFileType } from '@type/common';
-import { Button, Card, Collapse, Flex, Image, Input, App, Modal, Popconfirm, Skeleton, Space, Switch, Tag, theme, Tooltip, Typography, Upload } from 'antd';
+import { Button, Card, Checkbox, Collapse, Flex, Image, Input, App, Modal, Popconfirm, Skeleton, Switch, Tag, theme, Tooltip, Typography, Upload } from 'antd';
 import React, { Fragment, useContext, useEffect, useState } from 'react';
 import { FaImages } from 'react-icons/fa6';
-import { LuBadgeInfo, LuCheck, LuCheckCircle, LuChevronDown, LuImage, LuImagePlus, LuRefreshCcw, LuSettings2, LuWand2, LuX } from 'react-icons/lu';
+import { LuBadgeInfo, LuCheck, LuChevronDown, LuImage, LuImagePlus, LuRefreshCcw, LuSettings2, LuWand2, LuX } from 'react-icons/lu';
 import { NavBar, Popup } from '../../../../../mobile/antd';
 import { ImageGenerationConfigType, ItemForDropdown } from '../../types';
 import AspectRatioSelector from './AspectRatioSelector';
@@ -22,6 +23,7 @@ import ChatWidgetUi from './ChatWidgetUi'; // Import the new component
 import { getImageViewTypeForBusiness } from './imageViewType';
 import MultiSelectAttributeSelector from './MultiSelectAttributeSelector';
 import StyleSelector from './StyleSelector';
+import SubjectProfileSection from './SubjectProfileSection';
 import {
     getBoundedMenuEditorStringContext,
     getMenuEditorProjectLogContext,
@@ -51,7 +53,7 @@ const AiImageGenerator: React.FC<AiImageGeneratorProps> = ({
 
     const { token } = theme.useToken();
     const { isMobile } = useDeviceType();
-    const { storeDetails } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext)
+    const { storeDetails, userPermissions } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext)
     const selectedBusinessData = getImageViewTypeForBusiness(storeDetails?.businessType, storeDetails?.businessCategory);
     const imageTypes = selectedBusinessData?.imageTypes || [];
     const [selectedGeneratedForUpload, setSelectedGeneratedForUpload] = useState<UserUploadedFileType[]>([]);
@@ -125,14 +127,16 @@ const AiImageGenerator: React.FC<AiImageGeneratorProps> = ({
         image.src = selectedReferenceImage.url;
     }, [generationConfig.referanceImage]);
 
-    const onGenerateImage = async (): Promise<void> => {
+    const onGenerateImage = async (configOverride?: ImageGenerationConfigType): Promise<void> => {
+        const activeConfig = configOverride || generationConfig;
+        const activeSelectedImageTypes = activeConfig.selectedImageTypes || [];
         // Validate prompt only if it's empty AND no description exists for the item
-        if (!generationConfig.prompt && !selectedItem?.descriptionLine) {
+        if (!activeConfig.prompt && !selectedItem?.descriptionLine) {
             messageApi.error('Please enter a prompt or ensure the item has a description.');
             return;
         }
 
-        if (selectedImageTypes.length === 0 && generationConfig.isMultiMode) {
+        if (activeSelectedImageTypes.length === 0 && activeConfig.isMultiMode) {
             messageApi.error('Please select at least one image type for multi-mode generation.');
             return;
         }
@@ -151,75 +155,77 @@ const AiImageGenerator: React.FC<AiImageGeneratorProps> = ({
             storeDetails?.businessCategory ||
             'business';
 
-        setGenerationConfig({ ...generationConfig, loading: true, generatedImages: [] });
+        setGenerationConfig({ ...activeConfig, loading: true, generatedImages: [] });
         dispatch(startLoader("Generating Image"))
         try {
             const genratedImages = await generateImageViaApi({
                 itemDetails: selectedItem,
-                generationConfig,
+                generationConfig: activeConfig,
                 projectId,
                 fileId,
                 businessType,
             });
             if (genratedImages?.length > 0) {
                 // Create a descriptive name based on the styles and prompt
-                const imageName = `${generationConfig.styles[0] || 'custom'}_${selectedItem?.itemName}`;
+                const imageName = `${activeConfig.styles[0] || 'custom'}_${selectedItem?.itemName}`;
 
                 // Create a new reference image object
                 const newGenImages: UserUploadedFileType[] = genratedImages.map((image: { base64: string; mimeType: string }, index: number) => {
                     const uniqueId = createUppercaseRandomIdSegment(6);
                     let name = imageName;
-                    if (generationConfig.isMultiMode) {
-                        name = `${imageName}_${selectedImageTypes[index] || `view-${index + 1}`}`;
+                    if (activeConfig.isMultiMode) {
+                        name = `${imageName}_${activeSelectedImageTypes[index] || `view-${index + 1}`}`;
                     }
                     return { name, url: image.base64, uid: uniqueId }
                 });
 
                 // Update the reference images array
                 const updatedRefImages = [
-                    ...(generationConfig.referanceImages ?? []),
+                    ...(activeConfig.referanceImages ?? []),
                     ...newGenImages,
                 ];
 
                 setGenerationConfig({
-                    ...generationConfig,
+                    ...activeConfig,
                     loading: false,
                     generatedImages: newGenImages,
                     referanceImages: updatedRefImages,
                     referanceImage: null,
                     selectedImageTypes: []
                 });
-                await onPreferencesUsed?.(generationConfig);
+                await onPreferencesUsed?.(activeConfig);
                 setSelectedGeneratedForUpload(newGenImages);
-                messageApi.success('Image generated successfully!');
+                messageApi.success('Photo generated. Review it before adding it.');
                 dispatch(stopLoader("Generating Image"))
             } else {
-                messageApi.error('Image generation failed!, try again.');
+                messageApi.error('The image service returned no photo. Try again.');
                 dispatch(stopLoader("Generating Image"))
-                setGenerationConfig({ ...generationConfig, loading: false });
+                setGenerationConfig({ ...activeConfig, loading: false });
             }
 
         } catch (error: any) {
             if (error instanceof AICapacityError) {
                 messageApi.info('Get more enhancements to continue. Visit Billing to add an enhancement pack.');
+            } else if (error instanceof ImageGenerationRequestError) {
+                messageApi.error(error.message);
             } else {
                 logMenuEditorFailure('menu_editor_ai_image_generate_failed', error, {
                     ...getMenuEditorProjectLogContext(activeProject?.projectId, activeProject?.masterProjectId),
                     ...getBoundedMenuEditorStringContext('itemId', selectedItem?.id),
                     ...getBoundedMenuEditorStringContext('itemName', selectedItem?.itemName),
-                    isMultiMode: Boolean(generationConfig.isMultiMode),
-                    promptLength: generationConfig.prompt?.length || 0,
-                    referenceImageCount: Array.isArray(generationConfig.referanceImages)
-                        ? generationConfig.referanceImages.length
+                    isMultiMode: Boolean(activeConfig.isMultiMode),
+                    promptLength: activeConfig.prompt?.length || 0,
+                    referenceImageCount: Array.isArray(activeConfig.referanceImages)
+                        ? activeConfig.referanceImages.length
                         : 0,
-                    selectedImageTypeCount: Array.isArray(generationConfig.selectedImageTypes)
-                        ? generationConfig.selectedImageTypes.length
+                    selectedImageTypeCount: Array.isArray(activeConfig.selectedImageTypes)
+                        ? activeConfig.selectedImageTypes.length
                         : 0,
                 });
                 messageApi.error('Image generation failed. Please try again.');
             }
             dispatch(stopLoader("Generating Image"))
-            setGenerationConfig({ ...generationConfig, loading: false });
+            setGenerationConfig({ ...activeConfig, loading: false });
         }
     }
 
@@ -499,7 +505,7 @@ const AiImageGenerator: React.FC<AiImageGeneratorProps> = ({
         <Card
             size="small"
             style={isMobile ? { background: 'transparent', border: 0 } : undefined}
-            styles={{ body: { padding: isMobile ? 0 : undefined, paddingBottom: 0 } }}
+            styles={{ body: isMobile ? { padding: 0 } : { paddingBottom: 0 } }}
         >
             <Flex vertical style={{ width: '100%' }} align="center">
                 {generationConfig.loading ? (
@@ -528,15 +534,17 @@ const AiImageGenerator: React.FC<AiImageGeneratorProps> = ({
                 ) : <>
                     {(Boolean(generationConfig.generatedImages?.length) && !generationConfig.loading) ? (
                         <Flex vertical align="center" justify="center" style={{ width: '100%' }} gap={8}>
-                            <Typography.Text strong>Generated Image&apos;s:</Typography.Text>
+                            <Typography.Text strong>Generated photos</Typography.Text>
+                            <Typography.Text type="secondary" style={{ textAlign: 'center' }}>
+                                Review the drafts and choose what to add to {selectedItem?.itemName || 'this item'}.
+                            </Typography.Text>
                             <Flex wrap="wrap" gap={16} justify="center" style={{ marginTop: 16 }}>
                                 {generationConfig.generatedImages?.map((image, index) => {
                                     const isSelected = selectedGeneratedForUpload.some(img => img.uid === image.uid);
                                     return (
-                                        <Fragment key={image.uid || index}>
+                                        <Flex key={image.uid || index} gap={8} vertical align="center">
                                             <Tooltip title={image.name}>
                                                 <Image
-                                                    key={image.uid || index} // Use uid if available
                                                     src={image.url}
                                                     alt={`Generated image ${index + 1}`}
                                                     width={isMobile ? 112 : 150}
@@ -547,36 +555,25 @@ const AiImageGenerator: React.FC<AiImageGeneratorProps> = ({
                                                         padding: '4px',
                                                         borderRadius: token.borderRadius
                                                     }}
-                                                    preview={{
-                                                        maskClassName: 'custom-mask',
-                                                        mask: (
-                                                            <Space size={16}>
-                                                                {/* <Tooltip title="Edit Image">
-                                                            <LuPencil
-                                                                style={{ fontSize: 20, color: '#fff', cursor: 'pointer' }}
-                                                                onClick={(e) => { e.stopPropagation(); setImageEditModal({ active: true, imageData: image }); }}
-                                                            />
-                                                        </Tooltip> */}
-                                                                <Tooltip title={isSelected ? "Deselect" : "Select for Upload"}>
-                                                                    <LuCheckCircle
-                                                                        style={{ fontSize: 20, color: isSelected ? token.colorPrimaryActive : '#fff', cursor: 'pointer' }}
-                                                                        onClick={(e) => { e.stopPropagation(); toggleSelectGeneratedImage(image); }}
-                                                                    />
-                                                                </Tooltip>
-                                                            </Space>
-                                                        )
-                                                    }}
                                                 />
                                             </Tooltip>
-                                        </Fragment>
+                                            <Checkbox
+                                                aria-label={`${isSelected ? 'Deselect' : 'Select'} generated photo ${index + 1}`}
+                                                checked={isSelected}
+                                                onChange={() => toggleSelectGeneratedImage(image)}
+                                            >
+                                                Use this photo
+                                            </Checkbox>
+                                        </Flex>
                                     );
                                 })}
                             </Flex>
                             <Flex gap={8} style={{ marginTop: 16 }} justify="center"> {/* Adjusted margin */}
                                 <Popconfirm
-                                    title="Current images will be discarded. Save them before retrying?"
+                                    title="Generate new drafts?"
+                                    description="The current generated drafts will be replaced."
                                     onConfirm={handleRetryGeneration}
-                                    okText="Retry Anyway"
+                                    okText="Generate again"
                                     cancelText="Cancel"
                                 >
                                     <Button
@@ -585,7 +582,7 @@ const AiImageGenerator: React.FC<AiImageGeneratorProps> = ({
                                         icon={<LuRefreshCcw />}
                                         block
                                     >
-                                        Retry Generation
+                                        Generate again
                                     </Button>
                                 </Popconfirm>
                                 <Button
@@ -594,7 +591,7 @@ const AiImageGenerator: React.FC<AiImageGeneratorProps> = ({
                                     icon={<LuWand2 />}
                                     disabled={selectedGeneratedForUpload.length === 0} // Disable if none selected
                                 >
-                                    {`Upload ${selectedGeneratedForUpload.length > 0 ? selectedGeneratedForUpload.length : ''} Selected Image(s)`}
+                                    Add {selectedGeneratedForUpload.length} selected photo{selectedGeneratedForUpload.length !== 1 ? 's' : ''}
                                 </Button>
                             </Flex>
                         </Flex>
@@ -616,6 +613,17 @@ const AiImageGenerator: React.FC<AiImageGeneratorProps> = ({
                                     }}
                                     vertical
                                 >
+                                    <SubjectProfileSection
+                                            businessType={storeDetails?.businessType}
+                                            canManage={userPermissions?.canManageStore === true}
+                                            subjectProfileId={generationConfig.subjectProfileId}
+                                            subjectProfileVersion={generationConfig.subjectProfileVersion}
+                                            onChange={(subjectProfileId, subjectProfileVersion) => setGenerationConfig({
+                                                ...generationConfig,
+                                                subjectProfileId,
+                                                subjectProfileVersion,
+                                            })}
+                                    />
                                     <Flex
                                         gap={12}
                                         style={{

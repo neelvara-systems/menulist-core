@@ -3,6 +3,7 @@
 import { AIEnhancementPack, Currency, Plan } from '@data/common';
 import { MENULIST_B2C_PLAN_IDS } from '@constant/menulistPlans';
 import { PRODUCT_IDS } from '@constant/product';
+import { getPlatformWebsiteBaseUrl } from '@constant/urls';
 import { isFeatureEnabled } from '@config/features';
 import { aiEnhancementPacksList, getB2BPlansList, getB2CPlansList } from '@data/PlatformPlansList';
 import {
@@ -42,7 +43,6 @@ import { getGracePeriodDisplayInfo, hasValidSubscriptionAccess } from '@util/raz
 import { theme } from 'antd';
 import { useSession } from 'next-auth/react';
 import { useFormatter, useTranslations } from 'next-intl';
-import { useRouter } from 'next/navigation';
 import { useContext, useMemo, useRef, useState } from 'react';
 import { LuBuilding2, LuCheck, LuChevronRight, LuCreditCard, LuExternalLink, LuMail, LuMapPin, LuMessageCircle, LuPause, LuPlay, LuPlus, LuReceipt, LuStore, LuX, LuXCircle, LuZap } from 'react-icons/lu';
 import { Button, Card, Dialog, DotLoading, Flex, List, NavBar, Popup, Tag, Text, TextArea, Title, Toast } from '../antd';
@@ -50,11 +50,12 @@ import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader
 
 interface MobileBillingScreenProps {
     onBack: () => void;
+    onOpenHelp: () => void;
 }
 
 type MobileBillingExternalLinkKind = 'retry_payment' | 'invoice';
 
-export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps) {
+export default function MobileBillingScreen({ onBack, onOpenHelp }: MobileBillingScreenProps) {
     const t = useTranslations('Billing');
     const tCommon = useTranslations('Common');
     const tMobileAdvancedSettings = useTranslations('MobileAdvancedSettings');
@@ -71,7 +72,10 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
         tenantDetails,
         userPermissions,
     } = useContext(PlatformGlobalDataContext);
-    const router = useRouter();
+    const openPricing = () => {
+        const pricingUrl = new URL('/pricing', getPlatformWebsiteBaseUrl()).toString();
+        window.location.assign(pricingUrl);
+    };
     const { data: session } = useSession();
     const [billingHistory, setBillingHistory] = useState<any[]>([]);
     const [showPlans, setShowPlans] = useState(false);
@@ -148,6 +152,9 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
                 && sub.qaCertification.projectId === 'menulist-qa'
             )
         );
+    const isPersistentQaOwner = isQaCertificationEntitlement
+        && sub?.qaCertification?.persistentOwner === true
+        && sub.qaCertification.purpose === 'menulist_persistent_phone_owner';
     const isPaymentPending = sub?.status === 'pending'
         || Boolean(
             sub?.status === 'active'
@@ -267,7 +274,7 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
         }
         if (!sub) {
             setShowPlans(false);
-            router.push('/pricing');
+            openPricing();
             return;
         }
         setShowPlans(false);
@@ -445,6 +452,16 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
         setShowCancellationReasons(true);
     };
 
+    const resetCancellationDraft = () => {
+        setCancellationReason(null);
+        setCancellationReasonDetail('');
+    };
+
+    const dismissCancellationReasons = () => {
+        setShowCancellationReasons(false);
+        resetCancellationDraft();
+    };
+
     const confirmCancellationReason = () => {
         if (!cancellationReason) {
             Toast.show({ content: t('cancellationReasonRequired'), duration: 2000 });
@@ -462,6 +479,7 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
             content: t('cancelSubscriptionDesc'),
             confirmText: t('cancelSubscriptionBtn'),
             cancelText: t('keepSubscription'),
+            onCancel: resetCancellationDraft,
             onConfirm: async () => {
                 if (billingScopeKeyRef.current !== mutationScopeKey) return;
                 try {
@@ -474,8 +492,7 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
                     });
                     if (billingScopeKeyRef.current !== mutationScopeKey) return;
                     Toast.show({ content: t('subscriptionCancelled'), duration: 2000 });
-                    setCancellationReason(null);
-                    setCancellationReasonDetail('');
+                    resetCancellationDraft();
                     await refetchSubscription();
                 } catch (err: any) {
                     logPaymentFailure('payment_mobile_subscription_cancel_failed', err, buildMobileBillingPaymentLogContext('cancel_subscription'));
@@ -648,7 +665,9 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
 
     const plans = (sub?.userType === 'B2B' ? getB2BPlansList() : getB2CPlansList()).filter((plan) => plan.billingInterval === billingInterval);
     const amountLabel = sub
-        ? isQaCertificationEntitlement
+        ? isPersistentQaOwner
+            ? `${formatCurrency(sub.amount, sub.currency)} / persistent QA owner access`
+            : isQaCertificationEntitlement
             ? `${formatCurrency(sub.amount, sub.currency)} / QA certification lease`
             : isManualBilling
             ? `${formatCurrency(sub.amount, sub.currency)} / one-time prepaid${sub.commitmentPeriodMonths ? ` (${sub.commitmentPeriodMonths} months)` : ''}`
@@ -742,11 +761,11 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
                             <Card size="small">
                                 <List>
                                     <List.Item
-                                        title={<Text>{isQaCertificationEntitlement ? 'Certification window' : isManualBilling ? 'Prepaid period' : t('billingCycle')}</Text>}
+                                        title={<Text>{isPersistentQaOwner ? 'QA access window' : isQaCertificationEntitlement ? 'Certification window' : isManualBilling ? 'Prepaid period' : t('billingCycle')}</Text>}
                                         extra={<Text>{isPaymentPending ? 'Starts after payment' : `${formatDate(sub.cycleStartDate)} - ${formatDate(sub.cycleEndDate)}`}</Text>}
                                     />
                                     <List.Item
-                                        title={<Text>{isQaCertificationEntitlement ? 'Lease ends' : isManualBilling ? 'Prepaid until' : sub.status === 'active' ? t('renews') : t('expires')}</Text>}
+                                        title={<Text>{isPersistentQaOwner ? 'QA access through' : isQaCertificationEntitlement ? 'Lease ends' : isManualBilling ? 'Prepaid until' : sub.status === 'active' ? t('renews') : t('expires')}</Text>}
                                         extra={<Text>{isPaymentPending ? 'After payment' : formatDate(isManualBilling ? (sub.validUntil || sub.cycleEndDate) : (sub.renewsOn || sub.cycleEndDate))}</Text>}
                                     />
                                     <List.Item
@@ -838,7 +857,9 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
                             {isManualBilling ? (
                                 <Card size="small" style={{ backgroundColor: token.colorWarningBg }}>
                                     <Text>
-                                        Offline payment was confirmed by the reseller. This is prepaid access for the selected duration, not lifetime access.
+                                        {isPersistentQaOwner
+                                            ? 'Persistent QA-only owner access. No payment was processed, and this does not certify Razorpay.'
+                                            : 'Offline payment was confirmed by the reseller. This is prepaid access for the selected duration, not lifetime access.'}
                                     </Text>
                                 </Card>
                             ) : null}
@@ -896,7 +917,7 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
                                                 </Flex>
                                             </Button>
                                         ) : (
-                                            <Button color="primary" onClick={() => router.push('/help-center/contact-us')} size="small">
+                                            <Button color="primary" onClick={onOpenHelp} size="small">
                                                 <Flex align="center" gap={6}>
                                                     <LuMessageCircle size={14} />
                                                     <Text>Contact support</Text>
@@ -925,7 +946,7 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
                             <LuCreditCard color={token.colorTextTertiary} size={36} />
                             <Text type="secondary">{t('noActiveSubscription2')}</Text>
                             {canManageSelectedSubscription ? (
-                                <Button color="primary" onClick={() => router.push('/pricing')} size="large">
+                                <Button color="primary" onClick={openPricing} size="large">
                                     <Flex align="center" gap={6}>
                                         <LuZap size={14} />
                                         <Text>{t('chooseAPlan')}</Text>
@@ -1004,7 +1025,7 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
 
                 <button
                     aria-label={t('needBillingHelp')}
-                    onClick={() => router.push('/help-center/contact-us')}
+                    onClick={onOpenHelp}
                     style={{
                         background: 'transparent',
                         border: 0,
@@ -1027,9 +1048,9 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
                 </button>
             </Flex>
 
-            <Popup aria-label={t('cancellationReasonTitle')} bodyStyle={{ maxHeight: '80vh', overflow: 'hidden', padding: 0 }} onMaskClick={() => setShowCancellationReasons(false)} position="bottom" visible={showCancellationReasons}>
+            <Popup aria-label={t('cancellationReasonTitle')} bodyStyle={{ maxHeight: '80vh', overflow: 'hidden', padding: 0 }} onMaskClick={dismissCancellationReasons} position="bottom" visible={showCancellationReasons}>
                 <Flex style={{ height: '100%' }} vertical>
-                    <NavBar backIcon={<LuX size={20} />} onBack={() => setShowCancellationReasons(false)}>
+                    <NavBar backIcon={<LuX size={20} />} onBack={dismissCancellationReasons}>
                         {t('cancellationReasonTitle')}
                     </NavBar>
                     <Flex gap={12} style={{ overflowY: 'auto', padding: 12 }} vertical>
@@ -1037,6 +1058,7 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
                         <List>
                             {CANCELLATION_REASON_OPTIONS.map((option) => (
                                 <List.Item
+                                    aria-pressed={cancellationReason === option.code}
                                     extra={cancellationReason === option.code ? <LuCheck color={token.colorSuccess} size={18} /> : null}
                                     key={option.code}
                                     onClick={() => setCancellationReason(option.code)}
@@ -1083,6 +1105,7 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
                         <Flex gap={8}>
                             <Button
                                 block
+                                aria-pressed={billingInterval === 'MONTH'}
                                 color={billingInterval === 'MONTH' ? 'primary' : undefined}
                                 fill={billingInterval === 'MONTH' ? 'solid' : 'outline'}
                                 onClick={() => setBillingInterval('MONTH')}
@@ -1091,6 +1114,7 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
                             </Button>
                             <Button
                                 block
+                                aria-pressed={billingInterval === 'YEAR'}
                                 color={billingInterval === 'YEAR' ? 'primary' : undefined}
                                 fill={billingInterval === 'YEAR' ? 'solid' : 'outline'}
                                 onClick={() => setBillingInterval('YEAR')}
@@ -1101,11 +1125,12 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
                         <Flex gap={12} vertical>
                             {plans.filter((plan) => plan.planId !== sub?.planId).map((plan) => {
                                 const price = (plan as any)[`price${currency}`]?.price;
+                                const planDisplayName = plan.name.replace(/ \((Yearly|Monthly)\)$/, '');
                                 return (
                                     <Card key={plan.planId} onClick={() => handleUpgrade(plan)}>
                                         <Flex align="center" justify="space-between">
                                             <Flex gap={4} vertical>
-                                                <Text strong>{`${plan.planId} Plan`}</Text>
+                                                <Text strong>{`${planDisplayName} Plan`}</Text>
                                                 <Text type="secondary">{plan.description}</Text>
                                             </Flex>
                                             <Flex gap={2} vertical>

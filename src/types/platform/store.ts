@@ -212,6 +212,8 @@ export type StoreDataType = {
     businessCategory: string;
     businessIndustry?: string; // Plan type marker: 'B2C' | 'B2B'.
     activePlanType?: string; // Denormalized plan id for scheduler entitlements. Billing subscription remains the source of truth.
+    /** Store defaults plus sparse per-project overrides for printable asset styles. */
+    printableAssetStylePreferences?: import('@lib/printable-asset-templates/stylePreferences').PrintableAssetStylePreferences;
 
     contactPersonName: string;
     contactPersonEmail: string;

@@ -143,8 +143,15 @@ function verifyPublicLinkHelperRuntime() {
 
 function verifyOwnerMutationBoundary() {
   const { normalizeGeoCoordinateDraft } = require(path.join(root, 'src/lib/businessIdentity/geoCoordinates.ts'));
-  const { normalizeOwnerPublicPresenceLinks } = require(path.join(root, 'src/lib/obp/ownerPublicPresenceBoundary.ts'));
-  const { normalizeOwnerSocialMediaLinks } = require(path.join(root, 'src/lib/obp/ownerSocialMediaBoundary.ts'));
+  const {
+    hasOwnerPublicPresenceChanges,
+    normalizeOwnerPublicPresenceLinks,
+  } = require(path.join(root, 'src/lib/obp/ownerPublicPresenceBoundary.ts'));
+  const {
+    formatOwnerSocialPlatformLabel,
+    getOwnerCustomSocialMediaLinks,
+    normalizeOwnerSocialMediaLinks,
+  } = require(path.join(root, 'src/lib/obp/ownerSocialMediaBoundary.ts'));
   const { getStoreDeepDifference, isStoreNestedDelete } = require(path.join(root, 'src/lib/store/storeNestedUpdateProjection.ts'));
   const { buildVisualProfileCompletion } = require(path.join(root, 'src/lib/visualProfile/visualProfileCompletion.ts'));
 
@@ -182,12 +189,53 @@ function verifyOwnerMutationBoundary() {
     isStoreNestedDelete(clearedOwnerAccentDifference.publicPresence?.accentColor),
     'blank owner accent must project to the existing nested delete marker',
   );
+  assert(
+    !hasOwnerPublicPresenceChanges({
+      descriptor: { en: 'RC verified official page' },
+      iconVariant: 'icons',
+      photos: [],
+      googleRating: undefined,
+      reservationUrl: '',
+      showCall: true,
+      showDirections: true,
+    }, {
+      descriptor: { en: 'RC verified official page' },
+      googleRating: null,
+    }),
+    'expanded embedded-editor defaults and absent optional values must not create a false publish state',
+  );
+  assert(
+    !hasOwnerPublicPresenceChanges({ descriptor: ' RC verified official page ' }, {
+      descriptor: { en: 'RC verified official page' },
+    }),
+    'legacy and localized owner copy with the same rendered value must compare equal',
+  );
+  assert(
+    hasOwnerPublicPresenceChanges({ showCall: false }, {}),
+    'a real owner visibility change must remain publishable',
+  );
+  assert(
+    hasOwnerPublicPresenceChanges({ descriptor: { en: '' } }, {
+      descriptor: { en: 'RC verified official page' },
+    }),
+    'clearing saved owner copy must remain publishable',
+  );
   const normalizedOwnerSocialMedia = normalizeOwnerSocialMediaLinks({
     instagram: '@menulist',
     twitter: 'https://x.com/menulist',
     tripadvisor: 'tripadvisor.com/example',
     youtube: '',
   });
+  assert(formatOwnerSocialPlatformLabel('qa_platform') === 'QA Platform', 'custom social labels must remain customer-readable');
+  assert(formatOwnerSocialPlatformLabel('tripadvisor') === 'Tripadvisor', 'long custom social labels must use title case');
+  assert(
+    JSON.stringify(getOwnerCustomSocialMediaLinks(normalizedOwnerSocialMedia.socialMedia)) === JSON.stringify([{
+      key: 'tripadvisor',
+      label: 'Tripadvisor',
+      url: 'https://tripadvisor.com/example',
+    }]),
+    'custom social links must project to bounded customer-visible links',
+  );
   assert(normalizedOwnerSocialMedia.invalidKeys.length === 0, 'valid owner social links must normalize');
   assert(
     normalizedOwnerSocialMedia.socialMedia.instagram === 'https://instagram.com/menulist',
@@ -243,6 +291,9 @@ function verifyOwnerMutationBoundary() {
   const obpContent = read('src/app/client/obp/OBPContent.tsx');
   const brandContent = read('src/app/client/obp/BrandOBPContent.tsx');
   const resolvedSurface = read('src/app/client/obp/OBPResolvedSurface.tsx');
+  const externalLinks = read('src/app/client/obp/OBPExternalLinks.tsx');
+  const menuFooter = read('src/components/templates/main-app/projects/b2cView/output/MenuFooter.tsx');
+  const sharedSchema = read('src/lib/schema/index.ts');
   const actions = read('src/app/client/obp/OBPActions.tsx');
   const visualCompletion = read('src/lib/visualProfile/visualProfileCompletion.ts');
   const obpSchema = read('src/app/client/obp/schema.ts');
@@ -259,6 +310,10 @@ function verifyOwnerMutationBoundary() {
   assertIncludes(brandContent, 'hasPublicHoursTruth(', 'brand OBP missing-hours truth guard');
   assertIncludes(brandContent, 'outlet.timeZone,', 'brand OBP current-date special-hours scope');
   assertIncludes(brandContent, 'showBadge = hoursOutput ? hoursOutput.showStatusBadge : hasHoursTruth', 'brand OBP missing-hours badge suppression');
+  assertIncludes(obpContent, 'import { getTenantBaseUrl } from "@constant/urls";', 'brand OBP shared tenant URL boundary import');
+  assertIncludes(obpContent, 'subdomain ?? undefined,', 'brand OBP nullable subdomain normalization');
+  assertIncludes(obpContent, 'customDomain ?? undefined,', 'brand OBP nullable custom-domain normalization');
+  assertNotIncludes(obpContent, '`https://${subdomain}.${MENULIST_TENANT_BASE_DOMAIN}`', 'brand OBP manual tenant URL construction');
   assertIncludes(complianceRoute, 'refund: null,', 'incomplete compliance response keeps the complete owner response shape');
 
   assertIncludes(locationTab, 'name="addressLine"', 'desktop canonical address field');
@@ -290,6 +345,12 @@ function verifyOwnerMutationBoundary() {
   assertIncludes(mobileAdvancedSettings, "<Popup aria-label={editingPlatform ? `Edit ${editingPlatform.label}` : 'Edit Link'}", 'mobile named social link editor');
   assertIncludes(mobileAdvancedSettings, "if ((!isKnownPlatform && !normalizedLabel) || !rawValue)", 'mobile social link save requires a public link');
   assertIncludes(mobileAdvancedSettings, "'Add a public link before saving.'", 'mobile social link empty-value recovery');
+  assertIncludes(resolvedSurface, 'getOwnerCustomSocialMediaLinks(socialMedia)', 'OBP custom social public projection');
+  assertIncludes(resolvedSurface, 'customLinks={customSocialLinks}', 'OBP custom social rendered-link handoff');
+  assertIncludes(externalLinks, 'customLinks.map((link)', 'OBP custom social rendered action');
+  assertIncludes(menuFooter, 'getOwnerCustomSocialMediaLinks(storeDetails?.socialMedia)', 'public menu custom social projection');
+  assertIncludes(menuFooter, 'customSocialLinks.map((link)', 'public menu custom social rendered action');
+  assertIncludes(sharedSchema, 'getOwnerCustomSocialMediaLinks(socialMedia).forEach', 'schema sameAs custom social projection');
   assertIncludes(mobileAdvancedSettings, 'minHeight: 44, minWidth: 44', 'mobile social icon action touch target');
   assertIncludes(mobileBasic, "storeDetails?.geo?.latitude !== undefined", 'mobile zero latitude hydration');
   assertIncludes(mobileBasic, 'normalizeGeoCoordinateDraft(formData.latitude, formData.longitude)', 'mobile shared geo boundary');
@@ -375,6 +436,8 @@ function verifyOwnerMutationBoundary() {
   assertIncludes(mobileOfficial, '|| presenceSaveInFlightRef.current', 'mobile in-flight save unmount cleanup guard');
   assertIncludes(mobileOfficial, 'await deleteOBPPhotos([url]);', 'mobile obsolete uploaded media cleanup');
   assertIncludes(b2cView, 'normalizeOwnerPublicPresenceLinks(storeDraft?.publicPresence || {})', 'embedded editor owner public-link boundary');
+  assertIncludes(b2cView, 'hasOwnerPublicPresenceChanges(', 'embedded editor semantic no-op boundary');
+  assertNotIncludes(b2cView, 'JSON.stringify(storeDraft?.publicPresence || {}) !== JSON.stringify(lastPublishedStoreDraft?.publicPresence || {})', 'embedded editor raw-shape dirty comparison');
 
   assertIncludes(officialTab, 'queuePhotoDelete(url);', 'desktop new upload cleanup candidate');
   assertIncludes(mobileOfficial, 'queuePhotoDelete(url);', 'mobile new upload cleanup candidate');
@@ -384,6 +447,9 @@ function verifyOwnerMutationBoundary() {
   assertIncludes(mobileOfficial, 'setPhotoDeleteQueue(failedPhotoDeletes)', 'mobile failed cleanup retry queue');
   assertIncludes(mobileOfficial, 'persistedPublicPresenceRef.current = nextPublicPresence', 'mobile acknowledged media retention race boundary');
   assertIncludes(mobileOfficial, 'photoDeleteQueueRef.current = failedPhotoDeletes', 'mobile synchronous cleanup retry ref');
+  assertIncludes(mobileOfficial, 'enqueueObpMediaCleanupJournal(', 'mobile durable abandoned-upload cleanup journal');
+  assertIncludes(mobileOfficial, 'readObpMediaCleanupJournal(storage, cleanupJournalScope)', 'mobile cleanup journal recovery');
+  assertIncludes(mobileOfficial, 'writeObpMediaCleanupJournal(storage, cleanupJournalScope, failedPhotoDeletes)', 'mobile cleanup journal acknowledgement');
   assertIncludes(b2cView, 'setObpPhotoDeleteQueue(failedPhotoDeletes)', 'embedded failed cleanup retry queue');
   assertIncludes(b2cView, 'persistedPublicPresenceRef.current = nextStoreDetails.publicPresence', 'embedded acknowledged media retention race boundary');
   assertIncludes(b2cView, 'obpPhotoDeleteQueueRef.current = failedPhotoDeletes', 'embedded synchronous cleanup retry ref');

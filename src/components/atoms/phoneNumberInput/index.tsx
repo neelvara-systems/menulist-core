@@ -8,6 +8,7 @@ interface PhoneNumberInputProps {
     phoneNumber: string;
     dialCode: string;
     countryCodeAriaLabel?: string;
+    disabled?: boolean;
     phoneNumberAriaLabel?: string;
     onChange?: (value: { countryCode: string; phoneNumber: string, dialCode: string }) => void;
 }
@@ -16,6 +17,7 @@ const PhoneNumberInput: React.FC<PhoneNumberInputProps> = ({
     countryCode,
     countryCodeAriaLabel,
     dialCode,
+    disabled,
     onChange,
     phoneNumber,
     phoneNumberAriaLabel,
@@ -56,6 +58,7 @@ const PhoneNumberInput: React.FC<PhoneNumberInputProps> = ({
         <Flex gap={8} style={{ width: '100%' }}>
             <Select
                 aria-label={countryCodeAriaLabel}
+                disabled={disabled}
                 placeholder="Country Code"
                 showSearch
                 style={{ width: 150 }}
@@ -70,6 +73,7 @@ const PhoneNumberInput: React.FC<PhoneNumberInputProps> = ({
             <Input
                 aria-label={phoneNumberAriaLabel}
                 autoComplete="tel"
+                disabled={disabled}
                 inputMode="tel"
                 prefix={<LuPhoneCall />}
                 value={phoneNumber}

@@ -9,6 +9,9 @@ const CONTROLLED_ENV_KEYS = [
   'VERCEL_ENV',
   'NEXT_PUBLIC_ENV',
   'NEXT_PUBLIC_VERCEL_ENV',
+  'NEXT_PUBLIC_MENULIST_TENANT_BASE_DOMAIN',
+  'NEXT_PUBLIC_APP_URL',
+  'NEXT_PUBLIC_PLATFORM_DOMAIN',
   'NODE_ENV',
 ] as const;
 
@@ -32,6 +35,16 @@ const setStage = (stage: 'preview' | 'production') => {
   clearRuntimeCache();
 };
 
+const setLocalTenantStage = () => {
+  delete process.env.VERCEL;
+  delete process.env.VERCEL_ENV;
+  process.env.NEXT_PUBLIC_ENV = 'local';
+  process.env.NEXT_PUBLIC_VERCEL_ENV = 'local';
+  process.env.NEXT_PUBLIC_MENULIST_TENANT_BASE_DOMAIN = 'localhost';
+  process.env.NODE_ENV = 'development';
+  clearRuntimeCache();
+};
+
 const restoreEnv = () => {
   CONTROLLED_ENV_KEYS.forEach((key) => {
     const value = originalEnv[key];
@@ -47,6 +60,39 @@ const request = (url: string, host: string) => new NextRequest(url, {
     'x-forwarded-proto': 'https',
   },
 });
+
+function verifyOwnerPricingWebsiteOrigin() {
+  const originalWindow = (globalThis as any).window;
+  try {
+    setStage('preview');
+    process.env.NEXT_PUBLIC_APP_URL = 'https://app.menulist.digital';
+    (globalThis as any).window = {
+      location: { hostname: 'app.menulist.digital', origin: 'https://app.menulist.digital' },
+    };
+    let urls = require('../../src/constants/urls.ts') as typeof import('../../src/constants/urls');
+    assert.equal(urls.getPlatformWebsiteBaseUrl(), 'https://menulist.digital');
+
+    setStage('production');
+    process.env.NEXT_PUBLIC_APP_URL = 'https://app.menulist.ai';
+    (globalThis as any).window = {
+      location: { hostname: 'app.menulist.ai', origin: 'https://app.menulist.ai' },
+    };
+    urls = require('../../src/constants/urls.ts') as typeof import('../../src/constants/urls');
+    assert.equal(urls.getPlatformWebsiteBaseUrl(), 'https://menulist.ai');
+
+    setLocalTenantStage();
+    process.env.NEXT_PUBLIC_APP_URL = 'http://localhost:3000';
+    (globalThis as any).window = {
+      location: { hostname: 'localhost', origin: 'http://localhost:3000' },
+    };
+    urls = require('../../src/constants/urls.ts') as typeof import('../../src/constants/urls');
+    assert.equal(urls.getPlatformWebsiteBaseUrl(), 'http://localhost:3000');
+  } finally {
+    if (originalWindow === undefined) delete (globalThis as any).window;
+    else (globalThis as any).window = originalWindow;
+    restoreEnv();
+  }
+}
 
 const CUSTOMER_DOMAIN_LOCALE_PATHS = [
   ['BusinessSettings', 'subdomainHelp'],
@@ -278,6 +324,22 @@ async function verifyPreviewHosts() {
   assert.equal(response.headers.get('x-robots-tag'), 'noindex, nofollow, noarchive');
 }
 
+function verifyLocalTenantLinks() {
+  setLocalTenantStage();
+  const { getMenuUrl, getTenantBaseUrl } = require('../../src/constants/urls.ts') as typeof import('../../src/constants/urls');
+
+  assert.equal(
+    getMenuUrl('local-fixture'),
+    'http://local-fixture.localhost:3000',
+    'local tenant links must retain the loopback protocol and dev-server port',
+  );
+  assert.equal(
+    getTenantBaseUrl(undefined, 'local-fixture.localhost'),
+    'http://local-fixture.localhost:3000',
+    'local custom-domain fixtures must retain the loopback protocol and dev-server port',
+  );
+}
+
 async function verifyProductionHosts() {
   setStage('production');
   const { proxy } = require('../../src/proxy.ts') as typeof import('../../src/proxy');
@@ -332,6 +394,8 @@ async function main() {
     verifyPublishedTenantDomainExamples();
     verifyVideoCustomerUrlExamples();
     verifyMaintainedTenantExamplesUseRoutableSlugs();
+    verifyOwnerPricingWebsiteOrigin();
+    verifyLocalTenantLinks();
     await verifyPreviewHosts();
     await verifyProductionHosts();
     console.log('MenuList host routing tests passed.');

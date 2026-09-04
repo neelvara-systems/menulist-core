@@ -21,7 +21,8 @@
 import { FILTER_ALLOWLIST, resolveBusinessCategory, SystemFilter } from '@data/shared/businessTypes';
 import { createPublicCustomerTranslator } from '@lib/localization/publicCustomerMessages';
 import { useMemo } from 'react';
-import { LuLeaf, LuStar } from 'react-icons/lu';
+import { LuStar } from 'react-icons/lu';
+import ItemDecisionSymbolGroup from '@/components/shared/menu/ItemDecisionSymbolGroup';
 import { MenuMoodConfig } from '../designSystem';
 import { normalizeItemFilterAttributes } from '../utils/normalizeItemAttributes';
 
@@ -51,30 +52,22 @@ const FILTER_UI_CONFIG: Record<SystemFilter, FilterConfig> = {
     },
     veg: {
         key: 'veg',
-        icon: <LuLeaf size={14} />,
+        icon: <ItemDecisionSymbolGroup size={13} symbols={['vegetarian']} />,
         iconColor: '#22c55e',
     },
     nonveg: {
         key: 'nonveg',
-        icon: (
-            <span style={{
-                width: 10,
-                height: 10,
-                borderRadius: 2,
-                border: '2px solid #ef4444',
-                display: 'inline-block',
-            }} />
-        ),
+        icon: <ItemDecisionSymbolGroup size={13} symbols={['non-vegetarian']} />,
         iconColor: '#ef4444',
     },
     forMen: {
         key: 'forMen',
-        icon: <span style={{ fontSize: 14 }}>♂</span>,
+        icon: <ItemDecisionSymbolGroup size={13} symbols={['for-men']} />,
         iconColor: '#3b82f6',
     },
     forWomen: {
         key: 'forWomen',
-        icon: <span style={{ fontSize: 14 }}>♀</span>,
+        icon: <ItemDecisionSymbolGroup size={13} symbols={['for-women']} />,
         iconColor: '#ec4899',
     },
 };

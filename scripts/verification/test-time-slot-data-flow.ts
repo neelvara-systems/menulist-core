@@ -8,6 +8,7 @@ import {
 } from "@hook/useTimedCategories";
 import {
     clockRangeAppliesOnDay,
+    getTimeSlotPresetDraftIssue,
     isMinuteWithinClockRange,
     isValidClockRange,
     minutesUntilClockStart,
@@ -25,6 +26,12 @@ assert.equal(isValidClockRange("22:00", "02:00"), true);
 assert.equal(isValidClockRange("09:00", "09:00"), false);
 assert.equal(isValidClockRange("24:00", "02:00"), false);
 assert.equal(isValidClockRange("9:00", "17:00"), false);
+const existingDraftPresets = [{ id: "lunch", label: "Lunch", startTime: "11:00", endTime: "15:00" }];
+assert.equal(getTimeSlotPresetDraftIssue({ label: " ", startTime: "09:00", endTime: "17:00" }, existingDraftPresets), "missing_label");
+assert.equal(getTimeSlotPresetDraftIssue({ label: " lunch ", startTime: "09:00", endTime: "17:00" }, existingDraftPresets), "duplicate_label");
+assert.equal(getTimeSlotPresetDraftIssue({ label: "Lunch", startTime: "09:00", endTime: "17:00" }, existingDraftPresets, "lunch"), null);
+assert.equal(getTimeSlotPresetDraftIssue({ label: "Dinner", startTime: "18:00", endTime: "18:00" }, existingDraftPresets), "invalid_range");
+assert.equal(getTimeSlotPresetDraftIssue({ label: "Late", startTime: "22:00", endTime: "02:00" }, existingDraftPresets), null);
 
 assert.equal(isMinuteWithinClockRange(23 * 60, "22:00", "02:00"), true);
 assert.equal(isMinuteWithinClockRange(60, "22:00", "02:00"), true);

@@ -17,11 +17,11 @@ import {
     stripDecorativeStatusSymbols,
     truncateCanvasText,
 } from '../canvasPrimitives';
-import { resolveMenuKitBrandTokens } from '../brandTokens';
 import { getOfferingLabels } from '../businessTypeLabels';
 import { PreloadedLogo } from '../imageLoader';
 import { drawMenuListAttribution, MENU_LIST_ATTRIBUTION_TEXT } from '../platformAttribution';
 import { MenuKitInput } from '../types';
+import { drawMenuKitThemeBackground, loadMenuKitThemeSurface } from '../themeSurface';
 
 type StatusInput = MenuKitInput & { _logo?: PreloadedLogo | null };
 
@@ -32,7 +32,8 @@ export async function generateWhatsappStatus(input: StatusInput): Promise<Blob> 
     const { storeName, menuUrl, shortLink, businessType, businessCategory, _logo } = input;
     const labels = getOfferingLabels(businessType, businessCategory);
     const logo = _logo || null;
-    const brand = resolveMenuKitBrandTokens(input.brandColor);
+    const themeSurface = await loadMenuKitThemeSurface(input);
+    const { brand } = themeSurface;
 
     const canvas = document.createElement('canvas');
     canvas.width = W;
@@ -41,10 +42,10 @@ export async function generateWhatsappStatus(input: StatusInput): Promise<Blob> 
     const ctx = canvas.getContext('2d');
     if (!ctx) throw new Error('Failed to get canvas context');
 
-    // Premium paper background
-    ctx.fillStyle = brand.paper;
-    ctx.fillRect(0, 0, W, H);
-    fillVerticalGradient(ctx, 0, 0, W, Math.round(H * 0.58), brand.gradientFrom, brand.gradientTo);
+    drawMenuKitThemeBackground(ctx, themeSurface, { height: H, width: W, x: 0, y: 0 });
+    if (!themeSurface.artwork.page && !themeSurface.artwork.corner && !themeSurface.artwork.rail) {
+        fillVerticalGradient(ctx, 0, 0, W, Math.round(H * 0.58), brand.gradientFrom, brand.gradientTo);
+    }
 
     const cardX = 86;
     const cardY = 230;
@@ -86,7 +87,7 @@ export async function generateWhatsappStatus(input: StatusInput): Promise<Blob> 
     ctx.font = '800 42px system-ui, -apple-system, sans-serif';
     const labelW = Math.min(cardW - 180, Math.max(430, ctx.measureText(label).width + 130));
     const labelY = contentY + 92;
-    fillRoundedVerticalGradient(ctx, W / 2 - labelW / 2, labelY - 44, labelW, 88, 22, brand.softAccent, '#ffffff');
+    fillRoundedVerticalGradient(ctx, W / 2 - labelW / 2, labelY - 44, labelW, 88, 22, brand.softAccent, brand.surface);
     ctx.fillStyle = brand.accent;
     ctx.fillText(label, W / 2, labelY);
 

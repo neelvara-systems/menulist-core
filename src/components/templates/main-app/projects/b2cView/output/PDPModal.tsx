@@ -18,14 +18,18 @@ import { getLocalizedText } from '@lib/localization/text';
 import {
     createPublicCustomerTranslator,
     getPublicCustomerLanguageDirection,
-    getPublicSpiceLevelLabel,
-    type PublicCustomerTranslator,
 } from '@lib/localization/publicCustomerMessages';
 import { getMenuItemImageAltText } from '@lib/media/altText';
 import { getDecisionFactArray, getDecisionFactNumber, getDecisionFactString, getNutritionFact } from '@lib/menu/itemDecisionFacts';
+import {
+    getPublicItemDecisionSymbolLabels,
+    isLegacyDecisionSymbolTag,
+    resolveItemDecisionSymbolIds,
+} from '@lib/menu/itemDecisionSymbols';
 import { normalizePublicMenuImages } from '@lib/menu/publicMenuImages';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import PublicImageViewer from '@/components/shared/media/PublicImageViewer';
+import ItemDecisionSymbolGroup from '@/components/shared/menu/ItemDecisionSymbolGroup';
 import { formatMenuPrice, parseSingleMenuPrice } from '@lib/pricing/formatMenuPrice';
 import { getActivePublicItemPriceAttributes, getPublicItemListPriceLabel } from '@lib/pricing/publicItemPricePresentation';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -155,28 +159,6 @@ function sanitizePdpTags(value: unknown): string[] {
     }, []);
 }
 
-function normalizeDietaryTagKey(tag: string): string {
-    return tag.toLowerCase().trim().replace(/_/g, '-').replace(/\s+/g, '-');
-}
-
-function getDietaryTagLabel(tag: string, t: PublicCustomerTranslator): string {
-    const key = normalizeDietaryTagKey(tag);
-    if (['non-vegetarian', 'non-veg', 'nonveg'].includes(key)) return t('menu.nonVeg');
-    if (key === 'vegetarian') return t('menu.vegetarian');
-    if (key === 'gluten-free') return t('menu.glutenFree');
-    if (key === 'dairy-free') return t('menu.dairyFree');
-    if (key === 'sugar-free') return t('menu.sugarFree');
-    return tag.replace(/[-_]+/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase());
-}
-
-function getDietaryTagStyle(tag: string): CSSProperties {
-    const key = normalizeDietaryTagKey(tag);
-    if (['non-vegetarian', 'non-veg', 'nonveg'].includes(key)) {
-        return { background: '#11182710', color: '#374151' };
-    }
-    return { background: '#dcfce7', color: '#166534' };
-}
-
 function PDPModal({
     item,
     onClose,
@@ -195,6 +177,7 @@ function PDPModal({
     onShare,
 }: PDPModalProps) {
     const t = createPublicCustomerTranslator(language);
+    const itemDecisionSymbolLabels = getPublicItemDecisionSymbolLabels(t);
     const languageDirection = getPublicCustomerLanguageDirection(language);
     const { trackMenuItemView } = useContext(AnalyticsContext);
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -483,7 +466,10 @@ function PDPModal({
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [isImageViewerOpen, isOpen, onClose]);
 
-    const safeTags = useMemo(() => sanitizePdpTags(item?.tags), [item?.tags]);
+    const safeTags = useMemo(
+        () => sanitizePdpTags(item?.tags).filter((tag) => !isLegacyDecisionSymbolTag(tag)),
+        [item?.tags],
+    );
 
     if (!item || !mounted) return null;
 
@@ -496,10 +482,8 @@ function PDPModal({
     );
     const isAvailable = item.available !== false;
     const allergens = getDecisionFactArray(item, 'allergens');
-    const dietaryTags = getDecisionFactArray(item, 'dietaryTags');
-    const spiceLevel = getDecisionFactString(item, 'spiceLevel');
     const duration = getDecisionFactNumber(item, 'duration');
-    const targetAudience = getDecisionFactString(item, 'targetAudience');
+    const itemDecisionSymbols = resolveItemDecisionSymbolIds(item);
     const skillLevel = getDecisionFactString(item, 'skillLevel');
     const materials = getDecisionFactString(item, 'materials');
     const warranty = getDecisionFactString(item, 'warranty');
@@ -515,10 +499,7 @@ function PDPModal({
         : [];
     const hasStructuredMetadata = (
         allergens.length > 0
-        || dietaryTags.length > 0
-        || Boolean(spiceLevel)
         || Boolean(duration)
-        || Boolean(targetAudience)
         || Boolean(skillLevel)
         || Boolean(materials)
         || Boolean(warranty)
@@ -950,6 +931,17 @@ function PDPModal({
                                         }}
                                     >
                                         {getModalText(item.name, t('menu.menuItem'))}
+                                        {itemDecisionSymbols.length > 0 ? (
+                                            <span style={{ display: 'inline-flex', marginInlineStart: 9, verticalAlign: 'middle' }}>
+                                                <ItemDecisionSymbolGroup
+                                                    backgroundColor={moodConfig.background}
+                                                    color={moodConfig.bodyColor}
+                                                    labels={itemDecisionSymbolLabels}
+                                                    size={17}
+                                                    symbols={itemDecisionSymbols}
+                                                />
+                                            </span>
+                                        ) : null}
                                     </h2>
                                     {showItemPrices && itemListPriceLabel && (
                                         <span
@@ -1013,18 +1005,6 @@ function PDPModal({
                                             marginBottom: 16,
                                         }}
                                     >
-                                        {dietaryTags.map((tag: string, idx: number) => (
-                                            <span key={`dt-${idx}`} className="px-2 py-0.5 text-xs rounded-full" style={{ display: 'inline-flex', alignItems: 'center', padding: '3px 8px', borderRadius: 999, ...getDietaryTagStyle(tag), fontSize: 12, lineHeight: '16px', fontWeight: 600 }}>
-                                                {getDietaryTagLabel(tag, t)}
-                                            </span>
-                                        ))}
-                                        {spiceLevel && spiceLevel !== 'none' && (
-                                            <span className="px-2 py-0.5 text-xs rounded-full" style={{ display: 'inline-flex', alignItems: 'center', padding: '3px 8px', borderRadius: 999, background: '#fee2e2', color: '#991b1b', fontSize: 12, lineHeight: '16px', fontWeight: 600 }}>
-                                                🌶️ {t('menu.spice', {
-                                                    value: getPublicSpiceLevelLabel(spiceLevel, t),
-                                                })}
-                                            </span>
-                                        )}
                                         {allergens.length > 0 && (
                                             <span className="px-2 py-0.5 text-xs rounded-full" style={{ display: 'inline-flex', alignItems: 'center', padding: '3px 8px', borderRadius: 999, background: '#fef3c7', color: '#92400e', fontSize: 12, lineHeight: '16px', fontWeight: 600 }}>
                                                 ⚠️ {allergens.join(', ')}
@@ -1033,11 +1013,6 @@ function PDPModal({
                                         {duration && (
                                             <span className="px-2 py-0.5 text-xs rounded-full" style={{ display: 'inline-flex', alignItems: 'center', padding: '3px 8px', borderRadius: 999, background: `${moodConfig.accentColor}15`, color: moodConfig.headingColor, fontSize: 12, lineHeight: '16px', fontWeight: 600 }}>
                                                 ⏱ {t('menu.minutesShort', { count: duration })}
-                                            </span>
-                                        )}
-                                        {targetAudience && (
-                                            <span className="px-2 py-0.5 text-xs rounded-full" style={{ display: 'inline-flex', alignItems: 'center', padding: '3px 8px', borderRadius: 999, background: `${moodConfig.accentColor}15`, color: moodConfig.headingColor, fontSize: 12, lineHeight: '16px', fontWeight: 600 }}>
-                                                {targetAudience.replace('-', ' ').replace(/\b\w/g, (c: string) => c.toUpperCase())}
                                             </span>
                                         )}
                                         {skillLevel && (

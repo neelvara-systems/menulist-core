@@ -37,21 +37,21 @@ import { useAppDispatch } from '@hook/useAppDispatch';
 import { useAppSelector } from '@hook/useAppSelector';
 import { useClientAuthSession } from '@hook/useClientAuthSession';
 import { canUseAnswerlatticeManagement } from '@lib/answerlattice/sessionScope';
+import { projectAnswerlatticeSidebarNavigation } from '@lib/answerlattice/sidebarNavigation';
 import { useAnswerlatticeAccess } from '@providers/answerlatticeAccessProvider';
 import { getDarkModeState, getSidebarState, toggleAppSettingsPanel, toggleDarkMode } from '@reduxSlices/clientThemeConfig';
 import { theme } from 'antd';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { LuChevronUp, LuLayoutGrid, LuMoon, LuSettings2, LuSun } from 'react-icons/lu';
 
 interface AnswerlatticeSidebarProps {
     mobile?: boolean;
     onNavigate?: () => void;
     onOpenAppSettings?: () => void;
-    onExpandedChange?: (expanded: boolean) => void;
 }
 
-export default function AnswerlatticeSidebar({ mobile = false, onNavigate, onOpenAppSettings, onExpandedChange }: AnswerlatticeSidebarProps) {
+export default function AnswerlatticeSidebar({ mobile = false, onNavigate, onOpenAppSettings }: AnswerlatticeSidebarProps) {
     const dispatch = useAppDispatch();
     const router = useRouter();
     const pathname = usePathname();
@@ -64,8 +64,7 @@ export default function AnswerlatticeSidebar({ mobile = false, onNavigate, onOpe
     const canUseManagementSurfaces = access?.canUseManagement ?? canUseAnswerlatticeManagement(session);
     const currentHostname = typeof window === 'undefined' ? undefined : window.location.hostname;
     const normalizedPathname = normalizeAnswerlatticeRoutePathname(pathname ?? '');
-    const [expandedParents, setExpandedParents] = useState<Record<string, boolean>>({});
-    const [revealedToolGroups, setRevealedToolGroups] = useState<Record<string, boolean>>({});
+    const [allToolsRevealed, setAllToolsRevealed] = useState(false);
 
     const selectedKey = useMemo(() => {
         const governancePathTab = getAnswerlatticeGovernanceTabFromPathname(normalizedPathname);
@@ -127,104 +126,66 @@ export default function AnswerlatticeSidebar({ mobile = false, onNavigate, onOpe
             .filter((nav: AnswerlatticeNavItem) => canShowNavItem(nav) || Boolean(nav.subNav?.length))
     ), [canShowNavItem]);
 
-    const visibleNav = useMemo(() => (
-        authorizedNav.map((nav) => {
-            const hasActiveAdvancedTool = nav.subNav?.some((subItem) => (
-                subItem.advanced === true && subItem.route === selectedKey
-            )) === true;
-            const showAdvancedTools = revealedToolGroups[nav.route] === true || hasActiveAdvancedTool;
+    const authorizedItems = useMemo(() => {
+        const byRoute = new Map<string, AnswerlatticeNavItem>();
 
-            return {
-                ...nav,
-                subNav: nav.subNav?.filter(subItem => subItem.advanced !== true || showAdvancedTools),
-            };
-        })
-    ), [authorizedNav, revealedToolGroups, selectedKey]);
-
-    useEffect(() => {
-        setExpandedParents((prev) => {
-            const next = { ...prev };
-
-            visibleNav.forEach((nav) => {
-                if (!nav.subNav?.length) return;
-
-                const authorizedParent = authorizedNav.find(item => item.route === nav.route);
-                const hasActiveChild = authorizedParent?.subNav?.some((subItem) => selectedKey === subItem.route) === true;
-                const isParentRoute = selectedKey === nav.route;
-
-                if (hasActiveChild || isParentRoute) {
-                    next[nav.route] = true;
+        authorizedNav.forEach((parent) => {
+            const candidates = parent.subNav?.length ? parent.subNav : [parent];
+            candidates.forEach((item) => {
+                if (!byRoute.has(item.route)) {
+                    byRoute.set(item.route, item);
                 }
             });
-
-            return next;
         });
-    }, [authorizedNav, selectedKey, visibleNav]);
 
-    const navItems = useMemo<DashboardSidebarShellItem[]>(() => (
-        visibleNav.map((nav: AnswerlatticeNavItem) => {
-            const subNav: DashboardSidebarShellItem[] = nav.subNav?.map((subItem) => ({
-                key: subItem.route,
-                label: subItem.label,
-                icon: subItem.icon,
-                active: selectedKey === subItem.route,
-                onClick: () => {
-                    router.push(toAnswerlatticeDashboardRoute(subItem.route, currentHostname));
-                    onNavigate?.();
-                },
-            })) || [];
-            const authorizedParent = authorizedNav.find(item => item.route === nav.route);
-            const advancedSubNav = authorizedParent?.subNav?.filter(subItem => subItem.advanced === true) || [];
-            const hasActiveAdvancedTool = advancedSubNav.some(subItem => selectedKey === subItem.route);
-            const hasRevealedTools = revealedToolGroups[nav.route] === true;
+        return Array.from(byRoute.values());
+    }, [authorizedNav]);
 
-            if (advancedSubNav.length > 0 && !hasActiveAdvancedTool) {
-                subNav.push({
-                    key: `${nav.route}::all-tools`,
-                    label: hasRevealedTools
-                        ? ANSWERLATTICE_CUSTOMER_LANGUAGE.navigation.showFewerTools
-                        : ANSWERLATTICE_CUSTOMER_LANGUAGE.navigation.allTools,
-                    icon: hasRevealedTools ? LuChevronUp : LuLayoutGrid,
-                    onClick: () => {
-                        setRevealedToolGroups((prev) => ({
-                            ...prev,
-                            [nav.route]: !hasRevealedTools,
-                        }));
-                    },
-                });
-            }
+    const { advancedItems, primarySections, visibleAdvancedItems } = useMemo(() => (
+        projectAnswerlatticeSidebarNavigation(authorizedItems, selectedKey, allToolsRevealed)
+    ), [allToolsRevealed, authorizedItems, selectedKey]);
 
-            const subNavActive = subNav.some((subItem) => subItem.active)
-                || authorizedParent?.subNav?.some(subItem => subItem.advanced === true && selectedKey === subItem.route) === true;
-            const clickRoute = nav.route;
-            const hasSubNav = Boolean(subNav.length);
-            const active = !hasSubNav && selectedKey === nav.route;
-            const expanded = hasSubNav ? Boolean(expandedParents[nav.route]) : false;
-            const nextExpanded = !expanded;
+    const createRouteItem = useCallback((
+        item: AnswerlatticeNavItem,
+        sectionLabel?: string,
+    ): DashboardSidebarShellItem => ({
+        key: item.route,
+        label: item.label,
+        icon: item.icon,
+        sectionLabel,
+        active: selectedKey === item.route,
+        onClick: () => {
+            router.push(toAnswerlatticeDashboardRoute(item.route, currentHostname));
+            onNavigate?.();
+        },
+    }), [currentHostname, onNavigate, router, selectedKey]);
 
-            return {
-                key: nav.route,
-                label: nav.label,
-                icon: nav.icon,
-                active,
-                subNavActive,
-                expanded,
-                subNav,
-                onClick: () => {
-                    if (hasSubNav) {
-                        setExpandedParents((prev) => ({
-                            ...prev,
-                            [nav.route]: nextExpanded,
-                        }));
-                        return;
-                    }
+    const navItems = useMemo<DashboardSidebarShellItem[]>(() => {
+        const primaryItems = primarySections.flatMap(section => (
+            section.items.map((item, index) => createRouteItem(
+                item,
+                index === 0 ? section.label : undefined,
+            ))
+        ));
 
-                    router.push(toAnswerlatticeDashboardRoute(clickRoute, currentHostname));
-                    onNavigate?.();
-                },
-            };
-        })
-    ), [authorizedNav, currentHostname, expandedParents, onNavigate, revealedToolGroups, router, selectedKey, visibleNav]);
+        if (advancedItems.length === 0) return primaryItems;
+
+        primaryItems.push({
+            key: 'answerlattice-all-tools',
+            label: allToolsRevealed
+                ? ANSWERLATTICE_CUSTOMER_LANGUAGE.navigation.showFewerTools
+                : ANSWERLATTICE_CUSTOMER_LANGUAGE.navigation.allTools,
+            icon: allToolsRevealed ? LuChevronUp : LuLayoutGrid,
+            sectionLabel: ANSWERLATTICE_CUSTOMER_LANGUAGE.navigation.advanced,
+            onClick: () => setAllToolsRevealed(current => !current),
+        });
+
+        visibleAdvancedItems.forEach(item => {
+            primaryItems.push(createRouteItem(item));
+        });
+
+        return primaryItems;
+    }, [advancedItems.length, allToolsRevealed, createRouteItem, primarySections, visibleAdvancedItems]);
 
     const openAppAppearance = () => {
         if (mobile && onOpenAppSettings) {
@@ -290,7 +251,6 @@ export default function AnswerlatticeSidebar({ mobile = false, onNavigate, onOpe
             )}
             mobile={mobile}
             navItems={navItems}
-            onExpandedChange={onExpandedChange}
         />
     );
 }

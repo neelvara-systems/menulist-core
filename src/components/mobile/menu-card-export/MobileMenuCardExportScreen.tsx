@@ -8,7 +8,7 @@ import { formatDateTime } from '@util/dateTime';
 import { theme } from 'antd';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useState } from 'react';
-import { LuAlertTriangle, LuCheck, LuChevronDown, LuDownload, LuHistory, LuPackage, LuPrinter, LuQrCode, LuShare2, LuSparkles } from 'react-icons/lu';
+import { LuAlertTriangle, LuCheck, LuChevronDown, LuDownload, LuHistory, LuPackage, LuPalette, LuPrinter, LuQrCode, LuShare2, LuSparkles } from 'react-icons/lu';
 import { Button, Card, DotLoading, Empty, Flex, List, MobileAntdAppBridge, NavBar, Popup, Switch, Tag, Text, Title, Toast } from '../antd';
 import { MOBILE_BOTTOM_NAV_CLEARANCE } from '../MobileNavigation';
 import { useMobileProjects } from '../providers/MobileProjectsProvider';
@@ -56,9 +56,10 @@ function WarningRow({ message, severity }: { message: string; severity: string }
 type MobileMenuCardExportScreenProps = {
     initialProjectId?: string | null;
     onBack?: () => void;
+    onOpenPrintAssets?: () => void;
 };
 
-export default function MobileMenuCardExportScreen({ initialProjectId, onBack }: MobileMenuCardExportScreenProps = {}) {
+export default function MobileMenuCardExportScreen({ initialProjectId, onBack, onOpenPrintAssets }: MobileMenuCardExportScreenProps = {}) {
     const { token } = theme.useToken();
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -90,6 +91,8 @@ export default function MobileMenuCardExportScreen({ initialProjectId, onBack }:
         isHistoryEnabled,
         loading,
         preview,
+        printableTheme,
+        printableThemeSource,
         projects,
         rendering,
         requestDesignAdvice,
@@ -207,6 +210,7 @@ export default function MobileMenuCardExportScreen({ initialProjectId, onBack }:
                                     : <LuPrinter />;
                             return (
                                 <Button
+                                    aria-pressed={active}
                                     block
                                     color={active ? 'primary' : undefined}
                                     fill={active ? 'solid' : 'outline'}
@@ -227,7 +231,30 @@ export default function MobileMenuCardExportScreen({ initialProjectId, onBack }:
                     </Flex>
                 </Card>
 
-                <Card title="Style">
+                <Card title="Brand look">
+                    <Flex align="center" gap={12} justify="space-between">
+                        <Flex gap={4} style={{ minWidth: 0 }} vertical>
+                            <Flex align="center" gap={8}>
+                                <LuPalette color={token.colorPrimary} size={18} />
+                                <Text strong ellipsis>{printableTheme.label}</Text>
+                            </Flex>
+                            <Text type="secondary" style={{ fontSize: 12 }}>
+                                {printableThemeSource === 'project-theme'
+                                    ? 'Used for this menu and its print assets.'
+                                    : printableThemeSource === 'business-theme'
+                                        ? 'Used across all menus and print assets.'
+                                        : 'Recommended for this business.'}
+                            </Text>
+                        </Flex>
+                        {onOpenPrintAssets ? (
+                            <Button fill="outline" onClick={onOpenPrintAssets} size="small">
+                                Change
+                            </Button>
+                        ) : null}
+                    </Flex>
+                </Card>
+
+                <Card title="Layout">
                     {autoDesign && settings.styleId === autoDesign.settings.styleId ? (
                         <Tag color="success" style={{ marginBottom: 10 }}>Auto picked</Tag>
                     ) : null}
@@ -236,6 +263,7 @@ export default function MobileMenuCardExportScreen({ initialProjectId, onBack }:
                             const active = settings.styleId === template.id;
                             return (
                                 <Button
+                                    aria-pressed={active}
                                     color={active ? 'primary' : undefined}
                                     fill={active ? 'solid' : 'outline'}
                                     key={template.id}
@@ -258,6 +286,7 @@ export default function MobileMenuCardExportScreen({ initialProjectId, onBack }:
                             const active = settings.density === option.value;
                             return (
                                 <Button
+                                    aria-pressed={active}
                                     color={active ? 'primary' : undefined}
                                     fill={active ? 'solid' : 'outline'}
                                     key={option.value}
@@ -304,6 +333,13 @@ export default function MobileMenuCardExportScreen({ initialProjectId, onBack }:
                 <Card title="Options">
                     <Flex gap={12} vertical>
                         <Flex align="center" justify="space-between" gap={12}>
+                            <Flex gap={2} style={{ minWidth: 0 }} vertical>
+                                <Text>Dedicated cover page</Text>
+                                <Text type="secondary" style={{ fontSize: 12 }}>Logo, business identity, QR, and available contact details.</Text>
+                            </Flex>
+                            <Switch aria-label="Include dedicated cover page" checked={settings.includeCoverPage === true} onChange={(checked) => updateToggle('includeCoverPage', checked)} />
+                        </Flex>
+                        <Flex align="center" justify="space-between" gap={12}>
                             <Text>Include descriptions</Text>
                             <Switch aria-label="Include descriptions" checked={settings.includeDescriptions} onChange={(checked) => updateToggle('includeDescriptions', checked)} />
                         </Flex>
@@ -327,12 +363,22 @@ export default function MobileMenuCardExportScreen({ initialProjectId, onBack }:
                             </Flex>
                             {settings.includeQr ? <LuQrCode color={token.colorTextSecondary} size={34} /> : null}
                         </Flex>
+                        <Flex gap={6} wrap="wrap">
+                            <Tag color="primary">{printableTheme.label}</Tag>
+                            <Tag>Layout: {settings.styleId}</Tag>
+                        </Flex>
                         <List>
                             {preview.plan.pages.map((page) => (
                                 <List.Item
                                     key={page.pageNumber}
-                                    title={`Page ${page.pageNumber}`}
-                                    description={page.categories.map((category) => `${category.name} (${category.itemCount})`).join(', ') || 'No visible items'}
+                                    title={page.kind === 'cover'
+                                        ? 'Cover page'
+                                        : settings.includeCoverPage
+                                            ? `Menu page ${page.pageNumber - 1}`
+                                            : `Page ${page.pageNumber}`}
+                                    description={page.kind === 'cover'
+                                        ? 'Business identity, QR, and available contact details'
+                                        : page.categories.map((category) => `${category.name} (${category.itemCount})`).join(', ') || 'No visible items'}
                                 />
                             ))}
                         </List>

@@ -41,7 +41,6 @@ const graph = {
         email: 'hello@menulist.ai',
       },
       sameAs: [
-        'https://instagram.com/menulistai',
         'https://linkedin.com/company/menulistai',
       ],
     },

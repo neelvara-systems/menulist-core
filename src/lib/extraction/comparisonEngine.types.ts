@@ -25,6 +25,7 @@ export type ComparisonMode = 'SINGLE_STORE' | 'MASTER_PROJECT' | 'OUTLET_LINKED'
 export interface ExtractedCategoryInput {
     id: string;
     name: Record<string, string>;
+    icon?: string;
     orderIndex?: number;
     sourceFileIndex?: number;
 }
@@ -59,6 +60,7 @@ export interface ExtractedItemInput {
 export interface ExistingCategory {
     id: string;
     name: Record<string, string>;
+    icon?: string;
     orderIndex?: number;
     active?: boolean;
     fileUid?: string; // Which file this category belongs to

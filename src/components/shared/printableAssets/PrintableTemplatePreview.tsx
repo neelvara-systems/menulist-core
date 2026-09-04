@@ -1,6 +1,7 @@
 'use client';
 
 import { resolvePrintableTemplateBrandTokens } from '@lib/printable-asset-templates/templateStyles';
+import { getPrintableThemeArtworkPaths } from '@lib/printable-asset-templates/themeArtwork';
 import type { PrintableAssetTypeId, PrintableTemplateFamily } from '@lib/printable-asset-templates/types';
 import type { CSSProperties } from 'react';
 
@@ -50,7 +51,7 @@ function getPreviewTitle(assetTypeId: PrintableAssetTypeId, actionLabel: string)
     if (assetTypeId === 'campaign_flyer') return 'Flyer';
     if (assetTypeId === 'gift_certificate') return 'Gift Certificate';
     if (assetTypeId === 'business_card') return 'Business Card';
-    if (assetTypeId === 'staff_id_card') return 'ID Card';
+    if (assetTypeId === 'staff_id_card') return 'Staff Name Badge';
     if (assetTypeId === 'event_invitation') return 'Invitation';
     if (assetTypeId === 'postcard') return 'Postcard';
     if (assetTypeId === 'product_tag') return 'Product Tag';
@@ -64,18 +65,18 @@ function getShellStyle(kind: SheetKind, compact?: boolean): CSSProperties {
     if (kind === 'square') {
         return {
             aspectRatio: '1 / 1',
-            height: compact ? '78%' : '72%',
-            maxHeight: compact ? 112 : 164,
-            maxWidth: compact ? '78%' : '56%',
+            height: compact ? '78%' : '76%',
+            maxHeight: compact ? 112 : 250,
+            maxWidth: compact ? '78%' : '70%',
             width: 'auto',
         };
     }
     if (kind === 'landscape') {
         return {
             aspectRatio: '1.42 / 1',
-            height: compact ? '78%' : '76%',
-            maxHeight: compact ? 176 : 236,
-            maxWidth: compact ? '86%' : '82%',
+            height: compact ? '78%' : '78%',
+            maxHeight: compact ? 176 : 286,
+            maxWidth: compact ? '86%' : '88%',
             width: 'auto',
         };
     }
@@ -88,15 +89,43 @@ function getShellStyle(kind: SheetKind, compact?: boolean): CSSProperties {
     }
     return {
         aspectRatio: '0.71 / 1',
-        height: compact ? 'calc(100% - 4px)' : '88%',
-        maxHeight: compact ? 212 : 204,
-        maxWidth: compact ? '74%' : '58%',
+        height: compact ? 'calc(100% - 4px)' : '90%',
+        maxHeight: compact ? 212 : 330,
+        maxWidth: compact ? '74%' : '68%',
         width: 'auto',
     };
 }
 
 function shouldUseSerif(familyId: string): boolean {
-    return familyId === 'classic-luxe' || familyId === 'botanical-heritage' || familyId === 'executive-dark';
+    return new Set([
+        'classic-luxe',
+        'executive-dark',
+        'botanical-heritage',
+        'craft-kitchen',
+        'roastery-ledger',
+        'patisserie-conservatory',
+        'gelateria-riviera',
+        'salon-atelier',
+        'ritual-sanctuary',
+        'ink-vine',
+        'midnight-gold',
+        'sunset-atelier',
+        'rosewater-editorial',
+        'mineral-sanctuary',
+        'bombay-chronicle',
+        'indian-atelier',
+        'art-deco-garden',
+        'japanese-night-luxe',
+        'tea-salon-heritage',
+        'lankan-block-print',
+        'gallery-ledger',
+        'neighbourhood-standard',
+        'boutique-window',
+        'market-label',
+        'civic-letterpress',
+        'maker-ledger',
+        'hospitality-house',
+    ]).has(familyId);
 }
 
 function OrnamentDots({
@@ -157,51 +186,6 @@ function CornerLines({ color, compact }: { color: string; compact?: boolean }) {
     );
 }
 
-function LeafSpray({ color, compact, side }: { color: string; compact?: boolean; side: 'left' | 'right' }) {
-    return (
-        <span
-            aria-hidden="true"
-            style={{
-                height: compact ? 25 : 44,
-                opacity: 0.78,
-                position: 'absolute',
-                top: compact ? 8 : 12,
-                transform: side === 'right' ? 'scaleX(-1)' : undefined,
-                [side]: compact ? 8 : 10,
-                width: compact ? 25 : 42,
-            }}
-        >
-            {Array.from({ length: 5 }).map((_, index) => (
-                <span
-                    key={index}
-                    style={{
-                        background: color,
-                        borderRadius: '100% 0 100% 0',
-                        height: compact ? 8 : 15,
-                        left: compact ? 2 + index * 4 : 4 + index * 6,
-                        position: 'absolute',
-                        top: compact ? 4 + index * 3 : 6 + index * 6,
-                        transform: `rotate(${28 + index * 7}deg)`,
-                        width: compact ? 4 : 7,
-                    }}
-                />
-            ))}
-            <span
-                style={{
-                    background: color,
-                    height: compact ? 24 : 42,
-                    left: compact ? 8 : 13,
-                    opacity: 0.7,
-                    position: 'absolute',
-                    top: compact ? 1 : 2,
-                    transform: 'rotate(-25deg)',
-                    width: 1,
-                }}
-            />
-        </span>
-    );
-}
-
 function DiagonalStrips({ color, compact }: { color: string; compact?: boolean }) {
     return (
         <span
@@ -223,20 +207,77 @@ function DecorativeLayer({
     compact,
     family,
     isDark,
+    kind = 'portrait',
     muted,
 }: {
     compact?: boolean;
     family: PrintableTemplateFamily;
     isDark: boolean;
+    kind?: SheetKind;
     muted: string;
 }) {
-    if (family.id === 'botanical-heritage') {
+    if (family.id === 'botanical-heritage' || family.id === 'craft-kitchen') {
+        const isCraftKitchen = family.id === 'craft-kitchen';
         return (
             <>
-                <LeafSpray color={muted} compact={compact} side="left" />
-                <LeafSpray color={muted} compact={compact} side="right" />
+                <img
+                    alt=""
+                    aria-hidden="true"
+                    src={isCraftKitchen
+                        ? '/images/printable-themes/craft-kitchen/culinary-corner.png'
+                        : '/images/menu-card-export/botanical-corner-watercolor.png'}
+                    style={{
+                        bottom: 0,
+                        height: compact ? '34%' : '38%',
+                        left: 0,
+                        objectFit: 'contain',
+                        objectPosition: 'left bottom',
+                        opacity: isCraftKitchen ? 0.66 : 0.58,
+                        position: 'absolute',
+                        width: compact ? '42%' : '46%',
+                    }}
+                />
+                <img
+                    alt=""
+                    aria-hidden="true"
+                    src={isCraftKitchen
+                        ? '/images/printable-themes/craft-kitchen/culinary-rail.png'
+                        : '/images/menu-card-export/botanical-rail-line-art.png'}
+                    style={{
+                        height: compact ? '40%' : '46%',
+                        objectFit: 'contain',
+                        objectPosition: 'right top',
+                        opacity: isCraftKitchen ? 0.50 : 0.44,
+                        position: 'absolute',
+                        right: 0,
+                        top: 0,
+                        width: compact ? '25%' : '28%',
+                    }}
+                />
                 <CornerLines color={muted} compact={compact} />
             </>
+        );
+    }
+
+    const artworkPaths = getPrintableThemeArtworkPaths(family.id);
+    const responsiveArtwork = kind === 'landscape' && artworkPaths?.compact
+        ? artworkPaths.compact
+        : artworkPaths?.page;
+    if (responsiveArtwork) {
+        return (
+            <img
+                alt=""
+                aria-hidden="true"
+                src={responsiveArtwork}
+                style={{
+                    height: '100%',
+                    inset: 0,
+                    objectFit: 'cover',
+                    pointerEvents: 'none',
+                    position: 'absolute',
+                    width: '100%',
+                }}
+            />
         );
     }
 
@@ -437,7 +478,7 @@ function KitStack({
                         width: '42%',
                     }}
                 >
-                    <DecorativeLayer compact family={family} isDark={isDark} muted={muted} />
+                    <DecorativeLayer compact family={family} isDark={isDark} kind="portrait" muted={muted} />
                     <span style={{ background: accent, borderRadius: 999, display: 'block', height: 7, margin: '18% auto 12%', width: '56%' }} />
                     <QrMock borderColor={muted} compact size="50%" />
                 </span>
@@ -521,7 +562,7 @@ export default function PrintableTemplatePreview({
                     <KitStack accent={brand.accent} family={family} isDark={isDark} muted={brand.border} surface={surface} />
                 ) : (
                     <>
-                        <DecorativeLayer compact={compact} family={family} isDark={isDark} muted={brand.border} />
+                        <DecorativeLayer compact={compact} family={family} isDark={isDark} kind={kind} muted={brand.border} />
                         {family.id === 'brand-banner' ? (
                             <span
                                 style={{

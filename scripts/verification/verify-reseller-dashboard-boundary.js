@@ -1126,6 +1126,8 @@ function verifyMobileSurfaces(dashboard, management, onboarding, mobileShell, mo
     'setEditorOpen(true)',
     'if (editorOpen)',
     'isResellerManagementDraftChanged(draft, editingProfile)',
+    'getResellerManagementDraftValidationError(draft, { isEditing })',
+    "Toast.show({ content: validationError",
     "Toast.show({ content: 'No reseller changes to save.'",
     'aria-label={`Edit reseller ${profile.name}`}',
     'if (!isPlatform) {',

@@ -9,6 +9,7 @@ import { type MenuKitBrandTokens } from '../../menu-kit/brandTokens';
 import { type PreloadedLogo } from '../../menu-kit/imageLoader';
 import { drawMenuListAttribution, MENU_LIST_MENU_ATTRIBUTION_TEXT } from '../../menu-kit/platformAttribution';
 import { normalizePrintableTemplateFamilyId } from '../../printable-asset-templates/templateFamilies';
+import { drawPrintableThemeArtwork, type PrintableThemeArtwork } from '../../printable-asset-templates/themeArtwork';
 
 export const PRINT_MENU_PX_PER_MM = 300 / 25.4;
 
@@ -22,6 +23,7 @@ export type PrintMenuCardFaceOptions = {
     shortLink: string;
     storeName: string;
     templateFamilyId?: string;
+    themeArtwork?: PrintableThemeArtwork;
 };
 
 export function printMenuMm(value: number): number {
@@ -71,7 +73,8 @@ function drawLogoBadge(
 ): void {
     const isRound = templateFamilyId === 'classic-luxe'
         || templateFamilyId === 'executive-dark'
-        || templateFamilyId === 'botanical-heritage';
+        || templateFamilyId === 'botanical-heritage'
+        || templateFamilyId === 'craft-kitchen';
     const radius = isRound ? size / 2 : size * 0.22;
     const inset = isRound ? printMenuMm(0.85) : printMenuMm(1.1);
     const innerRadius = isRound ? (size - inset * 2) / 2 : radius * 0.72;
@@ -402,7 +405,7 @@ export function drawPrintMenuCardFace(
     const isClean = templateFamilyId === 'clean-utility';
     const isDark = templateFamilyId === 'executive-dark';
     const isQrFirst = templateFamilyId === 'qr-first';
-    const isClassic = templateFamilyId === 'classic-luxe' || templateFamilyId === 'botanical-heritage';
+    const isClassic = templateFamilyId === 'classic-luxe' || templateFamilyId === 'botanical-heritage' || templateFamilyId === 'craft-kitchen';
     const isSoft = templateFamilyId === 'soft-curve';
     const hasOuterBand = templateFamilyId === 'brand-banner';
     const cx = w / 2;
@@ -458,6 +461,13 @@ export function drawPrintMenuCardFace(
     fillRoundedRect(ctx, cardX, cardY, cardW, cardH, printMenuMm(5), brand.surface);
     ctx.restore();
     strokeRoundedRect(ctx, cardX, cardY, cardW, cardH, printMenuMm(5), brand.border, printMenuMm(0.35));
+    if (opts.themeArtwork) {
+        drawPrintableThemeArtwork(ctx, opts.themeArtwork, { height: cardH, width: cardW, x: cardX, y: cardY }, {
+            cornerOpacity: templateFamilyId === 'craft-kitchen' ? 0.35 : 0.30,
+            railOpacity: templateFamilyId === 'craft-kitchen' ? 0.28 : 0.24,
+            templateFamilyId,
+        });
+    }
     drawTemplateDecorations(ctx, cardX, cardY, cardW, cardH, brand, templateFamilyId);
 
     drawHeaderTreatment(ctx, cardX + (templateFamilyId === 'brand-banner' ? 0 : printMenuMm(2)), cardY + printMenuMm(2), cardW - (templateFamilyId === 'brand-banner' ? 0 : printMenuMm(4)), brand, templateFamilyId);

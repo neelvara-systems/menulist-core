@@ -9,6 +9,10 @@ import styles from '@organisms/sidebar/sidebarComponent.module.scss';
 
 export const DASHBOARD_SIDEBAR_EXPANDED_WIDTH = 200;
 export const DASHBOARD_SIDEBAR_COLLAPSED_WIDTH = 62;
+const DASHBOARD_SIDEBAR_WIDTH_TRANSITION = {
+    duration: 0.18,
+    ease: [0.22, 1, 0.36, 1] as const,
+};
 
 type DashboardShellIcon = ComponentType<any> | ReactNode;
 
@@ -71,17 +75,31 @@ export default function DashboardSidebarShell({
     const { token } = theme.useToken();
     const [hoverId, setHoverId] = useState<string | null>(null);
     const [isHover, setIsHover] = useState(false);
+    const [expandedContentReady, setExpandedContentReady] = useState(mobile || !isCollapsed);
     const menuItemsRef = useRef<HTMLDivElement | null>(null);
     const pendingParentScrollRef = useRef<{ element: HTMLElement; top: number } | null>(null);
     const suppressNextActiveParentScrollRef = useRef(false);
     const showExpandedSidebar = mobile || !isCollapsed || isHover;
+    const showExpandedContent = mobile || (showExpandedSidebar && expandedContentReady);
+    const isLayoutExpanded = mobile || !isCollapsed;
     const activeParentKey = useMemo(() => (
         navItems.find((item) => item.active || item.subNavActive)?.key || null
     ), [navItems]);
 
     useEffect(() => {
-        onExpandedChange?.(showExpandedSidebar);
-    }, [onExpandedChange, showExpandedSidebar]);
+        onExpandedChange?.(isLayoutExpanded);
+    }, [isLayoutExpanded, onExpandedChange]);
+
+    useEffect(() => {
+        if (mobile) {
+            setExpandedContentReady(true);
+            return;
+        }
+
+        if (!showExpandedSidebar) {
+            setExpandedContentReady(false);
+        }
+    }, [mobile, showExpandedSidebar]);
 
     useEffect(() => {
         if (!showExpandedSidebar || !activeParentKey) return;
@@ -177,13 +195,13 @@ export default function DashboardSidebarShell({
         const hasActiveChild = Boolean(item.subNavActive);
         const isActive = isExactActive || hasActiveChild;
         const isParentItem = Boolean(options.showChevron);
-        const isCollapsedDesktop = isCollapsed && !isHover && !mobile;
-        const collapsedActiveParent = hasActiveChild && isCollapsed && !isHover && !mobile;
+        const isCollapsedDesktop = !mobile && !showExpandedContent;
+        const collapsedActiveParent = hasActiveChild && isCollapsedDesktop;
         const useStrongActiveStyle = !(mobile && isParentItem) && (isExactActive || collapsedActiveParent);
         const itemHover = hoverId === item.key || hasActiveChild || isExactActive;
         const iconActive = Boolean(item.iconActive || isActive || itemHover);
         const foreground = useStrongActiveStyle ? token.colorTextLightSolid : (itemHover ? token.colorPrimaryTextActive : token.colorText);
-        const isExpandedParent = isParentItem && item.expanded && showExpandedSidebar;
+        const isExpandedParent = isParentItem && item.expanded && showExpandedContent;
         const parentBackground = mobile || isExpandedParent ? token.colorBgBase : token.colorFillSecondary;
         const parentActiveBackground = mobile || isExpandedParent ? token.colorBgBase : token.colorPrimaryBg;
         const itemBackground = useStrongActiveStyle
@@ -227,6 +245,7 @@ export default function DashboardSidebarShell({
                     height: 'auto',
                     justifyContent: isCollapsedDesktop ? 'center' : 'flex-start',
                     maxWidth: '100%',
+                    minHeight: mobile ? 44 : undefined,
                     overflow: 'visible',
                     padding: 0,
                     position: options.showChevron ? 'sticky' : 'relative',
@@ -257,7 +276,7 @@ export default function DashboardSidebarShell({
                         >
                             {renderIcon(item.icon)}
                         </div>
-                        {showExpandedSidebar && (
+                        {showExpandedContent && (
                             <motion.div
                                 animate={{ width: 'max-content', opacity: 1 }}
                                 className={styles.label}
@@ -269,7 +288,7 @@ export default function DashboardSidebarShell({
                             </motion.div>
                         )}
                     </div>
-                    {options.showChevron && showExpandedSidebar && (
+                    {options.showChevron && showExpandedContent && (
                         <motion.div
                             animate={{ rotate: item.expanded ? 90 : 0 }}
                             className={`${styles.subNavIcon} ${styles.iconWrap}`}
@@ -282,7 +301,7 @@ export default function DashboardSidebarShell({
                 </div>
 
                 <AnimatePresence>
-                    {((isActive || item.subNavActive) && isCollapsed && !isHover && !mobile) && (
+                    {((isActive || item.subNavActive) && isCollapsedDesktop) && (
                         <motion.div
                             animate={{ height: '100%', opacity: 1 }}
                             className={styles.activeMark}
@@ -303,9 +322,15 @@ export default function DashboardSidebarShell({
             animate={{ width: mobile ? '100%' : (showExpandedSidebar ? `${expandedWidth}px` : `${collapsedWidth}px`) }}
             aria-label={ariaLabel}
             className={`${styles.sidebarContainer} ${className}`}
+            onAnimationComplete={() => {
+                if (showExpandedSidebar) {
+                    setExpandedContentReady(true);
+                }
+            }}
             onMouseEnter={() => setIsHover(true)}
             onMouseLeave={() => setIsHover(false)}
             role="navigation"
+            transition={DASHBOARD_SIDEBAR_WIDTH_TRANSITION}
             style={{
                 backgroundColor: token.colorBgBase,
                 borderRight: mobile ? undefined : `1px solid ${token.colorBorder}`,
@@ -327,11 +352,11 @@ export default function DashboardSidebarShell({
                 className={styles.itemWrap}
                 style={{
                     borderBottom: `1px solid ${token.colorBorder}`,
-                    padding: showExpandedSidebar ? 20 : 2,
+                    padding: showExpandedContent ? 20 : 2,
                 }}
             >
                 <div className={styles.logo}>
-                    {showExpandedSidebar ? logoExpanded : (logoCollapsed || logoExpanded)}
+                    {showExpandedContent ? logoExpanded : (logoCollapsed || logoExpanded)}
                 </div>
             </div>
 
@@ -344,14 +369,14 @@ export default function DashboardSidebarShell({
                         className={`${styles.menuSectionWrap} ${item.subNav?.length ? styles.parentMenuSectionWrap : ''}`}
                         key={item.key}
                     >
-                        {showExpandedSidebar && item.sectionLabel ? (
+                        {showExpandedContent && item.sectionLabel ? (
                             <div className={styles.navSectionLabel}>
                                 {item.sectionLabel}
                             </div>
                         ) : null}
                         {renderMenuButton(item, { showChevron: Boolean(item.subNav?.length) })}
                         <AnimatePresence>
-                            {Boolean(item.expanded && showExpandedSidebar && item.subNav?.length) && (
+                            {Boolean(item.expanded && showExpandedContent && item.subNav?.length) && (
                                 <motion.div
                                     animate={{ height: 'max-content', opacity: 1 }}
                                     className={styles.subNavPanel}

@@ -2,17 +2,33 @@
 
 **Feature:** Menu Image Generation & Editing
 **Status:** Source/emulator hardened; QA rules and scheduler deployment blocked by IAM
-**Last Updated:** August 25, 2026
+**Last Updated:** August 31, 2026
 **Priority:** HIGH — Most expensive AI feature. Direct Gemini API + Storage costs per generation.
 
 ---
 
 ## Summary
 
-- **Collections Used:** `imageBatchProcessingJobs/{tId}/{sId}`, `aiImagePromptCache`, `projects/{tId}/{sId}` (projectsData)
-- **Storage Buckets:** `media/menuItem/{tId}/{sId}/{entityId}/{fileId}` for item images; `system/aiImagePromptCache/...` for private reusable batch prompt-cache source objects; `media/menuBackground/...` and `media/projectImage/...` for design/project media through shared media profiles
+- **Collections Used:** `imageBatchProcessingJobs/{tId}/{sId}`, `aiImagePromptCache`, `imageSubjectProfiles/{tId}/{sId}`, `projects/{tId}/{sId}` (projectsData)
+- **Storage Buckets:** `media/menuItem/{tId}/{sId}/{entityId}/{fileId}` for item images; `system/aiImagePromptCache/...` for private reusable batch prompt-cache source objects; `system/imageSubjectProfiles/{tId}/{sId}/{profileId}/v{version}/{referenceId}.webp` for private saved-person references; `media/menuBackground/...` and `media/projectImage/...` for design/project media through shared media profiles
 - **Cloud Functions:** `menulistMaintenanceScheduler` prunes bounded job metadata; generation itself uses API routes + Google Cloud Tasks for batch. Public generated-media deletion is intentionally disabled without global exclusive-reference proof.
 - **Estimated Monthly Cost:** **HIGH** — Gemini image-generation API costs dominate
+
+### Current provider-cost baseline
+
+- Active model: `gemini-3.1-flash-image`.
+- Current paid standard 1K output list rate: **USD 0.067 per completed image**, excluding input tokens and taxes. Source: [Google Gemini API pricing](https://ai.google.dev/gemini-api/docs/pricing).
+- At the codebase planning rate `USD_TO_INR = 96.1856`, the output-only baseline is approximately **₹6.44 per completed 1K image**, before input tokens and taxes.
+- Google lists a lower native Batch rate, but MenuList's current batch flow is Cloud Tasks dispatching standard per-item Generate Content calls. Therefore both single and current batch fallback ledgers use USD 0.067, not native Batch pricing.
+
+### Reusable subject profile cost contract
+
+- Listing profiles reads at most eight small profile documents per owner-opened selector.
+- Creating a profile performs one bounded profile-count query returning at most eight documents, one profile write, and two to four private Storage uploads.
+- A manager can rename a profile with one transaction read/write while keeping the version. Replacing photos uploads two to four new private objects, transactionally swaps the existing profile document to `version + 1`, and deletes the prior two to four exact objects after commit. It does not add a document or collection.
+- Withdrawal performs one profile read and one write. Deletion marks the profile deleting, deletes its exact private objects, then deletes the profile document.
+- Single generation adds one profile read and two to four private Storage downloads when a saved subject is selected. The batch trigger adds one metadata preflight read; each admitted worker performs its own exact-version read and private downloads.
+- No Firestore rule, index, client listener, Cloud Function, public cache invalidation, or public Storage URL is added. Existing default deny keeps the collection server-only.
 
 ---
 
@@ -28,6 +44,8 @@
 | Batch worker job read | `imageBatchProcessingJobs/{tId}/{sId}/{jobId}` | Cloud Tasks worker | Per item task | 1 | Direct doc | Verifies job, project, requested item, terminal/idempotent state. |
 | Batch retention cleanup scan | `platformSummary/storesSummary`, `imageBatchProcessingJobs/{tId}/{sId}` | `menulistMaintenanceScheduler` | Daily | One summary read, then a rotating page capped at 200 active stores and up to 25 job docs per scanned store | Single-field marker queries: `expiresAt`, `itemsExpiresAt`; bounded legacy status scan | Sorted UTC-day page rotation covers stores beyond the first 200 without another cursor document. Deletes expired terminal jobs and prunes expired `itemsList`. |
 | Prompt-cache source cleanup scan | `aiImagePromptCache` | `menulistMaintenanceScheduler` | Hourly | Up to 26 expired docs returned; at most 25 processed | Single-field ordered query: `expiresAt` | Oldest-first cleanup deletes expired private source objects before conditionally deleting cache docs and records whether backlog remains. No tenant/store media URLs are reused. |
+| List saved people | `imageSubjectProfiles/{tId}/{sId}` | First selector use for an exact tenant/store/visibility scope or first use after the five-minute in-memory TTL | On demand | Up to 8 | `updatedAt desc`, limit 8 | `PlatformGlobalDataContext` reuses the bounded summary during the session; create/withdraw/delete update it locally and scope reset clears it. No eager provider read, Store-document field, local persistence, Storage path, source byte, or consent record is added. |
+| Resolve saved person | `imageSubjectProfiles/{tId}/{sId}/{profileId}` | Selected single request, batch preflight, or batch worker | Per selected request/item | 1 | Direct doc | Requires active consent and the exact pinned version before private downloads or provider work. |
 
 ### Writes
 
@@ -41,6 +59,10 @@
 | Compact retained batch job | `imageBatchProcessingJobs/{tId}/{sId}/{jobId}` | Daily retention cleanup | Daily capped cleanup | 1 job update per eligible unpruned job; no project-reference read and no public-media delete | Deletes `itemsList`, clears `itemsExpiresAt`, records zero cleanup counts | A job row and one project cannot prove a generated URL is absent from duplicates or outlet projections, so cleanup remains metadata-only. |
 | Write prompt-cache source doc | `aiImagePromptCache/{cacheKey}` | Batch worker receives a cache-eligible provider result | Per first cache miss | 1 | `sourcePath`, image shape, `expiresAt`, `promptLength`, model/config metadata | Stores no raw prompt; key is a hash of model/config/prompt. |
 | Record prompt-cache hit | `aiImagePromptCache/{cacheKey}` | Batch worker cache hit | Per hit | 1 merge update | `hitCount`, `lastHitAt`, `updatedAt` | Cache hit still copies source bytes into the requesting store's own media path. |
+| Create saved person | `imageSubjectProfiles/{tId}/{sId}/{profileId}` | Owner confirms consent/rights and 2–4 prepared photos | Per profile | 1 | Label, active status, consent ledger, reference metadata, version | No source bytes, data URLs, or public URLs are stored in Firestore. The eight-profile cap is checked again in the create transaction; a rejected concurrent create immediately attempts exact cleanup of prepared private objects. |
+| Rename saved person | `imageSubjectProfiles/{tId}/{sId}/{profileId}` | Desktop manager changes the private label | Per action | 1 transaction write after 1 read | Label and update metadata | Expected-version check prevents a stale management tab from overwriting newer reference truth; reference version is unchanged. |
+| Replace saved-person photos | `imageSubjectProfiles/{tId}/{sId}/{profileId}` | Desktop manager supplies 2–4 replacements and repeats consent | Per action | 1 transaction write after initial and transaction reads | Renewed consent, replacement reference metadata, `version + 1` | Reuses the same document. A concurrent version/status change fails closed and staged replacement objects are cleaned. |
+| Withdraw saved person | `imageSubjectProfiles/{tId}/{sId}/{profileId}` | Owner withdraws permission | Per action | 1 | Status, withdrawal actor/time, update metadata | Blocks every later single/batch resolution immediately. |
 | Save reviewed batch image selections to standalone project | `projects/{tId}/{sId}/{projectId}` | Owner accepts one or more generated batch images | Per accept action | 1 transaction read + 1 transaction write | `files[].extractedData.data.items[].images[]` | One bounded item/image append operation reads current project truth, deduplicates by URL, preserves concurrent fields, and writes the files projection once. It is not one write per image. |
 | Save reviewed batch image selections to linked outlet | stores, tenant, outlet project, master project | Owner accepts one or more generated batch images | Per accept action | 4 admission reads + 2 transaction reads + 1 project write | Local item images or `overrides.items.{itemId}.images` | Reuses the guarded outlet-save route. The transaction enforces current master/outlet identity and image-override policy. No item subcollection or per-image write is added. |
 | Reserve paid image capacity | `menulistAiOperations/{tId}/{sId}/{operationId}` + subscription doc | Admitted paid request before provider work | Per generated/edited image request | 2 transaction reads + 2 writes | hidden reservation shell, debited balance | Exact positive integer units only; the operation ID is the idempotency key. |
@@ -61,6 +83,7 @@ July 13 reviewed-selection persistence removes the stale full-project merge with
 |-----------|-----------|---------|-----------|-------------|-----------|-------|
 | Delete expired terminal batch job | `imageBatchProcessingJobs/{tId}/{sId}/{jobId}` | Daily retention cleanup when `expiresAt <= now` | Daily capped cleanup | Up to 10 marker-matched docs per scanned store plus 5 legacy candidates | Hard delete | Deletes only terminal-status jobs after the 30-day retention window. |
 | Delete expired prompt-cache source doc | `aiImagePromptCache/{cacheKey}` | Hourly retention cleanup when `expiresAt <= now` | Hourly capped cleanup | Up to 25 docs | Hard delete | Deletes the cache doc only after its private source object is deleted or already missing. A transient source-delete failure retains the row for the next hourly retry. |
+| Delete saved person | `imageSubjectProfiles/{tId}/{sId}/{profileId}` | Owner-confirmed delete | Per action | 1 | Hard delete after exact private object cleanup | The row is first marked `deleting`; failed object cleanup leaves a retryable non-generatable row with its cleanup pointers. |
 
 ---
 
@@ -71,6 +94,10 @@ July 13 reviewed-selection persistence removes the stale full-project merge with
 | Upload accepted single image | `media/menuItem/{tId}/{sId}/{entityId}/{mediaId}_{variant}.{ext}` | User accepts generated image | Profile-bounded | Shared `uploadFile()` media profile path. Public-read image URL is saved only after owner acceptance. |
 | Upload batch worker image | `media/menuItem/{tId}/{sId}/{entityId}/{mediaId}_{variant}.{ext}` | Worker generates item image | Profile-prepared WebP: max 1200px, 500KB target | Admin SDK upload prepares provider bytes through `prepareMediaImageAdmin()` before Storage save and records original/prepared size metadata; no browser session required. |
 | Upload prompt-cache source image | `system/aiImagePromptCache/v{version}/{cacheKey}/{sourceVersion}.{ext}` | Batch worker cache-eligible first generation | Profile-prepared WebP: max 1200px, 500KB target | Private immutable reusable source object. Cache hits copy bytes into the requesting store's own `media/menuItem/{tId}/{sId}/...` path instead of reusing a tenant URL. |
+| Upload saved-person references | `system/imageSubjectProfiles/{tId}/{sId}/{profileId}/v{version}/{referenceId}.webp` | Owner creates a consented profile | 2–4 profile-prepared WebP objects | Admin-only upload with private/no-store cache policy, checksum metadata, and no Firebase download token. |
+| Replace saved-person references | Same path with `v{version + 1}` | Owner confirms replacement photos and consent | 2–4 new uploads, then 2–4 old exact deletes | New objects are staged before the version-checked profile transaction. Conflicts delete only the newly staged set; committed replacements retain new truth even if bounded old-object cleanup needs operational retry. |
+| Read saved-person references | Same private profile path | Authenticated active-profile preview or admitted generation | Selected profile only | Preview flows through the permission-checked API; withdrawn/deleting profiles are unreadable. Provider bytes are downloaded server-side and checksum-verified. |
+| Delete saved-person references | Same private profile path | Owner deletes a profile | 2–4 exact objects | Path prefix and profile IDs are revalidated before Admin deletion. |
 | Delete expired prompt-cache source image | `system/aiImagePromptCache/v{version}/{cacheKey}/{sourceVersion}.{ext}` | Hourly prompt-cache cleanup | Up to 25 expired sources per run | Scheduler deletes only the row's exact cache-key source path. A transient delete failure retains the cache row for retry; store-owned accepted media is untouched. |
 | Retain terminal batch worker image | `media/menuItem/{tId}/{sId}/{entityId}/{mediaId}_{variant}.{ext}` | Owner discard/cancel or daily job retention | No delete | Public generated media can be shared by acknowledgement retries, duplicated menus, or outlet projection. Browser and scheduler deletion remain disabled until a global reference ledger or equivalent exclusive-reference proof exists. |
 
@@ -86,7 +113,7 @@ July 13 reviewed-selection persistence removes the stale full-project merge with
 
 | Service | Trigger | Cost | Notes |
 |---------|---------|------|-------|
-| Gemini 2.5 Flash Image | Per generation request | ~$0.039/image estimate | Primary and only active image generation model |
+| Gemini 3.1 Flash Image | Per generation request | Use the current provider/list-rate ledger for cost estimates | Primary and only active image generation model |
 | Google Cloud Tasks | Batch generation | $0.40/million | Queues individual item tasks for batch processing |
 
 ---
@@ -95,6 +122,7 @@ July 13 reviewed-selection persistence removes the stale full-project merge with
 
 - `imageBatchProcessingJobs`: Browser reads require exact tenant/store membership. Creates and terminal owner actions additionally require owner/manager authority and bounded shapes/transitions. Results, counts, requested-item registration, execution leases and accounting fields are Admin-only after task secret and project/job/item validation. Missing `storeIds` never means access to every store.
 - Storage upload: browser uploads require auth + tenant/store path; worker uploads use Admin SDK only after authenticated Cloud Task secret validation.
+- Saved-person documents and `system/imageSubjectProfiles/...` objects have no client allow rule; all access uses the authenticated permission-checked API or admitted server generation paths.
 - Rate limiting: `checkExpensiveAILimit()` — 5 requests per minute per user.
 - Owner API routes use `withAuth()`; the worker route is Cloud Tasks-only and requires `project-id` plus `x-menulist-task-secret`.
 
@@ -103,6 +131,7 @@ July 13 reviewed-selection persistence removes the stale full-project merge with
 ## Cost Optimization Notes
 
 ### Current Optimizations
+- **Lazy global summary cache**: The existing global data provider stores only an exact-scope saved-person summary for five minutes. Reopening the generator within that window adds zero list reads; lifecycle mutations update the cache without a follow-up list query. Exact generation still re-reads the selected server document so withdrawal/version checks never depend on cache freshness.
 - **Rate limiting**: 5/min prevents runaway costs
 - **Capacity before provider work**: Single and worker routes build deterministic prompts first, then check AI capacity using the actual prompt/image quantity before calling Gemini.
 - **Transactional paid reservation**: Single generation/editing and non-cache batch workers reserve exact integer units before Gemini. Settlement promotes the same hidden operation shell; non-retry failure restores the exact charged buckets idempotently.
@@ -168,6 +197,7 @@ Do not reuse the retired fixed-dollar or percentage-dominance examples. They wer
 | `/api/image-generation/batch-trigger` | POST | 2-4R + 1W | Yes (3/5min) | Project/outlet policy + prompt-count batch capacity, registers requested item IDs, then enqueues Cloud Tasks. |
 | `/api/image-generation/batch-generation` | POST | Unauthorized: 0 Firebase ops. Admitted success: SAFE_MODE config read + 2R + Storage uploads + 2-3W | Task secret + `BATCH_IMAGE_WORKER` limiter | Project/secret admission precedes SAFE_MODE, so malformed external traffic cannot bill a config read. Admitted workers read SAFE_MODE, job + prompt-count capacity, upload generated images via Admin SDK with bounded concurrency, and write accounting/transactional progress. |
 | `/api/image-editing` | POST | 2-3R + 1-2W on success | Yes (5/min) | Project/outlet policy + AI capacity before provider; accounting write after success. Returns base64 preview. |
+| `/api/image-subject-profiles` | GET/POST/PATCH/DELETE | List/preview reads; bounded create/withdraw/delete lifecycle writes | Yes, fail closed | Auth + exact session scope. Reading/selecting needs `GENERATE_IMAGES`; create/withdraw/delete needs `MANAGE_STORE`. Source photos never receive public URLs. |
 
 Reference-image fetch hardening is behavior-neutral for Firebase usage. Persisted reference images for single generation, batch generation, and image editing must already be in the configured MenuList Firebase Storage bucket and under `media/menuItem/{tId}/{sId}/` or legacy `projects/itemImages/{tId}/{sId}/`; the app server also validates the public DNS target before reading bytes for Gemini and uses manual redirect handling for the final fetch. This adds no Firestore reads/writes/deletes, no Storage writes/deletes, no Cloud Function logic, no rules/indexes/schema/tenant-shape changes, no cache invalidations, and no owner-facing settings. Valid data URL previews and valid scoped item-image download URLs remain supported.
 

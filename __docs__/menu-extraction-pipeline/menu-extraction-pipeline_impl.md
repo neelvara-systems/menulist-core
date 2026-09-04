@@ -40,6 +40,7 @@ Date/seconds/finite-number timestamps remain readable.
 | `src/lib/menu-extraction/jobIdBoundary.ts` | Shared retry job ID admission boundary for owner extraction retries. |
 | `src/lib/menu-extraction/projectIdBoundary.ts` | Shared project ID admission boundary for menu-extraction owner project reads and review apply. |
 | `src/lib/extraction/schemas.ts` | Shared extraction review schema validation for apply/review payloads. |
+| `src/data/shared/categoryIconSuggestions.ts` | Shared app/Functions category-icon inference and canonical value boundary. |
 | `src/lib/extraction/applyChanges.ts` | Client review apply/discard helper; validates preview ownership and applies approved changes. |
 | `src/lib/menu-extraction/menuIntakeIdentityServer.ts` | Shared server helper for menu-intake identity preflight. |
 | `src/app/api/menu-intake-identity/route.ts` | Existing preflight API, now delegates to the shared helper. |
@@ -62,6 +63,8 @@ Date/seconds/finite-number timestamps remain readable.
 | `src/app/api/menu-link-imports/route.ts` | Adds explicit project destination metadata. |
 | `functions/src/messagingOnboarding/intakeProcessor.ts` | Adds messaging destination metadata. |
 | `firestore.rules` | Blocks direct browser job creation. |
+
+Category icons are applied by `processMenuImagesJob.ts` after extraction hardening, using the byte-identical shared suggestion catalog in the app and Functions. The job-status normalizer validates the icon before review. `comparisonEngine.ts` copies the icon only into newly approved category writes in standard/master and outlet-local plans; category updates deliberately omit the field so an extraction rerun cannot replace an owner-selected icon. `NewCategorySchema` repeats the canonical icon boundary immediately before persistence.
 
 ## Owner Job Creation
 

@@ -3,6 +3,7 @@
 import { assertStoreUpdateSucceeded, updateStore } from '@database/stores';
 import { openIsolatedBrowserUrl } from '@lib/browser/openIsolatedBrowserUrl';
 import {
+    formatOwnerSocialPlatformLabel,
     normalizeOwnerSocialMediaLink,
     normalizeOwnerSocialMediaLinks,
 } from '@lib/obp/ownerSocialMediaBoundary';
@@ -163,7 +164,7 @@ function MobileAdvancedSettingsScreenContent({ onBack, mode = 'all' }: MobileAdv
                 const knownPlatform = knownPlatformMap.get(key);
                 return {
                     key,
-                    label: knownPlatform?.label || key,
+                    label: knownPlatform?.label || formatOwnerSocialPlatformLabel(key),
                     placeholder: knownPlatform?.placeholder || 'Profile URL',
                     icon: knownPlatform?.icon || LuShare2,
                     value,
@@ -259,7 +260,7 @@ function MobileAdvancedSettingsScreenContent({ onBack, mode = 'all' }: MobileAdv
     const handleOpenEditSheet = (platformKey: string) => {
         const platform = knownPlatformMap.get(platformKey);
         setEditingPlatformKey(platformKey);
-        setEditingPlatformLabel(platform?.label || platformKey);
+        setEditingPlatformLabel(platform?.label || formatOwnerSocialPlatformLabel(platformKey));
         setEditingPlatformValue(socialMedia[platformKey] || '');
     };
 
@@ -525,7 +526,17 @@ function MobileAdvancedSettingsScreenContent({ onBack, mode = 'all' }: MobileAdv
                 title={pageTitle}
             />
 
-            <Flex gap={16} style={{ flex: 1, overflowY: 'auto', padding: 16 }} vertical>
+            <Flex
+                gap={16}
+                style={{
+                    flex: 1,
+                    overflowY: 'auto',
+                    padding: 16,
+                    paddingBottom: `calc(16px + ${MOBILE_BOTTOM_NAV_CLEARANCE})`,
+                    scrollPaddingBottom: `calc(68px + ${MOBILE_BOTTOM_NAV_CLEARANCE})`,
+                }}
+                vertical
+            >
                 {showSocial ? (
                     <Flex gap={12} vertical>
                         {linkedSocialPlatforms.length > 0 ? (
@@ -681,11 +692,8 @@ function MobileAdvancedSettingsScreenContent({ onBack, mode = 'all' }: MobileAdv
                         backdropFilter: 'blur(10px)',
                         backgroundColor: token.colorBgContainer,
                         borderTop: `1px solid ${token.colorBorderSecondary}`,
-                        bottom: MOBILE_BOTTOM_NAV_CLEARANCE,
                         marginInline: -16,
                         padding: '12px 16px',
-                        position: 'sticky',
-                        zIndex: 20,
                     }}
                     wrap="nowrap"
                 >

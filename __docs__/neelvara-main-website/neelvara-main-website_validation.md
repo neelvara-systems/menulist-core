@@ -881,9 +881,10 @@ These are owner-side or deployment-side blockers, not code blockers:
 
 ## August 30, 2026 Viewport Motion Validation
 
-- Entry choreography is implemented through the shared `ScrollRevealController`, so Home, Products, Contact, About, Trust, Legal, Privacy, Terms, and the branded 404 use one motion contract.
+- Entry choreography is implemented through the shared `ScrollRevealController`, so Home, Products, Contact, About, Trust, Legal, Privacy, and Terms use one motion contract.
 - The observer trigger uses a negative lower root margin and an 8% threshold, keeping below-fold content pending until it is meaningfully inside the viewport.
 - Initial hero content receives a painted pending frame before observation, making the hierarchy visibly arrive rather than silently appearing during hydration.
 - Nested content staggers without changing DOM order, semantics, tab order, link destinations, or the established section surface system.
 - The runtime uses only opacity and transform, observes each target once, and removes observation after entry; it does not subscribe to continuous scroll events.
 - Reduced-motion styling removes all viewport-entry animation and keeps every target readable without waiting for JavaScript motion.
+- Rendered mobile verification stepped through all eight public routes at `390x844`; every reveal target completed, every route finished with zero pending targets, and every route kept `scrollWidth === innerWidth === 390`.

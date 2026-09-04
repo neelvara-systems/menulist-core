@@ -805,8 +805,10 @@ function verifyPublicClientCacheLoggingIsBounded() {
   assertIncludes(helper, 'sanitizePublicCacheContext', 'Public client cache context sanitizer');
   assertIncludes(helper, "redirect: 'manual'", 'Public client cache revalidation handoff does not follow redirects');
   assertIncludes(helper, 'storeIdLength: storeId.length', 'Public client cache bounded store-id context');
-  assertIncludes(helper, 'responseStatus: response.status', 'Public client cache bounded response status context');
-  assertIncludes(helper, 'errorName: getBoundedErrorName(error) || typeof error', 'Public client cache bounded error context');
+  assertIncludes(helper, 'responseStatus: outcome.response.status', 'Public client cache bounded response status context');
+  assertIncludes(helper, 'errorName: getBoundedErrorName(outcome.error) || typeof outcome.error', 'Public client cache bounded error context');
+  assertIncludes(helper, 'awaitPublicCacheRevalidationRequest', 'Public client cache explicit request deadline boundary');
+  assertIncludes(helper, "errorName: 'TimeoutError'", 'Public client cache bounded timeout diagnostic');
   assertIncludes(helper, 'type PendingPublicCacheRevalidation', 'Public client cache pending entry contract');
   assertIncludes(helper, 'const pendingRevalidations = new Map<string, PendingPublicCacheRevalidation>();', 'Public client cache pending map keeps rerun state');
   assertIncludes(helper, 'pending.rerunRequested = true;', 'Public client cache same-store trailing revalidation marker');
@@ -1599,6 +1601,8 @@ function verifyPublicMenuExternalLinksAreNormalized() {
 
   [
     'normalizeOBPGoogleMapsUrl(publicPresence?.googleMapsUrl)',
+    'const displayPhone = callHref && storeDetails?.phoneNumber',
+    '{displayPhone && (!showCall || !callHref) && (',
     'const reservationHref = normalizeOBPExternalHttpsUrl(publicPresence?.reservationUrl) || undefined;',
     'const orderHref = normalizeOBPExternalHttpsUrl(publicPresence?.orderUrl) || undefined;',
     'normalizeMenuFooterSocialUrl',
@@ -1607,6 +1611,12 @@ function verifyPublicMenuExternalLinksAreNormalized() {
     'href={reservationHref}',
     'href={orderHref}',
   ].forEach((token) => assertIncludes(menuFooter, token, 'Public menu footer external link normalization'));
+
+  assertNotIncludes(
+    menuFooter,
+    '{storeDetails?.phoneNumber && (!showCall || !callHref) && (',
+    'Public menu footer invalid raw phone fallback',
+  );
 
   [
     'normalizeOBPGoogleMapsUrl(publicPresence?.googleMapsUrl)',
@@ -3522,7 +3532,8 @@ function verifyProjectsPageDiagnosticsAreBounded() {
   assertIncludes(projectDal, 'assertExpectedSpecialMenuScope(scope, expectedScope);', 'Special menu DAL caller/session scope agreement');
   assertIncludes(mobileProjectsProvider, 'latestProjectsRequestRef.current', 'Mobile project latest-list settlement');
   assertIncludes(mobileProjectsProvider, 'inFlightProjectLoadsRef.current[requestKey] !== request', 'Mobile project latest-detail settlement');
-  assertIncludes(mobileProjectsProvider, 'getProjectsListWithoutLoader(true, expectedScope)', 'Mobile project list expected-scope read');
+  assertIncludes(mobileProjectsProvider, '? await getProjectsListWithoutLoader(true, expectedScope)', 'Mobile menu-management project list expected-scope read');
+  assertIncludes(mobileProjectsProvider, ': await getExistingProjectsListWithoutLoader(true, expectedScope);', 'Mobile read-only project list expected-scope read');
   assertIncludes(mobileProjectsProvider, 'getProjectDataWithoutLoader(nextProjectId, expectedScope)', 'Mobile project detail expected-scope read');
   assertIncludes(mobileProjectsProvider, 'hydratedScopeKeyRef.current === `${currentScope.tId}:${currentScope.sId}`', 'Mobile project exact-scope output mask');
   assertIncludes(ownerProjectSelection, '`${OWNER_SELECTED_PROJECT_KEY}:${tenantScope}:${storeScope}`', 'Owner selected-project tenant/store browser-cache key');
@@ -4067,6 +4078,10 @@ function verifyStoreAndUserDalDiagnosticsAreBounded() {
   assertIncludes(mobileBasicSettings, "aria-label={tBusiness('contactPersonName')}", 'Mobile Basic Settings contact name input');
   assertIncludes(mobileBasicSettings, "aria-label={tBusiness('contactPersonEmail')}", 'Mobile Basic Settings contact email input');
   assertIncludes(mobileBasicSettings, "aria-label={tBusiness('contactPersonNumber')}", 'Mobile Basic Settings contact phone input');
+  assertIncludes(mobileBasicSettings, 'isValidOptionalContactEmail(normalizedBusinessEmail)', 'Mobile Basic Settings business email validation boundary');
+  assertIncludes(mobileBasicSettings, 'isValidOptionalContactEmail(normalizedContactEmail)', 'Mobile Basic Settings contact email validation boundary');
+  assertIncludes(mobileBasicSettings, 'email: normalizedBusinessEmail', 'Mobile Basic Settings normalized business email write');
+  assertIncludes(mobileBasicSettings, 'contactPersonEmail: normalizedContactEmail', 'Mobile Basic Settings normalized contact email write');
   assertIncludes(mobileBasicSettings, 'basicSettingsSaveInFlightRef.current', 'Mobile Basic Settings immediate duplicate-save guard');
   assertIncludes(mobileBasicSettings, 'previous?.storeId === expectedStoreId && previous?.tenantId === expectedTenantId', 'Mobile Basic Settings exact-scope optimistic settlement');
   assertIncludes(mobileBasicSettings, 'MOBILE_BASIC_STORE_UPDATE_KEYS', 'Mobile Basic Settings exact persisted-store update key registry');
@@ -4970,6 +4985,18 @@ function verifyMobileOwnerDiagnosticsAreBounded() {
   assertIncludes(mobileSeoAnalytics, 'normalizeMetaPixelId(analyticsDraft.facebookPixelId)', 'Mobile analytics Meta Pixel validation boundary');
   assertIncludes(mobileSeoAnalytics, 'normalizeGoogleSearchConsoleVerification(analyticsDraft.googleSearchConsole)', 'Mobile analytics Search Console validation boundary');
   assertIncludes(mobileSeoAnalytics, '!areAnalyticsDraftsEqual(analyticsDraft, originalAnalyticsState)', 'Mobile analytics stable dirty-state comparison');
+  assertIncludes(mobileSeoAnalytics, 'These are draft choices. Close this guide and choose Save Changes to apply them to your store.', 'Mobile analytics wizard draft truth');
+  assertIncludes(mobileSeoAnalytics, 'Review your analytics settings.', 'Mobile analytics wizard review truth');
+  assertIncludes(mobileSeoAnalytics, "'Choose Save Changes on Analytics Settings'", 'Mobile analytics wizard explicit save recovery');
+  assertIncludes(mobileSeoAnalytics, "? 'Close Guide' : 'Next Step'", 'Mobile analytics wizard truthful completion action');
+  assertIncludes(mobileSeoAnalytics, 'Keep Menu activity on to measure menu, item, search, and action demand', 'Mobile analytics quick-guide supported activity truth');
+  assertIncludes(mobileSeoAnalytics, 'MenuList internal analytics reports menu opens, item and search demand, unavailable-item interest, Featured usage, Official Business Page actions, customer-app activity, entry source, and anonymous session totals.', 'Mobile analytics complete-guide internal activity truth');
+  assertNotIncludes(mobileSeoAnalytics, 'Everything is running normally.', 'Mobile analytics wizard unverified health claim');
+  assertNotIncludes(mobileSeoAnalytics, 'Your analytics setup is ready.', 'Mobile analytics wizard false completion claim');
+  assertNotIncludes(mobileSeoAnalytics, 'Enable sales tracking for order and revenue visibility', 'Mobile analytics quick-guide unsupported sales claim');
+  assertNotIncludes(mobileSeoAnalytics, 'add-to-cart actions, and purchases', 'Mobile analytics unsupported commerce-event claim');
+  assertNotIncludes(mobileSeoAnalytics, 'Enhanced E-commerce Features', 'Mobile analytics unsupported e-commerce section');
+  assertNotIncludes(mobileSeoAnalytics, 'GA4 E-commerce Guide', 'Mobile analytics unsupported e-commerce resource');
   assertIncludes(mobileSeoAnalytics, "googleAnalyticsId: normalizedGoogleAnalyticsId || ''", 'Mobile analytics normalized GA write');
   assertIncludes(mobileSeoAnalytics, "facebookPixelId: normalizedFacebookPixelId || ''", 'Mobile analytics normalized Meta Pixel write');
   assertIncludes(mobileSeoAnalytics, "getBoundedMobileOwnerStringContext('canonicalUrl', canonicalUrl)", 'Mobile SEO canonical URL bounded context');
@@ -5851,6 +5878,8 @@ function verifyBusinessSettingsDiagnosticsAreBounded() {
   assertIncludes(timeSlotPresets, 'business_settings_time_slot_preset_cascade_delete_rejected', 'Business settings time-slot cascade delete rejected code');
   assertIncludes(timeSlotPresets, 'business_settings_time_slot_preset_save_failed', 'Business settings time-slot save diagnostics');
   assertIncludes(timeSlotPresets, 'business_settings_time_slot_preset_delete_failed', 'Business settings time-slot delete diagnostics');
+  assertIncludes(timeSlotPresets, 'getTimeSlotPresetDraftIssue(formData, presets, editingPreset?.id);', 'Desktop time-slot draft validation boundary');
+  assertIncludes(timeSlotPresets, 'okButtonProps={{ disabled: Boolean(formIssue) }}', 'Desktop invalid time-slot action lock');
   assertIncludes(businessSettings, 'function BusinessSettingsContent(', 'Desktop Business Settings keyed content boundary');
   assertIncludes(businessSettings, '<BusinessSettingsStateBoundary', 'Desktop Business Settings local state boundary');
   assertIncludes(businessSettings, 'key={scopeKey}', 'Desktop Business Settings exact tenant/store remount');
@@ -5870,6 +5899,9 @@ function verifyBusinessSettingsDiagnosticsAreBounded() {
   assertIncludes(mobileTimeSlots, "getBoundedMobileOwnerStringContext('presetLabel'", 'Mobile time-slot bounded preset label context');
   assertIncludes(mobileTimeSlots, 'presetCount: presets.length', 'Mobile time-slot bounded preset count context');
   assertIncludes(mobileTimeSlots, 'remainingPresetCount: Math.max(presets.length - 1, 0)', 'Mobile time-slot bounded remaining preset context');
+  assertIncludes(mobileTimeSlots, 'getTimeSlotPresetDraftIssue({', 'Mobile time-slot draft validation boundary');
+  assertIncludes(mobileTimeSlots, 'id="mobile-time-slot-draft-error" role="alert"', 'Mobile time-slot persistent draft feedback');
+  assertIncludes(mobileTimeSlots, 'disabled={Boolean(formIssue)}', 'Mobile invalid time-slot action lock');
 	[
     'desktop_temp_status_set_failed',
     'desktop_temp_status_clear_failed',
@@ -5883,9 +5915,9 @@ function verifyBusinessSettingsDiagnosticsAreBounded() {
   assertOccurrenceAtLeast(tempStatusCard, 'expectedTenantId: String(expectedTenantId)', 2, 'Desktop temporary status initiating-tenant corroboration');
   assertIncludes(tempStatusCard, 'actionInFlightRef.current', 'Desktop temporary status immediate duplicate-action guard');
   assertIncludes(tempStatusCard, 'isExpectedScope(expectedTenantId, expectedStoreId)', 'Desktop temporary status exact-scope async settlement');
-  assertIncludes(tempStatusCard, "statusType === 'custom' && !customMessage.trim()", 'Desktop temporary status requires explicit custom customer copy');
-  assertIncludes(tempStatusCard, "setError('Enter a custom message')", 'Desktop temporary status exposes bounded custom-copy validation');
-  assertIncludes(tempStatusCard, '<Text role="alert" type="danger"', 'Desktop temporary status announces validation and mutation errors');
+  assertIncludes(tempStatusCard, 'getTempStatusDraftIssue({', 'Desktop temporary status uses shared draft validation');
+  assertIncludes(tempStatusCard, 'disabled={Boolean(draftIssue)}', 'Desktop temporary status locks invalid publication');
+  assertIncludes(tempStatusCard, 'role="alert" type="danger"', 'Desktop temporary status announces validation and mutation errors');
   assertNotIncludes(tempStatusCard, "customMessage.trim() || 'Temporary notice'", 'Desktop temporary status must not silently publish generic custom copy');
   assertNotIncludes(tempStatusCard, "fetch('/api/store/temp-status', {\n                cache: 'no-store'", 'Desktop temporary status inline request policy');
   [
@@ -5904,8 +5936,8 @@ function verifyBusinessSettingsDiagnosticsAreBounded() {
   assertNotIncludes(mobileTempStatus, "fetch('/api/store/temp-status', {\n                cache: 'no-store'", 'Mobile temporary status inline request policy');
   assertIncludes(mobileTempStatus, 'return <MobileTempStatusScreenContent key={scopeKey} {...props} />;', 'Mobile temporary status exact tenant/store keyed mount');
   assertIncludes(mobileTempStatus, 'tempStatusActionInFlightRef.current', 'Mobile temporary status immediate duplicate-action guard');
-  assertIncludes(mobileTempStatus, "statusType === 'custom' && !customMessage.trim()", 'Mobile temporary-status screen requires explicit custom customer copy');
-  assertIncludes(mobileTempStatus, "Toast.show({ content: 'Enter a custom message.'", 'Mobile temporary-status screen announces empty custom copy');
+  assertIncludes(mobileTempStatus, 'getTempStatusDraftIssue({', 'Mobile temporary-status screen uses shared draft validation');
+  assertIncludes(mobileTempStatus, 'draftIssue={draftIssue}', 'Mobile temporary-status screen exposes persistent draft feedback');
   assertIncludes(mobileTempStatus, 'isExpectedStoreScope(expectedTenantId, expectedStoreId)', 'Mobile temporary status exact-scope async settlement');
   assertOccurrenceAtLeast(mobileTempStatus, 'prev === optimisticStoreDetails', 2, 'Mobile temporary status attempt-owned rollback');
   assertIncludes(mobileHours, 'AUTH_BROWSER_REQUEST_POLICY', 'Mobile Today temporary status shared authenticated browser request policy');
@@ -5914,8 +5946,8 @@ function verifyBusinessSettingsDiagnosticsAreBounded() {
   assertOccurrenceAtLeast(mobileHours, 'expectedStoreId: String(expectedStoreId)', 3, 'Mobile Today temporary status initiating-store corroboration');
   assertOccurrenceAtLeast(mobileHours, 'expectedTenantId: String(expectedTenantId)', 3, 'Mobile Today temporary status initiating-tenant corroboration');
   assertIncludes(mobileHours, 'tempStatusActionInFlightRef.current', 'Mobile Today temporary status immediate duplicate-action guard');
-  assertIncludes(mobileHours, "tempStatusType === 'custom' && !customTempStatusMessage.trim()", 'Mobile Today requires explicit custom customer copy');
-  assertIncludes(mobileHours, "Toast.show({ content: 'Enter a custom message.'", 'Mobile Today announces empty custom copy');
+  assertIncludes(mobileHours, 'getTempStatusDraftIssue({', 'Mobile Today uses shared draft validation');
+  assertIncludes(mobileHours, 'draftIssue={tempStatusDraftIssue}', 'Mobile Today exposes persistent draft feedback');
   assertIncludes(mobileHours, 'isExpectedTempStatusScope(expectedTenantId, expectedStoreId)', 'Mobile Today temporary status exact-scope async settlement');
   assertNotIncludes(mobileHours, "fetch('/api/store/temp-status', {\n                cache: 'no-store'", 'Mobile Today temporary status inline request policy');
   assertIncludes(mobileTempStatus, 'logMobileOwnerFailure', 'Mobile temporary status bounded failure logger');
@@ -5945,6 +5977,8 @@ function verifyBusinessSettingsDiagnosticsAreBounded() {
   assertIncludes(mobileAdvancedSettings, "hasFeedbackEnabledUpdate: Object.prototype.hasOwnProperty.call(updates, 'feedbackEnabled')", 'Mobile advanced settings bounded feedback toggle context');
   assertIncludes(mobileAdvancedSettings, 'hasFeedbackDefaultsUpdate: Boolean(updates.feedbackDefaults)', 'Mobile advanced settings bounded feedback defaults context');
   assertIncludes(mobileAdvancedSettings, 'openIsolatedBrowserUrl(normalized)', 'Mobile advanced settings isolated social link open');
+  assertIncludes(mobileAdvancedSettings, 'formatOwnerSocialPlatformLabel(key)', 'Mobile advanced settings customer-readable custom social label');
+  assertIncludes(mobileAdvancedSettings, 'formatOwnerSocialPlatformLabel(platformKey)', 'Mobile advanced settings custom social edit label recovery');
   assertIncludes(mobileAdvancedSettings, "getBoundedMobileOwnerStringContext('platformKey', platformKey)", 'Mobile advanced settings social link bounded platform context');
   assertIncludes(mobileAdvancedSettings, "getBoundedMobileOwnerStringContext('socialUrl', normalized)", 'Mobile advanced settings social link bounded URL context');
   assertNotIncludes(mobileAdvancedSettings, 'window.open(', 'Mobile advanced settings no-opener handle acknowledgement');

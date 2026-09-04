@@ -129,7 +129,7 @@ export default function AppSettingsSheet({ visible, onClose }: AppSettingsSheetP
     const selectedDateFormatLabel = useMemo(() => {
         const option = DATE_FORMATS.find((item) => item.label === selectedDateFormat);
         if (!option) return selectedDateFormat;
-        return format.dateTime(previewDate, option.value);
+        return `${format.dateTime(previewDate, option.value)} (${option.labelHelper})`;
     }, [format, previewDate, selectedDateFormat]);
     const selectedTimeFormatLabel = useMemo(() => {
         const option = TIME_FORMATS.find((item) => item.label === selectedTimeFormat);
@@ -309,7 +309,7 @@ export default function AppSettingsSheet({ visible, onClose }: AppSettingsSheetP
                                 aria-label={tSettings('dateFormat')}
                                 onChange={(value: string) => handleDateFormatChange([value])}
                                 options={DATE_FORMATS.map((option) => ({
-                                    label: format.dateTime(previewDate, option.value),
+                                    label: `${format.dateTime(previewDate, option.value)} (${option.labelHelper})`,
                                     value: option.label,
                                 }))}
                                 placeholder={tSettings('selectDateFormat')}

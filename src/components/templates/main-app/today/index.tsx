@@ -9,6 +9,7 @@ import { useTodayCampaigns } from "@hook/useTodayCampaigns";
 import { getStoreContextName } from "@lib/businessIdentity/names";
 import { getBoundedCampaignStringContext, logCampaignFailure } from "@lib/campaigns/campaignDiagnostics";
 import { buildTodayMenuLink, TodayActionFeedback, performTodaySurfaceAction } from "@lib/campaigns/todayActionExecutor";
+import { buildTodayCampaignPosterRenderInput } from "@lib/printable-asset-templates/campaignPoster";
 import { shouldShowGrowthOSNavigation } from "@lib/growthos/entitlements";
 import { getLocalizedText, getPrimaryLocalizedLanguage } from "@lib/localization/text";
 import { resolveStoreBrandColor } from "@lib/menu-kit/brandTokens";
@@ -17,10 +18,12 @@ import { buildTodayWeeklyGrowthPack } from "@lib/today/weeklyGrowthPack";
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from "@providers/platformProviders/platformGlobalDataProvider";
 import { ProjectsDataContext, ProjectsDataProviderType } from "@providers/projectsDataProvider";
 import { CampaignType, ExecutionSurface, ExportMethod } from "@type/campaigns";
+import type { PrintableAssetRenderInput } from "@lib/printable-asset-templates/types";
 import { Button, Card, Divider, Drawer, Spin, Typography, notification } from "antd";
 import { useRouter } from "next/navigation";
 import { useContext, useEffect, useMemo, useState } from "react";
 import { LuCalendarOff, LuInfo, LuX } from "react-icons/lu";
+import CampaignPosterModal from "@/components/shared/printableAssets/CampaignPosterModal";
 import OBPLinkCard from "../businessSettings/OBPLinkCard";
 import TempStatusCard from "../businessSettings/TempStatusCard";
 import OwnerActionPlanCard from "../dashboard/OwnerDashboard/OwnerActionPlanCard";
@@ -39,6 +42,12 @@ import { sortOperationalCampaignsByPriority } from "@lib/today/todayCampaignPrio
 const { Title, Text } = Typography;
 
 type ScreenState = "loading" | "action" | "empty" | "post-action";
+type PendingCampaignPoster = {
+    campaignId: string;
+    campaignType: CampaignType;
+    input: PrintableAssetRenderInput;
+    projectId: string;
+};
 const resolveProjectName = (name: string | Record<string, string> | undefined, fallback = 'Untitled') => (
     getLocalizedText(name, undefined, getPrimaryLocalizedLanguage(name, 'en'), fallback)
 );
@@ -83,6 +92,8 @@ const TodayScreen = () => {
     const [lastActionFeedback, setLastActionFeedback] = useState<TodayActionFeedback | null>(null);
     const [isGuideOpen, setIsGuideOpen] = useState(false);
     const [isInactiveReminderDismissed, setIsInactiveReminderDismissed] = useState(false);
+    const [pendingCampaignPoster, setPendingCampaignPoster] = useState<PendingCampaignPoster | null>(null);
+    const [isPreparingCampaignPoster, setIsPreparingCampaignPoster] = useState(false);
 
     const { todayCampaigns, staffPrompt, physicalSurfaces, isLoading, mutate } = useTodayCampaigns();
     const { completeCampaign, skipCampaign, isProcessing } = useCampaignActions();
@@ -219,15 +230,24 @@ const TodayScreen = () => {
         let hasCampaignImage = false;
 
         try {
-            menuLink = buildTodayMenuLink(
-                storeDetails?.subdomain,
-                storeDetails?.customDomain,
-                (activeProject as any)?.name,
-            );
+            setIsPreparingCampaignPoster(surface === 'print_poster');
+            menuLink = todayMenuLink;
             const fullCampaign = surface === 'whatsapp_status' || surface === 'whatsapp_message'
                 ? null
                 : await getCampaign(campaignId);
             hasCampaignImage = Boolean(fullCampaign?.assets?.imageUrl);
+            if (surface === 'print_poster') {
+                const input = buildTodayCampaignPosterRenderInput({
+                    campaign: fullCampaign,
+                    expectedProjectId: activeProject?.projectId,
+                    menuUrl: menuLink,
+                    project: activeProject,
+                    store: storeDetails,
+                });
+                if (!input) throw new Error('Campaign Poster source is incomplete');
+                setPendingCampaignPoster({ campaignId, campaignType, input, projectId });
+                return;
+            }
             const actionFeedback = await performTodaySurfaceAction({
                 surface,
                 itemName: itemName || fullCampaign?.subject?.itemName || 'Item',
@@ -260,6 +280,42 @@ const TodayScreen = () => {
                 hasMenuLink: Boolean(menuLink),
                 hasCampaignImage,
             });
+        } finally {
+            setIsPreparingCampaignPoster(false);
+        }
+    };
+
+    const handleCampaignPosterDownloaded = async () => {
+        const pending = pendingCampaignPoster;
+        if (!pending) return;
+        try {
+            const result = await completeCampaign(
+                pending.campaignId,
+                pending.projectId,
+                pending.campaignType,
+                'print_poster',
+                'download',
+            );
+            await mutate((current) => current ? { ...current, today: result.today } : current, { revalidate: false });
+            setPendingCampaignPoster(null);
+            setLastActionFeedback({
+                title: 'Poster downloaded',
+                description: 'Your selected-theme poster is ready to print and place in-store.',
+            });
+            setLastAction('shared');
+            setScreenState('post-action');
+        } catch (error) {
+            logCampaignFailure('today_campaign_poster_complete_failed', error, {
+                ...getBoundedCampaignStringContext('campaignId', pending.campaignId),
+                ...getBoundedCampaignStringContext('projectId', pending.projectId),
+                ...getBoundedCampaignStringContext('campaignType', pending.campaignType),
+            });
+            notification.error({
+                message: 'Poster downloaded, action not marked handled',
+                description: 'You can try again from Today.',
+                placement: 'bottomRight',
+            });
+            throw error;
         }
     };
 
@@ -467,7 +523,7 @@ const TodayScreen = () => {
                     campaign={todayCampaigns.primary}
                     onComplete={handleComplete}
                     onSkip={handleSkip}
-                    isProcessing={isProcessing}
+                    isProcessing={isProcessing || isPreparingCampaignPoster}
                 />
             )}
 
@@ -506,7 +562,7 @@ const TodayScreen = () => {
                     campaigns={sortedOperationalCampaigns}
                     onComplete={handleComplete}
                     onSkip={handleSkip}
-                    isProcessing={isProcessing}
+                    isProcessing={isProcessing || isPreparingCampaignPoster}
                 />
             )}
 
@@ -536,6 +592,12 @@ const TodayScreen = () => {
             )}
 
             {renderGuideDrawer()}
+            <CampaignPosterModal
+                input={pendingCampaignPoster?.input || null}
+                onClose={() => setPendingCampaignPoster(null)}
+                onDownloaded={handleCampaignPosterDownloaded}
+                open={Boolean(pendingCampaignPoster)}
+            />
         </div>
     );
 };

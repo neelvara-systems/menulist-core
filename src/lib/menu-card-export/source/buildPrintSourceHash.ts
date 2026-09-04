@@ -1,5 +1,6 @@
 import type { MenuCardExportSettings, MenuCardSafeOverrides } from '../models/exportTypes';
 import type { MenuCardPrintSource } from '../models/printModel';
+import { MENU_CARD_EXPORT_RENDERER_VERSION } from '../render/artifactMetadata';
 
 const CRC32_TABLE = (() => {
     const table = new Uint32Array(256);
@@ -27,8 +28,12 @@ export function buildPrintSourceHash(
     overrides: MenuCardSafeOverrides = {},
 ): string {
     const stable = {
+        rendererVersion: MENU_CARD_EXPORT_RENDERER_VERSION,
         business: {
             name: source.business.name,
+            tagline: source.business.tagline || null,
+            phone: source.business.phone || null,
+            address: source.business.address || null,
             publicMenuUrl: source.business.publicMenuUrl,
             logoUrl: source.business.logoUrl || null,
             brandColor: source.business.brandColor || null,
@@ -42,12 +47,14 @@ export function buildPrintSourceHash(
         menu: source.menu.categories.map((category) => ({
             id: category.id,
             name: category.name,
+            icon: category.icon || null,
             items: category.items.map((item) => ({
                 id: item.id,
                 name: item.name,
                 price: item.price || '',
                 description: item.description || '',
                 attributes: item.attributes,
+                decisionSymbols: item.decisionSymbols || [],
                 tags: item.tags,
             })),
         })),

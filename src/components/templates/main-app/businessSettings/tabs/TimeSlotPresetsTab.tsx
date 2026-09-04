@@ -1,6 +1,6 @@
 import ContextualStateIllustration from '@atoms/contextualStateIllustration';
 import TimeSlotPresetForm, { DEFAULT_PRESET_COLORS } from '@atoms/timeSlotPresetForm';
-import { isValidClockRange } from '@lib/menu/timeSlotPresetBoundary';
+import { getTimeSlotPresetDraftIssue } from '@lib/menu/timeSlotPresetBoundary';
 import { assertTimeSlotPresetUpdateSucceeded, generatePresetId, updateTimeSlotPresets } from '@database/stores';
 import { reconcileTimeSlotPresetCascade } from '@lib/menu/reconcileTimeSlotPresetCascade';
 import { TimeSlotPreset, TimeSlotPresetCascadePending } from '@type/platform/store';
@@ -49,6 +49,12 @@ const TimeSlotPresetsTab: React.FC<TimeSlotPresetsTabProps> = ({
     const activeScopeRef = useRef(scopeKey);
     const componentActiveRef = useRef(true);
     const recoveryAttemptedOperationRef = useRef<string | null>(null);
+    const formIssue = getTimeSlotPresetDraftIssue(formData, presets, editingPreset?.id);
+    const formValidationMessage = formIssue === 'duplicate_label'
+        ? t('duplicatePreset')
+        : formIssue === 'invalid_range'
+            ? t('endAfterStart')
+            : undefined;
 
     activeScopeRef.current = scopeKey;
     useEffect(() => {
@@ -117,22 +123,15 @@ const TimeSlotPresetsTab: React.FC<TimeSlotPresetsTabProps> = ({
     }, []);
 
     const handleSave = async () => {
-        if (!formData.label.trim()) {
+        if (formIssue === 'missing_label') {
             messageApi.error(t('enterLabel'));
             return;
         }
-
-        // Check for duplicate labels (excluding current preset when editing)
-        const isDuplicate = presets.some(p =>
-            p.label.toLowerCase() === formData.label.trim().toLowerCase() &&
-            p.id !== editingPreset?.id
-        );
-        if (isDuplicate) {
+        if (formIssue === 'duplicate_label') {
             messageApi.error(t('duplicatePreset'));
             return;
         }
-
-        if (!isValidClockRange(formData.startTime, formData.endTime)) {
+        if (formIssue === 'invalid_range') {
             messageApi.error(t('endAfterStart'));
             return;
         }
@@ -365,12 +364,15 @@ const TimeSlotPresetsTab: React.FC<TimeSlotPresetsTabProps> = ({
                 onOk={handleSave}
                 okText={editingPreset ? t('update') : t('create')}
                 confirmLoading={loading}
+                okButtonProps={{ disabled: Boolean(formIssue) }}
             >
                 <TimeSlotPresetForm
                     formData={formData}
                     onChange={setFormData}
                     showLabels
                     showCharCount
+                    validationIssue={formIssue}
+                    validationMessage={formValidationMessage}
                 />
             </Modal>
         </Card>

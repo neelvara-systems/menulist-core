@@ -18,7 +18,7 @@ Maintain distinct records for:
 3. Obligations: fixed renewals, expected invoices, due dates, and amount confidence.
 4. Prepaid balances: deposits, observed remaining balances, burn-rate windows, thresholds, and estimated exhaustion.
 5. Assets: owned equipment, licences, domains, and other accountable business assets, with acquisition evidence and current disposition.
-6. Evidence index: invoice/receipt and redacted payment-proof filenames tied to one stable record ID.
+6. Evidence index: invoice/receipt, routine redacted derivatives, and owner-authorized restricted-original filenames tied to one stable record ID.
 7. Review log: account checks, quota/balance checks, reconciliation results, missing evidence, and owner decisions.
 8. Period close log: opening, review, exception, close, and reopen state for every month.
 9. Exceptions and decisions: corrections, policy choices, provider exits, professional-review questions, and schema changes.
@@ -57,7 +57,10 @@ Attribute each record to the narrowest truthful cost centre: `portfolio-shared`,
 ## Payment And Secret Safety
 
 - Request only the minimum evidence required for the record.
-- Redact PINs, OTPs, full account/card numbers, QR payloads, personal balances unrelated to the transaction, addresses when unnecessary, credentials, and recovery material.
+- Redacted evidence is the default for routine viewing, reports, shared working copies, and provider-review screenshots.
+- An explicit current-turn founder instruction may authorize preservation of an exact `restricted-original` when future record utility requires bank-account/IFSC, UPI, tax/KYC, registered-address, phone, proprietor, or comparable non-secret identifiers. The authorization, scope, record link, capture time, hash, retention state, and owner decision must be indexed.
+- A restricted original belongs only in a founder-controlled private FinanceOS `Restricted-Originals/` directory outside Git, product runtime, Firebase, public/cloud evidence surfaces, and ordinary shared folders. Use non-identifying filenames, directory mode `0700`, file mode `0600`, and retain a redacted derivative for routine use when practical. Ledger and report fields remain masked.
+- Never request or retain PINs, OTPs, passwords, API keys, private keys, cookies, session/authentication tokens, recovery codes, QR authorization payloads, CVV, full payment-card credentials, or unrelated personal balances. Founder authorization does not override this secret prohibition.
 - Store only masked payment-method descriptors in the ledger.
 - Never ask the owner to paste secrets into chat or repository files.
 - Never initiate, approve, schedule, retry, cancel, upgrade, downgrade, or otherwise mutate a payment or subscription without explicit current-turn authorization for the exact external action.
@@ -82,7 +85,7 @@ Attribute each record to the narrowest truthful cost centre: `portfolio-shared`,
 - The reminder asks the founder to approve the specific run and open the Chrome profile signed in as `admin@neelvara.com`. The founder owns sign-in, MFA, recovery, consent, and any sensitive confirmation.
 - Use the founder-opened Chrome session read-only. Never inspect cookies, passwords, saved credentials, profile storage, recovery material, or authentication tokens.
 - Review providers one at a time. Start with confirmed-current and source-evidenced providers. Exclude gated/not-active providers unless the founder explicitly reopens them, and never use FinanceOS to reopen CampaignCue.
-- Record dated console evidence for plan and billing state, current usage or remaining balance, included quota, next invoice or renewal, alerts, masked payment-method presence, risk, and next review. Keep unobserved values `unknown`.
+- Record dated console evidence for plan and billing state, current usage or remaining balance, included quota, next invoice or renewal, alerts, masked payment-method presence, risk, and next review. Keep unobserved values `unknown`. Console screenshots are redacted by default; an exact screenshot may be retained only under the Restricted Originals controls above.
 - Provider emails and alerts are supporting evidence. Dated console readback is the preferred current-state evidence, but a successful page view does not prove that a future charge, balance change, or provider incident will be detected automatically.
 - For Google Cloud and Firebase, keep every active product and QA/production project separate. A FinanceOS review may inspect billing linkage, current spend or credit, budgets/alerts, quotas, and relevant service usage; it must not change billing, IAM, APIs, quotas, projects, rules, indexes, Functions, Storage, secrets, or deployments.
 - Allowed per-provider run outcomes are `CHECKED`, `AUTH_REQUIRED`, `BLOCKED`, and `SKIPPED`. A reminder or partial run must not be recorded as `CHECKED`.

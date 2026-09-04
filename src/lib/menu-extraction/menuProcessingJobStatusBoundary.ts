@@ -4,6 +4,7 @@ import {
     type MenuExtractionJobDestination,
 } from '@data/shared/menuExtractionJob';
 import { normalizeBusinessAttributeInferenceKey } from '@data/shared/businessAttributeInference';
+import { normalizeCategoryIcon } from '@data/shared/categoryIconSuggestions';
 import { normalizeExtractedBusinessProfile } from '@data/shared/extractedBusinessProfile';
 import type {
     MenuProcessingCombinedData,
@@ -196,7 +197,7 @@ function normalizeCombinedData(value: unknown): MenuProcessingCombinedData | nul
         const sourceFileIndex = normalizeSourceFileIndex(category?.sourceFileIndex);
         const name = normalizeLocalizedText(category?.name);
         if (!category || !id || sourceFileIndex === null || !name) return null;
-        const icon = cleanString(category.icon, 80);
+        const icon = normalizeCategoryIcon(category.icon);
         return {
             id,
             sourceFileIndex,

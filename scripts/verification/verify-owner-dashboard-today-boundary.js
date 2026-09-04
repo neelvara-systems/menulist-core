@@ -363,13 +363,29 @@ forbidToken(desktopToday, 'if (result?.today)', 'desktop Today optional success 
   "logCampaignFailure('mobile_today_campaign_complete_failed'",
   "logCampaignFailure('mobile_today_campaign_skip_failed'",
   'readTempStatusResponse(res,',
+  'const selectedMenuIsLive = isPublishedMenuProject(selectedProjectSummary);',
+  "Toast.show({ content: 'Publish the menu before opening the customer preview.', duration: 1800 });",
+  'Today&apos;s next step',
+  "selectedMenuIsLive ? 'Check the customer view' : 'Finish your menu'",
+  'onClick={selectedMenuIsLive ? handleOpenPreview : onOpenMenuTab}',
+  'Confirm today’s menu looks right before customers open or share it.',
   "surface: 'mobile_today_hours'",
   'assertStoreUpdateSucceeded(',
   'mobile_today_hours_store_update_rejected',
-  'FEATURE_FLAGS.ENABLE_PAST_ACTIVITY_HISTORY ? (',
-  'onClick={onOpenHistory}',
   'TodayWeeklyGrowthPackCard',
 ].forEach((token) => requireToken(mobileHours, token, 'mobile Today screen'));
+[
+  "tMore('dashboard')",
+  "tMore('shareQr')",
+  '<Text strong>Past Activity</Text>',
+].forEach((token) => forbidToken(mobileHours, token, 'mobile Today duplicate general navigation'));
+[
+  'aria-label={TODAY_FEATURE_GUIDE_TITLE}',
+  'aria-label="Close Today guide"',
+  'style={{ minHeight: 44, minWidth: 44, paddingInline: 6 }}',
+  '<LuX aria-hidden="true" size={18} />',
+].forEach((token) => requireToken(mobileHours, token, 'mobile Today guide accessibility'));
+forbidToken(mobileHours, '✕', 'mobile Today text-glyph close icon');
 forbidToken(mobileHours, 'if (result?.today)', 'mobile Today optional success acknowledgement');
 forbidToken(mobileHours, 'console.error(', 'mobile Today raw error logging');
 

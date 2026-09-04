@@ -3,15 +3,10 @@ import type { MenuCardLayoutPlan, MenuCardPreviewPage } from '../models/layoutTy
 import type { PrintCategory } from '../models/printModel';
 import { chooseLayoutMode } from './chooseLayoutMode';
 import { getItemsPerPage, measureCategoryWeight } from './measureBlocks';
-
-function getColumnCount(settings: MenuCardExportSettings): number {
-    if (settings.styleId === 'premium' || settings.preset === 'whatsapp') return 1;
-    if (settings.styleId === 'compact' && settings.paperSize === 'a4') return 3;
-    return 2;
-}
+import { resolveMenuCardColumnCount } from './resolveColumnCount';
 
 export function paginateBlocks(categories: PrintCategory[], settings: MenuCardExportSettings): MenuCardLayoutPlan {
-    const columns = getColumnCount(settings);
+    const columns = resolveMenuCardColumnCount(settings, categories);
     const capacity = getItemsPerPage(settings.density, columns);
     const pages: MenuCardPreviewPage[] = [];
     let current: MenuCardPreviewPage = { pageNumber: 1, categories: [], estimatedItems: 0 };
@@ -31,10 +26,17 @@ export function paginateBlocks(categories: PrintCategory[], settings: MenuCardEx
         pages.push(current);
     }
 
+    const previewPages = settings.includeCoverPage
+        ? [
+            { pageNumber: 1, kind: 'cover' as const, categories: [], estimatedItems: 0 },
+            ...pages.map((page, index) => ({ ...page, pageNumber: index + 2, kind: 'menu' as const })),
+        ]
+        : pages;
+
     return {
-        mode: chooseLayoutMode(settings),
-        pageCount: pages.length,
-        pages,
+        mode: chooseLayoutMode(settings, columns),
+        pageCount: previewPages.length,
+        pages: previewPages,
         categories,
     };
 }

@@ -12,6 +12,8 @@
 export { formatMenuPrice, normalizeMenuPrice, parseSingleMenuPrice } from './formatMenuPrice';
 export {
     getActivePublicItemPriceAttributes,
+    getPublicItemDisplayOptions,
     getPublicItemListPriceLabel,
     hasPublicItemDisplayPrice,
 } from './publicItemPricePresentation';
+export type { PublicItemDisplayOption } from './publicItemPricePresentation';

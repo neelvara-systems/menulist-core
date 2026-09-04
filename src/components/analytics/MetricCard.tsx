@@ -43,6 +43,12 @@ export const MetricCard: React.FC<MetricCardProps> = ({
 }) => {
   const { token } = theme.useToken();
 
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (!onClick || (event.key !== 'Enter' && event.key !== ' ')) return;
+    event.preventDefault();
+    onClick();
+  };
+
   const trendColor = trend
     ? trend.isPositive
       ? token.colorSuccess
@@ -58,6 +64,9 @@ export const MetricCard: React.FC<MetricCardProps> = ({
       <Card
         hoverable={!!onClick}
         onClick={onClick}
+        onKeyDown={handleKeyDown}
+        role={onClick ? 'button' : undefined}
+        tabIndex={onClick ? 0 : undefined}
         className={className}
         loading={loading}
         style={{

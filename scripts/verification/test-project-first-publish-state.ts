@@ -48,5 +48,37 @@ assert.equal(
     ),
     true,
 );
+assert.equal(
+    hasProjectPublishChanges(
+        {
+            lastPublishedAt: { toMillis: () => Date.parse('2026-08-27T00:00:00.000Z') },
+            modifiedOn: { toMillis: () => Date.parse('2026-08-27T00:01:00.000Z') },
+            name: 'Updated menu',
+        } as any,
+        {
+            lastPublishedAt: { toMillis: () => Date.parse('2026-08-27T00:00:00.000Z') },
+            modifiedOn: { toMillis: () => Date.parse('2026-08-27T00:01:00.000Z') },
+            name: 'Updated menu',
+        },
+    ),
+    true,
+    'A privately saved draft newer than the last publish must remain publishable after the preview remounts.',
+);
+assert.equal(
+    hasProjectPublishChanges(
+        {
+            lastPublishedAt: '2026-08-27T00:01:00.000Z',
+            modifiedOn: '2026-08-27T00:00:00.000Z',
+            name: 'Menu',
+        } as any,
+        {
+            lastPublishedAt: '2026-08-27T00:01:00.000Z',
+            modifiedOn: '2026-08-27T00:00:00.000Z',
+            name: 'Menu',
+        },
+    ),
+    false,
+    'A project whose publish is newer than its private edit timestamp must remain settled.',
+);
 
 process.stdout.write('First project publish-state tests passed.\n');

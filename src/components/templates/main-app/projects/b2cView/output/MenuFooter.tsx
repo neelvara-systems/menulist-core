@@ -33,6 +33,7 @@ import {
     type PublicCustomerTranslator,
 } from '@lib/localization/publicCustomerMessages';
 import { buildTelHref, buildWhatsAppPhoneParam } from '@lib/phone/phoneNumber';
+import { getOwnerCustomSocialMediaLinks } from '@lib/obp/ownerSocialMediaBoundary';
 import { resolveMenuListAttributionPolicy } from '@lib/platform/menuListBranding';
 import { normalizeOBPFreshnessDate } from '@lib/obp/freshnessTimestamp';
 import {
@@ -45,6 +46,7 @@ import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/
 import { StoreDataType } from '@type/platform/store';
 import {
     LuCalendarCheck,
+    LuExternalLink,
     LuFacebook,
     LuInstagram,
     LuLinkedin,
@@ -264,7 +266,7 @@ export default function MenuFooter({
     const showReservation = (publicPresence?.showReservation !== false) && !!reservationHref;
     const showOrder = (publicPresence?.showOrder !== false) && !!orderHref;
     const shouldTrackMenuActions = trackingEnabled && !!analyticsIds?.tenantId && !!analyticsIds?.storeId && !!analyticsIds?.projectId;
-    const displayPhone = storeDetails?.phoneNumber
+    const displayPhone = callHref && storeDetails?.phoneNumber
         ? storeDetails?.dialCode && !storeDetails.phoneNumber.startsWith('+')
             ? `${storeDetails.dialCode} ${storeDetails.phoneNumber}`
             : storeDetails.phoneNumber
@@ -295,6 +297,7 @@ export default function MenuFooter({
             })
             .filter((link): link is readonly [MenuFooterSocialPlatform, string] => Boolean(link))
         : [];
+    const customSocialLinks = getOwnerCustomSocialMediaLinks(storeDetails?.socialMedia);
     const policyLinks = FEATURE_FLAGS.ENABLE_COMPLIANCE_PAGES
         ? [
             publicPresence?.showPrivacyLink !== false ? { href: appendPublicLanguageParam('/privacy', activeLanguage), label: t('menu.privacy') } : null,
@@ -528,7 +531,7 @@ export default function MenuFooter({
                 </div>
             )}
 
-            {storeDetails?.phoneNumber && (!showCall || !callHref) && (
+            {displayPhone && (!showCall || !callHref) && (
                 <p style={{
                     color: moodConfig.bodyColor,
                     fontSize: '14px',
@@ -560,7 +563,7 @@ export default function MenuFooter({
             )}
 
             {/* Social Links - Icons only */}
-            {socialLinks.length > 0 && (
+            {(socialLinks.length > 0 || customSocialLinks.length > 0) && (
                 <div style={{
                     display: 'flex',
                     justifyContent: 'center',
@@ -595,6 +598,29 @@ export default function MenuFooter({
                             </a>
                         );
                     })}
+                    {customSocialLinks.map((link) => (
+                        <a
+                            key={`custom-${link.key}`}
+                            href={link.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{
+                                color: moodConfig.bodyColor,
+                                opacity: 0.6,
+                                transition: 'opacity 0.2s',
+                                width: 34,
+                                height: 34,
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                borderRadius: 999,
+                            }}
+                            className="hover:opacity-100"
+                            aria-label={t('menu.visitSocial', { platform: link.label })}
+                        >
+                            <LuExternalLink aria-hidden="true" size={16} />
+                        </a>
+                    ))}
                 </div>
             )}
 

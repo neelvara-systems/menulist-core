@@ -30,6 +30,18 @@ const sessions = db.collection(DB_COLLECTIONS.MESSAGING_ONBOARDING_SESSIONS);
 const jobs = db.collection(DB_COLLECTIONS.MENU_IMAGE_PROCESSING_JOBS);
 const rates = db.collection(DB_COLLECTIONS.MESSAGING_ONBOARDING_RATE_LIMITS);
 
+async function clearCollection(
+  collection: FirebaseFirestore.CollectionReference,
+): Promise<void> {
+  while (true) {
+    const snapshot = await collection.limit(200).get();
+    if (snapshot.empty) return;
+    const batch = db.batch();
+    for (const document of snapshot.docs) batch.delete(document.ref);
+    await batch.commit();
+  }
+}
+
 function getUserHash(providerUserId: string): string {
   return crypto.createHash("sha256").update(`whatsapp:${providerUserId}`).digest("hex");
 }
@@ -772,6 +784,11 @@ async function verifyHardExpiryStopsExtractionWork(): Promise<void> {
 
 async function run(): Promise<void> {
   assert(process.env.FIRESTORE_EMULATOR_HOST, "FIRESTORE_EMULATOR_HOST is required");
+  await Promise.all([
+    clearCollection(sessions),
+    clearCollection(jobs),
+    clearCollection(rates),
+  ]);
   await verifyLifecycleSerializes();
   await verifyCapsAndStaleTimers();
   await verifyFailureAndStateTransitions();

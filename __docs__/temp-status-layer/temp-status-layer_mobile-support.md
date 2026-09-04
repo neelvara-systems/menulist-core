@@ -42,6 +42,11 @@ The active-status hook hides the owner status at the exact expiry even when the 
 - Touch controls use the current Tailwind/antd wrapper layer inside MobileShell; no new mobile UI dependency was added.
 - Owner errors remain fixed and non-technical.
 - Bounded diagnostics distinguish set, clear, close-today, response rejection, and response parsing without logging the raw custom message.
+- Custom status drafts are validated before publication on both the dedicated
+  Temporary Status screen and Today. Empty or invisible-only copy is linked to
+  the Message field, announced persistently, and keeps the publish action
+  disabled; the API repeats the same meaningful-copy boundary for bypassed
+  clients.
 - Customer-page refresh failure is not shown as a failed save after the write commits; the owner sees that pages may take a moment.
 
 ## Pending Evidence

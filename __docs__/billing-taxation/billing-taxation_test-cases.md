@@ -18,3 +18,6 @@
 16. Unknown Indian GST state codes and whitespace-only supplier configuration fail closed.
 17. A signed-in MenuList owner without a stored tax snapshot must complete billing details before the first direct subscription checkout.
 18. Reseller-assisted online and offline transactions are not represented as covered by the direct-owner tax boundary.
+19. The mobile plan chooser renders owner-facing plan names, never internal plan IDs, and exposes the selected monthly or yearly interval through `aria-pressed`.
+20. Mobile cancellation reasons expose their selected state through `aria-pressed`; the Other reason requires non-whitespace detail before continuation.
+21. Closing the reason sheet or choosing Keep Subscription clears the cancellation draft so reopening starts with no selected reason, no retained free text, and a disabled continuation action.

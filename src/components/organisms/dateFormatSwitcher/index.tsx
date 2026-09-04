@@ -30,7 +30,7 @@ function DateFormatSwitcher() {
         let isPresent = availableDateFormats.find(t => t.label === current);
         if (!Boolean(isPresent)) {
             const [day, month, year] = current.split("|");
-            setAvailableDateFormats([{ label: current, value: { day, month, year } }, ...DATE_FORMATS])
+            setAvailableDateFormats([{ label: current, labelHelper: 'Saved format', value: { day, month, year } }, ...DATE_FORMATS])
         }
         setCurrentFormat(current)
     }, [])
@@ -56,7 +56,7 @@ function DateFormatSwitcher() {
                 style={{ width: "100%" }}
                 onChange={(value: string) => onChange(value)}
                 optionLabelProp="label"
-                options={availableDateFormats.map((t) => ({ label: format.dateTime(now, t.value), value: t.label }))}
+                options={availableDateFormats.map((t) => ({ label: `${format.dateTime(now, t.value)} (${t.labelHelper})`, value: t.label }))}
             />
             {/* 
                 Value resulted by when we switch format then cookies updated then

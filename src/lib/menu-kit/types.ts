@@ -9,6 +9,21 @@
 
 import type { OfferingLabels } from './businessTypeLabels';
 
+export const MENU_KIT_ASSET_KEYS = [
+    'table_tent',
+    'counter_sticker',
+    'entrance_poster',
+    'delivery_bag',
+    'takeaway_card',
+    'instagram_story',
+    'whatsapp_status',
+    'google_maps',
+    'placement_guide',
+    'single_table_card',
+] as const;
+
+export type MenuKitAssetKey = typeof MENU_KIT_ASSET_KEYS[number];
+
 export interface MenuKitInput {
     storeName: string;
     menuUrl: string;           // Full URL: {subdomain}.menulist.online/{slug}
@@ -20,7 +35,8 @@ export interface MenuKitInput {
     businessCategory?: string; // Broad category when businessType is generic
     activePlanType?: string | null; // Multi-location hides MenuList attribution; other or missing plan IDs keep it visible
     locale?: string;           // BCP 47 locale (e.g., 'en-US', 'hi-IN') for surface copy translation
-    templateFamilyId?: string; // Printable Asset Templates style family
+    templateFamilyId?: string; // Singular parent theme for every generated visual asset
+    templateFamilyIds?: Partial<Record<MenuKitAssetKey, string>>; // Legacy compatibility input; collapsed to one parent theme
 }
 
 export interface MenuKitAsset {
@@ -77,6 +93,14 @@ function normalizeMenuKitText(value: unknown, maxLength = MENU_KIT_TEXT_MAX_LENG
     return value.trim().replace(/\s+/g, ' ').slice(0, maxLength).trim();
 }
 
+function normalizeMenuKitTemplateFamilyIds(value: unknown): Partial<Record<MenuKitAssetKey, string>> {
+    if (!isRecord(value)) return {};
+    return Object.fromEntries(MENU_KIT_ASSET_KEYS.flatMap((assetKey) => {
+        const templateFamilyId = normalizeMenuKitText(readOwnDataField(value, assetKey), 64);
+        return templateFamilyId ? [[assetKey, templateFamilyId]] : [];
+    }));
+}
+
 /**
  * Append UTM parameters to a menu URL for placement-level scan tracking.
  * Returns the original URL if utm_medium is not provided.
@@ -94,16 +118,29 @@ export function buildMenuKitUrl(menuUrl: string, utmMedium: string): string {
     }
 }
 
+function isDevelopmentLoopbackUrl(parsed: URL): boolean {
+    if (process.env.NODE_ENV === 'production' || parsed.protocol !== 'http:') return false;
+    const hostname = parsed.hostname.toLowerCase();
+    return hostname === 'localhost'
+        || hostname === '127.0.0.1'
+        || hostname === '[::1]'
+        || hostname.endsWith('.localhost');
+}
+
 /**
- * Validate that a menu URL uses HTTPS protocol before encoding into QR.
- * Returns the URL unchanged if valid, or null if invalid.
- * Prevents malicious protocol injection into printed QR codes.
+ * Validate that a menu URL uses HTTPS before encoding it into a QR code.
+ * Isolated local/emulator hosts may use HTTP in non-production builds so the
+ * real asset flow remains testable without weakening hosted QR destinations.
  */
 export function validateMenuUrl(url: unknown): string | null {
     if (typeof url !== 'string' || !url.trim() || url.length > 2_048 || /\s/.test(url.trim())) return null;
     try {
         const parsed = new URL(url.trim());
-        if (parsed.protocol !== 'https:' || parsed.username || parsed.password) return null;
+        if (
+            (parsed.protocol !== 'https:' && !isDevelopmentLoopbackUrl(parsed))
+            || parsed.username
+            || parsed.password
+        ) return null;
         return parsed.toString();
     } catch {
         return null;
@@ -142,6 +179,7 @@ export function normalizeMenuKitInput(value: unknown): MenuKitInput | null {
         : normalizeMenuKitText(activePlanTypeValue, 64) || undefined;
     const locale = normalizeMenuKitText(readOwnDataField(value, 'locale'), 35);
     const templateFamilyId = normalizeMenuKitText(readOwnDataField(value, 'templateFamilyId'), 64);
+    const templateFamilyIds = normalizeMenuKitTemplateFamilyIds(readOwnDataField(value, 'templateFamilyIds'));
 
     return {
         storeName,
@@ -155,6 +193,7 @@ export function normalizeMenuKitInput(value: unknown): MenuKitInput | null {
         ...(activePlanType !== undefined ? { activePlanType } : {}),
         ...(locale ? { locale } : {}),
         ...(templateFamilyId ? { templateFamilyId } : {}),
+        ...(Object.keys(templateFamilyIds).length ? { templateFamilyIds } : {}),
     };
 }
 

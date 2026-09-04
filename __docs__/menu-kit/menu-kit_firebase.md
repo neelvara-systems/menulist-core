@@ -9,9 +9,11 @@
 
 ## Summary
 
-**Menu Kit has zero Firestore writes, zero Firestore reads, zero Cloud Function cost, and zero generated Storage writes.**
+**A Menu Kit download has zero Firestore writes, zero additional Firestore reads, zero Cloud Function cost, and zero generated Storage writes.**
 
 All generation happens client-side using browser Canvas API + jsPDF + qrcode. No Firestore reads, no Firestore writes, no Cloud Functions, and no generated Firebase Storage uploads are introduced. If a store logo URL points to Firebase Storage and is not already cached by the browser, the browser may fetch that existing image once for rendering; the feature still does not create or store any generated assets.
+
+The optional printable-theme preferences are already present on the loaded store object. Resolving the ZIP's one parent theme therefore adds no download-time Firestore read. Choosing **Make business theme**, **Use theme for this menu**, or **Use business theme** is a separate owner action in Printable Asset Templates and performs one changed-leaf `stores/{storeId}` update. It creates no project write, collection, listener, public-cache invalidation, rule, index, Function, or generated asset.
 
 MenuList attribution is also client-side. `src/lib/menu-kit/platformAttribution.ts` draws the MenuList logo mark, name, and `menulist.ai` domain into generated files without a network fetch, export artifact, Firestore read/write, Storage upload, Cloud Function, rule, or index. Multi-location attribution removal uses `src/lib/platform/menuListBranding.ts` and the already-loaded `stores/{storeId}.activePlanType`; it does not query subscriptions.
 

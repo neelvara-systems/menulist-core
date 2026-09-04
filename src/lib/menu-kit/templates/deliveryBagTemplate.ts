@@ -12,12 +12,12 @@
  */
 
 import QRCode from 'qrcode';
-import { resolveMenuKitBrandTokens } from '../brandTokens';
 import { getOfferingLabels } from '../businessTypeLabels';
 import { truncateCanvasText } from '../canvasPrimitives';
 import { PreloadedLogo } from '../imageLoader';
 import { drawMenuListAttribution } from '../platformAttribution';
 import { MenuKitInput } from '../types';
+import { drawMenuKitThemeBackground, loadMenuKitThemeSurface } from '../themeSurface';
 
 type DeliveryInput = MenuKitInput & { _logo?: PreloadedLogo | null };
 
@@ -27,7 +27,8 @@ export async function generateDeliveryBagSticker(input: DeliveryInput): Promise<
     const { storeName, menuUrl, shortLink, businessType, businessCategory, _logo } = input;
     const labels = getOfferingLabels(businessType, businessCategory);
     const logo = _logo || null;
-    const brand = resolveMenuKitBrandTokens(input.brandColor);
+    const themeSurface = await loadMenuKitThemeSurface(input);
+    const { brand } = themeSurface;
 
     const canvas = document.createElement('canvas');
     canvas.width = SIZE;
@@ -36,9 +37,13 @@ export async function generateDeliveryBagSticker(input: DeliveryInput): Promise<
     const ctx = canvas.getContext('2d');
     if (!ctx) throw new Error('Failed to get canvas context');
 
-    // Premium paper background
-    ctx.fillStyle = brand.paper;
-    ctx.fillRect(0, 0, SIZE, SIZE);
+    drawMenuKitThemeBackground(ctx, themeSurface, { height: SIZE, width: SIZE, x: 0, y: 0 });
+
+    ctx.save();
+    ctx.globalAlpha = 0.90;
+    ctx.fillStyle = brand.surface;
+    ctx.fillRect(28, 28, SIZE - 56, SIZE - 56);
+    ctx.restore();
 
     // Brand border
     ctx.strokeStyle = brand.border;

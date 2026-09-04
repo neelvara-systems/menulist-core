@@ -6,7 +6,7 @@ import { useAppSelector } from '@hook/useAppSelector';
 import { shouldShowGrowthOSNavigation } from '@lib/growthos/entitlements';
 import { getPermissionRequirementForPath, satisfiesPermissionRequirement } from '@lib/permissions/permissionRequirements';
 import { canManageLocationSettings } from '@lib/multiOutlet/locationAccess';
-import { hasStarterWorkspaceAccess, isStarterWorkspaceRoute } from '@lib/onboarding/starterActivation';
+import { hasRecoveryOnlyWorkspaceAccess, hasStarterWorkspaceAccess, isStarterRecoveryRoute, isStarterWorkspaceRoute } from '@lib/onboarding/starterActivation';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { getDarkModeState, toggleAppSettingsPanel, toggleDarkMode } from '@reduxSlices/clientThemeConfig';
 import { hasValidSubscriptionAccess } from '@util/razorpay';
@@ -24,6 +24,7 @@ import styles from './horizontalSidebarComponent.module.scss';
 const HorizontalSidebarComponent = () => {
 
     const tNav = useTranslations('Navigation');
+    const tPrimaryNav = useTranslations('MobileNavigation');
     const tSupport = useTranslations('SupportMenu');
     const tAppSettings = useTranslations('AppSettings');
     const tSettings = useTranslations('Settings');
@@ -55,6 +56,7 @@ const HorizontalSidebarComponent = () => {
     });
     const hasPaidAccess = hasValidSubscriptionAccess(activeSubscription);
     const hasStarterAccess = hasStarterWorkspaceAccess(storeDetails, hasPaidAccess);
+    const hasRecoveryOnlyAccess = hasRecoveryOnlyWorkspaceAccess(storeDetails, hasPaidAccess);
 
     type HorizontalMenuItem = {
         children?: HorizontalMenuItem[] | null;
@@ -88,7 +90,12 @@ const HorizontalSidebarComponent = () => {
         };
 
         SIDEBAR_DASHBOARD_LAYOUT.map((nav: NavItemType) => {
-            if (hasStarterAccess && !isStarterWorkspaceRoute(nav.route)) {
+            const hasRecoveryChild = nav.subNav?.some((subnav) => isStarterRecoveryRoute(subnav.route));
+            const hasStarterChild = nav.subNav?.some((subnav) => isStarterWorkspaceRoute(subnav.route));
+            if (hasRecoveryOnlyAccess && !isStarterRecoveryRoute(nav.route) && !hasRecoveryChild) {
+                return;
+            }
+            if (hasStarterAccess && !isStarterWorkspaceRoute(nav.route) && !hasStarterChild) {
                 return;
             }
             if (!navFeatureAllowed(nav)) {
@@ -118,7 +125,15 @@ const HorizontalSidebarComponent = () => {
             }
             const parentPermissionAllowed = canShowNavForPermissions(nav);
             const visibleSubNav = nav.subNav?.filter((subnav) => {
+                if (hasRecoveryOnlyAccess && !isStarterRecoveryRoute(subnav.route)) return false;
+                if (hasStarterAccess && !isStarterWorkspaceRoute(subnav.route)) return false;
                 if (!navFeatureAllowed(subnav)) return false;
+                if (subnav.route === NAVIGARIONS_ROUTINGS.LOCATIONS && !canManageLocations) return false;
+                if (subnav.route === NAVIGARIONS_ROUTINGS.GROWTH_KITS && !shouldShowGrowthOSNavigation({
+                    activeSubscription,
+                    storeDetails,
+                    storeId: storeDetails?.storeId,
+                })) return false;
                 const platformRoleAllowed = !subnav.allowedPlatformRoles?.length || subnav.allowedPlatformRoles.includes(platformRole);
                 const subNavPermissionAllowed = canShowNavForPermissions(subnav)
                     || (Boolean(nav.defaultRoute) && subnav.route === nav.defaultRoute && parentPermissionAllowed);
@@ -130,7 +145,7 @@ const HorizontalSidebarComponent = () => {
 
             const navItem: HorizontalMenuItem = {
                 key: nav.label,
-                label: tNav(nav.label as any),
+                label: nav.ownerLabelKey ? tPrimaryNav(nav.ownerLabelKey) : tNav(nav.label as any),
                 icon: <nav.icon />,
                 route: `${nav.route}`,
                 children: Boolean(visibleSubNav?.length) ?
@@ -178,7 +193,7 @@ const HorizontalSidebarComponent = () => {
         } else {
             setActiveNav([]);
         }
-    }, [pathname, platformRole, canManageLocations, hasStarterAccess, userPermissions])
+    }, [pathname, platformRole, canManageLocations, hasRecoveryOnlyAccess, hasStarterAccess, userPermissions])
 
     const onClickNav: MenuProps['onClick'] = (menu) => {
         getMenuItems().forEach((nav) => {

@@ -27,6 +27,18 @@ Authenticated browser click-through remains an external certification gate befor
 
 ---
 
+## Category Icon Parity
+
+- A category with a canonical Lucide icon renders that icon inline with its printed heading in the theme accent colour.
+- A category with a bounded emoji icon renders inline without shifting the heading baseline or price column.
+- Long category names reserve icon width before wrapping, including continued headings after pagination.
+- `showCategoryIcons: false` produces text-only headings, matching the public live menu preference.
+- Invalid markup-like or overlong icon values are removed at the print boundary; unknown/unrasterizable glyphs fall back to text-only headings.
+- Changing only a category icon changes the print source hash so an older local artifact is marked stale.
+- Category icons do not enter the item decision-symbol legend.
+
+---
+
 ## Real-Data Runtime Cases Passed
 
 | Case | Result |
@@ -67,13 +79,34 @@ Authenticated browser click-through remains an external certification gate befor
 | Case | Expected Result |
 | --- | --- |
 | Category header near page bottom | Header moves with at least two items. |
+| Short category near page/column end | A section of up to four Classic/Premium items or six Compact items moves intact when it fits in a fresh column. |
+| Category split | The next column/page repeats the category name with `(continued)` before drawing more items. |
+| Cover-backed content page | The category starts inside the top artwork-safe field without a repeated business-name/menu-label masthead or horizontal masthead rules; a compact business-name plus page-number footer identifies the sheet. |
+| Theme-specific top clearance | Coastal Table starts 4 mm higher than its first headerless pass; Midnight Gold starts 6 mm lower and its dark content veil prevents stars or linework from crossing item prices and copy. |
+| Dedicated cover default | Home Print, Print-shop Packet, Table Menu, multi-location batch, and page-image presets enable the cover; WhatsApp, takeaway insert, staff reference, and QR insert remain content-first. |
+| Dedicated cover content | Cover contains the existing logo/initial, business name, menu/document label, live-menu QR/link, and only available phone/address facts. Missing data creates no fabricated copy or blank placeholder. |
+| Tracked cover label alignment | The letter-spaced menu/document label is centered by its complete rendered width, including character spacing, and shares the exact horizontal axis of the logo and business name across every full-page theme. |
+| Cover scan-card hierarchy | QR is centered above the label, URL, phone, and address; each available text value occupies its own centered row and long addresses wrap to at most two lines. |
+| Premium cover composition | Business logo renders without a generated border box; asymmetric brand-tinted background fields, display type, and QR-card elevation remain print-safe and do not obscure factual text. |
+| Fixture logo | Deterministic visual fixtures use the transparent MenuList mark through the bounded internal fallback-logo render option instead of a placeholder initial. |
+| Cover pagination | Preview and final PDF count the cover as a document page; visible menu page numbering starts at 1 after the unnumbered cover. |
+| Cover off | Disabling the cover restores the content-first header and first-page QR card without changing menu truth. |
+| Shared parent theme | Standalone desktop and mobile Print Menu resolve the selected project/business theme and carry the same `printableThemeId` through preview, history, job/layout changes, AI advice, and final output. |
+| Project Share PDF | The project Share modal resolves the same menu/business parent theme before calling the legacy PDF compatibility bridge. |
+| Theme and layout controls | Brand look names the inherited Assets family and its Change action opens/returns to Assets; Layout remains a separate control and does not overwrite the parent theme. |
+| Mobile nested return | Print Menu opened from mobile Assets returns to Assets first; the Share entry continues to return to Share. |
+| Direct Feedback QR | Desktop and mobile shortcuts render through the canonical printable-asset renderer and include only menu-applicable attribute marks/legend entries. |
 | Item with long description | Item block stays together or description is clamped by template rule. |
 | Long item name with price | Price remains attached and readable. |
 | Variant-heavy category | Variant table mode applies where needed. |
 | Compact style on A5 | Three-column mode is not used. |
+| Compact A4 with fewer than 40 items | Uses two readable columns rather than forcing three compressed columns. |
+| Compact A4 with 40 or more items | May use three columns while retaining fixed print-safe typography. |
 | WhatsApp PDF | Text remains readable on a phone. |
 | QR footer | QR scans from printed and screen preview. |
 | Footer | Footer never overlaps body. |
+| Dark full-page artwork footer | Vital Current and Workshop Atlas render a restrained translucent paper field behind cover, content, and closing-page footer metadata; page number, freshness, and applicable attribution remain readable without disabling the theme artwork. |
+| Full-page contrast field geometry | Themes with a content veil keep one 14 mm top/left/right page inset and 10 mm internal content padding; the wider text column remains calm, and the existing bottom/footer clearance is unchanged. |
 | Page overflow | Validation blocks export or retries compact settings. |
 | Safe category override | Start/keep/compact category hints never create overlap. |
 | Home print preset | Uses printer-safe margins and no forced bleed. |
@@ -139,10 +172,17 @@ Authenticated browser click-through remains an external certification gate befor
 | Price decimals | Whole-number prices do not force `.00`; decimal prices keep two decimals. |
 | Price ranges/text | Ranges such as `120/140` and text such as `Market price` are preserved. |
 | Physical page base | Every PDF page has the selected template's paper tone and border before content is drawn. |
-| Classic physical style | Classic output uses a centered plaque, ribbon/section treatment, and dotted price leaders. |
+| Classic physical style | Classic output uses an editorial identity header, left-anchored section markers, and measured price leaders. |
 | Premium physical style | Premium output uses an editorial hierarchy and readable whitespace. |
-| Compact physical style | Compact output uses a warm dense card sheet with boxed sections and QR-friendly layout. |
-| Multi-page physical style | Added pages redraw the same paper/border base and do not revert to plain white pages. |
+| Compact physical style | Compact output uses a calm card header, section rules, content-aware columns, and a QR-friendly layout. |
+| Multi-page physical style | Added pages redraw the same paper/border base, repeat the business/menu running header, and do not revert to anonymous plain pages. |
+| Decision symbols | Recognized dietary, explicit spice, and owner-confirmed audience facts render as print-safe vector marks after the final item-name line and vertically centered to it. Vegetarian/non-vegetarian retain their accepted square-dot marks; vegan uses the green Lucide `Vegan` pictogram; gluten-free uses the neutral/theme-coloured Lucide `Wheat` pictogram with an explicit legend definition; every spice intensity alone uses one to four red Game Icons chilli peppers; audience uses conventional Mars, Venus, combined-gender, child, adult, and person-with-cane pictograms; and each content page explains only used marks in a compact footer legend. |
+| Decision-symbol production fixture | The maintained food fixture contains realistic item tags and derives its symbols through the same canonical admission resolver instead of hardcoding an all-symbol review matrix. Light and dark PDF review therefore shows only applicable menu symbols; exhaustive symbol coverage remains isolated in boundary tests. |
+| Print rhythm and contrast | Item-name-to-description spacing is 25% tighter than the compact baseline, while the independently calculated post-description item break remains unchanged and visibly larger; option labels and prices remain legible; dark artwork cannot cross the header text or an icon-bearing footer legend. |
+| Symbol false positives | Words in item names, descriptions, promotions, tags such as generic `Hot`, and variant/option labels do not synthesize spice or audience marks. |
+| Allergen safety | Confirmed allergens remain textual metadata and never become a potentially misleading symbol. |
+| Symbol overflow | Up to all six bounded applicable marks may appear beside one item; the item name wraps within the remaining width without colliding with price leaders or prices. An explicit lower resolver limit remains supported for constrained callers. |
+| Public symbol labels and contrast | The public item row, item detail, and used-only legend pass the active public-customer translations into the shared symbol renderer. Known localized labels use the active language and newer audience labels fall back to canonical English rather than exposing translation keys. Semantic red is reserved for chilli/non-vegetarian marks, vegan/vegetarian remain green, gluten-free/audience remain neutral, and the renderer chooses the readable light/dark semantic tone against the active menu background. |
 | Food business profile | Food businesses use menu labels, menu-style physical styling, and QR text for the current menu. |
 | Service business profile | Service businesses use service labels and calmer service-list styling without restaurant-only ornamentation. |
 | Retail business profile | Retail/product businesses use catalog labels, boxed catalog sections, and product price-list treatment. |
@@ -193,12 +233,23 @@ Authenticated browser click-through remains an external certification gate befor
 | Brand change | Changing store logo URL or OBP accent color creates a different source hash instead of reusing an old export. |
 | Business type/category change | Changing store business type/category creates a different source hash instead of reusing an old menu-style, service-style, or catalog-style export. |
 | Currency change | Changing store currency symbol or code creates a different source hash instead of reusing a wrong-currency export. |
+| Renderer version change | Changing `MENU_CARD_EXPORT_RENDERER_VERSION` changes the source hash so older visual output is not labelled current. |
+| Premium four-page salon fixture | Cover plus all three content-page background variants render with visible but restrained artwork, the balanced contrast-field geometry where configured, and no artwork over names, descriptions, prices, QR, page numbering, or updated date. |
+| Rosewater Editorial content pages | The warm paper field remains translucent, extends beyond the complete text column, and leaves no heading, body copy, duration, or price aligned on the panel edge. |
+| Mineral Sanctuary content pages | The limestone paper field remains translucent, extends beyond the complete text column, and preserves readable treatment copy and prices without hiding the mineral artwork. |
+| Service/wellness non-Premium style | Editorial artwork remains available because the business profile calls for a service-list presentation. |
+| Food/retail non-Premium style | Editorial botanical artwork is omitted unless the owner selected Premium. |
+| Staff reference | Editorial artwork is omitted even for service/wellness data. |
+| Built-in artwork unavailable | PDF continues with paper tone, border, content, QR, and footer; decoration failure does not fail export. |
+| Oversized or non-PNG injected fixture artwork | Render option is rejected before jsPDF image decoding. |
 | Repeat logo export | Same logo URL is converted from in-memory cache during the route session instead of refetching for every export. |
 | Malformed or credentialed logo URL | Source projection and final rendering omit it before `Image` loading; the PDF continues with the business initial and brand color. |
 | Oversized logo raster | Either dimension above 2,048 pixels or more than 4,194,304 total pixels is rejected before canvas allocation. |
 | Many distinct logo exports | Successful logo raster cache remains capped at 16 entries and evicts the oldest entry. |
 | Oversized persisted print text | IDs, category/item/attribute names, descriptions and tags are capped at their governed limits before PDF wrapping. |
 | Description/attribute pagination | Height estimation counts exactly the same maximum description lines and attributes that the renderer draws. |
+| Visual fixture | `scripts/verification/render-menu-card-visual-fixtures.ts` emits realistic Classic, Premium, and Compact PDFs with dedicated covers for page-by-page visual review. |
+| Browser category-icon raster | `scripts/verification/test-menu-card-category-icon-browser-runtime.js` runs the production Lucide/emoji rasterizer in headless Chrome, verifies deterministic PNG output, and rejects unknown icon identifiers. Static export verification separately proves that `renderPdf.ts` embeds the resulting image beside the heading and falls back to text-only output. |
 | Auto design cost | No provider call, AI credit consumption, Firestore write, Storage upload, Cloud Function, rule, or index. |
 | History flag off | Local history UI is hidden and no browser history record is written. |
 | History flag on | Reads shaped local browser history only, max 20 records per tenant/store/project. Equal project IDs in another store return no records. Invalid preset/page count/timestamp/project records, oversized arrays, and malformed JSON are evicted. |
@@ -228,6 +279,7 @@ Authenticated browser click-through remains an external certification gate befor
 | Open from Mobile Menu | Command sheet `Print Menu` saves pending local edits, updates the shared mobile selected project, then switches `MobileShell` to `more/printMenu`. If the save is still pending after retry, owner sees a retry-later message instead of exporting stale data. |
 | Open from More | More > Modules `Print Menu` opens `more/printMenu` with the current mobile project selection; it does not reload the PWA or create a separate dashboard export surface. |
 | Style picker | Horizontal cards are thumb-safe. |
+| Choice semantics | Job, style, and density buttons expose the active choice through `aria-pressed`; changing and restoring a choice updates the accessibility tree as well as the visual treatment. |
 | Settings | Controls are at least 44px high. |
 | Preview | Pages swipe without layout shift. |
 | Export | File can be downloaded or shared from mobile. |

@@ -121,7 +121,7 @@ const LocaleSettingsTab: React.FC<LocaleSettingsTabProps> = ({ onOpenSearchDisco
                     >
                         <Select
                             placeholder={t('selectDateFormat')}
-                            options={DATE_FORMATS.map((t) => ({ label: format.dateTime(now, t.value), value: t.label }))}
+                            options={DATE_FORMATS.map((t) => ({ label: `${format.dateTime(now, t.value)} (${t.labelHelper})`, value: t.label }))}
                         />
                     </Form.Item>
                 </Col>

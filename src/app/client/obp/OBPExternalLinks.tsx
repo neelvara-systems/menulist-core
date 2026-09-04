@@ -6,7 +6,8 @@ import { trackOBPLinkClick } from '@lib/analytics/unified';
 import { normalizeOBPReviewUrl, normalizeOBPSocialUrl, normalizeOBPWebsiteUrl } from '@lib/obp/publicLinks';
 import { buildWhatsAppPhoneParam } from '@lib/phone/phoneNumber';
 import { useState, type ElementType } from 'react';
-import { LuGlobe } from 'react-icons/lu';
+import { LuExternalLink, LuGlobe } from 'react-icons/lu';
+import type { OwnerCustomSocialMediaLink } from '@lib/obp/ownerSocialMediaBoundary';
 import { TbBrandFacebook, TbBrandInstagram, TbBrandLinkedin, TbBrandTwitter, TbBrandWhatsapp, TbBrandYoutube } from 'react-icons/tb';
 import styles from './obp.module.scss';
 
@@ -33,6 +34,7 @@ interface OBPExternalLinksProps {
     youtube?: string | null;
     whatsapp?: string | null;
     website?: string | null;
+    customLinks?: OwnerCustomSocialMediaLink[];
 }
 
 type OBPTrackedLink = 'google_review' | 'instagram' | 'facebook' | 'twitter' | 'linkedin' | 'youtube' | 'whatsapp' | 'website';
@@ -71,6 +73,7 @@ export default function OBPExternalLinks({
     youtube,
     whatsapp,
     website,
+    customLinks = [],
 }: OBPExternalLinksProps) {
     const [placeholderNotice, setPlaceholderNotice] = useState('');
     const reviewUrl = normalizeOBPReviewUrl(googleReviewUrl);
@@ -82,7 +85,7 @@ export default function OBPExternalLinks({
     const whatsappDigits = whatsapp ? buildWhatsAppPhoneParam({ countryCode, dialCode, phoneNumber: whatsapp }) : '';
     const whatsappUrl = whatsappDigits ? `https://wa.me/${whatsappDigits}` : '';
     const websiteUrl = normalizeOBPWebsiteUrl(website);
-    const hasSocials = !!(instagramUrl || facebookUrl || twitterUrl || linkedinUrl || youtubeUrl || whatsappUrl || websiteUrl || placeholderPlatforms.length);
+    const hasSocials = !!(instagramUrl || facebookUrl || twitterUrl || linkedinUrl || youtubeUrl || whatsappUrl || websiteUrl || customLinks.length || placeholderPlatforms.length);
     const hasReview = !!(reviewUrl && googleReviewLabel);
 
     if (!hasSocials && !hasReview) return null;
@@ -270,6 +273,20 @@ export default function OBPExternalLinks({
                             <LuGlobe aria-hidden="true" size={16} />
                         </a>
                     ) : null}
+                    {customLinks.map((link) => (
+                        <a
+                            key={`custom-${link.key}`}
+                            href={link.url}
+                            className={styles.socialLink}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            aria-label={socialAriaLabelTemplate
+                                ? socialAriaLabelTemplate.replace('{platform}', link.label)
+                                : link.label}
+                        >
+                            <LuExternalLink aria-hidden="true" size={18} />
+                        </a>
+                    ))}
                     {visiblePlaceholderPlatforms.map((platform) => (
                         <button
                             key={`placeholder-${platform}`}

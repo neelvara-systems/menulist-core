@@ -52,6 +52,7 @@ export default function NotificationSettingsTab({ onSaved, storeDetails }: Props
         whatsappConsent,
         whatsappReady: readiness.whatsappReady,
     });
+    const savedSelectionHasUnavailableChannel = !hasChanges && !selectionReady && !revokingConsent;
 
     useEffect(() => {
         const next = normalizeOwnerNotificationSettings(storeDetails.notificationSettings);
@@ -146,7 +147,7 @@ export default function NotificationSettingsTab({ onSaved, storeDetails }: Props
                     </div>
                     <Switch aria-label="WhatsApp notification permission" checked={whatsappConsent} disabled={(!FEATURE_FLAGS.ENABLE_MENULIST_WHATSAPP_OS_OWNER_NOTIFICATIONS || !readiness.whatsappReady) && !persistedConsent} onChange={setWhatsappConsent} />
                 </Flex>
-                {modeNeedsWhatsApp(mode) && !whatsappConsent ? (
+                {hasChanges && modeNeedsWhatsApp(mode) && !whatsappConsent ? (
                     <Alert message="Allow WhatsApp notifications before saving a WhatsApp-only or combined selection." type="warning" showIcon style={{ marginTop: 16 }} />
                 ) : null}
                 {!FEATURE_FLAGS.ENABLE_MENULIST_WHATSAPP_OS_OWNER_NOTIFICATIONS ? (
@@ -154,7 +155,10 @@ export default function NotificationSettingsTab({ onSaved, storeDetails }: Props
                 ) : null}
             </Card>
 
-            {!selectionReady && !revokingConsent ? <Alert message="Choose a channel with a verified contact. WhatsApp selections also require permission." type="warning" showIcon /> : null}
+            {hasChanges && !selectionReady && !revokingConsent ? <Alert message="Choose a channel with a verified contact. WhatsApp selections also require permission." type="warning" showIcon /> : null}
+            {savedSelectionHasUnavailableChannel ? (
+                <Alert message="Your saved selection includes an unavailable channel. MenuList will continue with any eligible channel allowed by the update." type="info" showIcon />
+            ) : null}
 
             <Button disabled={!hasChanges || !selectionReady} type="primary" loading={saving} onClick={() => void save()}>
                 Save notification settings

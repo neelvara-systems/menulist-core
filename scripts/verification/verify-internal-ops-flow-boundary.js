@@ -97,7 +97,7 @@ includes(schedulerDal, [
   'SCHEDULER_SETTLEMENT_LIMIT = 100',
   'await assertCurrentPlatformAccess();',
   'normalizeSchedulerRunLog(document.id, document.data())',
-  'normalizeSchedulerSettlementState(document.id, document.data())',
+  'normalizeSchedulerSettlementState(snapshot.id, snapshot.data())',
   "throw new Error('ops_scheduler_run_history_unavailable')",
   "throw new Error('ops_scheduler_settlement_summary_unavailable')",
 ], 'Scheduler monitor snapshot');

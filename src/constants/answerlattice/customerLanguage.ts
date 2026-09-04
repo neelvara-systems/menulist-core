@@ -7,7 +7,11 @@
 export const ANSWERLATTICE_CUSTOMER_LANGUAGE = {
     navigation: {
         getLive: 'Get Live',
+        improveAnswers: 'Improve answers',
         runSupport: 'Run Support',
+        customerHelp: 'Customer help',
+        workspace: 'Workspace',
+        advanced: 'Advanced',
         answerQuality: 'Answer Quality',
         allTools: 'All tools',
         showFewerTools: 'Show fewer tools',

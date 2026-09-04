@@ -11,6 +11,13 @@ import {
 import type { StaffFormUser } from '../../src/lib/staffManagement/types';
 import type { StoreDataType } from '../../src/types/platform/store';
 import type { TenantDataType } from '../../src/types/platform/tenant';
+import { isValidOptionalStaffEmail, optionalStaffEmailSchema } from '../../src/lib/staffManagement/inputBoundary';
+
+assert.equal(isValidOptionalStaffEmail(''), true);
+assert.equal(isValidOptionalStaffEmail(' staff@example.com '), true);
+assert.equal(optionalStaffEmailSchema.parse(' STAFF@EXAMPLE.COM '), 'staff@example.com');
+assert.equal(isValidOptionalStaffEmail('not-an-email'), false);
+assert.equal(isValidOptionalStaffEmail(`staff@${'a'.repeat(250)}.com`), false);
 
 const user: StaffFormUser = {
     active: true,

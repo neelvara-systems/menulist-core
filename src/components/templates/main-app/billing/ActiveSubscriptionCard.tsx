@@ -112,6 +112,9 @@ function ActiveSubscriptionCard({
                 && activeSubscription.qaCertification.projectId === 'menulist-qa'
             )
         );
+    const isPersistentQaOwner = isQaCertificationEntitlement
+        && activeSubscription.qaCertification?.persistentOwner === true
+        && activeSubscription.qaCertification.purpose === 'menulist_persistent_phone_owner';
     const isPaymentPending = activeSubscription.status === 'pending';
     const pendingCheckoutPlanIsCurrent = isPaymentPending && getBillingPlansForProduct(
         productId,
@@ -130,7 +133,9 @@ function ActiveSubscriptionCard({
         && Math.abs(renewsOnSeconds - subscriptionEndSeconds) <= 86400;
     const subscriptionCheckoutUrl = normalizeRazorpaySubscriptionCheckoutUrl(activeSubscription.shortUrl);
     const intervalLabel = activeSubscription.planType === 'YEAR' ? 'Year' : 'Month';
-    const amountSuffix = isQaCertificationEntitlement
+    const amountSuffix = isPersistentQaOwner
+        ? 'persistent QA owner access'
+        : isQaCertificationEntitlement
         ? 'QA certification lease'
         : isManualBilling
         ? `one-time prepaid${activeSubscription.commitmentPeriodMonths ? ` / ${activeSubscription.commitmentPeriodMonths} months` : ''}`
@@ -449,7 +454,9 @@ function ActiveSubscriptionCard({
                                     )}
                                     {isQaCertificationEntitlement ? (
                                         <Text type="secondary" style={{ fontSize: 12 }}>
-                                            Synthetic QA-only access. No payment was processed. This lease expires automatically and cannot certify Razorpay.
+                                            {isPersistentQaOwner
+                                                ? 'Persistent QA-only owner access. No payment was processed, and this does not certify Razorpay.'
+                                                : 'Synthetic QA-only access. No payment was processed. This lease expires automatically and cannot certify Razorpay.'}
                                         </Text>
                                     ) : isManualBilling && (
                                         <Text type="secondary" style={{ fontSize: 12 }}>
@@ -466,7 +473,7 @@ function ActiveSubscriptionCard({
                                 <Col xs={24} sm={8}>
                                     <Statistic
                                         valueStyle={{ fontSize: 14 }}
-                                        title={isQaCertificationEntitlement ? "Certification Window" : isManualBilling ? "Prepaid Period" : "Current Billing Cycle"}
+                                        title={isPersistentQaOwner ? "QA Access Window" : isQaCertificationEntitlement ? "Certification Window" : isManualBilling ? "Prepaid Period" : "Current Billing Cycle"}
                                         value={isAccessUnverified ? "Starts after verification" : `${formatBillingDate(activeSubscription.cycleStartDate)} - ${formatBillingDate(activeSubscription.cycleEndDate)}`}
                                     />
                                 </Col>
@@ -476,7 +483,7 @@ function ActiveSubscriptionCard({
                                 <Col xs={24} sm={8}>
                                     <Statistic
                                         valueStyle={{ fontSize: 14 }}
-                                        title={isQaCertificationEntitlement ? "Lease End Date" : isManualBilling ? "Access End Date" : "Subscription End Date"}
+                                        title={isPersistentQaOwner ? "QA Access Through" : isQaCertificationEntitlement ? "Lease End Date" : isManualBilling ? "Access End Date" : "Subscription End Date"}
                                         value={formatBillingDate(activeSubscription.subscriptionEndDate, isAccessUnverified ? "Starts after verification" : "N/A")}
                                     />
                                 </Col>

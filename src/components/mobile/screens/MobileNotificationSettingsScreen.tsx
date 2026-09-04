@@ -51,6 +51,7 @@ export default function MobileNotificationSettingsScreen({ onBack }: Props) {
         whatsappConsent,
         whatsappReady: readiness.whatsappReady,
     });
+    const savedSelectionHasUnavailableChannel = !hasChanges && !selectionReady && !revokingConsent;
 
     useEffect(() => {
         const next = normalizeOwnerNotificationSettings(storeDetails?.notificationSettings);
@@ -151,7 +152,7 @@ export default function MobileNotificationSettingsScreen({ onBack }: Props) {
                         </Flex>
                         <Switch aria-label="WhatsApp notification permission" checked={whatsappConsent} disabled={(!FEATURE_FLAGS.ENABLE_MENULIST_WHATSAPP_OS_OWNER_NOTIFICATIONS || !readiness.whatsappReady) && !persistedConsent} onChange={setWhatsappConsent} />
                     </Flex>
-                    {modeNeedsWhatsApp(mode) && !whatsappConsent ? (
+                    {hasChanges && modeNeedsWhatsApp(mode) && !whatsappConsent ? (
                         <Text style={{ color: token.colorWarning }}>Allow WhatsApp notifications before saving a WhatsApp-only or combined selection.</Text>
                     ) : null}
                     {!FEATURE_FLAGS.ENABLE_MENULIST_WHATSAPP_OS_OWNER_NOTIFICATIONS ? (
@@ -159,7 +160,10 @@ export default function MobileNotificationSettingsScreen({ onBack }: Props) {
                     ) : null}
                 </Card>
 
-                {!selectionReady && !revokingConsent ? <Text style={{ color: token.colorWarning }}>Choose a channel with a verified contact. WhatsApp selections also require permission.</Text> : null}
+                {hasChanges && !selectionReady && !revokingConsent ? <Text style={{ color: token.colorWarning }}>Choose a channel with a verified contact. WhatsApp selections also require permission.</Text> : null}
+                {savedSelectionHasUnavailableChannel ? (
+                    <Text type="secondary">Your saved selection includes an unavailable channel. MenuList will continue with any eligible channel allowed by the update.</Text>
+                ) : null}
 
                 <Button block disabled={!hasChanges || !selectionReady} loading={saving} onClick={() => void save()} size="large">
                     Save notification settings

@@ -6,7 +6,7 @@ It also includes the First-client launch proof, Content Control workbench, and T
 
 The owner presentation uses the shared customer-language contract: **Get Live**, **Run Support**, **Answer Quality**, **Trusted Answers**, **Product Topics**, **Suggested Updates**, and **Setup Status**. Routes, summary fields, stored schemas, and engineering diagnostics retain their established technical names.
 
-The authenticated shell now presents a compact default toolset. Get Live shows Activation, First 10 Answers, Install Support, and Setup Status; Run Support shows Daily Brief and Ticket Inbox; Answer Quality shows Trusted Answers. **All tools** reveals the remaining authorized workflows locally, and a directly opened deeper route stays visible while active. No route or capability was removed.
+The authenticated shell now presents frequent owner journeys as direct grouped links: Get Live, Improve answers, Run Support, Customer help, and Workspace. One **All tools** control in the Advanced section reveals the remaining authorized workflows locally, and a directly opened advanced route stays visible while active. No route or capability was removed.
 
 ## Scope
 
@@ -69,3 +69,5 @@ Setup Status displays `readinessScore` as **Setup readiness** only. Success styl
 - `src/app/api/answerlattice/notifications/test/route.ts`
 - `src/app/api/answerlattice/bundles/rebuild/route.ts`
 - `scripts/verification/test-answerlattice-activation-contracts.ts`
+- `scripts/verification/test-answerlattice-sidebar-navigation.ts`
+- `scripts/verification/test-answerlattice-sidebar-interaction.tsx`

@@ -167,16 +167,17 @@ export interface FirestoreSubscriptionDoc {
   commitmentPeriodMonths?: number | null;    // 3 | 6 | 12 (online: tracking only, offline: duration)
   manualPaymentConfirmed?: boolean;          // For offline: reseller confirmed payment received
   manualPaymentConfirmedAt?: BillingTimestamp | null;
-  /** Guarded zero-value hosted-QA lease; never represents provider payment evidence. */
+  /** Guarded zero-value hosted-QA entitlement; never represents provider payment evidence. */
   manualPaymentEvidenceType?: 'qa_certification_non_payment';
   qaCertification?: {
     fixture: true;
     projectId: 'menulist-qa' | 'neelvara-answerlattice-qa';
-    purpose: 'menulist_hosted_release_candidate' | 'answerlattice_hosted_release_candidate';
+    purpose: 'menulist_hosted_release_candidate' | 'menulist_persistent_phone_owner' | 'answerlattice_hosted_release_candidate';
     operationId: string;
     issuedAt: BillingTimestamp;
     expiresAt: BillingTimestamp;
-    maxLeaseHours: 72;
+    maxLeaseHours: 72 | null;
+    persistentOwner?: true;
   };
 }
 

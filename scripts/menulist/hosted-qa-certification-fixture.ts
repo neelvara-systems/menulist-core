@@ -16,8 +16,10 @@ const QA_PROJECT_ID = 'menulist-qa';
 const OPERATOR_EMAIL = 'admin@neelvara.com';
 const FIXTURE_PREFIX = 'ml-hosted-qa-certification';
 const MAX_LEASE_HOURS = 72;
+const PERSISTENT_OWNER_EMAIL = 'menulist.qa.owner.85ee58de7d@neelvara.com';
+const PERSISTENT_OWNER_END = Timestamp.fromDate(new Date('2099-12-31T23:59:59.000Z'));
 
-type Command = 'prepare' | 'repair-shape' | 'seed-menu' | 'set-location-capacity' | 'verify' | 'cleanup';
+type Command = 'prepare' | 'make-persistent' | 'repair-shape' | 'seed-menu' | 'set-location-capacity' | 'verify' | 'cleanup';
 
 type FirebaseCliAccount = {
     tokens: { refresh_token?: string };
@@ -43,6 +45,7 @@ function readCommand(): Command {
     const command = process.argv[2];
     if (
         command === 'prepare'
+        || command === 'make-persistent'
         || command === 'repair-shape'
         || command === 'seed-menu'
         || command === 'set-location-capacity'
@@ -50,7 +53,7 @@ function readCommand(): Command {
         || command === 'cleanup'
     ) return command;
     throw new Error(
-        `Usage: hosted-qa-certification-fixture.ts <prepare|repair-shape|seed-menu|set-location-capacity|verify|cleanup> --confirm-project=${QA_PROJECT_ID}`
+        `Usage: hosted-qa-certification-fixture.ts <prepare|make-persistent|repair-shape|seed-menu|set-location-capacity|verify|cleanup> --confirm-project=${QA_PROJECT_ID}`
         + ' [--fixture-id=<id>] [--credential-output=/absolute/path] [--location-capacity=<1-10>]',
     );
 }
@@ -330,7 +333,7 @@ async function prepare(): Promise<void> {
     }
 }
 
-async function readFixture(fixtureId: string) {
+async function readFixture(fixtureId: string, options: { allowExpired?: boolean } = {}) {
     const markerRef = db.collection('platformSummary').doc(`${fixtureId}-marker`);
     const subscriptionRef = db.collection('subscriptions').doc(fixtureId);
     const [marker, subscription] = await Promise.all([markerRef.get(), subscriptionRef.get()]);
@@ -342,7 +345,11 @@ async function readFixture(fixtureId: string) {
     assert.equal(markerData.subscriptionId, fixtureId);
     assert.equal(subscriptionData.qaCertification?.fixture, true);
     assert.equal(subscriptionData.qaCertification?.projectId, QA_PROJECT_ID);
-    assert.equal(subscriptionData.qaCertification?.purpose, 'menulist_hosted_release_candidate');
+    assert.ok(
+        subscriptionData.qaCertification?.purpose === 'menulist_hosted_release_candidate'
+        || subscriptionData.qaCertification?.purpose === 'menulist_persistent_phone_owner',
+        'MenuList QA fixture purpose is invalid.',
+    );
     assert.equal(subscriptionData.manualPaymentEvidenceType, 'qa_certification_non_payment');
     assert.equal(subscriptionData.amount, 0);
     assert.equal(subscriptionData.pId, 'ML');
@@ -356,11 +363,63 @@ async function readFixture(fixtureId: string) {
     assert.ok(subscriptionData.qaCertification?.issuedAt instanceof Timestamp);
     assert.ok(subscriptionData.qaCertification?.expiresAt instanceof Timestamp);
     assert.ok(subscriptionData.statuses?.[0]?.timestamp instanceof Timestamp);
-    assert.ok(subscriptionData.cycleEndDate.toMillis() > Date.now());
+    if (!options.allowExpired) {
+        assert.ok(subscriptionData.cycleEndDate.toMillis() > Date.now());
+    }
     assert.equal(markerData.authUid, subscriptionData.userId);
     assert.equal(markerData.tenantId, subscriptionData.tenantId);
     assert.equal(markerData.storeId, subscriptionData.storeId);
     return { markerData, subscriptionData };
+}
+
+async function makePersistent(): Promise<void> {
+    const fixtureId = normalizeFixtureId(readArg('fixture-id'));
+    if (readArg('confirm-persistent-owner') !== PERSISTENT_OWNER_EMAIL) {
+        throw new Error(`Pass --confirm-persistent-owner=${PERSISTENT_OWNER_EMAIL}.`);
+    }
+    const { markerData, subscriptionData } = await readFixture(fixtureId, { allowExpired: true });
+    assert.equal(markerData.email, PERSISTENT_OWNER_EMAIL, 'Persistent owner email does not match the canonical QA account.');
+    assert.equal(subscriptionData.email, PERSISTENT_OWNER_EMAIL, 'Subscription email does not match the canonical QA account.');
+
+    const markerRef = db.collection('platformSummary').doc(`${fixtureId}-marker`);
+    const subscriptionRef = db.collection('subscriptions').doc(fixtureId);
+    const updatedOn = Timestamp.now();
+    await db.runTransaction(async transaction => {
+        const [marker, subscription] = await Promise.all([
+            transaction.get(markerRef),
+            transaction.get(subscriptionRef),
+        ]);
+        assert.equal(marker.data()?.authUid, markerData.authUid);
+        assert.equal(subscription.data()?.userId, markerData.authUid);
+        assert.equal(subscription.data()?.amount, 0);
+        assert.equal(subscription.data()?.manualPaymentEvidenceType, 'qa_certification_non_payment');
+        transaction.update(subscriptionRef, {
+            cycleEndDate: PERSISTENT_OWNER_END,
+            subscriptionEndDate: PERSISTENT_OWNER_END,
+            validUntil: PERSISTENT_OWNER_END,
+            status: 'active',
+            providerStatus: 'active',
+            'qaCertification.expiresAt': PERSISTENT_OWNER_END,
+            'qaCertification.maxLeaseHours': null,
+            'qaCertification.persistentOwner': true,
+            'qaCertification.purpose': 'menulist_persistent_phone_owner',
+            updatedOn,
+        });
+        transaction.update(markerRef, {
+            expiresAt: PERSISTENT_OWNER_END,
+            persistentOwner: true,
+            status: 'active',
+            updatedOn,
+        });
+    });
+    process.stdout.write(JSON.stringify({
+        email: PERSISTENT_OWNER_EMAIL,
+        expiresAt: PERSISTENT_OWNER_END.toDate().toISOString(),
+        fixtureId,
+        projectId: QA_PROJECT_ID,
+        scope: { storeId: markerData.storeId, tenantId: markerData.tenantId },
+        status: 'persistent-owner-enabled',
+    }, null, 2) + '\n');
 }
 
 async function verify(): Promise<void> {
@@ -608,6 +667,7 @@ async function cleanup(): Promise<void> {
 async function main(): Promise<void> {
     await initializeServices();
     if (command === 'prepare') await prepare();
+    else if (command === 'make-persistent') await makePersistent();
     else if (command === 'repair-shape') await repairShape();
     else if (command === 'seed-menu') await seedMenu();
     else if (command === 'set-location-capacity') await setLocationCapacity();

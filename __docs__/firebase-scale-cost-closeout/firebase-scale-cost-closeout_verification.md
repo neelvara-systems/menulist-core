@@ -1,12 +1,12 @@
 # Firebase Scale And Cost Closeout - Verification
 
 **Status:** Local source verification complete; external release evidence pending
-**Last updated:** August 16, 2026
+**Last updated:** August 31, 2026
 
 ## Evidence
 
-- Current scanner: 533 runtime files; nine listener-risk, two public-read-risk,
-  two query-scope-risk, and 52 write-volume-risk files.
+- Current scanner: 538 runtime files; nine listener-risk, two public-read-risk,
+  two query-scope-risk, and 53 write-volume-risk files.
 - Index manifests: MenuList/shared 154/50, Answerlattice 94/17, CampaignCue
   0/0, SignalDesk 72/0 composites/overrides.
 - High-risk listener and public-read owners were already traced in their

@@ -1,6 +1,6 @@
 # Projects — Mobile Support
 
-**Last Updated:** August 28, 2026
+**Last Updated:** August 31, 2026
 **Decision:** ✅ MOBILE SUPPORTED — Core operational features on mobile, advanced editor desktop-only
 
 **Source gate:** `npm run verify:menu-project-editor-boundary` checks mobile menu persistence, project-list/detail recovery, first-use Menu/Share behavior, `MobileProjectSelectorSheet` project mutations, `BulkActionsSheet` handoff, `updateProjectWithoutLoader` acknowledgement guards, and the same public-cache path used by desktop editor writes. This is source/docs verification only; manual phone QA and browser/mobile editor QA remain required before release certification.
@@ -30,14 +30,14 @@
 | Edit item (name/price/desc) | `ItemEditSheet`                             | Bottom sheet                                                 |
 | Add new item                | `AddItemSheet`                              | Persists to Firestore                                        |
 | Delete item                 | `ItemEditSheet` (onDelete)                  | Confirmation dialog + optimistic delete                      |
-| Project metadata/delete     | `MobileProjectSelectorSheet`                | Same project DAL/cache path as desktop, bounded mutation diagnostics |
+| Project metadata/delete     | `MobileProjectSelectorSheet`                | Same project DAL/cache path as desktop, bounded mutation diagnostics; Preview, Copy Link, and Show QR appear only for acknowledged live projects |
 | Share/QR                    | `MobileShareScreen`                         | Copy link, QR display                                        |
 | B2C theme customization     | `MobileDesignEditorScreen`                  | Home style, mood, layout, brand color, toggles, service note, acknowledged public-link copy, bounded output diagnostics |
 | Brand color picker          | `ColorPickerSheet`                          | 8 presets + custom hex                                       |
 | Publish design changes      | `MobileDesignEditorScreen` (Publish button) | Same `publishProject()` DAL, loaded-`modifiedOn` stale-write rejection, and bounded non-blocking post-publish verification diagnostics |
 | Publish current menu        | `MobileMenuScreen` (`Publish menu`)         | Drains pending mobile saves, asks for owner confirmation, blocks duplicate taps, uses the same guarded `publishProject()` DAL/cache path, and updates the shell only after an acknowledged publish |
 | Quick Start presets         | `MobileDesignEditorScreen` (mobile-only!)   | 3 one-tap preset bundles                                     |
-| Bulk availability/show-hide | `BulkActionsSheet`                          | Simplified Command Center                                    |
+| Bulk availability/show-hide/pricing/category move | `BulkActionsSheet`              | Compact Command Center; action sheet is mutually exclusive with its confirmation dialog |
 
 ### First-Use And Recovery States
 
@@ -51,12 +51,26 @@ Menu or Share tab in a permanent loading state.
 - A successfully loaded empty project list is different from an error. Share
   renders **No menu yet** with **Create Menu**, which returns the owner to the
   Menu tab.
+- Mounting Share, Today, More, or another read-only mobile surface must not
+  create a default project. The provider admits the auto-create project reader
+  only while the owner is on the Menu tab.
 - Menu Design withholds public-link actions when a fresh business has neither
   a subdomain nor a custom domain. It does not call the strict public URL
   builder until tenant host context exists.
 - Project Edit details initializes Active and Default from the selected
   project's canonical summary state. A default menu must render Default as
   checked immediately; Reset restores that exact draft state without writing.
+- The project selector, menu-action sheet, create/edit/duplicate form, QR
+  sheet, image-adjust modal, and destructive confirmation are mutually
+  exclusive modal surfaces. Opening a child surface hides its parent so a
+  background menu action cannot receive pointer, keyboard, or assistive focus;
+  closing the child restores the previous recoverable surface.
+- Category Manager follows the same contract: its category editor is a sibling
+  modal rather than a nested dialog, and discard/delete confirmations hide the
+  editor until the owner keeps editing, discards, or cancels.
+- Item Add/Edit likewise hides while discard, generated-description refresh,
+  or delete confirmation is active, preventing background item fields and
+  destructive actions from remaining focusable.
 - These states add no Firestore reads beyond an owner-initiated retry and add
   no writes, listeners, collections, or server routes.
 

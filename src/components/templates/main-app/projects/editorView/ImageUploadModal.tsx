@@ -1,6 +1,7 @@
 import { BATCH_IMAGE_GENERATION_JOB_STATUS } from '@constant/AI';
 import { APP_THEME_COLOR } from '@constant/common';
 import { FEATURE_FLAGS } from '@config/features';
+import { CONTENT_CREDIT_OPERATION_COSTS } from '@data/shared/contentCreditPolicy';
 import { addImageBatchProcessingJob, assertImageBatchJobCreateSucceeded } from '@database/imageBatchProcessing';
 import { normalizeImageBatchGenerationConfig } from '@lib/ai/imageBatchClientBoundary';
 import { IMAGE_BATCH_PROJECT_SELECTION_MAX_ITEMS, type ImageBatchProjectSelection } from '@lib/ai/imageBatchProjectSelection';
@@ -197,6 +198,8 @@ const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
                     negativePrompt: savedPrefs.negativePrompt || '',
                     transparentBg: savedPrefs.transparentBg || false,
                     isMultiMode: savedPrefs.isMultiMode,
+                    subjectProfileId: savedPrefs.subjectProfileId ?? null,
+                    subjectProfileVersion: savedPrefs.subjectProfileVersion ?? null,
                 }
                 : applyProjectImagePreferencesToGenerationConfig(DefaultGenerationConfig, projectData, storeDetails?.businessType, storeDetails?.businessCategory);
         configWithPrefs.referanceImages = normalizeReferenceImages(configWithPrefs.referanceImages);
@@ -888,15 +891,11 @@ const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
         }
 
         if (modalView === 'batchAIConfig') {
-            const isGenerateDisabled = selectedItemsForBatch.length === 0 || !batchGenerationConfig.agreeToTerms;
+            const isGenerateDisabled = selectedItemsForBatch.length === 0;
+            const requestedCredits = selectedItemsForBatch.length * CONTENT_CREDIT_OPERATION_COSTS.GENERATED_MENU_IMAGE;
 
             return (
                 <Flex vertical style={{ width: '100%', marginTop: 8 }} gap={8}>
-                    {!batchGenerationConfig.agreeToTerms && selectedItemsForBatch.length > 0 && (
-                        <Text type="danger" style={{ fontSize: 12, textAlign: 'center' }}>
-                            Please accept the Content Policy Agreement to proceed
-                        </Text>
-                    )}
                     <Flex style={{ width: '100%' }} gap={12} justify="space-between" vertical={isMobile}>
                         <Button size='large' icon={<LuArrowLeft />} block onClick={() => setModalView('batchSetup')} disabled={generationConfig.loading}>
                             Back to Item Selection
@@ -909,9 +908,12 @@ const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
                             onClick={onStartBatchGeneration}
                             disabled={isGenerateDisabled}
                         >
-                            {`Generate for ${selectedItemsForBatch.length} Item(s)`}
+                            Generate {selectedItemsForBatch.length} photo{selectedItemsForBatch.length !== 1 ? 's' : ''} · up to {requestedCredits} credits
                         </Button>
                     </Flex>
+                    <Text type="secondary" style={{ fontSize: 12, textAlign: 'center' }}>
+                        Credits are charged only for completed photos.
+                    </Text>
                 </Flex>
             );
         }
@@ -958,6 +960,7 @@ const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
                     destroyOnClose
                     onMaskClick={generationConfig.loading ? undefined : closeModal}
                     visible={open}
+                    zIndex={1400}
                 >
                     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
                         <NavBar
@@ -981,6 +984,8 @@ const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
                                     backgroundColor: token.colorBgContainer,
                                     borderTop: `1px solid ${token.colorBorderSecondary}`,
                                     padding: '12px 16px calc(12px + env(safe-area-inset-bottom))',
+                                    position: 'relative',
+                                    zIndex: 1401,
                                 }}
                             >
                                 {getModalFooter()}

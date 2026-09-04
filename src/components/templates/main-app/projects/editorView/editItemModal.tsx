@@ -12,10 +12,12 @@ import { getProjectDescriptionContentLength, getProjectDescriptionTone } from '@
 import { hasAnyNonEmptyDescription } from '@lib/menu/descriptionQuality';
 import { labelConfirmDialog } from '@lib/accessibility/antConfirmDialog';
 import { getDecisionFactValue, setDecisionFactValue } from '@lib/menu/itemDecisionFacts';
+import { resolveItemDecisionSymbolIds } from '@lib/menu/itemDecisionSymbols';
 import { downloadSharableItemCard, shareSharableItemCard, type SharableItemCardInput } from '@lib/menu/sharableItemCard';
 import { getCanonicalProjectSourceLanguage } from '@lib/localization/languagePolicy';
 import { buildItemImageEditorTarget } from '@lib/media/itemImageAssociationBoundary';
-import { getPublicItemListPriceLabel } from '@lib/pricing/publicItemPricePresentation';
+import { getPublicItemDisplayOptions, getPublicItemListPriceLabel } from '@lib/pricing/publicItemPricePresentation';
+import { buildItemProductTagRenderInput } from '@lib/printable-asset-templates/itemProductTag';
 import { MENU_PRICE_TEXT_MAX_LENGTH, normalizeOptionalMenuPrice } from '@lib/validation/pricing.schema';
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
 import { ProjectsDataContext, ProjectsDataProviderType } from '@providers/projectsDataProvider';
@@ -30,7 +32,9 @@ import type { InheritanceState, OutletPolicy } from '@type/multiOutlet.types';
 import { removeObjRef } from '@util/utils';
 import { message as antdMessage, Button, Collapse, CollapseProps, Empty, Flex, Input, InputNumber, Modal, Popconfirm, Select, Slider, Switch, Tooltip, Typography } from 'antd';
 import React, { memo, useCallback, useContext, useEffect, useMemo, useState } from 'react'; // Added useCallback
-import { LuCheck, LuClock, LuDownload, LuExternalLink, LuEye, LuFileImage, LuHelpCircle, LuLock, LuPlus, LuShare2, LuSparkles, LuTrendingUp, LuX } from 'react-icons/lu';
+import { LuCheck, LuClock, LuDownload, LuExternalLink, LuEye, LuFileImage, LuHelpCircle, LuLock, LuPlus, LuShare2, LuSparkles, LuTag, LuTrendingUp, LuX } from 'react-icons/lu';
+import ItemProductTagModal from '@/components/shared/printableAssets/ItemProductTagModal';
+import ItemDecisionSymbolGroup from '@/components/shared/menu/ItemDecisionSymbolGroup';
 import { ExtractedDataAttribute, ExtractedDataItem, ItemForDropdown, NewItemMetadataAPIParams, Project, ProjectFileType } from '../types';
 import { sanitizeUserInput } from '../utils';
 import { getBoundedMenuEditorStringContext, getMenuEditorProjectLogContext, logMenuEditorFailure } from '../utils/editorDiagnostics';
@@ -187,6 +191,7 @@ const EditItemModal: React.FC<EditItemModalProps> = ({ modalData, onClose, selec
     const [itemData, setItemData] = useState<ExtractedDataItem | null>(null);
     const [activeTab, setActiveTab] = useState<string[]>(['Images']);
     const [isCardWorking, setIsCardWorking] = useState(false);
+    const [isProductTagOpen, setIsProductTagOpen] = useState(false);
     const { activeProject } = useContext<ProjectsDataProviderType>(ProjectsDataContext);
     const dispatch = useAppDispatch();
     const { storeDetails, userPermissions } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext)
@@ -220,6 +225,10 @@ const EditItemModal: React.FC<EditItemModalProps> = ({ modalData, onClose, selec
     const metadataFields = useMemo(
         () => getMetadataFieldsForBusiness(storeDetails?.businessType, storeDetails?.businessCategory),
         [storeDetails?.businessType, storeDetails?.businessCategory],
+    );
+    const decisionSymbolPreview = useMemo(
+        () => resolveItemDecisionSymbolIds(itemData),
+        [itemData],
     );
     const primaryLanguage = selectedLanguages[0] || 'en';
     const sourceLanguageCode = getCanonicalProjectSourceLanguage(projectData.languages);
@@ -291,7 +300,9 @@ const EditItemModal: React.FC<EditItemModalProps> = ({ modalData, onClose, selec
         const description = getLocalizedDraftText(itemData?.description, primaryLanguage);
         const categoryName = getLocalizedDraftText(selectedCategory?.name, primaryLanguage);
         const projectName = getLocalizedDraftText((projectData as any)?.metadata?.name, primaryLanguage);
-        const price = getPublicItemListPriceLabel(itemData, store?.currencySymbol || '₹') || '';
+        const currencySymbol = store?.currencySymbol || '₹';
+        const price = getPublicItemListPriceLabel(itemData, currencySymbol) || '';
+        const options = getPublicItemDisplayOptions(itemData, primaryLanguage, currencySymbol);
 
         return {
             itemName,
@@ -303,19 +314,34 @@ const EditItemModal: React.FC<EditItemModalProps> = ({ modalData, onClose, selec
             imageUrl: getFirstItemImageUrl(itemData?.images),
             accentColor: store?.publicPresence?.accentColor || (projectData as any)?.config?.design?.brand?.accentColor,
             updatedLabel: 'Current menu',
+            options,
         };
     }, [itemData, primaryLanguage, projectData, selectedCategory?.name, storeDetails]);
     const customerPreviewMeta = useMemo(() => {
         const parts = [
             sharableCardInput.categoryName,
-            itemData?.attributes?.length ? 'Has options' : sharableCardInput.price,
+            sharableCardInput.options?.length ? 'Has options' : sharableCardInput.price,
             itemData?.available === false ? availabilityLabels.unavailable : null,
             itemData?.active === false ? 'Hidden from customers' : 'Customers can see this',
         ].filter(Boolean);
 
         return parts.join(' - ') || 'Saved item details';
-    }, [availabilityLabels.unavailable, itemData?.active, itemData?.attributes?.length, itemData?.available, sharableCardInput.categoryName, sharableCardInput.price]);
+    }, [availabilityLabels.unavailable, itemData?.active, itemData?.available, sharableCardInput.categoryName, sharableCardInput.options?.length, sharableCardInput.price]);
     const canGenerateSharableCard = FEATURE_FLAGS.ENABLE_SHARABLE_ITEM_CARD_GENERATION && modalData.status === 'edit' && Boolean(itemData?.id);
+    const productTagInput = useMemo(() => buildItemProductTagRenderInput({
+        item: {
+            detail: sharableCardInput.description,
+            itemId: itemData?.id,
+            name: sharableCardInput.itemName,
+            options: sharableCardInput.options,
+            price: sharableCardInput.price,
+        },
+        project: activeProject || projectData,
+        store: storeDetails,
+    }), [activeProject, itemData?.id, projectData, sharableCardInput.description, sharableCardInput.itemName, sharableCardInput.options, sharableCardInput.price, storeDetails]);
+    const canGenerateProductTag = FEATURE_FLAGS.ENABLE_PRINTABLE_ASSET_TEMPLATES
+        && modalData.status === 'edit'
+        && Boolean(productTagInput);
 
     const handleShareCard = useCallback(async () => {
         if (!canGenerateSharableCard || isCardWorking) return;
@@ -767,6 +793,7 @@ const EditItemModal: React.FC<EditItemModalProps> = ({ modalData, onClose, selec
     }, [canGenerateDescriptions, categoriesList, handleAddAttribute, handleDeleteAttribute, handleRetryTranslation, isFieldLocked, isInheritedItem, itemData, onProjectDataUpdate, onUploadGeneratedImage, openAddImageModal, projectData, renderEditableContent, selectedLanguages, setItemData]);
 
     return (
+        <>
         <Modal
             title={modalData.status == 'edit' ? `Edit Item: ${itemData?.name?.[selectedLanguages[0]] || ''}` : "Add Item"}
             open={Boolean(modalData.active)}
@@ -788,6 +815,11 @@ const EditItemModal: React.FC<EditItemModalProps> = ({ modalData, onClose, selec
                                 <Button disabled={isCardWorking} icon={<LuShare2 />} onClick={handleShareCard}>Share card</Button>
                                 <Button disabled={isCardWorking} icon={<LuDownload />} onClick={handleDownloadCard}>Download card</Button>
                             </>
+                        ) : null}
+                        {canGenerateProductTag ? (
+                            <Tooltip title={hasDraftChanges ? 'Save item changes before creating the Product Tag.' : 'Preview, edit, or download a print tag for this item.'}>
+                                <Button disabled={hasDraftChanges} icon={<LuTag />} onClick={() => setIsProductTagOpen(true)}>Product Tag</Button>
+                            </Tooltip>
                         ) : null}
                         {canGenerateDescriptions && !manualDescriptionProtected ? (
                             hasSourceDescription ? (
@@ -992,6 +1024,14 @@ const EditItemModal: React.FC<EditItemModalProps> = ({ modalData, onClose, selec
                                 ),
                                 children: (
                                     <Flex gap={12} wrap="wrap" style={{ padding: '12px', background: 'rgba(0,0,0,0.02)', borderRadius: 8 }}>
+                                        {decisionSymbolPreview.length > 0 ? (
+                                            <Flex align="center" gap={10} justify="space-between" style={{ width: '100%' }} wrap="wrap">
+                                                <Text type="secondary" style={{ fontSize: 12 }}>
+                                                    Shown beside this item on the customer menu and printed menu
+                                                </Text>
+                                                <ItemDecisionSymbolGroup labelled size={15} symbols={decisionSymbolPreview} />
+                                            </Flex>
+                                        ) : null}
                                         {metadataFields.map((field: MetadataFieldConfig) => {
                                             if (field.key === 'duration') return null; // Duration is in Advanced Options
                                             const confirmationCopy = field.requiresOwnerConfirmation ? (
@@ -1192,6 +1232,12 @@ const EditItemModal: React.FC<EditItemModalProps> = ({ modalData, onClose, selec
                 <Empty description="No item data to display or item not selected." />
             )}
         </Modal>
+        <ItemProductTagModal
+            input={productTagInput}
+            onClose={() => setIsProductTagOpen(false)}
+            open={isProductTagOpen}
+        />
+        </>
     );
 };
 

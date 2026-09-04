@@ -30,7 +30,11 @@ When you download Menu Kit, you get a ZIP file with ready-to-use files:
 | **Google Maps Image**             | A ready image for Google                    | Upload to your Google Business Profile photos |
 | **Placement Guide**               | Shows where to place your QR                | Follow the simple checklist                   |
 
-All files already have your restaurant name, logo when available, brand color, and QR code. No editing needed.
+All files already have your business name, logo when available, one coordinated theme, and QR code. No editing needed.
+
+Your Complete Menu Kit uses one coordinated parent theme across every file. The current menu theme is used first, then your business theme, then MenuList's governed default. The ZIP does not choose a different style for each asset, so its print, social, sticker, and guide files always belong to one visual family.
+
+The ZIP contains the 10 deployment files shown above plus print instructions. Other printables need their own real context—for example, a selected staff member, saved item, feedback destination, campaign, or full menu—and are downloaded from those dedicated workflows instead of being filled with placeholder content.
 
 ---
 

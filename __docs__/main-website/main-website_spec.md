@@ -254,7 +254,7 @@ Current PAL contract:
 
 1. **Ad script templates** — 3 concrete formats (Reality Check, Embarrassment Trigger, Silent Authority) added to marketing playbook
 2. **PONR commitment language** — FinalCta subtitle changed from "One menu. Everywhere customers look." to "This becomes your official menu link. Share it everywhere — it stays correct."
-3. **Sticky CTA on scroll** — New `StickyCta` component, appears after 25% scroll, hides near bottom
+3. **Sticky CTA between governed sections** — `StickyCta` is desktop-only, appears after the marked hero proof has passed, hides before the marked final CTA/footer region, and resynchronizes after scroll, resize, and browser-history restoration so footer controls remain reachable
 4. **Post-publish distribution nudges** — 4-message nudge sequence concept added to marketing playbook (implementation deferred — uses existing lifecycle messaging architecture)
 5. **Activation metric** — "% of published businesses on 2+ surfaces within 7 days" added as true north metric
 

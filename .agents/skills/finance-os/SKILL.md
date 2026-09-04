@@ -19,7 +19,7 @@ FinanceOS is the internal operating contract for portfolio expenses and assets. 
 1. Classify the item as a provider account, free plan, trial, fixed recurring obligation, usage-based service, prepaid balance, one-time expense, asset, refund, credit, liability, budget, or forecast.
 2. Identify the cost centre without merging product identities: `portfolio-shared`, `menulist`, `answerlattice`, `signaldesk`, `mycodex`, or an explicitly recorded historical/parked cost.
 3. Record the obligation before payment when a due date, renewal, or depletion risk is known.
-4. After payment, request the original invoice or receipt and a redacted payment proof. Never request or retain PINs, OTPs, full account/card numbers, passwords, recovery codes, API keys, or credentials.
+4. After payment, request the original invoice or receipt and a redacted payment proof for routine use. When the founder explicitly authorizes exact retention in the current request, preserve the necessary unredacted business/KYC record as a `restricted-original` only in the private FinanceOS store, alongside a redacted derivative for routine use. Restricted originals may contain bank-account/IFSC, UPI, tax/KYC, registered-address, phone, or proprietor identifiers that are necessary to the record. Never request or retain PINs, OTPs, passwords, API keys, private keys, cookies, tokens, recovery codes, QR authorization payloads, CVV, or full payment-card credentials.
 5. Use one stable record ID for the ledger row and its evidence files. Preserve original currency, actual charged currency, tax, payment date, due date, and evidence/reconciliation status separately.
 6. For prepaid or usage-based services, record each observed balance with its timestamp, calculate burn rate only from recorded observations, and label exhaustion dates as estimates.
 7. Reconcile against an owner-provided statement or provider record; do not infer that payment occurred from a reminder, invoice, or expected renewal.
@@ -55,6 +55,7 @@ FinanceOS is the internal operating contract for portfolio expenses and assets. 
 - Never initiate, approve, schedule, retry, or cancel a payment or subscription without explicit current-turn authorization for that exact external action.
 - Never upgrade a free/trial account, add a billing method, accept a paid plan, or enable a billable integration from a reminder or quota warning.
 - Never commit invoices, statements, payment screenshots, personal identifiers, bank/UPI/card details, tax identifiers, or real ledger exports to Git.
+- Never store a restricted original in Git, product runtime, Firebase, a public/cloud evidence surface, chat output, or an ordinary shared folder. Use the private `Restricted-Originals/` area, non-identifying filenames, mode `0700` directories and `0600` files, an evidence-index hash, and `restricted-original` status. Keep ledger/report fields masked.
 - Never present estimated burn, tax treatment, depreciation, GST treatment, or accounting classification as verified professional advice.
 - Never let portfolio expense records become product runtime data, owner/customer UI, Firebase collections, or a public route without a separate architecture decision.
 - Never change a plan, payment method, budget, quota, alert, IAM role, API state, Firebase configuration, or provider setting during a read-only periodic review.

@@ -259,7 +259,13 @@ export default function Header() {
                       aria-haspopup="true"
                       aria-expanded={openDesktopMenu === "features"}
                       aria-controls="ws-desktop-features-panel"
-                      onClick={() => setOpenDesktopMenu((current) => current === "features" ? null : "features")}
+                      onClick={(event) => {
+                        if (event.detail > 0) {
+                          setOpenDesktopMenu("features");
+                          return;
+                        }
+                        setOpenDesktopMenu((current) => current === "features" ? null : "features");
+                      }}
                       style={{
                         fontSize: "0.9375rem",
                         fontWeight: 500,

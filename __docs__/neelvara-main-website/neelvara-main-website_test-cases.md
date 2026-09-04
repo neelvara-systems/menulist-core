@@ -220,4 +220,4 @@ Expected:
 | MOT-05 | Interaction preservation | Product, directory, support, and trust row hover/focus/pressed transforms still respond normally after entry                     |
 | MOT-06 | Reduced motion           | `prefers-reduced-motion: reduce` shows all content immediately with no entry animation                                           |
 | MOT-07 | Runtime boundary         | Motion uses `IntersectionObserver`, opacity, and transform only; no window scroll listener, package, analytics, or storage added |
-| MOT-08 | Cross-route consistency  | Home, Products, Contact, About, Trust, Legal, Privacy, Terms, and the branded 404 share the same entry language                  |
+| MOT-08 | Cross-route consistency  | Home, Products, Contact, About, Trust, Legal, Privacy, and Terms share the same entry language                                   |

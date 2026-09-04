@@ -1,11 +1,19 @@
 import { formatMenuPrice, parseSingleMenuPrice } from './formatMenuPrice';
+import { PUBLIC_MENU_DRAFT_DATA_LIMITS } from '@data/shared/publicMenuDraftData';
 import { normalizeOptionalMenuPrice } from '@lib/validation/pricing.schema';
+import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
 
 export type ActivePublicItemPriceAttribute = {
     active?: boolean;
     id?: unknown;
     name?: unknown;
     price: string | number;
+};
+
+export type PublicItemDisplayOption = {
+    id?: unknown;
+    name: string;
+    priceLabel?: string;
 };
 
 function hasDisplayPrice(value: unknown): value is string | number {
@@ -50,6 +58,54 @@ export function getActivePublicItemPriceAttributes(item: unknown): ActivePublicI
         return [];
     }
     return activeAttributes;
+}
+
+/**
+ * Projects every active, named item option into the same localized display
+ * truth used by customer-facing and printable surfaces. An option remains
+ * useful even when it has no separate price, so this deliberately does not
+ * reuse the priced-option-only helper above.
+ */
+export function getPublicItemDisplayOptions(
+    item: unknown,
+    language = 'en',
+    currencySymbol = '₹',
+): PublicItemDisplayOption[] {
+    if (!item || typeof item !== 'object' || Array.isArray(item)) return [];
+    const attributes = readOwnValue(item, 'attributes');
+    if (!Array.isArray(attributes)) return [];
+
+    const options: PublicItemDisplayOption[] = [];
+    try {
+        const optionSnapshot = Array.from(attributes)
+            .slice(0, PUBLIC_MENU_DRAFT_DATA_LIMITS.MAX_ATTRIBUTES_PER_ITEM);
+        for (const attribute of optionSnapshot) {
+            if (!attribute || typeof attribute !== 'object' || Array.isArray(attribute)) continue;
+            if (readOwnValue(attribute, 'active') === false) continue;
+
+            const rawName = readOwnValue(attribute, 'name');
+            const name = getLocalizedText(
+                rawName,
+                language,
+                getPrimaryLocalizedLanguage(rawName, language || 'en'),
+                '',
+            );
+            if (!name) continue;
+
+            const rawPrice = readOwnValue(attribute, 'price');
+            const priceLabel = hasDisplayPrice(rawPrice)
+                ? formatMenuPrice(rawPrice, currencySymbol, { fractionDigits: 2 })
+                : undefined;
+            options.push({
+                id: readOwnValue(attribute, 'id'),
+                name,
+                ...(priceLabel ? { priceLabel } : {}),
+            });
+        }
+    } catch {
+        return [];
+    }
+    return options;
 }
 
 export function hasPublicItemDisplayPrice(item: unknown): boolean {

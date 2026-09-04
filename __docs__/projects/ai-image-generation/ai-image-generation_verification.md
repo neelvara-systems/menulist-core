@@ -1,13 +1,61 @@
 # AI Image Generation — Verification Report
 
 **Feature:** Menu Image Generation & Editing
-**Verification Date:** July 16, 2026
+**Verification Date:** August 31, 2026
 **Auditor:** Codex
 **Status:** Runtime/docs cross-check completed; verification commands and external release evidence are recorded below
 
 ---
 
-## Current cross-check — July 15, 2026
+## UI/reliability/cost closeout — August 31, 2026
+
+- Contextual Saved Person presentation, neutral defaults, explicit credits, safety guidance, semantic result selection, and mobile overlay protection were cross-checked against source.
+- Profile rename and versioned reference replacement preserve exact scope, fresh consent, expected-version concurrency, private object cleanup, and lazy global-summary cache behavior without moving profiles into the Store document.
+- Single-generation request failures now remain typed and owner-safe rather than becoming `[]`; server and client business-type resolution share the same normalized registry.
+- Official Google pricing was refreshed for the active `gemini-3.1-flash-image`: USD 0.067 standard paid output for a completed 1K image. Current MenuList Cloud Tasks batch is not the Gemini native Batch API, so its fallback uses the standard rate.
+
+Focused local evidence passed: production build, strict TypeScript, scoped ESLint, prompt/UI boundary, batch client/server/project-selection boundaries, generated provider-output boundary, runtime storage/indexing contract, AI accounting hardening, and authenticated Firebase-emulator rendering at desktop and 390×844 MobileShell widths. The browser pass verified product-led collapsed Saved Person, person-led recommendation, lazy empty-profile loading, credit/recovery copy, and nested mobile sheet access without invoking generation. No live provider generation, authenticated target-environment browser session, deployment, Firebase publication, Git commit, or push was performed in this closeout.
+
+## Saved-person profile cross-check — August 31, 2026
+
+The reusable-person extension is source-complete across desktop lifecycle management, mobile/desktop active-profile selection, single generation, durable batch configuration, batch-trigger preflight, authenticated worker, provider input assembly, project/local preference persistence, private Admin-only reference lifecycle, and documentation.
+
+Verified boundaries:
+
+- Profiles require 2–4 photos of the same adult plus explicit adult, source-rights, commercial-use-permission, and non-public-figure confirmations.
+- Store-management permission controls profile creation, withdrawal, and deletion; image-generation permission can only list/select active owner-approved profiles.
+- Withdrawn rows require an explicit management list request, and withdrawal blocks the authenticated source preview as well as all later generation.
+- The eight-profile limit is checked again inside the Firestore create transaction; concurrent sessions cannot cross the document cap, and rejected creation immediately attempts exact cleanup of newly prepared objects with bounded failure telemetry.
+- Invalid query/body shapes are rejected before permission-store reads and recorded through bounded security logging without source data or labels.
+- Mobile retains active-profile selection but routes multi-photo consent and privacy lifecycle management to the desktop owner app under the mobile admission rules.
+- The existing global data provider now retains only a five-minute, tenant/store/visibility-scoped summary after the selector is opened. It performs no eager fetch, clears on session/store reset, rejects late cross-scope results, and updates locally after lifecycle mutations. Exact provider admission continues to read server truth.
+- Reference bytes are prepared through the existing `menuItem` media profile, stored without Firebase download tokens under `system/imageSubjectProfiles/{tId}/{sId}/{profileId}/v{version}/`, and returned only through the authenticated permission-checked API with `private, no-store` headers.
+- Firestore documents and Storage objects are server-only under the existing default-deny client rules; this change does not require a Firestore or Storage Rules publication.
+- Single and batch generation require the exact selected profile ID/version, re-check active consent, checksum every private download, and fail closed after withdrawal, deletion, or mismatch.
+- Saved-person requests are excluded from the shared prompt cache. Durable jobs and project preferences store only profile ID/version, never source image data, paths, labels, or consent text.
+- The separate one-off reference image remains available and is explicitly treated as visual direction rather than replacement identity when both inputs are selected.
+- Withdrawal blocks new use immediately. Deletion removes the source objects and profile row; already accepted generated business images remain normal owner-controlled media.
+- Identity consistency is a best-effort generation behavior, not an exact-likeness guarantee or evidence of a real service outcome.
+
+Focused command evidence from this pass:
+
+- `npx tsc --noEmit --pretty false`
+- scoped ESLint for all changed runtime/UI files
+- `npm run test:image-generation-prompt-boundary`
+- `npm run test:image-batch-client-boundary`
+- `npx ts-node --compiler-options '{"module":"CommonJS"}' -r tsconfig-paths/register scripts/verification/test-runtime-storage-and-indexing-contracts.ts`
+- `node scripts/verification/verify-ai-accounting-hardening.js`
+- `npm run verify:ai-accounting`
+- `npm run test:menulist-firebase-client-boundary`
+- `npm run verify:contextual-state-illustrations`
+- `npm run docs:check-links` (zero broken links; existing repository naming warnings remain)
+- `npm run build` (passed; existing Sass `@import` deprecation warnings and expected missing-Gemini-key warnings during static collection remain)
+
+No deployment, provider call, Firebase publication, Git commit, or Git push was performed. Authenticated browser/device QA and a live Gemini consistency sample remain release evidence, not source-completion claims.
+
+---
+
+## Prior cross-check — July 15, 2026
 
 The codebase was traced across single generation, reference-image input, image editing, batch job creation/trigger/worker/listener/review/retry, prompt cache, AI capacity/accounting, generated-media upload, owner acceptance, linked-outlet policy, desktop/mobile parity, project-cover generation, Official Business Page cover generation, public cache invalidation, and retention cleanup.
 

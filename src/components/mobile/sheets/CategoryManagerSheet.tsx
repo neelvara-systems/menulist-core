@@ -24,6 +24,7 @@ export type MobileCategoryItem = {
     nameByLanguage?: Record<string, string>;
     orderIndex?: number;
     timeSlotPresetIds?: string[];
+    isMasterControlled?: boolean;
 };
 
 export type MobileCategoryReorderItem = {
@@ -188,6 +189,7 @@ export default function CategoryManagerSheet({
     };
     const launchedInReorderMode = initialMode === 'reorder';
     const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
+    const [isDeleteConfirmationOpen, setIsDeleteConfirmationOpen] = useState(false);
     const [selectedReorderCategoryId, setSelectedReorderCategoryId] = useState<string | null>(null);
     const [isSaving, setIsSaving] = useState(false);
     const [isReorderHubMode, setIsReorderHubMode] = useState(false);
@@ -462,7 +464,8 @@ export default function CategoryManagerSheet({
         const itemCount = category?.itemCount || 0;
         const categoryName = category?.name || t('categoriesTitle');
 
-        Dialog.confirm({
+        setIsDeleteConfirmationOpen(true);
+        void Dialog.confirm({
             title: t('categoryDeleteTitle'),
             content: itemCount > 0
                 ? `Delete "${categoryName}" and ${itemCount} item${itemCount === 1 ? '' : 's'} inside it?`
@@ -481,7 +484,7 @@ export default function CategoryManagerSheet({
                     setIsSaving(false);
                 }
             },
-        });
+        }).finally(() => setIsDeleteConfirmationOpen(false));
     };
 
     if (!visible) return null;
@@ -497,15 +500,16 @@ export default function CategoryManagerSheet({
                     : t('categoriesTitle');
 
     return (
-        <Popup
-            aria-label={categoryManagerTitle}
-            bodyStyle={MENU_SHEET_BODY_STYLE}
-            destroyOnClose
-            onMaskClick={onClose}
-            position="bottom"
-            visible={visible}
-        >
-            <Flex gap={0} style={MENU_SHEET_CONTAINER_STYLE} vertical>
+        <>
+            <Popup
+                aria-label={categoryManagerTitle}
+                bodyStyle={MENU_SHEET_BODY_STYLE}
+                destroyOnClose
+                onMaskClick={onClose}
+                position="bottom"
+                visible={visible && categoryEditorMode === null}
+            >
+                <Flex gap={0} style={MENU_SHEET_CONTAINER_STYLE} vertical>
                 <NavBar
                     onBack={
                         isReorderMode
@@ -839,7 +843,8 @@ export default function CategoryManagerSheet({
                         </Card>
                     </Flex>
                 ) : null}
-            </Flex>
+                </Flex>
+            </Popup>
 
             <MobileCategoryEditSheet
                 businessType={businessType}
@@ -885,8 +890,8 @@ export default function CategoryManagerSheet({
                 }}
                 presets={presets}
                 selectedLanguages={selectedLanguages}
-                visible={categoryEditorMode !== null}
+                visible={visible && categoryEditorMode !== null && !isDeleteConfirmationOpen}
             />
-        </Popup>
+        </>
     );
 }

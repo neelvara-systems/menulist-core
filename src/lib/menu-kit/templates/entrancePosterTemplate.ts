@@ -26,6 +26,7 @@ import {
 import { MenuKitInput } from '../types';
 import { resolvePrintableTemplateBrandTokens } from '../../printable-asset-templates/templateStyles';
 import { normalizePrintableTemplateFamilyId } from '../../printable-asset-templates/templateFamilies';
+import { drawPrintableThemeArtwork, loadPrintableThemeArtwork } from '../../printable-asset-templates/themeArtwork';
 
 type PosterInput = MenuKitInput & { _logo?: PreloadedLogo | null };
 
@@ -219,8 +220,9 @@ async function renderEntrancePosterCanvas(input: PosterInput): Promise<HTMLCanva
     const logo = _logo || null;
     const templateFamilyId = normalizePrintableTemplateFamilyId(input.templateFamilyId);
     const brand = resolvePrintableTemplateBrandTokens(input.brandColor, templateFamilyId);
+    const themeArtwork = await loadPrintableThemeArtwork(templateFamilyId);
     const hasOuterBand = templateFamilyId === 'brand-banner';
-    const isClassic = templateFamilyId === 'classic-luxe' || templateFamilyId === 'botanical-heritage';
+    const isClassic = templateFamilyId === 'classic-luxe' || templateFamilyId === 'botanical-heritage' || templateFamilyId === 'craft-kitchen';
 
     const W = posterMm(POSTER_W_MM);
     const H = posterMm(POSTER_H_MM);
@@ -261,6 +263,11 @@ async function renderEntrancePosterCanvas(input: PosterInput): Promise<HTMLCanva
     fillRoundedRect(ctx, sheetX, sheetY, sheetW, sheetH, posterMm(6), brand.surface);
     ctx.restore();
     strokeRoundedRect(ctx, sheetX, sheetY, sheetW, sheetH, posterMm(6), brand.border, posterMm(0.45));
+    drawPrintableThemeArtwork(ctx, themeArtwork, { height: sheetH, width: sheetW, x: sheetX, y: sheetY }, {
+        cornerOpacity: 0.30,
+        railOpacity: 0.24,
+        templateFamilyId,
+    });
     drawCanvasTemplateDecorations(ctx, templateFamilyId, brand, sheetX, sheetY, sheetW, sheetH);
     if (templateFamilyId === 'clean-utility') {
         ctx.strokeStyle = brand.border;

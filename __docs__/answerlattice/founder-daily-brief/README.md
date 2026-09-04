@@ -50,7 +50,7 @@ The externally proposed name `Owner Action Center` describes this feature's job,
 
 Founder Daily Brief is delivered inside the existing Support Assistant route and API family so owners do not need another destination.
 
-It is also the Run Support parent and primary post-launch navigation item. Ticket Inbox remains visible beside it. Support Board, conversations, feedback, digest, integrations, content operations, and known issues remain available through the permission-aware **All tools** reveal; none were removed or duplicated.
+It is the first direct item in the Run Support sidebar section. Support Board and Ticket Inbox remain visible beside it. Conversations, feedback, digest, integrations, content operations, and known issues remain available through the permission-aware **All tools** reveal; none were removed or duplicated.
 
 The browser admits only the strict brief response contract. Each of the six summaries is reported as available, missing, invalid, or stale; scheduled evidence older than 48 hours is stale, and future timestamps beyond the five-minute tolerance are invalid. Metrics remain unavailable instead of becoming zero when evidence is missing.
 

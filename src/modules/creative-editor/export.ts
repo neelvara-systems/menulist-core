@@ -14,6 +14,50 @@ const escapeXml = (value: unknown) => String(value ?? "")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
 
+const readBlobAsDataUrl = (blob: Blob): Promise<string> => new Promise((resolve, reject) => {
+    if (typeof FileReader === "undefined") {
+        reject(new Error("Image embedding is unavailable in this environment."));
+        return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(new Error("Image embedding failed."));
+    reader.readAsDataURL(blob);
+});
+
+async function resolveExportImageSource(src: string): Promise<string> {
+    if (!src || src.startsWith("data:")) return src;
+    if (typeof window === "undefined") return src;
+
+    let sourceUrl: URL;
+    try {
+        sourceUrl = new URL(src, window.location.href);
+    } catch {
+        return src;
+    }
+
+    const isGovernedLocalArtwork = (
+        sourceUrl.origin === window.location.origin
+        && (
+            sourceUrl.pathname.startsWith("/images/printable-themes/")
+            || sourceUrl.pathname.startsWith("/images/menu-card-export/")
+        )
+    );
+    const mustEmbed = isGovernedLocalArtwork || sourceUrl.protocol === "blob:";
+    try {
+        const response = await fetch(sourceUrl.href, {
+            credentials: sourceUrl.origin === window.location.origin ? "same-origin" : "omit",
+        });
+        if (!response.ok) throw new Error(`Image request failed with ${response.status}`);
+        return await readBlobAsDataUrl(await response.blob());
+    } catch (error) {
+        if (mustEmbed) {
+            throw new Error(`Required local export image could not be embedded: ${sourceUrl.pathname}`, { cause: error });
+        }
+        return src;
+    }
+}
+
 export const buildCreativeEditorFilename = (document: CreativeEditorDocument, extension: string) => {
     const base = (document.title || "creative-asset")
         .toLowerCase()
@@ -119,7 +163,10 @@ async function buildQrDataUrl(element: Extract<CreativeEditorElement, { type: "q
     });
 }
 
-async function renderElement(element: CreativeEditorElement): Promise<string> {
+async function renderElement(
+    element: CreativeEditorElement,
+    resolveImageSource: (src: string) => Promise<string>,
+): Promise<string> {
     if (element.visible === false || element.excludeFromExport || element.editorGuide) return "";
     const shellAttrs = buildElementShellAttributes(element);
 
@@ -162,7 +209,8 @@ async function renderElement(element: CreativeEditorElement): Promise<string> {
         return `<g${shellAttrs}>${marker}<line x1="${element.x}" y1="${element.y}" x2="${element.x + element.width}" y2="${element.y + element.height}" stroke="${escapeXml(element.stroke)}" stroke-width="${element.strokeWidth || 4}" stroke-linecap="${getStrokeLineCap(element.strokeStyle, element.strokeLineCap || "round")}"${dash ? ` stroke-dasharray="${dash}"` : ""}${marker ? ` marker-end="url(#arrow_${escapeXml(element.id)})"` : ""} /></g>`;
     }
     if (element.type === "image") {
-        return `<g${shellAttrs}><image href="${escapeXml(element.src)}" x="${element.x}" y="${element.y}" width="${element.width}" height="${element.height}" preserveAspectRatio="${element.fit === "contain" ? "xMidYMid meet" : "xMidYMid slice"}"><title>${escapeXml(element.alt || element.name)}</title></image></g>`;
+        const embeddedSource = await resolveImageSource(element.src);
+        return `<g${shellAttrs}><image href="${escapeXml(embeddedSource)}" x="${element.x}" y="${element.y}" width="${element.width}" height="${element.height}" preserveAspectRatio="${element.fit === "contain" ? "xMidYMid meet" : "xMidYMid slice"}"><title>${escapeXml(element.alt || element.name)}</title></image></g>`;
     }
     if (element.type === "qr") {
         const dataUrl = await buildQrDataUrl(element);
@@ -202,7 +250,17 @@ function renderVisibleWatermark(watermark: CreativeEditorVisibleWatermark | unde
 }
 
 export async function serializeCreativeDocumentToSvg(documentValue: CreativeEditorDocument): Promise<string> {
-    const body = (await Promise.all(documentValue.elements.map(renderElement))).join("\n");
+    const embeddedImageSources = new Map<string, Promise<string>>();
+    const resolveImageSource = (src: string) => {
+        const cached = embeddedImageSources.get(src);
+        if (cached) return cached;
+        const pending = resolveExportImageSource(src);
+        embeddedImageSources.set(src, pending);
+        return pending;
+    };
+    const body = (await Promise.all(documentValue.elements.map((element) => (
+        renderElement(element, resolveImageSource)
+    )))).join("\n");
     const { width, height } = documentValue.canvas;
     const background = renderBackground(documentValue);
     const visibleWatermark = renderVisibleWatermark(documentValue.metadata?.visibleWatermark, width, height);

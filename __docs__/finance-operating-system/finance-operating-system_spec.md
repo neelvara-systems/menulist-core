@@ -21,6 +21,7 @@ The founder can answer, from one evidence-linked system:
 ## Requirements
 
 - One stable record ID links each financial row to its evidence.
+- Routine evidence stays redacted or masked; explicitly owner-authorized exact business/KYC evidence is indexed as `restricted-original` in a permission-locked private area and keeps a redacted derivative when practical.
 - Expected, invoiced, paid, refunded, and reconciled states remain distinct.
 - Original and charged currencies remain separate.
 - Fixed and usage-based obligations use different forecasting rules.
@@ -33,6 +34,7 @@ The founder can answer, from one evidence-linked system:
 - Core records remain readable in open formats without product runtime, Firebase, Chrome, scheduled tasks, or a specific finance application.
 - Closed-period corrections, exceptions, and schema migrations remain append-only and traceable.
 - Monthly backup checks and quarterly sample restores provide evidence of recoverability.
+- Authentication and payment-authorization secrets are never admissible as evidence, even when the founder authorizes exact record retention.
 
 ## Non-goals
 

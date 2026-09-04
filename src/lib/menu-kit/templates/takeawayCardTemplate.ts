@@ -12,12 +12,12 @@
  */
 
 import QRCode from 'qrcode';
-import { resolveMenuKitBrandTokens } from '../brandTokens';
 import { getOfferingLabels } from '../businessTypeLabels';
 import { truncateCanvasText } from '../canvasPrimitives';
 import { PreloadedLogo } from '../imageLoader';
 import { drawMenuListAttribution, MENU_LIST_ATTRIBUTION_TEXT } from '../platformAttribution';
 import { MenuKitInput } from '../types';
+import { drawMenuKitThemeBackground, loadMenuKitThemeSurface } from '../themeSurface';
 
 type TakeawayInput = MenuKitInput & { _logo?: PreloadedLogo | null };
 
@@ -28,7 +28,8 @@ export async function generateTakeawayCard(input: TakeawayInput): Promise<Blob> 
     const { storeName, menuUrl, shortLink, businessType, businessCategory, _logo } = input;
     const labels = getOfferingLabels(businessType, businessCategory);
     const logo = _logo || null;
-    const brand = resolveMenuKitBrandTokens(input.brandColor);
+    const themeSurface = await loadMenuKitThemeSurface(input);
+    const { brand } = themeSurface;
 
     const canvas = document.createElement('canvas');
     canvas.width = W;
@@ -37,9 +38,7 @@ export async function generateTakeawayCard(input: TakeawayInput): Promise<Blob> 
     const ctx = canvas.getContext('2d');
     if (!ctx) throw new Error('Failed to get canvas context');
 
-    // Premium paper background
-    ctx.fillStyle = brand.paper;
-    ctx.fillRect(0, 0, W, H);
+    drawMenuKitThemeBackground(ctx, themeSurface, { height: H, width: W, x: 0, y: 0 });
 
     // Brand border
     ctx.strokeStyle = brand.border;
@@ -48,8 +47,11 @@ export async function generateTakeawayCard(input: TakeawayInput): Promise<Blob> 
 
     ctx.fillStyle = brand.softAccent;
     ctx.fillRect(32, 32, W - 64, H - 64);
+    ctx.save();
+    ctx.globalAlpha = 0.92;
     ctx.fillStyle = brand.surface;
     ctx.fillRect(42, 42, W - 84, H - 84);
+    ctx.restore();
 
     // QR Code — left side
     const qrCanvas = document.createElement('canvas');

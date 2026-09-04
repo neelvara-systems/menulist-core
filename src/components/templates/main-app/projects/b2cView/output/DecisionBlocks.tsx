@@ -37,6 +37,7 @@ import {
 } from '@lib/localization/publicCustomerMessages';
 import { getMenuItemImageAltText } from '@lib/media/altText';
 import { getPrimaryPublicMenuImage } from '@lib/menu/publicMenuImages';
+import { getPublicItemDecisionSymbolLabels, resolveItemDecisionSymbolIds } from '@lib/menu/itemDecisionSymbols';
 import { formatMenuPrice, parseSingleMenuPrice } from '@lib/pricing/formatMenuPrice';
 import Image from 'next/image';
 import type { CSSProperties } from 'react';
@@ -46,6 +47,7 @@ import { ExtractedDataCategory, ExtractedDataItem } from '../../types/extractedD
 import { MenuSettings } from '../../types/project.types';
 import { MenuMoodConfig } from '../designSystem';
 import { MenuLayout } from '../designSystem';
+import ItemDecisionSymbolGroup from '@/components/shared/menu/ItemDecisionSymbolGroup';
 
 interface DecisionBlocksProps {
     items: ExtractedDataItem[];
@@ -605,6 +607,10 @@ export default function DecisionBlocks({
         () => createPublicCustomerTranslator(activeLanguage),
         [activeLanguage],
     );
+    const itemDecisionSymbolLabels = useMemo(
+        () => getPublicItemDecisionSymbolLabels(t),
+        [t],
+    );
     const resolvedBusinessCategory = resolveBusinessCategory(businessType, businessCategory);
     const { deviceType } = useDeviceType();
     const isDesktopLayout = deviceType === 'desktop';
@@ -888,6 +894,7 @@ export default function DecisionBlocks({
                         if (!labels) return null;
 
                         const itemName = getLocalizedMenuText(rec.item.name, activeLanguage, t('menu.menuItem'));
+                        const itemDecisionSymbols = resolveItemDecisionSymbolIds(rec.item);
                         const itemPrice = formatMenuPrice(rec.item.price, currency, { fractionDigits: 2 });
                         const isOwnerPinned = rec.reason === DECISION_REASON_KEYS.pinned.ownerPick;
                         const categoryMeta = categoryMetaById.get(rec.item.category);
@@ -1034,18 +1041,38 @@ export default function DecisionBlocks({
 
                                         <div
                                             style={{
+                                                alignItems: 'flex-start',
                                                 color: moodConfig.headingColor,
-                                                display: '-webkit-box',
+                                                display: 'flex',
                                                 fontFamily: moodConfig.headingFont,
                                                 fontSize: 14,
                                                 fontWeight: 700,
+                                                gap: 6,
                                                 lineHeight: '19px',
-                                                overflow: 'hidden',
-                                                WebkitBoxOrient: 'vertical',
-                                                WebkitLineClamp: 2,
                                             }}
                                         >
-                                            {itemName}
+                                            <span
+                                                style={{
+                                                    display: '-webkit-box',
+                                                    minWidth: 0,
+                                                    overflow: 'hidden',
+                                                    WebkitBoxOrient: 'vertical',
+                                                    WebkitLineClamp: 2,
+                                                }}
+                                            >
+                                                {itemName}
+                                            </span>
+                                            {itemDecisionSymbols.length > 0 ? (
+                                                <span style={{ display: 'inline-flex', flex: '0 0 auto', marginTop: 2 }}>
+                                                    <ItemDecisionSymbolGroup
+                                                        backgroundColor={moodConfig.background}
+                                                        color={moodConfig.bodyColor}
+                                                        labels={itemDecisionSymbolLabels}
+                                                        size={13}
+                                                        symbols={itemDecisionSymbols}
+                                                    />
+                                                </span>
+                                            ) : null}
                                         </div>
                                     </div>
 

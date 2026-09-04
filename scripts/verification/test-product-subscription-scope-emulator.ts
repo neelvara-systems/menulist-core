@@ -58,9 +58,9 @@ async function readSubscription(id: string): Promise<Record<string, unknown>> {
 async function run(): Promise<void> {
     if (!process.env.FIRESTORE_EMULATOR_HOST) throw new Error('FIRESTORE_EMULATOR_HOST is required');
     const snapshot = await firestoreAdmin.collection(DB_COLLECTIONS.SUBSCRIPTIONS).get();
-    await Promise.all(snapshot.docs.map((item) => item.ref.delete()));
+    await Promise.all(snapshot.docs.map((item) => firestoreAdmin.recursiveDelete(item.ref)));
     const topupSnapshot = await firestoreAdmin.collection(DB_COLLECTIONS.TOPUPS).get();
-    await Promise.all(topupSnapshot.docs.map((item) => item.ref.delete()));
+    await Promise.all(topupSnapshot.docs.map((item) => firestoreAdmin.recursiveDelete(item.ref)));
     const purchasedRecoverySnapshot = await firestoreAdmin
         .collection(DB_COLLECTIONS.MENULIST_PURCHASED_CREDIT_RECOVERIES)
         .get();

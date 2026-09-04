@@ -9,3 +9,5 @@ Scope:
 - Backend: no API route, no dynamic OG route, no Firebase read/write for generation.
 
 The feature is a lightweight owner utility, not a public customer feature and not an SEO layer.
+
+Item options follow the public saved-item contract. The card includes active named options, keeps options without a separate price, excludes inactive/nameless values, and uses the neutral label `Options` because the current data model does not distinguish variants from add-ons.

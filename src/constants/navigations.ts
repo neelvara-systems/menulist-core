@@ -81,6 +81,7 @@ export type NavItemType = {
     key?: string | number;
     label: string;
     route: string;
+    ownerLabelKey?: 'menu' | 'more' | 'share' | 'today';
     defaultRoute?: string;
     // The source catalog stores icon components; sidebar adapters reuse this
     // legacy type after converting those components to rendered nodes/brands.
@@ -95,31 +96,40 @@ export type NavItemType = {
 };
 
 export const SIDEBAR_DASHBOARD_LAYOUT: NavItemType[] = [
-    { label: 'Dashboard', route: NAVIGARIONS_ROUTINGS.DASHBOARD, icon: LuLayoutDashboard, sectionLabel: 'Check feedback and activity' },
-    { label: 'Today', route: NAVIGARIONS_ROUTINGS.TODAY, icon: LuCalendarCheck2 },  // Social Content - daily action
-    { label: 'Feedback', route: NAVIGARIONS_ROUTINGS.FEEDBACK, icon: LuTicket },
-    { label: 'Projects', route: NAVIGARIONS_ROUTINGS.PROJECTS, icon: LuFolderHeart, sectionLabel: 'Update what customers see' },
-    { label: 'Business Settings', route: NAVIGARIONS_ROUTINGS.BUSINESS_SETTINGS, icon: LuHotel },
-    { label: 'Use MenuList', route: NAVIGARIONS_ROUTINGS.USE_MENULIST, icon: LuShare2, sectionLabel: 'Share and place the link' },
-    { label: 'QR Code', route: NAVIGARIONS_ROUTINGS.QR_CODE, icon: LuQrCode },
-    { label: 'Assets', route: NAVIGARIONS_ROUTINGS.ASSETS, icon: LuPrinter },
+    { label: 'Today', route: NAVIGARIONS_ROUTINGS.TODAY, icon: LuCalendarCheck2, ownerLabelKey: 'today' },
+    { label: 'Projects', route: NAVIGARIONS_ROUTINGS.PROJECTS, icon: LuFolderHeart, ownerLabelKey: 'menu' },
     {
-        label: 'Users',
-        route: NAVIGARIONS_ROUTINGS.USERS,
-        defaultRoute: NAVIGARIONS_ROUTINGS.USERS_LIST,
-        icon: LuUsers,
-        sectionLabel: 'Account and team',
+        label: 'Use MenuList',
+        route: NAVIGARIONS_ROUTINGS.USE_MENULIST,
+        defaultRoute: NAVIGARIONS_ROUTINGS.USE_MENULIST,
+        icon: LuShare2,
+        ownerLabelKey: 'share',
         subNav: [
-            { label: 'Users List', route: NAVIGARIONS_ROUTINGS.USERS_LIST, icon: LuUsers },
-            { label: 'Roles', route: NAVIGARIONS_ROUTINGS.USERS_ROLES, icon: LuShieldCheck },
+            { label: 'Use MenuList', route: NAVIGARIONS_ROUTINGS.USE_MENULIST, icon: LuShare2 },
+            { label: 'QR Code', route: NAVIGARIONS_ROUTINGS.QR_CODE, icon: LuQrCode },
+            { label: 'Assets', route: NAVIGARIONS_ROUTINGS.ASSETS, icon: LuPrinter },
         ],
     },
-    { label: 'Locations', route: NAVIGARIONS_ROUTINGS.LOCATIONS, icon: LuMapPin },
-    { label: 'Billing', route: NAVIGARIONS_ROUTINGS.BILLING, icon: LuCreditCard },
-    { label: 'Transactions', route: NAVIGARIONS_ROUTINGS.TRANSACTIONS, icon: LuReceipt },
-    { label: 'Help', route: NAVIGARIONS_ROUTINGS.HELP, icon: LuHeartHandshake },
-    { label: 'Menu Manager', route: NAVIGARIONS_ROUTINGS.AI_MENU_MANAGER, icon: LuMessageSquare, sectionLabel: 'Advanced setup' },
-    { label: 'Growth Kits', route: NAVIGARIONS_ROUTINGS.GROWTH_KITS, icon: LuSparkles },
+    { label: 'Feedback', route: NAVIGARIONS_ROUTINGS.FEEDBACK, icon: LuTicket },
+    {
+        label: 'Dashboard',
+        route: NAVIGARIONS_ROUTINGS.DASHBOARD,
+        defaultRoute: NAVIGARIONS_ROUTINGS.DASHBOARD,
+        icon: LuLayoutDashboard,
+        ownerLabelKey: 'more',
+        subNav: [
+            { label: 'Dashboard', route: NAVIGARIONS_ROUTINGS.DASHBOARD, icon: LuLayoutDashboard },
+            { label: 'Business Settings', route: NAVIGARIONS_ROUTINGS.BUSINESS_SETTINGS, icon: LuHotel },
+            { label: 'Users List', route: NAVIGARIONS_ROUTINGS.USERS_LIST, icon: LuUsers },
+            { label: 'Roles', route: NAVIGARIONS_ROUTINGS.USERS_ROLES, icon: LuShieldCheck },
+            { label: 'Locations', route: NAVIGARIONS_ROUTINGS.LOCATIONS, icon: LuMapPin },
+            { label: 'Billing', route: NAVIGARIONS_ROUTINGS.BILLING, icon: LuCreditCard },
+            { label: 'Transactions', route: NAVIGARIONS_ROUTINGS.TRANSACTIONS, icon: LuReceipt },
+            { label: 'Help', route: NAVIGARIONS_ROUTINGS.HELP, icon: LuHeartHandshake },
+            { label: 'Menu Manager', route: NAVIGARIONS_ROUTINGS.AI_MENU_MANAGER, icon: LuMessageSquare },
+            { label: 'Growth Kits', route: NAVIGARIONS_ROUTINGS.GROWTH_KITS, icon: LuSparkles },
+        ],
+    },
     {
         label: 'Platform',
         route: NAVIGARIONS_ROUTINGS.PLATFORM,

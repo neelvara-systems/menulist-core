@@ -810,7 +810,7 @@ export const FEATURE_FLAGS = {
      *
      * AI Models Used:
      * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-     * - Gemini 2.5 Flash Image (text-to-image and reference-image generation)
+     * - Gemini 3.1 Flash Image (text-to-image and multi-reference generation)
      *
      * @see __docs__/projects/ai-image-generation/ai-image-generation_impl.md
      *
@@ -818,6 +818,7 @@ export const FEATURE_FLAGS = {
      * Development: Enable for testing
      */
     ENABLE_AI_IMAGE_GENERATION: true, // Implementation complete - enabled
+    ENABLE_AI_SUBJECT_PROFILES: true, // Private consent-backed reusable adult subjects
 
     /**
      * Menu Observation Debounce Duration (milliseconds)
@@ -2041,6 +2042,7 @@ export const FEATURE_FLAGS = {
     ENABLE_PRINTABLE_ASSET_EDITOR_RENDERER: true,
     ENABLE_PRINTABLE_ASSET_EDITOR_CUSTOMIZE: true,
     ENABLE_PRINTABLE_ASSET_USER_TEMPLATES: true,
+    ENABLE_PRINTABLE_ASSET_STYLE_DEFAULTS: true,
     ENABLE_PLATFORM_ASSET_TEMPLATE_MANAGER: true,
     PRINTABLE_ASSET_TEMPLATE_PLAN_IDS: [
         MENULIST_B2C_PLAN_IDS.OFFICIAL,

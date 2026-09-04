@@ -58,7 +58,6 @@ const legalLinks = [
 const proofIcons = [LuBadgeCheck, LuGlobe2, LuBuilding2];
 
 const socialLinks = [
-  { href: 'https://instagram.com/menulistai', label: 'Instagram' },
   { href: 'https://linkedin.com/company/menulistai', label: 'LinkedIn' },
 ];
 

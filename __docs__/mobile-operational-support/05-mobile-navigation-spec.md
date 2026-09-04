@@ -18,6 +18,8 @@ This document records the intended MobileShell navigation model and current rout
 
 The mobile navigation is designed so that an owner who has never used the mobile version can find and complete any action within seconds. There is nothing to learn — it works exactly like every mobile app they already use.
 
+Desktop uses the same owner mental model: **Today**, **Menu**, **Share**, **Feedback**, and **More**. QR and printable assets are grouped under Share; dashboard, business settings, staff, roles, locations, billing, transactions, help, Menu Manager, and Growth Kits are grouped under More. Internal route and module names may remain stable, but owner-facing navigation and breadcrumbs must use these outcome labels. Grouped breadcrumbs show the current child only; they do not repeat every Share or More destination across the header. A grouped desktop navigation control may navigate only to a child that remains visible after role, permission, workspace-access, feature, and entitlement filtering; when its configured default is unavailable, it uses the first visible child.
+
 ---
 
 ## Bottom Navigation (TabBar)

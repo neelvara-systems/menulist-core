@@ -1040,6 +1040,15 @@ Registry policy fields:
 - `PDPModal` owns initial focus, Tab containment, Escape handling and focus
   restoration. Structured badges render only from an explicit boolean
   condition, preventing numeric empty-state output.
+- Public item rows, Featured choices, and `PDPModal` share the canonical item decision-symbol
+  resolver. Dietary, explicit spice, and owner-confirmed audience marks remain
+  inline with the item name, expose accessible labels, and are capped at three.
+  Names, descriptions, campaigns, and option labels never synthesize a mark;
+  allergens remain textual owner-confirmed facts. The live menu also collects
+  the distinct marks produced for its complete currently available catalog and
+  renders one compact labelled guide before the trust footer. Search and filter
+  state do not change that guide, unused marks never appear, and a menu with no
+  admitted marks reserves no guide space.
 
 This implementation note is customer-facing menu-output implementation evidence; it is not current production certification. Client-menu launch approval requires the active production-readiness audit, External Certification Runbook evidence, Digital Menu Output Constitution checks, physical/mobile browser QA, low-bandwidth/offline/back-button tests, public cache and deploy evidence, and target production smoke.
 

@@ -7,6 +7,7 @@ import FaqSection from './FaqSection';
 import FinalCtaSection from './FinalCtaSection';
 import HeroSection from './HeroSection';
 import OwnerProofSection from './OwnerProofSection';
+import OwnerWorkflowGallerySection from './OwnerWorkflowGallerySection';
 
 export default function HomePage() {
   return (
@@ -14,6 +15,7 @@ export default function HomePage() {
       <div id="website-sticky-cta-start" className="ws-sticky-cta-observer">
         <HeroSection />
       </div>
+      <OwnerWorkflowGallerySection />
       <CreateMenuPreviewSection />
       <BeforeAfterSection />
       <CustomerBrowseSection />

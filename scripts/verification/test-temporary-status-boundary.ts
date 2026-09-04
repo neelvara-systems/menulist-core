@@ -3,9 +3,14 @@ import { readTempStatusResponse } from '@lib/tempStatus/clientResponse';
 import { isTempStatusMutationScopeCurrent } from '@lib/tempStatus/serverMutationScope';
 import {
     getActiveTempStatus,
+    normalizeTempStatusCustomMessage,
     normalizeTempStatusMessage,
     normalizeTempStatusType,
 } from '@lib/tempStatus/statusBoundary';
+import {
+    getTempStatusDraftIssue,
+    getTempStatusDraftIssueMessage,
+} from '@lib/tempStatus/draftValidation';
 import { buildTempStatusSchema } from '@lib/schema';
 import {
     fromNativeDateTimeInputValue,
@@ -24,6 +29,51 @@ assert.equal(normalizeTempStatusType('unknown'), null);
 assert.equal(normalizeTempStatusMessage('custom', '  Private\n event  '), 'Private event');
 assert.equal(normalizeTempStatusMessage('opening_late', undefined), 'Opening late today');
 assert.equal(normalizeTempStatusMessage('custom', 'x'.repeat(120)).length, 100);
+assert.equal(normalizeTempStatusCustomMessage('\u200B\u202E\n'), '');
+
+assert.equal(getTempStatusDraftIssue({
+    customMessage: '',
+    expiresAt: future,
+    nowMs: now.getTime(),
+    statusType: 'custom',
+}), 'custom_message_required');
+assert.equal(getTempStatusDraftIssue({
+    customMessage: '\u200B\u202E',
+    expiresAt: future,
+    nowMs: now.getTime(),
+    statusType: 'custom',
+}), 'custom_message_required');
+assert.equal(getTempStatusDraftIssue({
+    customMessage: 'x'.repeat(101),
+    expiresAt: future,
+    nowMs: now.getTime(),
+    statusType: 'custom',
+}), 'custom_message_too_long');
+assert.equal(getTempStatusDraftIssue({
+    customMessage: '',
+    expiresAt: '',
+    nowMs: now.getTime(),
+    statusType: 'closed_today',
+}), 'expiry_required');
+assert.equal(getTempStatusDraftIssue({
+    customMessage: '',
+    expiresAt: 'not-a-date',
+    nowMs: now.getTime(),
+    statusType: 'closed_today',
+}), 'expiry_invalid');
+assert.equal(getTempStatusDraftIssue({
+    customMessage: '',
+    expiresAt: now.toISOString(),
+    nowMs: now.getTime(),
+    statusType: 'closed_today',
+}), 'expiry_not_future');
+assert.equal(getTempStatusDraftIssue({
+    customMessage: 'Private event',
+    expiresAt: future,
+    nowMs: now.getTime(),
+    statusType: 'custom',
+}), null);
+assert.equal(getTempStatusDraftIssueMessage('custom_message_required'), 'Enter a custom message.');
 
 assert.deepEqual(getActiveTempStatus({
     expiresAt: future,

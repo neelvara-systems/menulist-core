@@ -454,6 +454,15 @@ The override helper contract covers every field in the authoritative
 an explicitly empty image list is still a real clear-images override. These
 helpers remain safe even when invoked through the public multi-outlet barrel,
 independent of the active resolver's equivalent inline merge.
+
+Category name and icon remain master-controlled identity fields because they
+are absent from `CategoryOverride`. Desktop Advanced, Traditional, and Focus
+views pass category inheritance state (never item state) into the shared edit
+modal. The owner mobile category sheet exposes the same rule: inherited
+category name/icon controls are disabled, while `active` and `timeSlots`
+continue to persist as outlet overrides. A visibility-only save does not copy
+the resolved master schedule into an outlet override; `timeSlots` is written
+only when the selected preset IDs actually change.
 | `src/lib/multiOutlet/molEvents.ts`      | MOL event logging        |
 | `src/database/multiOutlet/index.ts`     | DAL for multi-outlet ops |
 

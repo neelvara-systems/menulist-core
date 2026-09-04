@@ -94,4 +94,6 @@ When restoring a project:
 - Mobile owner project actions use the same DAL as desktop.
 - Mobile actions must remain inside the `MobileShell` provider/state contract.
 - Mobile destructive actions must be recoverable or guarded.
+- Mobile project Preview, Copy Link, and Show QR actions must remain unavailable until the selected project has an acknowledged publish timestamp, is active, and—when it is a special menu—is currently in its active window.
+- Mobile project customer links must not use a custom domain while its stored verification state is explicitly false; use the configured subdomain or keep the action unavailable.
 - No desktop-only project-management action is acceptable unless explicitly documented as platform-only.

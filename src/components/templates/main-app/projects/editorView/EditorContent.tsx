@@ -56,6 +56,7 @@ interface EditorContentProps {
     setSelectedItemId?: (id: string | null) => void;
     // Multi-outlet props (optional - only passed when feature enabled)
     itemStates?: Record<string, InheritanceState>;
+    categoryStates?: Record<string, InheritanceState>;
     isMasterLinked?: boolean;
 }
 
@@ -529,6 +530,7 @@ export function EditorContent({
     setSelectedItemId,
     // Multi-outlet props
     itemStates,
+    categoryStates,
     isMasterLinked,
 }: EditorContentProps) {
     const { token } = theme.useToken();
@@ -794,6 +796,10 @@ export function EditorContent({
                 setUpdatedFileData={setUpdatedFileData}
                 fileData={file}
                 projectData={projectData}
+                inheritanceState={editCategoryModalState.category?.id
+                    ? categoryStates?.[editCategoryModalState.category.id]
+                    : undefined}
+                isMasterLinked={isMasterLinked}
             />
         </>
     );

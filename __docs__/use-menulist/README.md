@@ -8,7 +8,7 @@
 
 ## What It Is
 
-Use MenuList is the owner output hub. It gathers durable outputs that help a business use its public menu: official business link, direct menu link, QR downloads, digital screen links, feedback link/QR, Menu Kit, print assets, and print/export route entries.
+Use MenuList is the internal module name for the owner output hub. Owners see it as **Share your menu** in the product. It gathers durable outputs that help a business use its public menu: official business link, direct menu link, QR downloads, digital screen links, feedback link/QR, Menu Kit, print assets, and print/export route entries.
 
 It is not a settings page and does not create campaigns or promotional workflows.
 

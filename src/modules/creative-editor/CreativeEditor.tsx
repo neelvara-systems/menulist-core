@@ -193,6 +193,7 @@ type InteractionMode = "selection" | "grab" | "draw" | "polygon";
 type LayerAction = "back" | "backward" | "forward" | "front";
 type AlignmentAction = "bottom" | "center" | "centerX" | "centerY" | "left" | "right" | "top";
 type FloatingSelectionToolbarVariant = "group" | "multi" | "single";
+const FABRIC_ACTIVE_SELECTION_TYPE = "activeselection";
 type FloatingSelectionToolbarState = {
     activeObjectType: string;
     anchorLeft: number;
@@ -1059,6 +1060,32 @@ const formatQrDestinationHint = (value: string) => {
 
 const encodeSvgDataUri = (svg: string) => `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
 
+const rasterizeGeneratedSvgDataUri = (source: string) => new Promise<string>((resolve, reject) => {
+    if (!source.startsWith("data:image/svg+xml")) {
+        reject(new Error("Generated artwork was not an SVG data source."));
+        return;
+    }
+    const image = new Image();
+    image.onload = () => {
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.max(1, image.naturalWidth || image.width);
+        canvas.height = Math.max(1, image.naturalHeight || image.height);
+        const context = canvas.getContext("2d");
+        if (!context) {
+            reject(new Error("Generated artwork could not be rasterized."));
+            return;
+        }
+        context.drawImage(image, 0, 0, canvas.width, canvas.height);
+        try {
+            resolve(canvas.toDataURL("image/png"));
+        } catch (error) {
+            reject(error);
+        }
+    };
+    image.onerror = () => reject(new Error("Generated artwork could not be loaded."));
+    image.src = source;
+});
+
 const escapeSvgValue = (value: unknown) => String(value ?? "")
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
@@ -1609,7 +1636,7 @@ export default function CreativeEditor({
     const activePage = pageList.find((page) => page.id === documentValue.activePageId) || pageList[0] || null;
     const activePageIndex = Math.max(0, pageList.findIndex((page) => page.id === activePage?.id));
     const activePageLocked = Boolean(activePage?.locked);
-    const showPageNavigation = pageList.length > 1;
+    const showPageNavigation = pageList.length > 0;
     const canUndo = historyState.version >= 0 && historyIndexRef.current > 0;
     const canRedo = historyState.version >= 0 && historyIndexRef.current < historyRef.current.length - 1;
     const layerList = [...documentValue.elements].reverse();
@@ -1643,7 +1670,7 @@ export default function CreativeEditor({
     );
     const activeObjectType = floatingSelectionToolbar?.activeObjectType || "";
     const isGroupedSelection = activeObjectType === "group";
-    const isActiveMultiSelection = Boolean(floatingSelectionToolbar?.isMultiSelection && activeObjectType === "activeSelection");
+    const isActiveMultiSelection = Boolean(floatingSelectionToolbar?.isMultiSelection && activeObjectType === FABRIC_ACTIVE_SELECTION_TYPE);
     const selectionCount = floatingSelectionToolbar?.selectionCount || (selectedElement ? 1 : 0);
     const canGroupActiveSelection = isActiveMultiSelection && selectionCount > 1 && !floatingSelectionToolbar?.locked && !activePageLocked;
     const canUngroupActiveSelection = isGroupedSelection && !floatingSelectionToolbar?.locked && !activePageLocked;
@@ -2023,8 +2050,22 @@ export default function CreativeEditor({
             return;
         }
         const rect = activeObject.getBoundingRect();
-        const canvasWidth = Math.max(1, canvas.getWidth());
+        let canvasWidth = Math.max(1, canvas.getWidth());
         const canvasHeight = Math.max(1, canvas.getHeight());
+        const canvasRect = canvasElementRef.current?.getBoundingClientRect();
+        const inspectorRect = inspectorRef.current?.getBoundingClientRect();
+        if (canvasRect && inspectorRect && inspectorRect.width > 0) {
+            if (inspectorOpen) {
+                // The inspector slides over the stage. Reserve its final width immediately so
+                // the selected-layer toolbar never spends the transition underneath it.
+                canvasWidth = Math.max(1, canvasWidth - inspectorRect.width);
+            } else if (
+                inspectorRect.left > canvasRect.left
+                && inspectorRect.left < canvasRect.right
+            ) {
+                canvasWidth = Math.max(1, inspectorRect.left - canvasRect.left);
+            }
+        }
         const anchorLeft = rect.left + rect.width / 2;
         const selectionBottom = rect.top + rect.height;
         if (![rect.left, rect.top, rect.width, rect.height, anchorLeft, selectionBottom].every(Number.isFinite)) {
@@ -2033,7 +2074,7 @@ export default function CreativeEditor({
         }
         const variant: FloatingSelectionToolbarVariant = activeIsTemporaryGroup
             ? "group"
-            : activeObjects.length > 1 || activeObjectType === "activeSelection"
+            : activeObjects.length > 1 || activeObjectType === FABRIC_ACTIVE_SELECTION_TYPE
                 ? "multi"
                 : "single";
         const toolbarSize = getFloatingToolbarSize(variant);
@@ -2048,7 +2089,7 @@ export default function CreativeEditor({
         const nextToolbar = {
             activeObjectType,
             anchorLeft,
-            isMultiSelection: activeObjects.length > 1 || activeObjectType === "activeSelection",
+            isMultiSelection: activeObjects.length > 1 || activeObjectType === FABRIC_ACTIVE_SELECTION_TYPE,
             left,
             locked: activeObjects.some((object) => Boolean((object as CreativeFabricObject).locked)),
             selectionBottom,
@@ -2068,7 +2109,11 @@ export default function CreativeEditor({
             return;
         }
         pendingFloatingToolbarRefreshRef.current = false;
-        if (floatingToolbarFrameRef.current !== null) return;
+        if (floatingToolbarFrameRef.current !== null) {
+            if (!force) return;
+            window.cancelAnimationFrame(floatingToolbarFrameRef.current);
+            floatingToolbarFrameRef.current = null;
+        }
         floatingToolbarFrameRef.current = window.requestAnimationFrame(() => {
             floatingToolbarFrameRef.current = null;
             refreshFloatingSelectionToolbar();
@@ -2667,7 +2712,7 @@ export default function CreativeEditor({
                 if (!keepLayerPanelOpen) {
                     setRightPanelMode("properties");
                 }
-                setInspectorOpen(Boolean(selectedObjectId || active?.type === "activeSelection" || active?.type === "group"));
+                setInspectorOpen(Boolean(selectedObjectId || active?.type === FABRIC_ACTIVE_SELECTION_TYPE || active?.type === "group"));
                 scheduleFloatingSelectionToolbarRefresh();
             };
             const handlePathCreated = (event: { path: fabric.FabricObject }) => {
@@ -2820,6 +2865,20 @@ export default function CreativeEditor({
     }, [zoom]);
 
     useEffect(() => {
+        const frame = window.requestAnimationFrame(() => {
+            scheduleFloatingSelectionToolbarRefresh({ force: true });
+        });
+        const settledFrame = window.setTimeout(() => {
+            scheduleFloatingSelectionToolbarRefresh({ force: true });
+        }, 220);
+        return () => {
+            window.cancelAnimationFrame(frame);
+            window.clearTimeout(settledFrame);
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [inspectorOpen, rightPanelModeState]);
+
+    useEffect(() => {
         if (!floatingSelectionToolbar || !fabricReady) return;
         if (measureFloatingSelectionToolbar()) {
             scheduleFloatingSelectionToolbarRefresh({ force: true });
@@ -2919,7 +2978,7 @@ export default function CreativeEditor({
             }
             if (!canvas || !fabricApi || targetIsForm) return;
             const pageLocked = Boolean(documentRef.current.pages?.find((page) => page.id === documentRef.current.activePageId)?.locked);
-            const activeObjects = activeObject?.type === "activeSelection"
+            const activeObjects = activeObject?.type === FABRIC_ACTIVE_SELECTION_TYPE
                 ? (activeObject as fabric.ActiveSelection).getObjects().filter(isEditableFabricObject)
                 : activeObject && isEditableFabricObject(activeObject)
                     ? [activeObject as CreativeFabricObject]
@@ -3134,7 +3193,7 @@ export default function CreativeEditor({
                     canvas.requestRenderAll();
                     syncDocumentFromCanvas(true, "Ungrouped layers");
                     scheduleFloatingSelectionToolbarRefresh();
-                } else if (!event.shiftKey && activeObject.type === "activeSelection") {
+                } else if (!event.shiftKey && activeObject.type === FABRIC_ACTIVE_SELECTION_TYPE) {
                     convertActiveSelectionToGroup(canvas, fabricApi, activeObject as fabric.ActiveSelection);
                     canvas.requestRenderAll();
                     syncDocumentFromCanvas(true, "Grouped layers");
@@ -4051,32 +4110,37 @@ export default function CreativeEditor({
         setNotice(`${preset.label} QR action added.`);
     };
 
-    const addBarcode = () => {
+    const addBarcode = async () => {
         const value = normalizeBarcodeValue(barcodeValue);
-        addElement(buildCreativeEditorImageElement({
-            alt: `Barcode for ${value}`,
-            fit: "contain",
-            height: 170,
-            name: "Barcode",
-            sourceRefs: [
-                {
-                    label: "Barcode value",
-                    locked: true,
-                    productId: documentRef.current.productContext.productId,
-                    value,
-                },
-            ],
-            src: buildBarcodeDataUri({
+        try {
+            const src = await rasterizeGeneratedSvgDataUri(buildBarcodeDataUri({
                 backgroundColor: barcodeBackgroundColor,
                 displayText: barcodeDisplayText,
                 lineColor: barcodeLineColor,
                 text: barcodeText,
                 value,
-            }),
-            width: 430,
-            x: Math.round((documentRef.current.canvas.width - 430) / 2),
-            y: Math.round((documentRef.current.canvas.height - 170) / 2),
-        }));
+            }));
+            addElement(buildCreativeEditorImageElement({
+                alt: `Barcode for ${value}`,
+                fit: "contain",
+                height: 170,
+                name: "Barcode",
+                sourceRefs: [
+                    {
+                        label: "Barcode value",
+                        locked: true,
+                        productId: documentRef.current.productContext.productId,
+                        value,
+                    },
+                ],
+                src,
+                width: 430,
+                x: Math.round((documentRef.current.canvas.width - 430) / 2),
+                y: Math.round((documentRef.current.canvas.height - 170) / 2),
+            }));
+        } catch (error) {
+            showCreativeEditorFailure("creative_editor_generated_barcode_failed", error, "Barcode could not be prepared.");
+        }
     };
 
     const updateVisibleWatermark = (patch: Partial<CreativeEditorVisibleWatermark>) => {
@@ -4102,7 +4166,7 @@ export default function CreativeEditor({
         if (blockIfActivePageLocked()) return;
         const canvas = fabricCanvasRef.current;
         const activeObject = canvas?.getActiveObject();
-        if (canvas && activeObject) {
+        if (canvas && activeObject && !isLoadingRef.current) {
             canvas.getActiveObjects().filter(isEditableFabricObject).forEach((object) => {
                 const creativeObject = object as CreativeFabricObject;
                 if (!creativeObject.locked && !creativeObject.printFrameLocked) canvas.remove(object);
@@ -4122,6 +4186,19 @@ export default function CreativeEditor({
 
     const duplicateSelected = () => {
         if (blockIfActivePageLocked()) return;
+        if (selectedElement && !selectedElement.locked && !selectedElement.printFrameLocked) {
+            const duplicatedElement = {
+                ...cloneElementForPage(selectedElement),
+                x: selectedElement.x + 28,
+                y: selectedElement.y + 28,
+            } as CreativeEditorElement;
+            commitDocument({
+                ...documentRef.current,
+                elements: [...documentRef.current.elements, duplicatedElement],
+            }, true, duplicatedElement.id, true, "Duplicated layer");
+            setNotice("Layer duplicated.");
+            return;
+        }
         const canvas = fabricCanvasRef.current;
         const activeObject = canvas?.getActiveObject();
         if (!canvas || !activeObject || !isEditableFabricObject(activeObject)) return;
@@ -4138,7 +4215,7 @@ export default function CreativeEditor({
                 cloneAsObject.left = (cloneAsObject.left || 0) + 28;
                 cloneAsObject.top = (cloneAsObject.top || 0) + 28;
                 const fabricApi = fabricApiRef.current;
-                if (cloned.type === "activeSelection" && fabricApi) {
+                if (cloned.type === FABRIC_ACTIVE_SELECTION_TYPE && fabricApi) {
                     const objects = (cloned as fabric.ActiveSelection).removeAll();
                     objects.forEach((object) => {
                         const editable = object as CreativeFabricObject;
@@ -4319,7 +4396,7 @@ export default function CreativeEditor({
         const canvas = fabricCanvasRef.current;
         const fabricApi = fabricApiRef.current;
         const activeObject = canvas?.getActiveObject();
-        if (!canvas || !fabricApi || !activeObject || activeObject.type !== "activeSelection") {
+        if (!canvas || !fabricApi || !activeObject || activeObject.type !== FABRIC_ACTIVE_SELECTION_TYPE) {
             setNotice("Select at least three layers first.");
             return;
         }
@@ -4894,7 +4971,7 @@ export default function CreativeEditor({
 
     const getLatestDocumentFromCanvas = () => {
         const canvas = fabricCanvasRef.current;
-        if (!canvas) return documentRef.current;
+        if (!canvas || isLoadingRef.current) return documentRef.current;
         releaseActiveGroupForPersistence(canvas);
         const latestDocument = syncActivePageSnapshot(serializeFabricCanvasToDocument(canvas, documentRef.current));
         const validated = parseCreativeEditorDocument(latestDocument);
@@ -5380,7 +5457,7 @@ export default function CreativeEditor({
         const canvas = fabricCanvasRef.current;
         const fabricApi = fabricApiRef.current;
         const activeObject = canvas?.getActiveObject();
-        if (!canvas || !fabricApi || !activeObject || activeObject.type !== "activeSelection") {
+        if (!canvas || !fabricApi || !activeObject || activeObject.type !== FABRIC_ACTIVE_SELECTION_TYPE) {
             setNotice("Select more than one layer first.");
             return;
         }
@@ -5415,13 +5492,20 @@ export default function CreativeEditor({
         setNotice("Group released into editable layers.");
     };
 
-    const addCuratedImage = (asset: { label: string; src: string }) => {
-        addElement(buildCreativeEditorImageElement({
-            name: asset.label,
-            src: asset.src,
-            x: Math.round(documentRef.current.canvas.width * 0.31),
-            y: Math.round(documentRef.current.canvas.height * 0.22),
-        }));
+    const addCuratedImage = async (asset: { label: string; src: string }) => {
+        try {
+            const src = asset.src.startsWith("data:image/svg+xml")
+                ? await rasterizeGeneratedSvgDataUri(asset.src)
+                : asset.src;
+            addElement(buildCreativeEditorImageElement({
+                name: asset.label,
+                src,
+                x: Math.round(documentRef.current.canvas.width * 0.31),
+                y: Math.round(documentRef.current.canvas.height * 0.22),
+            }));
+        } catch (error) {
+            showCreativeEditorFailure("creative_editor_generated_asset_failed", error, `${asset.label} could not be prepared.`);
+        }
     };
 
     const renderCuratedGrid = (assets: Array<{ id: string; label: string; src: string }>) => {
@@ -5454,7 +5538,7 @@ export default function CreativeEditor({
                             </div>
                             <div className={styles.stickerGrid}>
                                 {STICKER_ASSETS.map((asset) => (
-                                    <button aria-label={`Add ${asset.label}`} key={asset.id} onClick={() => addCuratedImage(asset)} title={asset.label} type="button">
+                                    <button aria-label={`Add ${asset.label}`} key={asset.id} onClick={() => { void addCuratedImage(asset); }} title={asset.label} type="button">
                                         <img alt="" src={asset.src} />
                                     </button>
                                 ))}
@@ -5478,7 +5562,7 @@ export default function CreativeEditor({
                                 <button
                                     aria-label={`Add ${asset.label}`}
                                     key={asset.id}
-                                    onClick={() => addCuratedImage(asset)}
+                                    onClick={() => { void addCuratedImage(asset); }}
                                     type="button"
                                 >
                                     <img alt="" src={asset.src} />
@@ -6186,7 +6270,7 @@ export default function CreativeEditor({
                         Display text
                     </label>
                     <div className={styles.drawerActionGrid}>
-                        <button disabled={!barcodeValue.trim()} onClick={addBarcode} type="button">
+                        <button disabled={!barcodeValue.trim()} onClick={() => { void addBarcode(); }} type="button">
                             <LuFileJson size={18} />
                             Add barcode
                         </button>
@@ -6332,6 +6416,12 @@ export default function CreativeEditor({
             );
         }
         if (activeTool === "templates") {
+            const filteredCampaignStarters = CAMPAIGN_STARTER_ACTIONS.filter((action) => matchesDrawerSearch({
+                description: action.description,
+                id: action.id,
+                label: action.label,
+                search: `${action.label} ${action.description} ${action.templateSearch}`,
+            }, drawerSearch));
             const filteredTemplates = CREATIVE_EDITOR_STARTER_TEMPLATES.filter((template) => matchesDrawerSearch({
                 description: template.description,
                 id: template.id,
@@ -6340,14 +6430,14 @@ export default function CreativeEditor({
             }, drawerSearch));
             return (
                 <>
-                    {!drawerSearch ? (
+                    {filteredCampaignStarters.length ? (
                         <section className={styles.drawerSection}>
                             <div className={styles.drawerSectionHeader}>
-                                <h3>Start from goal</h3>
+                                <h3>{drawerSearch ? "Goal matches" : "Start from goal"}</h3>
                                 <span>SMB</span>
                             </div>
                             <div className={styles.campaignStarterGrid}>
-                                {CAMPAIGN_STARTER_ACTIONS.map((action) => (
+                                {filteredCampaignStarters.map((action) => (
                                     <button key={action.id} onClick={() => applyCampaignStarter(action)} type="button">
                                         <strong>{action.label}</strong>
                                         <span>{action.description}</span>
@@ -6374,9 +6464,9 @@ export default function CreativeEditor({
                                     </button>
                                 ))}
                             </div>
-                        ) : (
+                        ) : !filteredCampaignStarters.length ? (
                             <p className={styles.legacyHelperText}>No matching templates.</p>
-                        )}
+                        ) : null}
                     </section>
                 </>
             );
@@ -7275,7 +7365,7 @@ export default function CreativeEditor({
         if (!readinessPanelOpen) return null;
         const actionableIssues = readinessIssues.filter((issue) => issue.tone !== "good");
         return (
-            <div className={`${styles.inspectorSection} ${styles.readinessPanel}`}>
+            <div className={`${styles.inspectorSection} ${styles.readinessPanel}`} data-creative-editor-readiness="true">
                 <div className={styles.readinessHeader}>
                     <div>
                         <h3>Download check</h3>
@@ -7359,13 +7449,13 @@ export default function CreativeEditor({
             )}
 
             <div className={styles.quickActions}>
-                <button disabled={!selectedElement || activePageLocked || selectedLayerFrameLocked} onClick={toggleSelectedLock} type="button">
+                <button aria-label={selectedLayerLocked ? "Unlock selected layer" : "Lock selected layer"} disabled={!selectedElement || activePageLocked || selectedLayerFrameLocked} onClick={toggleSelectedLock} type="button">
                     {selectedLayerFrameLocked ? <LuLock size={20} /> : selectedLayerLocked ? <LuUnlock size={20} /> : <LuLock size={20} />}
                 </button>
-                <button disabled={!selectedElement || selectedLayerReadOnly || selectedElement.visible === false} onClick={duplicateSelected} type="button">
+                <button aria-label="Duplicate selected layer" disabled={!selectedElement || selectedLayerReadOnly || selectedElement.visible === false} onClick={duplicateSelected} type="button">
                     <LuCopy size={20} />
                 </button>
-                <button disabled={!selectedElement || selectedLayerReadOnly} onClick={removeSelected} type="button">
+                <button aria-label="Delete selected layer" disabled={!selectedElement || selectedLayerReadOnly} onClick={removeSelected} type="button">
                     <LuTrash2 size={20} />
                 </button>
             </div>
@@ -7675,6 +7765,8 @@ export default function CreativeEditor({
             data-creative-editor-active-tool={activeTool}
             data-creative-editor-root="true"
             data-creative-editor-layer-count={documentValue.elements.length} data-creative-editor-selected-layer-id={selectedId}
+            data-creative-editor-page-count={pageList.length}
+            data-creative-editor-active-page-id={documentValue.activePageId}
             data-chrome-mode={chromeMode}
             data-theme={theme}
             data-review-mode={reviewMode ? "true" : "false"}

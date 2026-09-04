@@ -123,12 +123,14 @@ const mobileMenu = read('src/components/mobile/screens/MobileMenuScreen.tsx');
 const mobileMenuSetupProgress = read('src/components/mobile/components/MenuSetupProgress.tsx');
 const mobileDesignEditor = read('src/components/mobile/screens/MobileDesignEditorScreen.tsx');
 const mobileProjectsProvider = read('src/components/mobile/providers/MobileProjectsProvider.tsx');
+const mobileShell = read('src/components/mobile/MobileShell.tsx');
 const mobileShare = read('src/components/mobile/screens/MobileShareScreen.tsx');
 const mobileProjectSelector = read('src/components/mobile/components/MobileProjectSelectorSheet.tsx');
 const sharedProjectSelector = read('src/components/shared/ProjectSelector.tsx');
 const bulkActionsSheet = read('src/components/mobile/sheets/BulkActionsSheet.tsx');
 const mobileItemEditSheet = read('src/components/mobile/sheets/ItemEditSheet.tsx');
 const mobileCategoryEditSheet = read('src/components/mobile/sheets/MobileCategoryEditSheet.tsx');
+const mobileCategoryManagerSheet = read('src/components/mobile/sheets/CategoryManagerSheet.tsx');
 const projectDal = read('src/database/projects/index.ts');
 const projectDeleteRoute = read('src/app/api/projects/delete/route.ts');
 const projectDeleteErrors = read('src/lib/errors/projectDeleteErrors.ts');
@@ -195,6 +197,28 @@ requireToken(previewModal, "modalRender={labelConfirmDialog('Menu preview')}", '
   requireToken(source, 'onMaskClick={() => {\n                void handleClose();', `mobile ${entity} mask close guard`);
   requireToken(source, "<NavBar onBack={() => {\n                    void handleClose();", `mobile ${entity} back close guard`);
 });
+[
+  'const [isConfirmationOpen, setIsConfirmationOpen] = useState(false);',
+  'visible={!isConfirmationOpen}',
+  'setIsConfirmationOpen(true);',
+  'finally(() => setIsConfirmationOpen(false))',
+].forEach((token) => requireToken(mobileItemEditSheet, token, 'mobile item modal exclusivity'));
+if ((mobileItemEditSheet.match(/setIsConfirmationOpen\(true\);/g) || []).length !== 3) {
+  failures.push('mobile item editor must hide behind discard, refresh, and delete confirmations');
+}
+[
+  'const [isDeleteConfirmationOpen, setIsDeleteConfirmationOpen] = useState(false);',
+  'visible={visible && categoryEditorMode === null}',
+  'visible={visible && categoryEditorMode !== null && !isDeleteConfirmationOpen}',
+  'setIsDeleteConfirmationOpen(true);',
+  'finally(() => setIsDeleteConfirmationOpen(false))',
+].forEach((token) => requireToken(mobileCategoryManagerSheet, token, 'mobile category modal exclusivity'));
+[
+  'const [isDiscardConfirmationOpen, setIsDiscardConfirmationOpen] = useState(false);',
+  'setIsDiscardConfirmationOpen(true);',
+  'setIsDiscardConfirmationOpen(false);',
+  'visible={visible && !isDiscardConfirmationOpen}',
+].forEach((token) => requireToken(mobileCategoryEditSheet, token, 'mobile category discard modal exclusivity'));
 requireToken(editor, 'const stageProjectUpdateForPersistence = useCallback((updatedProject: Project) => {', 'shared editor modal persistence staging boundary');
 requireToken(editor, 'onApply={stageProjectUpdateForPersistence}', 'editor modal persistence callback boundary');
 requireToken(editor, 'setProjectData={stageProjectUpdateForPersistence}', 'generation defaults persistence callback boundary');
@@ -429,6 +453,19 @@ forbidToken(projectSelector, 'Modal.confirm(', 'desktop project selector static 
   'hasHydratedRef.current = true;',
 ].forEach((token) => requireToken(mobileProjectsProvider, token, 'mobile project load recovery'));
 [
+  'createDefaultProjectWhenEmpty = false,',
+  'createDefaultProjectWhenEmpty?: boolean;',
+  'const result = createDefaultProjectWhenEmpty',
+  '? await getProjectsListWithoutLoader(true, expectedScope)',
+  ': await getExistingProjectsListWithoutLoader(true, expectedScope);',
+  '[createDefaultProjectWhenEmpty, isExpectedScope, loadProjectIntoCache]',
+].forEach((token) => requireToken(mobileProjectsProvider, token, 'mobile read-only project-list write boundary'));
+requireToken(
+  mobileShell,
+  "createDefaultProjectWhenEmpty={activeTab === 'menu'}",
+  'mobile shell default-project creation admission',
+);
+[
   'if (hasLoadError && !menuData)',
   "variant=\"serverErrorContext\"",
   'refreshProjects({ force: true, loadSelectedProject: true, showLoader: true })',
@@ -508,6 +545,9 @@ requireNamedImport(projectsPage, '@database/projects', [
   'Could not load this menu',
   'onClick={() => void mutateProject()}',
   'currentView == 2 && selectedProject && activeProject',
+  "currentView == 3 && selectedProject && (projectLoading || (!activeProject && !projectError))",
+  'currentView == 3 && selectedProject && projectError',
+  'currentView == 3 && selectedProject && activeProject',
   '<Tooltip title="Upload JPG or PNG images">',
   '<Tooltip title="Upload PDF documents">',
   '<span aria-hidden="true" style={{ height: 56, width: 56,',
@@ -523,6 +563,11 @@ requireOrder(projectsPage, [
   'currentView == 2 && selectedProject && projectError',
   'currentView == 2 && selectedProject && activeProject',
 ], 'desktop editor project-load boundary');
+requireOrder(projectsPage, [
+  "currentView == 3 && selectedProject && (projectLoading || (!activeProject && !projectError))",
+  'currentView == 3 && selectedProject && projectError',
+  'currentView == 3 && selectedProject && activeProject',
+], 'desktop customer-editor project-load boundary');
 forbidToken(projectsPage, 'const shouldEnableDesktopProjectsData = hasMounted;', 'desktop projects entitlement read gate');
 forbidToken(projectsPage, "<Button shape='circle' type='text' size='large' icon={<LuFileImage", 'desktop upload decorative image control');
 forbidToken(projectsPage, "<Button shape='circle' type='text' size='large' icon={<LuFileText", 'desktop upload decorative PDF control');
@@ -1016,14 +1061,30 @@ requireNamedImport(mobileProjectSelector, '@database/projects', [
   'mobile_project_selector_metadata_update_rejected',
   'mobile_project_selector_active_project_update_rejected',
   'mobile_project_selector_delete_project_rejected',
+  "import { isPublishedMenuProject } from '@lib/menuPresence/presenceReadiness';",
+  'const isProjectReadyForCustomerDistribution = (',
+  'isPublishedMenuProject(project)',
+  'const customDomain = storeDetails.domainVerified === false',
+  'const managingProjectIsCustomerReady = isProjectReadyForCustomerDistribution(managingProject);',
+  'managingProject && managingProjectIsCustomerReady && managingProjectShareUrl',
+  'This menu is not live for customers. Preview, link, and QR actions will appear here after it is published and active.',
   'mobile_project_public_content_translation_project_update_rejected',
   'const [formScope, setFormScope] = useState<ProjectOwnerScope | null>(null);',
+  'const [isManagingConfirmationOpen, setIsManagingConfirmationOpen] = useState(false);',
   "const mutationToken = beginMutation('save', operationScope);",
   "} as any, 'project-images', operationScope);",
   'expectedScope: operationScope,',
   'syncPublicSummary: true,',
   'logMobileProjectFailure',
+  'visible={visible && !managingProject && !formMode && !isQrSheetOpen}',
+  'visible={Boolean(managingProject) && !formMode && !isQrSheetOpen && !isManagingConfirmationOpen}',
+  'visible={Boolean(formMode) && !isProjectImageAdjustOpen}',
+  'setIsManagingConfirmationOpen(true);',
+  'finally(() => setIsManagingConfirmationOpen(false))',
 ].forEach((token) => requireToken(mobileProjectSelector, token, 'mobile project selector'));
+if ((mobileProjectSelector.match(/setIsManagingConfirmationOpen\(true\);/g) || []).length !== 3) {
+  failures.push('mobile project selector must hide the management sheet behind all three destructive confirmations');
+}
 [
   "aria-label={t('selectCatalog')}",
   "aria-label={`${resolveProjectName(managingProject?.name, t('catalogActions'))} menu actions`}",
@@ -1057,10 +1118,29 @@ requireNamedImport(bulkActionsSheet, '@database/projects', [
   "{allCategorySelected ? 'Deselect' : 'Select'} all items in {categoryName}",
   "style={{ minHeight: 44, width: '100%' }}",
   'mobile_bulk_actions_project_metadata_translation_update_rejected',
+  'const [isConfirmationOpen, setIsConfirmationOpen] = useState(false);',
+  'afterClose: () => setIsConfirmationOpen(false)',
+  'const confirmed = await Dialog.confirm({',
+  'if (!confirmed || !workingProject) return;',
+  "aria-label={t('pricingRule')}",
+  "aria-label={`${t('priceChangeTitle')} ${t('priceValueLabel')}`}",
+  "aria-label={pricingMethod.includes('Percent') ? t('enterPercentage') : t('enterAmount')}",
+  "actionLabel = target === 'show' ? t('showOnMenu') : t('hideFromMenu');",
 ].forEach((token) => requireToken(bulkActionsSheet, token, 'mobile bulk actions'));
 if ((bulkActionsSheet.match(/await onApply\(updated,/g) || []).length !== 3) {
   failures.push('mobile bulk actions must await acknowledged persistence before closing every update path');
 }
+if ((bulkActionsSheet.match(/visible=\{visible && !isConfirmationOpen\}/g) || []).length !== 2) {
+  failures.push('mobile bulk actions must hide both action sheets behind confirmation dialogs');
+}
+if ((bulkActionsSheet.match(/setIsConfirmationOpen\(true\);/g) || []).length !== 2) {
+  failures.push('mobile bulk actions must track both AI-repair and bulk-mutation confirmation lifecycles');
+}
+forbidToken(
+  bulkActionsSheet,
+  'onConfirm: async () => {',
+  'mobile bulk confirmation async persistence callback',
+);
 forbidToken(bulkActionsSheet, '<Flex\n            align="center"\n            gap={10}\n            onClick=', 'mobile bulk selection shortcuts');
 forbidToken(bulkActionsSheet, '<div onClick={(event) => event.stopPropagation()}>\n                                                        <Checkbox', 'mobile bulk category and item selection');
 

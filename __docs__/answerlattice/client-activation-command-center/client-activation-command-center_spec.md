@@ -33,7 +33,8 @@ Answerlattice client owner or admin. This is not a MenuList platform-owner surfa
 - Show a first-client launch proof that groups setup, knowledge/surfaces, ontology/canonical answers, widget runtime, governance summaries, and signal-source test status.
 - Compress the owner journey into four progressive groups: Add product knowledge, Approve your first answers, Connect customer support, and Verify and go live.
 - Keep the default navigation bounded to the first owner jobs: Activation, First 10 Answers, Install Support, Setup Status, Daily Brief, Ticket Inbox, and Trusted Answers.
-- Provide one permission-aware **All tools** reveal inside groups with secondary workflows. Preserve direct-route access and keep the selected secondary route visible while active.
+- Present frequent destinations as direct links in grouped sidebar sections, without parent accordions.
+- Provide one permission-aware **All tools** reveal in the Advanced section. Preserve direct-route access and keep the selected advanced route visible while active.
 - Treat the compact list as presentation only. Do not add a workspace mode, saved preference, onboarding persona, maturity score, or separate entitlement.
 - Expand only the first incomplete group by default. Completed groups remain available but collapsed, the owner can open one group at a time, and refreshed evidence re-anchors the accordion when the first incomplete group changes.
 - Show one factual launch-check count and one progress indicator in the primary path. Keep the broader setup percentage inside technical details so two progress models do not compete for attention.

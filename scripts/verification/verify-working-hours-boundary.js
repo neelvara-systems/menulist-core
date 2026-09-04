@@ -56,7 +56,8 @@ function verifyFirestoreCostBoundary(firestoreIndexesJson) {
 
 function verifyStoreDal(storesDal, presetBoundary, cascadeReconciler) {
   [
-    'export const updateStore = async (data: StoreMutationData) => {',
+    'type UpdateStoreOptions = Readonly<{',
+    'export const updateStore = async (data: StoreMutationData, options: UpdateStoreOptions = {}) => {',
     'normalizeWorkingHoursUpdate',
     "throw new Error('store_working_hours_day_invalid')",
     "throw new Error('store_working_hours_range_invalid')",
@@ -330,7 +331,11 @@ function verifyMobileSettings(mobileWorkingHours, mobileHours, mobileTimeSlots, 
     'const actionInFlightRef = useRef(false);',
     'const activeScopeRef = useRef(scopeKey);',
     'const componentActiveRef = useRef(true);',
-    'isValidClockRange(formStart, formEnd)',
+    'getTimeSlotPresetDraftIssue({',
+    "formIssue === 'duplicate_label'",
+    "formIssue === 'invalid_range'",
+    "id=\"mobile-time-slot-draft-error\" role=\"alert\"",
+    'disabled={Boolean(formIssue)}',
   ].forEach((token) => assertIncludes(mobileTimeSlots, token, 'Mobile time-slot preset boundary'));
   assertNotIncludes(mobileTimeSlots, 'rangesOverlap(', 'Mobile time-slot presets must allow the same overlap contract as desktop');
 

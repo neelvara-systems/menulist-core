@@ -43,6 +43,16 @@ export default function StickyCta() {
       setNearStop(stopRect.top < window.innerHeight + 1000);
     };
 
+    let syncFrame: number | null = null;
+    const scheduleSync = () => {
+      if (syncFrame !== null) return;
+
+      syncFrame = window.requestAnimationFrame(() => {
+        syncFrame = null;
+        syncFromRects();
+      });
+    };
+
     const startObserver = new IntersectionObserver(
       ([entry]) => {
         setPastStart(entry.boundingClientRect.bottom <= 80 && !entry.isIntersecting);
@@ -61,11 +71,18 @@ export default function StickyCta() {
     const delayedSync = window.setTimeout(syncFromRects, 120);
     startObserver.observe(startTarget);
     stopObserver.observe(stopTarget);
+    window.addEventListener('scroll', scheduleSync, { passive: true });
+    window.addEventListener('resize', scheduleSync);
+    window.addEventListener('pageshow', scheduleSync);
 
     return () => {
       window.clearTimeout(delayedSync);
+      if (syncFrame !== null) window.cancelAnimationFrame(syncFrame);
       startObserver.disconnect();
       stopObserver.disconnect();
+      window.removeEventListener('scroll', scheduleSync);
+      window.removeEventListener('resize', scheduleSync);
+      window.removeEventListener('pageshow', scheduleSync);
     };
   }, [enabled]);
 

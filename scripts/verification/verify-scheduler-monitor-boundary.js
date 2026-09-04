@@ -240,7 +240,7 @@ function verifyMobileRouteMap(mobileShell, mobileMore) {
     "label: 'Scheduler Monitor'",
     "description: 'Nightly jobs, analytics settlement, and scheduler recovery controls.'",
     "onClick: () => openSubScreen('schedulerMonitor')",
-    "['platformHub', 'opsControlRoom', 'extractionMonitor', 'schedulerMonitor'].includes(screen)",
+    "['platformHub', 'answerlatticeHub', 'opsControlRoom', 'extractionMonitor', 'schedulerMonitor'].includes(screen)",
     "subScreen === 'schedulerMonitor'",
     '<MobileSchedulerMonitorScreen',
   ].forEach((token) => assertIncludes(mobileMore, token, 'Mobile More scheduler monitor surface'));

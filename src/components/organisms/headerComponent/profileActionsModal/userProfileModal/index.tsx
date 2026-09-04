@@ -9,6 +9,8 @@ import {
 import { getBoundedAuthStringContext, logAuthFailure } from '@lib/auth/authDiagnostics';
 import { signOutSession } from '@lib/auth/client';
 import { getStoreContextName } from '@lib/businessIdentity/names';
+import { normalizePhoneNumberForStorage } from '@lib/phone/phoneNumber';
+import { retainChangedProfileFields } from '@lib/userProfile/profileUpdate';
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
 import { useAppDispatch } from '@hook/useAppDispatch';
 import { showErrorToast, showSuccessToast, showWarningToast } from '@reduxSlices/toast';
@@ -58,7 +60,11 @@ const getInitial = (name?: string, fallback?: string) => {
 const buildPhoneLabel = (data: any) => {
     const phoneNumber = data?.phoneNumber || data?.phone || '';
     if (!phoneNumber) return '';
-    return `${data?.dialCode || ''} ${phoneNumber}`.trim();
+    return normalizePhoneNumberForStorage({
+        countryCode: data?.countryCode,
+        dialCode: data?.dialCode,
+        phoneNumber,
+    }).displayNumber;
 };
 
 const getDesktopProfileLogContext = (session: any, storeDetails: any) => ({
@@ -179,6 +185,20 @@ function UserProfileModal({ open, onClose }: UserProfileModalProps) {
         const name = String(values?.name || '').trim();
         if (!name) {
             dispatch(showWarningToast('Display name is required'));
+            return;
+        }
+        if (Object.keys(retainChangedProfileFields({
+            countryCode: userData?.countryCode || '',
+            dialCode: userData?.dialCode || '',
+            name: userData?.name || '',
+            phoneNumber: userData?.phoneNumber || userData?.phone || '',
+        }, {
+            countryCode: phoneValue.phoneNumber ? phoneValue.countryCode : '',
+            dialCode: phoneValue.phoneNumber ? phoneValue.dialCode : '',
+            name,
+            phoneNumber: phoneValue.phoneNumber,
+        })).length === 0) {
+            dispatch(showWarningToast('No profile changes to save'));
             return;
         }
 

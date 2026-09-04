@@ -249,7 +249,15 @@ function MobileLocaleSettingsScreenContent({ onBack, onOpenBusinessCopySetup }: 
                 onBack={onBack}
                 title={tBusiness('localeSettings')}
             />
-            <Flex gap={12} style={{ padding: 16 }} vertical>
+            <Flex
+                gap={12}
+                style={{
+                    padding: 16,
+                    paddingBottom: `calc(84px + ${MOBILE_BOTTOM_NAV_CLEARANCE})`,
+                    scrollPaddingBottom: `calc(84px + ${MOBILE_BOTTOM_NAV_CLEARANCE})`,
+                }}
+                vertical
+            >
                 <Card>
                     <Flex gap={8} vertical>
                         <Flex align="center" gap={6}>
@@ -291,7 +299,7 @@ function MobileLocaleSettingsScreenContent({ onBack, onOpenBusinessCopySetup }: 
                         <Select
                             aria-label={tBusiness('dateFormat')}
                             onChange={(value: string) => setFormData((previous) => ({ ...previous, dateFormat: value }))}
-                            options={DATE_FORMATS.map((item) => ({ label: format.dateTime(now, item.value), value: item.label }))}
+                            options={DATE_FORMATS.map((item) => ({ label: `${format.dateTime(now, item.value)} (${item.labelHelper})`, value: item.label }))}
                             placeholder={tBusiness('selectDateFormat')}
                             value={formData.dateFormat}
                         />

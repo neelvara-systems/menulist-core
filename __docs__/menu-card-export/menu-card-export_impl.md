@@ -92,6 +92,7 @@ src/lib/menu-card-export/
   preflight/checkSelectableText.ts
   preflight/checkPhotoQuality.ts
   render/renderPreviewModel.ts
+  render/renderCategoryIcon.ts
   render/renderPdf.ts
   render/renderPrintBoxes.ts
   render/renderQr.ts
@@ -113,6 +114,8 @@ src/services/ai/menuCardExport/
 
 scripts/verification/verify-menu-card-export.js
 ```
+
+Category icon flow is intentionally data-driven. `buildPrintSource()` projects the canonical `category.icon` field only when the global category-icon feature and the project menu-design `showCategoryIcons` switch are enabled. `sanitizeMenuForPrint()` accepts only bounded `lu:Lu...` or `emoji:...` values. `renderCategoryIcon.ts` resolves existing React Icons Lucide glyphs or bounded emoji to temporary in-memory PNG data, and `renderPdf.ts` reserves heading width before drawing the icon and category name together. Unknown or unrasterizable icons degrade to a text-only heading; no SVG markup from menu data is inserted into the DOM. The icon is included in `buildPrintSourceHash()` so local freshness checks observe category-level visual changes.
 
 ---
 
@@ -264,12 +267,16 @@ No custom CSS, arbitrary page coordinates, uploaded fonts, or free text boxes ar
 
 Brand source rules:
 
+- Standalone desktop and mobile Print Menu resolve the canonical `print_menu` parent theme through `resolvePrintableAssetStyle()` using the current business, stored business/menu preferences, and selected project. That resolved family is carried in `settings.printableThemeId` through source construction, preview, export history, preset/layout changes, and AI layout suggestions.
+- Print Menu labels the resolved parent family as **Brand look** and keeps **Layout** as a separate composition choice. **Change** returns the owner to the shared Assets theme flow rather than introducing a second theme selector or persistence path.
 - `buildPrintSource()` must prefer `store.publicPresence.accentColor`, matching OBP.
 - Logo comes from the existing store logo fields, primarily `store.logo`.
 - Older `primaryColor`, `brandColor`, `themeColor`, and project design brand color are fallback-only.
 - The renderer embeds the logo in the PDF header when the image can be loaded safely and uses the brand color for the header, category dividers, and prices. Logo source projection and final rendering both require a credential-free absolute HTTP(S) URL of at most 4,096 characters. Remote loading is bounded to five seconds; timeout/CORS failure, invalid dimensions, dimensions above 2,048 pixels, or more than 4,194,304 raster pixels omit the logo and keep rendering. Successful raster data uses a 16-entry oldest-first route-session cache; failed loads are not cached permanently.
+- `includeCoverPage` adds a separate typographic identity cover using the existing logo/initial fallback, business name, menu/document label, live-menu QR/public link, and only the phone/address already present in `MenuCardPrintSource`. Business logos render unframed; missing logos use a restrained typographic initial rather than a bordered placeholder box. Its scan card uses a centered QR above individually stacked label, URL, phone, and address rows so no contact line competes horizontally with the QR. It never generates promotional copy or substitutes missing business facts.
 - The renderer prints subtle `Menu powered by MenuList | menulist.ai` attribution with the MenuList logo mark in the footer for non-Multi-location stores. `src/lib/platform/menuListBranding.ts` hides visible MenuList attribution only when the already-loaded `activePlanType` is `menulist_multi_location`; missing, Official, Pro, and unknown plans keep attribution visible. This is platform attribution only; the business logo/name/color remain the primary visual identity.
 - The source hash includes logo URL, brand color, business type, business category, catalog kind, offering kind, currency symbol, and currency code so local export history does not reuse stale unbranded, wrong-profile, or wrong-currency files after the owner changes store settings.
+- The source hash also includes `MENU_CARD_EXPORT_RENDERER_VERSION`. Any renderer composition change invalidates older local-history freshness instead of calling a pre-redesign PDF current.
 
 Business-type source rules:
 
@@ -278,7 +285,7 @@ Business-type source rules:
 - `catalogKind` and `offeringKind` are copied into the print source so renderer and PDF metadata can distinguish food menus, product catalogs, and service lists.
 - `src/lib/menu-card-export/templates/businessPrintProfiles.ts` maps that metadata to quiet output labels and visual tone.
 - QR labels must say current menu, current services, or current catalog based on the resolved profile.
-- This is automatic. Do not add an owner-facing theme picker for vertical type inside Print Menu.
+- Vertical-type resolution remains automatic. Do not add a separate vertical-style picker inside Print Menu; the owner changes the shared parent theme through Assets.
 
 Font and currency rules:
 
@@ -291,13 +298,18 @@ Physical-menu renderer rules:
 
 - `renderPdf()` owns the physical output look through `getVisualStyle()`, not through owner-provided CSS or custom layout input.
 - `getVisualStyle()` receives both the selected template family and the resolved business profile tone.
-- Every page gets a warm paper background and print border before content is drawn.
-- Classic uses a centered brand plaque, double border, ribbon-style category labels, and dotted price leaders.
-- Premium uses a quieter editorial header, serif/italic category hierarchy, and no dotted leaders.
-- Compact uses a warm card sheet, boxed category headings, and price leaders for dense menus.
+- Every page gets a restrained paper tone, print-safe border, and a short brand-color registration line before content is drawn.
+- Customer-facing print presets default to a dedicated cover page; WhatsApp and compact utility presets remain content-first. When the cover is enabled, menu content begins inside the following page's top artwork-safe field without a repeated masthead, QR/contact information moves to the cover, and content page numbering excludes the unnumbered cover.
+- The premium cover uses an asymmetric editorial composition, brand-tinted print-safe background fields, an unframed logo, restrained abstract geometry, serif display type, small spaced labels, and a subtly elevated QR/contact card. Cover-backed content pages omit the former repeated name/label band and use a compact business-name plus page-number footer identifier; cover-off utility output retains its content-first header.
+- Classic uses a centered editorial identity header, left-anchored section markers, measured price leaders, and a balanced two-column category flow.
+- Premium uses a quiet serif hierarchy, confident whitespace, single-column reading order, and no dotted leaders.
+- Compact uses a calm card header, low-ornament section rules, and price leaders. A4 stays at two columns for ordinary menus and admits three columns only at 40 or more items; WhatsApp and Premium always stay single-column.
 - Retail/product profiles use catalog-style boxed sections and price leaders.
 - Service/professional/health profiles use calmer service-list styling and avoid restaurant-only ornamentation.
-- New pages redraw the same paper/border base before continuing content.
+- Short categories stay together when they fit; larger categories start only when their heading plus at least two items fit. A split category repeats a labelled continuation heading rather than leaving an anonymous item at the top of a column or page.
+- New pages redraw the same paper/border base and a compact running business/menu header before continuing content.
+- Canonical item decision facts become compact vector marks beside the item name: vegetarian/non-vegetarian geometry, vegan, gluten-free, explicit spice intensity, and owner-confirmed audience. The bounded resolver exposes up to six applicable facts by default instead of silently hiding a fourth fact. The footer legend is generated from only the marks present in the current menu and repeats on content pages. Public UI labels use the active compact customer locale where a governed translation exists and safely fall back to the canonical label for newly introduced audience terms. Public semantic icon colors choose their light/dark variant against the active menu background; red remains exclusive to chilli/non-vegetarian marks, green to vegetarian/vegan, and gluten/audience marks stay neutral. Labels, descriptions, promotions, and option names are not inference inputs; allergens stay textual because an icon could imply unsafe certainty.
+- The customer-facing footer keeps menu freshness, page count, restrained MenuList attribution where applicable, and the live-menu QR card. Technical generation time remains in filename/metadata/print-shop instructions rather than the visible menu.
 - This remains client-side CPU work and does not add Firebase reads/writes or Storage uploads.
 
 Auto print design rules:
@@ -548,6 +560,10 @@ Hard layout rules:
 - Do not split item blocks.
 - Do not detach item name and price.
 - Do not orphan category headers.
+- Repeat business/menu identity on every continuation page.
+- Repeat a category heading with a continuation label after a column/page split.
+- Keep short categories together when they fit; otherwise place at least two items with a newly started heading.
+- Select compact columns from actual item count instead of forcing three cramped columns for normal menus.
 - Do not overlap footer.
 - Do not shrink QR below scan-safe size.
 - Do not use raw CSS columns for final pagination.
@@ -587,7 +603,7 @@ Accepted from the generic export playbook:
 - Set real PDF document properties with `jsPDF.setProperties()`: title, subject, author, keywords, and creator.
 - Set PDF creation date from the same generated timestamp used by the artifact.
 - Use deterministic, readable filenames: business/menu name, preset, generated date, and short source reference.
-- Keep the full source hash out of the visible PDF footer; use the generated date, page count, and menu updated date as customer-safe footer text.
+- Keep the full source hash and technical generation date out of the visible PDF footer; use page count, menu updated date, applicable attribution, and live-menu QR as customer-safe footer content. Generated date remains in filename, metadata, and print-shop instructions.
 - Keep support/audit identifiers in PDF metadata and print-shop instructions, not in owner-facing configuration.
 
 Rejected for this feature:
@@ -640,7 +656,7 @@ No automatic email to print shops in launch scope.
 
 Desktop layout:
 
-- Left panel: project, job preset, style, settings, safe overrides, history.
+- Left panel: project, inherited Brand look with an Assets change action, job preset, layout, settings, safe overrides, history.
 - Main panel: page preview with page thumbnails.
 - Right rail or footer: preflight warnings, QR status, export actions.
 
@@ -649,9 +665,10 @@ Mobile layout:
 - Dedicated `MobileMenuCardExportScreen` with mobile-native cards, sheets, large controls, and sticky export actions.
 - `/use-menulist/menu-card-export` maps into the mobile shell as `more/printMenu` on handheld devices, matching the existing More/settings screen model instead of using a route-level mobile bypass.
 - Desktop and mobile renderers both use `useMenuCardExportController` for project loading, source building, auto print design, preflight, export generation, local history, and Pro/Multi-location layout suggestion.
+- Opening Print Menu from mobile Assets preserves an Assets return target; opening it from Share returns to Share. The Brand look change action also returns to the shared Assets theme flow.
 - Mobile Menu command sheet flushes pending local menu edits before route navigation.
 - More > Modules exposes Print Menu beside Dashboard for discoverability; the analytics dashboard screen remains metric-only.
-- Horizontal preset/style cards.
+- Horizontal preset/layout cards, with the inherited Brand look shown separately.
 - Simple toggles.
 - Swipeable page preview.
 - Sticky preflight/export button.
@@ -702,6 +719,41 @@ npx tsc --noEmit --incremental false
 npm run verify:menu-export
 npm run verify:menu-card-export
 ```
+
+## Premium Editorial Page Backgrounds
+
+`renderPdf.ts` now loads two bundled, transparent print ornaments from `public/images/menu-card-export/`: a watercolor corner cluster and a sparse line-art rail. The renderer activates them only for Premium or service/wellness customer output and never for `staff_reference`.
+
+The background contract is deterministic:
+
+- the cover uses a restrained rail and corner accent behind the existing identity composition;
+- content pages cycle through three fixed corner/rail placements by content-page index;
+- active artwork increases the protected content margin to 24 mm;
+- artwork is drawn before headers, categories, items, prices, and footers;
+- supplied fixture data URLs are size- and MIME-bounded for Node visual QA;
+- browser output loads only the two fixed same-origin asset paths;
+- decode failure omits decoration without blocking the PDF.
+
+Rosewater Editorial and Mineral Sanctuary use a theme-specific translucent
+paper field over their full-page artwork. The field is deliberately wider and
+taller than the content column: its edge must not intersect category headings,
+item names, descriptions, durations, or prices. This preserves low-light print
+contrast without flattening the parent theme into an opaque generic panel.
+
+Every full-page theme that owns a content field resolves that field through one
+balanced geometry contract: 14 mm from the top, left, and right page edges,
+followed by 10 mm of internal content padding. The renderer derives the field's
+new height from its prior bottom inset, so the footer and decision-symbol legend
+keep their existing protected space. Themes without a content field retain
+their individually governed margins.
+
+Vital Current and Workshop Atlas keep their full-bleed artwork but draw a
+theme-scoped translucent paper field behind the footer before page metadata and
+attribution. The field applies consistently to cover, content, and closing
+pages so dark edge artwork cannot reduce footer readability; other themes do
+not inherit it unless their governed layout explicitly opts in.
+
+This renderer change is versioned as `menu-card-export-jspdf-v7`, so device-local history cannot label older visual output as current.
 
 `npm run verify:menu-export` verifies structured export normalization plus bounded share/export diagnostics for clipboard share, Web Share API, external endpoint share, structured JSON/XLSX export, and PDF generation. It also guards the ShareModal external endpoint admission so the browser does not post menu data to raw owner-entered, non-HTTPS, credentialed, localhost, private/local, or redirected URLs.
 

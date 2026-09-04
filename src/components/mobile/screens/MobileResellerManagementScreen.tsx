@@ -9,6 +9,7 @@ import {
 } from '@lib/reseller/resellerMonthlySummary';
 import { RESELLER_REQUEST_POLICY } from '@template/main-app/reseller/resellerDiagnostics';
 import {
+    getResellerManagementDraftValidationError,
     isResellerManagementDraftChanged,
     isResellerManagementProfilesResponse,
     type ResellerManagementProfile,
@@ -252,12 +253,9 @@ export default function MobileResellerManagementScreen({ onBack }: { onBack: () 
     };
 
     const submit = async () => {
-        if (!draft.name.trim() || !draft.phone.trim() || !draft.email.trim() || !draft.username.trim()) {
-            Toast.show({ content: 'Name, phone, email, and username are required.', duration: 2200 });
-            return;
-        }
-        if (!isEditing && draft.password.trim().length < 6) {
-            Toast.show({ content: 'Password must be at least 6 characters.', duration: 2200 });
+        const validationError = getResellerManagementDraftValidationError(draft, { isEditing });
+        if (validationError) {
+            Toast.show({ content: validationError, duration: 2200 });
             return;
         }
         if (editingProfile && !isResellerManagementDraftChanged(draft, editingProfile)) {

@@ -21,9 +21,13 @@ const apiAnonymousBoundaryEvidence = runtimeEvidence.apiAnonymousBoundary ?? nul
 const authenticatedOwnerNavigationEvidence = runtimeEvidence.authenticatedOwnerNavigation ?? null;
 const authenticatedOwnerNavigationRoutes = new Set(authenticatedOwnerNavigationEvidence?.routes ?? []);
 const authenticatedOwnerControlEvidence = runtimeEvidence.authenticatedOwnerControlInteractions ?? null;
+const currentLocalOwnerControlEvidence = runtimeEvidence.currentLocalOwnerControlInteractions ?? null;
 const localPlatformControlEvidence = runtimeEvidence.localPlatformControlInteractions ?? null;
 const publicCustomerControlEvidence = runtimeEvidence.publicCustomerControlInteractions ?? null;
+const currentLocalPublicControlEvidence = runtimeEvidence.currentLocalPublicControlInteractions ?? null;
 const creativeEditorControlEvidence = runtimeEvidence.creativeEditorControlInteractions ?? null;
+const creativeEditorNativeBoundaryEvidence = runtimeEvidence.creativeEditorNativeBoundaryControls ?? null;
+const creativeEditorNotShippedEvidence = runtimeEvidence.creativeEditorNotShippedControls ?? null;
 const websiteHeaderControlEvidence = runtimeEvidence.websiteHeaderControlInteractions ?? null;
 const unauthorizedRecoveryControlEvidence = runtimeEvidence.unauthorizedRecoveryControlInteractions ?? null;
 const notFoundRecoveryControlEvidence = runtimeEvidence.notFoundRecoveryControlInteractions ?? null;
@@ -54,10 +58,280 @@ const publicToolFollowupControlEvidence = runtimeEvidence.publicToolFollowupCont
 const publicToolReportActionControlEvidence = runtimeEvidence.publicToolReportActionControlInteractions ?? null;
 const customerLinkSocialBioCompletionControlEvidence = runtimeEvidence.customerLinkSocialBioCompletionControlInteractions ?? null;
 const websitePreferenceControlEvidence = runtimeEvidence.websitePreferenceControlInteractions ?? null;
+const websiteHomepageControlEvidence = runtimeEvidence.websiteHomepageControlInteractions ?? null;
+const websiteFaqControlEvidence = runtimeEvidence.websiteFaqControlInteractions ?? null;
+const websiteIndustryControlEvidence = runtimeEvidence.websiteIndustryControlInteractions ?? null;
+const websiteInformationalControlEvidence = runtimeEvidence.websiteInformationalControlInteractions ?? null;
+const websiteWhatsappControlEvidence = runtimeEvidence.websiteWhatsappControlInteractions ?? null;
+const websiteResourceArticleControlEvidence = runtimeEvidence.websiteResourceArticleControlInteractions ?? null;
+const websitePublicFeatureControlEvidence = runtimeEvidence.websitePublicFeatureControlInteractions ?? null;
+const websiteFooterControlEvidence = runtimeEvidence.websiteFooterControlInteractions ?? null;
 const localMobileOwnerControlEvidence = runtimeEvidence.localMobileOwnerControlInteractions ?? null;
+const bulkActionsControlEvidence = runtimeEvidence.bulkActionsControlInteractions ?? null;
+const mobileMoreControlEvidence = runtimeEvidence.mobileMoreControlInteractions ?? null;
+const mobileMoreFeatureDisabledControlEvidence = runtimeEvidence.mobileMoreFeatureDisabledControls ?? null;
+const mobileMoreSafetyBlockedControlEvidence = runtimeEvidence.mobileMoreSafetyBlockedControls ?? null;
+const mobileMenuControlEvidence = runtimeEvidence.mobileMenuControlInteractions ?? null;
+const mobileMenuNativeBoundaryControlEvidence = runtimeEvidence.mobileMenuNativeBoundaryControls ?? null;
+const mobileItemEditAlternateFixtureEvidence = runtimeEvidence.mobileItemEditAlternateFixtureControls ?? null;
+const mobileItemEditProviderBoundaryEvidence = runtimeEvidence.mobileItemEditProviderBoundaryControl ?? null;
+const mobileItemProductTagCurrentIntegrationEvidence = runtimeEvidence.mobileItemProductTagCurrentIntegrationControl ?? null;
+const mobileShareControlEvidence = runtimeEvidence.mobileShareControlInteractions ?? null;
+const mobileShareFeatureDisabledControlEvidence = runtimeEvidence.mobileShareFeatureDisabledControls ?? null;
+const mobileShareNotShippedControlEvidence = runtimeEvidence.mobileShareNotShippedControls ?? null;
+const mobileShareNativeBoundaryControlEvidence = runtimeEvidence.mobileShareNativeBoundaryControls ?? null;
+const printableAssetControlEvidence = runtimeEvidence.printableAssetControlInteractions ?? null;
+const printableAssetNativeBoundaryControlEvidence = runtimeEvidence.printableAssetNativeBoundaryControls ?? null;
+const platformNotificationMonitorControlEvidence = runtimeEvidence.platformNotificationMonitorControlInteractions ?? null;
+const platformNotificationMonitorNativeBoundaryControlEvidence = runtimeEvidence.platformNotificationMonitorNativeBoundaryControls ?? null;
+const ownerNotificationMonitorControlEvidence = runtimeEvidence.ownerNotificationMonitorControlInteractions ?? null;
+const ownerNotificationMonitorSafetyBlockedControlEvidence = runtimeEvidence.ownerNotificationMonitorSafetyBlockedControls ?? null;
+const ownerNotificationMonitorNativeBoundaryControlEvidence = runtimeEvidence.ownerNotificationMonitorNativeBoundaryControls ?? null;
+const opsControlRoomContinuationEvidence = runtimeEvidence.opsControlRoomContinuationInteractions ?? null;
+const opsControlRoomSafetyBlockedEvidence = runtimeEvidence.opsControlRoomSafetyBlockedControls ?? null;
+const resellerDesktopOnboardingContinuationEvidence = runtimeEvidence.resellerDesktopOnboardingContinuationInteractions ?? null;
+const mobileResellerOnboardingContinuationEvidence = runtimeEvidence.mobileResellerOnboardingContinuationInteractions ?? null;
+const mobileResellerManagementContinuationEvidence = runtimeEvidence.mobileResellerManagementContinuationInteractions ?? null;
+const mobileResellerDashboardContinuationEvidence = runtimeEvidence.mobileResellerDashboardContinuationInteractions ?? null;
+const desktopResellerManagementContinuationEvidence = runtimeEvidence.desktopResellerManagementContinuationInteractions ?? null;
+const desktopResellerOfflineFeatureDisabledEvidence = runtimeEvidence.desktopResellerOfflineFeatureDisabledControls ?? null;
+const mobileResellerOfflineFeatureDisabledEvidence = runtimeEvidence.mobileResellerOfflineFeatureDisabledControls ?? null;
+const platformAssetTemplateLifecycleEvidence = runtimeEvidence.platformAssetTemplateLifecycleInteractions ?? null;
+const reportLeadMonitorContinuationEvidence = runtimeEvidence.reportLeadMonitorContinuationInteractions ?? null;
+const reportLeadMonitorNativeBoundaryEvidence = runtimeEvidence.reportLeadMonitorNativeBoundaryControls ?? null;
+const websiteEnquiryMonitorContinuationEvidence = runtimeEvidence.websiteEnquiryMonitorContinuationInteractions ?? null;
+const websiteEnquiryMonitorNativeBoundaryEvidence = runtimeEvidence.websiteEnquiryMonitorNativeBoundaryControls ?? null;
+const platformUserContinuationEvidence = runtimeEvidence.platformUserContinuationInteractions ?? null;
+const desktopAiImageGeneratorControlEvidence = runtimeEvidence.desktopAiImageGeneratorControlInteractions ?? null;
+const desktopAiImageGeneratorProviderBlockedEvidence = runtimeEvidence.desktopAiImageGeneratorProviderBlockedControls ?? null;
+const desktopAiImageGeneratorNativeBoundaryEvidence = runtimeEvidence.desktopAiImageGeneratorNativeBoundaryControls ?? null;
+const desktopPosSyncContinuationEvidence = runtimeEvidence.desktopPosSyncContinuationInteractions ?? null;
+const desktopPosSyncProviderBlockedEvidence = runtimeEvidence.desktopPosSyncProviderBlockedControls ?? null;
+const desktopPosSyncNativeBoundaryEvidence = runtimeEvidence.desktopPosSyncNativeBoundaryControls ?? null;
+const mobileSharedControlContinuationEvidence = runtimeEvidence.mobileSharedControlContinuationInteractions ?? null;
+const mobileSharedNativeBoundaryEvidence = runtimeEvidence.mobileSharedNativeBoundaryControls ?? null;
+const desktopProjectShareContinuationEvidence = runtimeEvidence.desktopProjectShareContinuationInteractions ?? null;
+const desktopProjectShareExternalHandoffEvidence = runtimeEvidence.desktopProjectShareExternalHandoffControls ?? null;
+const desktopProjectShareNativeBoundaryEvidence = runtimeEvidence.desktopProjectShareNativeBoundaryControls ?? null;
+const desktopMenuCardExportContinuationEvidence = runtimeEvidence.desktopMenuCardExportContinuationInteractions ?? null;
+const desktopMenuCardExportProviderBlockedEvidence = runtimeEvidence.desktopMenuCardExportProviderBlockedControls ?? null;
+const desktopMenuCardExportNativeBoundaryEvidence = runtimeEvidence.desktopMenuCardExportNativeBoundaryControls ?? null;
+const desktopMenuCardExportFixtureBlockedEvidence = runtimeEvidence.desktopMenuCardExportFixtureBlockedControls ?? null;
+const desktopActiveSubscriptionLifecycleEvidence = runtimeEvidence.desktopActiveSubscriptionLifecycleInteractions ?? null;
+const desktopActiveSubscriptionProviderBlockedEvidence = runtimeEvidence.desktopActiveSubscriptionProviderBlockedControls ?? null;
+const desktopActiveSubscriptionFeatureDisabledEvidence = runtimeEvidence.desktopActiveSubscriptionFeatureDisabledControls ?? null;
+const desktopTraditionalEditorContinuationEvidence = runtimeEvidence.desktopTraditionalEditorContinuationInteractions ?? null;
+const desktopTraditionalEditorFixtureBlockedEvidence = runtimeEvidence.desktopTraditionalEditorFixtureBlockedControls ?? null;
+const desktopCategoryEditorContinuationEvidence = runtimeEvidence.desktopCategoryEditorContinuationInteractions ?? null;
+const desktopCategoryEditorProviderBlockedEvidence = runtimeEvidence.desktopCategoryEditorProviderBlockedControls ?? null;
+const desktopCategoryEditorFixtureBlockedEvidence = runtimeEvidence.desktopCategoryEditorFixtureBlockedControls ?? null;
+const desktopAiMenuManagerContinuationEvidence = runtimeEvidence.desktopAiMenuManagerContinuationInteractions ?? null;
+const desktopAiMenuManagerProviderBlockedEvidence = runtimeEvidence.desktopAiMenuManagerProviderBlockedControls ?? null;
+const desktopAiMenuManagerFixtureBlockedEvidence = runtimeEvidence.desktopAiMenuManagerFixtureBlockedControls ?? null;
+const desktopPastActivityFeatureDisabledEvidence = runtimeEvidence.desktopPastActivityFeatureDisabledControls ?? null;
+const desktopResellerOnboardingProviderResultEvidence = runtimeEvidence.desktopResellerOnboardingProviderResultControls ?? null;
+const mobileExtractionReviewFixtureBlockedEvidence = runtimeEvidence.mobileExtractionReviewFixtureBlockedControls ?? null;
+const desktopAiEditProviderResultEvidence = runtimeEvidence.desktopAiEditProviderResultControls ?? null;
+const desktopAiEditNativeBoundaryEvidence = runtimeEvidence.desktopAiEditNativeBoundaryControls ?? null;
+const desktopAiEditFixtureBlockedEvidence = runtimeEvidence.desktopAiEditFixtureBlockedControls ?? null;
+const mediaImageAdjustNativeBoundaryEvidence = runtimeEvidence.mediaImageAdjustNativeBoundaryControls ?? null;
+const batchImageGenerationProviderResultEvidence = runtimeEvidence.batchImageGenerationProviderResultControls ?? null;
+const platformSentrySafetyBlockedEvidence = runtimeEvidence.platformSentrySafetyBlockedControls ?? null;
+const platformSentryExternalHandoffEvidence = runtimeEvidence.platformSentryExternalHandoffControls ?? null;
+const platformFontPresetFixtureBlockedEvidence = runtimeEvidence.platformFontPresetFixtureBlockedControls ?? null;
+const platformFontPresetNativeBoundaryEvidence = runtimeEvidence.platformFontPresetNativeBoundaryControls ?? null;
+const mobileBillingAlternateLifecycleEvidence = runtimeEvidence.mobileBillingAlternateLifecycleControls ?? null;
+const mobileMenuAlternateFixtureEvidence = runtimeEvidence.mobileMenuAlternateFixtureControls ?? null;
+const mobileMenuUploadNativeExtractionEvidence = runtimeEvidence.mobileMenuUploadNativeExtractionControls ?? null;
+const desktopDomainSettingsExternalBoundaryEvidence = runtimeEvidence.desktopDomainSettingsExternalBoundaryControls ?? null;
+const mobileHoursAlternateStateEvidence = runtimeEvidence.mobileHoursAlternateStateControls ?? null;
+const mobileFeedbackFixtureBlockedEvidence = runtimeEvidence.mobileFeedbackFixtureBlockedControls ?? null;
+const phoneOtpProviderBoundaryEvidence = runtimeEvidence.phoneOtpProviderBoundaryControls ?? null;
+const mobileDomainSettingsExternalBoundaryEvidence = runtimeEvidence.mobileDomainSettingsExternalBoundaryControls ?? null;
+const growthOsEntitlementProviderBoundaryEvidence = runtimeEvidence.growthOsEntitlementProviderBoundaryControls ?? null;
+const analyticsGuideExternalHandoffEvidence = runtimeEvidence.analyticsGuideExternalHandoffControls ?? null;
+const publicObpExternalHandoffEvidence = runtimeEvidence.publicObpExternalHandoffControls ?? null;
+const publicObpPlaceholderFixtureEvidence = runtimeEvidence.publicObpPlaceholderFixtureControl ?? null;
+const mobileResellerOnboardingProviderResultEvidence = runtimeEvidence.mobileResellerOnboardingProviderResultControls ?? null;
+const printableAssetAlternateStateBoundaryEvidence = runtimeEvidence.printableAssetAlternateStateBoundaryControls ?? null;
+const loginClaimLifecycleBoundaryEvidence = runtimeEvidence.loginClaimLifecycleBoundaryControls ?? null;
+const mobileShareAlternateNativeBoundaryEvidence = runtimeEvidence.mobileShareAlternateNativeBoundaryControls ?? null;
+const desktopUseMenuListAlternateStateEvidence = runtimeEvidence.desktopUseMenuListAlternateStateControls ?? null;
+const desktopProjectLifecycleCurrentBrowserEvidence = runtimeEvidence.desktopProjectLifecycleCurrentBrowserControls ?? null;
+const desktopProjectEditAlternateProviderEvidence = runtimeEvidence.desktopProjectEditAlternateProviderControls ?? null;
+const desktopProjectEditLanguageFixtureEvidence = runtimeEvidence.desktopProjectEditLanguageFixtureControls ?? null;
+const desktopSpecialMenuLanguageProviderEvidence = runtimeEvidence.desktopSpecialMenuLanguageProviderControls ?? null;
+const desktopStoreCustomizationFixtureEvidence = runtimeEvidence.desktopStoreCustomizationFixtureControls ?? null;
+const currentOwnerSettingsProjectReboundEvidence = runtimeEvidence.currentOwnerSettingsProjectReboundControls ?? null;
+const ownerProjectProviderBoundaryEvidence = runtimeEvidence.ownerProjectProviderBoundaryControls ?? null;
+const ownerSettingsNativeBoundaryEvidence = runtimeEvidence.ownerSettingsNativeBoundaryControls ?? null;
+const ownerSettingsAlternateFixtureEvidence = runtimeEvidence.ownerSettingsAlternateFixtureControls ?? null;
+const billingCancellationLifecycleEvidence = runtimeEvidence.billingCancellationLifecycleControls ?? null;
+const currentOwnerMediaAnalyticsLifecycleEvidence = runtimeEvidence.currentOwnerMediaAnalyticsLifecycleControls ?? null;
+const analyticsWizardExternalHandoffEvidence = runtimeEvidence.analyticsWizardExternalHandoffControls ?? null;
+const ownerMediaNativeBoundaryEvidence = runtimeEvidence.ownerMediaNativeBoundaryControls ?? null;
+const ownerMediaProviderBoundaryEvidence = runtimeEvidence.ownerMediaProviderBoundaryControls ?? null;
+const ownerMediaFixtureBlockedEvidence = runtimeEvidence.ownerMediaFixtureBlockedControls ?? null;
+const publicImageViewerInternalHandlersEvidence = runtimeEvidence.publicImageViewerInternalHandlers ?? null;
+const ownerMediaDestructiveSafetyEvidence = runtimeEvidence.ownerMediaDestructiveSafetyControls ?? null;
+const pricingOnboardingAlternateLifecycleEvidence = runtimeEvidence.pricingOnboardingAlternateLifecycleControls ?? null;
+const publicBusinessActionExternalHandoffEvidence = runtimeEvidence.publicBusinessActionExternalHandoffControls ?? null;
+const publicBusinessActionFixtureEvidence = runtimeEvidence.publicBusinessActionFixtureControls ?? null;
+const feedbackQrNativeAndExternalEvidence = runtimeEvidence.feedbackQrNativeAndExternalControls ?? null;
+const currentAnalyticsSettingsDraftEvidence = runtimeEvidence.currentAnalyticsSettingsDraftControls ?? null;
+const ownerAlternateFeatureFixtureEvidence = runtimeEvidence.ownerAlternateFeatureFixtureControls ?? null;
+const ownerAiGenerationProviderBoundaryEvidence = runtimeEvidence.ownerAiGenerationProviderBoundaryControls ?? null;
+const digitalScreenOwnerUploadNativeEvidence = runtimeEvidence.digitalScreenOwnerUploadNativeControls ?? null;
+const ownerAlternateLifecycleComponentEvidence = runtimeEvidence.ownerAlternateLifecycleComponentControls ?? null;
+const ownerNativeArtifactComponentEvidence = runtimeEvidence.ownerNativeArtifactComponentControls ?? null;
+const ownerProviderDependentComponentEvidence = runtimeEvidence.ownerProviderDependentComponentControls ?? null;
+const publicSharingExternalComponentEvidence = runtimeEvidence.publicSharingExternalComponentControls ?? null;
+const currentBehavioralContractControlEvidence = runtimeEvidence.currentBehavioralContractControlCoverage ?? null;
+const remainingAlternateFixtureComponentEvidence = runtimeEvidence.remainingAlternateFixtureComponentControls ?? null;
+const remainingProviderDependentComponentEvidence = runtimeEvidence.remainingProviderDependentComponentControls ?? null;
+const remainingNativeArtifactComponentEvidence = runtimeEvidence.remainingNativeArtifactComponentControls ?? null;
+const currentAdjacentContractComponentEvidence = runtimeEvidence.currentAdjacentContractComponentControls ?? null;
+const aiSearchExternalBoundaryEvidence = runtimeEvidence.aiSearchExternalBoundaryControls ?? null;
+const notificationPreferredChannelBrowserEvidence = runtimeEvidence.notificationPreferredChannelBrowserControls ?? null;
+const notificationWhatsAppFixtureEvidence = runtimeEvidence.notificationWhatsAppFixtureBlockedControls ?? null;
+const businessSettingsReversibleBrowserEvidence = runtimeEvidence.businessSettingsReversibleBrowserControls ?? null;
+const feedbackReviewExternalHandoffEvidence = runtimeEvidence.feedbackReviewExternalHandoffControl ?? null;
+const platformPullApiKeyBrowserEvidence = runtimeEvidence.platformPullApiKeyBrowserControls ?? null;
+const platformPullApiKeyNativeClipboardEvidence = runtimeEvidence.platformPullApiKeyNativeClipboardControl ?? null;
+const socialMediaDraftBrowserEvidence = runtimeEvidence.socialMediaDraftBrowserControls ?? null;
+const compliancePageLifecycleBrowserEvidence = runtimeEvidence.compliancePageLifecycleBrowserControls ?? null;
+const googleListingReminderBrowserEvidence = runtimeEvidence.googleListingReminderBrowserControl ?? null;
+const googleListingNativeClipboardEvidence = runtimeEvidence.googleListingNativeClipboardControls ?? null;
+const googleListingExternalHandoffEvidence = runtimeEvidence.googleListingExternalHandoffControls ?? null;
+const businessSettingsSaveLifecycleEvidence = runtimeEvidence.businessSettingsSaveLifecycleControls ?? null;
+const timeSlotPresetEntryBrowserEvidence = runtimeEvidence.timeSlotPresetEntryBrowserControl ?? null;
+const workingHoursDraftBrowserEvidence = runtimeEvidence.workingHoursDraftBrowserControl ?? null;
+const businessCopyProviderBoundaryEvidence = runtimeEvidence.businessCopyProviderBoundaryControl ?? null;
+const businessCopyRepairFixtureEvidence = runtimeEvidence.businessCopyRepairFixtureControl ?? null;
+const websiteAuthenticatedDashboardEvidence = runtimeEvidence.websiteAuthenticatedDashboardControl ?? null;
+const websiteLogoutSafetyEvidence = runtimeEvidence.websiteLogoutSafetyControl ?? null;
+const transactionsPaginationFixtureEvidence = runtimeEvidence.transactionsPaginationFixtureControls ?? null;
+const feedbackCardExternalReplyEvidence = runtimeEvidence.feedbackCardExternalReplyControls ?? null;
+const feedbackCardNativeReplyCopyEvidence = runtimeEvidence.feedbackCardNativeReplyCopyControl ?? null;
+const messagePreviewSuccessFixtureEvidence = runtimeEvidence.messagePreviewSuccessFixtureControls ?? null;
+const messagePreviewWhatsAppHandoffEvidence = runtimeEvidence.messagePreviewWhatsAppHandoffControl ?? null;
+const obpMenuCtaAlternateLifecycleEvidence = runtimeEvidence.obpMenuCtaAlternateLifecycleControls ?? null;
+const obpMenuCtaCommentEvidence = runtimeEvidence.obpMenuCtaCommentCandidate ?? null;
+const menuBreadcrumbAlternateLayoutEvidence = runtimeEvidence.menuBreadcrumbAlternateLayoutControls ?? null;
+const globalErrorRuntimeEvidence = runtimeEvidence.globalErrorRuntimeControls ?? null;
+const rootErrorRuntimeEvidence = runtimeEvidence.rootErrorRuntimeControls ?? null;
+const storeAccessRecoveryRuntimeEvidence = runtimeEvidence.storeAccessRecoveryRuntimeControls ?? null;
+const mobileTextCaseReversibleEvidence = runtimeEvidence.mobileTextCaseReversibleControls ?? null;
+const mobileTextCaseMaskBoundaryEvidence = runtimeEvidence.mobileTextCaseMaskBoundaryControl ?? null;
+const mobileTextCaseApplySafetyEvidence = runtimeEvidence.mobileTextCaseApplySafetyControl ?? null;
+const decisionBlocksReversibleEvidence = runtimeEvidence.decisionBlocksReversibleBrowserControls ?? null;
+const decisionBlocksSaveSafetyEvidence = runtimeEvidence.decisionBlocksSaveSafetyControl ?? null;
+const decisionChoicePosterDesktopEvidence = runtimeEvidence.decisionChoicePosterDesktopBrowserControl ?? null;
+const decisionChoicePosterMobileEvidence = runtimeEvidence.decisionChoicePosterMobileComponentControl ?? null;
+const mobileNotificationReversibleEvidence = runtimeEvidence.mobileNotificationReversibleBrowserControls ?? null;
+const mobileNotificationWhatsAppFixtureEvidence = runtimeEvidence.mobileNotificationWhatsAppFixtureControl ?? null;
+const mobileNotificationSaveSafetyEvidence = runtimeEvidence.mobileNotificationSaveSafetyControl ?? null;
+const mobileAdvancedSocialEditorEvidence = runtimeEvidence.mobileAdvancedSocialEditorBrowserControls ?? null;
+const mobileAdvancedSocialExternalEvidence = runtimeEvidence.mobileAdvancedSocialExternalControl ?? null;
+const mobileAdvancedSocialRemoveFixtureEvidence = runtimeEvidence.mobileAdvancedSocialRemoveFixtureControl ?? null;
+const creativeEditorAlternateDraftQrEvidence = runtimeEvidence.creativeEditorAlternateDraftQrControls ?? null;
+const businessHealthProjectScopeCurrentEvidence = runtimeEvidence.businessHealthProjectScopeCurrentControls ?? null;
+const publicTruthOwnerCheckCurrentEvidence = runtimeEvidence.publicTruthOwnerCheckCurrentControls ?? null;
+const publicTruthMonitorCurrentEvidence = runtimeEvidence.publicTruthMonitorCurrentControls ?? null;
+const verticalSidebarCurrentEvidence = runtimeEvidence.verticalSidebarCurrentControls ?? null;
+const horizontalSidebarCurrentEvidence = runtimeEvidence.horizontalSidebarCurrentControls ?? null;
+const appBreadcrumbCurrentEvidence = runtimeEvidence.appBreadcrumbCurrentControls ?? null;
+const analyticsExportRuntimeEvidence = runtimeEvidence.analyticsExportRuntimeControls ?? null;
+const projectConfirmModalRuntimeEvidence = runtimeEvidence.projectConfirmModalRuntimeControls ?? null;
+const errorRecoveryAlertRuntimeEvidence = runtimeEvidence.errorRecoveryAlertRuntimeControls ?? null;
+const projectSelectorRuntimeEvidence = runtimeEvidence.projectSelectorRuntimeControls ?? null;
+const aiSearchActionButtonsRuntimeEvidence = runtimeEvidence.aiSearchActionButtonsRuntimeControls ?? null;
+const aiSearchSearchBarRuntimeEvidence = runtimeEvidence.aiSearchSearchBarRuntimeControls ?? null;
+const aiSearchLocalResultsRuntimeEvidence = runtimeEvidence.aiSearchLocalResultsRuntimeControls ?? null;
+const welcomeModalRuntimeEvidence = runtimeEvidence.welcomeModalRuntimeControls ?? null;
+const upgradeConfirmationRuntimeEvidence = runtimeEvidence.upgradeConfirmationRuntimeControls ?? null;
+const messageReferencesRuntimeEvidence = runtimeEvidence.messageReferencesRuntimeControls ?? null;
+const creditPackRuntimeEvidence = runtimeEvidence.creditPackRuntimeControls ?? null;
+const creditPackSignInExternalEvidence = runtimeEvidence.creditPackSignInExternalBoundaryControl ?? null;
+const privacyPolicyMailtoBoundaryEvidence = runtimeEvidence.privacyPolicyMailtoBoundaryControls ?? null;
+const remainingCurrentComponentControlEvidence = runtimeEvidence.remainingCurrentComponentControlInteractions ?? null;
+const remainingCurrentBrowserControlEvidence = runtimeEvidence.remainingCurrentBrowserControlInteractions ?? null;
+const remainingCurrentNativeBoundaryEvidence = runtimeEvidence.remainingCurrentNativeBoundaryControls ?? null;
+const remainingCurrentExternalBoundaryEvidence = runtimeEvidence.remainingCurrentExternalBoundaryControls ?? null;
+const remainingCurrentProviderBoundaryEvidence = runtimeEvidence.remainingCurrentProviderBoundaryControls ?? null;
+const remainingCurrentNotTriggerableEvidence = runtimeEvidence.remainingCurrentNotUserTriggerableControls ?? null;
+const remainingCurrentAlternateLifecycleEvidence = runtimeEvidence.remainingCurrentAlternateLifecycleControls ?? null;
+const remainingCurrentSafetyBoundaryEvidence = runtimeEvidence.remainingCurrentSafetyBoundaryControls ?? null;
+const remainingCurrentFixtureBoundaryEvidence = runtimeEvidence.remainingCurrentFixtureBoundaryControls ?? null;
+const currentPrintableDesktopBrowserEvidence = runtimeEvidence.currentPrintableDesktopBrowserControls ?? null;
+const currentItemProductTagDesktopBrowserEvidence = runtimeEvidence.currentItemProductTagDesktopBrowserControls ?? null;
+const currentPrintableAlternateLifecycleEvidence = runtimeEvidence.currentPrintableAlternateLifecycleControls ?? null;
+const currentPrintableSafetyEvidence = runtimeEvidence.currentPrintableSafetyControls ?? null;
+const currentPrintableFixtureEvidence = runtimeEvidence.currentPrintableFixtureControls ?? null;
+const currentPrintableNativeEvidence = runtimeEvidence.currentPrintableNativeControls ?? null;
+const currentPrintableExternalEvidence = runtimeEvidence.currentPrintableExternalControls ?? null;
+const pricingPlansModalRuntimeEvidence = runtimeEvidence.pricingPlansModalRuntimeControls ?? null;
+const editSpecialMenuScheduleRuntimeEvidence = runtimeEvidence.editSpecialMenuScheduleRuntimeControls ?? null;
+const menuFiltersRuntimeEvidence = runtimeEvidence.menuFiltersRuntimeControls ?? null;
+const menuLanguageSwitcherRuntimeEvidence = runtimeEvidence.menuLanguageSwitcherRuntimeControls ?? null;
+const transactionDetailsRuntimeEvidence = runtimeEvidence.transactionDetailsRuntimeControls ?? null;
+const articleViewModalRecoveryRuntimeEvidence = runtimeEvidence.articleViewModalRecoveryRuntimeControls ?? null;
+const publicCookieConsentRuntimeEvidence = runtimeEvidence.publicCookieConsentRuntimeControls ?? null;
+const masterUpdateBannerRuntimeEvidence = runtimeEvidence.masterUpdateBannerRuntimeControls ?? null;
+const dateRangeSelectorRuntimeEvidence = runtimeEvidence.dateRangeSelectorRuntimeControls ?? null;
+const installInstructionsRuntimeEvidence = runtimeEvidence.installInstructionsRuntimeControls ?? null;
+const installPromptRuntimeEvidence = runtimeEvidence.installPromptRuntimeControls ?? null;
+const lucideIconGridRuntimeEvidence = runtimeEvidence.lucideIconGridRuntimeControls ?? null;
+const mobileTempStatusConfiguratorRuntimeEvidence = runtimeEvidence.mobileTempStatusConfiguratorRuntimeControls ?? null;
+const mobileMenuCommandSheetRuntimeEvidence = runtimeEvidence.mobileMenuCommandSheetRuntimeControls ?? null;
+const mobileCompliancePagesRuntimeEvidence = runtimeEvidence.mobileCompliancePagesRuntimeControls ?? null;
+const mobileCompliancePageExternalEvidence = runtimeEvidence.mobileCompliancePageExternalBoundaryControl ?? null;
+const mobileSchedulerMonitorRuntimeEvidence = runtimeEvidence.mobileSchedulerMonitorRuntimeControls ?? null;
+const mobileSchedulerRecoverySafetyEvidence = runtimeEvidence.mobileSchedulerRecoverySafetyBoundaryControl ?? null;
+const commandCenterActiveInactiveRuntimeEvidence = runtimeEvidence.commandCenterActiveInactiveRuntimeControls ?? null;
+const commandCenterAvailabilityRuntimeEvidence = runtimeEvidence.commandCenterAvailabilityRuntimeControls ?? null;
+const commandCenterPricingRuntimeEvidence = runtimeEvidence.commandCenterPricingRuntimeControls ?? null;
+const commandCenterTextCaseRuntimeEvidence = runtimeEvidence.commandCenterTextCaseRuntimeControls ?? null;
+const languageSelectorRuntimeEvidence = runtimeEvidence.languageSelectorRuntimeControls ?? null;
+const ownerAppUpdatePromptRuntimeEvidence = runtimeEvidence.ownerAppUpdatePromptRuntimeControls ?? null;
+const ownerAppUpdateRefreshNativeEvidence = runtimeEvidence.ownerAppUpdateRefreshNativeBoundaryControl ?? null;
+const starRatingRuntimeEvidence = runtimeEvidence.starRatingRuntimeControl ?? null;
+const mediaAspectRatioRuntimeEvidence = runtimeEvidence.mediaAspectRatioRuntimeControl ?? null;
+const ownerAssistantInputRuntimeEvidence = runtimeEvidence.ownerAssistantInputRuntimeControls ?? null;
+const reorderSortableItemRuntimeEvidence = runtimeEvidence.reorderSortableItemRuntimeControls ?? null;
+const billingHistoryEmailRuntimeEvidence = runtimeEvidence.billingHistoryEmailRuntimeControl ?? null;
+const billingHistoryInvoiceExternalEvidence = runtimeEvidence.billingHistoryInvoiceExternalBoundaryControl ?? null;
+const analyticsEmptyStateRuntimeEvidence = runtimeEvidence.analyticsEmptyStateRuntimeControl ?? null;
+const analyticsRefreshRuntimeEvidence = runtimeEvidence.analyticsRefreshRuntimeControl ?? null;
+const analyticsMetricCardRuntimeEvidence = runtimeEvidence.analyticsMetricCardRuntimeControl ?? null;
+const analyticsStatCardRuntimeEvidence = runtimeEvidence.analyticsStatCardRuntimeControl ?? null;
+const mobileLocalizedLanguageRuntimeEvidence = runtimeEvidence.mobileLocalizedLanguageRuntimeControl ?? null;
+const searchSuggestionsRuntimeEvidence = runtimeEvidence.searchSuggestionsRuntimeControl ?? null;
+const businessHealthSuggestedQuestionRuntimeEvidence = runtimeEvidence.businessHealthSuggestedQuestionRuntimeControl ?? null;
+const ownerAssistantSourceDisclosureRuntimeEvidence = runtimeEvidence.ownerAssistantSourceDisclosureRuntimeControl ?? null;
+const mobileLinkCardRuntimeEvidence = runtimeEvidence.mobileLinkCardRuntimeControl ?? null;
+const menuFilterChipsRuntimeEvidence = runtimeEvidence.menuFilterChipsRuntimeControl ?? null;
+const analyticsDataTableSearchRuntimeEvidence = runtimeEvidence.analyticsDataTableSearchRuntimeControl ?? null;
+const analyticsFeedbackListRuntimeEvidence = runtimeEvidence.analyticsFeedbackListRuntimeControl ?? null;
+const analyticsKnowledgeGapsRuntimeEvidence = runtimeEvidence.analyticsKnowledgeGapsRuntimeControl ?? null;
+const analyticsTopQuestionsRuntimeEvidence = runtimeEvidence.analyticsTopQuestionsRuntimeControl ?? null;
+const skipToContentRuntimeEvidence = runtimeEvidence.skipToContentRuntimeControl ?? null;
+const scrollToBottomRuntimeEvidence = runtimeEvidence.scrollToBottomRuntimeControl ?? null;
+const backToTopRuntimeEvidence = runtimeEvidence.backToTopRuntimeControl ?? null;
+const emojiGridSearchRuntimeEvidence = runtimeEvidence.emojiGridSearchRuntimeControl ?? null;
+const todayPrimaryCardRuntimeEvidence = runtimeEvidence.todayPrimaryCardRuntimeControls ?? null;
+const businessHealthHeaderRuntimeEvidence = runtimeEvidence.businessHealthHeaderRuntimeControl ?? null;
+const loadingMessageCancelRuntimeEvidence = runtimeEvidence.loadingMessageCancelRuntimeControl ?? null;
+const aiButtonIconRuntimeEvidence = runtimeEvidence.aiButtonIconRuntimeControl ?? null;
+const knowledgeBaseSourceFileRuntimeEvidence = runtimeEvidence.knowledgeBaseSourceFileRuntimeControl ?? null;
+const todayOperationalSectionRuntimeEvidence = runtimeEvidence.todayOperationalSectionRuntimeControl ?? null;
+const noSubscriptionViewPlansRuntimeEvidence = runtimeEvidence.noSubscriptionViewPlansRuntimeControl ?? null;
+const emptyProjectStateRuntimeEvidence = runtimeEvidence.emptyProjectStateRuntimeControl ?? null;
+const feedbackIntelligenceDisclosureRuntimeEvidence = runtimeEvidence.feedbackIntelligenceDisclosureRuntimeControl ?? null;
 const CREATIVE_EDITOR_RUNTIME_SOURCE_FILES = [
     "src/modules/creative-editor/CreativeEditor.tsx",
     "src/app/(internal)/creative-editor-smoke/CreativeEditorSmokeClient.tsx",
+    "src/app/(internal)/creative-editor-smoke/page.tsx",
 ];
 const currentCreativeEditorSourceManifestSha256 = (() => {
     const hash = crypto.createHash("sha256");
@@ -72,6 +346,16 @@ const currentCreativeEditorSourceManifestSha256 = (() => {
 const creativeEditorControlEvidenceIsCurrent = (
     creativeEditorControlEvidence?.result === "PASS"
     && creativeEditorControlEvidence?.sourceManifestSha256
+        === currentCreativeEditorSourceManifestSha256
+);
+const creativeEditorNativeBoundaryEvidenceIsCurrent = (
+    creativeEditorNativeBoundaryEvidence?.result === "PASS"
+    && creativeEditorNativeBoundaryEvidence?.sourceManifestSha256
+        === currentCreativeEditorSourceManifestSha256
+);
+const creativeEditorNotShippedEvidenceIsCurrent = (
+    creativeEditorNotShippedEvidence?.result === "PASS"
+    && creativeEditorNotShippedEvidence?.sourceManifestSha256
         === currentCreativeEditorSourceManifestSha256
 );
 const WEBSITE_HEADER_RUNTIME_SOURCE_FILES = [
@@ -186,6 +470,974 @@ const currentSingleSourceManifestSha256 = (relativePath) => {
     hash.update("\0");
     return hash.digest("hex");
 };
+const PLATFORM_NOTIFICATION_MONITOR_SOURCE_FILE = "src/components/templates/main-app/platform/platformNotificationMonitor/index.tsx";
+const platformNotificationMonitorControlEvidenceIsCurrent = (
+    platformNotificationMonitorControlEvidence?.result === "PASS"
+    && platformNotificationMonitorControlEvidence?.sourceManifestSha256
+        === currentSingleSourceManifestSha256(PLATFORM_NOTIFICATION_MONITOR_SOURCE_FILE)
+);
+const platformNotificationMonitorNativeBoundaryControlEvidenceIsCurrent = (
+    platformNotificationMonitorNativeBoundaryControlEvidence?.result === "PASS"
+    && platformNotificationMonitorNativeBoundaryControlEvidence?.sourceManifestSha256
+        === currentSingleSourceManifestSha256(PLATFORM_NOTIFICATION_MONITOR_SOURCE_FILE)
+);
+const OWNER_NOTIFICATION_MONITOR_SOURCE_FILE = "src/components/templates/main-app/platform/ownerNotificationMonitor/index.tsx";
+const ownerNotificationMonitorControlEvidenceIsCurrent = (
+    ownerNotificationMonitorControlEvidence?.result === "PASS"
+    && ownerNotificationMonitorControlEvidence?.sourceManifestSha256
+        === currentSingleSourceManifestSha256(OWNER_NOTIFICATION_MONITOR_SOURCE_FILE)
+);
+const ownerNotificationMonitorSafetyBlockedControlEvidenceIsCurrent = (
+    ownerNotificationMonitorSafetyBlockedControlEvidence?.result === "PASS"
+    && ownerNotificationMonitorSafetyBlockedControlEvidence?.sourceManifestSha256
+        === currentSingleSourceManifestSha256(OWNER_NOTIFICATION_MONITOR_SOURCE_FILE)
+);
+const ownerNotificationMonitorNativeBoundaryControlEvidenceIsCurrent = (
+    ownerNotificationMonitorNativeBoundaryControlEvidence?.result === "PASS"
+    && ownerNotificationMonitorNativeBoundaryControlEvidence?.sourceManifestSha256
+        === currentSingleSourceManifestSha256(OWNER_NOTIFICATION_MONITOR_SOURCE_FILE)
+);
+const OPS_CONTROL_ROOM_SOURCE_FILE = "src/components/templates/main-app/platform/opsControlRoom/index.tsx";
+const opsControlRoomContinuationEvidenceIsCurrent = (
+    opsControlRoomContinuationEvidence?.result === "PASS"
+    && opsControlRoomContinuationEvidence?.sourceManifestSha256
+        === currentSingleSourceManifestSha256(OPS_CONTROL_ROOM_SOURCE_FILE)
+);
+const opsControlRoomSafetyBlockedEvidenceIsCurrent = (
+    opsControlRoomSafetyBlockedEvidence?.result === "PASS"
+    && opsControlRoomSafetyBlockedEvidence?.sourceManifestSha256
+        === currentSingleSourceManifestSha256(OPS_CONTROL_ROOM_SOURCE_FILE)
+);
+const isCurrentSingleSourceEvidence = (evidence, relativePath) => (
+    evidence?.result === "PASS"
+    && evidence?.sourceManifestSha256 === currentSingleSourceManifestSha256(relativePath)
+);
+const currentSourceManifestSha256 = (relativePaths) => {
+    const hash = crypto.createHash("sha256");
+    for (const relativePath of relativePaths) {
+        hash.update(relativePath);
+        hash.update("\0");
+        hash.update(fs.readFileSync(path.join(ROOT, relativePath)));
+        hash.update("\0");
+    }
+    return hash.digest("hex");
+};
+const isCurrentMultiSourceEvidence = (evidence, relativePaths) => (
+    evidence?.result === "PASS"
+    && evidence?.sourceManifestSha256 === currentSourceManifestSha256(relativePaths)
+);
+const REMAINING_CURRENT_COMPONENT_CONTROL_SOURCE_FILES = [
+    "src/components/antdComponent/drawerElement/index.tsx",
+    "src/components/mobile/components/MobileBusinessHealthCard.tsx",
+    "src/components/templates/main-app/projects/ProcessGuideModal.tsx",
+    "src/components/templates/main-app/ownerBusinessAssistant/OwnerAssistantMessageList.tsx",
+    "src/components/templates/main-app/projects/editorView/EditorWelcomeBanner.tsx",
+    "src/components/templates/main-app/projects/jobScreens/ExtractionJobFailureModal.tsx",
+    "src/components/templates/main-app/projects/jobScreens/ExtractionJobSuccessModal.tsx",
+    "src/components/website/pricing-pages/FeatureComparisonTable.tsx",
+    "src/components/website/pricing-pages/SubscriptionPayementSuccessModal.tsx",
+];
+const remainingCurrentComponentControlEvidenceIsCurrent = isCurrentMultiSourceEvidence(
+    remainingCurrentComponentControlEvidence,
+    REMAINING_CURRENT_COMPONENT_CONTROL_SOURCE_FILES,
+);
+const REMAINING_CURRENT_BROWSER_CONTROL_SOURCE_FILES = [
+    "src/components/templates/main-app/dashboard/MenuQualitySignals.tsx",
+    "src/components/templates/main-app/ownerBusinessAssistant/BusinessHealthDashboardCard.tsx",
+];
+const remainingCurrentBrowserControlEvidenceIsCurrent = isCurrentMultiSourceEvidence(
+    remainingCurrentBrowserControlEvidence,
+    REMAINING_CURRENT_BROWSER_CONTROL_SOURCE_FILES,
+);
+const interactionSourceFiles = (evidence) => [
+    ...new Set((evidence?.interactions ?? []).map((interaction) => interaction.source)),
+];
+const isCurrentInteractionSourceEvidence = (evidence) => (
+    evidence?.result === "PASS"
+    && evidence?.sourceManifestSha256 === currentSourceManifestSha256(interactionSourceFiles(evidence))
+);
+const remainingCurrentNativeBoundaryEvidenceIsCurrent = isCurrentInteractionSourceEvidence(remainingCurrentNativeBoundaryEvidence);
+const remainingCurrentExternalBoundaryEvidenceIsCurrent = isCurrentInteractionSourceEvidence(remainingCurrentExternalBoundaryEvidence);
+const remainingCurrentProviderBoundaryEvidenceIsCurrent = isCurrentInteractionSourceEvidence(remainingCurrentProviderBoundaryEvidence);
+const remainingCurrentNotTriggerableEvidenceIsCurrent = isCurrentInteractionSourceEvidence(remainingCurrentNotTriggerableEvidence);
+const remainingCurrentAlternateLifecycleEvidenceIsCurrent = isCurrentInteractionSourceEvidence(remainingCurrentAlternateLifecycleEvidence);
+const remainingCurrentSafetyBoundaryEvidenceIsCurrent = isCurrentInteractionSourceEvidence(remainingCurrentSafetyBoundaryEvidence);
+const remainingCurrentFixtureBoundaryEvidenceIsCurrent = isCurrentInteractionSourceEvidence(remainingCurrentFixtureBoundaryEvidence);
+const currentPrintableDesktopBrowserEvidenceIsCurrent = isCurrentInteractionSourceEvidence(currentPrintableDesktopBrowserEvidence);
+const currentItemProductTagDesktopBrowserEvidenceIsCurrent = isCurrentInteractionSourceEvidence(currentItemProductTagDesktopBrowserEvidence);
+const currentPrintableAlternateLifecycleEvidenceIsCurrent = isCurrentInteractionSourceEvidence(currentPrintableAlternateLifecycleEvidence);
+const currentPrintableSafetyEvidenceIsCurrent = isCurrentInteractionSourceEvidence(currentPrintableSafetyEvidence);
+const currentPrintableFixtureEvidenceIsCurrent = isCurrentInteractionSourceEvidence(currentPrintableFixtureEvidence);
+const currentPrintableNativeEvidenceIsCurrent = isCurrentInteractionSourceEvidence(currentPrintableNativeEvidence);
+const currentPrintableExternalEvidenceIsCurrent = isCurrentInteractionSourceEvidence(currentPrintableExternalEvidence);
+const resellerDesktopOnboardingContinuationEvidenceIsCurrent = isCurrentSingleSourceEvidence(
+    resellerDesktopOnboardingContinuationEvidence,
+    "src/components/templates/main-app/reseller/OnboardingWizard.tsx",
+);
+const mobileResellerOnboardingContinuationEvidenceIsCurrent = isCurrentSingleSourceEvidence(
+    mobileResellerOnboardingContinuationEvidence,
+    "src/components/mobile/screens/MobileResellerOnboardingScreen.tsx",
+);
+const mobileResellerManagementContinuationEvidenceIsCurrent = isCurrentSingleSourceEvidence(
+    mobileResellerManagementContinuationEvidence,
+    "src/components/mobile/screens/MobileResellerManagementScreen.tsx",
+);
+const mobileResellerDashboardContinuationEvidenceIsCurrent = isCurrentSingleSourceEvidence(
+    mobileResellerDashboardContinuationEvidence,
+    "src/components/mobile/screens/MobileResellerDashboardScreen.tsx",
+);
+const desktopResellerManagementContinuationEvidenceIsCurrent = isCurrentSingleSourceEvidence(
+    desktopResellerManagementContinuationEvidence,
+    "src/components/templates/main-app/reseller/ResellerManagement.tsx",
+);
+const desktopResellerOfflineFeatureDisabledEvidenceIsCurrent = isCurrentSingleSourceEvidence(
+    desktopResellerOfflineFeatureDisabledEvidence,
+    "src/components/templates/main-app/reseller/ResellerDashboard.tsx",
+);
+const mobileResellerOfflineFeatureDisabledEvidenceIsCurrent = isCurrentSingleSourceEvidence(
+    mobileResellerOfflineFeatureDisabledEvidence,
+    "src/components/mobile/screens/MobileResellerDashboardScreen.tsx",
+);
+const platformAssetTemplateLifecycleEvidenceIsCurrent = isCurrentSingleSourceEvidence(
+    platformAssetTemplateLifecycleEvidence,
+    "src/components/templates/platform/assetTemplates/index.tsx",
+);
+const desktopAiImageGeneratorControlEvidenceIsCurrent = isCurrentSingleSourceEvidence(
+    desktopAiImageGeneratorControlEvidence,
+    "src/components/templates/main-app/projects/editorView/AiImageGenerator/index.tsx",
+);
+const desktopAiImageGeneratorProviderBlockedEvidenceIsCurrent = isCurrentSingleSourceEvidence(
+    desktopAiImageGeneratorProviderBlockedEvidence,
+    "src/components/templates/main-app/projects/editorView/AiImageGenerator/index.tsx",
+);
+const desktopAiImageGeneratorNativeBoundaryEvidenceIsCurrent = isCurrentSingleSourceEvidence(
+    desktopAiImageGeneratorNativeBoundaryEvidence,
+    "src/components/templates/main-app/projects/editorView/AiImageGenerator/index.tsx",
+);
+const desktopPosSyncContinuationEvidenceIsCurrent = isCurrentSingleSourceEvidence(
+    desktopPosSyncContinuationEvidence,
+    "src/components/templates/main-app/businessSettings/tabs/PosSyncTab.tsx",
+);
+const desktopPosSyncProviderBlockedEvidenceIsCurrent = isCurrentSingleSourceEvidence(
+    desktopPosSyncProviderBlockedEvidence,
+    "src/components/templates/main-app/businessSettings/tabs/PosSyncTab.tsx",
+);
+const desktopPosSyncNativeBoundaryEvidenceIsCurrent = isCurrentSingleSourceEvidence(
+    desktopPosSyncNativeBoundaryEvidence,
+    "src/components/templates/main-app/businessSettings/tabs/PosSyncTab.tsx",
+);
+const mobileSharedControlContinuationEvidenceIsCurrent = isCurrentSingleSourceEvidence(
+    mobileSharedControlContinuationEvidence,
+    "src/components/mobile/antd.tsx",
+);
+const mobileSharedNativeBoundaryEvidenceIsCurrent = isCurrentSingleSourceEvidence(
+    mobileSharedNativeBoundaryEvidence,
+    "src/components/mobile/antd.tsx",
+);
+const desktopProjectShareContinuationEvidenceIsCurrent = isCurrentSingleSourceEvidence(
+    desktopProjectShareContinuationEvidence,
+    "src/components/templates/main-app/projects/b2cView/shareModal/index.tsx",
+);
+const desktopProjectShareExternalHandoffEvidenceIsCurrent = isCurrentSingleSourceEvidence(
+    desktopProjectShareExternalHandoffEvidence,
+    "src/components/templates/main-app/projects/b2cView/shareModal/index.tsx",
+);
+const desktopProjectShareNativeBoundaryEvidenceIsCurrent = isCurrentSingleSourceEvidence(
+    desktopProjectShareNativeBoundaryEvidence,
+    "src/components/templates/main-app/projects/b2cView/shareModal/index.tsx",
+);
+const desktopMenuCardExportContinuationEvidenceIsCurrent = isCurrentSingleSourceEvidence(
+    desktopMenuCardExportContinuationEvidence,
+    "src/components/templates/main-app/menu-card-export/MenuCardExportRoute.tsx",
+);
+const desktopMenuCardExportProviderBlockedEvidenceIsCurrent = isCurrentSingleSourceEvidence(
+    desktopMenuCardExportProviderBlockedEvidence,
+    "src/components/templates/main-app/menu-card-export/MenuCardExportRoute.tsx",
+);
+const desktopMenuCardExportNativeBoundaryEvidenceIsCurrent = isCurrentSingleSourceEvidence(
+    desktopMenuCardExportNativeBoundaryEvidence,
+    "src/components/templates/main-app/menu-card-export/MenuCardExportRoute.tsx",
+);
+const desktopMenuCardExportFixtureBlockedEvidenceIsCurrent = isCurrentSingleSourceEvidence(
+    desktopMenuCardExportFixtureBlockedEvidence,
+    "src/components/templates/main-app/menu-card-export/MenuCardExportRoute.tsx",
+);
+const desktopActiveSubscriptionLifecycleEvidenceIsCurrent = isCurrentSingleSourceEvidence(
+    desktopActiveSubscriptionLifecycleEvidence,
+    "src/components/templates/main-app/billing/ActiveSubscriptionCard.tsx",
+);
+const desktopActiveSubscriptionProviderBlockedEvidenceIsCurrent = isCurrentSingleSourceEvidence(
+    desktopActiveSubscriptionProviderBlockedEvidence,
+    "src/components/templates/main-app/billing/ActiveSubscriptionCard.tsx",
+);
+const desktopActiveSubscriptionFeatureDisabledEvidenceIsCurrent = isCurrentSingleSourceEvidence(
+    desktopActiveSubscriptionFeatureDisabledEvidence,
+    "src/components/templates/main-app/billing/ActiveSubscriptionCard.tsx",
+);
+const desktopTraditionalEditorContinuationEvidenceIsCurrent = isCurrentSingleSourceEvidence(
+    desktopTraditionalEditorContinuationEvidence,
+    "src/components/templates/main-app/projects/editorView/views/TraditionalView.tsx",
+);
+const desktopTraditionalEditorFixtureBlockedEvidenceIsCurrent = isCurrentSingleSourceEvidence(
+    desktopTraditionalEditorFixtureBlockedEvidence,
+    "src/components/templates/main-app/projects/editorView/views/TraditionalView.tsx",
+);
+const desktopCategoryEditorContinuationEvidenceIsCurrent = isCurrentSingleSourceEvidence(
+    desktopCategoryEditorContinuationEvidence,
+    "src/components/templates/main-app/projects/editorView/editCategoryModal.tsx",
+);
+const desktopCategoryEditorProviderBlockedEvidenceIsCurrent = isCurrentSingleSourceEvidence(
+    desktopCategoryEditorProviderBlockedEvidence,
+    "src/components/templates/main-app/projects/editorView/editCategoryModal.tsx",
+);
+const desktopCategoryEditorFixtureBlockedEvidenceIsCurrent = isCurrentSingleSourceEvidence(
+    desktopCategoryEditorFixtureBlockedEvidence,
+    "src/components/templates/main-app/projects/editorView/editCategoryModal.tsx",
+);
+const desktopAiMenuManagerContinuationEvidenceIsCurrent = isCurrentSingleSourceEvidence(
+    desktopAiMenuManagerContinuationEvidence,
+    "src/components/templates/main-app/aiMenuManager/AiMenuManagerRoute.tsx",
+);
+const desktopAiMenuManagerProviderBlockedEvidenceIsCurrent = isCurrentSingleSourceEvidence(
+    desktopAiMenuManagerProviderBlockedEvidence,
+    "src/components/templates/main-app/aiMenuManager/AiMenuManagerRoute.tsx",
+);
+const desktopAiMenuManagerFixtureBlockedEvidenceIsCurrent = isCurrentSingleSourceEvidence(
+    desktopAiMenuManagerFixtureBlockedEvidence,
+    "src/components/templates/main-app/aiMenuManager/AiMenuManagerRoute.tsx",
+);
+const desktopPastActivityFeatureDisabledEvidenceIsCurrent = isCurrentSingleSourceEvidence(
+    desktopPastActivityFeatureDisabledEvidence,
+    "src/components/templates/main-app/today/PastActivity/index.tsx",
+);
+const desktopResellerOnboardingProviderResultEvidenceIsCurrent = isCurrentSingleSourceEvidence(
+    desktopResellerOnboardingProviderResultEvidence,
+    "src/components/templates/main-app/reseller/OnboardingWizard.tsx",
+);
+const mobileExtractionReviewFixtureBlockedEvidenceIsCurrent = isCurrentSingleSourceEvidence(
+    mobileExtractionReviewFixtureBlockedEvidence,
+    "src/components/mobile/sheets/ExtractionReviewSheet.tsx",
+);
+const desktopAiEditProviderResultEvidenceIsCurrent = isCurrentSingleSourceEvidence(
+    desktopAiEditProviderResultEvidence,
+    "src/components/templates/main-app/projects/editorView/AiImageGenerator/EditImageModal.tsx",
+);
+const desktopAiEditNativeBoundaryEvidenceIsCurrent = isCurrentSingleSourceEvidence(
+    desktopAiEditNativeBoundaryEvidence,
+    "src/components/templates/main-app/projects/editorView/AiImageGenerator/EditImageModal.tsx",
+);
+const desktopAiEditFixtureBlockedEvidenceIsCurrent = isCurrentSingleSourceEvidence(
+    desktopAiEditFixtureBlockedEvidence,
+    "src/components/templates/main-app/projects/editorView/AiImageGenerator/EditImageModal.tsx",
+);
+const mediaImageAdjustNativeBoundaryEvidenceIsCurrent = isCurrentSingleSourceEvidence(
+    mediaImageAdjustNativeBoundaryEvidence,
+    "src/components/shared/media/MediaImageAdjustModal.tsx",
+);
+const batchImageGenerationProviderResultEvidenceIsCurrent = isCurrentSingleSourceEvidence(
+    batchImageGenerationProviderResultEvidence,
+    "src/components/templates/main-app/projects/editorView/AiImageGenerator/batchImageGeneration/BatchImageGenerationResultView.tsx",
+);
+const platformSentrySafetyBlockedEvidenceIsCurrent = isCurrentSingleSourceEvidence(
+    platformSentrySafetyBlockedEvidence,
+    "src/components/pages/TestSentryPage/index.tsx",
+);
+const platformSentryExternalHandoffEvidenceIsCurrent = isCurrentSingleSourceEvidence(
+    platformSentryExternalHandoffEvidence,
+    "src/components/pages/TestSentryPage/index.tsx",
+);
+const platformFontPresetFixtureBlockedEvidenceIsCurrent = isCurrentSingleSourceEvidence(
+    platformFontPresetFixtureBlockedEvidence,
+    "src/components/templates/platform/fontPresets/index.tsx",
+);
+const platformFontPresetNativeBoundaryEvidenceIsCurrent = isCurrentSingleSourceEvidence(
+    platformFontPresetNativeBoundaryEvidence,
+    "src/components/templates/platform/fontPresets/index.tsx",
+);
+const mobileBillingAlternateLifecycleEvidenceIsCurrent = isCurrentSingleSourceEvidence(
+    mobileBillingAlternateLifecycleEvidence,
+    "src/components/mobile/screens/MobileBillingScreen.tsx",
+);
+const mobileMenuAlternateFixtureEvidenceIsCurrent = isCurrentSingleSourceEvidence(
+    mobileMenuAlternateFixtureEvidence,
+    "src/components/mobile/screens/MobileMenuScreen.tsx",
+);
+const mobileMenuUploadNativeExtractionEvidenceIsCurrent = isCurrentSingleSourceEvidence(
+    mobileMenuUploadNativeExtractionEvidence,
+    "src/components/mobile/sheets/MenuUploadSheet.tsx",
+);
+const desktopDomainSettingsExternalBoundaryEvidenceIsCurrent = isCurrentSingleSourceEvidence(
+    desktopDomainSettingsExternalBoundaryEvidence,
+    "src/components/templates/main-app/businessSettings/tabs/DomainSettingsTab.tsx",
+);
+const mobileHoursAlternateStateEvidenceIsCurrent = isCurrentSingleSourceEvidence(
+    mobileHoursAlternateStateEvidence,
+    "src/components/mobile/screens/MobileHoursScreen.tsx",
+);
+const mobileFeedbackFixtureBlockedEvidenceIsCurrent = isCurrentSingleSourceEvidence(
+    mobileFeedbackFixtureBlockedEvidence,
+    "src/components/mobile/screens/MobileFeedbackScreen.tsx",
+);
+const phoneOtpProviderBoundaryEvidenceIsCurrent = isCurrentSingleSourceEvidence(
+    phoneOtpProviderBoundaryEvidence,
+    "src/components/auth/PhoneOtpAuthPanel.tsx",
+);
+const mobileDomainSettingsExternalBoundaryEvidenceIsCurrent = isCurrentSingleSourceEvidence(
+    mobileDomainSettingsExternalBoundaryEvidence,
+    "src/components/mobile/screens/MobileDomainSettingsScreen.tsx",
+);
+const growthOsEntitlementProviderBoundaryEvidenceIsCurrent = isCurrentSingleSourceEvidence(
+    growthOsEntitlementProviderBoundaryEvidence,
+    "src/components/templates/main-app/growthos/index.tsx",
+);
+const analyticsGuideExternalHandoffEvidenceIsCurrent = isCurrentSingleSourceEvidence(
+    analyticsGuideExternalHandoffEvidence,
+    "src/components/templates/main-app/businessSettings/tabs/AnalyticsGuideModal.tsx",
+);
+const publicObpExternalHandoffEvidenceIsCurrent = isCurrentSingleSourceEvidence(
+    publicObpExternalHandoffEvidence,
+    "src/app/client/obp/OBPExternalLinks.tsx",
+);
+const publicObpPlaceholderFixtureEvidenceIsCurrent = isCurrentSingleSourceEvidence(
+    publicObpPlaceholderFixtureEvidence,
+    "src/app/client/obp/OBPExternalLinks.tsx",
+);
+const mobileResellerOnboardingProviderResultEvidenceIsCurrent = isCurrentSingleSourceEvidence(
+    mobileResellerOnboardingProviderResultEvidence,
+    "src/components/mobile/screens/MobileResellerOnboardingScreen.tsx",
+);
+const printableAssetAlternateStateBoundaryEvidenceIsCurrent = isCurrentSingleSourceEvidence(
+    printableAssetAlternateStateBoundaryEvidence,
+    "src/components/templates/main-app/printableAssetTemplates/PrintableAssetTemplatesRoute.tsx",
+);
+const loginClaimLifecycleBoundaryEvidenceIsCurrent = isCurrentSingleSourceEvidence(
+    loginClaimLifecycleBoundaryEvidence,
+    "src/components/templates/loginPage/index.tsx",
+);
+const mobileShareAlternateNativeBoundaryEvidenceIsCurrent = isCurrentSingleSourceEvidence(
+    mobileShareAlternateNativeBoundaryEvidence,
+    "src/components/mobile/screens/MobileShareScreen.tsx",
+);
+const desktopUseMenuListAlternateStateEvidenceIsCurrent = isCurrentSingleSourceEvidence(
+    desktopUseMenuListAlternateStateEvidence,
+    "src/components/templates/main-app/useMenuList/index.tsx",
+);
+const desktopProjectLifecycleCurrentBrowserEvidenceIsCurrent = isCurrentMultiSourceEvidence(
+    desktopProjectLifecycleCurrentBrowserEvidence,
+    [
+        "src/components/templates/main-app/projects/ProjectDetails/ProjectSelector.tsx",
+        "src/components/templates/main-app/projects/ProjectDetails/ProjectEditModal.tsx",
+        "src/components/templates/main-app/projects/CreateSpecialMenuModal.tsx",
+        "src/components/templates/main-app/projects/editorView/BulkStatusMenuModal.tsx",
+    ],
+);
+const desktopProjectEditAlternateProviderEvidenceIsCurrent = isCurrentSingleSourceEvidence(
+    desktopProjectEditAlternateProviderEvidence,
+    "src/components/templates/main-app/projects/ProjectDetails/ProjectEditModal.tsx",
+);
+const desktopProjectEditLanguageFixtureEvidenceIsCurrent = isCurrentSingleSourceEvidence(
+    desktopProjectEditLanguageFixtureEvidence,
+    "src/components/templates/main-app/projects/ProjectDetails/ProjectEditModal.tsx",
+);
+const desktopSpecialMenuLanguageProviderEvidenceIsCurrent = isCurrentSingleSourceEvidence(
+    desktopSpecialMenuLanguageProviderEvidence,
+    "src/components/templates/main-app/projects/CreateSpecialMenuModal.tsx",
+);
+const desktopStoreCustomizationFixtureEvidenceIsCurrent = isCurrentSingleSourceEvidence(
+    desktopStoreCustomizationFixtureEvidence,
+    "src/components/templates/main-app/projects/editorView/StoreCustomizationModal.tsx",
+);
+const currentOwnerSettingsProjectReboundEvidenceIsCurrent = isCurrentMultiSourceEvidence(
+    currentOwnerSettingsProjectReboundEvidence,
+    [
+        "src/components/mobile/components/MobileProjectSelectorSheet.tsx",
+        "src/components/mobile/screens/MobileCustomerAppScreen.tsx",
+        "src/components/mobile/screens/MobileRolesScreen.tsx",
+        "src/components/mobile/sheets/AppSettingsSheet.tsx",
+        "src/components/templates/main-app/businessSettings/tabs/CustomerAppTab.tsx",
+        "src/components/templates/main-app/projects/editorView/EditorContent.tsx",
+        "src/components/mobile/screens/MobileLocaleSettingsScreen.tsx",
+        "src/components/templates/main-app/businessSettings/tabs/SeoTab.tsx",
+        "src/components/templates/main-app/projects/index.tsx",
+    ],
+);
+const ownerProjectProviderBoundaryEvidenceIsCurrent = isCurrentMultiSourceEvidence(
+    ownerProjectProviderBoundaryEvidence,
+    [
+        "src/components/mobile/components/MobileProjectSelectorSheet.tsx",
+        "src/components/templates/main-app/projects/index.tsx",
+    ],
+);
+const ownerSettingsNativeBoundaryEvidenceIsCurrent = isCurrentMultiSourceEvidence(
+    ownerSettingsNativeBoundaryEvidence,
+    [
+        "src/components/mobile/screens/MobileCustomerAppScreen.tsx",
+        "src/components/mobile/sheets/AppSettingsSheet.tsx",
+        "src/components/templates/main-app/businessSettings/tabs/CustomerAppTab.tsx",
+        "src/components/templates/main-app/projects/index.tsx",
+    ],
+);
+const ownerSettingsAlternateFixtureEvidenceIsCurrent = isCurrentMultiSourceEvidence(
+    ownerSettingsAlternateFixtureEvidence,
+    [
+        "src/components/mobile/components/MobileProjectSelectorSheet.tsx",
+        "src/components/mobile/screens/MobileCustomerAppScreen.tsx",
+        "src/components/mobile/screens/MobileLocaleSettingsScreen.tsx",
+        "src/components/templates/main-app/businessSettings/tabs/SeoTab.tsx",
+        "src/components/templates/main-app/projects/index.tsx",
+    ],
+);
+const billingCancellationLifecycleEvidenceIsCurrent = isCurrentSingleSourceEvidence(
+    billingCancellationLifecycleEvidence,
+    "src/components/templates/main-app/billing/CancellationModal.tsx",
+);
+const currentOwnerMediaAnalyticsLifecycleEvidenceIsCurrent = isCurrentMultiSourceEvidence(
+    currentOwnerMediaAnalyticsLifecycleEvidence,
+    [
+        "src/components/mobile/components/MobileSpecialHoursManager.tsx",
+        "src/components/mobile/screens/MobileDigitalScreensScreen.tsx",
+        "src/components/mobile/sheets/ItemEditSheet.tsx",
+        "src/components/templates/main-app/businessSettings/tabs/AnalyticsSetupWizard.tsx",
+        "src/components/templates/main-app/businessSettings/tabs/OfficialPageTab.tsx",
+        "src/components/templates/main-app/projects/FileList.tsx",
+        "src/components/templates/main-app/projects/editorView/AiImageGenerator/batchImageGeneration/index.tsx",
+        "src/components/templates/main-app/projects/editorView/editItemModal.tsx",
+    ],
+);
+const analyticsWizardExternalHandoffEvidenceIsCurrent = isCurrentSingleSourceEvidence(
+    analyticsWizardExternalHandoffEvidence,
+    "src/components/templates/main-app/businessSettings/tabs/AnalyticsSetupWizard.tsx",
+);
+const ownerMediaBoundarySourceFiles = [
+    "src/components/mobile/sheets/ItemEditSheet.tsx",
+    "src/components/templates/main-app/businessSettings/tabs/OfficialPageTab.tsx",
+    "src/components/templates/platform/assets/detailsModal.tsx",
+    "src/components/templates/main-app/projects/editorView/editItemModal.tsx",
+];
+const ownerMediaNativeBoundaryEvidenceIsCurrent = isCurrentMultiSourceEvidence(
+    ownerMediaNativeBoundaryEvidence,
+    ownerMediaBoundarySourceFiles,
+);
+const ownerMediaProviderBoundaryEvidenceIsCurrent = isCurrentMultiSourceEvidence(
+    ownerMediaProviderBoundaryEvidence,
+    ownerMediaBoundarySourceFiles,
+);
+const ownerMediaFixtureBlockedEvidenceIsCurrent = isCurrentMultiSourceEvidence(
+    ownerMediaFixtureBlockedEvidence,
+    [
+        "src/components/shared/media/PublicImageViewer.tsx",
+        "src/components/templates/main-app/businessSettings/tabs/OfficialPageTab.tsx",
+        "src/components/templates/main-app/projects/FileList.tsx",
+        "src/components/templates/main-app/projects/editorView/AiImageGenerator/batchImageGeneration/index.tsx",
+        "src/components/mobile/sheets/ItemEditSheet.tsx",
+        "src/components/templates/main-app/projects/jobScreens/ExtractionJobReviewScreen.tsx",
+        "src/components/templates/platform/assets/detailsModal.tsx",
+    ],
+);
+const publicImageViewerInternalHandlersEvidenceIsCurrent = isCurrentSingleSourceEvidence(
+    publicImageViewerInternalHandlersEvidence,
+    "src/components/shared/media/PublicImageViewer.tsx",
+);
+const ownerMediaDestructiveSafetyEvidenceIsCurrent = isCurrentMultiSourceEvidence(
+    ownerMediaDestructiveSafetyEvidence,
+    [
+        "src/components/templates/main-app/projects/FileList.tsx",
+        "src/components/templates/platform/assets/detailsModal.tsx",
+    ],
+);
+const pricingOnboardingAlternateLifecycleEvidenceIsCurrent = isCurrentSingleSourceEvidence(
+    pricingOnboardingAlternateLifecycleEvidence,
+    "src/components/website/pricing-pages/OnboardingModal.tsx",
+);
+const publicBusinessActionSourceFiles = [
+    "src/app/client/obp/OBPActions.tsx",
+    "src/components/templates/main-app/projects/b2cView/output/MenuFooter.tsx",
+];
+const publicBusinessActionExternalHandoffEvidenceIsCurrent = isCurrentMultiSourceEvidence(
+    publicBusinessActionExternalHandoffEvidence,
+    publicBusinessActionSourceFiles,
+);
+const publicBusinessActionFixtureEvidenceIsCurrent = isCurrentMultiSourceEvidence(
+    publicBusinessActionFixtureEvidence,
+    publicBusinessActionSourceFiles,
+);
+const feedbackQrNativeAndExternalEvidenceIsCurrent = isCurrentSingleSourceEvidence(
+    feedbackQrNativeAndExternalEvidence,
+    "src/components/templates/main-app/feedback/FeedbackQrDownload.tsx",
+);
+const currentAnalyticsSettingsDraftEvidenceIsCurrent = isCurrentSingleSourceEvidence(
+    currentAnalyticsSettingsDraftEvidence,
+    "src/components/templates/main-app/businessSettings/tabs/AnalyticsTab.tsx",
+);
+const ownerAlternateFeatureFixtureEvidenceIsCurrent = isCurrentMultiSourceEvidence(
+    ownerAlternateFeatureFixtureEvidence,
+    [
+        "src/components/atoms/timeSlotPresetForm/index.tsx",
+        "src/components/mobile/sheets/SmartRecommendationsSheet.tsx",
+        "src/components/templates/main-app/businessSettings/tabs/LocaleSettingsTab.tsx",
+        "src/components/templates/main-app/projects/editorView/CommandCenterModal/ImpactPreview.tsx",
+        "src/components/atoms/IconPicker/index.tsx",
+    ],
+);
+const ownerAiGenerationProviderBoundaryEvidenceIsCurrent = isCurrentMultiSourceEvidence(
+    ownerAiGenerationProviderBoundaryEvidence,
+    [
+        "src/components/templates/main-app/projects/editorView/AiImageGenerator/batchImageGeneration/BatchImageGenerationView.tsx",
+        "src/components/templates/main-app/projects/editorView/DescriptionGenerationModal.tsx",
+        "src/components/templates/main-app/projects/editorView/ImageUploadModal.tsx",
+        "src/components/templates/main-app/projects/editorView/LanguageSelectorModal.tsx",
+    ],
+);
+const digitalScreenOwnerUploadNativeEvidenceIsCurrent = isCurrentSingleSourceEvidence(
+    digitalScreenOwnerUploadNativeEvidence,
+    "src/components/templates/main-app/settings/DigitalScreenSettings/OwnerUploads.tsx",
+);
+const ownerAlternateLifecycleComponentEvidenceIsCurrent = isCurrentMultiSourceEvidence(ownerAlternateLifecycleComponentEvidence, [
+    "src/components/mobile/components/PresenceMonitor.tsx", "src/components/mobile/screens/MobileFeedbackDetail.tsx",
+    "src/components/mobile/sheets/CategoryManagerSheet.tsx",
+    "src/components/mobile/sheets/MobileCategoryEditSheet.tsx", "src/components/templates/main-app/projects/SpecialMenuCard.tsx",
+]);
+const ownerNativeArtifactComponentEvidenceIsCurrent = isCurrentMultiSourceEvidence(ownerNativeArtifactComponentEvidence, [
+    "src/components/mobile/menu-card-export/MobileMenuCardExportScreen.tsx", "src/components/templates/main-app/projects/PdfViewer.tsx",
+    "src/components/templates/main-app/projects/b2cView/shareModal/MenuKitSection.tsx", "src/components/templates/main-app/projects/editorView/ZoomableImage.tsx",
+    "src/components/templates/main-app/projects/editorView/components/FileImagePreview.tsx",
+]);
+const ownerProviderDependentComponentEvidenceIsCurrent = isCurrentMultiSourceEvidence(ownerProviderDependentComponentEvidence, [
+    "src/components/mobile/sheets/ManageLanguagesSheet.tsx", "src/components/shared/media/MediaImageCard.tsx",
+    "src/components/templates/main-app/aiMenuManager/cards/AiMenuProposalCard.tsx", "src/components/templates/main-app/projects/editorView/AiImageGenerator/MultiSelectAttributeSelector.tsx",
+    "src/components/templates/main-app/projects/editorView/AiImageGenerator/StyleSelector.tsx", "src/components/templates/main-app/projects/editorView/CommandCenterModal/SelectionContext.tsx",
+]);
+const publicSharingExternalComponentEvidenceIsCurrent = isCurrentMultiSourceEvidence(publicSharingExternalComponentEvidence, [
+    "src/components/templates/main-app/businessSettings/OBPLinkCard.tsx", "src/components/templates/main-app/projects/ShareModal.tsx",
+    "src/components/templates/main-app/projects/b2cView/output/PDPModal.tsx",
+]);
+const currentBehavioralContractControlEvidenceIsCurrent = isCurrentMultiSourceEvidence(currentBehavioralContractControlEvidence, [
+    "src/components/templates/main-app/businessSettings/tabs/SpecialHoursEditor.tsx", "src/components/mobile/screens/MobileBusinessHealthScreen.tsx",
+    "src/components/mobile/screens/MobileOfficialPageScreen.tsx", "src/components/mobile/screens/MobilePosSyncScreen.tsx",
+    "src/components/mobile/screens/MobileSpecialMenuScreen.tsx", "src/components/molecules/FeedbackSection/index.tsx",
+    "src/components/atoms/GuestFeedbackForm/index.tsx", "src/components/templates/main-app/useMenuList/OwnerReferralModal.tsx",
+    "src/components/mobile/sheets/MobileOwnerReferralSheet.tsx",
+]);
+const remainingAlternateFixtureComponentEvidenceIsCurrent = isCurrentMultiSourceEvidence(remainingAlternateFixtureComponentEvidence, [
+    "src/app/(website)/create-menu/success/CreateMenuSuccessClient.tsx", "src/components/mobile/screens/MobileTransactionsScreen.tsx",
+    "src/components/mobile/screens/MobileUsersScreen.tsx", "src/components/mobile/screens/MobileLocationsScreen.tsx",
+    "src/components/templates/main-app/platform/extractionMonitor/JobInspector.tsx", "src/components/templates/main-app/projects/editorView/uploadedImagesList.tsx",
+    "src/components/mobile/components/MobileMasterUpdateNotice.tsx", "src/components/organisms/MasterUpdateBanner/MasterUpdateDetailModal.tsx",
+    "src/components/templates/main-app/businessSettings/TempStatusCard.tsx", "src/components/templates/main-app/projects/ProjectDetails/ProjectDuplicateModal.tsx",
+    "src/components/templates/main-app/projects/editorView/ReorderMenuModal.tsx", "src/components/templates/main-app/today/index.tsx",
+    "src/components/templates/main-app/users/StaffLoginDetailsContent.tsx", "src/components/templates/main-app/users/usersList/userForm/storesMapping.tsx",
+]);
+const remainingProviderDependentComponentEvidenceIsCurrent = isCurrentMultiSourceEvidence(remainingProviderDependentComponentEvidence, [
+    "src/components/mobile/components/GrowthKitsMobileCard.tsx", "src/components/mobile/screens/MobileSeoAnalyticsScreen.tsx",
+    "src/components/mobile/sheets/AIDefaultsSheet.tsx", "src/components/templates/main-app/projects/editorView/AIDefaultsModal.tsx",
+    "src/components/templates/main-app/projects/editorView/AiImageGenerator/ChatWidgetUi.tsx", "src/components/mobile/ai-menu-manager/MobileAiMenuCardStack.tsx",
+    "src/components/mobile/ai-menu-manager/MobileAiMenuManagerScreen.tsx", "src/components/mobile/sheets/GenerateDescriptionsSheet.tsx",
+    "src/components/templates/main-app/projects/editorView/AiImageGenerator/SubjectProfileSelector.tsx", "src/components/templates/main-app/projects/editorView/CommandCenterModal/index.tsx",
+    "src/modules/creative-editor/DesignCuePanel.tsx",
+]);
+const remainingNativeArtifactComponentEvidenceIsCurrent = isCurrentMultiSourceEvidence(remainingNativeArtifactComponentEvidence, [
+    "src/components/mobile/sheets/ColorPickerSheet.tsx", "src/components/templates/platform/assets/index.tsx",
+]);
+const currentAdjacentContractComponentEvidenceIsCurrent = isCurrentMultiSourceEvidence(currentAdjacentContractComponentEvidence, [
+    "src/components/mobile/screens/MobileBusinessAttributesScreen.tsx", "src/components/mobile/screens/MobileDashboardScreen.tsx",
+    "src/components/mobile/screens/MobileOpsControlRoomScreen.tsx", "src/components/mobile/screens/dashboardSections/MobileOBPMetricsCard.tsx",
+    "src/components/shared/printableAssets/FlyerCampaignFields.tsx", "src/components/templates/main-app/projects/b2bView.tsx",
+]);
+const aiSearchExternalBoundaryEvidenceIsCurrent = isCurrentMultiSourceEvidence(aiSearchExternalBoundaryEvidence, [
+    "src/components/organisms/AISearchModal/FeedbackModal.tsx", "src/components/organisms/AISearchModal/SearchResultDisplay.tsx",
+]);
+const NOTIFICATION_SETTINGS_SOURCE_FILE = "src/components/templates/main-app/businessSettings/NotificationSettingsTab.tsx";
+const notificationPreferredChannelBrowserEvidenceIsCurrent = isCurrentSingleSourceEvidence(
+    notificationPreferredChannelBrowserEvidence,
+    NOTIFICATION_SETTINGS_SOURCE_FILE,
+);
+const notificationWhatsAppFixtureEvidenceIsCurrent = isCurrentSingleSourceEvidence(
+    notificationWhatsAppFixtureEvidence,
+    NOTIFICATION_SETTINGS_SOURCE_FILE,
+);
+const businessSettingsReversibleBrowserEvidenceIsCurrent = isCurrentMultiSourceEvidence(
+    businessSettingsReversibleBrowserEvidence,
+    [
+        "src/components/templates/main-app/businessSettings/tabs/BasicInfoTab.tsx",
+        "src/components/templates/main-app/businessSettings/tabs/BusinessAttributesTab.tsx",
+        "src/components/templates/main-app/businessSettings/tabs/FeedbackSettingsTab.tsx",
+    ],
+);
+const feedbackReviewExternalHandoffEvidenceIsCurrent = isCurrentSingleSourceEvidence(
+    feedbackReviewExternalHandoffEvidence,
+    "src/components/templates/main-app/businessSettings/tabs/FeedbackSettingsTab.tsx",
+);
+const INTEGRATIONS_SETTINGS_SOURCE_FILE = "src/components/templates/main-app/businessSettings/tabs/IntegrationsTab.tsx";
+const platformPullApiKeyBrowserEvidenceIsCurrent = isCurrentSingleSourceEvidence(
+    platformPullApiKeyBrowserEvidence,
+    INTEGRATIONS_SETTINGS_SOURCE_FILE,
+);
+const platformPullApiKeyNativeClipboardEvidenceIsCurrent = isCurrentSingleSourceEvidence(
+    platformPullApiKeyNativeClipboardEvidence,
+    INTEGRATIONS_SETTINGS_SOURCE_FILE,
+);
+const socialMediaDraftBrowserEvidenceIsCurrent = isCurrentSingleSourceEvidence(
+    socialMediaDraftBrowserEvidence,
+    "src/components/templates/main-app/businessSettings/tabs/SocialMediaTab.tsx",
+);
+const compliancePageLifecycleBrowserEvidenceIsCurrent = isCurrentSingleSourceEvidence(
+    compliancePageLifecycleBrowserEvidence,
+    "src/components/templates/main-app/businessSettings/tabs/CompliancePagesSection.tsx",
+);
+const GOOGLE_LISTING_GUIDE_SOURCE_FILE = "src/components/templates/main-app/businessSettings/tabs/GoogleListingGuide.tsx";
+const googleListingReminderBrowserEvidenceIsCurrent = isCurrentSingleSourceEvidence(
+    googleListingReminderBrowserEvidence,
+    GOOGLE_LISTING_GUIDE_SOURCE_FILE,
+);
+const googleListingNativeClipboardEvidenceIsCurrent = isCurrentSingleSourceEvidence(
+    googleListingNativeClipboardEvidence,
+    GOOGLE_LISTING_GUIDE_SOURCE_FILE,
+);
+const googleListingExternalHandoffEvidenceIsCurrent = isCurrentSingleSourceEvidence(
+    googleListingExternalHandoffEvidence,
+    GOOGLE_LISTING_GUIDE_SOURCE_FILE,
+);
+const businessSettingsSaveLifecycleEvidenceIsCurrent = isCurrentSingleSourceEvidence(
+    businessSettingsSaveLifecycleEvidence,
+    "src/components/templates/main-app/businessSettings/index.tsx",
+);
+const timeSlotPresetEntryBrowserEvidenceIsCurrent = isCurrentSingleSourceEvidence(
+    timeSlotPresetEntryBrowserEvidence,
+    "src/components/templates/main-app/businessSettings/tabs/TimeSlotPresetsTab.tsx",
+);
+const workingHoursDraftBrowserEvidenceIsCurrent = isCurrentSingleSourceEvidence(
+    workingHoursDraftBrowserEvidence,
+    "src/components/templates/main-app/businessSettings/tabs/WorkingHoursTab.tsx",
+);
+const BUSINESS_COPY_SETUP_SOURCE_FILE = "src/components/templates/main-app/businessSettings/tabs/BusinessCopySetupTab.tsx";
+const businessCopyProviderBoundaryEvidenceIsCurrent = isCurrentSingleSourceEvidence(
+    businessCopyProviderBoundaryEvidence,
+    BUSINESS_COPY_SETUP_SOURCE_FILE,
+);
+const businessCopyRepairFixtureEvidenceIsCurrent = isCurrentSingleSourceEvidence(
+    businessCopyRepairFixtureEvidence,
+    BUSINESS_COPY_SETUP_SOURCE_FILE,
+);
+const WEBSITE_HEADER_SOURCE_FILE = "src/components/website/Header.tsx";
+const websiteAuthenticatedDashboardEvidenceIsCurrent = isCurrentSingleSourceEvidence(
+    websiteAuthenticatedDashboardEvidence,
+    WEBSITE_HEADER_SOURCE_FILE,
+);
+const websiteLogoutSafetyEvidenceIsCurrent = isCurrentSingleSourceEvidence(
+    websiteLogoutSafetyEvidence,
+    WEBSITE_HEADER_SOURCE_FILE,
+);
+const transactionsPaginationFixtureEvidenceIsCurrent = isCurrentSingleSourceEvidence(
+    transactionsPaginationFixtureEvidence,
+    "src/components/templates/main-app/transactions/index.tsx",
+);
+const FEEDBACK_CARD_SOURCE_FILE = "src/components/templates/main-app/feedback/FeedbackCard.tsx";
+const feedbackCardExternalReplyEvidenceIsCurrent = isCurrentSingleSourceEvidence(
+    feedbackCardExternalReplyEvidence,
+    FEEDBACK_CARD_SOURCE_FILE,
+);
+const feedbackCardNativeReplyCopyEvidenceIsCurrent = isCurrentSingleSourceEvidence(
+    feedbackCardNativeReplyCopyEvidence,
+    FEEDBACK_CARD_SOURCE_FILE,
+);
+const MESSAGE_PREVIEW_SOURCE_FILE = "src/app/(global-pages)/msg-preview/[sessionId]/page.tsx";
+const messagePreviewSuccessFixtureEvidenceIsCurrent = isCurrentSingleSourceEvidence(
+    messagePreviewSuccessFixtureEvidence,
+    MESSAGE_PREVIEW_SOURCE_FILE,
+);
+const messagePreviewWhatsAppHandoffEvidenceIsCurrent = isCurrentSingleSourceEvidence(
+    messagePreviewWhatsAppHandoffEvidence,
+    MESSAGE_PREVIEW_SOURCE_FILE,
+);
+const OBP_MENU_CTA_SOURCE_FILE = "src/app/client/obp/OBPMenuCTA.tsx";
+const obpMenuCtaAlternateLifecycleEvidenceIsCurrent = isCurrentSingleSourceEvidence(obpMenuCtaAlternateLifecycleEvidence, OBP_MENU_CTA_SOURCE_FILE);
+const obpMenuCtaCommentEvidenceIsCurrent = isCurrentSingleSourceEvidence(obpMenuCtaCommentEvidence, OBP_MENU_CTA_SOURCE_FILE);
+const menuBreadcrumbAlternateLayoutEvidenceIsCurrent = isCurrentSingleSourceEvidence(menuBreadcrumbAlternateLayoutEvidence, "src/app/client/[[...slug]]/MenuBreadcrumb.tsx");
+const globalErrorRuntimeEvidenceIsCurrent = isCurrentSingleSourceEvidence(globalErrorRuntimeEvidence, "src/app/(global-pages)/error.tsx");
+const rootErrorRuntimeEvidenceIsCurrent = isCurrentSingleSourceEvidence(rootErrorRuntimeEvidence, "src/app/error.tsx");
+const storeAccessRecoveryRuntimeEvidenceIsCurrent = isCurrentSingleSourceEvidence(storeAccessRecoveryRuntimeEvidence, "src/components/auth/StoreAccessRecovery.tsx");
+const MOBILE_TEXT_CASE_SOURCE_FILE = "src/components/mobile/sheets/TextCaseSheet.tsx";
+const mobileTextCaseReversibleEvidenceIsCurrent = isCurrentSingleSourceEvidence(mobileTextCaseReversibleEvidence, MOBILE_TEXT_CASE_SOURCE_FILE);
+const mobileTextCaseMaskBoundaryEvidenceIsCurrent = isCurrentSingleSourceEvidence(mobileTextCaseMaskBoundaryEvidence, MOBILE_TEXT_CASE_SOURCE_FILE);
+const mobileTextCaseApplySafetyEvidenceIsCurrent = isCurrentSingleSourceEvidence(mobileTextCaseApplySafetyEvidence, MOBILE_TEXT_CASE_SOURCE_FILE);
+const DECISION_BLOCKS_SETTINGS_SOURCE_FILE = "src/components/templates/main-app/projects/editorView/DecisionBlocksSettingsModal.tsx";
+const decisionBlocksReversibleEvidenceIsCurrent = isCurrentSingleSourceEvidence(decisionBlocksReversibleEvidence, DECISION_BLOCKS_SETTINGS_SOURCE_FILE);
+const decisionBlocksSaveSafetyEvidenceIsCurrent = isCurrentSingleSourceEvidence(decisionBlocksSaveSafetyEvidence, DECISION_BLOCKS_SETTINGS_SOURCE_FILE);
+const decisionChoicePosterDesktopEvidenceIsCurrent = isCurrentSingleSourceEvidence(decisionChoicePosterDesktopEvidence, DECISION_BLOCKS_SETTINGS_SOURCE_FILE);
+const decisionChoicePosterMobileEvidenceIsCurrent = isCurrentSingleSourceEvidence(
+    decisionChoicePosterMobileEvidence,
+    "src/components/mobile/sheets/SmartRecommendationsSheet.tsx",
+);
+const MOBILE_NOTIFICATION_SETTINGS_SOURCE_FILE = "src/components/mobile/screens/MobileNotificationSettingsScreen.tsx";
+const mobileNotificationReversibleEvidenceIsCurrent = isCurrentSingleSourceEvidence(mobileNotificationReversibleEvidence, MOBILE_NOTIFICATION_SETTINGS_SOURCE_FILE);
+const mobileNotificationWhatsAppFixtureEvidenceIsCurrent = isCurrentSingleSourceEvidence(mobileNotificationWhatsAppFixtureEvidence, MOBILE_NOTIFICATION_SETTINGS_SOURCE_FILE);
+const mobileNotificationSaveSafetyEvidenceIsCurrent = isCurrentSingleSourceEvidence(mobileNotificationSaveSafetyEvidence, MOBILE_NOTIFICATION_SETTINGS_SOURCE_FILE);
+const MOBILE_ADVANCED_SETTINGS_SOURCE_FILE = "src/components/mobile/screens/MobileAdvancedSettingsScreen.tsx";
+const mobileAdvancedSocialEditorEvidenceIsCurrent = isCurrentSingleSourceEvidence(mobileAdvancedSocialEditorEvidence, MOBILE_ADVANCED_SETTINGS_SOURCE_FILE);
+const mobileAdvancedSocialExternalEvidenceIsCurrent = isCurrentSingleSourceEvidence(mobileAdvancedSocialExternalEvidence, MOBILE_ADVANCED_SETTINGS_SOURCE_FILE);
+const mobileAdvancedSocialRemoveFixtureEvidenceIsCurrent = isCurrentSingleSourceEvidence(mobileAdvancedSocialRemoveFixtureEvidence, MOBILE_ADVANCED_SETTINGS_SOURCE_FILE);
+const creativeEditorAlternateDraftQrEvidenceIsCurrent = isCurrentSingleSourceEvidence(creativeEditorAlternateDraftQrEvidence, "src/modules/creative-editor/CreativeEditor.tsx");
+const businessHealthProjectScopeCurrentEvidenceIsCurrent = isCurrentSingleSourceEvidence(businessHealthProjectScopeCurrentEvidence, "src/components/templates/main-app/ownerBusinessAssistant/BusinessHealthProjectScopeSelector.tsx");
+const publicTruthOwnerCheckCurrentEvidenceIsCurrent = isCurrentSingleSourceEvidence(publicTruthOwnerCheckCurrentEvidence, "src/components/templates/main-app/ownerBusinessAssistant/PublicTruthOwnerCheckCard.tsx");
+const publicTruthMonitorCurrentEvidenceIsCurrent = isCurrentSingleSourceEvidence(publicTruthMonitorCurrentEvidence, "src/components/templates/main-app/ownerBusinessAssistant/PublicTruthMonitorPanel.tsx");
+const verticalSidebarCurrentEvidenceIsCurrent = isCurrentSingleSourceEvidence(verticalSidebarCurrentEvidence, "src/components/organisms/sidebar/index.tsx");
+const horizontalSidebarCurrentEvidenceIsCurrent = isCurrentSingleSourceEvidence(horizontalSidebarCurrentEvidence, "src/components/organisms/sidebar/horizontalSidebar.tsx");
+const appBreadcrumbCurrentEvidenceIsCurrent = isCurrentSingleSourceEvidence(appBreadcrumbCurrentEvidence, "src/components/organisms/headerComponent/appBreadcrumb/appBreadcrumb.tsx");
+const analyticsExportRuntimeEvidenceIsCurrent = isCurrentSingleSourceEvidence(analyticsExportRuntimeEvidence, "src/components/analytics/ExportButton.tsx");
+const projectConfirmModalRuntimeEvidenceIsCurrent = isCurrentSingleSourceEvidence(projectConfirmModalRuntimeEvidence, "src/components/templates/main-app/projects/ProjectDetails/ProjectConfirmModal.tsx");
+const errorRecoveryAlertRuntimeEvidenceIsCurrent = isCurrentSingleSourceEvidence(errorRecoveryAlertRuntimeEvidence, "src/components/templates/main-app/projects/ErrorRecoveryAlert.tsx");
+const projectSelectorRuntimeEvidenceIsCurrent = isCurrentSingleSourceEvidence(projectSelectorRuntimeEvidence, "src/components/shared/ProjectSelector.tsx");
+const aiSearchActionButtonsRuntimeEvidenceIsCurrent = isCurrentSingleSourceEvidence(aiSearchActionButtonsRuntimeEvidence, "src/components/organisms/AISearchModal/ActionButtons.tsx");
+const aiSearchSearchBarRuntimeEvidenceIsCurrent = isCurrentSingleSourceEvidence(aiSearchSearchBarRuntimeEvidence, "src/components/organisms/AISearchModal/SearchBar.tsx");
+const aiSearchLocalResultsRuntimeEvidenceIsCurrent = isCurrentSingleSourceEvidence(aiSearchLocalResultsRuntimeEvidence, "src/components/organisms/AISearchModal/LocalSearchResults.tsx");
+const welcomeModalRuntimeEvidenceIsCurrent = isCurrentSingleSourceEvidence(welcomeModalRuntimeEvidence, "src/components/templates/main-app/projects/WelcomeModal.tsx");
+const upgradeConfirmationRuntimeEvidenceIsCurrent = isCurrentSingleSourceEvidence(upgradeConfirmationRuntimeEvidence, "src/components/templates/main-app/billing/UpgradeConfirmationModal.tsx");
+const messageReferencesRuntimeEvidenceIsCurrent = isCurrentSingleSourceEvidence(messageReferencesRuntimeEvidence, "src/components/templates/main-app/helpChat/MessageReferences.tsx");
+const creditPackRuntimeEvidenceIsCurrent = isCurrentSingleSourceEvidence(creditPackRuntimeEvidence, "src/components/website/pricing-pages/CreditPackCard.tsx");
+const creditPackSignInExternalEvidenceIsCurrent = isCurrentSingleSourceEvidence(creditPackSignInExternalEvidence, "src/components/website/pricing-pages/CreditPackCard.tsx");
+const privacyPolicyMailtoBoundaryEvidenceIsCurrent = isCurrentSingleSourceEvidence(privacyPolicyMailtoBoundaryEvidence, "src/components/website/legal/PrivacyPolicyPage.tsx");
+const pricingPlansModalRuntimeEvidenceIsCurrent = isCurrentSingleSourceEvidence(pricingPlansModalRuntimeEvidence, "src/components/templates/main-app/billing/PricingPlansModal.tsx");
+const editSpecialMenuScheduleRuntimeEvidenceIsCurrent = isCurrentSingleSourceEvidence(editSpecialMenuScheduleRuntimeEvidence, "src/components/templates/main-app/projects/EditSpecialMenuScheduleModal.tsx");
+const menuFiltersRuntimeEvidenceIsCurrent = isCurrentSingleSourceEvidence(menuFiltersRuntimeEvidence, "src/components/templates/main-app/projects/b2cView/output/MenuFilters.tsx");
+const menuLanguageSwitcherRuntimeEvidenceIsCurrent = isCurrentSingleSourceEvidence(menuLanguageSwitcherRuntimeEvidence, "src/components/templates/main-app/projects/b2cView/output/MenuLanguageSwitcher.tsx");
+const transactionDetailsRuntimeEvidenceIsCurrent = isCurrentSingleSourceEvidence(transactionDetailsRuntimeEvidence, "src/components/templates/main-app/transactions/TransactionDetailsModal.tsx");
+const articleViewModalRecoveryRuntimeEvidenceIsCurrent = isCurrentSingleSourceEvidence(articleViewModalRecoveryRuntimeEvidence, "src/components/organisms/ArticleViewModal/index.tsx");
+const publicCookieConsentRuntimeEvidenceIsCurrent = isCurrentSingleSourceEvidence(publicCookieConsentRuntimeEvidence, "src/components/shared/publicCookieConsent/PublicCookieConsentBanner.tsx");
+const masterUpdateBannerRuntimeEvidenceIsCurrent = isCurrentSingleSourceEvidence(masterUpdateBannerRuntimeEvidence, "src/components/organisms/MasterUpdateBanner/index.tsx");
+const dateRangeSelectorRuntimeEvidenceIsCurrent = isCurrentSingleSourceEvidence(dateRangeSelectorRuntimeEvidence, "src/components/analytics/DateRangeSelector.tsx");
+const installInstructionsRuntimeEvidenceIsCurrent = isCurrentSingleSourceEvidence(installInstructionsRuntimeEvidence, "src/components/customerApp/InstallInstructions.tsx");
+const installPromptRuntimeEvidenceIsCurrent = isCurrentSingleSourceEvidence(installPromptRuntimeEvidence, "src/components/customerApp/InstallPrompt.tsx");
+const lucideIconGridRuntimeEvidenceIsCurrent = isCurrentSingleSourceEvidence(lucideIconGridRuntimeEvidence, "src/components/atoms/IconPicker/LucideIconGrid.tsx");
+const mobileTempStatusConfiguratorRuntimeEvidenceIsCurrent = isCurrentSingleSourceEvidence(mobileTempStatusConfiguratorRuntimeEvidence, "src/components/mobile/components/MobileTempStatusConfigurator.tsx");
+const mobileMenuCommandSheetRuntimeEvidenceIsCurrent = isCurrentSingleSourceEvidence(mobileMenuCommandSheetRuntimeEvidence, "src/components/mobile/components/MobileMenuCommandSheet.tsx");
+const mobileCompliancePagesRuntimeEvidenceIsCurrent = isCurrentSingleSourceEvidence(mobileCompliancePagesRuntimeEvidence, "src/components/mobile/components/MobileCompliancePagesEditor.tsx");
+const mobileCompliancePageExternalEvidenceIsCurrent = isCurrentSingleSourceEvidence(mobileCompliancePageExternalEvidence, "src/components/mobile/components/MobileCompliancePagesEditor.tsx");
+const mobileSchedulerMonitorRuntimeEvidenceIsCurrent = isCurrentSingleSourceEvidence(mobileSchedulerMonitorRuntimeEvidence, "src/components/mobile/screens/MobileSchedulerMonitorScreen.tsx");
+const mobileSchedulerRecoverySafetyEvidenceIsCurrent = isCurrentSingleSourceEvidence(mobileSchedulerRecoverySafetyEvidence, "src/components/mobile/screens/MobileSchedulerMonitorScreen.tsx");
+const commandCenterActiveInactiveRuntimeEvidenceIsCurrent = isCurrentSingleSourceEvidence(commandCenterActiveInactiveRuntimeEvidence, "src/components/templates/main-app/projects/editorView/CommandCenterModal/actions/ActiveInactiveAction.tsx");
+const commandCenterAvailabilityRuntimeEvidenceIsCurrent = isCurrentSingleSourceEvidence(commandCenterAvailabilityRuntimeEvidence, "src/components/templates/main-app/projects/editorView/CommandCenterModal/actions/AvailabilityAction.tsx");
+const commandCenterPricingRuntimeEvidenceIsCurrent = isCurrentSingleSourceEvidence(commandCenterPricingRuntimeEvidence, "src/components/templates/main-app/projects/editorView/CommandCenterModal/actions/PricingAction.tsx");
+const commandCenterTextCaseRuntimeEvidenceIsCurrent = isCurrentSingleSourceEvidence(commandCenterTextCaseRuntimeEvidence, "src/components/templates/main-app/projects/editorView/CommandCenterModal/actions/TextCaseAction.tsx");
+const languageSelectorRuntimeEvidenceIsCurrent = isCurrentSingleSourceEvidence(languageSelectorRuntimeEvidence, "src/components/templates/main-app/projects/LanguageSelector.tsx");
+const ownerAppUpdatePromptRuntimeEvidenceIsCurrent = isCurrentSingleSourceEvidence(ownerAppUpdatePromptRuntimeEvidence, "src/components/common/OwnerAppUpdatePrompt.tsx");
+const ownerAppUpdateRefreshNativeEvidenceIsCurrent = isCurrentSingleSourceEvidence(ownerAppUpdateRefreshNativeEvidence, "src/components/common/OwnerAppUpdatePrompt.tsx");
+const starRatingRuntimeEvidenceIsCurrent = isCurrentSingleSourceEvidence(starRatingRuntimeEvidence, "src/components/atoms/GuestFeedbackForm/StarRating.tsx");
+const mediaAspectRatioRuntimeEvidenceIsCurrent = isCurrentSingleSourceEvidence(mediaAspectRatioRuntimeEvidence, "src/components/shared/media/MediaAspectRatioSelector.tsx");
+const ownerAssistantInputRuntimeEvidenceIsCurrent = isCurrentSingleSourceEvidence(ownerAssistantInputRuntimeEvidence, "src/components/templates/main-app/ownerBusinessAssistant/OwnerAssistantInput.tsx");
+const reorderSortableItemRuntimeEvidenceIsCurrent = isCurrentSingleSourceEvidence(reorderSortableItemRuntimeEvidence, "src/components/templates/main-app/projects/editorView/ReorderSortableItem.tsx");
+const billingHistoryEmailRuntimeEvidenceIsCurrent = isCurrentSingleSourceEvidence(billingHistoryEmailRuntimeEvidence, "src/components/templates/main-app/billing/BillingHistory.tsx");
+const billingHistoryInvoiceExternalEvidenceIsCurrent = isCurrentSingleSourceEvidence(billingHistoryInvoiceExternalEvidence, "src/components/templates/main-app/billing/BillingHistory.tsx");
+const analyticsEmptyStateRuntimeEvidenceIsCurrent = isCurrentSingleSourceEvidence(analyticsEmptyStateRuntimeEvidence, "src/components/analytics/EmptyState.tsx");
+const analyticsRefreshRuntimeEvidenceIsCurrent = isCurrentSingleSourceEvidence(analyticsRefreshRuntimeEvidence, "src/components/analytics/RefreshButton.tsx");
+const analyticsMetricCardRuntimeEvidenceIsCurrent = isCurrentSingleSourceEvidence(analyticsMetricCardRuntimeEvidence, "src/components/analytics/MetricCard.tsx");
+const analyticsStatCardRuntimeEvidenceIsCurrent = isCurrentSingleSourceEvidence(analyticsStatCardRuntimeEvidence, "src/components/analytics/StatCard.tsx");
+const mobileLocalizedLanguageRuntimeEvidenceIsCurrent = isCurrentSingleSourceEvidence(mobileLocalizedLanguageRuntimeEvidence, "src/components/mobile/components/MobileLocalizedLanguageSelector.tsx");
+const searchSuggestionsRuntimeEvidenceIsCurrent = isCurrentSingleSourceEvidence(searchSuggestionsRuntimeEvidence, "src/components/molecules/SearchSuggestions/index.tsx");
+const businessHealthSuggestedQuestionRuntimeEvidenceIsCurrent = isCurrentSingleSourceEvidence(businessHealthSuggestedQuestionRuntimeEvidence, "src/components/templates/main-app/ownerBusinessAssistant/BusinessHealthSuggestedQuestions.tsx");
+const ownerAssistantSourceDisclosureRuntimeEvidenceIsCurrent = isCurrentSingleSourceEvidence(ownerAssistantSourceDisclosureRuntimeEvidence, "src/components/templates/main-app/ownerBusinessAssistant/OwnerAssistantSourceDisclosure.tsx");
+const mobileLinkCardRuntimeEvidenceIsCurrent = isCurrentSingleSourceEvidence(mobileLinkCardRuntimeEvidence, "src/components/mobile/components/MobileLinkCard.tsx");
+const menuFilterChipsRuntimeEvidenceIsCurrent = isCurrentSingleSourceEvidence(menuFilterChipsRuntimeEvidence, "src/components/templates/main-app/projects/b2cView/output/MenuFilterChips.tsx");
+const analyticsDataTableSearchRuntimeEvidenceIsCurrent = isCurrentSingleSourceEvidence(analyticsDataTableSearchRuntimeEvidence, "src/components/analytics/DataTable.tsx");
+const analyticsFeedbackListRuntimeEvidenceIsCurrent = isCurrentSingleSourceEvidence(analyticsFeedbackListRuntimeEvidence, "src/components/analytics/FeedbackList.tsx");
+const analyticsKnowledgeGapsRuntimeEvidenceIsCurrent = isCurrentSingleSourceEvidence(analyticsKnowledgeGapsRuntimeEvidence, "src/components/analytics/KnowledgeGaps.tsx");
+const analyticsTopQuestionsRuntimeEvidenceIsCurrent = isCurrentSingleSourceEvidence(analyticsTopQuestionsRuntimeEvidence, "src/components/analytics/TopQuestions.tsx");
+const skipToContentRuntimeEvidenceIsCurrent = isCurrentSingleSourceEvidence(skipToContentRuntimeEvidence, "src/components/shared/accessibility/SkipToContentLink.tsx");
+const scrollToBottomRuntimeEvidenceIsCurrent = isCurrentSingleSourceEvidence(scrollToBottomRuntimeEvidence, "src/components/atoms/ScrollToBottomButton/ScrollToBottomButton.tsx");
+const backToTopRuntimeEvidenceIsCurrent = isCurrentSingleSourceEvidence(backToTopRuntimeEvidence, "src/components/templates/main-app/projects/b2cView/output/BackToTop.tsx");
+const emojiGridSearchRuntimeEvidenceIsCurrent = isCurrentSingleSourceEvidence(emojiGridSearchRuntimeEvidence, "src/components/atoms/IconPicker/EmojiGrid.tsx");
+const todayPrimaryCardRuntimeEvidenceIsCurrent = isCurrentSingleSourceEvidence(todayPrimaryCardRuntimeEvidence, "src/components/templates/main-app/today/components/PrimaryCard/index.tsx");
+const businessHealthHeaderRuntimeEvidenceIsCurrent = isCurrentSingleSourceEvidence(businessHealthHeaderRuntimeEvidence, "src/components/templates/main-app/ownerBusinessAssistant/BusinessHealthHeader.tsx");
+const loadingMessageCancelRuntimeEvidenceIsCurrent = isCurrentSingleSourceEvidence(loadingMessageCancelRuntimeEvidence, "src/components/antdComponent/loadingMessage/index.tsx");
+const aiButtonIconRuntimeEvidenceIsCurrent = isCurrentSingleSourceEvidence(aiButtonIconRuntimeEvidence, "src/components/atoms/aiButtonIcon/index.tsx");
+const knowledgeBaseSourceFileRuntimeEvidenceIsCurrent = isCurrentSingleSourceEvidence(knowledgeBaseSourceFileRuntimeEvidence, "src/components/atoms/KbSourceFile/index.tsx");
+const todayOperationalSectionRuntimeEvidenceIsCurrent = isCurrentSingleSourceEvidence(todayOperationalSectionRuntimeEvidence, "src/components/templates/main-app/today/components/OperationalSection/index.tsx");
+const noSubscriptionViewPlansRuntimeEvidenceIsCurrent = isCurrentSingleSourceEvidence(noSubscriptionViewPlansRuntimeEvidence, "src/components/templates/main-app/billing/NoSubscriptionView.tsx");
+const emptyProjectStateRuntimeEvidenceIsCurrent = isCurrentSingleSourceEvidence(emptyProjectStateRuntimeEvidence, "src/components/templates/main-app/projects/EmptyProjectState.tsx");
+const feedbackIntelligenceDisclosureRuntimeEvidenceIsCurrent = isCurrentSingleSourceEvidence(feedbackIntelligenceDisclosureRuntimeEvidence, "src/components/analytics/FeedbackIntelligenceCard.tsx");
+const reportLeadMonitorContinuationEvidenceIsCurrent = isCurrentSingleSourceEvidence(
+    reportLeadMonitorContinuationEvidence,
+    "src/components/templates/main-app/platform/reportLeadMonitor/index.tsx",
+);
+const reportLeadMonitorNativeBoundaryEvidenceIsCurrent = isCurrentSingleSourceEvidence(
+    reportLeadMonitorNativeBoundaryEvidence,
+    "src/components/templates/main-app/platform/reportLeadMonitor/index.tsx",
+);
+const websiteEnquiryMonitorContinuationEvidenceIsCurrent = isCurrentSingleSourceEvidence(
+    websiteEnquiryMonitorContinuationEvidence,
+    "src/components/templates/main-app/platform/websiteEnquiryMonitor/index.tsx",
+);
+const websiteEnquiryMonitorNativeBoundaryEvidenceIsCurrent = isCurrentSingleSourceEvidence(
+    websiteEnquiryMonitorNativeBoundaryEvidence,
+    "src/components/templates/main-app/platform/websiteEnquiryMonitor/index.tsx",
+);
+const platformUserContinuationEvidenceIsCurrent = isCurrentSingleSourceEvidence(
+    platformUserContinuationEvidence,
+    "src/components/templates/platform/users/index.tsx",
+);
+const BULK_ACTIONS_SOURCE_FILE = "src/components/mobile/sheets/BulkActionsSheet.tsx";
+const bulkActionsControlEvidenceIsCurrent = (
+    bulkActionsControlEvidence?.result === "PASS"
+    && bulkActionsControlEvidence?.sourceManifestSha256
+        === currentSingleSourceManifestSha256(BULK_ACTIONS_SOURCE_FILE)
+);
+const MOBILE_MORE_SOURCE_FILE = "src/components/mobile/screens/MobileMoreScreen.tsx";
+const mobileMoreControlEvidenceIsCurrent = (
+    mobileMoreControlEvidence?.result === "PASS"
+    && mobileMoreControlEvidence?.sourceManifestSha256
+        === currentSingleSourceManifestSha256(MOBILE_MORE_SOURCE_FILE)
+);
+const mobileMoreSafetyBlockedControlEvidenceIsCurrent = (
+    mobileMoreSafetyBlockedControlEvidence?.result === "PASS"
+    && mobileMoreSafetyBlockedControlEvidence?.sourceManifestSha256
+        === currentSingleSourceManifestSha256(MOBILE_MORE_SOURCE_FILE)
+);
+const MOBILE_MENU_RUNTIME_SOURCE_FILES = [
+    "src/components/mobile/screens/MobileMenuScreen.tsx",
+    "src/components/mobile/sheets/ItemEditSheet.tsx",
+    "src/components/mobile/sheets/CategoryManagerSheet.tsx",
+    "src/components/mobile/sheets/MobileCategoryEditSheet.tsx",
+];
+const currentMobileMenuSourceManifestSha256 = (() => {
+    const hash = crypto.createHash("sha256");
+    for (const relativePath of MOBILE_MENU_RUNTIME_SOURCE_FILES) {
+        hash.update(relativePath);
+        hash.update("\0");
+        hash.update(fs.readFileSync(path.join(ROOT, relativePath)));
+        hash.update("\0");
+    }
+    return hash.digest("hex");
+})();
+const mobileMenuControlEvidenceIsCurrent = (
+    mobileMenuControlEvidence?.result === "PASS"
+    && mobileMenuControlEvidence?.sourceManifestSha256
+        === currentMobileMenuSourceManifestSha256
+);
+const mobileMenuNativeBoundaryControlEvidenceIsCurrent = (
+    mobileMenuNativeBoundaryControlEvidence?.result === "PASS"
+    && mobileMenuNativeBoundaryControlEvidence?.sourceManifestSha256
+        === currentMobileMenuSourceManifestSha256
+);
+const MOBILE_ITEM_EDIT_SOURCE_FILE = "src/components/mobile/sheets/ItemEditSheet.tsx";
+const mobileItemEditAlternateFixtureEvidenceIsCurrent = isCurrentSingleSourceEvidence(
+    mobileItemEditAlternateFixtureEvidence,
+    MOBILE_ITEM_EDIT_SOURCE_FILE,
+);
+const mobileItemEditProviderBoundaryEvidenceIsCurrent = isCurrentSingleSourceEvidence(
+    mobileItemEditProviderBoundaryEvidence,
+    MOBILE_ITEM_EDIT_SOURCE_FILE,
+);
+const mobileItemProductTagCurrentIntegrationEvidenceIsCurrent = isCurrentSingleSourceEvidence(
+    mobileItemProductTagCurrentIntegrationEvidence,
+    MOBILE_ITEM_EDIT_SOURCE_FILE,
+);
+const MOBILE_SHARE_RUNTIME_SOURCE_FILES = [
+    "src/components/mobile/screens/MobileShareScreen.tsx",
+    "src/components/mobile/providers/MobileProjectsProvider.tsx",
+    "src/components/mobile/MobileShell.tsx",
+];
+const currentMobileShareSourceManifestSha256 = (() => {
+    const hash = crypto.createHash("sha256");
+    for (const relativePath of MOBILE_SHARE_RUNTIME_SOURCE_FILES) {
+        hash.update(relativePath);
+        hash.update("\0");
+        hash.update(fs.readFileSync(path.join(ROOT, relativePath)));
+        hash.update("\0");
+    }
+    return hash.digest("hex");
+})();
+const mobileShareControlEvidenceIsCurrent = (
+    mobileShareControlEvidence?.result === "PASS"
+    && mobileShareControlEvidence?.sourceManifestSha256
+        === currentMobileShareSourceManifestSha256
+);
+const MOBILE_SHARE_FEATURE_DISABLED_SOURCE_FILES = [
+    "src/components/mobile/screens/MobileShareScreen.tsx",
+    "src/config/features.ts",
+];
+const currentMobileShareFeatureDisabledManifestSha256 = (() => {
+    const hash = crypto.createHash("sha256");
+    for (const relativePath of MOBILE_SHARE_FEATURE_DISABLED_SOURCE_FILES) {
+        hash.update(relativePath);
+        hash.update("\0");
+        hash.update(fs.readFileSync(path.join(ROOT, relativePath)));
+        hash.update("\0");
+    }
+    return hash.digest("hex");
+})();
+const mobileShareFeatureDisabledControlEvidenceIsCurrent = (
+    mobileShareFeatureDisabledControlEvidence?.result === "PASS"
+    && mobileShareFeatureDisabledControlEvidence?.sourceManifestSha256
+        === currentMobileShareFeatureDisabledManifestSha256
+);
+const MOBILE_SHARE_SOURCE_FILE = "src/components/mobile/screens/MobileShareScreen.tsx";
+const mobileShareNotShippedControlEvidenceIsCurrent = (
+    mobileShareNotShippedControlEvidence?.result === "PASS"
+    && mobileShareNotShippedControlEvidence?.sourceManifestSha256
+        === currentSingleSourceManifestSha256(MOBILE_SHARE_SOURCE_FILE)
+);
+const MOBILE_SHARE_NATIVE_BOUNDARY_SOURCE_FILES = [
+    "src/components/mobile/screens/MobileShareScreen.tsx",
+    "src/components/mobile/components/MobileLinkCard.tsx",
+    "src/components/mobile/components/CommunicationKit.tsx",
+];
+const currentMobileShareNativeBoundaryManifestSha256 = (() => {
+    const hash = crypto.createHash("sha256");
+    for (const relativePath of MOBILE_SHARE_NATIVE_BOUNDARY_SOURCE_FILES) {
+        hash.update(relativePath);
+        hash.update("\0");
+        hash.update(fs.readFileSync(path.join(ROOT, relativePath)));
+        hash.update("\0");
+    }
+    return hash.digest("hex");
+})();
+const mobileShareNativeBoundaryControlEvidenceIsCurrent = (
+    mobileShareNativeBoundaryControlEvidence?.result === "PASS"
+    && mobileShareNativeBoundaryControlEvidence?.sourceManifestSha256
+        === currentMobileShareNativeBoundaryManifestSha256
+);
+const PRINTABLE_ASSET_RUNTIME_SOURCE_FILES = [
+    "src/components/templates/main-app/printableAssetTemplates/PrintableAssetTemplatesRoute.tsx",
+    "src/components/mobile/screens/MobileShareScreen.tsx",
+];
+const currentPrintableAssetSourceManifestSha256 = (() => {
+    const hash = crypto.createHash("sha256");
+    for (const relativePath of PRINTABLE_ASSET_RUNTIME_SOURCE_FILES) {
+        hash.update(relativePath);
+        hash.update("\0");
+        hash.update(fs.readFileSync(path.join(ROOT, relativePath)));
+        hash.update("\0");
+    }
+    return hash.digest("hex");
+})();
+const printableAssetControlEvidenceIsCurrent = (
+    printableAssetControlEvidence?.result === "PASS"
+    && printableAssetControlEvidence?.sourceManifestSha256
+        === currentPrintableAssetSourceManifestSha256
+);
+const printableAssetNativeBoundaryControlEvidenceIsCurrent = (
+    printableAssetNativeBoundaryControlEvidence?.result === "PASS"
+    && printableAssetNativeBoundaryControlEvidence?.sourceManifestSha256
+        === currentPrintableAssetSourceManifestSha256
+);
+const MOBILE_MORE_FEATURE_DISABLED_SOURCE_FILES = [
+    MOBILE_MORE_SOURCE_FILE,
+    "src/config/features.ts",
+];
+const currentMobileMoreFeatureDisabledManifestSha256 = (() => {
+    const hash = crypto.createHash("sha256");
+    for (const relativePath of MOBILE_MORE_FEATURE_DISABLED_SOURCE_FILES) {
+        hash.update(relativePath);
+        hash.update("\0");
+        hash.update(fs.readFileSync(path.join(ROOT, relativePath)));
+        hash.update("\0");
+    }
+    return hash.digest("hex");
+})();
+const mobileMoreFeatureDisabledControlEvidenceIsCurrent = (
+    mobileMoreFeatureDisabledControlEvidence?.result === "PASS"
+    && mobileMoreFeatureDisabledControlEvidence?.sourceManifestSha256
+        === currentMobileMoreFeatureDisabledManifestSha256
+);
 const CONTACT_FORM_SOURCE_FILE = "src/components/website/contact/ContactPage.tsx";
 const contactFormControlEvidenceIsCurrent = (
     contactFormControlEvidence?.result === "PASS"
@@ -362,6 +1614,7 @@ const customerLinkSocialBioCompletionControlEvidenceIsCurrent = (
         === currentCustomerLinkSocialBioCompletionManifestSha256
 );
 const WEBSITE_PREFERENCE_SOURCE_FILES = [
+    "src/components/website/shared/StickyCta.tsx",
     "src/components/website/shared/WebsiteThemeSwitcher.tsx",
     "src/components/website/shared/WebsiteLanguageSwitcher.tsx",
     "src/components/website/shared/WebsiteAnalyticsPreferencesButton.tsx",
@@ -382,7 +1635,175 @@ const websitePreferenceControlEvidenceIsCurrent = (
     && websitePreferenceControlEvidence?.sourceManifestSha256
         === currentWebsitePreferenceManifestSha256
 );
+const WEBSITE_HOMEPAGE_SOURCE_FILES = [
+    "src/components/website/home/BeforeAfterSection.tsx",
+    "src/components/website/home/CreateMenuPreviewSection.tsx",
+    "src/components/website/home/FaqSection.tsx",
+    "src/components/website/home/FinalCtaSection.tsx",
+    "src/components/website/home/HeroSection.tsx",
+    "src/components/website/home/OwnerProofSection.tsx",
+];
+const currentWebsiteHomepageManifestSha256 = (() => {
+    const hash = crypto.createHash("sha256");
+    for (const relativePath of WEBSITE_HOMEPAGE_SOURCE_FILES) {
+        hash.update(relativePath);
+        hash.update("\0");
+        hash.update(fs.readFileSync(path.join(ROOT, relativePath)));
+        hash.update("\0");
+    }
+    return hash.digest("hex");
+})();
+const websiteHomepageControlEvidenceIsCurrent = (
+    websiteHomepageControlEvidence?.result === "PASS"
+    && websiteHomepageControlEvidence?.sourceManifestSha256
+        === currentWebsiteHomepageManifestSha256
+);
+const WEBSITE_FAQ_SOURCE_FILES = [
+    "src/components/website/faq/FaqPage.tsx",
+];
+const currentWebsiteFaqManifestSha256 = (() => {
+    const hash = crypto.createHash("sha256");
+    for (const relativePath of WEBSITE_FAQ_SOURCE_FILES) {
+        hash.update(relativePath);
+        hash.update("\0");
+        hash.update(fs.readFileSync(path.join(ROOT, relativePath)));
+        hash.update("\0");
+    }
+    return hash.digest("hex");
+})();
+const websiteFaqControlEvidenceIsCurrent = (
+    websiteFaqControlEvidence?.result === "PASS"
+    && websiteFaqControlEvidence?.sourceManifestSha256
+        === currentWebsiteFaqManifestSha256
+);
+const WEBSITE_INDUSTRY_SOURCE_FILES = [
+    "src/components/website/industries/IndustryLandingPage.tsx",
+    "src/content/websiteIndustries.ts",
+];
+const currentWebsiteIndustryManifestSha256 = (() => {
+    const hash = crypto.createHash("sha256");
+    for (const relativePath of WEBSITE_INDUSTRY_SOURCE_FILES) {
+        hash.update(relativePath);
+        hash.update("\0");
+        hash.update(fs.readFileSync(path.join(ROOT, relativePath)));
+        hash.update("\0");
+    }
+    return hash.digest("hex");
+})();
+const websiteIndustryControlEvidenceIsCurrent = (
+    websiteIndustryControlEvidence?.result === "PASS"
+    && websiteIndustryControlEvidence?.sourceManifestSha256
+        === currentWebsiteIndustryManifestSha256
+);
+const WEBSITE_INFORMATIONAL_SOURCE_FILES = [
+    "src/components/website/about/AboutPage.tsx",
+    "src/components/website/product/ProductPage.tsx",
+    "src/components/website/trust-security/TrustSecurityPage.tsx",
+    "src/components/website/legal/RefundPolicyPage.tsx",
+    "src/components/website/legal/TermsOfServicePage.tsx",
+    "src/components/website/developers/DevelopersPage.tsx",
+    "src/components/website/get-started/GetStartedPage.tsx",
+    "src/components/website/shared/WebsitePageHero.tsx",
+];
+const currentWebsiteInformationalManifestSha256 = (() => {
+    const hash = crypto.createHash("sha256");
+    for (const relativePath of WEBSITE_INFORMATIONAL_SOURCE_FILES) {
+        hash.update(relativePath);
+        hash.update("\0");
+        hash.update(fs.readFileSync(path.join(ROOT, relativePath)));
+        hash.update("\0");
+    }
+    return hash.digest("hex");
+})();
+const websiteInformationalControlEvidenceIsCurrent = (
+    websiteInformationalControlEvidence?.result === "PASS"
+    && websiteInformationalControlEvidence?.sourceManifestSha256
+        === currentWebsiteInformationalManifestSha256
+);
+const WEBSITE_WHATSAPP_SOURCE_FILES = [
+    "src/components/website/whatsapp/WhatsAppOnboardingPage.tsx",
+];
+const currentWebsiteWhatsappManifestSha256 = (() => {
+    const hash = crypto.createHash("sha256");
+    for (const relativePath of WEBSITE_WHATSAPP_SOURCE_FILES) {
+        hash.update(relativePath);
+        hash.update("\0");
+        hash.update(fs.readFileSync(path.join(ROOT, relativePath)));
+        hash.update("\0");
+    }
+    return hash.digest("hex");
+})();
+const websiteWhatsappControlEvidenceIsCurrent = (
+    websiteWhatsappControlEvidence?.result === "PASS"
+    && websiteWhatsappControlEvidence?.sourceManifestSha256
+        === currentWebsiteWhatsappManifestSha256
+);
+const WEBSITE_RESOURCE_ARTICLE_SOURCE_FILES = [
+    "src/components/website/resources/ArticleLayout.tsx",
+    "src/components/website/resources/ArticleSection.tsx",
+    "src/components/website/resources/ResourceTrackedLink.tsx",
+];
+const currentWebsiteResourceArticleManifestSha256 = (() => {
+    const hash = crypto.createHash("sha256");
+    for (const relativePath of WEBSITE_RESOURCE_ARTICLE_SOURCE_FILES) {
+        hash.update(relativePath);
+        hash.update("\0");
+        hash.update(fs.readFileSync(path.join(ROOT, relativePath)));
+        hash.update("\0");
+    }
+    return hash.digest("hex");
+})();
+const websiteResourceArticleControlEvidenceIsCurrent = (
+    websiteResourceArticleControlEvidence?.result === "PASS"
+    && websiteResourceArticleControlEvidence?.sourceManifestSha256
+        === currentWebsiteResourceArticleManifestSha256
+);
+const WEBSITE_PUBLIC_FEATURE_SOURCE_FILES = [
+    "src/components/website/features/BusinessHealthFeaturePage.tsx",
+    "src/components/website/ai-menu-manager/AiMenuManagerPage.tsx",
+    "src/components/website/features/FeatureDetailPage.tsx",
+    "src/components/website/features/FeatureDetailJourney.tsx",
+    "src/components/website/features/FeaturesPage.tsx",
+    "src/components/website/multi-location/MultiLocationPage.tsx",
+    "src/components/website/toolsHub/ToolsHubPage.tsx",
+    "src/components/website/shared/WebsiteLink.tsx",
+];
+const currentWebsitePublicFeatureManifestSha256 = (() => {
+    const hash = crypto.createHash("sha256");
+    for (const relativePath of WEBSITE_PUBLIC_FEATURE_SOURCE_FILES) {
+        hash.update(relativePath);
+        hash.update("\0");
+        hash.update(fs.readFileSync(path.join(ROOT, relativePath)));
+        hash.update("\0");
+    }
+    return hash.digest("hex");
+})();
+const websitePublicFeatureControlEvidenceIsCurrent = (
+    websitePublicFeatureControlEvidence?.result === "PASS"
+    && websitePublicFeatureControlEvidence?.sourceManifestSha256
+        === currentWebsitePublicFeatureManifestSha256
+);
+const WEBSITE_FOOTER_SOURCE_FILES = [
+    "src/components/website/Footer.tsx",
+    "src/components/website/SchemaMarkup.tsx",
+];
+const currentWebsiteFooterManifestSha256 = (() => {
+    const hash = crypto.createHash("sha256");
+    for (const relativePath of WEBSITE_FOOTER_SOURCE_FILES) {
+        hash.update(relativePath);
+        hash.update("\0");
+        hash.update(fs.readFileSync(path.join(ROOT, relativePath)));
+        hash.update("\0");
+    }
+    return hash.digest("hex");
+})();
+const websiteFooterControlEvidenceIsCurrent = (
+    websiteFooterControlEvidence?.result === "PASS"
+    && websiteFooterControlEvidence?.sourceManifestSha256
+        === currentWebsiteFooterManifestSha256
+);
 const LOCAL_MOBILE_OWNER_SOURCE_FILES = [
+    "src/app/(website)/create-menu/PreviewClient.tsx",
     "src/components/mobile/antd.tsx",
     "src/components/mobile/MobileShell.tsx",
     "src/components/mobile/MobileNavigation.tsx",
@@ -394,17 +1815,19 @@ const LOCAL_MOBILE_OWNER_SOURCE_FILES = [
     "src/components/mobile/screens/MobileSpecialMenuScreen.tsx",
     "src/components/mobile/screens/MobileUsersScreen.tsx",
     "src/components/mobile/screens/MobileRolesScreen.tsx",
-    "src/components/mobile/screens/MobileShareScreen.tsx",
     "src/components/mobile/components/MobileProjectSelectorSheet.tsx",
     "src/components/mobile/components/MobileLinkCard.tsx",
     "src/components/mobile/components/CommunicationKit.tsx",
+    "src/lib/communication/messageTemplates.ts",
     "src/components/mobile/components/MobileQrCodeSheet.tsx",
     "src/components/mobile/components/MobileCompliancePagesEditor.tsx",
     "src/components/mobile/components/MobileTempStatusConfigurator.tsx",
     "src/components/mobile/screens/MobileDomainSettingsScreen.tsx",
-    "src/components/mobile/screens/MobileMoreScreen.tsx",
+    "src/components/mobile/screens/MobileNotificationSettingsScreen.tsx",
     "src/components/mobile/screens/MobileResellerDashboardScreen.tsx",
     "src/components/mobile/screens/MobileResellerOnboardingScreen.tsx",
+    "src/components/mobile/screens/MobileResellerManagementScreen.tsx",
+    "src/lib/reseller/resellerManagementProfile.ts",
     "src/components/mobile/screens/MobileBillingScreen.tsx",
     "src/components/mobile/screens/MobileLocationsScreen.tsx",
     "src/components/mobile/screens/MobileTransactionsScreen.tsx",
@@ -412,10 +1835,15 @@ const LOCAL_MOBILE_OWNER_SOURCE_FILES = [
     "src/components/mobile/screens/MobileFeedbackScreen.tsx",
     "src/components/mobile/screens/MobileDigitalScreensScreen.tsx",
     "src/components/mobile/screens/MobileBasicSettingsScreen.tsx",
-    "src/components/mobile/screens/MobileOfficialPageScreen.tsx",
+    "src/lib/validation/optionalContactEmail.ts",
     "src/components/mobile/sheets/ColorPickerSheet.tsx",
     "src/components/mobile/sheets/MobileOfficialPagePreviewSheet.tsx",
     "src/components/mobile/screens/MobileAdvancedSettingsScreen.tsx",
+    "src/lib/obp/ownerSocialMediaBoundary.ts",
+    "src/app/client/obp/OBPResolvedSurface.tsx",
+    "src/app/client/obp/OBPExternalLinks.tsx",
+    "src/components/templates/main-app/projects/b2cView/output/MenuFooter.tsx",
+    "src/lib/schema/index.ts",
     "src/components/mobile/components/PresenceMonitor.tsx",
     "src/components/mobile/screens/MobileBusinessAttributesScreen.tsx",
     "src/components/mobile/screens/MobileCustomerAppScreen.tsx",
@@ -427,7 +1855,6 @@ const LOCAL_MOBILE_OWNER_SOURCE_FILES = [
     "src/components/mobile/screens/MobileDesignEditorScreen.tsx",
     "src/components/mobile/sheets/ItemEditSheet.tsx",
     "src/components/mobile/sheets/CategoryManagerSheet.tsx",
-    "src/components/mobile/sheets/BulkActionsSheet.tsx",
     "src/components/mobile/sheets/MobileCategoryEditSheet.tsx",
     "src/components/mobile/sheets/AIDefaultsSheet.tsx",
     "src/components/mobile/sheets/GenerateDescriptionsSheet.tsx",
@@ -510,12 +1937,6 @@ const LOCAL_MOBILE_OWNER_SOURCE_FILES = [
     "src/components/templates/main-app/billing/ActiveSubscriptionCard.tsx",
     "src/components/templates/main-app/today/index.tsx",
     "src/components/templates/main-app/aiMenuManager/AiMenuManagerRoute.tsx",
-    "src/components/templates/main-app/printableAssetTemplates/PrintableAssetTemplatesRoute.tsx",
-    "src/lib/printable-asset-templates/renderPrintableAsset.ts",
-    "src/lib/printable-asset-templates/editorDocumentAdapter.ts",
-    "src/lib/print-menu-surfaces/templates/tableTentTemplate.ts",
-    "src/lib/print-menu-surfaces/templates/singleTableCardTemplate.ts",
-    "src/lib/menu-kit/templates/entrancePosterTemplate.ts",
     "src/app/(main)/layout.tsx",
     "src/app/(main)/locations/page.tsx",
     "src/components/organisms/OutletRenameModal/index.tsx",
@@ -532,6 +1953,7 @@ const LOCAL_MOBILE_OWNER_SOURCE_FILES = [
     "src/components/templates/main-app/projects/editorView/AiImageGenerator/MultiSelectAttributeSelector.tsx",
     "src/components/templates/main-app/projects/editorView/AiImageGenerator/StyleSelector.tsx",
     "src/components/templates/main-app/projects/editorView/AiImageGenerator/index.tsx",
+    "src/components/templates/main-app/projects/editorView/AiImageGenerator/SubjectProfileSelector.tsx",
     "src/components/templates/main-app/projects/editorView/AiImageGenerator/ChatWidgetUi.tsx",
     "src/components/shared/media/ItemPhotoCaptureAssist.tsx",
     "src/components/shared/media/MediaAspectRatioSelector.tsx",
@@ -565,11 +1987,89 @@ const localMobileOwnerControlEvidenceIsCurrent = (
     && localMobileOwnerControlEvidence?.sourceManifestSha256
         === currentLocalMobileOwnerManifestSha256
 );
+const CURRENT_LOCAL_OWNER_SOURCE_FILES = [
+    "scripts/verification/test-menulist-host-routing.ts",
+    "src/components/atoms/OutletContextBanner/index.tsx",
+    "src/components/molecules/StoreSwitcher/index.tsx",
+    "src/components/organisms/appLayoutSwitcher/index.tsx",
+    "src/components/organisms/appSettings/AdvancedSettings.tsx",
+    "src/components/organisms/appSettings/EnhancedColorPicker.tsx",
+    "src/components/organisms/appSettings/index.tsx",
+    "src/components/organisms/dateFormatSwitcher/index.tsx",
+    "src/components/organisms/timeFormatSwitcher/index.tsx",
+    "src/components/mobile/components/MobileCompliancePagesEditor.tsx",
+    "src/components/mobile/components/MenuQualitySignals.tsx",
+    "src/components/mobile/components/MobileMenuCommandSheet.tsx",
+    "src/components/mobile/components/MobileSettingsScreenHeader.tsx",
+    "src/components/mobile/screens/MobileDigitalScreensScreen.tsx",
+    "src/components/mobile/screens/MobileMoreScreen.tsx",
+    "src/components/mobile/screens/MobileOfficialPageScreen.tsx",
+    "src/lib/media/obpMediaCleanupJournal.ts",
+    "src/components/mobile/screens/MobileSpecialMenuScreen.tsx",
+    "src/components/mobile/screens/MobileMenuScreen.tsx",
+    "src/components/mobile/menu-card-export/MobileMenuCardExportScreen.tsx",
+    "src/components/mobile/sheets/CategoryManagerSheet.tsx",
+    "src/components/mobile/sheets/MobileCategoryEditSheet.tsx",
+    "src/components/mobile/sheets/AIDefaultsSheet.tsx",
+    "src/components/shared/media/MediaAspectRatioSelector.tsx",
+    "src/components/templates/main-app/projects/ProjectsSubHeader.tsx",
+    "src/components/templates/main-app/projects/editorView/AiImageGenerator/AspectRatioSelector.tsx",
+    "src/components/templates/main-app/projects/b2cView/previewModal.tsx",
+    "src/components/templates/main-app/projects/b2cView/index.tsx",
+    "src/components/templates/main-app/projects/b2cView/sidebar/index.tsx",
+    "src/components/templates/main-app/projects/b2cView/projectPublishState.ts",
+    "src/components/templates/main-app/projects/b2cView/shareModal/index.tsx",
+    "src/lib/obp/ownerPublicPresenceBoundary.ts",
+    "src/constants/urls.ts",
+];
+const currentLocalOwnerManifestSha256 = (() => {
+    const hash = crypto.createHash("sha256");
+    for (const relativePath of CURRENT_LOCAL_OWNER_SOURCE_FILES) {
+        hash.update(relativePath);
+        hash.update("\0");
+        hash.update(fs.readFileSync(path.join(ROOT, relativePath)));
+        hash.update("\0");
+    }
+    return hash.digest("hex");
+})();
+const currentLocalOwnerControlEvidenceIsCurrent = (
+    currentLocalOwnerControlEvidence?.result === "PASS"
+    && currentLocalOwnerControlEvidence?.sourceManifestSha256
+        === currentLocalOwnerManifestSha256
+);
+const CURRENT_LOCAL_PUBLIC_SOURCE_FILES = [
+    "src/app/client/obp/BrandOBPContent.tsx",
+    "src/app/client/obp/OBPContent.tsx",
+    "src/app/client/obp/OBPActions.tsx",
+    "src/app/client/obp/OBPResolvedSurface.tsx",
+    "src/app/client/obp/OBPThemeToggle.tsx",
+    "src/components/customerApp/InstallPrompt.tsx",
+    "src/constants/urls.ts",
+];
+const currentLocalPublicManifestSha256 = (() => {
+    const hash = crypto.createHash("sha256");
+    for (const relativePath of CURRENT_LOCAL_PUBLIC_SOURCE_FILES) {
+        hash.update(relativePath);
+        hash.update("\0");
+        hash.update(fs.readFileSync(path.join(ROOT, relativePath)));
+        hash.update("\0");
+    }
+    return hash.digest("hex");
+})();
+const currentLocalPublicControlEvidenceIsCurrent = (
+    currentLocalPublicControlEvidence?.result === "PASS"
+    && currentLocalPublicControlEvidence?.sourceManifestSha256
+        === currentLocalPublicManifestSha256
+);
 const controlEvidenceSets = [
     authenticatedOwnerControlEvidence,
+    currentLocalOwnerControlEvidenceIsCurrent ? currentLocalOwnerControlEvidence : null,
     localPlatformControlEvidence,
     publicCustomerControlEvidence,
+    currentLocalPublicControlEvidenceIsCurrent ? currentLocalPublicControlEvidence : null,
     creativeEditorControlEvidenceIsCurrent ? creativeEditorControlEvidence : null,
+    creativeEditorNativeBoundaryEvidenceIsCurrent ? creativeEditorNativeBoundaryEvidence : null,
+    creativeEditorNotShippedEvidenceIsCurrent ? creativeEditorNotShippedEvidence : null,
     websiteHeaderControlEvidenceIsCurrent ? websiteHeaderControlEvidence : null,
     unauthorizedRecoveryControlEvidenceIsCurrent ? unauthorizedRecoveryControlEvidence : null,
     notFoundRecoveryControlEvidenceIsCurrent ? notFoundRecoveryControlEvidence : null,
@@ -600,6 +2100,274 @@ const controlEvidenceSets = [
     publicToolReportActionControlEvidenceIsCurrent ? publicToolReportActionControlEvidence : null,
     customerLinkSocialBioCompletionControlEvidenceIsCurrent ? customerLinkSocialBioCompletionControlEvidence : null,
     websitePreferenceControlEvidenceIsCurrent ? websitePreferenceControlEvidence : null,
+    websiteHomepageControlEvidenceIsCurrent ? websiteHomepageControlEvidence : null,
+    websiteFaqControlEvidenceIsCurrent ? websiteFaqControlEvidence : null,
+    websiteIndustryControlEvidenceIsCurrent ? websiteIndustryControlEvidence : null,
+    websiteInformationalControlEvidenceIsCurrent ? websiteInformationalControlEvidence : null,
+    websiteWhatsappControlEvidenceIsCurrent ? websiteWhatsappControlEvidence : null,
+    websiteResourceArticleControlEvidenceIsCurrent ? websiteResourceArticleControlEvidence : null,
+    websitePublicFeatureControlEvidenceIsCurrent ? websitePublicFeatureControlEvidence : null,
+    websiteFooterControlEvidenceIsCurrent ? websiteFooterControlEvidence : null,
+    platformNotificationMonitorControlEvidenceIsCurrent ? platformNotificationMonitorControlEvidence : null,
+    platformNotificationMonitorNativeBoundaryControlEvidenceIsCurrent ? platformNotificationMonitorNativeBoundaryControlEvidence : null,
+    ownerNotificationMonitorControlEvidenceIsCurrent ? ownerNotificationMonitorControlEvidence : null,
+    ownerNotificationMonitorSafetyBlockedControlEvidenceIsCurrent ? ownerNotificationMonitorSafetyBlockedControlEvidence : null,
+    ownerNotificationMonitorNativeBoundaryControlEvidenceIsCurrent ? ownerNotificationMonitorNativeBoundaryControlEvidence : null,
+    opsControlRoomContinuationEvidenceIsCurrent ? opsControlRoomContinuationEvidence : null,
+    opsControlRoomSafetyBlockedEvidenceIsCurrent ? opsControlRoomSafetyBlockedEvidence : null,
+    resellerDesktopOnboardingContinuationEvidenceIsCurrent ? resellerDesktopOnboardingContinuationEvidence : null,
+    mobileResellerOnboardingContinuationEvidenceIsCurrent ? mobileResellerOnboardingContinuationEvidence : null,
+    mobileResellerManagementContinuationEvidenceIsCurrent ? mobileResellerManagementContinuationEvidence : null,
+    mobileResellerDashboardContinuationEvidenceIsCurrent ? mobileResellerDashboardContinuationEvidence : null,
+    desktopResellerManagementContinuationEvidenceIsCurrent ? desktopResellerManagementContinuationEvidence : null,
+    desktopResellerOfflineFeatureDisabledEvidenceIsCurrent ? desktopResellerOfflineFeatureDisabledEvidence : null,
+    mobileResellerOfflineFeatureDisabledEvidenceIsCurrent ? mobileResellerOfflineFeatureDisabledEvidence : null,
+    platformAssetTemplateLifecycleEvidenceIsCurrent ? platformAssetTemplateLifecycleEvidence : null,
+    reportLeadMonitorContinuationEvidenceIsCurrent ? reportLeadMonitorContinuationEvidence : null,
+    reportLeadMonitorNativeBoundaryEvidenceIsCurrent ? reportLeadMonitorNativeBoundaryEvidence : null,
+    websiteEnquiryMonitorContinuationEvidenceIsCurrent ? websiteEnquiryMonitorContinuationEvidence : null,
+    websiteEnquiryMonitorNativeBoundaryEvidenceIsCurrent ? websiteEnquiryMonitorNativeBoundaryEvidence : null,
+    platformUserContinuationEvidenceIsCurrent ? platformUserContinuationEvidence : null,
+    desktopAiImageGeneratorControlEvidenceIsCurrent ? desktopAiImageGeneratorControlEvidence : null,
+    desktopAiImageGeneratorProviderBlockedEvidenceIsCurrent ? desktopAiImageGeneratorProviderBlockedEvidence : null,
+    desktopAiImageGeneratorNativeBoundaryEvidenceIsCurrent ? desktopAiImageGeneratorNativeBoundaryEvidence : null,
+    desktopPosSyncContinuationEvidenceIsCurrent ? desktopPosSyncContinuationEvidence : null,
+    desktopPosSyncProviderBlockedEvidenceIsCurrent ? desktopPosSyncProviderBlockedEvidence : null,
+    desktopPosSyncNativeBoundaryEvidenceIsCurrent ? desktopPosSyncNativeBoundaryEvidence : null,
+    mobileSharedControlContinuationEvidenceIsCurrent ? mobileSharedControlContinuationEvidence : null,
+    mobileSharedNativeBoundaryEvidenceIsCurrent ? mobileSharedNativeBoundaryEvidence : null,
+    desktopProjectShareContinuationEvidenceIsCurrent ? desktopProjectShareContinuationEvidence : null,
+    desktopProjectShareExternalHandoffEvidenceIsCurrent ? desktopProjectShareExternalHandoffEvidence : null,
+    desktopProjectShareNativeBoundaryEvidenceIsCurrent ? desktopProjectShareNativeBoundaryEvidence : null,
+    desktopMenuCardExportContinuationEvidenceIsCurrent ? desktopMenuCardExportContinuationEvidence : null,
+    desktopMenuCardExportProviderBlockedEvidenceIsCurrent ? desktopMenuCardExportProviderBlockedEvidence : null,
+    desktopMenuCardExportNativeBoundaryEvidenceIsCurrent ? desktopMenuCardExportNativeBoundaryEvidence : null,
+    desktopMenuCardExportFixtureBlockedEvidenceIsCurrent ? desktopMenuCardExportFixtureBlockedEvidence : null,
+    desktopActiveSubscriptionLifecycleEvidenceIsCurrent ? desktopActiveSubscriptionLifecycleEvidence : null,
+    desktopActiveSubscriptionProviderBlockedEvidenceIsCurrent ? desktopActiveSubscriptionProviderBlockedEvidence : null,
+    desktopActiveSubscriptionFeatureDisabledEvidenceIsCurrent ? desktopActiveSubscriptionFeatureDisabledEvidence : null,
+    desktopTraditionalEditorContinuationEvidenceIsCurrent ? desktopTraditionalEditorContinuationEvidence : null,
+    desktopTraditionalEditorFixtureBlockedEvidenceIsCurrent ? desktopTraditionalEditorFixtureBlockedEvidence : null,
+    desktopCategoryEditorContinuationEvidenceIsCurrent ? desktopCategoryEditorContinuationEvidence : null,
+    desktopCategoryEditorProviderBlockedEvidenceIsCurrent ? desktopCategoryEditorProviderBlockedEvidence : null,
+    desktopCategoryEditorFixtureBlockedEvidenceIsCurrent ? desktopCategoryEditorFixtureBlockedEvidence : null,
+    desktopAiMenuManagerContinuationEvidenceIsCurrent ? desktopAiMenuManagerContinuationEvidence : null,
+    desktopAiMenuManagerProviderBlockedEvidenceIsCurrent ? desktopAiMenuManagerProviderBlockedEvidence : null,
+    desktopAiMenuManagerFixtureBlockedEvidenceIsCurrent ? desktopAiMenuManagerFixtureBlockedEvidence : null,
+    desktopPastActivityFeatureDisabledEvidenceIsCurrent ? desktopPastActivityFeatureDisabledEvidence : null,
+    desktopResellerOnboardingProviderResultEvidenceIsCurrent ? desktopResellerOnboardingProviderResultEvidence : null,
+    mobileExtractionReviewFixtureBlockedEvidenceIsCurrent ? mobileExtractionReviewFixtureBlockedEvidence : null,
+    desktopAiEditProviderResultEvidenceIsCurrent ? desktopAiEditProviderResultEvidence : null,
+    desktopAiEditNativeBoundaryEvidenceIsCurrent ? desktopAiEditNativeBoundaryEvidence : null,
+    desktopAiEditFixtureBlockedEvidenceIsCurrent ? desktopAiEditFixtureBlockedEvidence : null,
+    mediaImageAdjustNativeBoundaryEvidenceIsCurrent ? mediaImageAdjustNativeBoundaryEvidence : null,
+    batchImageGenerationProviderResultEvidenceIsCurrent ? batchImageGenerationProviderResultEvidence : null,
+    platformSentrySafetyBlockedEvidenceIsCurrent ? platformSentrySafetyBlockedEvidence : null,
+    platformSentryExternalHandoffEvidenceIsCurrent ? platformSentryExternalHandoffEvidence : null,
+    platformFontPresetFixtureBlockedEvidenceIsCurrent ? platformFontPresetFixtureBlockedEvidence : null,
+    platformFontPresetNativeBoundaryEvidenceIsCurrent ? platformFontPresetNativeBoundaryEvidence : null,
+    mobileBillingAlternateLifecycleEvidenceIsCurrent ? mobileBillingAlternateLifecycleEvidence : null,
+    mobileMenuAlternateFixtureEvidenceIsCurrent ? mobileMenuAlternateFixtureEvidence : null,
+    mobileMenuUploadNativeExtractionEvidenceIsCurrent ? mobileMenuUploadNativeExtractionEvidence : null,
+    desktopDomainSettingsExternalBoundaryEvidenceIsCurrent ? desktopDomainSettingsExternalBoundaryEvidence : null,
+    mobileHoursAlternateStateEvidenceIsCurrent ? mobileHoursAlternateStateEvidence : null,
+    mobileFeedbackFixtureBlockedEvidenceIsCurrent ? mobileFeedbackFixtureBlockedEvidence : null,
+    phoneOtpProviderBoundaryEvidenceIsCurrent ? phoneOtpProviderBoundaryEvidence : null,
+    mobileDomainSettingsExternalBoundaryEvidenceIsCurrent ? mobileDomainSettingsExternalBoundaryEvidence : null,
+    growthOsEntitlementProviderBoundaryEvidenceIsCurrent ? growthOsEntitlementProviderBoundaryEvidence : null,
+    analyticsGuideExternalHandoffEvidenceIsCurrent ? analyticsGuideExternalHandoffEvidence : null,
+    publicObpExternalHandoffEvidenceIsCurrent ? publicObpExternalHandoffEvidence : null,
+    publicObpPlaceholderFixtureEvidenceIsCurrent ? publicObpPlaceholderFixtureEvidence : null,
+    mobileResellerOnboardingProviderResultEvidenceIsCurrent ? mobileResellerOnboardingProviderResultEvidence : null,
+    printableAssetAlternateStateBoundaryEvidenceIsCurrent ? printableAssetAlternateStateBoundaryEvidence : null,
+    loginClaimLifecycleBoundaryEvidenceIsCurrent ? loginClaimLifecycleBoundaryEvidence : null,
+    mobileShareAlternateNativeBoundaryEvidenceIsCurrent ? mobileShareAlternateNativeBoundaryEvidence : null,
+    desktopUseMenuListAlternateStateEvidenceIsCurrent ? desktopUseMenuListAlternateStateEvidence : null,
+    desktopProjectLifecycleCurrentBrowserEvidenceIsCurrent ? desktopProjectLifecycleCurrentBrowserEvidence : null,
+    desktopProjectEditAlternateProviderEvidenceIsCurrent ? desktopProjectEditAlternateProviderEvidence : null,
+    desktopProjectEditLanguageFixtureEvidenceIsCurrent ? desktopProjectEditLanguageFixtureEvidence : null,
+    desktopSpecialMenuLanguageProviderEvidenceIsCurrent ? desktopSpecialMenuLanguageProviderEvidence : null,
+    desktopStoreCustomizationFixtureEvidenceIsCurrent ? desktopStoreCustomizationFixtureEvidence : null,
+    currentOwnerSettingsProjectReboundEvidenceIsCurrent ? currentOwnerSettingsProjectReboundEvidence : null,
+    ownerProjectProviderBoundaryEvidenceIsCurrent ? ownerProjectProviderBoundaryEvidence : null,
+    ownerSettingsNativeBoundaryEvidenceIsCurrent ? ownerSettingsNativeBoundaryEvidence : null,
+    ownerSettingsAlternateFixtureEvidenceIsCurrent ? ownerSettingsAlternateFixtureEvidence : null,
+    billingCancellationLifecycleEvidenceIsCurrent ? billingCancellationLifecycleEvidence : null,
+    currentOwnerMediaAnalyticsLifecycleEvidenceIsCurrent ? currentOwnerMediaAnalyticsLifecycleEvidence : null,
+    analyticsWizardExternalHandoffEvidenceIsCurrent ? analyticsWizardExternalHandoffEvidence : null,
+    ownerMediaNativeBoundaryEvidenceIsCurrent ? ownerMediaNativeBoundaryEvidence : null,
+    ownerMediaProviderBoundaryEvidenceIsCurrent ? ownerMediaProviderBoundaryEvidence : null,
+    ownerMediaFixtureBlockedEvidenceIsCurrent ? ownerMediaFixtureBlockedEvidence : null,
+    publicImageViewerInternalHandlersEvidenceIsCurrent ? publicImageViewerInternalHandlersEvidence : null,
+    ownerMediaDestructiveSafetyEvidenceIsCurrent ? ownerMediaDestructiveSafetyEvidence : null,
+    pricingOnboardingAlternateLifecycleEvidenceIsCurrent ? pricingOnboardingAlternateLifecycleEvidence : null,
+    publicBusinessActionExternalHandoffEvidenceIsCurrent ? publicBusinessActionExternalHandoffEvidence : null,
+    publicBusinessActionFixtureEvidenceIsCurrent ? publicBusinessActionFixtureEvidence : null,
+    feedbackQrNativeAndExternalEvidenceIsCurrent ? feedbackQrNativeAndExternalEvidence : null,
+    currentAnalyticsSettingsDraftEvidenceIsCurrent ? currentAnalyticsSettingsDraftEvidence : null,
+    ownerAlternateFeatureFixtureEvidenceIsCurrent ? ownerAlternateFeatureFixtureEvidence : null,
+    ownerAiGenerationProviderBoundaryEvidenceIsCurrent ? ownerAiGenerationProviderBoundaryEvidence : null,
+    digitalScreenOwnerUploadNativeEvidenceIsCurrent ? digitalScreenOwnerUploadNativeEvidence : null,
+    ownerAlternateLifecycleComponentEvidenceIsCurrent ? ownerAlternateLifecycleComponentEvidence : null,
+    ownerNativeArtifactComponentEvidenceIsCurrent ? ownerNativeArtifactComponentEvidence : null,
+    ownerProviderDependentComponentEvidenceIsCurrent ? ownerProviderDependentComponentEvidence : null,
+    publicSharingExternalComponentEvidenceIsCurrent ? publicSharingExternalComponentEvidence : null,
+    currentBehavioralContractControlEvidenceIsCurrent ? currentBehavioralContractControlEvidence : null,
+    remainingAlternateFixtureComponentEvidenceIsCurrent ? remainingAlternateFixtureComponentEvidence : null,
+    remainingProviderDependentComponentEvidenceIsCurrent ? remainingProviderDependentComponentEvidence : null,
+    remainingNativeArtifactComponentEvidenceIsCurrent ? remainingNativeArtifactComponentEvidence : null,
+    currentAdjacentContractComponentEvidenceIsCurrent ? currentAdjacentContractComponentEvidence : null,
+    aiSearchExternalBoundaryEvidenceIsCurrent ? aiSearchExternalBoundaryEvidence : null,
+    notificationPreferredChannelBrowserEvidenceIsCurrent ? notificationPreferredChannelBrowserEvidence : null,
+    notificationWhatsAppFixtureEvidenceIsCurrent ? notificationWhatsAppFixtureEvidence : null,
+    businessSettingsReversibleBrowserEvidenceIsCurrent ? businessSettingsReversibleBrowserEvidence : null,
+    feedbackReviewExternalHandoffEvidenceIsCurrent ? feedbackReviewExternalHandoffEvidence : null,
+    platformPullApiKeyBrowserEvidenceIsCurrent ? platformPullApiKeyBrowserEvidence : null,
+    platformPullApiKeyNativeClipboardEvidenceIsCurrent ? platformPullApiKeyNativeClipboardEvidence : null,
+    socialMediaDraftBrowserEvidenceIsCurrent ? socialMediaDraftBrowserEvidence : null,
+    compliancePageLifecycleBrowserEvidenceIsCurrent ? compliancePageLifecycleBrowserEvidence : null,
+    googleListingReminderBrowserEvidenceIsCurrent ? googleListingReminderBrowserEvidence : null,
+    googleListingNativeClipboardEvidenceIsCurrent ? googleListingNativeClipboardEvidence : null,
+    googleListingExternalHandoffEvidenceIsCurrent ? googleListingExternalHandoffEvidence : null,
+    businessSettingsSaveLifecycleEvidenceIsCurrent ? businessSettingsSaveLifecycleEvidence : null,
+    timeSlotPresetEntryBrowserEvidenceIsCurrent ? timeSlotPresetEntryBrowserEvidence : null,
+    workingHoursDraftBrowserEvidenceIsCurrent ? workingHoursDraftBrowserEvidence : null,
+    businessCopyProviderBoundaryEvidenceIsCurrent ? businessCopyProviderBoundaryEvidence : null,
+    businessCopyRepairFixtureEvidenceIsCurrent ? businessCopyRepairFixtureEvidence : null,
+    websiteAuthenticatedDashboardEvidenceIsCurrent ? websiteAuthenticatedDashboardEvidence : null,
+    websiteLogoutSafetyEvidenceIsCurrent ? websiteLogoutSafetyEvidence : null,
+    transactionsPaginationFixtureEvidenceIsCurrent ? transactionsPaginationFixtureEvidence : null,
+    feedbackCardExternalReplyEvidenceIsCurrent ? feedbackCardExternalReplyEvidence : null,
+    feedbackCardNativeReplyCopyEvidenceIsCurrent ? feedbackCardNativeReplyCopyEvidence : null,
+    messagePreviewSuccessFixtureEvidenceIsCurrent ? messagePreviewSuccessFixtureEvidence : null,
+    messagePreviewWhatsAppHandoffEvidenceIsCurrent ? messagePreviewWhatsAppHandoffEvidence : null,
+    obpMenuCtaAlternateLifecycleEvidenceIsCurrent ? obpMenuCtaAlternateLifecycleEvidence : null,
+    obpMenuCtaCommentEvidenceIsCurrent ? obpMenuCtaCommentEvidence : null,
+    menuBreadcrumbAlternateLayoutEvidenceIsCurrent ? menuBreadcrumbAlternateLayoutEvidence : null,
+    globalErrorRuntimeEvidenceIsCurrent ? globalErrorRuntimeEvidence : null,
+    rootErrorRuntimeEvidenceIsCurrent ? rootErrorRuntimeEvidence : null,
+    storeAccessRecoveryRuntimeEvidenceIsCurrent ? storeAccessRecoveryRuntimeEvidence : null,
+    mobileTextCaseReversibleEvidenceIsCurrent ? mobileTextCaseReversibleEvidence : null,
+    mobileTextCaseMaskBoundaryEvidenceIsCurrent ? mobileTextCaseMaskBoundaryEvidence : null,
+    mobileTextCaseApplySafetyEvidenceIsCurrent ? mobileTextCaseApplySafetyEvidence : null,
+    decisionBlocksReversibleEvidenceIsCurrent ? decisionBlocksReversibleEvidence : null,
+    decisionBlocksSaveSafetyEvidenceIsCurrent ? decisionBlocksSaveSafetyEvidence : null,
+    decisionChoicePosterDesktopEvidenceIsCurrent ? decisionChoicePosterDesktopEvidence : null,
+    decisionChoicePosterMobileEvidenceIsCurrent ? decisionChoicePosterMobileEvidence : null,
+    mobileNotificationReversibleEvidenceIsCurrent ? mobileNotificationReversibleEvidence : null,
+    mobileNotificationWhatsAppFixtureEvidenceIsCurrent ? mobileNotificationWhatsAppFixtureEvidence : null,
+    mobileNotificationSaveSafetyEvidenceIsCurrent ? mobileNotificationSaveSafetyEvidence : null,
+    mobileAdvancedSocialEditorEvidenceIsCurrent ? mobileAdvancedSocialEditorEvidence : null,
+    mobileAdvancedSocialExternalEvidenceIsCurrent ? mobileAdvancedSocialExternalEvidence : null,
+    mobileAdvancedSocialRemoveFixtureEvidenceIsCurrent ? mobileAdvancedSocialRemoveFixtureEvidence : null,
+    creativeEditorAlternateDraftQrEvidenceIsCurrent ? creativeEditorAlternateDraftQrEvidence : null,
+    businessHealthProjectScopeCurrentEvidenceIsCurrent ? businessHealthProjectScopeCurrentEvidence : null,
+    publicTruthOwnerCheckCurrentEvidenceIsCurrent ? publicTruthOwnerCheckCurrentEvidence : null,
+    publicTruthMonitorCurrentEvidenceIsCurrent ? publicTruthMonitorCurrentEvidence : null,
+    verticalSidebarCurrentEvidenceIsCurrent ? verticalSidebarCurrentEvidence : null,
+    horizontalSidebarCurrentEvidenceIsCurrent ? horizontalSidebarCurrentEvidence : null,
+    appBreadcrumbCurrentEvidenceIsCurrent ? appBreadcrumbCurrentEvidence : null,
+    analyticsExportRuntimeEvidenceIsCurrent ? analyticsExportRuntimeEvidence : null,
+    projectConfirmModalRuntimeEvidenceIsCurrent ? projectConfirmModalRuntimeEvidence : null,
+    errorRecoveryAlertRuntimeEvidenceIsCurrent ? errorRecoveryAlertRuntimeEvidence : null,
+    projectSelectorRuntimeEvidenceIsCurrent ? projectSelectorRuntimeEvidence : null,
+    aiSearchActionButtonsRuntimeEvidenceIsCurrent ? aiSearchActionButtonsRuntimeEvidence : null,
+    aiSearchSearchBarRuntimeEvidenceIsCurrent ? aiSearchSearchBarRuntimeEvidence : null,
+    aiSearchLocalResultsRuntimeEvidenceIsCurrent ? aiSearchLocalResultsRuntimeEvidence : null,
+    welcomeModalRuntimeEvidenceIsCurrent ? welcomeModalRuntimeEvidence : null,
+    upgradeConfirmationRuntimeEvidenceIsCurrent ? upgradeConfirmationRuntimeEvidence : null,
+    messageReferencesRuntimeEvidenceIsCurrent ? messageReferencesRuntimeEvidence : null,
+    creditPackRuntimeEvidenceIsCurrent ? creditPackRuntimeEvidence : null,
+    creditPackSignInExternalEvidenceIsCurrent ? creditPackSignInExternalEvidence : null,
+    privacyPolicyMailtoBoundaryEvidenceIsCurrent ? privacyPolicyMailtoBoundaryEvidence : null,
+    pricingPlansModalRuntimeEvidenceIsCurrent ? pricingPlansModalRuntimeEvidence : null,
+    editSpecialMenuScheduleRuntimeEvidenceIsCurrent ? editSpecialMenuScheduleRuntimeEvidence : null,
+    menuFiltersRuntimeEvidenceIsCurrent ? menuFiltersRuntimeEvidence : null,
+    menuLanguageSwitcherRuntimeEvidenceIsCurrent ? menuLanguageSwitcherRuntimeEvidence : null,
+    transactionDetailsRuntimeEvidenceIsCurrent ? transactionDetailsRuntimeEvidence : null,
+    articleViewModalRecoveryRuntimeEvidenceIsCurrent ? articleViewModalRecoveryRuntimeEvidence : null,
+    publicCookieConsentRuntimeEvidenceIsCurrent ? publicCookieConsentRuntimeEvidence : null,
+    masterUpdateBannerRuntimeEvidenceIsCurrent ? masterUpdateBannerRuntimeEvidence : null,
+    dateRangeSelectorRuntimeEvidenceIsCurrent ? dateRangeSelectorRuntimeEvidence : null,
+    installInstructionsRuntimeEvidenceIsCurrent ? installInstructionsRuntimeEvidence : null,
+    installPromptRuntimeEvidenceIsCurrent ? installPromptRuntimeEvidence : null,
+    lucideIconGridRuntimeEvidenceIsCurrent ? lucideIconGridRuntimeEvidence : null,
+    mobileTempStatusConfiguratorRuntimeEvidenceIsCurrent ? mobileTempStatusConfiguratorRuntimeEvidence : null,
+    mobileMenuCommandSheetRuntimeEvidenceIsCurrent ? mobileMenuCommandSheetRuntimeEvidence : null,
+    mobileCompliancePagesRuntimeEvidenceIsCurrent ? mobileCompliancePagesRuntimeEvidence : null,
+    mobileCompliancePageExternalEvidenceIsCurrent ? mobileCompliancePageExternalEvidence : null,
+    mobileSchedulerMonitorRuntimeEvidenceIsCurrent ? mobileSchedulerMonitorRuntimeEvidence : null,
+    mobileSchedulerRecoverySafetyEvidenceIsCurrent ? mobileSchedulerRecoverySafetyEvidence : null,
+    commandCenterActiveInactiveRuntimeEvidenceIsCurrent ? commandCenterActiveInactiveRuntimeEvidence : null,
+    commandCenterAvailabilityRuntimeEvidenceIsCurrent ? commandCenterAvailabilityRuntimeEvidence : null,
+    commandCenterPricingRuntimeEvidenceIsCurrent ? commandCenterPricingRuntimeEvidence : null,
+    commandCenterTextCaseRuntimeEvidenceIsCurrent ? commandCenterTextCaseRuntimeEvidence : null,
+    languageSelectorRuntimeEvidenceIsCurrent ? languageSelectorRuntimeEvidence : null,
+    ownerAppUpdatePromptRuntimeEvidenceIsCurrent ? ownerAppUpdatePromptRuntimeEvidence : null,
+    ownerAppUpdateRefreshNativeEvidenceIsCurrent ? ownerAppUpdateRefreshNativeEvidence : null,
+    starRatingRuntimeEvidenceIsCurrent ? starRatingRuntimeEvidence : null,
+    mediaAspectRatioRuntimeEvidenceIsCurrent ? mediaAspectRatioRuntimeEvidence : null,
+    ownerAssistantInputRuntimeEvidenceIsCurrent ? ownerAssistantInputRuntimeEvidence : null,
+    reorderSortableItemRuntimeEvidenceIsCurrent ? reorderSortableItemRuntimeEvidence : null,
+    billingHistoryEmailRuntimeEvidenceIsCurrent ? billingHistoryEmailRuntimeEvidence : null,
+    billingHistoryInvoiceExternalEvidenceIsCurrent ? billingHistoryInvoiceExternalEvidence : null,
+    analyticsEmptyStateRuntimeEvidenceIsCurrent ? analyticsEmptyStateRuntimeEvidence : null,
+    analyticsRefreshRuntimeEvidenceIsCurrent ? analyticsRefreshRuntimeEvidence : null,
+    analyticsMetricCardRuntimeEvidenceIsCurrent ? analyticsMetricCardRuntimeEvidence : null,
+    analyticsStatCardRuntimeEvidenceIsCurrent ? analyticsStatCardRuntimeEvidence : null,
+    mobileLocalizedLanguageRuntimeEvidenceIsCurrent ? mobileLocalizedLanguageRuntimeEvidence : null,
+    searchSuggestionsRuntimeEvidenceIsCurrent ? searchSuggestionsRuntimeEvidence : null,
+    businessHealthSuggestedQuestionRuntimeEvidenceIsCurrent ? businessHealthSuggestedQuestionRuntimeEvidence : null,
+    ownerAssistantSourceDisclosureRuntimeEvidenceIsCurrent ? ownerAssistantSourceDisclosureRuntimeEvidence : null,
+    menuFilterChipsRuntimeEvidenceIsCurrent ? menuFilterChipsRuntimeEvidence : null,
+    analyticsDataTableSearchRuntimeEvidenceIsCurrent ? analyticsDataTableSearchRuntimeEvidence : null,
+    analyticsFeedbackListRuntimeEvidenceIsCurrent ? analyticsFeedbackListRuntimeEvidence : null,
+    analyticsKnowledgeGapsRuntimeEvidenceIsCurrent ? analyticsKnowledgeGapsRuntimeEvidence : null,
+    analyticsTopQuestionsRuntimeEvidenceIsCurrent ? analyticsTopQuestionsRuntimeEvidence : null,
+    skipToContentRuntimeEvidenceIsCurrent ? skipToContentRuntimeEvidence : null,
+    scrollToBottomRuntimeEvidenceIsCurrent ? scrollToBottomRuntimeEvidence : null,
+    backToTopRuntimeEvidenceIsCurrent ? backToTopRuntimeEvidence : null,
+    emojiGridSearchRuntimeEvidenceIsCurrent ? emojiGridSearchRuntimeEvidence : null,
+    todayPrimaryCardRuntimeEvidenceIsCurrent ? todayPrimaryCardRuntimeEvidence : null,
+    businessHealthHeaderRuntimeEvidenceIsCurrent ? businessHealthHeaderRuntimeEvidence : null,
+    loadingMessageCancelRuntimeEvidenceIsCurrent ? loadingMessageCancelRuntimeEvidence : null,
+    aiButtonIconRuntimeEvidenceIsCurrent ? aiButtonIconRuntimeEvidence : null,
+    knowledgeBaseSourceFileRuntimeEvidenceIsCurrent ? knowledgeBaseSourceFileRuntimeEvidence : null,
+    todayOperationalSectionRuntimeEvidenceIsCurrent ? todayOperationalSectionRuntimeEvidence : null,
+    noSubscriptionViewPlansRuntimeEvidenceIsCurrent ? noSubscriptionViewPlansRuntimeEvidence : null,
+    emptyProjectStateRuntimeEvidenceIsCurrent ? emptyProjectStateRuntimeEvidence : null,
+    feedbackIntelligenceDisclosureRuntimeEvidenceIsCurrent ? feedbackIntelligenceDisclosureRuntimeEvidence : null,
+    remainingCurrentComponentControlEvidenceIsCurrent ? remainingCurrentComponentControlEvidence : null,
+    remainingCurrentBrowserControlEvidenceIsCurrent ? remainingCurrentBrowserControlEvidence : null,
+    remainingCurrentNativeBoundaryEvidenceIsCurrent ? remainingCurrentNativeBoundaryEvidence : null,
+    remainingCurrentExternalBoundaryEvidenceIsCurrent ? remainingCurrentExternalBoundaryEvidence : null,
+    remainingCurrentProviderBoundaryEvidenceIsCurrent ? remainingCurrentProviderBoundaryEvidence : null,
+    remainingCurrentNotTriggerableEvidenceIsCurrent ? remainingCurrentNotTriggerableEvidence : null,
+    remainingCurrentAlternateLifecycleEvidenceIsCurrent ? remainingCurrentAlternateLifecycleEvidence : null,
+    remainingCurrentSafetyBoundaryEvidenceIsCurrent ? remainingCurrentSafetyBoundaryEvidence : null,
+    remainingCurrentFixtureBoundaryEvidenceIsCurrent ? remainingCurrentFixtureBoundaryEvidence : null,
+    currentPrintableDesktopBrowserEvidenceIsCurrent ? currentPrintableDesktopBrowserEvidence : null,
+    currentItemProductTagDesktopBrowserEvidenceIsCurrent ? currentItemProductTagDesktopBrowserEvidence : null,
+    currentPrintableAlternateLifecycleEvidenceIsCurrent ? currentPrintableAlternateLifecycleEvidence : null,
+    currentPrintableSafetyEvidenceIsCurrent ? currentPrintableSafetyEvidence : null,
+    currentPrintableFixtureEvidenceIsCurrent ? currentPrintableFixtureEvidence : null,
+    currentPrintableNativeEvidenceIsCurrent ? currentPrintableNativeEvidence : null,
+    currentPrintableExternalEvidenceIsCurrent ? currentPrintableExternalEvidence : null,
+    bulkActionsControlEvidenceIsCurrent ? bulkActionsControlEvidence : null,
+    mobileMoreControlEvidenceIsCurrent ? mobileMoreControlEvidence : null,
+    mobileMoreFeatureDisabledControlEvidenceIsCurrent ? mobileMoreFeatureDisabledControlEvidence : null,
+    mobileMoreSafetyBlockedControlEvidenceIsCurrent ? mobileMoreSafetyBlockedControlEvidence : null,
+    mobileMenuControlEvidenceIsCurrent ? mobileMenuControlEvidence : null,
+    mobileMenuNativeBoundaryControlEvidenceIsCurrent ? mobileMenuNativeBoundaryControlEvidence : null,
+    mobileItemEditAlternateFixtureEvidenceIsCurrent ? mobileItemEditAlternateFixtureEvidence : null,
+    mobileItemEditProviderBoundaryEvidenceIsCurrent ? mobileItemEditProviderBoundaryEvidence : null,
+    mobileItemProductTagCurrentIntegrationEvidenceIsCurrent ? mobileItemProductTagCurrentIntegrationEvidence : null,
+    mobileShareControlEvidenceIsCurrent ? mobileShareControlEvidence : null,
+    mobileShareFeatureDisabledControlEvidenceIsCurrent ? mobileShareFeatureDisabledControlEvidence : null,
+    mobileShareNotShippedControlEvidenceIsCurrent ? mobileShareNotShippedControlEvidence : null,
+    mobileShareNativeBoundaryControlEvidenceIsCurrent ? mobileShareNativeBoundaryControlEvidence : null,
+    printableAssetControlEvidenceIsCurrent ? printableAssetControlEvidence : null,
+    printableAssetNativeBoundaryControlEvidenceIsCurrent ? printableAssetNativeBoundaryControlEvidence : null,
     localMobileOwnerControlEvidenceIsCurrent ? localMobileOwnerControlEvidence : null,
 ]
     .filter((evidenceSet) => evidenceSet?.result === "PASS");
@@ -760,13 +2528,13 @@ const APP_SPECIAL_FILE = /\/(page|layout|route|loading|error|not-found)\.(?:tsx?
 const ROUTE_FILE = /\/route\.(?:tsx?|jsx?)$/;
 const PAGE_FILE = /\/page\.(?:tsx?|jsx?)$/;
 const CONTROL_PATTERNS = [
-    ["button", /<(?:button|Button|IconButton|WebsiteButton)\b/],
+    ["button", /<(?:button|Button|FloatingBubble|IconButton|WebsiteButton)\b/],
     ["link", /<(?:a|Link|NavLink)\b/],
     ["form", /<(?:form\b|Form(?!\.)\b)/],
-    ["input", /<(?:input|Input|InputNumber|TextArea|textarea)\b/],
+    ["input", /<(?:input|Input|InputNumber|SearchBar|TextArea|textarea)\b/],
     ["selection", /<(?:select|Select|Checkbox|Radio|Switch|DatePicker|TimePicker|Segmented|ColorPicker|Rate|Slider|RangePicker|TreeSelect|Tree)\b/],
     ["disclosure", /<(?:Collapse|Tabs|Dropdown|Menu|Popover|AccordionTrigger)\b/],
-    ["dialog-action-surface", /<(?:Modal|Drawer|Popconfirm)\b/],
+    ["dialog-action-surface", /<(?:Modal|Drawer|Popconfirm|Popup)\b/],
     ["upload", /<(?:Upload|input)\b[^>]*\btype\s*=\s*["']file["']/],
     ["action-handler", /\bonClick\s*=|\bonPress\s*=|\bonAction\s*=/],
 ];
@@ -1242,8 +3010,8 @@ function appRuntimeEvidence(file, route, itemType, product) {
         itemType === "api-route"
         && product === "MenuList"
         && apiAnonymousBoundaryEvidence?.result === "PASS"
-        && apiAnonymousBoundaryEvidence.handlers === 140
-        && apiAnonymousBoundaryEvidence.methodProbes === 157
+        && apiAnonymousBoundaryEvidence.handlers === 141
+        && apiAnonymousBoundaryEvidence.methodProbes === 162
     ) {
         return {
             test_result: "PASS_ANONYMOUS_BOUNDARY",
@@ -1362,9 +3130,18 @@ function appErrorRuntimeEvidence(file, itemType, product) {
     };
 }
 
-function controlRuntimeEvidence(source, controlAction) {
+function controlRuntimeEvidence(source, controlAction, product, isPageReachable) {
     const matchedEvidence = controlEvidenceBySourceAction.get(`${source}|${controlAction}`);
-    if (!matchedEvidence) return {};
+    if (!matchedEvidence) {
+        if (product !== "MenuList" || !isPageReachable) return {};
+        return {
+            test_type: "current-source-interaction-pending-boundary",
+            test_result: "BLOCKED_CURRENT_SOURCE_INTERACTION_PENDING",
+            regression_test_added: "NO",
+            final_verification_status: "CURRENT_SOURCE_CONTROL_REQUIRES_BROWSER_OR_DETERMINISTIC_FIXTURE_INTERACTION",
+            evidence_or_notes: "Current source and route reachability are inventoried; no browser or deterministic interaction evidence is credited for this control.",
+        };
+    }
     const { evidenceSet, interaction } = matchedEvidence;
     return {
         test_type: evidenceSet.testType ?? "hosted-browser-interaction",
@@ -1392,17 +3169,21 @@ let sequence = 1;
 const add = (values) => {
     const id = `MLRC-${String(sequence).padStart(6, "0")}`;
     sequence += 1;
+    const isProductSeparationBoundary = values.product_area
+        && values.product_area !== "MenuList";
     rows.push(makeRow({
         inventory_id: id,
-        role: "DERIVE_FROM_RUNTIME_GUARD",
-        tenant_state: "DERIVE_FROM_RUNTIME_GUARD",
-        store_state: "DERIVE_FROM_RUNTIME_GUARD",
-        subscription_or_entitlement_state: "DERIVE_FROM_RUNTIME_GUARD",
+        role: isProductSeparationBoundary ? "SEPARATION_BOUNDARY_ONLY" : "DERIVE_FROM_RUNTIME_GUARD",
+        tenant_state: isProductSeparationBoundary ? "PRODUCT_HOST_BOUNDARY" : "DERIVE_FROM_RUNTIME_GUARD",
+        store_state: isProductSeparationBoundary ? "OUT_OF_SCOPE_EXCEPT_ISOLATION" : "DERIVE_FROM_RUNTIME_GUARD",
+        subscription_or_entitlement_state: isProductSeparationBoundary ? "OUT_OF_SCOPE_EXCEPT_ISOLATION" : "DERIVE_FROM_RUNTIME_GUARD",
         feature_flag_state: "CURRENT_AND_MATERIAL_ALTERNATE",
         viewport: "DERIVE_FROM_SURFACE",
-        test_result: "NOT_RUN",
+        test_result: isProductSeparationBoundary ? "PASS_OUT_OF_SCOPE_PRODUCT_BOUNDARY" : "NOT_RUN",
         regression_test_added: "NO",
-        final_verification_status: "DISCOVERED_UNTESTED",
+        final_verification_status: isProductSeparationBoundary
+            ? "OUT_OF_SCOPE_PRODUCT_BOUNDARY_INVENTORIED"
+            : "DISCOVERED_UNTESTED",
         ...values,
     }));
 };
@@ -1622,7 +3403,7 @@ for (const file of uiFiles) {
                 test_type: "runtime-interaction-required",
                 evidence_or_notes: `${reachableRoutes.length > 0 ? `Reachable from ${reachableRoutes.length} page route(s). ` : "No page import path found. "}${line.trim().replace(/\s+/g, " ").slice(0, 200)}`,
                 ...reachabilityEvidence,
-                ...controlRuntimeEvidence(rel, controlAction),
+                ...controlRuntimeEvidence(rel, controlAction, controlProduct, reachableRoutes.length > 0),
                 ...staticNonUserEvidence,
             });
         }

@@ -13,6 +13,7 @@ const requiredFiles = [
   'src/lib/ai-menu-manager/actionRegistry.ts',
   'src/lib/ai-menu-manager/approvalPolicy.ts',
   'src/lib/ai-menu-manager/composerContext.ts',
+  'src/lib/ai-menu-manager/commandTextBoundary.ts',
   'src/lib/ai-menu-manager/commandResolver.ts',
   'src/lib/ai-menu-manager/compoundCommand.ts',
   'src/lib/ai-menu-manager/domainConversationRouter.ts',
@@ -1419,6 +1420,9 @@ assert(desktopRoute.includes('filterAiMenuManagerComposerEntities') && desktopRo
 assert(desktopRoute.includes('activeContextEntityCount') && desktopRoute.includes('shouldShowContextSearch') && desktopRoute.includes('Find item') && desktopRoute.includes('Find category'), 'Desktop AMM item/category picker must use compact conditional search');
 assert(desktopRoute.includes("gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))'") && desktopRoute.includes('minHeight: 38'), 'Desktop AMM item/category picker must use compact selectable rows/grid cells');
 assert(desktopRoute.includes('currentSession') && desktopRoute.includes('sessionSnapshot: currentSession'), 'Desktop AMM must submit commands from the loaded compact session snapshot');
+assert(desktopRoute.includes('maxLength={AI_MENU_MANAGER_COMMAND_TEXT_MAX_LENGTH}'), 'Desktop AMM composer must stop raw input at the shared command limit');
+assert(desktopRoute.includes('Boolean(commandTextError)'), 'Desktop AMM Send must fail closed when selected context makes the command oversized');
+assert(desktopRoute.includes('role="alert"') && desktopRoute.includes('{commandTextError}'), 'Desktop AMM must persistently explain oversized command recovery');
 assert(desktopRoute.includes('Suggestions') && desktopRoute.includes('pickSuggestion') && desktopRoute.includes('setInput(prompt)'), 'Desktop AMM suggestions must fill the composer instead of executing directly');
 assert(desktopRoute.includes('resolveClarification') && desktopRoute.includes('replaceOperationId: card.cardId'), 'Desktop AMM clarification choices must resolve into the next card and replace the clarification');
 assert(desktopRoute.includes('getAiMenuManagerProjectPromptGroups') && desktopRoute.includes('promptGroups.map'), 'Desktop AMM suggestions must use grouped, contextual prompt rows');
@@ -1484,6 +1488,14 @@ assert(mobileNavigationEnUs?.MobileNavigation?.menuHelp === 'Menu help', 'Mobile
 
 const mobileScreen = read('src/components/mobile/ai-menu-manager/MobileAiMenuManagerScreen.tsx');
 const mobileProposalCard = read('src/components/mobile/ai-menu-manager/MobileAiMenuCardStack.tsx');
+const commandTextBoundary = require(path.join(root, 'src/lib/ai-menu-manager/commandTextBoundary.ts'));
+assert(commandTextBoundary.AI_MENU_MANAGER_COMMAND_TEXT_MAX_LENGTH === 1000, 'AMM command text boundary must match the API schema limit');
+assert(commandTextBoundary.getAiMenuManagerCommandTextIssue('   ') === 'missing', 'AMM command text boundary must reject blank drafts');
+assert(commandTextBoundary.getAiMenuManagerCommandTextIssue('a'.repeat(1000)) === null, 'AMM command text boundary must admit the exact 1000-character limit');
+assert(commandTextBoundary.getAiMenuManagerCommandTextIssue('a'.repeat(1001)) === 'too_long', 'AMM command text boundary must reject oversized drafts');
+assert(commandTextBoundary.getAiMenuManagerCommandTextError('a'.repeat(1001))?.includes('1,000'), 'AMM oversized draft recovery must explain the exact limit');
+assert(schemas.includes('.max(AI_MENU_MANAGER_COMMAND_TEXT_MAX_LENGTH)'), 'AMM command and planner schemas must reuse the shared text limit');
+assert(clientDal.includes("getAiMenuManagerCommandTextIssue(text) === 'too_long'"), 'AMM client DAL must reject oversized commands before scope reads or API work');
 assert(mobileProposalCard.includes("action.type === 'copy_url'"), 'Mobile AMM cards must support copy_url local actions');
 assert(mobileProposalCard.includes("action.type === 'copy_text'"), 'Mobile AMM cards must support copy_text local actions');
 assert(mobileProposalCard.includes("action.type === 'download_text'"), 'Mobile AMM cards must support download_text local actions');
@@ -1528,6 +1540,9 @@ assert(mobileScreen.includes('filterAiMenuManagerComposerEntities') && mobileScr
 assert(mobileScreen.includes('activeContextEntityCount') && mobileScreen.includes('shouldShowContextSearch') && mobileScreen.includes('Find item') && mobileScreen.includes('Find category'), 'Mobile AMM item/category picker must use compact conditional search');
 assert(mobileScreen.includes('SearchBar') && mobileScreen.includes("maxHeight: '36vh'") && mobileScreen.includes('minHeight: 44'), 'Mobile AMM item/category picker must use compact MobileShell-friendly rows');
 assert(mobileScreen.includes('currentSession') && mobileScreen.includes('sessionSnapshot: currentSession'), 'Mobile AMM must submit commands from the loaded compact session snapshot');
+assert(mobileScreen.includes('maxLength={AI_MENU_MANAGER_COMMAND_TEXT_MAX_LENGTH}'), 'Mobile AMM composer must stop raw input at the shared command limit');
+assert(mobileScreen.includes('Boolean(commandTextError)'), 'Mobile AMM Send must fail closed when selected context makes the command oversized');
+assert(mobileScreen.includes('role="alert"') && mobileScreen.includes('{commandTextError}'), 'Mobile AMM must persistently explain oversized command recovery');
 assert(mobileScreen.includes('Suggestions') && mobileScreen.includes('pickSuggestion') && mobileScreen.includes('setInput(prompt)'), 'Mobile AMM suggestions must fill the composer instead of executing directly');
 assert(mobileScreen.includes('resolveClarification') && mobileScreen.includes('replaceOperationId: card.cardId'), 'Mobile AMM clarification choices must resolve into the next card and replace the clarification');
 assert(mobileScreen.includes('getAiMenuManagerProjectPromptGroups') && mobileScreen.includes('promptGroups.map'), 'Mobile AMM suggestions must use grouped, contextual prompt rows');

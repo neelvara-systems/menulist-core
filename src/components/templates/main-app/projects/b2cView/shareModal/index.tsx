@@ -12,6 +12,7 @@ import {
 } from '@lib/export/exportDiagnostics';
 import { readLocalPdfDownloadAt, recordLocalPdfDownload, resolveLocalExportStorageScope } from '@lib/export/localExportHistory';
 import { resolveMenuKitBrandTokens } from '@lib/menu-kit/brandTokens';
+import { resolvePrintableAssetStyle } from '@lib/printable-asset-templates/stylePreferences';
 import { buildQrCodeFilename, downloadQrCode, generateBrandedQrCodeDataUrl } from '@lib/utils/qrCode';
 import type { ExtractedDataCategory, ExtractedDataItem } from '@template/main-app/projects/types/extractedData.types';
 import { downloadMenuData } from '@template/main-app/projects/utils/excelUtils';
@@ -111,6 +112,23 @@ function ShareModal({
     const labels = useOfferingLabels();
     const brandTokens = useMemo(() => resolveMenuKitBrandTokens(brandColor), [brandColor]);
     const activePlanType = storeData?.activePlanType || storeData?.publicPresence?.activePlanType || null;
+    const printableThemeId = useMemo(
+        () => resolvePrintableAssetStyle({
+            assetTypeId: 'print_menu',
+            businessCategory: businessCategory || storeData?.businessCategory,
+            businessType: businessType || storeData?.businessType,
+            preferences: storeData?.printableAssetStylePreferences,
+            projectId,
+        }).templateFamilyId,
+        [
+            businessCategory,
+            businessType,
+            projectId,
+            storeData?.businessCategory,
+            storeData?.businessType,
+            storeData?.printableAssetStylePreferences,
+        ],
+    );
     const pdfHistoryScope = useMemo(
         () => resolveLocalExportStorageScope(storeData),
         [storeData?.sId, storeData?.storeId, storeData?.tId, storeData?.tenantId],
@@ -202,7 +220,7 @@ function ShareModal({
                 activePlanType,
             });
             downloadQrCode(dataUrl, buildQrCodeFilename(`${storeName}-menu`, 'qr'));
-            messageApi.success('QR code downloaded');
+            messageApi.success(`${storeName} menu QR downloaded. It opens the latest published menu.`);
         } catch (error) {
             logExportFailure('project_share_qr_download_failed', error, getShareModalLogContext('qr_download', {
                 qrDataUrlGenerated: false,
@@ -269,7 +287,7 @@ function ShareModal({
         const copyUrl = withEntrySource(shareUrl, 'copy_link');
         try {
             await copyExportTextToClipboard(copyUrl);
-            messageApi.success('URL copied');
+            messageApi.success(`${projectName || labels.offeringTitle} customer link copied`);
         } catch (error) {
             logExportFailure('project_share_direct_copy_failed', error, getShareModalLogContext('direct_copy', {
                 copyUrlLength: copyUrl.length,
@@ -348,11 +366,12 @@ function ShareModal({
                 showDescriptions: true,
                 items,
                 categories,
+                printableThemeId,
             });
             downloadPdf(pdfResult);
             recordLocalPdfDownload(pdfHistoryScope, projectId, pdfResult.snapshotHash);
             setLastPdfDownloadAt(Date.now());
-            messageApi.success(`${labels.offeringTitle} PDF downloaded`);
+            messageApi.success(`${projectName || labels.offeringTitle} PDF downloaded`);
         } catch (error) {
             logExportFailure('project_share_pdf_generation_failed', error, {
                 ...getBoundedExportStringContext('projectId', projectId),
@@ -589,6 +608,8 @@ function ShareModal({
                         businessCategory={businessCategory}
                         brandColor={brandColor}
                         activePlanType={activePlanType}
+                        printableAssetStylePreferences={storeData?.printableAssetStylePreferences}
+                        projectId={projectId}
                     />
                 )}
 

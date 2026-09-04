@@ -55,8 +55,8 @@ export const GEMINI_COST_USD: Record<string, number> = {
     // Paid operations
     [AI_ACTIONS_TYPES.REVIEW_REPLY_SUGGESTION]: 0.0008, // Owner-requested review reply draft
     [AI_ACTIONS_TYPES.REWRITE_DESCRIPTION]: 0.0016, // ~1K input + ~500 output tokens
-    [AI_ACTIONS_TYPES.IMAGE_GENERATION]: 0.0336, // Gemini 3.1 Flash-Lite Image: 1K output
-    [AI_ACTIONS_TYPES.BATCH_IMAGE_GENERATION]: 0.0336, // Per 1K image
+    [AI_ACTIONS_TYPES.IMAGE_GENERATION]: 0.0670, // Gemini 3.1 Flash Image: 1K output
+    [AI_ACTIONS_TYPES.BATCH_IMAGE_GENERATION]: 0.0670, // Gemini 3.1 Flash Image per 1K output
     [AI_ACTIONS_TYPES.LANGUAGE_ADDITION]: 0.0044, // ~2K input + ~1.5K output tokens
     [AI_ACTIONS_TYPES.ITEM_TRANSLATION]: 0.0004, // ~200 input + ~150 output tokens
     [AI_ACTIONS_TYPES.IMAGE_TRANSLATION]: 0.0450, // OCR + translation + regen
