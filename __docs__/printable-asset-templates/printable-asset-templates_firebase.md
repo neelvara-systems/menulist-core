@@ -16,6 +16,8 @@ The feature reuses already-loaded owner/store/project/menu data where available 
 
 The hardened delivery flow remains local-only. Current drafts are previewed again before output, multi-file images are zipped in browser memory, mobile native sharing receives the generated Blob, and dirty/retry/operation-lock state stays in React/ref state. These changes add no Firestore read/write, Storage upload, API route, Function, provider call, or generated-file retention.
 
+Dashboard, catalog, and theme-comparison thumbnails now use that same browser renderer instead of a synthetic UI approximation. The canonical PNG is reduced to a maximum 1200 px long edge for screen display only; downloadable output keeps its full print dimensions. Previews render only near the viewport, unload when off-screen, share a bounded 12-result in-memory result cache, and allow at most two concurrent render jobs. Repeated previews reuse already-loaded store/project context; only Print Menu retains its existing selected-project `0-1` read boundary. Blob URLs and hashed preview keys stay in the current browser session and are never uploaded or persisted.
+
 Theme visibility is also local. The catalog uses the business type/category already present in store/project context, so admitting 34 common families, five food-category families, and eight exact-type families adds no read, listener, index, or Function. The Salon/Makeup Studio and Spa/Spa Resort recommendation sets reuse that already-loaded context and add no new persisted field. An ineligible restricted-theme save is rejected before `updateStore()`. A historical restricted preference that becomes ineligible remains dormant in the existing field and is skipped at resolution time, avoiding a cleanup write. All 34 common themes remain universally eligible. An unknown legacy type without an explicit canonical category receives the same common catalog instead of inheriting a guessed category.
 
 There are **No new Cloud Functions** and **No new Firestore indexes** for this feature.
@@ -43,6 +45,7 @@ Branded QR Action Templates are also renderer/catalog behavior only. Action labe
 | Clear Menu theme | 0 new | 1 | 0 | 0 | Deletes only the selected project theme override. |
 | Legacy style normalization | 0 new | 0 | 0 | 0 | Old `businessDefaults`/`projectOverrides` are folded into a canonical parent theme in memory and never drive separate asset output. |
 | Preview non-menu asset | 0 | 0 | 0 | 0 | Temporary browser blob URL only; modal/sheet preview is generated client-side for QR/display and campaign assets. |
+| Browse asset/theme preview cards | 0 additional | 0 | 0 | 0 | Near-viewport client rendering reuses current context and a bounded memory cache; no preview artifact or history is persisted. Print Menu keeps the separate cached-project read boundary below. |
 | Customize non-menu asset in editor | 0 | 0 | 0 | 0 | The Creative Editor document is generated from current input and kept in browser memory until download/close. |
 | List platform templates | 1 | 0 | 0 | 0 | Business-category catalog only; the doc holds all asset types and the route filters by `productId`, `sourceSurface`, and `assetTypeId`. |
 | List Saved designs | 1 | 0 | 0 | 0 | One bounded store `default` index doc from the registry; no payload or preview blob read. |

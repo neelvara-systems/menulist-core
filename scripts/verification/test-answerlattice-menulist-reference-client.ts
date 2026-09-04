@@ -172,6 +172,19 @@ const widgetEmbedSource = fs.readFileSync(
     path.join(ROOT, 'src/components/answerlattice/MenuListAnswerlatticeWidgetEmbed.tsx'),
     'utf8',
 );
+const stagingEnvExample = fs.readFileSync(path.join(ROOT, '.env.staging.example'), 'utf8');
+const productionEnvExample = fs.readFileSync(path.join(ROOT, '.env.production.example'), 'utf8');
+for (const envExample of [stagingEnvExample, productionEnvExample]) {
+    assert.ok(
+        envExample.includes('NEXT_PUBLIC_ANSWERLATTICE_WIDGET_KEY='),
+        'MenuList environments must expose the generic external-client Answerlattice widget key',
+    );
+    assert.equal(
+        envExample.includes('NEXT_PUBLIC_MENULIST_ANSWERLATTICE_WIDGET_KEY='),
+        false,
+        'MenuList environments must not reintroduce the obsolete product-specific widget key name',
+    );
+}
 const localBrowserFixtureSource = fs.readFileSync(
     path.join(ROOT, 'scripts/answerlattice/seed-local-browser-fixture.ts'),
     'utf8',

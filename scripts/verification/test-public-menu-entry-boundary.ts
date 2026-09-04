@@ -13,7 +13,10 @@ import {
     normalizePublicMenuDraftExtractedData,
 } from '@data/shared/publicMenuDraftData';
 import { resolvePublicMenuClaimUserAuthority } from '@lib/public-menu-entry/claimUserAuthority';
-import { normalizePublicDraftSourcesForProject } from '@lib/public-menu-entry/publicDraftSource';
+import {
+    normalizePublicDraftLinkSourceMetadataForProject,
+    normalizePublicDraftSourcesForProject,
+} from '@lib/public-menu-entry/publicDraftSource';
 import { PUBLIC_CREATE_MENU_UPLOAD_LIMITS } from '@data/shared/menuExtractionJob';
 import { PUBLIC_MENU_DRAFT_SOURCE_FILES_VERSION } from '@data/shared/publicMenuDraftSource';
 
@@ -249,6 +252,59 @@ assert.equal(
     }, sourceDraftId, { allowedBucket: sourceBucket, allowLocalEmulator: false }),
     null,
     'A partial versioned source envelope must not fall back to legacy admission',
+);
+
+const linkStoragePath = `publicMenuDrafts/${sourceDraftId}/source.txt`;
+const linkSource = {
+    fileName: 'Imported menu link.txt',
+    fileSize: 2_048,
+    fileType: 'text/plain',
+    imageUrl: `https://firebasestorage.googleapis.com/v0/b/${sourceBucket}/o/${encodeURIComponent(linkStoragePath)}?alt=media&token=link-source`,
+    storagePath: linkStoragePath,
+};
+const linkDraft = {
+    sourceType: 'menu_link_import',
+    sourceMetadata: {
+        acquisitionProvider: 'direct-http',
+        contentHash: 'a'.repeat(64),
+        finalUrl: 'https://example.com/app/#/menu',
+        permissionConfirmed: true,
+        sourceKind: 'rendered_html_text',
+        sourceTextLength: 2_000,
+        sourceTextPresent: true,
+        sourceUrl: 'https://example.com/app/#/menu',
+        storagePath: linkStoragePath,
+    },
+};
+assert.deepEqual(
+    normalizePublicDraftLinkSourceMetadataForProject(linkDraft, linkSource),
+    {
+        acquisitionProvider: 'direct-http',
+        contentHash: 'a'.repeat(64),
+        finalUrl: 'https://example.com/app/#/menu',
+        sourceKind: 'rendered_html_text',
+        sourceTextLength: 2_000,
+        sourceTextPresent: true,
+        sourceUrl: 'https://example.com/app/#/menu',
+        storagePath: linkStoragePath,
+    },
+    'A promoted link source must retain only validated bounded provenance',
+);
+assert.equal(
+    normalizePublicDraftLinkSourceMetadataForProject({
+        ...linkDraft,
+        sourceMetadata: { ...linkDraft.sourceMetadata, storagePath: `publicMenuDrafts/${sourceDraftId}/other.txt` },
+    }, linkSource),
+    null,
+    'Link provenance must match the validated promoted Storage object',
+);
+assert.equal(
+    normalizePublicDraftLinkSourceMetadataForProject({
+        ...linkDraft,
+        sourceMetadata: { ...linkDraft.sourceMetadata, sourceUrl: 'https://user:pass@example.com/menu' },
+    }, linkSource),
+    null,
+    'Credential-bearing provenance URLs must fail closed',
 );
 
 const currentClaimSession = {

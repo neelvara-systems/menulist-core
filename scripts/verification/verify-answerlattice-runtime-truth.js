@@ -565,7 +565,7 @@ function verifyAnswerlatticeOperationalHardening() {
 
   assert(
     packageJson.scripts?.['verify:answerlattice-security-audit']
-      === 'node scripts/verification/verify-answerlattice-security-audit.js',
+      === 'npm run test:tiptap-attribute-security-boundary && node scripts/verification/verify-answerlattice-security-audit.js',
     'Answerlattice security audit package script',
   );
   assert(
@@ -614,10 +614,12 @@ function verifyAnswerlatticeOperationalHardening() {
     'Answerlattice isolated TypeScript cache',
   );
 
-  assertIncludes(securityAudit, "next: '16.3.0'", 'Answerlattice audit controlled Next migration');
+  assertIncludes(securityAudit, "next: '16.3.4'", 'Answerlattice audit controlled Next migration');
   assertIncludes(securityAudit, 'counts.critical === 0', 'Answerlattice root critical dependency blocker');
   assertIncludes(securityAudit, 'ROOT_MAX_HIGH_COUNT = 0', 'Answerlattice root high dependency ceiling');
-  assertIncludes(securityAudit, 'ROOT_MAX_MODERATE_COUNT = 0', 'Answerlattice root moderate dependency ceiling');
+  assertIncludes(securityAudit, 'ROOT_MAX_MODERATE_COUNT = 2', 'Answerlattice controlled Tiptap advisory ceiling');
+  assertIncludes(securityAudit, "CONTROLLED_TIPTAP_ADVISORY = 'GHSA-cp6q-959q-f8rh'", 'Answerlattice controlled Tiptap advisory identity');
+  assertIncludes(securityAudit, "CONTROLLED_TIPTAP_CORE_VERSION = '2.26.1'", 'Answerlattice controlled Tiptap core runtime');
   assertIncludes(securityAudit, "packageJson.overrides?.uuid === '11.1.1'", 'Answerlattice secure transitive UUID floor');
   assertIncludes(securityAudit, 'verifyFirebaseAdminModularBoundary', 'Answerlattice Firebase Admin modular import boundary');
   assertIncludes(securityAudit, 'counts.total === 0', 'Answerlattice Functions zero-vulnerability dependency blocker');
@@ -653,7 +655,7 @@ function verifyAnswerlatticeOperationalHardening() {
   assertIncludes(backupRunbook, 'Firebase Storage objects require separate', 'Answerlattice Storage recovery boundary');
   assertIncludes(backupRunbook, 'Firebase Authentication users require a separate', 'Answerlattice Auth recovery boundary');
   assertIncludes(deploymentRunbook, './answerlattice-backup-recovery-runbook.md', 'Answerlattice deployment runbook backup link');
-  assertIncludes(inventory, 'zero vulnerabilities', 'Answerlattice dependency audit inventory');
+  assertIncludes(inventory, 'all Functions audits remain zero', 'Answerlattice dependency audit inventory');
   assertIncludes(inventory, 'new-database-only restores', 'Answerlattice recovery source inventory');
 }
 

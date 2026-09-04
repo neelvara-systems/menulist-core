@@ -1,13 +1,13 @@
-@import "abstracts/variables";
-@import "./abstracts//mixins";
-@import "abstracts/functions";
-@import "base/base";
-// @import "base/typography";
-@import "base/common";
-@import "base/accessibility";
-@import "base/antdOverride";
-@import "components/atoms/icon/icon.module.scss";
-@import "components/atoms/svgIcon/svgIcon.module.scss";
-@import "components/organisms/nprogress"; //styles of nprogress
-@import "components/search";
-@import "components/changelog";
+@use "abstracts/variables";
+@use "abstracts/mixins";
+@use "abstracts/functions";
+@use "base/base";
+// @use "base/typography";
+@use "base/common";
+@use "base/accessibility";
+@use "base/antdOverride";
+@use "components/atoms/icon/icon.module.scss";
+@use "components/atoms/svgIcon/svgIcon.module.scss";
+@use "components/organisms/nprogress"; //styles of nprogress
+@use "components/search";
+@use "components/changelog";

@@ -15,7 +15,7 @@ import {
 import { createRandomIdSegment } from '@lib/runtime/randomId';
 import { MENU_IMAGE_CONFIG, optimizeImage } from '@lib/image/optimizeImage';
 import { createMenuLinkImportJob } from '@lib/menu-link-import/client';
-import { validateMenuLinkInput } from '@lib/menu-link-import/menuLinkInput';
+import { getMenuLinkHostnameForLog, validateMenuLinkInput } from '@lib/menu-link-import/menuLinkInput';
 import { shouldCleanupUploadedFilesAfterJobStartError } from '@lib/menu-extraction/jobStartFailure';
 import {
     MENULIST_ANSWERLATTICE_TARGETS,
@@ -872,7 +872,8 @@ export default function MenuUploadSheet({
         } catch (error: unknown) {
             logMenuProcessingFailure('mobile_menu_upload_link_import_failed', error, {
                 ...getMenuProcessingProjectLogContext(currentProjectId),
-                ...getBoundedMenuProcessingStringContext('linkUrl', linkUrl),
+                ...getBoundedMenuProcessingStringContext('linkHostname', getMenuLinkHostnameForLog(linkUrl)),
+                linkLength: linkUrl.length,
             });
             setErrorMessage('We could not read this menu link. Upload a photo/PDF or add the menu manually.');
             setStep('error');

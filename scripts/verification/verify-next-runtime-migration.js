@@ -6,7 +6,7 @@ const ts = require('typescript');
 
 const ROOT = path.resolve(__dirname, '..', '..');
 const EXPECTED_VERSIONS = {
-  next: '16.3.0',
+  next: '16.3.4',
   react: '19.2.8',
   'react-dom': '19.2.8',
   'next-intl': '4.13.4',

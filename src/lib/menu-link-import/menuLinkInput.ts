@@ -2,6 +2,18 @@ export type MenuLinkInputValidation =
     | { valid: true; normalizedUrl: string }
     | { valid: false; message: string };
 
+export const getMenuLinkHostnameForLog = (value: unknown): string | null => {
+    if (typeof value !== 'string') return null;
+    try {
+        const url = new URL(value.trim().replace(/\\/g, '/'));
+        return ['http:', 'https:'].includes(url.protocol) && !url.username && !url.password
+            ? url.hostname.toLowerCase()
+            : null;
+    } catch {
+        return null;
+    }
+};
+
 export const validateMenuLinkInput = (value: string): MenuLinkInputValidation => {
     const trimmed = value.trim().replace(/\\/g, '/');
     if (!trimmed) {
@@ -24,7 +36,14 @@ export const validateMenuLinkInput = (value: string): MenuLinkInputValidation =>
     if (url.username || url.password) {
         return { valid: false, message: 'Use a public menu link without login details.' };
     }
+    if (url.port && !((url.protocol === 'http:' && url.port === '80') || (url.protocol === 'https:' && url.port === '443'))) {
+        return { valid: false, message: 'Use a standard public website link.' };
+    }
 
-    url.hash = '';
+    // Hash routers encode the actual page in the fragment. Preserve only that
+    // route form so the server renderer can reach it; discard ordinary anchors.
+    if (!/^#(?:!\/|\/)/.test(url.hash)) {
+        url.hash = '';
+    }
     return { valid: true, normalizedUrl: url.toString() };
 };

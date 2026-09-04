@@ -17,7 +17,7 @@ import { usePrintableStaffBadgePeople } from '@hook/usePrintableStaffBadgePeople
 import { MENU_KIT_ASSET_KEYS } from '@lib/menu-kit/types';
 import { downloadPrintableAssetFiles } from '@lib/printable-asset-templates/assetDelivery';
 import { getAssetBusinessProfileReadiness } from '@lib/printable-asset-templates/businessProfile';
-import { PRINTABLE_BRAND_KIT_PREVIEW_ASSET_IDS, getPrintableAssetPreviewCopy, getPrintableAssetType, isPrintableAssetTypeId } from '@lib/printable-asset-templates/assetTypes';
+import { PRINTABLE_BRAND_KIT_PREVIEW_ASSET_IDS, getPrintableAssetType, isPrintableAssetTypeId } from '@lib/printable-asset-templates/assetTypes';
 import {
     getPrintableThemeFamiliesForBusiness,
     resolvePrintableBusinessThemeRecommendation,
@@ -80,8 +80,8 @@ import {
     type PrintableInvitationDraft,
 } from '@/components/shared/printableAssets/PersonalizedAssetFields';
 import AssetBusinessProfileEditor from '@/components/shared/printableAssets/AssetBusinessProfileEditor';
-import PrintableTemplatePreview from '@/components/shared/printableAssets/PrintableTemplatePreview';
-import { App as AntApp, Button, Card, Col, Empty, Flex, Input, Modal, Progress, Row, Segmented, Select, Spin, Tag, theme, Typography } from 'antd';
+import RenderedPrintableAssetPreview from '@/components/shared/printableAssets/RenderedPrintableAssetPreview';
+import { App as AntApp, Button, Card, Col, Drawer, Empty, Flex, Input, Modal, Progress, Row, Segmented, Select, Spin, Tag, theme, Typography } from 'antd';
 import dynamic from 'next/dynamic';
 import { useSession } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -345,6 +345,7 @@ export default function PrintableAssetTemplatesRoute() {
     const [editorDirty, setEditorDirty] = useState(false);
     const [stylePreferenceBusyKey, setStylePreferenceBusyKey] = useState<string | null>(null);
     const [isThemeLibraryOpen, setIsThemeLibraryOpen] = useState(false);
+    const [isThemePreviewDrawerOpen, setIsThemePreviewDrawerOpen] = useState(false);
     const [themeBrowseMode, setThemeBrowseMode] = useState<'all' | 'recommended'>('recommended');
     const [themeSearch, setThemeSearch] = useState('');
     const [pendingThemeId, setPendingThemeId] = useState<PrintableTemplateFamilyId | null>(null);
@@ -363,6 +364,8 @@ export default function PrintableAssetTemplatesRoute() {
     const assetOperationRef = useRef<string | null>(null);
     const profileStoreOverrideRef = useRef<Record<string, unknown> | null>(null);
     const projectDataCacheRef = useRef<Record<string, any>>({});
+    const themePreviewHeadingRef = useRef<HTMLHeadingElement | null>(null);
+    const lastThemeChoiceIdRef = useRef<PrintableTemplateFamilyId | null>(null);
     const storeData = storeDetails as any;
     const sessionData = session as any;
     const storeBusinessType = storeDetails?.businessType;
@@ -524,6 +527,59 @@ export default function PrintableAssetTemplatesRoute() {
         ),
         [storeBusinessCategory, storeBusinessType],
     );
+    const printablePreviewVersion = useMemo(() => JSON.stringify({
+        activePlanType: storeData?.activePlanType || null,
+        brandColor: storeBrandColor,
+        businessCategory: platformBusinessCategory,
+        businessType: themeBusinessType || null,
+        contact: printableStoreContactFields,
+        currency: storeData?.currencyCode || storeData?.currency || storeData?.currencySymbol || null,
+        drafts: {
+            flyerCampaignDraft,
+            giftCertificateDraft,
+            invitationDraft,
+            postcardContentDraft,
+            posterCampaignDraft,
+        },
+        logo: storeData?.logo || data?.storeLogo || null,
+        menu: {
+            feedbackQrLink: data?.feedbackQrLink || null,
+            menuLink: data?.menuLink || null,
+            menuModifiedOn: data?.menuModifiedOn || null,
+            projectId: data?.projectId || null,
+            projectName: data?.projectName || null,
+        },
+        staff: selectedStaffBadgePerson
+            ? { id: selectedStaffBadgePerson.id, name: selectedStaffBadgePerson.name, role: selectedStaffBadgePerson.role }
+            : null,
+        storeName: storeDisplayName,
+        tagline: storeData?.tagline || data?.storeTagline || null,
+    }), [
+        data?.feedbackQrLink,
+        data?.menuLink,
+        data?.menuModifiedOn,
+        data?.projectId,
+        data?.projectName,
+        data?.storeLogo,
+        data?.storeTagline,
+        flyerCampaignDraft,
+        giftCertificateDraft,
+        invitationDraft,
+        platformBusinessCategory,
+        postcardContentDraft,
+        posterCampaignDraft,
+        printableStoreContactFields,
+        selectedStaffBadgePerson,
+        storeBrandColor,
+        storeData?.activePlanType,
+        storeData?.currency,
+        storeData?.currencyCode,
+        storeData?.currencySymbol,
+        storeData?.logo,
+        storeData?.tagline,
+        storeDisplayName,
+        themeBusinessType,
+    ]);
     const templateRegistryContext = useMemo<CreativeEditorTemplateContext>(() => ({
         productId: 'menulist',
         scope: templateRegistryScope,
@@ -599,7 +655,6 @@ export default function PrintableAssetTemplatesRoute() {
             title: selectedAssetId === 'complete_menu_kit' ? 'Your asset set' : family.label,
         }));
     }, [availableTemplateFamilies, selectedAssetId, selectedPlatformTemplates]);
-    const { actionLabel: previewActionLabel, instructionLabel: previewInstructionLabel } = getPrintableAssetPreviewCopy(selectedAssetId, labels);
     const activeProject = data?.allProjects.find((project) => project.projectId === data.projectId) || data?.allProjects[0] || null;
     const projectSelectorItems = useMemo<ProjectSelectorItem[]>(() => (
         data?.allProjects.map((project) => ({
@@ -847,10 +902,44 @@ export default function PrintableAssetTemplatesRoute() {
 
     const openThemeLibrary = () => {
         setPendingThemeId(null);
+        setIsThemePreviewDrawerOpen(false);
         setThemeBrowseMode('recommended');
         setThemeSearch('');
+        lastThemeChoiceIdRef.current = null;
         setIsThemeLibraryOpen(true);
     };
+
+    const closeThemeLibrary = () => {
+        if (stylePreferenceBusyRef.current) return;
+        setPendingThemeId(null);
+        setIsThemePreviewDrawerOpen(false);
+        setIsThemeLibraryOpen(false);
+    };
+
+    const openThemeLibraryPreview = (familyId: PrintableTemplateFamilyId, current: boolean) => {
+        lastThemeChoiceIdRef.current = familyId;
+        setPendingThemeId(current ? null : familyId);
+        setIsThemePreviewDrawerOpen(true);
+    };
+
+    const closeThemePreviewDrawer = () => {
+        if (stylePreferenceBusyRef.current) return;
+        setPendingThemeId(null);
+        setIsThemePreviewDrawerOpen(false);
+    };
+
+    useEffect(() => {
+        if (!isThemeLibraryOpen) return;
+        const frame = window.requestAnimationFrame(() => {
+            if (isThemePreviewDrawerOpen) {
+                themePreviewHeadingRef.current?.focus();
+                return;
+            }
+            if (!lastThemeChoiceIdRef.current) return;
+            document.getElementById(`printable-theme-choice-${lastThemeChoiceIdRef.current}`)?.focus();
+        });
+        return () => window.cancelAnimationFrame(frame);
+    }, [isThemeLibraryOpen, isThemePreviewDrawerOpen]);
 
     const closeTemplateActions = () => {
         if (assetOperationRef.current) return;
@@ -941,7 +1030,7 @@ export default function PrintableAssetTemplatesRoute() {
     const applyPendingTheme = async (scope: 'business' | 'project') => {
         if (!pendingThemeId) return;
         const saved = await handleSaveThemePreference(scope, pendingThemeId);
-        if (saved) setIsThemeLibraryOpen(false);
+        if (saved) closeThemeLibrary();
     };
 
     const handleClearProjectThemeOverride = async (): Promise<boolean> => {
@@ -1532,8 +1621,6 @@ export default function PrintableAssetTemplatesRoute() {
         'postcard',
         'staff_id_card',
     ].includes(selectedAssetId);
-    const selectedAssetPreviewCard = platformTemplateCards[0];
-
     return (
         <div
             className={styles.page}
@@ -1639,7 +1726,6 @@ export default function PrintableAssetTemplatesRoute() {
                     <div aria-label={`${effectiveThemeFamily.label} asset set preview`} className={styles.brandMosaic}>
                         {PRINTABLE_BRAND_KIT_PREVIEW_ASSET_IDS.map((assetId) => {
                             const asset = getPrintableAssetType(assetId);
-                            const previewCopy = getPrintableAssetPreviewCopy(assetId, labels);
                             return (
                                 <button
                                     aria-haspopup="dialog"
@@ -1650,16 +1736,13 @@ export default function PrintableAssetTemplatesRoute() {
                                     type="button"
                                 >
                                     <div className={styles.brandMosaicPreview}>
-                                        <PrintableTemplatePreview
-                                            actionLabel={previewCopy.actionLabel}
+                                        <RenderedPrintableAssetPreview
+                                            alt={`${asset.title} in ${effectiveThemeFamily.label}`}
                                             assetTypeId={assetId}
-                                            brandColor={storeBrandColor}
-                                            compact
-                                            family={effectiveThemeFamily}
-                                            instructionLabel={previewCopy.instructionLabel}
-                                            shortLink={(assetId === 'feedback_qr' ? data.feedbackQrLink : data.menuLink).replace(/^https?:\/\//, '')}
-                                            storeLogo={data.storeLogo}
-                                            storeName={data.storeName}
+                                            eager
+                                            previewVersion={printablePreviewVersion}
+                                            renderInput={() => buildRenderInput(effectiveThemeFamily.id, selectedStaffBadgePerson, assetId)}
+                                            templateFamilyId={effectiveThemeFamily.id}
                                         />
                                     </div>
                                     <span aria-hidden className={styles.brandMosaicAction}>
@@ -1741,23 +1824,19 @@ export default function PrintableAssetTemplatesRoute() {
                         onClick={openCurrentAssetActions}
                         type="button"
                     >
-                        {selectedAssetPreviewCard?.thumbnailUrl ? (
-                            <img
-                                alt={`${selectedAsset.title} preview`}
-                                src={selectedAssetPreviewCard.thumbnailUrl}
-                            />
-                        ) : (
-                            <PrintableTemplatePreview
-                                actionLabel={previewActionLabel}
-                                assetTypeId={selectedAssetId}
-                                brandColor={storeBrandColor}
-                                family={effectiveThemeFamily}
-                                instructionLabel={previewInstructionLabel}
-                                shortLink={(selectedAssetId === 'feedback_qr' ? data.feedbackQrLink : data.menuLink).replace(/^https?:\/\//, '')}
-                                storeLogo={data.storeLogo}
-                                storeName={data.storeName}
-                            />
-                        )}
+                        <RenderedPrintableAssetPreview
+                            alt={`${selectedAsset.title} in ${effectiveThemeFamily.label}`}
+                            assetTypeId={selectedAssetId}
+                            eager
+                            emptyLabel={selectedAssetId === 'complete_menu_kit'
+                                ? 'Open the complete kit to review its included files.'
+                                : undefined}
+                            previewVersion={printablePreviewVersion}
+                            renderInput={() => selectedAssetId === 'complete_menu_kit'
+                                ? Promise.resolve(null)
+                                : buildRenderInput(effectiveThemeFamily.id, selectedStaffBadgePerson, selectedAssetId)}
+                            templateFamilyId={effectiveThemeFamily.id}
+                        />
                         <span aria-hidden className={styles.assetPreviewOpenHint}>
                             <LuEye size={15} /> Preview
                         </span>
@@ -1946,7 +2025,7 @@ export default function PrintableAssetTemplatesRoute() {
                                     loading={stylePreferenceBusyKey === 'theme:clear'}
                                     onClick={() => void (async () => {
                                         const restored = await handleClearProjectThemeOverride();
-                                        if (restored) setIsThemeLibraryOpen(false);
+                                        if (restored) closeThemeLibrary();
                                     })()}
                                     type="text"
                                 >
@@ -1959,41 +2038,16 @@ export default function PrintableAssetTemplatesRoute() {
                         <Flex className={styles.themeApplyActions} gap={10} wrap="wrap">
                             <Button
                                 disabled={Boolean(stylePreferenceBusyKey)}
-                                onClick={() => setIsThemeLibraryOpen(false)}
+                                onClick={closeThemeLibrary}
                             >
                                 Close
                             </Button>
-                            <Button
-                                disabled={!pendingThemeId || Boolean(stylePreferenceBusyKey) || stylePreferences.businessThemeId === pendingThemeId}
-                                loading={Boolean(pendingThemeId && stylePreferenceBusyKey === `theme:business:${pendingThemeId}`)}
-                                onClick={() => void applyPendingTheme('business')}
-                            >
-                                {stylePreferences.businessThemeId === pendingThemeId ? 'Already applied to all menus' : 'Apply to all menus'}
-                            </Button>
-                            {data.projectId ? (
-                                <Button
-                                    className={styles.themeMenuAction}
-                                    disabled={!pendingThemeId || Boolean(stylePreferenceBusyKey) || stylePreferences.projectThemeOverrides?.[data.projectId] === pendingThemeId}
-                                    loading={Boolean(pendingThemeId && stylePreferenceBusyKey === `theme:project:${pendingThemeId}`)}
-                                    onClick={() => void applyPendingTheme('project')}
-                                    title={data.projectName
-                                        ? `${stylePreferences.projectThemeOverrides?.[data.projectId] === pendingThemeId ? 'Already applied to' : 'Apply to'} ${data.projectName}`
-                                        : undefined}
-                                    type="primary"
-                                >
-                                    {stylePreferences.projectThemeOverrides?.[data.projectId] === pendingThemeId
-                                        ? `Already applied to ${data.projectName || 'this menu'}`
-                                        : `Apply to ${data.projectName || 'this menu'}`}
-                                </Button>
-                            ) : null}
                         </Flex>
                     </Flex>
                 )}
-                keyboard={!stylePreferenceBusyKey}
+                keyboard={!stylePreferenceBusyKey && !isThemePreviewDrawerOpen}
                 maskClosable={!stylePreferenceBusyKey}
-                onCancel={() => {
-                    if (!stylePreferenceBusyKey) setIsThemeLibraryOpen(false);
-                }}
+                onCancel={closeThemeLibrary}
                 open={isThemeLibraryOpen}
                 style={{
                     '--theme-library-bg': token.colorBgElevated,
@@ -2018,56 +2072,50 @@ export default function PrintableAssetTemplatesRoute() {
                 zIndex={2300}
             >
                 <Flex className={styles.themeLibraryShell} gap={16} vertical>
-                    <Flex align="center" className={styles.themeLibraryControls} gap={10} justify="space-between" wrap="wrap">
-                        <Segmented
-                            onChange={(value) => setThemeBrowseMode(value as 'all' | 'recommended')}
-                            options={[
-                                { label: 'Recommended', value: 'recommended' },
-                                { label: `All themes (${themeFamilies.length})`, value: 'all' },
-                            ]}
-                            value={themeBrowseMode}
-                        />
-                        <Input
-                            allowClear
-                            aria-label="Search brand looks"
-                            onChange={(event) => setThemeSearch(event.target.value)}
-                            placeholder="Search themes"
-                            prefix={<LuSearch aria-hidden size={16} />}
-                            style={{ maxWidth: 300 }}
-                            value={themeSearch}
-                        />
-                    </Flex>
-                    <div className={styles.themeLibraryWorkspace}>
+                    <div className={styles.themeLibraryCatalogView}>
+                        <Flex align="center" className={styles.themeLibraryControls} gap={10} justify="space-between" wrap="wrap">
+                            <Segmented
+                                onChange={(value) => setThemeBrowseMode(value as 'all' | 'recommended')}
+                                options={[
+                                    { label: 'Recommended', value: 'recommended' },
+                                    { label: `All themes (${themeFamilies.length})`, value: 'all' },
+                                ]}
+                                value={themeBrowseMode}
+                            />
+                            <Input
+                                allowClear
+                                aria-label="Search brand looks"
+                                onChange={(event) => setThemeSearch(event.target.value)}
+                                placeholder="Search themes"
+                                prefix={<LuSearch aria-hidden size={16} />}
+                                style={{ maxWidth: 300 }}
+                                value={themeSearch}
+                            />
+                        </Flex>
                         <div className={styles.themeCatalogPanel}>
                             {visibleThemeFamilies.length ? (
                                 <div className={styles.themeLibraryGrid}>
                                     {visibleThemeFamilies.map((family) => {
                                         const selected = pendingThemeId === family.id;
                                         const current = effectiveThemeId === family.id;
-                                        const previewCopy = getPrintableAssetPreviewCopy('single_table_card', labels);
                                         return (
                                             <button
                                                 aria-current={current ? 'true' : undefined}
                                                 aria-label={`Preview ${family.label}${current ? ', current brand look' : ''}`}
                                                 aria-pressed={selected}
                                                 className={`${styles.themeChoice} ${selected ? styles.themeChoiceSelected : ''} ${current ? styles.themeChoiceCurrent : ''}`}
+                                                id={`printable-theme-choice-${family.id}`}
                                                 key={family.id}
-                                                onClick={() => setPendingThemeId((currentId) => (
-                                                    currentId === family.id || current ? null : family.id
-                                                ))}
+                                                onClick={() => openThemeLibraryPreview(family.id, current)}
                                                 type="button"
                                             >
                                                 <div className={styles.themeChoicePreview}>
-                                                    <PrintableTemplatePreview
-                                                        actionLabel={previewCopy.actionLabel}
+                                                    <RenderedPrintableAssetPreview
+                                                        alt={`Table card in ${family.label}`}
                                                         assetTypeId="single_table_card"
-                                                        brandColor={storeBrandColor}
-                                                        compact
-                                                        family={family}
-                                                        instructionLabel={previewCopy.instructionLabel}
-                                                        shortLink={data.menuLink.replace(/^https?:\/\//, '')}
-                                                        storeLogo={data.storeLogo}
-                                                        storeName={data.storeName}
+                                                        previewVersion={printablePreviewVersion}
+                                                        renderInput={() => buildRenderInput(family.id, selectedStaffBadgePerson, 'single_table_card')}
+                                                        templateFamilyId={family.id}
                                                     />
                                                     {current || selected ? (
                                                         <span className={`${styles.themeSelectedMark} ${current ? styles.themeCurrentMark : styles.themePendingMark}`}>
@@ -2086,39 +2134,101 @@ export default function PrintableAssetTemplatesRoute() {
                                 <Empty description="No themes match this search" image={Empty.PRESENTED_IMAGE_SIMPLE} />
                             )}
                         </div>
+                    </div>
+                    <Drawer
+                        autoFocus={false}
+                        closable={!stylePreferenceBusyKey}
+                        extra={(
+                            <span className={`${styles.themePreviewState} ${pendingThemeId ? styles.themePreviewStateSelected : styles.themePreviewStateCurrent}`}>
+                                {pendingThemeId ? <LuEye aria-hidden size={14} /> : <LuCheck aria-hidden size={14} />}
+                                {pendingThemeId ? 'Previewing' : 'Current'}
+                            </span>
+                        )}
+                        footer={(
+                            <Flex className={styles.themeApplyActions} gap={10} justify="flex-end" wrap="wrap">
+                                <Button
+                                    disabled={Boolean(stylePreferenceBusyKey)}
+                                    onClick={closeThemePreviewDrawer}
+                                >
+                                    Back to themes
+                                </Button>
+                                {pendingThemeId ? (
+                                    <>
+                                        <Button
+                                            disabled={Boolean(stylePreferenceBusyKey) || stylePreferences.businessThemeId === pendingThemeId}
+                                            loading={stylePreferenceBusyKey === `theme:business:${pendingThemeId}`}
+                                            onClick={() => void applyPendingTheme('business')}
+                                        >
+                                            {stylePreferences.businessThemeId === pendingThemeId ? 'Already applied to all menus' : 'Apply to all menus'}
+                                        </Button>
+                                        {data.projectId ? (
+                                            <Button
+                                                className={styles.themeMenuAction}
+                                                disabled={Boolean(stylePreferenceBusyKey) || stylePreferences.projectThemeOverrides?.[data.projectId] === pendingThemeId}
+                                                loading={stylePreferenceBusyKey === `theme:project:${pendingThemeId}`}
+                                                onClick={() => void applyPendingTheme('project')}
+                                                title={data.projectName
+                                                    ? `${stylePreferences.projectThemeOverrides?.[data.projectId] === pendingThemeId ? 'Already applied to' : 'Apply to'} ${data.projectName}`
+                                                    : undefined}
+                                                type="primary"
+                                            >
+                                                {stylePreferences.projectThemeOverrides?.[data.projectId] === pendingThemeId
+                                                    ? `Already applied to ${data.projectName || 'this menu'}`
+                                                    : `Apply to ${data.projectName || 'this menu'}`}
+                                            </Button>
+                                        ) : null}
+                                    </>
+                                ) : null}
+                            </Flex>
+                        )}
+                        keyboard={!stylePreferenceBusyKey}
+                        maskClosable={!stylePreferenceBusyKey}
+                        onClose={closeThemePreviewDrawer}
+                        open={isThemePreviewDrawerOpen}
+                        placement="right"
+                        rootClassName={styles.themePreviewDrawer}
+                        rootStyle={{
+                            '--theme-library-bg': token.colorBgElevated,
+                            '--theme-library-border': token.colorBorderSecondary,
+                            '--theme-library-fill': token.colorFillQuaternary,
+                            '--theme-library-preview-bg': token.colorBgLayout,
+                            '--theme-library-primary': token.colorPrimary,
+                            '--theme-library-primary-bg': token.colorPrimaryBg,
+                            '--theme-library-primary-border': token.colorPrimary,
+                            '--theme-library-success': token.colorSuccess,
+                            '--theme-library-success-bg': token.colorSuccessBg,
+                            '--theme-library-success-border': token.colorSuccessBorder,
+                            '--theme-library-text': token.colorText,
+                            zIndex: 2400,
+                        } as CSSProperties}
+                        title={(
+                            <div aria-live="polite" className={styles.themeSetPreviewTitle}>
+                                <h2 ref={themePreviewHeadingRef} tabIndex={-1}>{themeLibraryPreviewFamily.label}</h2>
+                                <Text type="secondary">
+                                    {pendingThemeId ? 'Previewing — not applied yet' : 'Current brand look'}
+                                </Text>
+                            </div>
+                        )}
+                        width="min(760px, calc(100vw - 24px))"
+                        zIndex={2400}
+                    >
                         <section
                             aria-label={`${themeLibraryPreviewFamily.label} key asset preview`}
                             className={styles.themeSetPreview}
                         >
-                            <Flex align="center" className={styles.themeSetPreviewHeader} gap={12} justify="space-between">
-                                <div aria-live="polite" className={styles.themeSetPreviewTitle}>
-                                    <Text strong>{themeLibraryPreviewFamily.label}</Text>
-                                    <Text type="secondary">
-                                        {pendingThemeId ? 'Previewing — not applied yet' : 'Current brand look'}
-                                    </Text>
-                                </div>
-                                <span className={`${styles.themePreviewState} ${pendingThemeId ? styles.themePreviewStateSelected : styles.themePreviewStateCurrent}`}>
-                                    {pendingThemeId ? <LuEye aria-hidden size={14} /> : <LuCheck aria-hidden size={14} />}
-                                    {pendingThemeId ? 'Previewing' : 'Current'}
-                                </span>
-                            </Flex>
                             <div className={styles.themeSetMosaic}>
                                 {PRINTABLE_BRAND_KIT_PREVIEW_ASSET_IDS.map((assetId) => {
                                     const asset = getPrintableAssetType(assetId);
-                                    const previewCopy = getPrintableAssetPreviewCopy(assetId, labels);
                                     return (
                                         <div className={styles.themeSetMosaicItem} key={assetId}>
                                             <div className={styles.themeSetMosaicPreview}>
-                                                <PrintableTemplatePreview
-                                                    actionLabel={previewCopy.actionLabel}
+                                                <RenderedPrintableAssetPreview
+                                                    alt={`${asset.title} in ${themeLibraryPreviewFamily.label}`}
                                                     assetTypeId={assetId}
-                                                    brandColor={storeBrandColor}
-                                                    compact
-                                                    family={themeLibraryPreviewFamily}
-                                                    instructionLabel={previewCopy.instructionLabel}
-                                                    shortLink={(assetId === 'feedback_qr' ? data.feedbackQrLink : data.menuLink).replace(/^https?:\/\//, '')}
-                                                    storeLogo={data.storeLogo}
-                                                    storeName={data.storeName}
+                                                    eager
+                                                    previewVersion={printablePreviewVersion}
+                                                    renderInput={() => buildRenderInput(themeLibraryPreviewFamily.id, selectedStaffBadgePerson, assetId)}
+                                                    templateFamilyId={themeLibraryPreviewFamily.id}
                                                 />
                                             </div>
                                             <Text className={styles.themeSetMosaicLabel}>{asset.title}</Text>
@@ -2127,7 +2237,7 @@ export default function PrintableAssetTemplatesRoute() {
                                 })}
                             </div>
                         </section>
-                    </div>
+                    </Drawer>
                 </Flex>
             </Modal>
             <Modal
@@ -2277,15 +2387,13 @@ export default function PrintableAssetTemplatesRoute() {
                                     </Text>
                                 </Flex>
                             ) : (
-                                <PrintableTemplatePreview
-                                    actionLabel={previewActionLabel}
+                                <RenderedPrintableAssetPreview
+                                    alt={`${selectedAsset.title} in ${activeTemplateFamily.label}`}
                                     assetTypeId={selectedAssetId}
-                                    brandColor={storeBrandColor}
-                                    family={activeTemplateFamily}
-                                    instructionLabel={previewInstructionLabel}
-                                    shortLink={(selectedAssetId === 'feedback_qr' ? data.feedbackQrLink : data.menuLink).replace(/^https?:\/\//, '')}
-                                    storeLogo={data.storeLogo}
-                                    storeName={data.storeName}
+                                    eager
+                                    previewVersion={printablePreviewVersion}
+                                    renderInput={() => buildRenderInput(activeTemplateFamily.id, selectedStaffBadgePerson, selectedAssetId)}
+                                    templateFamilyId={activeTemplateFamily.id}
                                 />
                             )}
                             <Text className={styles.previewModalSizeBadge}>{selectedAsset.size}</Text>

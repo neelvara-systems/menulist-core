@@ -44,7 +44,10 @@ import {
   createOrReuseActiveMenuExtractionJob,
   MENU_EXTRACTION_ACTIVE_JOB_STATUSES,
 } from "@lib/menu-extraction/activeJobClaim";
-import { normalizeMenuExtractionProjectId } from "@lib/menu-extraction/projectIdBoundary";
+import {
+  isMenuExtractionProjectIdInScope,
+  normalizeMenuExtractionProjectId,
+} from "@lib/menu-extraction/projectIdBoundary";
 import { normalizeProjectLanguages } from "@lib/localization/languagePolicy";
 import { checkSafeMode } from "@lib/ops/safeMode";
 import { requireAnyStorePermission } from "@lib/permissions/server";
@@ -157,15 +160,6 @@ function requireMenuExtractionRetryJobId(value: unknown): string {
     throw new MenuIntakeIdentityServerError(400, "Invalid retry request.");
   }
   return jobId;
-}
-
-function parseProjectIds(projectId: string): { sId: string; tId: string } | null {
-  const parts = projectId.split("-");
-  if (parts.length < 3) return null;
-  return {
-    tId: parts[0],
-    sId: parts[parts.length - 1],
-  };
 }
 
 function getStoragePathFromDownloadUrl(value: string): string | null {
@@ -638,8 +632,7 @@ export const POST = withMenuExtractionAuth(async (request: NextRequest, session)
   }
 
   const { projectId } = validation.data;
-  const projectIds = parseProjectIds(projectId);
-  if (!projectIds || projectIds.tId !== ids.tId || projectIds.sId !== ids.sId) {
+  if (!isMenuExtractionProjectIdInScope(projectId, ids.tId, ids.sId)) {
     return NextResponse.json({ success: false, error: "Menu does not belong to this store." }, { status: 403 });
   }
 

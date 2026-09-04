@@ -175,6 +175,8 @@ export interface MenuProcessingJobStatus {
     /** TTL for unapproved preview_ready jobs */
     expiresAt?: unknown;
     forceReview?: boolean;
+    /** Exact owner-approved changes persisted when a review completes. */
+    appliedChangeCount?: number;
     source?: string;
     sourceFingerprint?: string;
     sourceFingerprintVersion?: number;

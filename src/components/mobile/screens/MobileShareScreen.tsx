@@ -26,7 +26,7 @@ import { resolveStoreBrandColor } from '@lib/menu-kit/brandTokens';
 import { downloadBlob, generateMenuKit, generateMenuKitAsset, type MenuKitAssetKey, shareBlob } from '@lib/menu-kit/menuKitGenerator';
 import { recordLocalPdfDownload, resolveLocalExportStorageScope } from '@lib/export/localExportHistory';
 import { generateOBPUrl } from '@lib/obp/generateOBPUrl';
-import { PRINTABLE_ASSET_CATALOG_TYPES, PRINTABLE_BRAND_KIT_PREVIEW_ASSET_IDS, getPrintableAssetPreviewCopy, getPrintableAssetType } from '@lib/printable-asset-templates/assetTypes';
+import { PRINTABLE_ASSET_CATALOG_TYPES, PRINTABLE_BRAND_KIT_PREVIEW_ASSET_IDS, getPrintableAssetType } from '@lib/printable-asset-templates/assetTypes';
 import { downloadPrintableAssetFiles, preparePrintableAssetDelivery } from '@lib/printable-asset-templates/assetDelivery';
 import { getAssetBusinessProfileReadiness } from '@lib/printable-asset-templates/businessProfile';
 import {
@@ -86,7 +86,7 @@ import {
     type PrintableGiftCertificateDraft,
     type PrintableInvitationDraft,
 } from '@/components/shared/printableAssets/PersonalizedAssetFields';
-import PrintableTemplatePreview from '@/components/shared/printableAssets/PrintableTemplatePreview';
+import RenderedPrintableAssetPreview from '@/components/shared/printableAssets/RenderedPrintableAssetPreview';
 import AssetBusinessProfileEditor from '@/components/shared/printableAssets/AssetBusinessProfileEditor';
 import { buildExportDataFromProject, downloadMenuData } from '@template/main-app/projects/utils/excelUtils';
 import { theme } from 'antd';
@@ -698,6 +698,57 @@ export default function MobileShareScreen({
             : -1,
         [availablePrintableTemplateFamilies, printableActionTemplateId],
     );
+    const printablePreviewVersion = useMemo(() => JSON.stringify({
+        activePlanType: (storeDetails as any)?.activePlanType || null,
+        brandColor: storeBrandColor,
+        businessCategory: themeBusinessCategory || null,
+        businessType: themeBusinessType || null,
+        contact: printableStoreContactFields,
+        currency: (storeDetails as any)?.currencyCode
+            || (storeDetails as any)?.currency
+            || (storeDetails as any)?.currencySymbol
+            || null,
+        drafts: {
+            flyerCampaignDraft,
+            giftCertificateDraft,
+            invitationDraft,
+            postcardContentDraft,
+            posterCampaignDraft,
+        },
+        logo: (storeDetails as any)?.logo || data?.storeLogo || null,
+        menu: {
+            feedbackQrLink: data?.feedbackQrLink || null,
+            menuLink: data?.menuLink || null,
+            menuModifiedOn: data?.menuModifiedOn || null,
+            projectId: data?.projectId || null,
+            projectName: data?.projectName || null,
+        },
+        staff: selectedStaffBadgePerson
+            ? { id: selectedStaffBadgePerson.id, name: selectedStaffBadgePerson.name, role: selectedStaffBadgePerson.role }
+            : null,
+        storeName: storeDisplayName,
+        tagline: (storeDetails as any)?.tagline || data?.storeTagline || null,
+    }), [
+        data?.feedbackQrLink,
+        data?.menuLink,
+        data?.menuModifiedOn,
+        data?.projectId,
+        data?.projectName,
+        data?.storeLogo,
+        data?.storeTagline,
+        flyerCampaignDraft,
+        giftCertificateDraft,
+        invitationDraft,
+        postcardContentDraft,
+        posterCampaignDraft,
+        printableStoreContactFields,
+        selectedStaffBadgePerson,
+        storeBrandColor,
+        storeDetails,
+        storeDisplayName,
+        themeBusinessCategory,
+        themeBusinessType,
+    ]);
 
     const outletQrLinks = useMemo<OutletQrLink[]>(() => {
         if (!data?.obpLink || !isMasterUser) return [];
@@ -1691,7 +1742,6 @@ export default function MobileShareScreen({
     if (isPrintAssetsMode) {
         const templateRowPreviewWidth = isCompactHandheld ? 116 : 132;
         const templateRowPreviewHeight = isCompactHandheld ? 108 : 116;
-        const previewCopy = getPrintableAssetPreviewCopy(selectedPrintableAssetId, labels);
 
         return (
             <Flex gap={isCompactHandheld ? 14 : 18} style={{ padding: isCompactHandheld ? 12 : 16 }} vertical>
@@ -1864,15 +1914,12 @@ export default function MobileShareScreen({
                                         type="button"
                                     >
                                         <TemplateFamilySwatch
-                                            actionLabel="View"
+                                            alt={`Table card in ${family.label}`}
                                             assetTypeId="single_table_card"
-                                            brandColor={storeBrandColor}
-                                            family={family}
                                             height={86}
-                                            instructionLabel="Scan"
-                                            shortLink={data.menuLink.replace(/^https?:\/\//, '')}
-                                            storeLogo={data.storeLogo}
-                                            storeName={data.storeName}
+                                            previewVersion={printablePreviewVersion}
+                                            renderInput={() => buildPrintableRenderInput('single_table_card', family.id, selectedStaffBadgePerson)}
+                                            templateFamilyId={family.id}
                                             width={122}
                                         />
                                         <Text strong style={{ display: 'block', flex: '0 0 auto', fontSize: 12, lineHeight: 1.35, marginTop: 7, minHeight: 32, width: '100%' }}>
@@ -1909,7 +1956,6 @@ export default function MobileShareScreen({
                         >
                             {PRINTABLE_BRAND_KIT_PREVIEW_ASSET_IDS.map((assetId, index) => {
                                 const asset = getPrintableAssetType(assetId);
-                                const copy = getPrintableAssetPreviewCopy(assetId, labels);
                                 return (
                                     <div
                                         key={assetId}
@@ -1922,15 +1968,13 @@ export default function MobileShareScreen({
                                         }}
                                     >
                                         <TemplateFamilySwatch
-                                            actionLabel={copy.actionLabel}
+                                            alt={`${asset.title} in ${previewThemeFamily.label}`}
                                             assetTypeId={assetId}
-                                            brandColor={storeBrandColor}
-                                            family={previewThemeFamily}
+                                            eager
                                             height={index === 0 || index === 5 ? (isCompactHandheld ? 82 : 94) : (isCompactHandheld ? 82 : 94)}
-                                            instructionLabel={copy.instructionLabel}
-                                            shortLink={(assetId === 'feedback_qr' ? data.feedbackQrLink : data.menuLink).replace(/^https?:\/\//, '')}
-                                            storeLogo={data.storeLogo}
-                                            storeName={data.storeName}
+                                            previewVersion={printablePreviewVersion}
+                                            renderInput={() => buildPrintableRenderInput(assetId, previewThemeFamily.id, selectedStaffBadgePerson)}
+                                            templateFamilyId={previewThemeFamily.id}
                                             width={index === 0 || index === 5 ? 320 : 154}
                                         />
                                         <span style={{
@@ -2102,15 +2146,15 @@ export default function MobileShareScreen({
                                         type="button"
                                     >
                                         <TemplateFamilySwatch
-                                            actionLabel={previewCopy.actionLabel}
+                                            alt={isBundle
+                                                ? `${family.label} complete asset set`
+                                                : `${selectedPrintableAsset.title} in ${family.label}`}
                                             assetTypeId={selectedPrintableAssetId}
-                                            brandColor={storeBrandColor}
-                                            family={family}
-                                            instructionLabel={previewCopy.instructionLabel}
-                                            shortLink={data.menuLink.replace(/^https?:\/\//, '')}
-                                            storeLogo={data.storeLogo}
-                                            storeName={data.storeName}
+                                            eager
                                             height={templateRowPreviewHeight}
+                                            previewVersion={printablePreviewVersion}
+                                            renderInput={() => buildPrintableRenderInput(selectedPrintableAssetId, family.id, selectedStaffBadgePerson)}
+                                            templateFamilyId={family.id}
                                             width={templateRowPreviewWidth}
                                         />
                                         <span
@@ -2944,26 +2988,22 @@ function getMobilePrintablePreviewFormat(asset: PrintableAssetType): PrintableAs
 }
 
 function TemplateFamilySwatch({
-    actionLabel,
+    alt,
     assetTypeId,
-    brandColor,
-    family,
-    instructionLabel,
-    shortLink,
-    storeLogo,
-    storeName,
+    eager,
     height = 98,
+    previewVersion,
+    renderInput,
+    templateFamilyId,
     width = '100%',
 }: {
-    actionLabel: string;
+    alt: string;
     assetTypeId: PrintableAssetTypeId;
-    brandColor?: string | null;
-    family: PrintableTemplateFamily;
-    instructionLabel: string;
-    shortLink?: string;
-    storeLogo?: string | null;
-    storeName: string;
+    eager?: boolean;
     height?: number;
+    previewVersion: string;
+    renderInput: () => Promise<PrintableAssetRenderInput | null>;
+    templateFamilyId: PrintableTemplateFamilyId;
     width?: number | string;
 }) {
     const { token } = theme.useToken();
@@ -2977,17 +3017,34 @@ function TemplateFamilySwatch({
             overflow: 'hidden',
             width,
         }}>
-            <PrintableTemplatePreview
-                actionLabel={actionLabel}
-                assetTypeId={assetTypeId}
-                brandColor={brandColor}
-                compact
-                family={family}
-                instructionLabel={instructionLabel}
-                shortLink={shortLink}
-                storeLogo={storeLogo}
-                storeName={storeName}
-            />
+            {assetTypeId === 'complete_menu_kit' ? (
+                <span style={{
+                    alignItems: 'center',
+                    background: token.colorFillQuaternary,
+                    color: token.colorTextSecondary,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    fontSize: 11,
+                    fontWeight: 650,
+                    gap: 6,
+                    height: '100%',
+                    justifyContent: 'center',
+                    textAlign: 'center',
+                    width: '100%',
+                }}>
+                    <LuPackage aria-hidden size={24} />
+                    Complete asset set
+                </span>
+            ) : (
+                <RenderedPrintableAssetPreview
+                    alt={alt}
+                    assetTypeId={assetTypeId}
+                    eager={eager}
+                    previewVersion={previewVersion}
+                    renderInput={renderInput}
+                    templateFamilyId={templateFamilyId}
+                />
+            )}
         </div>
     );
 }

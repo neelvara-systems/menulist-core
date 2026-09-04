@@ -111,7 +111,7 @@ freeze contract. The final dependency graph gives legacy `minimatch` 3 its
 compatible `brace-expansion` 1.1.18 and modern `minimatch` 10 patched 5.0.9;
 both consumers run.
 
-Security-policy result: stable Next 16.3.0 carries patched PostCSS 8.5.23, and the root full and production audits are required to remain at zero after the compatible brace-expansion and fast-uri refresh. Fabric 7.4.0 cleared the former native canvas/tar family; Firebase Admin 14.2.0 and the UUID 11.1.1 compatibility override cleared the root Firebase/Storage/ExcelJS moderate chain. Answerlattice Functions pin the stable Firebase Admin 13.10.0 / Firebase Functions 7.3.0 pair through modular entry points.
+Security-policy result: stable Next 16.3.4 carries patched PostCSS 8.5.23 and closes the August image-optimization RCE. Root full and production audits have no critical, high, or low findings; the only accepted moderate entries are the exact two-package projection of Tiptap `GHSA-cp6q-959q-f8rh`, bounded by the application-owned `__proto__` attribute rejection and regression. Fabric 7.4.0 cleared the former native canvas/tar family; Firebase Admin 14.2.0 and the UUID 11.1.1 compatibility override cleared the root Firebase/Storage/ExcelJS moderate chain. Answerlattice Functions pin the stable Firebase Admin 13.10.0 / Firebase Functions 7.3.0 pair through modular entry points.
 
 ## Deployment evidence
 

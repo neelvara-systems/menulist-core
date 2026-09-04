@@ -33,7 +33,8 @@ function requireToken(source, token, label) {
   'src/components/mobile/screens/MobileMenuScreen.tsx',
   'src/components/shared/printableAssets/PostcardContentFields.tsx',
   'src/components/shared/printableAssets/PersonalizedAssetFields.tsx',
-  'src/components/shared/printableAssets/PrintableTemplatePreview.tsx',
+  'src/components/shared/printableAssets/RenderedPrintableAssetPreview.tsx',
+  'src/components/shared/printableAssets/RenderedPrintableAssetPreview.module.scss',
   'src/components/templates/platform/assetTemplates/index.tsx',
   'src/lib/printable-asset-templates/types.ts',
   'src/lib/printable-asset-templates/assetTypes.ts',
@@ -1319,6 +1320,12 @@ requireToken(mobileShare, 'PRINTABLE_ASSET_CATALOG_TYPES.map', 'mobile context-f
   'Download PDF',
 ].forEach((token) => requireToken(printableAssetWorkflowModal, token, 'shared printable preview-edit-download flow'));
 [
+  "outputFormat: 'png'",
+  'URL.createObjectURL',
+  'URL.revokeObjectURL',
+  "objectFit: 'contain'",
+].forEach((token) => requireToken(printableAssetWorkflowModal, token, 'shared canonical printable workflow preview'));
+[
   'PrintableAssetWorkflowModal',
   'QR opens this exact item.',
 ].forEach((token) => requireToken(itemProductTagModal, token, 'shared Product Tag workflow wrapper'));
@@ -1506,7 +1513,7 @@ if (/Customer favorite|name: "Tag headline"|text: "NEW"/.test(editorAdapter)) {
   'renderPrintableAssetEditorDocument',
   'renderPrintableAssetEditorDocumentFiles',
   'downloadPrintableAssetFiles',
-  'PrintableTemplatePreview',
+  'RenderedPrintableAssetPreview',
   'isThemeLibraryOpen',
   'visibleThemeFamilies.map',
   'const current = effectiveThemeId === family.id',
@@ -1664,37 +1671,75 @@ if (desktopAssetsStyles.includes('border-bottom-color: var(--ant-color-border-se
   'position: absolute',
   '.themeCurrentMark',
   '.themePendingMark',
-  '.themeLibraryWorkspace',
+  '.themeLibraryCatalogView',
+  '.themeCatalogPanel',
+  'scrollbar-gutter: stable',
+  '.themePreviewDrawer:global(.ant-drawer)',
+  'overscroll-behavior: contain',
   '.themeSetPreview',
   '.themeSetMosaic',
   '.themePreviewStateCurrent',
   '.themePreviewStateSelected',
-  'grid-template-columns: minmax(0, 1.18fr) minmax(430px, 0.82fr)',
+  'grid-template-columns: repeat(2, minmax(0, 1fr))',
+  'grid-template-rows: repeat(4, 174px)',
   'border-color: var(--theme-library-success)',
   'border-color: var(--theme-library-primary-border)',
   '.themeMenuContext',
   '.themeMenuAction:global(.ant-btn)',
   '.themeLibraryModal:global(.ant-modal)',
   'height: 100dvh',
-  'overflow-y: auto',
+  'overflow: hidden',
   'grid-template-columns: repeat(auto-fill, minmax(190px, 1fr))',
 ].forEach((token) => requireToken(desktopAssetsStyles, token, 'desktop theme-choice visual hierarchy'));
 [
   'const themeLibraryPreviewFamily = useMemo(',
+  'const [isThemePreviewDrawerOpen, setIsThemePreviewDrawerOpen] = useState(false)',
   "'--theme-library-primary': token.colorPrimary",
   "'--theme-library-success': token.colorSuccess",
   'setPendingThemeId(null)',
-  'currentId === family.id || current ? null : family.id',
+  'const openThemeLibraryPreview = (familyId: PrintableTemplateFamilyId, current: boolean)',
+  'setPendingThemeId(current ? null : familyId)',
+  'setIsThemePreviewDrawerOpen(true)',
+  'onClick={() => openThemeLibraryPreview(family.id, current)}',
+  '<div className={styles.themeLibraryCatalogView}>',
+  '<Drawer',
+  'open={isThemePreviewDrawerOpen}',
+  'placement="right"',
+  'width="min(760px, calc(100vw - 24px))"',
+  'const closeThemePreviewDrawer = () =>',
+  'Back to themes',
+  'themePreviewHeadingRef.current?.focus()',
+  'document.getElementById(`printable-theme-choice-${lastThemeChoiceIdRef.current}`)?.focus()',
+  'keyboard={!stylePreferenceBusyKey && !isThemePreviewDrawerOpen}',
+  'keyboard={!stylePreferenceBusyKey}',
+  'maskClosable={!stylePreferenceBusyKey}',
+  'onClose={closeThemePreviewDrawer}',
   'PRINTABLE_BRAND_KIT_PREVIEW_ASSET_IDS.map((assetId)',
   "pendingThemeId ? 'Previewing — not applied yet' : 'Current brand look'",
   "pendingThemeId ? 'Previewing' : 'Current'",
-].forEach((token) => requireToken(desktopAssetsRoute, token, 'desktop inspect-first theme bento'));
+].forEach((token) => requireToken(desktopAssetsRoute, token, 'desktop cached theme-preview drawer'));
+const closeThemePreviewDrawerBody = desktopAssetsRoute.match(
+  /const closeThemePreviewDrawer = \(\) => \{([\s\S]*?)\n    \};/,
+)?.[1];
+if (!closeThemePreviewDrawerBody?.includes('setPendingThemeId(null)')) {
+  failures.push('desktop theme drawer close must clear its unapplied Previewing state');
+}
+if (desktopAssetsRoute.includes('styles.themeLibraryWorkspace') || desktopAssetsStyles.includes('.themeLibraryWorkspace')) {
+  failures.push('desktop theme catalog must not restore the persistent split preview workspace');
+}
+if (
+  desktopAssetsRoute.includes('themeLibraryView')
+  || desktopAssetsRoute.includes('hidden={themeLibraryView')
+  || desktopAssetsStyles.includes('.themeLibraryCatalogView[hidden]')
+) {
+  failures.push('desktop theme drawer must keep the catalog mounted so rendered theme cards are not regenerated on return');
+}
 [
   'const stylePreferenceBusyRef = useRef(false)',
   'if (stylePreferenceBusyRef.current) return false',
   'stylePreferenceBusyRef.current = true',
   'stylePreferenceBusyRef.current = false',
-  'disabled={!pendingThemeId || Boolean(stylePreferenceBusyKey)',
+  'disabled={Boolean(stylePreferenceBusyKey) || stylePreferences.businessThemeId === pendingThemeId}',
 ].forEach((token) => requireToken(desktopAssetsRoute, token, 'desktop theme preference write lock'));
 for (const [source, label] of [[mobileShare, 'mobile']]) {
   [
@@ -2125,26 +2170,71 @@ if (mobileShare.includes("asset.id === 'print_menu' || asset.id === 'entrance_po
   failures.push('mobile assets sheet must not exclude Print Menu or Entrance Poster from real PNG preview generation');
 }
 
-const sharedPreview = read('src/components/shared/printableAssets/PrintableTemplatePreview.tsx');
+const sharedPreview = read('src/components/shared/printableAssets/RenderedPrintableAssetPreview.tsx');
+const sharedPreviewStyles = read('src/components/shared/printableAssets/RenderedPrintableAssetPreview.module.scss');
 [
+  'renderPrintableAsset',
+  "outputFormat: 'png'",
+  'IntersectionObserver',
+  "rootMargin: '240px'",
+  'MAX_CACHED_PREVIEWS = 12',
+  'MAX_CONCURRENT_PREVIEWS = 2',
+  'MAX_PREVIEW_LONG_EDGE = 1200',
+  'createScreenPreviewBlob',
+  'createImageBitmap',
+  "canvas.toBlob((screenBlob) => resolve(screenBlob || blob), 'image/png')",
+  'setShouldRender(entries.some((entry) => entry.isIntersecting))',
+  'hashPreviewVersion',
+  'hashPreviewVersion(previewVersion)',
+  'URL.createObjectURL',
+  'URL.revokeObjectURL',
+  '<img alt={alt}',
+  'previewVersion',
+  'renderInput',
+  'assetTypeId',
+].forEach((token) => requireToken(sharedPreview, token, 'renderer-backed printable asset preview'));
+
+[
+  'object-fit: contain',
+  'prefers-reduced-motion: reduce',
+  'height: 100%',
+  'width: 100%',
+].forEach((token) => requireToken(sharedPreviewStyles, token, 'renderer-backed printable asset preview styles'));
+
+[
+  'QrMock',
   'DecorativeLayer',
-  '/images/printable-themes/craft-kitchen/culinary-corner.png',
-  '/images/menu-card-export/botanical-corner-watercolor.png',
   'OrnamentDots',
   'CornerLines',
   'DiagonalStrips',
-  "aspectRatio: '1.42 / 1'",
-  "height: compact ? '78%' : '78%'",
-  'maxHeight: compact ? 176 : 286',
-  'maxHeight: compact ? 212 : 330',
-  'storeLogo',
-  'storeName',
-  'assetTypeId',
-].forEach((token) => requireToken(sharedPreview, token, 'shared printable template preview'));
+  'getSheetKind',
+].forEach((token) => {
+  if (sharedPreview.includes(token)) failures.push(`renderer-backed printable asset preview must not retain synthetic artwork: ${token}`);
+});
 
-if (sharedPreview.includes("aspectRatio: '1.95 / 1'")) {
-  failures.push('table tent preview must use print-ratio sizing, not a flattened 1.95:1 thumbnail');
+if (fs.existsSync(path.join(root, 'src/components/shared/printableAssets/PrintableTemplatePreview.tsx'))) {
+  failures.push('legacy synthetic PrintableTemplatePreview must remain removed');
 }
+
+for (const [source, label] of [[desktopAssetsRoute, 'desktop'], [mobileShare, 'mobile']]) {
+  [
+    'RenderedPrintableAssetPreview',
+    'previewVersion={printablePreviewVersion}',
+    'renderInput={() =>',
+  ].forEach((token) => requireToken(source, token, `${label} renderer-backed asset previews`));
+  if (source.includes('<PrintableTemplatePreview')) {
+    failures.push(`${label} assets must not restore the synthetic printable preview component`);
+  }
+}
+
+if (desktopAssetsRoute.includes('selectedAssetPreviewCard?.thumbnailUrl')) {
+  failures.push('desktop selected asset preview must render current canonical output instead of preferring a persisted platform thumbnail');
+}
+[
+  'normalizeTemplateThumbnailUrl(template.thumbnailUrl)',
+  'Designs you saved from the editor',
+  "objectFit: 'contain'",
+].forEach((token) => requireToken(desktopAssetsRoute, token, 'saved custom-design thumbnail boundary'));
 
 const sourceFilesToCheck = [
   'src/components/templates/main-app/printableAssetTemplates/PrintableAssetTemplatesRoute.tsx',

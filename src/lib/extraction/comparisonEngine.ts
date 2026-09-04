@@ -828,6 +828,18 @@ function buildApplyPlan(
     stableIdAliases?: StableIdAliases,
 ): ApplyPlan {
     const plan: ApplyPlan = { mode };
+    const newCategoryIds = new Set(
+        newCategories.map((category) => category.generatedId || category.extractedCategory.id),
+    );
+    const approvedNewCategoryIds = new Set(
+        newCategories
+            .filter((category) => category.approved)
+            .map((category) => category.generatedId || category.extractedCategory.id),
+    );
+    const hasApprovedItemCategory = (item: PreviewItemRow) => {
+        const categoryId = item.targetCategoryId || item.extractedItem.categoryId;
+        return !newCategoryIds.has(categoryId) || approvedNewCategoryIds.has(categoryId);
+    };
 
     if (mode === 'SINGLE_STORE' || mode === 'MASTER_PROJECT') {
         plan.projectMutations = {
@@ -865,7 +877,7 @@ function buildApplyPlan(
         }
 
         // Approved new items
-        for (const item of newItems.filter(i => i.approved)) {
+        for (const item of newItems.filter(i => i.approved && hasApprovedItemCategory(i))) {
             plan.projectMutations.upsertItems.push({
                 newItem: {
                     id: item.generatedId || item.extractedItem.id,
@@ -920,7 +932,7 @@ function buildApplyPlan(
         }
 
         // New local-only items
-        for (const item of newItems.filter(i => i.approved && i.isLocalOnly)) {
+        for (const item of newItems.filter(i => i.approved && i.isLocalOnly && hasApprovedItemCategory(i))) {
             plan.outletMutations.upsertLocalItems.push({
                 id: item.generatedId || generateLocalItemId(),
                 name: item.extractedItem.name,

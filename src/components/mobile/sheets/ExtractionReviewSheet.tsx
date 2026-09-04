@@ -9,14 +9,18 @@ import type {
 } from '@lib/extraction/comparisonEngine.types';
 import {
     countApprovedChanges,
+    countReviewCandidates,
     createReviewPreviewSession,
     getReviewPreviewIdentity,
     hasAnyPreviewChanges,
     resolveReviewPreviewSession,
     setAllPreviewApprovals,
+    setPreviewCategoryApproval,
+    setPreviewItemApproval,
     setSafePreviewApprovals,
     updateReviewPreviewSession,
 } from '@lib/extraction/reviewPreview';
+import type { ReviewPreviewState } from '@lib/extraction/reviewPreview';
 import { clearMenuProcessingJobDismissal, markMenuProcessingJobAsDismissed } from '@lib/extraction/menuProcessingDismissal';
 import {
     MENULIST_ANSWERLATTICE_TARGETS,
@@ -40,7 +44,7 @@ interface ExtractionReviewSheetProps {
     tenantId: unknown;
     storeId: unknown;
     onDiscard: () => void;
-    onSaveComplete: () => void;
+    onSaveComplete: (appliedChangesCount: number, appliedPreview: ReviewPreviewState) => void;
     primaryLang: string;
     projectId: string;
     visible: boolean;
@@ -179,6 +183,11 @@ export default function ExtractionReviewSheet({
     const [isDiscarding, setIsDiscarding] = useState(false);
 
     const totalChanges = useMemo(() => countApprovedChanges(preview), [preview]);
+    const reviewCandidateCount = useMemo(() => countReviewCandidates(preview), [preview]);
+    const defaultExpandedSections = useMemo(() => {
+        if (reviewCandidateCount > 200) return [];
+        return ['newCategories', 'updatedCategories', 'newItems', 'updatedItems', 'overrideSuggestions'];
+    }, [reviewCandidateCount]);
 
     const hasAnyChanges = useMemo(() => hasAnyPreviewChanges(preview), [preview]);
 
@@ -191,25 +200,11 @@ export default function ExtractionReviewSheet({
     }, []);
 
     const toggleCategory = useCallback((index: number, group: 'new' | 'updated', approved: boolean) => {
-        setPreview((current) => {
-            const key = group === 'new' ? 'newCategories' : 'updatedCategories';
-            const next = [...current[key]];
-            next[index] = { ...next[index], approved };
-            return { ...current, [key]: next };
-        });
+        setPreview((current) => setPreviewCategoryApproval(current, index, group, approved));
     }, []);
 
     const toggleItem = useCallback((index: number, group: ItemGroup, approved: boolean) => {
-        setPreview((current) => {
-            const key = group === 'new'
-                ? 'newItems'
-                : group === 'updated'
-                    ? 'updatedItems'
-                    : 'overrideSuggestions';
-            const next = [...current[key]];
-            next[index] = { ...next[index], approved };
-            return { ...current, [key]: next };
-        });
+        setPreview((current) => setPreviewItemApproval(current, index, group, approved));
     }, []);
 
     const handleSave = useCallback(async () => {
@@ -252,7 +247,7 @@ export default function ExtractionReviewSheet({
                 duration: 1800,
                 icon: 'success',
             });
-            onSaveComplete();
+            onSaveComplete(totalChanges, preview);
         } catch (error: unknown) {
             if (!isMountedRef.current || activeReviewIdentityRef.current !== submittedReviewIdentity) {
                 return;
@@ -394,7 +389,7 @@ export default function ExtractionReviewSheet({
                             </Card>
                         ) : null}
 
-                        <Collapse defaultActiveKey={['newCategories', 'updatedCategories', 'newItems', 'updatedItems', 'overrideSuggestions']}>
+                        <Collapse defaultActiveKey={defaultExpandedSections}>
                             <Collapse.Panel
                                 key="newCategories"
                                 title={<SectionTitle count={preview.newCategories.length} icon={<LuPlus size={16} />} title={t('newCategories')} />}

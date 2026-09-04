@@ -58,6 +58,85 @@ final result: passed
 
 ---
 
+# MenuList Desktop Sidebar — Collapse and Expansion Recovery
+
+## Scope
+
+- Authenticated desktop `/assets` owner shell in Chrome.
+- Persistent expanded state, persistent collapsed state, hover expansion contract, and header-triggered expansion.
+- Group labels, destination labels, active state, content offset, and utility actions.
+
+## Current-run evidence
+
+- Collapsed state: `/Users/danny/.codex/visualizations/2026/09/05/01a034e1-c70a-74b1-a92b-0a103a981815/sidebar-recovery-audit/04-collapsed-fixed.png`
+- Restored hover-expanded state: `/Users/danny/.codex/visualizations/2026/09/05/01a034e1-c70a-74b1-a92b-0a103a981815/sidebar-recovery-audit/07-hover-expanded-fixed.png`
+- Restored click-expanded state: `/Users/danny/.codex/visualizations/2026/09/05/01a034e1-c70a-74b1-a92b-0a103a981815/sidebar-recovery-audit/08-final-click-expanded-fixed.png`
+- Browser geometry immediately after clicking Expand: section labels and item labels were already present while the rail was still animating through `148.1796875px` toward `200px`.
+
+## Finding and resolution
+
+- P1: the rail width and its labels used two different completion signals. Width followed `isCollapsed || isHover`, but labels waited for Framer Motion's `onAnimationComplete`. A missed or interrupted callback could therefore leave a 200 px icon-only rail after hover or click expansion.
+- Expanded content now derives directly from the same state as expanded width. The navigation no longer enters a logically expanded but visually collapsed split state.
+- The existing no-wrap label boundary remains active, so labels reveal horizontally inside the expanding clipped rail rather than breaking letter-by-letter.
+- Persistent collapse remains a 62 px icon rail. Hover remains a temporary overlay and does not change the page's stored layout offset. Header expansion remains persistent and moves content to the 200 px offset.
+
+## Interaction checklist
+
+- [x] Collapse action produces the 62 px icon rail and an accessible Expand sidebar control.
+- [x] Hover expansion regression restores grouped labels immediately without changing persistent layout state.
+- [x] Click expansion restores grouped labels immediately and settles at 200 px.
+- [x] Active Assets state, section hierarchy, utility actions, and page content remain intact.
+- [x] No new clipping, vertical labels, or horizontal page overflow is visible in the reviewed viewport.
+
+final result: passed
+
+---
+
+# MenuList Desktop Owner Navigation — Grouped Direct Destinations
+
+## Scope
+
+- Desktop owner sidebar presentation only.
+- Preserve current owner wording, routes, permission filtering, feature flags, entitlement gates, page content, and mobile navigation behavior.
+- Replace the generic desktop `More` bucket with the previously proven owner-language section hierarchy.
+
+## Reference and implementation evidence
+
+- Owner-supplied reference: the hosted QA `/business-settings` screenshot showing visible section headings and direct destinations.
+- Live hosted reference captured in Chrome: `/tmp/menulist-owner-nav-hosted-reference.png`.
+- Authenticated local implementation captured in Chrome: `/tmp/menulist-owner-nav-local.png`.
+- Same-input hosted-versus-local comparison: `/tmp/menulist-owner-nav-comparison.png`.
+- Reference and implementation were compared in the same Chrome surface at `1920 x 937` pixels.
+- Browser interaction evidence covered direct activation of Dashboard, Business Settings, Share, and Menu Manager, plus source/locator confirmation for Growth Kits.
+
+## Comparison findings
+
+- The local sidebar now matches the reference's calm five-part hierarchy: Check feedback and activity, Update what customers see, Share and place the link, Account and team, and Advanced setup.
+- Current product wording is intentionally retained: Menu, Share, Users List, and Roles remain current labels rather than reverting to the hosted build's older Projects, Use MenuList, and Users wording.
+- The first local comparison left Roles as a separate top-level row, which crowded Advanced setup below the fixed utility footer. Roles now expands under Users List, matching the reference hierarchy and restoring the intended vertical rhythm.
+- Normal desktop owner destinations are exposed within the five owner-language sections rather than a generic `More` accordion. Roles stays in the explicit Users List sub-navigation because it is a related account-management destination and this preserves the reference's vertical rhythm.
+- Active-state styling, icon rhythm, utility footer, page width, permission filtering, and route behavior remain unchanged.
+- Platform and reseller destinations remain governed by their existing role and feature visibility rules.
+- The mobile owner shell remains unchanged because its compact Today, Menu, Share, Feedback, and More structure is a separate small-screen navigation contract.
+- No open clipping, wrapping, hierarchy, active-state, or route-discoverability defect remains in this scope.
+
+## Verification checklist
+
+- [x] Five owner-language groups render once each.
+- [x] Dashboard and Business Settings are directly discoverable.
+- [x] Menu, Share, QR Code, and Assets are directly discoverable.
+- [x] Users List exposes Roles in its related sub-navigation; Locations, Billing, Transactions, and Help remain direct.
+- [x] Menu Manager and Growth Kits are directly discoverable.
+- [x] Generic desktop More navigation is absent.
+- [x] Direct route activation works for representative destinations.
+- [x] Permission and feature visibility logic remains in the existing shared sidebar pipeline.
+- [x] Mobile navigation source is unchanged.
+- [x] Focused regression tests, TypeScript, lint, and scoped diff checks pass.
+
+final result: passed
+
+---
+
 # MenuList Assets Dashboard — Preview Modal and Selection Refinement
 
 ## Scope

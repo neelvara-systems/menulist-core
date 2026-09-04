@@ -11,3 +11,26 @@ export function normalizeMenuExtractionProjectId(value: unknown): string | null 
         ? documentId
         : null;
 }
+
+export function isMenuExtractionProjectIdInScope(
+    value: unknown,
+    tenantId: unknown,
+    storeId: unknown,
+): boolean {
+    const projectId = normalizeMenuExtractionProjectId(value);
+    const normalizedTenantId = typeof tenantId === 'string' ? tenantId.trim() : '';
+    const normalizedStoreId = typeof storeId === 'string' ? storeId.trim() : '';
+    if (
+        !projectId
+        || !normalizedTenantId
+        || !normalizedStoreId
+        || normalizedTenantId !== tenantId
+        || normalizedStoreId !== storeId
+    ) return false;
+
+    const prefix = `${normalizedTenantId}-`;
+    const suffix = `-${normalizedStoreId}`;
+    return projectId.startsWith(prefix)
+        && projectId.endsWith(suffix)
+        && projectId.length > prefix.length + suffix.length;
+}

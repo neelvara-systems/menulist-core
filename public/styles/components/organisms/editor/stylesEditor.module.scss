@@ -1,4 +1,4 @@
-@import "@styles/abstracts/mixins";
+@use "@styles/abstracts/mixins" as *;
 .stylesEditor {
   width: 100%;
   background-color: transparent;

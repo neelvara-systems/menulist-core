@@ -1,4 +1,4 @@
-@import "@styles/abstracts/mixins";
+@use "@styles/abstracts/mixins" as *;
 
 .layoutWrapper {
   width: 100%;

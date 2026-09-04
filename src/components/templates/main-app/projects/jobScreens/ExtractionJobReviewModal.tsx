@@ -1,6 +1,7 @@
 'use client';
 
 import type { ComparisonEngineOutput } from '@lib/extraction/comparisonEngine.types';
+import type { ReviewPreviewState } from '@lib/extraction/reviewPreview';
 import { getReviewPreviewIdentity } from '@lib/extraction/reviewPreview';
 import { Modal } from 'antd';
 import ExtractionJobReviewScreen from './ExtractionJobReviewScreen';
@@ -13,7 +14,7 @@ interface ExtractionJobReviewModalProps {
     storeId: unknown;
     comparisonResult: ComparisonEngineOutput;
     primaryLang: string;
-    onSaveComplete: () => void;
+    onSaveComplete: (appliedChangesCount: number, appliedPreview: ReviewPreviewState) => void;
     onDiscard: () => void;
 }
 

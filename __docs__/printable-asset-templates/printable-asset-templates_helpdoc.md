@@ -1,6 +1,6 @@
 # Printable Asset Templates - Help Documentation
 
-> **Last Updated:** September 3, 2026
+> **Last Updated:** September 4, 2026
 
 ## Quick Summary
 
@@ -33,7 +33,7 @@ Assets gives you downloadable files for tables, counters, entrances, feedback, c
 
 1. On desktop, choose **Place in your business**, **Promote & share**, or **Business identity**. On mobile, choose the file from the Assets list.
 2. Select the file type, such as **Table Tent**, **Flyer**, or **Gift Certificate**.
-3. Review the large preview. The current Brand Kit theme is already applied.
+3. Review the large preview. It is generated from the same current business/menu details and theme used by the downloaded file. MenuList keeps the whole page or card visible, so tall and wide files may have calm space around them instead of being cropped.
 4. Click **Download PDF** or **Download image**, or choose **Preview & edit** for the detailed workflow. For **Business Card**, image delivery saves the front and back PNG files together in one ZIP.
 
 For **Flyer**, you can add a campaign headline and optional offer, details, validity, and terms before downloading. Tap **Update preview** to see the supplied copy. A visible status tells you when the preview has unapplied changes. Leave the headline empty when you only need a clean brand flyer with your business link. MenuList does not invent an offer, deadline, discount, or terms for you. The campaign fields remain in the current open screen, so finish the download or customization before leaving it.
@@ -51,6 +51,7 @@ Choose one theme to keep your print menu, table cards, stickers, posters, and th
 - On desktop, click **Change brand look** in the Brand Kit section. On mobile, open the theme control in Assets.
 - Use **Recommended** for the shortest relevant list, or **All themes** and search when you want to explore every theme available to the business.
 - On desktop, click a theme once to inspect Print Menu, Table Tent, Feedback QR, Entrance Poster, Gift Certificate, and Business Card together. This only selects a preview; it does not apply the theme. Click the same selected theme again to return to the current look.
+- Theme cards and the six-asset comparison load the real generated designs as they come into view. A brief neutral loading shape is expected; `Preview unavailable` means that design could not be generated from the current data.
 - Choose **Apply to this menu** for a menu-specific theme.
 - Choose **Apply to all menus** when the same visual direction should be the baseline for the business.
 - Choose **Return to business theme** to remove a menu-specific override.

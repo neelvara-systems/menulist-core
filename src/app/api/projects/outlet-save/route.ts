@@ -166,6 +166,7 @@ const pickOutletProjectWriteFields = (project: Record<string, any>) => (
 const collectLocalIds = (files: any[] | undefined) => {
     const categoryIds = new Set<string>();
     const itemIds = new Set<string>();
+    const itemCategoryIds = new Map<string, string>();
     const invalidCategoryIds: string[] = [];
     const invalidItemIds: string[] = [];
 
@@ -190,10 +191,23 @@ const collectLocalIds = (files: any[] | undefined) => {
                 return;
             }
             itemIds.add(id);
+            itemCategoryIds.set(id, String(item?.category || ""));
         });
     });
 
-    return { categoryIds, itemIds, invalidCategoryIds, invalidItemIds };
+    return { categoryIds, itemCategoryIds, itemIds, invalidCategoryIds, invalidItemIds };
+};
+
+const collectCategoryIds = (files: any[] | undefined) => {
+    const categoryIds = new Set<string>();
+    (files || []).forEach((file) => {
+        const categories = file?.extractedData?.data?.categories;
+        (Array.isArray(categories) ? categories : []).forEach((category: any) => {
+            const id = String(category?.id || "");
+            if (id) categoryIds.add(id);
+        });
+    });
+    return categoryIds;
 };
 
 const hasAddedIds = (nextIds: Set<string>, previousIds: Set<string>) => (
@@ -879,7 +893,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                     tenantId,
                     missingCode: "linked_outlet_project_missing",
                 });
-                requireCurrentMasterProject({
+                const currentMasterProject = requireCurrentMasterProject({
                     projectData: latestMasterSnap.exists ? latestMasterSnap.data() : undefined,
                     projectId: standardProject.masterProjectId,
                     storeId: masterStoreId,
@@ -965,6 +979,17 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 }
 
                 const previousLocalIds = collectLocalIds(existingProject.files);
+                const availableCategoryIds = new Set([
+                    ...Array.from(collectCategoryIds(currentMasterProject.files)),
+                    ...Array.from(nextLocalIds.categoryIds),
+                ]);
+                const introducedInvalidItemCategory = Array.from(nextLocalIds.itemCategoryIds).some(([itemId, categoryId]) => (
+                    !availableCategoryIds.has(categoryId)
+                    && previousLocalIds.itemCategoryIds.get(itemId) !== categoryId
+                ));
+                if (introducedInvalidItemCategory) {
+                    throw new LinkedOutletSaveRejection(400, "Outlet item category is not available", "linked_outlet_item_category_invalid");
+                }
                 const policyViolation = getOutletPolicyViolation(effectiveStandardProject, existingProject, outletPolicy);
                 if (policyViolation) {
                     throw new LinkedOutletSaveRejection(403, policyViolation, "linked_outlet_policy_violation");

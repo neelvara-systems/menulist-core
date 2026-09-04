@@ -33,9 +33,12 @@ import {
     hasAnyPreviewChanges,
     resolveReviewPreviewSession,
     setAllPreviewApprovals,
+    setPreviewCategoryApproval,
+    setPreviewItemApproval,
     setSafePreviewApprovals,
     updateReviewPreviewSession,
 } from '@lib/extraction/reviewPreview';
+import type { ReviewPreviewState } from '@lib/extraction/reviewPreview';
 import { Alert, Button, Card, Checkbox, Empty, Flex, App, Space, Tag, theme, Typography } from 'antd';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { LuAlertTriangle, LuCheck, LuChevronDown, LuChevronRight, LuDollarSign, LuPlus, LuRefreshCw, LuX } from 'react-icons/lu';
@@ -53,7 +56,7 @@ interface ExtractionJobReviewScreenProps {
     storeId: unknown;
     comparisonResult: ComparisonEngineOutput;
     primaryLang: string;
-    onSaveComplete: () => void;
+    onSaveComplete: (appliedChangesCount: number, appliedPreview: ReviewPreviewState) => void;
     onDiscard: () => void;
 }
 
@@ -184,6 +187,8 @@ function ItemRow({
 // SECTION COMPONENT
 // ═══════════════════════════════════════════════════════════════════════════
 
+const MAX_AUTO_EXPANDED_REVIEW_ROWS = 50;
+
 function ReviewSection({
     title,
     icon,
@@ -282,26 +287,11 @@ export function ExtractionJobReviewScreen({
 
     // Toggle handlers
     const toggleCategory = useCallback((index: number, type: 'new' | 'updated', approved: boolean) => {
-        setPreview(prev => {
-            const key = type === 'new' ? 'newCategories' : 'updatedCategories';
-            const updated = [...prev[key]];
-            updated[index] = { ...updated[index], approved };
-            return { ...prev, [key]: updated };
-        });
+        setPreview(prev => setPreviewCategoryApproval(prev, index, type, approved));
     }, []);
 
     const toggleItem = useCallback((index: number, type: 'new' | 'updated' | 'override', approved: boolean) => {
-        setPreview(prev => {
-            const keyMap = {
-                new: 'newItems',
-                updated: 'updatedItems',
-                override: 'overrideSuggestions',
-            } as const;
-            const key = keyMap[type];
-            const updated = [...prev[key]];
-            updated[index] = { ...updated[index], approved };
-            return { ...prev, [key]: updated };
-        });
+        setPreview(prev => setPreviewItemApproval(prev, index, type, approved));
     }, []);
 
     // Select all / deselect all
@@ -357,7 +347,7 @@ export function ExtractionJobReviewScreen({
                 projectId,
             })) {
                 messageApi.success(`Applied ${totalChanges} changes`);
-                onSaveComplete();
+                onSaveComplete(totalChanges, preview);
             } else {
                 const errorMessage = 'Failed to apply changes';
                 setActionError(errorMessage);
@@ -482,6 +472,7 @@ export function ExtractionJobReviewScreen({
                 icon={<LuPlus color={token.colorSuccess} />}
                 count={preview.newCategories.length}
                 color="green"
+                defaultOpen={preview.newCategories.length <= MAX_AUTO_EXPANDED_REVIEW_ROWS}
             >
                 {preview.newCategories.map((cat, idx) => (
                     <CategoryRow
@@ -499,6 +490,7 @@ export function ExtractionJobReviewScreen({
                 icon={<LuRefreshCw color={token.colorPrimary} />}
                 count={preview.updatedCategories.length}
                 color="blue"
+                defaultOpen={preview.updatedCategories.length <= MAX_AUTO_EXPANDED_REVIEW_ROWS}
             >
                 {preview.updatedCategories.map((cat, idx) => (
                     <CategoryRow
@@ -516,6 +508,7 @@ export function ExtractionJobReviewScreen({
                 icon={<LuPlus color={token.colorSuccess} />}
                 count={preview.newItems.length}
                 color="green"
+                defaultOpen={preview.newItems.length <= MAX_AUTO_EXPANDED_REVIEW_ROWS}
             >
                 {preview.newItems.map((item, idx) => (
                     <ItemRow
@@ -533,6 +526,7 @@ export function ExtractionJobReviewScreen({
                 icon={<LuRefreshCw color={token.colorPrimary} />}
                 count={preview.updatedItems.length}
                 color="blue"
+                defaultOpen={preview.updatedItems.length <= MAX_AUTO_EXPANDED_REVIEW_ROWS}
             >
                 {preview.updatedItems.map((item, idx) => (
                     <ItemRow
@@ -550,6 +544,7 @@ export function ExtractionJobReviewScreen({
                 icon={<LuDollarSign color={token.colorWarning} />}
                 count={preview.overrideSuggestions.length}
                 color="orange"
+                defaultOpen={preview.overrideSuggestions.length <= MAX_AUTO_EXPANDED_REVIEW_ROWS}
             >
                 {preview.overrideSuggestions.map((item, idx) => (
                     <ItemRow

@@ -1,6 +1,6 @@
 # Menu Link Import Implementation
 
-**Boundary Reviewed:** July 10, 2026
+**Boundary Reviewed:** September 4, 2026
 
 > **Launch boundary:** Not current launch certification or deploy approval. This document records source-gated Menu Link Import evidence only. Both current intake paths require a signed-in owner before source acquisition or extraction: the owner app uses `/api/menu-link-imports`, while the public `/create-menu` page submits through the authenticated `/api/public/create-menu` route. Current release approval still requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md), `npm run verify:production-readiness-local`, `npm run verify:menu-extraction-pipeline`, `npm run verify:functions-deploy-preflight`, authenticated desktop/mobile owner-flow QA, signed-in `/create-menu` browser QA, direct and rendered source-acquisition smoke, Gemini extraction provider smoke where fallback is used, applicable target Firebase/Vercel deploy evidence, and production-host smoke.
 
@@ -36,14 +36,15 @@ June 30 follow-up: the browser helper now sends `POST /api/menu-link-imports` wi
 
 The authenticated server route uses the same menu-processing diagnostics boundary. Job-created, source-rejected, and unexpected route-failure logs record only stable diagnostic codes, project/job/artifact/source-kind presence and length metadata, status/count booleans, and normalized source error metadata. The route does not log raw project IDs, job IDs, artifact IDs, owner-provided URLs, or caught exception payloads.
 
-June 29 follow-up: the authenticated server route hashes owner, tenant, and store limiter key material before calling the `MENU_LINK_IMPORT` limiter. The feature flag, SAFE_MODE gate, route limit, bounded body cap, tenant access check, URL safety validation, source acquisition, artifact write, job creation, and bounded diagnostics remain unchanged; raw user IDs, tenant IDs, and store IDs must not be stored in the limiter key name.
+June 29 follow-up: the authenticated server route hashes owner, tenant, and store limiter key material before calling the `MENU_LINK_IMPORT` limiter. The limiter fails closed: provider unavailability returns a fixed 503 response before request parsing, project reads, source acquisition, Storage, or job writes. The feature flag, SAFE_MODE gate, route limit, bounded body cap, tenant access check, URL safety validation, source acquisition, artifact write, job creation, and bounded diagnostics remain unchanged; raw user IDs, tenant IDs, and store IDs must not be stored in the limiter key name.
+
+The owner route stamps every authenticated and rejected response with `Cache-Control: private, no-store, max-age=0` and `X-Content-Type-Options: nosniff`. After request-schema validation and before permission/project/provider work, it also requires the project ID to match the authenticated `{tenantId}-...-{storeId}` project contract through the shared `isMenuExtractionProjectIdInScope()` guard. The image/PDF upload route uses the same guard, so both existing intake paths reject cross-scope or malformed project identifiers consistently.
 
 The pinned request lookup handles both Node lookup callback shapes. When Node asks for `all: true`, the importer returns the validated address array shape; when it asks for a single address, the importer returns the single validated address. Multi-address hosts are sorted with IPv4 first but all resolved addresses must still pass the unsafe-IP guard.
 
-The IPv6 unsafe-address guard applies CIDR semantics rather than textual-prefix
-semantics. The full `fe80::/10` link-local range (`fe80::` through `febf::`)
-and deprecated `fec0::/10` site-local range fail before any direct request or
-rendered fallback can begin.
+The IPv6 unsafe-address guard applies CIDR semantics rather than textual-prefix semantics. Only global-unicast IPv6 literals in `2000::/3` can proceed to the narrower block checks. Link-local, site-local, loopback, unspecified, IPv4-compatible, IPv4-mapped, and NAT64 literal forms therefore fail before any direct request or rendered fallback can begin. HTTP/S URLs with non-standard explicit ports are also rejected on both client and server boundaries.
+
+Direct and discovered binary sources require both an allowed MIME/extension envelope and matching PDF, JPEG, PNG, or WebP magic bytes. A mislabeled HTML/binary response is rejected with `CONTENT_TYPE_MISMATCH` before Storage or extraction work.
 
 ## Source Discovery Terms
 
@@ -67,7 +68,7 @@ The importer is not a full crawler. It handles the common owner-provided cases w
 2. Homepage or landing page with a visible menu/catalog link:
    - Anchor links are scored with business-category-aware offering terms.
    - Only same-origin HTTP/HTTPS links are considered.
-   - Hash fragments are removed before server fetches, but same-origin hash menu candidates are preserved for the rendered fallback.
+   - The shared client validator preserves only SPA router fragments (`#/...` and `#!/...`) and removes ordinary page anchors. Static server fetches remain hashless, while validated router fragments are available to the rendered fallback.
 3. Homepage or landing page with Schema.org menu references:
    - JSON-LD `hasMenu` / `menu` URLs are considered when they stay on the same origin.
    - Menu-level URLs are followed; individual item URLs are not treated as source pages.
@@ -89,7 +90,8 @@ Some owner-provided links point to a browser-routed app where the initial server
 - It runs only after URL safety validation and only after static HTML acquisition does not find usable catalog content.
 - It preserves the original URL hash only when the normalized safe URL has the same origin, path, and query.
 - It revalidates the final render URL immediately before Chrome starts and skips rendered fallback for IP-literal targets.
-- It uses a bounded headless Chrome `--dump-dom` run with disabled extensions, disabled image loading, a temporary user data directory, output byte limits, a fixed timeout, DNS pinning for the validated hostname, a dead proxy for every other hostname, and a comma-separated `--proxy-bypass-list` with `<-loopback>` so Chrome's implicit loopback bypass cannot reach localhost/private services.
+- Before Chrome starts, it may inspect at most 12 same-origin script files at 512 KiB each to discover declared dependency hosts needed by a client-rendered catalog. Every discovered host passes the same protocol, DNS, and unsafe-IP validation as the source, and the complete render allowlist is capped at 16 hosts.
+- It uses a bounded headless Chrome `--dump-dom` run with disabled extensions, disabled image loading, a temporary user data directory, output byte limits, and a fixed timeout. Each admitted hostname is DNS-pinned to its validated public address; every unlisted hostname is sent through a dead proxy; and `<-loopback>` removes Chrome's implicit localhost bypass.
 - It stores only the text artifact used for extraction. Raw HTML is not stored separately.
 - It still requires visible offering/catalog evidence such as structured data or prices before job creation.
 
@@ -108,9 +110,9 @@ The parser is business-agnostic. It looks for category/count boundaries, candida
 - `qualityDetails`
 - provenance with `promptVersion: "menu-link-text-parser-v1"` and `model: "deterministic-text-parser"`
 
-The deterministic path is accepted only when it finds structured sections and at least 75% priced items. Otherwise the existing AI extractor remains the fallback. This keeps dynamic text menus cheap and repeatable without changing PDF/image behavior.
+The deterministic path is accepted only for a single English target language, when it finds structured sections, and when at least 75% of items are priced. Multilingual and non-English projects continue through the existing AI extraction/translation path. All other ineligible text sources also use the existing AI fallback. This keeps eligible dynamic text menus cheap and repeatable without changing PDF/image or language behavior.
 
-The deterministic extractor logs only bounded diagnostics. Success and skip logs use job ID length, counts, source kind, stable `MENU_LINK_TEXT_EXTRACTION_SKIPPED` failure code, and capped source error name/code/status metadata; they do not log raw job IDs or exception messages.
+The deterministic extractor accepts only the exact configured-bucket artifact for the current job: `menuLinkImports/{tId}/{sId}/{projectId}/{jobId}/source.txt`, or the exact owner-bound `publicMenuDrafts/{draftId}/source.txt` path. Prefix matches and sibling objects are rejected before Storage download. Success and skip logs use only job ID length, counts, source kind, stable `MENU_LINK_TEXT_EXTRACTION_SKIPPED` failure code, and capped source error name/code/status metadata; they do not log raw job IDs or exception messages.
 
 ## Files
 
@@ -179,11 +181,13 @@ The review screen resolves link-import and re-extraction jobs client-side after 
 - `completed` with `currentStep: "Changes applied"`
 - `cancelled` with `currentStep: "Changes discarded by user"`
 
-The allowed job update fields are restricted to `status`, `completedAt`, `updatedAt`, and `currentStep`. Project data writes still go through the scoped `/projects/{tId}/{sId}/{projectId}` rules, and linked-outlet projects remain blocked from mutating `files`.
+Completed review updates must also include a bounded integer `appliedChangeCount` from 1 through 5,000. Discarded reviews cannot write that field. The allowed job update fields are restricted to `status`, `completedAt`, `updatedAt`, `currentStep`, and the completion-only count. Project data writes still go through the scoped `/projects/{tId}/{sId}/{projectId}` rules, and linked-outlet projects remain blocked from mutating `files`.
 
 ## Review UI Behavior
 
 The review modal uses a viewport-bounded body and sticky action footer so Apply/Discard remain reachable on narrow desktop windows. Apply and discard failures render as an inline error alert in addition to the toast, which makes Firestore rule or data-contract failures visible during owner review.
+
+Large previews are conservative by default. When a comparison contains more than 200 review candidates, desktop and mobile begin with zero approved changes instead of silently selecting the full import. Groups containing more than 50 rows begin collapsed. Selecting a new item also selects its required new category; deselecting that category removes dependent new-item approvals. The apply path independently rejects any new item whose category is not present in the current project or in the approved category changes.
 
 The review modal cannot be dismissed through the shell close icon or mask. Owners must apply or discard, and the empty/no-change state uses the same discard path so the preview job is resolved instead of reopening.
 
@@ -198,6 +202,8 @@ The editor source preview checks the source file MIME type before rendering the 
 `applyExtractionChanges` sanitizes the final Firestore update payload before `updateDoc`. This removes nested `undefined` values from extracted categories/items while preserving Firestore `Timestamp` values. This is required because link/PDF extraction can omit optional fields such as `orderIndex`, and Firestore rejects arrays or objects containing `undefined`.
 
 `applyExtractionChanges` now fails the owner approval action if a reviewed mutation targets a missing source file. This prevents the job from moving to `completed` while silently dropping approved categories/items.
+
+The exact approved-change count is persisted atomically with the project update for single-store reviews and transactionally through the protected route for linked outlets. Completion UI and restored listeners use that persisted count, so a partial approval cannot be presented as though every extracted candidate was applied. Downstream profile, business-detail, and image side effects receive only the approved preview subset; source-wide suggestions are eligible only when the complete preview was approved.
 
 Public Schema.org JSON-LD deduplicates categories by id before building `MenuSection` / `OfferCatalog` output. This preserves source-file editor coherence without duplicating public structured-data sections when multiple source files share the same category id.
 

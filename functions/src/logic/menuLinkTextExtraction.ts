@@ -6,11 +6,13 @@ import {
     ProcessMenuImagesResponse,
     QualityDetails,
 } from '../types';
+import { MENU_EXTRACTION_DESTINATION_TYPES } from '../sharedData/menuExtractionJob';
 import {
     getBoundedFunctionsErrorCode,
     getBoundedFunctionsErrorName,
     getBoundedFunctionsErrorStatus,
 } from '../utils/boundedErrorContext';
+import { getAllowedStorageBucket } from '../utils/storageBucket';
 
 const TEXT_SOURCE_KINDS = new Set([
     'html_text',
@@ -57,6 +59,13 @@ const TEXT_CONTROL_LINES = new Set([
 const MAX_DESCRIPTION_CHARS = 500;
 const MAX_DETERMINISTIC_ITEMS = 800;
 const MENU_LINK_TEXT_EXTRACTION_SKIPPED_CODE = 'MENU_LINK_TEXT_EXTRACTION_SKIPPED';
+
+export function canUseDeterministicMenuLinkTextExtraction(job: MenuImageProcessingJob): boolean {
+    const targetLanguageCodes = (job.targetLanguages || [])
+        .map((language) => String(language?.code || '').trim().toLowerCase())
+        .filter(Boolean);
+    return targetLanguageCodes.length === 1 && targetLanguageCodes[0] === 'en';
+}
 
 function getMenuLinkTextExtractionErrorContext(error: unknown): {
     sourceErrorName: string;
@@ -325,26 +334,42 @@ function parseFirebaseStorageUrl(fileUrl: string): { bucket: string; objectPath:
     }
 }
 
-function isAllowedMenuLinkTextArtifactPath(job: MenuImageProcessingJob, objectPath: string): boolean {
+export function isAllowedMenuLinkTextArtifactPath(
+    jobId: string,
+    job: MenuImageProcessingJob,
+    objectPath: string,
+): boolean {
+    if (!objectPath || objectPath.includes('..') || objectPath.includes('\\') || objectPath.startsWith('/')) {
+        return false;
+    }
+
+    if (job.destination?.type === MENU_EXTRACTION_DESTINATION_TYPES.PUBLIC_MENU_DRAFT) {
+        const draftId = String(job.destination.draftId || '').trim();
+        const metadataDraftId = String(job.sourceMetadata?.publicDraftId || '').trim();
+        if (!draftId || metadataDraftId !== draftId) return false;
+        return objectPath === `publicMenuDrafts/${draftId}/source.txt`;
+    }
+
+    const normalizedJobId = String(jobId || '').trim();
     const tId = String(job.tId || '').trim();
     const sId = String(job.sId || '').trim();
     const projectId = String(job.projectId || '').trim();
-    if (!tId || !sId || !projectId || !objectPath) return false;
-    if (objectPath.includes('..') || objectPath.includes('\\') || objectPath.startsWith('/')) return false;
-    return objectPath.startsWith(`menuLinkImports/${tId}/${sId}/${projectId}/`);
+    if (!normalizedJobId || !tId || !sId || !projectId) return false;
+    return objectPath === `menuLinkImports/${tId}/${sId}/${projectId}/${normalizedJobId}/source.txt`;
 }
 
-async function downloadTextArtifact(job: MenuImageProcessingJob): Promise<string | null> {
+async function downloadTextArtifact(jobId: string, job: MenuImageProcessingJob): Promise<string | null> {
     const file = job.files?.[0];
     if (!file || !/^text\/plain\b/i.test(file.type || '')) return null;
 
     const storageFromUrl = parseFirebaseStorageUrl(file.url);
     const metadataPath = typeof job.sourceMetadata?.storagePath === 'string' ? job.sourceMetadata.storagePath : '';
-    const bucketName = storageFromUrl?.bucket || process.env.FIREBASE_STORAGE_BUCKET || process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || `${process.env.GCLOUD_PROJECT}.appspot.com`;
+    const allowedBucket = getAllowedStorageBucket();
+    const bucketName = storageFromUrl?.bucket || allowedBucket;
     const objectPath = storageFromUrl?.objectPath || metadataPath;
     if (metadataPath && storageFromUrl?.objectPath && metadataPath !== storageFromUrl.objectPath) return null;
-    if (!bucketName || !objectPath) return null;
-    if (!isAllowedMenuLinkTextArtifactPath(job, objectPath)) return null;
+    if (!allowedBucket || !bucketName || bucketName !== allowedBucket || !objectPath) return null;
+    if (!isAllowedMenuLinkTextArtifactPath(jobId, job, objectPath)) return null;
 
     const [buffer] = await storageAdmin.bucket(bucketName).file(objectPath).download();
     return buffer.toString('utf8');
@@ -356,9 +381,10 @@ export async function tryExtractMenuLinkTextFromJob(
 ): Promise<ProcessMenuImagesResponse | null> {
     if (job.source !== 'menu_link_import') return null;
     if (!TEXT_SOURCE_KINDS.has(String(job.sourceMetadata?.sourceKind || ''))) return null;
+    if (!canUseDeterministicMenuLinkTextExtraction(job)) return null;
 
     try {
-        const rawText = await downloadTextArtifact(job);
+        const rawText = await downloadTextArtifact(jobId, job);
         if (!rawText) return null;
 
         const parsed = parseVisibleMenuText(rawText);

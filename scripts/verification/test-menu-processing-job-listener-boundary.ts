@@ -2,13 +2,17 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { Timestamp } from 'firebase/firestore';
-import { runComparisonEngine } from '../../src/lib/extraction/comparisonEngine';
+import { runComparisonEngine, updateApplyPlan } from '../../src/lib/extraction/comparisonEngine';
 import { cloneFirestoreData } from '../../src/lib/extraction/cloneFirestoreData';
 import { validateSaveExtractionReview } from '../../src/lib/extraction/schemas';
 import {
+    MAX_IMPLICIT_REVIEW_APPROVALS,
+    countApprovedChanges,
     createReviewPreviewSession,
     resolveReviewPreviewSession,
     setAllPreviewApprovals,
+    setPreviewCategoryApproval,
+    setPreviewItemApproval,
     updateReviewPreviewSession,
 } from '../../src/lib/extraction/reviewPreview';
 import {
@@ -25,6 +29,7 @@ const applyChangesSource = fs.readFileSync(path.join(root, 'src/lib/extraction/a
 const outletSaveSource = fs.readFileSync(path.join(root, 'src/app/api/projects/outlet-save/route.ts'), 'utf8');
 const desktopReviewSource = fs.readFileSync(path.join(root, 'src/components/templates/main-app/projects/jobScreens/ExtractionJobReviewScreen.tsx'), 'utf8');
 const desktopReviewModalSource = fs.readFileSync(path.join(root, 'src/components/templates/main-app/projects/jobScreens/ExtractionJobReviewModal.tsx'), 'utf8');
+const desktopSuccessSource = fs.readFileSync(path.join(root, 'src/components/templates/main-app/projects/jobScreens/ExtractionJobSuccessModal.tsx'), 'utf8');
 const mobileReviewSource = fs.readFileSync(path.join(root, 'src/components/mobile/sheets/ExtractionReviewSheet.tsx'), 'utf8');
 const mobileMenuSource = fs.readFileSync(path.join(root, 'src/components/mobile/screens/MobileMenuScreen.tsx'), 'utf8');
 const desktopProjectsSource = fs.readFileSync(path.join(root, 'src/components/templates/main-app/projects/index.tsx'), 'utf8');
@@ -76,7 +81,7 @@ assert.equal(validateSaveExtractionReview({
 }).success, false, 'partial local updates must not admit fields outside the patch contract');
 assert.match(
     applyChangesSource,
-    /runTransaction\(firebaseClient,[\s\S]*?transaction\.get\(projectRef\)[\s\S]*?transaction\.get\(jobRef\)[\s\S]*?assertOwnedPreviewJob\(currentJob,[\s\S]*?transaction\.update\(projectRef,[\s\S]*?transaction\.update\(jobRef,/,
+    /runTransaction\(firebaseClient,[\s\S]*?transaction\.get\(projectRef\)[\s\S]*?transaction\.get\(jobRef\)[\s\S]*?assertOwnedPreviewJob\(currentJob,[\s\S]*?transaction\.update\(projectRef,[\s\S]*?transaction\.update\(\s*jobRef,/,
     'standalone review apply must re-read and atomically update current project and job truth',
 );
 assert.doesNotMatch(applyChangesSource, /writeBatch\(firebaseClient\)/, 'review apply must not retain the stale pre-read batch path');
@@ -91,6 +96,16 @@ assert.match(
     'linked review save must send exact count, version and job identity to the server transaction',
 );
 assert.match(
+    applyChangesSource,
+    /hasItemCategoryInFiles\(files, itemMutation\.newItem\.category\)[\s\S]*?throwMissingReviewItemCategory/,
+    'standalone review persistence must reject new items whose category is absent from current projected truth',
+);
+assert.match(
+    outletSaveSource,
+    /introducedInvalidItemCategory[\s\S]*?linked_outlet_item_category_invalid/,
+    'linked-outlet persistence must reject newly introduced references to absent local or master categories',
+);
+assert.match(
     outletSaveSource,
     /extractionReviewJobRef[\s\S]*?transaction\.get\(extractionReviewJobRef\)[\s\S]*?reviewJob\.status !== "preview_ready"[\s\S]*?!reviewJob\.uId[\s\S]*?!sessionUserIds\.includes\(String\(reviewJob\.uId\)\)[\s\S]*?currentLocalVersion !== extractionReview\.expectedLocalVersion[\s\S]*?transaction\.update\(extractionReviewJobRef/,
     'linked review route must validate current job/version and complete the job in the project transaction',
@@ -102,6 +117,26 @@ assert.match(
 );
 assert.match(desktopReviewModalSource, /key={getReviewPreviewIdentity\(projectId, jobId\)}/, 'desktop review state must remount for a different project/job identity');
 assert.match(mobileMenuSource, /key={getReviewPreviewIdentity\(menuData\.projectId, activeProcessingJobId\)}/, 'mobile review state must remount for a different project/job identity');
+assert.match(desktopReviewSource, /MAX_AUTO_EXPANDED_REVIEW_ROWS/, 'desktop must collapse large review groups by default');
+assert.match(mobileReviewSource, /defaultActiveKey={defaultExpandedSections}/, 'mobile must collapse a large review result by default');
+assert.match(desktopProjectsSource, /handleReviewSaveComplete = useCallback\(\(appliedChangesCount: number, appliedPreview: ReviewPreviewState\)/, 'desktop success must receive the exact approved change count and applied preview');
+assert.match(mobileMenuSource, /onSaveComplete={\(appliedChangesCount, appliedPreview: ReviewPreviewState\) =>/, 'mobile success must receive the exact approved change count and applied preview');
+assert.match(desktopSuccessSource, /hasAppliedChangesCount[\s\S]*?Approved changes/, 'desktop review success must describe approved changes instead of all extracted rows');
+assert.match(mobileMenuSource, /extractionStats\?\.appliedChangesCount[\s\S]*?changesAppliedCount/, 'mobile review success must describe approved changes instead of all extracted rows');
+assert.match(applyChangesSource, /buildCompletedReviewJobPayload\(getAppliedExtractionChangeCount\(projection\.stats\)\)/, 'standalone review completion must persist the exact applied count on the job');
+assert.match(outletSaveSource, /appliedChangeCount: extractionReview\.expectedChangeCount/, 'linked-outlet review completion must persist the exact applied count on the job');
+for (const reviewParentSource of [desktopProjectsSource, mobileMenuSource]) {
+    assert.match(
+        reviewParentSource,
+        /typeof reviewAppliedChangeCount !== 'number'[\s\S]*?maybeAutoGenerateProjectImage/,
+        'completed review listeners must not apply side effects from the full unapproved extraction result',
+    );
+    assert.match(
+        reviewParentSource,
+        /appliedEntirePreview[\s\S]*?businessAttributeSuggestions/,
+        'partial review completion must not apply source-wide profile suggestions',
+    );
+}
 assert.match(
     mobileMenuSource,
     /if \(jobIsFailed\) {[\s\S]*?logMobileMenuFailure\('mobile_menu_processing_job_failed', jobError,[\s\S]*?setFailureMessage\(t\('processingFailedMessage'\)\)/,
@@ -298,6 +333,15 @@ assert.equal(completedWithInvalidOptionalResult.issueCode, 'MENU_PROCESSING_JOB_
 assert.equal(completedWithInvalidOptionalResult.job.status, 'completed');
 assert.equal(completedWithInvalidOptionalResult.job.result, undefined, 'bad optional metrics must be excluded without hiding a confirmed server save');
 
+const completedReviewedJob = normalizeMenuProcessingJobStatus(jobId, {
+    projectId: 'project_123',
+    status: 'completed',
+    progress: 100,
+    appliedChangeCount: 2,
+    result: validResult,
+});
+assert.equal(completedReviewedJob.job.appliedChangeCount, 2, 'review completion must retain its bounded applied count after a listener refresh');
+
 const comparison = runComparisonEngine({
     mode: 'SINGLE_STORE',
     primaryLang: 'en',
@@ -379,6 +423,34 @@ const firstReviewSession = updateReviewPreviewSession(
     (preview) => setAllPreviewApprovals(preview, false),
 );
 assert.equal(firstReviewSession.preview.newItems[0].approved, false);
+const categoryDeselectedPreview = setPreviewCategoryApproval(comparison.preview, 0, 'new', false);
+assert.equal(categoryDeselectedPreview.newCategories[0].approved, false);
+assert.equal(categoryDeselectedPreview.newItems[0].approved, false, 'deselecting a new category must deselect its dependent new items');
+const dependentItemSelectedPreview = setPreviewItemApproval(categoryDeselectedPreview, 0, 'new', true);
+assert.equal(dependentItemSelectedPreview.newCategories[0].approved, true, 'selecting a new item must include its required new category');
+assert.equal(dependentItemSelectedPreview.newItems[0].approved, true);
+const orphanApprovalPreview = {
+    ...comparison.preview,
+    newCategories: comparison.preview.newCategories.map((category) => ({ ...category, approved: false })),
+};
+assert.equal(
+    updateApplyPlan({ ...comparison, preview: orphanApprovalPreview }).projectMutations?.upsertItems.length,
+    0,
+    'the apply-plan boundary must omit an item whose new category is not approved',
+);
+const largePreview = {
+    ...comparison.preview,
+    newItems: Array.from({ length: MAX_IMPLICIT_REVIEW_APPROVALS + 1 }, (_, index) => ({
+        ...comparison.preview.newItems[0],
+        generatedId: `large-review-item-${index}`,
+    })),
+};
+const largeReviewSession = createReviewPreviewSession('project-large', 'job-large', largePreview);
+assert.equal(
+    countApprovedChanges(largeReviewSession.preview),
+    0,
+    'large imports must require explicit owner approval instead of preselecting hundreds of changes',
+);
 const replacementReviewSession = resolveReviewPreviewSession(
     firstReviewSession,
     'project-a',

@@ -24,7 +24,7 @@ const PACKAGE_PAIRS = [
       firebase: '11.7.3',
       'firebase-admin': '14.2.0',
       'google-auth-library': '10.9.1',
-      next: '16.3.0',
+      next: '16.3.4',
       'next-auth': '4.24.15',
       'next-intl': '4.13.4',
       react: '19.2.8',
@@ -285,7 +285,7 @@ function verifyRootRuntimeEnvironment() {
       && rootPackage.overrides?.['google-gax']?.rimraf === '6.1.3'
       && rootPackage.overrides?.sucrase?.glob === '13.0.6'
       && rootPackage.devDependencies?.['brace-expansion'] === '1.1.18'
-      && rootPackage.devDependencies?.['fast-uri'] === '3.1.5',
+      && rootPackage.devDependencies?.['fast-uri'] === '3.1.7',
     'Root brace-expansion advisory controls must keep production consumers on compatible patched chains',
   );
   assert(
@@ -293,9 +293,12 @@ function verifyRootRuntimeEnvironment() {
     'Next optional Sharp security override must stay pinned to 0.35.3',
   );
   const patchedTransitiveVersions = {
+    browserslist: '4.28.9',
     dompurify: '3.4.13',
+    fflate: '0.8.3',
     'js-yaml': '4.3.1',
     nanoid: '3.3.18',
+    'postcss-selector-parser': '6.1.3',
   };
   for (const [dependency, expectedVersion] of Object.entries(patchedTransitiveVersions)) {
     assert(

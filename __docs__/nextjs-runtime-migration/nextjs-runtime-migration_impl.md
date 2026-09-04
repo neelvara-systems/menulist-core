@@ -1,8 +1,8 @@
 # Next.js Runtime Migration Implementation
 
 **Status:** LOCALLY IMPLEMENTED AND VERIFIED
-**Completed locally:** July 24, 2026; stable 16.3 refresh completed August 5, 2026
-**Runtime:** Next.js 16.3.0 / React 19.2.8
+**Completed locally:** July 24, 2026; stable 16.3 refresh completed August 5, 2026; security patch applied September 4, 2026
+**Runtime:** Next.js 16.3.4 / React 19.2.8
 **Bundlers:** Turbopack default; Webpack parity command retained
 **Rollback anchor:** `fc292e9446ee3627ebf973a6adf291e3766f5474`
 **Deployment:** User deployments exposed missing SWC trace and Firebase Admin ESM interop boundaries; corrected source is locally verified and not yet redeployed
@@ -13,7 +13,7 @@ The shared root runtime was migrated continuously end to end. No peer override, 
 
 ### Dependency and toolchain contract
 
-- `next`, `eslint-config-next`, and `@next/bundle-analyzer`: `16.3.0`
+- `next`, `eslint-config-next`, and `@next/bundle-analyzer`: `16.3.4`
 - `react` and `react-dom`: `19.2.8`
 - `next-intl`: `4.13.4`
 - `next-auth`: `4.24.15`
@@ -24,14 +24,15 @@ The shared root runtime was migrated continuously end to end. No peer override, 
 - `eslint`: `9.39.5`
 - `@serwist/turbopack` and `serwist`: `9.5.12`
 - `esbuild`: `0.28.1`
-- `postcss`: `8.5.23` at both the root and within Next 16.3.0
+- `postcss`: `8.5.23` at both the root and within Next 16.3.4
 - `brace-expansion`: direct compatibility pin `1.1.18`; all modern Minimatch chains resolve `5.0.9`
-- `fast-uri`: direct development-tooling security pin `3.1.5`
+- `fast-uri`: direct development-tooling security pin `3.1.7`
+- `browserslist`, `fflate`, and `postcss-selector-parser`: compatible transitive security controls at `4.28.9`, `0.8.3`, and `6.1.3`
 - `next-pwa` and `@emoji-mart/react`: removed
 
 All declarations remain exact and are guarded by `npm run verify:dependency-freeze` and `npm run verify:next-runtime-migration`.
 
-Next 16.3 default performance improvements are accepted without enabling its opt-in application model. `cacheComponents`, `partialPrefetching`, the Rust React Compiler, experimental offline retry, and TypeScript 7 remain disabled or uninstalled until separately scoped migrations prove route, cache, PWA, type, and browser behavior.
+Next 16.3 default performance improvements are accepted without enabling its opt-in application model. The 16.3.4 patch also closes the August 2026 image-optimization RCE while preserving the same contract. `cacheComponents`, `partialPrefetching`, the Rust React Compiler, experimental offline retry, and TypeScript 7 remain disabled or uninstalled until separately scoped migrations prove route, cache, PWA, type, and browser behavior.
 
 ### Framework API migration
 

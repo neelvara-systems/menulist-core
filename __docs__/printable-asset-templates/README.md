@@ -3,7 +3,7 @@
 > **Feature:** Printable Asset Templates  
 > **Status:** Implemented - desktop and mobile route live behind feature flag  
 > **Last Updated:** September 4, 2026
-> **Version:** 3.48
+> **Version:** 3.49
 
 ---
 
@@ -48,6 +48,8 @@ Context-first Product Tags inherit the active parent theme and now consume the s
 ```text
 Dashboard /assets
   -> current Brand Kit summary and coordinated multi-asset preview
+      - every preview is a lazy, cached render of the canonical downloadable output
+      - intrinsic page/card proportions are contained without cropping
   -> purpose groups: Place in your business / Promote & share / Business identity
   -> focused asset list plus one large preview and direct output actions
   -> searchable business-eligible 47-theme parent catalog in Change brand look
@@ -125,6 +127,7 @@ The existing `ENABLE_PRINT_ASSETS_ROUTE`, `ENABLE_PRINT_MENU_SURFACES`, `ENABLE_
 
 | Version | Date | Changes |
 | --- | --- | --- |
+| 3.49 | September 4, 2026 | Replaced the synthetic Assets thumbnail system with the canonical output renderer across the desktop Brand Kit bento, selected-asset panel, theme catalog, theme comparison bento, and the equivalent mobile surfaces. Previews now use the current business/menu/runtime input, preserve the generated asset's intrinsic proportions without cropping, reduce the rendered PNG to a 1200 px screen-preview edge while leaving downloads at full print resolution, load only near the viewport, unload when off-screen, share a bounded 12-result cache, and serialize rendering to two concurrent jobs. Complete Menu Kit remains an explicitly labelled asset set instead of pretending to be one final image. Added fail-closed source checks that reject the retired fake QR/decorative preview component. |
 | 3.47 | September 3, 2026 | Hardened final delivery across desktop, mobile, and shared asset modals. Current runtime details are refreshed into the visible preview before download, share, or editor entry; preview failure blocks output and exposes Retry; synchronous locks prevent duplicate generation and dismissal races; shared editors warn before discarding unsaved changes; Business Card front/back images deliver as one ZIP; mobile exposes native Share/Save with download fallback; and source-derived assets explain the data they use and where to correct it. Gift Certificate and Invitation now state that they are printable designs, not redemption/balance or RSVP/registration systems. |
 | 3.46 | September 3, 2026 | Added optional browser-local runtime details for Gift Certificate and Event Invitation on desktop and mobile. Owners can apply bounded values to the exact current preview, PNG, PDF, or customization document, while leaving any field blank for handwriting. Project changes clear the drafts; the renderer boundary admits values only for their owning asset; and the flow adds no Firebase persistence, route, collection, upload, or Function. The final cross-check also added label/value/line non-overlap enforcement for short and long runtime copy. |
 | 3.44 | September 3, 2026 | Upgraded the desktop Change brand look modal into an inspect-first comparison workspace. Selecting a theme now refreshes a representative six-asset bento before any save; selecting the same pending theme again deselects it and restores the current-theme preview. Current stays green, pending selection stays light blue, and neutral hover stays lightly shaded in both color modes without overriding saved or pending borders. The existing menu-specific and business-wide guarded save actions remain the only apply points. |

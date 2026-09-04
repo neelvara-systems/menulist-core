@@ -8,7 +8,10 @@ const ANSWERLATTICE_FUNCTIONS_DIR = path.join(ROOT, 'functions-answerlattice');
 const SIGNALDESK_FUNCTIONS_DIR = path.join(ROOT, 'functions-signaldesk');
 
 const ROOT_MAX_HIGH_COUNT = 0;
-const ROOT_MAX_MODERATE_COUNT = 0;
+const ROOT_MAX_MODERATE_COUNT = 2;
+const CONTROLLED_ROOT_VULNERABILITIES = ['@tiptap/core', '@tiptap/starter-kit'];
+const CONTROLLED_TIPTAP_ADVISORY = 'GHSA-cp6q-959q-f8rh';
+const CONTROLLED_TIPTAP_CORE_VERSION = '2.26.1';
 
 const REQUIRED_DIRECT_VERSIONS = {
   root: {
@@ -16,9 +19,9 @@ const REQUIRED_DIRECT_VERSIONS = {
     fabric: '7.4.0',
     'firebase-admin': '14.2.0',
     jspdf: '4.2.1',
-    next: '16.3.0',
+    next: '16.3.4',
     'brace-expansion': '1.1.18',
-    'fast-uri': '3.1.5',
+    'fast-uri': '3.1.7',
     nodemailer9: 'npm:nodemailer@9.0.3',
     'ua-parser-js': '2.0.10',
     uuid: '11.1.1',
@@ -108,8 +111,33 @@ function verifyRootDependencyOverrides() {
       && packageJson.overrides?.['google-gax']?.rimraf === '6.1.3'
       && packageJson.overrides?.sucrase?.glob === '13.0.6'
       && packageJson.devDependencies?.['brace-expansion'] === '1.1.18'
-      && packageJson.devDependencies?.['fast-uri'] === '3.1.5',
+      && packageJson.devDependencies?.['fast-uri'] === '3.1.7'
+      && packageJson.overrides?.browserslist === '4.28.9'
+      && packageJson.overrides?.fflate === '0.8.3'
+      && packageJson.overrides?.['postcss-selector-parser'] === '6.1.3',
     'Root production brace-expansion consumers must stay on compatible patched chains',
+  );
+}
+
+function verifyTiptapAttributeBoundary() {
+  const packageLock = require(path.join(ROOT, 'package-lock.json'));
+  const tiptapConfig = fs.readFileSync(path.join(ROOT, 'src/config/tiptap.ts'), 'utf8');
+  const safeAttributes = fs.readFileSync(path.join(ROOT, 'src/lib/tiptap/safeAttributes.ts'), 'utf8');
+
+  assert(
+    packageLock.packages?.['node_modules/@tiptap/core']?.version === CONTROLLED_TIPTAP_CORE_VERSION,
+    `The controlled Tiptap core runtime must stay locked at ${CONTROLLED_TIPTAP_CORE_VERSION}`,
+  );
+
+  assert(
+    tiptapConfig.includes('mergeSafeTiptapAttributes')
+      && !/import\s+\{\s*mergeAttributes\s*\}\s+from\s+['"]@tiptap\/core['"]/.test(tiptapConfig),
+    'The custom Tiptap image extension must use the guarded attribute merger',
+  );
+  assert(
+    safeAttributes.includes("key === '__proto__'")
+      && safeAttributes.includes('Object.defineProperty(sanitized, key'),
+    'The guarded Tiptap attribute merger must reject own __proto__ keys before mergeAttributes',
   );
 }
 
@@ -118,6 +146,10 @@ function verifyFunctionsDependencyBoundary(cwd, label) {
   assert(
     packageJson.overrides?.uuid === '11.1.1',
     `${label} UUID transitive security floor must stay overridden to 11.1.1`,
+  );
+  assert(
+    packageJson.overrides?.qs === '6.16.0',
+    `${label} Express query parser must stay overridden to patched qs 6.16.0`,
   );
   assert(
     !packageJson.devDependencies?.['firebase-functions-test'],
@@ -176,6 +208,7 @@ function runAudit(cwd, label, { omitDev = false } = {}) {
 
 function verifyRootAudit(report, label) {
   const counts = report.metadata.vulnerabilities;
+  const vulnerabilityNames = Object.keys(report.vulnerabilities).sort();
   assert(
     counts.critical === 0,
     `${label} audit contains ${counts.critical} critical vulnerabilities`,
@@ -193,8 +226,24 @@ function verifyRootAudit(report, label) {
     `${label} audit contains ${counts.low} low vulnerabilities`,
   );
 
-  assert(counts.total === 0, `${label} audit contains ${counts.total} vulnerabilities`);
-  console.log(`${label} audit accepted: 0 vulnerabilities.`);
+  assert(
+    counts.total === ROOT_MAX_MODERATE_COUNT,
+    `${label} audit contains ${counts.total} vulnerabilities; expected only the controlled Tiptap pair`,
+  );
+  assert(
+    JSON.stringify(vulnerabilityNames) === JSON.stringify(CONTROLLED_ROOT_VULNERABILITIES),
+    `${label} audit vulnerability set changed: ${vulnerabilityNames.join(', ') || 'none'}`,
+  );
+  const coreVia = report.vulnerabilities['@tiptap/core']?.via || [];
+  assert(
+    coreVia.some((entry) => typeof entry === 'object' && entry.url?.includes(CONTROLLED_TIPTAP_ADVISORY)),
+    `${label} audit must contain only the controlled ${CONTROLLED_TIPTAP_ADVISORY} Tiptap advisory`,
+  );
+  assert(
+    (report.vulnerabilities['@tiptap/starter-kit']?.via || []).includes('@tiptap/core'),
+    `${label} starter-kit entry must remain only the parent projection of @tiptap/core`,
+  );
+  console.log(`${label} audit accepted: controlled ${CONTROLLED_TIPTAP_ADVISORY} pair only.`);
 }
 
 function verifyFunctionsFullAudit(report, label) {
@@ -239,6 +288,7 @@ verifyFunctionsDependencyBoundary(MENULIST_FUNCTIONS_DIR, 'MenuList Functions');
 verifyFunctionsDependencyBoundary(ANSWERLATTICE_FUNCTIONS_DIR, 'Answerlattice Functions');
 verifyFunctionsDependencyBoundary(SIGNALDESK_FUNCTIONS_DIR, 'SignalDesk Functions');
 verifyFirebaseAdminModularBoundary();
+verifyTiptapAttributeBoundary();
 verifyRootAudit(runAudit(ROOT, 'Root full'), 'Root full');
 verifyRootAudit(runAudit(ROOT, 'Root production', { omitDev: true }), 'Root production');
 verifyFunctionsFullAudit(

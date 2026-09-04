@@ -3097,7 +3097,8 @@ service cloud.firestore {
           'status',
           'completedAt',
           'updatedAt',
-          'currentStep'
+          'currentStep',
+          'appliedChangeCount'
         ])
         && request.resource.data.completedAt is timestamp
         && request.resource.data.updatedAt is timestamp
@@ -3106,10 +3107,14 @@ service cloud.firestore {
           (
             request.resource.data.status == 'completed'
             && request.resource.data.currentStep == 'Changes applied'
+            && request.resource.data.appliedChangeCount is int
+            && request.resource.data.appliedChangeCount >= 1
+            && request.resource.data.appliedChangeCount <= 5000
           )
           || (
             request.resource.data.status == 'cancelled'
             && request.resource.data.currentStep == 'Changes discarded by user'
+            && !request.resource.data.keys().hasAny(['appliedChangeCount'])
           )
         );
     }

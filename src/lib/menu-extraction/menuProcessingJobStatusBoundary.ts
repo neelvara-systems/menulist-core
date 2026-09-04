@@ -447,6 +447,7 @@ export function normalizeMenuProcessingJobStatus(
     const hasInvalidOptionalResult = rawResultPresent && !result;
     const progress = normalizeFiniteNumber(record.progress, 0, 100) ?? 0;
     const currentStep = cleanString(record.currentStep, 300) || '';
+    const appliedChangeCount = normalizeInteger(record.appliedChangeCount, 1, 5_000);
     const source = cleanString(record.source, 80);
     const sourceFingerprint = cleanString(record.sourceFingerprint, 256);
     const sourceFingerprintVersion = normalizeInteger(record.sourceFingerprintVersion, 0, 100);
@@ -493,6 +494,7 @@ export function normalizeMenuProcessingJobStatus(
             ...(typeof record.isFirstExtraction === 'boolean' ? { isFirstExtraction: record.isFirstExtraction } : {}),
             ...(record.expiresAt !== undefined ? { expiresAt: record.expiresAt } : {}),
             ...(typeof record.forceReview === 'boolean' ? { forceReview: record.forceReview } : {}),
+            ...(appliedChangeCount !== null ? { appliedChangeCount } : {}),
             ...(source ? { source } : {}),
             ...(sourceFingerprint ? { sourceFingerprint } : {}),
             ...(sourceFingerprintVersion !== null ? { sourceFingerprintVersion } : {}),

@@ -461,7 +461,7 @@ boundaries are certification or release evidence, not missing setup:
   keeps new-database-only restores as a hard safety boundary. Fixture
   lineage, TTL reapplication/readback, Storage/Auth recovery evidence, and
   cleanup remain certification work;
-- the root full and production dependency audits must remain at zero vulnerabilities.
+- the root full and production dependency audits must contain only the exact controlled two-entry projection of Tiptap `GHSA-cp6q-959q-f8rh`; all other root findings fail closed.
   Fabric 7.4.0, Firebase Admin 14.2.0, Sharp 0.35.3, and the
   UUID 11.1.1 override remain guarded. `functions-answerlattice` stays separate
   on the stable modular Firebase Admin 13.10.0 / Firebase Functions 7.3.0 pair;
@@ -486,7 +486,7 @@ boundaries are certification or release evidence, not missing setup:
 
 | Priority | Area | Current evidence | Required next action |
 | --- | --- | --- | --- |
-| P0 | Dependency and release gate | Stable Next 16.3.0 carries patched PostCSS 8.5.23; both root full and production audits are required to stay at zero. `.github/workflows/answerlattice-quality.yml` runs freeze, security, recovery, Functions, typecheck, readiness, runtime, rules, and emulator gates. | Obtain one successful remote CI run and keep the exact validated stable dependency freeze; do not force-downgrade Next or adopt a canary/preview. |
+| P0 | Dependency and release gate | Stable Next 16.3.4 carries patched PostCSS 8.5.23 and the August image-optimization RCE fix. Root audits accept only the exact controlled Tiptap advisory pair; all Functions audits remain zero. `.github/workflows/answerlattice-quality.yml` runs freeze, security, recovery, Functions, typecheck, readiness, runtime, rules, and emulator gates. | Obtain one successful remote CI run and keep the exact validated stable dependency freeze; do not force-downgrade Next, adopt a canary/preview, or hide the Tiptap 3 major migration inside a patch release. |
 | P0 | Backup and recovery | QA and Production each have an active daily 98-day schedule, READY backup, and isolated structural restore with measured RPO/RTO. Production and QA `(default)` databases remained untouched. | During certification, validate fixture tenant/canonical lineage, reapply and read back TTL on the isolated targets, capture separate Storage/Auth evidence, then clean up the temporary databases. |
 | P0 | Deployed-state proof | The canonical setup ledger records provider readback for both company-owned Firebase projects, rules, indexes, TTL, approved Functions, secrets, WIF, App Check, OAuth, Resend, Vercel environments, domains, and TLS. Production live build provenance is the sole deployment-only gap. | Start QA certification. On the next explicitly approved Production deploy, verify that `/api/version` reports the exact full release revision and `buildProvenance: "verified"`. |
 | P1 | Real-client answer evaluation | Answer Tests and quality controls are implemented; representative customer evaluation data is not repository-verifiable | Run a 50-100 question first-client set covering canonical hits, conflicts, abstention, citations, plan/version context, and regression blockers. |

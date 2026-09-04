@@ -57,6 +57,9 @@ async function run(): Promise<void> {
             await Promise.all([
                 setDoc(doc(context.firestore(), 'menuImageProcessingJobs', 'pending-job'), job('pending', 'pending-job')),
                 setDoc(doc(context.firestore(), 'menuImageProcessingJobs', 'preview-job'), job('preview_ready', 'preview-job')),
+                setDoc(doc(context.firestore(), 'menuImageProcessingJobs', 'applied-preview-job'), job('preview_ready', 'applied-preview-job')),
+                setDoc(doc(context.firestore(), 'menuImageProcessingJobs', 'invalid-applied-preview-job'), job('preview_ready', 'invalid-applied-preview-job')),
+                setDoc(doc(context.firestore(), 'menuImageProcessingJobs', 'invalid-discard-preview-job'), job('preview_ready', 'invalid-discard-preview-job')),
                 setDoc(doc(context.firestore(), 'menuImageProcessingJobs', 'token-owner-job'), job('pending', 'token-owner-job', {
                     uId: 'owner-record-id',
                 })),
@@ -105,7 +108,13 @@ async function run(): Promise<void> {
         const scopedSnapshot = await assertSucceeds(getDocs(scopedActiveQuery));
         assert.deepEqual(
             scopedSnapshot.docs.map((entry) => entry.id).sort(),
-            ['pending-job', 'preview-job'],
+            [
+                'applied-preview-job',
+                'invalid-applied-preview-job',
+                'invalid-discard-preview-job',
+                'pending-job',
+                'preview-job',
+            ],
         );
 
         await assertFails(getDocs(query(
@@ -121,6 +130,27 @@ async function run(): Promise<void> {
             updatedAt: Timestamp.now(),
         }));
         await assertSucceeds(updateDoc(doc(ownerDb, 'menuImageProcessingJobs', 'preview-job'), {
+            completedAt: Timestamp.now(),
+            currentStep: 'Changes discarded by user',
+            status: 'cancelled',
+            updatedAt: Timestamp.now(),
+        }));
+        await assertSucceeds(updateDoc(doc(ownerDb, 'menuImageProcessingJobs', 'applied-preview-job'), {
+            appliedChangeCount: 1,
+            completedAt: Timestamp.now(),
+            currentStep: 'Changes applied',
+            status: 'completed',
+            updatedAt: Timestamp.now(),
+        }));
+        await assertFails(updateDoc(doc(ownerDb, 'menuImageProcessingJobs', 'invalid-applied-preview-job'), {
+            appliedChangeCount: 0,
+            completedAt: Timestamp.now(),
+            currentStep: 'Changes applied',
+            status: 'completed',
+            updatedAt: Timestamp.now(),
+        }));
+        await assertFails(updateDoc(doc(ownerDb, 'menuImageProcessingJobs', 'invalid-discard-preview-job'), {
+            appliedChangeCount: 1,
             completedAt: Timestamp.now(),
             currentStep: 'Changes discarded by user',
             status: 'cancelled',

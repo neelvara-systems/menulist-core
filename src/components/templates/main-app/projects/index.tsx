@@ -29,7 +29,7 @@ import { applyLocalizedProjectDraftMap, getLocalizedProjectValue, getProjectMana
 import { getCanonicalProjectSourceLanguage, normalizeProjectLanguages } from '@lib/localization/languagePolicy';
 import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
 import { createMenuLinkImportJob } from '@lib/menu-link-import/client';
-import { validateMenuLinkInput } from '@lib/menu-link-import/menuLinkInput';
+import { getMenuLinkHostnameForLog, validateMenuLinkInput } from '@lib/menu-link-import/menuLinkInput';
 import {
     getProjectOwnerScopeFromProjectId,
     getProjectOwnerScopeKey as getProjectPageScopeKey,
@@ -69,6 +69,7 @@ import { runComparisonEngine } from '@lib/extraction/comparisonEngine';
 import type { ComparisonEngineOutput, ComparisonMode } from '@lib/extraction/comparisonEngine.types';
 import { buildComparisonProjectInput, getLinkedMasterComparisonInput } from '@lib/extraction/projectInput';
 import { buildExtractedProfileProjectPatch, mergeProjectWithExtractedProfileDefaults } from '@lib/extraction/projectVisualDefaults';
+import { countReviewCandidates, type ReviewPreviewState } from '@lib/extraction/reviewPreview';
 import { generateProjectImageCandidate, generateAndSaveProjectImageIfMissing, getProjectImageDataFromComparisonPreview } from '@lib/image/projectImageGeneration';
 import type { PreparedMediaImage } from '@lib/media/prepareMediaImage';
 import { DEFAULT_OUTLET_POLICY, type OutletPolicy } from '@type/multiOutlet.types';
@@ -797,6 +798,7 @@ function ProjectsPage() {
     const [showFailureModal, setShowFailureModal] = useState(false);
     const [failureMessage, setFailureMessage] = useState<string>('');
     const [extractionStats, setExtractionStats] = useState<{
+        appliedChangesCount?: number;
         qualityScore?: number;
         qualityDetails?: { categoryQuality: number; itemQuality: number; priceQuality: number; descriptionQuality: number };
         categoriesCount?: number;
@@ -987,6 +989,7 @@ function ProjectsPage() {
         if (jobIsCompleted) {
             // Capture extraction stats from job result before clearing
             const result = activeJob?.result;
+            const reviewAppliedChangeCount = activeJob?.appliedChangeCount;
             if (result) {
                 const extractedProfile = result.extractedBusinessProfile || result.combinedData?.extractedBusinessProfile;
                 const resultSummary = result.summary || {};
@@ -996,18 +999,21 @@ function ProjectsPage() {
                     categoriesCount: result.combinedData?.categories?.length || Number(resultSummary.categoriesCount || 0),
                     itemsCount: result.combinedData?.items?.length || Number(resultSummary.itemsCount || 0),
                     profileHighlights: buildExtractedProfileHighlights(extractedProfile),
+                    ...(typeof reviewAppliedChangeCount === 'number' ? { appliedChangesCount: reviewAppliedChangeCount } : {}),
                 });
-                void maybeAutoGenerateProjectImage({
-                    categories: result.combinedData?.categories || [],
-                    items: result.combinedData?.items || [],
-                    projectData: mergeProjectWithExtractedProfileDefaults(
-                        activeProject,
-                        result.extractedBusinessProfile || result.combinedData?.extractedBusinessProfile,
-                    ),
-                    projectId: selectedProject?.projectId || activeProject?.projectId,
-                    projectSummary: selectedProject,
-                });
-                void applyMenuDerivedBusinessAttributeDefaults(result.combinedData);
+                if (typeof reviewAppliedChangeCount !== 'number') {
+                    void maybeAutoGenerateProjectImage({
+                        categories: result.combinedData?.categories || [],
+                        items: result.combinedData?.items || [],
+                        projectData: mergeProjectWithExtractedProfileDefaults(
+                            activeProject,
+                            result.extractedBusinessProfile || result.combinedData?.extractedBusinessProfile,
+                        ),
+                        projectId: selectedProject?.projectId || activeProject?.projectId,
+                        projectSummary: selectedProject,
+                    });
+                    void applyMenuDerivedBusinessAttributeDefaults(result.combinedData);
+                }
             }
             // Server has already saved the data to the project (first extraction)
             mutateProject(); // Refetch to get updated data
@@ -1110,9 +1116,13 @@ function ProjectsPage() {
     // EXTRACTION REVIEW SCREEN HANDLERS
     // ═══════════════════════════════════════════════════════════════════════════
 
-    const handleReviewSaveComplete = useCallback(() => {
-        const previewData = getProjectImageDataFromComparisonPreview(comparisonResult);
-        const extractedProfile = activeJob?.result?.extractedBusinessProfile || activeJob?.result?.combinedData?.extractedBusinessProfile;
+    const handleReviewSaveComplete = useCallback((appliedChangesCount: number, appliedPreview: ReviewPreviewState) => {
+        const appliedComparisonResult = comparisonResult ? { ...comparisonResult, preview: appliedPreview } : null;
+        const previewData = getProjectImageDataFromComparisonPreview(appliedComparisonResult);
+        const appliedEntirePreview = appliedChangesCount === countReviewCandidates(appliedPreview);
+        const extractedProfile = appliedEntirePreview
+            ? activeJob?.result?.extractedBusinessProfile || activeJob?.result?.combinedData?.extractedBusinessProfile
+            : undefined;
         void maybeAutoGenerateProjectImage({
             categories: previewData.categories,
             items: previewData.items,
@@ -1123,13 +1133,16 @@ function ProjectsPage() {
         void applyExtractedProfileProjectDefaults(extractedProfile);
         const attributePreviewData = {
             ...previewData,
-            businessAttributeSuggestions: activeJob?.result?.combinedData?.businessAttributeSuggestions,
+            ...(appliedEntirePreview ? {
+                businessAttributeSuggestions: activeJob?.result?.combinedData?.businessAttributeSuggestions,
+            } : {}),
         };
         void applyMenuDerivedBusinessAttributeDefaults(attributePreviewData);
         setShowReviewScreen(false);
         setComparisonResult(null);
         setActiveProcessingJobId(null);
         setFileProcessingId(null);
+        setExtractionStats((current) => current ? { ...current, appliedChangesCount } : { appliedChangesCount });
         mutateProject(); // Refetch to get updated data
         setShowSuccessModal(true);
         emitMenuListAnswerlatticeWorkflowEvent(MENULIST_ANSWERLATTICE_EVENTS.MENU_IMPORT_COMPLETED);
@@ -2525,7 +2538,8 @@ function ProjectsPage() {
         } catch (error) {
             logProjectPageFailure('projects_page_menu_link_import_failed', error, {
                 ...getProjectPageProjectLogContext(selectedProject?.projectId, (selectedProject as any)?.masterProjectId),
-                ...getBoundedProjectPageStringContext('menuLinkUrl', menuLinkUrl),
+                ...getBoundedProjectPageStringContext('menuLinkHostname', getMenuLinkHostnameForLog(menuLinkUrl)),
+                menuLinkLength: menuLinkUrl.length,
                 permissionConfirmed: Boolean(menuLinkPermissionConfirmed),
             });
             if (isCurrentProjectMutation(mutationToken, operationScope)) {

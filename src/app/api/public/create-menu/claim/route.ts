@@ -16,6 +16,7 @@ import countryData from '@atoms/phoneNumberInput/countryData';
 import { DB_COLLECTIONS } from '@constant/database';
 import { PERMISSIONS } from '@constant/permissions';
 import { appendPublicPath, getMenuUrl } from '@constant/urls';
+import { MENU_EXTRACTION_SOURCES } from '@data/shared/menuExtractionJob';
 import { FALLBACK_BUSINESS_TYPE, getBusinessTypeConfig, resolveStoreBusinessCategory } from '@data/shared/businessTypes';
 import { getSuggestionValue, normalizeExtractedBusinessProfile } from '@data/shared/extractedBusinessProfile';
 import {
@@ -47,7 +48,10 @@ import { normalizePhoneNumberForStorage } from '@lib/phone/phoneNumber';
 import { requireAnyStorePermissionForStoreData } from '@lib/permissions/server';
 import { normalizeExtractedMenuPriceTruth } from '@lib/pricing/projectPriceTruth';
 import { redistributeExtractedData } from '@lib/extraction/redistribute';
-import { normalizePublicDraftSourcesForProject } from '@lib/public-menu-entry/publicDraftSource';
+import {
+    normalizePublicDraftLinkSourceMetadataForProject,
+    normalizePublicDraftSourcesForProject,
+} from '@lib/public-menu-entry/publicDraftSource';
 import { normalizePublicMenuDraftId } from '@lib/public-menu-entry/publicDraftId';
 import { resolvePublicMenuEntryProjectSlug } from '@lib/public-menu-entry/claimProjectSlug';
 import { resolvePublicMenuClaimUserAuthority } from '@lib/public-menu-entry/claimUserAuthority';
@@ -432,6 +436,12 @@ export const POST = withPublicMenuClaimPrivateResponse(async (request: NextReque
             if (!draftSources) {
                 throw new PublicMenuClaimError(422, 'This menu source could not be validated. Please upload it again.');
             }
+            const linkSourceMetadata = draft.sourceType === 'menu_link_import'
+                ? normalizePublicDraftLinkSourceMetadataForProject(draft, draftSources[0])
+                : null;
+            if (draft.sourceType === 'menu_link_import' && !linkSourceMetadata) {
+                throw new PublicMenuClaimError(422, 'This menu source could not be validated. Please upload it again.');
+            }
             const extractedData = normalizePublicMenuDraftExtractedData(draft.extractedData, {
                 maxSourceFiles: draftSources.length,
                 preserveSourceFileIndex: true,
@@ -796,6 +806,10 @@ export const POST = withPublicMenuClaimPrivateResponse(async (request: NextReque
                     active: true,
                     deleted: false,
                     index,
+                    ...(index === 0 && linkSourceMetadata ? {
+                        source: MENU_EXTRACTION_SOURCES.MENU_LINK_IMPORT,
+                        sourceMetadata: linkSourceMetadata,
+                    } : {}),
                     extractedData: fileData,
                 };
             });

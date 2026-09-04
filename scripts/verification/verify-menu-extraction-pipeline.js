@@ -176,8 +176,9 @@ contains(
     'documentId === value',
     'isValidFirestoreDocumentId(documentId)',
     'normalizeMenuExtractionProjectId',
+    'isMenuExtractionProjectIdInScope',
   ],
-  'Menu extraction project IDs use the strict shared Firestore document ID boundary',
+  'Menu extraction project IDs use the strict shared Firestore document ID and tenant/store scope boundary',
 );
 
 contains(
@@ -315,7 +316,7 @@ ordered(
   'src/app/api/menu-extraction/jobs/route.ts',
   [
     'const validation = RequestSchema.safeParse(bodyResult.data);',
-    'const projectIds = parseProjectIds(projectId);',
+    'isMenuExtractionProjectIdInScope(projectId, ids.tId, ids.sId)',
     'const permissionResponse = await requireAnyStorePermission(',
     '[PERMISSIONS.USE_MENU_EXTRACTION]',
     'if (validation.data.retriedFromJobId) {',
@@ -882,7 +883,7 @@ ordered(
     '...getRateLimitForFeature("FILE_UPLOAD")',
     'const bodyResult = await readBoundedJsonBody(request, MENU_EXTRACTION_JOB_MAX_BODY_BYTES);',
     'const validation = RequestSchema.safeParse(bodyResult.data);',
-    'const projectIds = parseProjectIds(projectId);',
+    'isMenuExtractionProjectIdInScope(projectId, ids.tId, ids.sId)',
     'const permissionResponse = await requireAnyStorePermission(',
     '[PERMISSIONS.USE_MENU_EXTRACTION]',
     'const projectDoc = await projectRef.get();',
@@ -2524,8 +2525,13 @@ contains(
 contains(
   'src/app/api/menu-link-imports/route.ts',
   [
+    'MENU_LINK_IMPORT_PRIVATE_RESPONSE_HEADERS',
+    "'Cache-Control': 'private, no-store, max-age=0'",
+    "'X-Content-Type-Options': 'nosniff'",
+    'withMenuLinkImportAuth',
     'MENU_LINK_IMPORT_MAX_BODY_BYTES',
     'readBoundedJsonBody(request, MENU_LINK_IMPORT_MAX_BODY_BYTES)',
+    'isMenuExtractionProjectIdInScope(projectId, ids.tId, ids.sId)',
     'function resolveTargetLanguages(projectData: unknown)',
     'const codes: unknown[] =',
     'normalizeMenuExtractionProjectId',
@@ -2635,17 +2641,26 @@ notContains(
 	  [
 	    'getMenuLinkImportClientMessage',
 	    'OWNER_MENU_LINK_IMPORT_FALLBACK_MESSAGE',
-    'PUBLIC_MENU_LINK_IMPORT_FALLBACK_MESSAGE',
-    'MENU_LINK_IMPORT_CLIENT_MESSAGES',
+	    'PUBLIC_MENU_LINK_IMPORT_FALLBACK_MESSAGE',
+	    'MENU_LINK_IMPORT_CLIENT_MESSAGES',
+	    'isValidMenuLinkBinarySignature',
+	    "throw new MenuLinkImportError('CONTENT_TYPE_MISMATCH'",
     'buildChromeNetworkIsolationArgs',
-    '`MAP ${hostPattern} ${formatChromeResolverAddress(renderTarget.address)}`',
-    "'MAP * ~NOTFOUND'",
-    "'--proxy-server=http://127.0.0.1:9'",
-    '`--proxy-bypass-list=${hostPattern},<-loopback>`',
-    '...buildChromeNetworkIsolationArgs(params.renderTarget)',
+	    'RENDER_DEPENDENCY_HOST_LIMIT = 16',
+	    'RENDER_DISCOVERY_SCRIPT_LIMIT = 12',
+	    'RENDER_DISCOVERY_SCRIPT_MAX_BYTES = 512 * 1024',
+	    'discoverSafeRenderTargets',
+	    'fetchSafeUrl(url, 0, params.deadlineMs, RENDER_DISCOVERY_SCRIPT_MAX_BYTES)',
+	    'Array.from(uniqueHostUrls.values()).map((url) => assertSafeUrl(url, params.deadlineMs))',
+	    '`MAP ${formatChromeHostPattern(target.hostname)} ${formatChromeResolverAddress(target.address)}`',
+	    "'MAP * ~NOTFOUND'",
+	    "'--proxy-server=http://127.0.0.1:9'",
+	    "`--proxy-bypass-list=${[...hostPatterns, '<-loopback>'].join(';')}`",
+	    '...buildChromeNetworkIsolationArgs(params.renderTargets)',
 	    'const renderTarget = await assertSafeUrl(renderUrl, deadlineMs);',
 	    'if (net.isIP(renderTarget.hostname)) return null;',
-	    'renderTarget,',
+	    'const renderTargets = await discoverSafeRenderTargets({',
+	    'renderTargets,',
 	    'MENU_LINK_IMPORT_RENDER_FALLBACK_FAILED',
 	    'logMenuProcessingFailure(MENU_LINK_IMPORT_RENDER_FALLBACK_FAILED',
 	    "fallbackPolicy: 'skip_rendered_html'",
@@ -2792,6 +2807,8 @@ ordered(
     'const storeRateLimitHash = hashPublicRateLimitValue(ids.sId);',
     "key: `menu-link-import:${userRateLimitHash}:${tenantRateLimitHash}:${storeRateLimitHash}`",
     "getRateLimitForFeature('MENU_LINK_IMPORT')",
+    'failClosedOnProviderError: true',
+    "rateLimit.reason === 'provider_unavailable'",
     'const bodyResult = await readBoundedJsonBody(request, MENU_LINK_IMPORT_MAX_BODY_BYTES);',
     'const validation = RequestSchema.safeParse(bodyResult.data);',
     'const projectDoc = await projectRef.get();',
@@ -2907,7 +2924,7 @@ contains(
     'transaction.get(jobRef)',
     'assertOwnedPreviewJob(currentJob, session, projectId);',
     'transaction.update(projectRef, sanitizeFirestoreValue({ files: projection.files }));',
-    'transaction.update(jobRef, buildCompletedReviewJobPayload());',
+    'buildCompletedReviewJobPayload(getAppliedExtractionChangeCount(projection.stats))',
     'function assertOwnedPreviewJob',
     "jobData.status !== 'preview_ready'",
     "throw new Error('Extraction review does not belong to this business')",
@@ -4332,10 +4349,14 @@ contains(
   [
     'MENU_LINK_TEXT_EXTRACTION_SKIPPED_CODE',
     'function getMenuLinkTextExtractionErrorContext',
-    'function isAllowedMenuLinkTextArtifactPath',
-    'objectPath.startsWith(`menuLinkImports/${tId}/${sId}/${projectId}/`)',
+    'export function isAllowedMenuLinkTextArtifactPath',
+    'job.destination?.type === MENU_EXTRACTION_DESTINATION_TYPES.PUBLIC_MENU_DRAFT',
+    'objectPath === `publicMenuDrafts/${draftId}/source.txt`',
+    'objectPath === `menuLinkImports/${tId}/${sId}/${projectId}/${normalizedJobId}/source.txt`',
+    'const allowedBucket = getAllowedStorageBucket();',
+    'bucketName !== allowedBucket',
     'if (metadataPath && storageFromUrl?.objectPath && metadataPath !== storageFromUrl.objectPath) return null;',
-    'if (!isAllowedMenuLinkTextArtifactPath(job, objectPath)) return null;',
+    'if (!isAllowedMenuLinkTextArtifactPath(jobId, job, objectPath)) return null;',
     'jobIdLength: jobId.length',
     'failureCode: MENU_LINK_TEXT_EXTRACTION_SKIPPED_CODE',
     'getBoundedFunctionsErrorName(error)',
@@ -4348,7 +4369,7 @@ contains(
 ordered(
   'functions/src/logic/menuLinkTextExtraction.ts',
   [
-    'if (!isAllowedMenuLinkTextArtifactPath(job, objectPath)) return null;',
+    'if (!isAllowedMenuLinkTextArtifactPath(jobId, job, objectPath)) return null;',
     "const [buffer] = await storageAdmin.bucket(bucketName).file(objectPath).download();",
   ],
   'Deterministic menu-link text extraction validates artifact path before Storage download',
@@ -4357,7 +4378,7 @@ ordered(
 notContains(
   'functions/src/logic/menuLinkTextExtraction.ts',
   [
-    'jobId,',
+    'jobId: jobId',
     'error?.message || String(error)',
     'error.message',
     'String(error)',
@@ -4603,6 +4624,20 @@ contains(
     'isClientPreviewReviewResolution()',
   ],
   'Firestore rules scope owner job reads and updates while keeping create server-only and platform monitoring explicit',
+);
+
+ordered(
+  'firestore.rules',
+  [
+    'function isClientPreviewReviewResolution()',
+    "request.resource.data.status == 'completed'",
+    "request.resource.data.currentStep == 'Changes applied'",
+    'request.resource.data.appliedChangeCount is int',
+    'request.resource.data.appliedChangeCount >= 1',
+    'request.resource.data.appliedChangeCount <= 5000',
+    "!request.resource.data.keys().hasAny(['appliedChangeCount'])",
+  ],
+  'Firestore review resolution requires a bounded applied count for completion and forbids it on discard',
 );
 
 ordered(

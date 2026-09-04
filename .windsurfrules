@@ -1,8 +1,8 @@
-Framework: Next.js (v16.3.0) with React (v19.2.8)
+Framework: Next.js (v16.3.4) with React (v19.2.8)
 Language: TypeScript (v5.8.3)
 Dependency freeze gate: npm run verify:dependency-freeze
 Next 16 migration status: locally complete; remaining Vercel/device/Firebase QA/Git evidence is external or operational, not missing migration code
-Next private PostCSS exception: closed by stable Next 16.3.0, which carries patched PostCSS 8.5.23. Keep exact framework-aligned pins; never use canary/preview, node_modules patches, private-pin overrides, npm audit fix --force, or a framework downgrade.
+Next security baseline: stable Next 16.3.4 carries patched PostCSS 8.5.23 and the August 2026 image-optimization RCE correction. Keep exact framework-aligned pins; never use canary/preview, node_modules patches, private-pin overrides, npm audit fix --force, or a framework downgrade.
 Next 16.3 adoption boundary: retain the default build-cache, memory-eviction, SSR, prefetch, and immutable-asset improvements. Do not enable Cache Components, Partial Prefetching, experimental compiler/offline flags, or TypeScript 7 without a separate verified migration.
 
 UI Components:
@@ -16,13 +16,14 @@ React Redux (v9.3.0)
 Redux Persist (v6.0.0)
 
 Rich Text Editing:
-Tiptap Editor Suite (v2.11.0)
+Tiptap direct package pins (v2.11.0); the frozen lockfile resolves @tiptap/core and several internal extensions to v2.26.1.
+Tiptap security boundary: keep the effective core version explicit, keep custom attribute merging behind mergeSafeTiptapAttributes and its own-__proto__ regression, and treat v3 as a separate browser-verified migration.
 
 Authentication:
 NextAuth.js (v4.24.15)
 
 Backend Integration:
-Axios (v1.18.1)
+Axios (v1.18.1 only as Razorpay's transitive dependency; no direct application Axios dependency)
 Firebase client (v11.7.3)
 Firebase Admin root app (v14.2.0, modular entry points through the repo compatibility boundary)
 MenuList Functions: firebase-admin (v13.10.0), firebase-functions (v7.3.0 stable)

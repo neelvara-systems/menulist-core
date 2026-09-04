@@ -174,9 +174,10 @@ This loop is the default for every non-trivial repo request. The user does not n
 ### Technology Stack Decisions
 
 - **Pinned package runtime**: Freeze follows the exact versions in `package.json` / lockfiles and is guarded by `npm run verify:dependency-freeze`; no version changes without explicit migration/security scope.
-- **Next.js 16.3.0**: Current pinned runtime for the 3-year freeze window.
-- **Next 16 migration is locally complete**: The Node 22.23.1 / Next 16.3.0 / React 19.2.8 / Serwist 9.5.12 / Fabric 7.4.0 migration has no known remaining local implementation work when `verify:next-runtime-migration`, `verify:next-build-compatibility`, `verify:dependency-freeze`, typecheck, lint, and the maintained runtime/browser gates pass. Vercel preview/production smoke, physical-device PWA certification, Firebase QA deployment, and Git commit/push are release or operator evidence, not missing migration code.
-- **Next private PostCSS exception is closed**: Stable Next 16.3.0 privately carries PostCSS 8.5.23, matching the patched root pin and removing the former Next 16.2.11/PostCSS advisory chain. Keep all framework-aligned packages exact, reject canary/preview releases and `npm audit fix --force`, and rerun the full migration/build/runtime matrix for every later stable Next upgrade.
+- **Next.js 16.3.4**: Current pinned runtime for the 3-year freeze window.
+- **Next 16 migration is locally complete**: The Node 22.23.1 / Next 16.3.4 / React 19.2.8 / Serwist 9.5.12 / Fabric 7.4.0 migration has no known remaining application-semantics work when `verify:next-runtime-migration`, `verify:next-build-compatibility`, `verify:dependency-freeze`, typecheck, lint, and the maintained runtime/browser gates pass. Vercel preview/production smoke, physical-device PWA certification, Firebase QA deployment, and Git commit/push are release or operator evidence, not missing migration code.
+- **Next security baseline is closed**: Stable Next 16.3.4 privately carries PostCSS 8.5.23 and includes the August 2026 image-optimization RCE correction. Keep all framework-aligned packages exact, reject canary/preview releases and `npm audit fix --force`, and rerun the full migration/build/runtime matrix for every later stable Next upgrade.
+- **Tiptap v2 advisory boundary**: Direct Tiptap package pins remain exactly 2.11.0, while the frozen lockfile resolves `@tiptap/core` and several internal extensions to 2.26.1. Keep that effective runtime explicit until a separately verified v3 editor migration. The custom image renderer must use `mergeSafeTiptapAttributes`, reject own `__proto__` keys before the v2 merger, and keep the hostile-input regression green. Root audits may contain only the exact two-package projection of `GHSA-cp6q-959q-f8rh`; every other root advisory fails closed.
 - **Next 16.3 adoption boundary**: Keep the stable default improvements (Turbopack build cache and memory eviction, native-stream SSR, prefetch inlining, and immutable static assets). Do not enable `cacheComponents`, `partialPrefetching`, the Rust React Compiler, experimental offline retry, or TypeScript 7 as part of a dependency-only upgrade; each requires a separately verified application-semantics migration.
 - **Dual Platform**: Desktop (Ant Design + SCSS) vs mobile owner surfaces (Tailwind-driven mobile shell/screens; add `antd-mobile` only through an explicit dependency decision and freeze update)
 - **State Management**: Redux Toolkit + Redux Persist - no alternatives
@@ -317,7 +318,7 @@ Do not casually modify these files. If a task requires changes here, read the se
 ### Tech Stack Freeze
 
 - **Source of truth**: `package.json`, `package-lock.json`, `functions/package.json`, `functions/package-lock.json`, `functions-answerlattice/package.json`, `functions-answerlattice/package-lock.json`, `functions-signaldesk/package.json`, and `functions-signaldesk/package-lock.json`; enforce with `npm run verify:dependency-freeze`.
-- **Frameworks**: Next.js 16.3.0, React 19.2.8, TypeScript 5.8.3 in the root app.
+- **Frameworks**: Next.js 16.3.4, React 19.2.8, TypeScript 5.8.3 in the root app.
 - **UI**: Ant Design 5.25.1 for desktop; current mobile owner surfaces are Tailwind-driven and must not import `antd-mobile` unless the dependency is intentionally added and the freeze verifier is updated.
 - **State**: Redux Toolkit 2.12.0, React Redux 9.3.0, and Redux Persist 6.0.0 only.
 - **Auth**: NextAuth.js 4.24.15.
@@ -326,7 +327,7 @@ Do not casually modify these files. If a task requires changes here, read the se
 - **Backend**: Root Firebase client 11.7.3 and Firebase Admin 14.2.0 through modular entry points; MenuList, Answerlattice, and SignalDesk Functions pin Firebase Admin 13.10.0 and stable Firebase Functions 7.3.0 through modular entry points. Answerlattice CI pins Firebase CLI 15.24.0; do not install Firebase Functions release candidates.
 - **AI SDK**: `@google/genai` 2.13.0 in the root app, MenuList Functions, and Answerlattice Functions.
 - **Gemini runtime contract**: Active text routes use explicit stable IDs from `src/data/shared/geminiRuntime.ts`: `gemini-3.5-flash-lite` for high-throughput structured work, `gemini-3.6-flash` for complex or escalation work, and `gemini-3.5-flash` for balanced work. Active image routes use `gemini-3.1-flash-lite-image` or `gemini-3.1-flash-image`. Never use `*-latest`, preview, experimental, or retired model IDs for provider calls. Every `generateContent` call must pass through the shared compatibility compiler, which removes deprecated sampling and unsupported candidate fields for every admitted Gemini 3.x model and rejects prefilled model turns where disallowed, `thinkingBudget`, incomplete function responses, and unknown model IDs before a paid call.
-- **Editors**: Tiptap v2.11.0 and Fabric.js 7.4.0; Fabric ships its own types.
+- **Editors**: Direct Tiptap packages are pinned at v2.11.0, with lockfile-resolved `@tiptap/core`/internal extensions at v2.26.1; Fabric.js is 7.4.0 and ships its own types.
 - **Styling**: Tailwind CSS for mobile, SASS/SCSS for desktop.
 
 ### Build Discipline Summary

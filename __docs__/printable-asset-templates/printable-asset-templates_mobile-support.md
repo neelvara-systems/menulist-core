@@ -30,6 +30,7 @@ Included:
 - Open Assets from Share tab shortcut if present.
 - Select project using existing mobile project selector.
 - Browse a focused horizontally scrollable set containing the current and business-recommended Asset Theme cards, tap a non-current card to inspect it or tap the pending card again to restore the current look, and inspect a coordinated six-asset bento before applying it to the current menu or every menu.
+- See the canonical generated PNG—not a constructed thumbnail—in every theme card, comparison bento, and selected-asset row. Each image preserves its real output ratio with contained fitting and is reduced to a maximum 1200 px long edge for screen display only; full-resolution downloads are unchanged. Near-viewport loading, off-screen unloading, a shared bounded 12-result cache, and a two-job render queue keep the phone responsive.
 - Use **View all themes** to reveal the same 34 common themes as desktop, ordered by canonical business relevance, plus all five restaurant/food themes for canonical food businesses and any admitted exact coffee/bakery/ice-cream/salon/spa/fitness family; **Show recommended** returns to the focused set.
 - Select asset type.
 - Tap a template family from a one-column list.
@@ -47,6 +48,7 @@ Included:
 - See truthful `Recommended`, `Business theme`, or `Menu theme` badges.
 - Download Print Menu from the same renderer; the separate Print Menu screen remains in shell for the deeper export workflow.
 - Use the same editor-backed renderer as desktop for non-menu printable previews and downloads.
+- See Complete Menu Kit described as a multi-file asset set rather than a fake single-page preview.
 - See the shared business-profile readiness card before choosing an asset. Authorized owners can update canonical business identity/contact fields in an in-shell sheet, with the same validation, logo preparation, permission boundary, discard protection, and save semantics as desktop.
 - Rebuild the open preview immediately after a successful profile save so mobile never requires a route change or Settings detour.
 

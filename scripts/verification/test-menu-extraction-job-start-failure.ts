@@ -5,13 +5,21 @@ import {
     shouldCleanupUploadedFilesAfterJobStartError,
 } from '../../src/lib/menu-extraction/jobStartFailure';
 import { normalizeMenuExtractionJobId } from '../../src/lib/menu-extraction/jobIdBoundary';
-import { normalizeMenuExtractionProjectId } from '../../src/lib/menu-extraction/projectIdBoundary';
+import {
+    isMenuExtractionProjectIdInScope,
+    normalizeMenuExtractionProjectId,
+} from '../../src/lib/menu-extraction/projectIdBoundary';
 
 assert.equal(normalizeMenuExtractionJobId('A1234567890123456789'), 'A1234567890123456789');
 assert.equal(normalizeMenuExtractionJobId(' A1234567890123456789'), null);
 assert.equal(normalizeMenuExtractionJobId('A1234567890123456789/child'), null);
 assert.equal(normalizeMenuExtractionProjectId('1-project_1-1'), '1-project_1-1');
 assert.equal(normalizeMenuExtractionProjectId(' 1-project_1-1'), null);
+assert.equal(isMenuExtractionProjectIdInScope('1-project_1-1', '1', '1'), true);
+assert.equal(isMenuExtractionProjectIdInScope('1-project_1-2', '1', '1'), false);
+assert.equal(isMenuExtractionProjectIdInScope('2-project_1-1', '1', '1'), false);
+assert.equal(isMenuExtractionProjectIdInScope('1--1', '1', '1'), false);
+assert.equal(isMenuExtractionProjectIdInScope('1-project_1-1', ' 1', '1'), false);
 
 const rejected = {
     code: 'menu_processing_job_start_rejected',

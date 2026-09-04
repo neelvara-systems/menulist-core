@@ -1,21 +1,25 @@
 # Next.js Runtime Migration Validation
 
-**Status:** LOCAL SOURCE, BUILD, ISOLATED DEPLOYMENT TRACE, AND START VALIDATION PASSED
-**Validated:** August 5, 2026
-**Runtime:** Node 22.23.1 / Next.js 16.3.0 / React 19.2.8
+**Status:** NEXT 16.3.4 SOURCE AND STATIC RUNTIME CONTRACTS VALIDATED; FULL BUILD EVIDENCE REMAINS FROM 16.3.0
+**Validated:** September 4, 2026
+**Runtime:** Node 22.23.1 / Next.js 16.3.4 / React 19.2.8
 **Upgrade worktree base:** `e24ee02efb39669c029c56c2211624d2bc8e9c87`
 **Original migration worktree base:** `fc292e9446ee3627ebf973a6adf291e3766f5474`
 **Deployment:** `efc9456` failed from Vercel build OOM. The OOM-corrected `887f76ad` exposed an omitted `@swc/helpers` trace. After that source correction, production `/signin` exposed native Firebase Admin loading across the `jwks-rsa` CommonJS and ESM-only `jose` boundary. Both packaging corrections are locally verified and not yet redeployed.
 
 ## Result
 
-The shared runtime migration is locally complete. The exact migrated worktree passes clean installation/dependency resolution, type and lint checks, native Next 16 Turbopack and Webpack production builds, production start, local multi-product routing, service-worker generation, real Next image optimization, development-browser editor QA, and focused cross-product source contracts.
+The shared runtime migration remains complete. The Next 16.3.4 security patch has exact declaration/lock alignment and passes the maintained source/static runtime contracts. The full build, production-start, local multi-product routing, service-worker, and real image-optimization results below were produced on 16.3.0 and remain historical evidence until the consolidated release candidate reruns those expensive gates.
 
 This is codebase evidence, not Vercel deploy approval or production-host/device certification.
 
+## September 4 Next 16.3.4 security patch
+
+Next.js 16.3.4 was adopted with matching `eslint-config-next` and `@next/bundle-analyzer` releases after the vendor's August 2026 image-optimization RCE disclosure. The application already uses bounded `remotePatterns`; the patch does not broaden image hosts, enable experimental runtime flags, or change Firebase, tenancy, routing, cache, or PWA contracts.
+
 ## August 5 stable 16.3 upgrade closure
 
-Stable Next 16.3.0 was adopted with the matching `eslint-config-next` and `@next/bundle-analyzer` releases. Its private PostCSS dependency is patched `8.5.23`, so the former Next 16.2.11/PostCSS audit exception is closed without an override, canary, preview, forced audit fix, framework downgrade, or `node_modules` patch.
+Stable Next 16.3.0 was adopted with the matching `eslint-config-next` and `@next/bundle-analyzer` releases. Its private PostCSS dependency is patched `8.5.23`, so the former Next 16.2.11/PostCSS audit exception was closed without an override, canary, preview, forced audit fix, framework downgrade, or `node_modules` patch. This is retained as the prior minor-upgrade evidence; the active frozen patch is now 16.3.4.
 
 The 16.3 generated route checks exposed and closed four compatibility gaps:
 
@@ -30,7 +34,7 @@ The upgrade deliberately keeps Cache Components, Partial Prefetching, the experi
 
 | Package | Frozen version |
 |---|---:|
-| `next` | 16.3.0 |
+| `next` | 16.3.4 |
 | `react`, `react-dom` | 19.2.8 |
 | `next-intl` | 4.13.4 |
 | `next-auth` | 4.24.15 |
@@ -39,20 +43,23 @@ The upgrade deliberately keeps Cache Components, Partial Prefetching, the experi
 | `react-redux` | 9.3.0 |
 | `framer-motion` | 12.42.2 |
 | `eslint` | 9.39.5 |
-| `eslint-config-next` | 16.3.0 |
+| `eslint-config-next` | 16.3.4 |
 | `@serwist/turbopack`, `serwist` | 9.5.12 |
 | `fabric` | 7.4.0 |
 | `firebase-admin` | 14.2.0 |
 | root `postcss` | 8.5.23 |
 | Next private `postcss` | 8.5.23 |
 | direct `brace-expansion` | 1.1.18 |
-| direct `fast-uri` | 3.1.5 |
+| direct `fast-uri` | 3.1.7 |
+| transitive `browserslist` | 4.28.9 |
+| transitive `fflate` | 0.8.3 |
+| transitive `postcss-selector-parser` | 6.1.3 |
 | Next optional `sharp` override | 0.35.3 |
 | transitive `uuid` override | 11.1.1 |
 
 No install used `--force`, `--legacy-peer-deps`, or a peer override. `next-pwa` and `@emoji-mart/react` are absent.
 
-## Build evidence
+## Historical 16.3.0 build evidence
 
 | Gate | Result |
 |---|---|
@@ -225,9 +232,26 @@ August 5 closure:
 - `npm ls --all` exits zero with no invalid or missing dependency.
 - Next 16.3.0 carries private PostCSS 8.5.23; direct `brace-expansion@1.1.18`, compatible nested `brace-expansion@5.0.9`, and direct `fast-uri@3.1.5` close the additional advisories present on upgrade day.
 
-The root and Next private PostCSS copies are now both 8.5.23. The earlier exception is removed; the verifier requires zero root full and production vulnerabilities. Future framework upgrades must still avoid canary/preview releases, private dependency overrides, `node_modules` patches, forced audit fixes, or framework downgrades.
+The root and Next-resolved PostCSS copies are now both 8.5.23. The earlier exception is removed. Future framework upgrades must still avoid canary/preview releases, private dependency overrides, `node_modules` patches, forced audit fixes, or framework downgrades.
 
-The maintained global policy and stop rules are in [Dependency Security](../security/dependency-security/complete-guide.md). `npm run verify:answerlattice-security-audit` now requires zero root full and production vulnerabilities and rejects any regression.
+September 4 security refresh:
+
+- root full and production audits each contain zero critical, high, and low findings;
+- the only two moderate package entries are `@tiptap/core` and `@tiptap/starter-kit`, both representing `GHSA-cp6q-959q-f8rh`;
+- the custom image renderer rejects own `__proto__` attributes before calling the Tiptap v2 merger, and the hostile-input test confirms that inherited `src`/`onerror` attributes are not created;
+- exact compatible patches close the Browserslist, fflate, fast-uri, and selector-parser advisories without a Serwist downgrade or a Tiptap major migration.
+
+Current local gates passed on September 4:
+
+- dependency freeze, Next runtime migration, Next build compatibility, and Stack Change Watch readiness;
+- Tiptap hostile-attribute regression and the cross-package security audit;
+- root TypeScript and targeted ESLint;
+- Answerlattice runtime-truth static verification;
+- complete installed dependency trees for the root and all three Functions packages;
+- MenuList and Answerlattice SecurityOS registry audits;
+- documentation link check with zero broken links and `git diff --check`.
+
+The maintained global policy and stop rules are in [Dependency Security](../security/dependency-security/complete-guide.md). `npm run verify:answerlattice-security-audit` now accepts only the exact controlled Tiptap pair at the root, requires zero vulnerabilities in all Functions roots, and rejects every other regression.
 
 ## External release evidence still required
 

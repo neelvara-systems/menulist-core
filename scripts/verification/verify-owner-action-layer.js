@@ -121,10 +121,20 @@ forbidToken(mobileDashboard, 'renderQuickActions', 'mobile dashboard duplicate q
   "ownerLabelKey: 'today'",
   "ownerLabelKey: 'menu'",
   "ownerLabelKey: 'share'",
-  "ownerLabelKey: 'more'",
+  "sectionLabel: 'Check feedback and activity'",
+  "sectionLabel: 'Update what customers see'",
+  "sectionLabel: 'Share and place the link'",
+  "sectionLabel: 'Account and team'",
+  "sectionLabel: 'Advanced setup'",
+  "{ label: 'Dashboard', route: NAVIGARIONS_ROUTINGS.DASHBOARD",
+  "{ label: 'Business Settings', route: NAVIGARIONS_ROUTINGS.BUSINESS_SETTINGS",
+  "defaultRoute: NAVIGARIONS_ROUTINGS.USERS_LIST",
+  "{ label: 'Users List', route: NAVIGARIONS_ROUTINGS.USERS_LIST, icon: LuUsers }",
+  "{ label: 'Roles', route: NAVIGARIONS_ROUTINGS.USERS_ROLES, icon: LuShieldCheck }",
   "{ label: 'QR Code', route: NAVIGARIONS_ROUTINGS.QR_CODE",
   "{ label: 'Assets', route: NAVIGARIONS_ROUTINGS.ASSETS",
 ].forEach((token) => requireToken(navigations, token, 'owner outcome navigation module'));
+forbidToken(navigations, "ownerLabelKey: 'more'", 'desktop owner navigation generic More group');
 
 [
   'selectedProjectSummary as any',

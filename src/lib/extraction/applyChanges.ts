@@ -240,6 +240,22 @@ function ensureItemCategoryInFile(files: any[], fileIndex: number, categoryId?: 
     }
 }
 
+function hasItemCategoryInFiles(files: any[], categoryId: unknown): boolean {
+    const normalizedCategoryId = typeof categoryId === 'string' ? categoryId.trim() : '';
+    if (!normalizedCategoryId) return false;
+    return files.some((file) => (
+        Array.isArray(file?.extractedData?.data?.categories)
+        && file.extractedData.data.categories.some((category: any) => category?.id === normalizedCategoryId)
+    ));
+}
+
+function throwMissingReviewItemCategory(categoryId: unknown): never {
+    logMenuProcessingFailure('menu_review_apply_item_category_missing', undefined, {
+        ...getBoundedMenuProcessingStringContext('categoryId', categoryId),
+    });
+    throw new Error(APPLY_CHANGES_GENERIC_ERROR);
+}
+
 function getMenuDataFromFiles(files: any[]) {
     return files.reduce<{ businessAttributeSuggestions: any[]; categories: any[]; items: any[] }>((menuData, file) => {
         const data = file?.extractedData?.data || {};
@@ -370,6 +386,9 @@ function applyProjectMutationsToCurrentFiles(params: {
         if (!itemMutation.newItem) continue;
         const fileIndex = findMutationFileIndex(files, jobData, itemMutation.targetFileUid);
         if (fileIndex === -1) throwMissingReviewSourceFile(itemMutation.targetFileUid, 'new_item');
+        if (!hasItemCategoryInFiles(files, itemMutation.newItem.category)) {
+            throwMissingReviewItemCategory(itemMutation.newItem.category);
+        }
         ensureCategoryArray(files[fileIndex], languages);
         if (!Array.isArray(files[fileIndex].extractedData.data.items)) {
             files[fileIndex].extractedData.data.items = [];
@@ -611,13 +630,14 @@ function idsMatch(left: unknown, right: unknown): boolean {
     return String(left ?? '').trim() === String(right ?? '').trim();
 }
 
-function buildCompletedReviewJobPayload() {
+function buildCompletedReviewJobPayload(appliedChangeCount: number) {
     const completedAt = Timestamp.now();
     return {
         status: 'completed',
         completedAt,
         updatedAt: completedAt,
         currentStep: 'Changes applied',
+        appliedChangeCount,
     };
 }
 
@@ -746,7 +766,10 @@ export async function applyExtractionChanges(
                 });
                 if (!projection.changed) throw new Error(APPLY_CHANGES_GENERIC_ERROR);
                 transaction.update(projectRef, sanitizeFirestoreValue({ files: projection.files }));
-                transaction.update(jobRef, buildCompletedReviewJobPayload());
+                transaction.update(
+                    jobRef,
+                    buildCompletedReviewJobPayload(getAppliedExtractionChangeCount(projection.stats)),
+                );
                 return { files: projection.files, projectData: currentProject, stats: projection.stats };
             });
             files = committed.files;
@@ -798,6 +821,19 @@ export async function applyExtractionChanges(
 
             // Add local-only items in-memory
             if (mutations.upsertLocalItems.length > 0) {
+                const localCategoryIds = new Set(
+                    localFile.extractedData.data.categories
+                        .map((category: any) => category?.id)
+                        .filter(Boolean),
+                );
+                const missingLocalCategory = mutations.upsertLocalItems.find((item) => (
+                    typeof item?.category === 'string'
+                    && item.category.startsWith('L_C_')
+                    && !localCategoryIds.has(item.category)
+                ));
+                if (missingLocalCategory) {
+                    throwMissingReviewItemCategory(missingLocalCategory.category);
+                }
                 const existingItemIds = new Set(
                     localFile.extractedData.data.items
                         .map((item: any) => item?.id)

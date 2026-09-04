@@ -2,12 +2,12 @@
 
 **Status:** LOCALLY IMPLEMENTED AND VERIFIED
 **Risk class:** Critical shared-runtime migration
-**Final target:** Next.js 16.3.0 with React 19.2.8
+**Final target:** Next.js 16.3.4 with React 19.2.8
 **Applies to:** Root Next.js application and every product/surface hosted by it
 
 ## 1. Problem statement
 
-The root app was frozen on Next.js 14.2.35. It is now frozen on Next.js 16.3.0 and React 19.2.8 after the shared runtime, framework-adjacent dependencies, request APIs, cache calls, service worker, production build paths, and the stable 16.3 security/runtime refresh were migrated together.
+The root app was frozen on Next.js 14.2.35. It is now frozen on Next.js 16.3.4 and React 19.2.8 after the shared runtime, framework-adjacent dependencies, request APIs, cache calls, service worker, production build paths, and the stable 16.3 security/runtime refresh were migrated together. The September patch closes the August 2026 image-optimization RCE without changing the established application model.
 
 This migration must improve the support and security posture without changing product behavior, public truth, tenant isolation, service-worker boundaries, or Firebase contracts.
 
@@ -117,7 +117,7 @@ The React wrapper for Emoji Mart is removed rather than installed against an uns
 
 ### ADR-9 — ESLint moves to the CLI and flat config
 
-Next 16 removes `next lint` and the `eslint` option in `next.config.js`. The final runtime uses ESLint 9.39.5 and `eslint-config-next@16.3.0` with flat config.
+Next 16 removes `next lint` and the `eslint` option in `next.config.js`. The final runtime uses ESLint 9.39.5 and `eslint-config-next@16.3.4` with flat config.
 
 The migration must update:
 

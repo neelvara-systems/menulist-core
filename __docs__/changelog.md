@@ -1,5 +1,43 @@
 # MenuList — Changelog
 
+## September 5, 2026 — Desktop sidebar expansion recovery
+
+- Removed the owner sidebar's dependency on a width-animation completion callback before rendering expanded labels and section headings.
+- Hover expansion and the header's Expand sidebar action now restore the full grouped navigation in the same state transition as the 200 px rail, while persistent collapse still keeps the 62 px icon rail and hover expansion still overlays rather than shifting page content.
+- Strengthened the shared sidebar regression so it fails when either hover or click expansion reaches the wide rail without immediately restoring its content. This is a local presentation fix with no Firebase read/write, API, provider, deployment, or public-menu change.
+
+## September 5, 2026 — Cached desktop brand-look preview drawer
+
+- Returned the complete Change brand look modal width to theme browsing so smaller laptops show more cards per row, without a permanently visible preview column.
+- Made a selected theme open in a bounded right-to-left drawer with six canonical final-output previews, an orientation-aware two-column bento, explicit current/unapplied state, and menu/business Apply actions.
+- Kept the catalog mounted behind the drawer so Back, drawer Close, mask dismissal, or Escape clears the unapplied `Previewing` marker while restoring the same search/filter state, scroll position, focus, and already-rendered visible card thumbnails without regenerating them. The existing bounded cache and off-screen cleanup still protect memory while owners browse the complete catalog.
+- Preserved the synchronous preference-write lock so neither the drawer nor outer modal can disappear while a save is unresolved.
+- Kept the touch-first MobileShell theme picker unchanged. This presentation change adds no Firebase read/write, Storage upload, Function, API route, deployment, or generated-file persistence.
+
+## September 4, 2026 — Grouped desktop owner navigation restored
+
+- Restored the desktop sidebar's visible owner-language groups: Check feedback and activity, Update what customers see, Share and place the link, Account and team, and Advanced setup.
+- Kept the current Menu, Share, Users List, Roles, location, billing, help, Menu Manager, and Growth Kits routes, labels, permission checks, entitlement gates, and feature flags while removing the generic desktop More bucket. Roles remains grouped under Users List so the related account tools stay together without crowding Advanced setup below the utility footer.
+- Kept the compact Today, Menu, Share, Feedback, and More navigation model unchanged inside the mobile owner shell.
+- Added fail-closed navigation regression coverage. This presentation-only correction adds no Firebase read or write, API route, Function, Storage operation, provider action, deployment, or public-menu behavior change.
+
+## September 4, 2026 — Next.js image-optimization security patch
+
+- Updated the aligned Next.js framework family from 16.3.0 to 16.3.4 after the August 2026 image-optimization RCE disclosure.
+- Closed newly surfaced compatible advisories with exact `browserslist@4.28.9`, `fflate@0.8.3`, `fast-uri@3.1.7`, and `postcss-selector-parser@6.1.3` controls.
+- Pinned transitive `qs@6.16.0` in all three Functions package roots, clearing the new Express/body-parser query-parser advisory projection without changing Firebase Functions versions or request handling.
+- Kept the Tiptap 2-to-3 major migration outside this patch, but blocked the reported own-`__proto__` attribute path in the custom image renderer and added a hostile-input regression. The security audit accepts only that exact controlled Tiptap advisory pair and fails on every other root finding.
+- Preserved the existing React, PostCSS, image-host allowlist, routing, cache, PWA, Firebase, and product-boundary contracts; no experimental Next.js flags were enabled.
+- Updated the exact dependency freeze, shared runtime verification, security audit baseline, and weekly Stack Change Watch baseline. No Firebase or Vercel deployment was performed.
+
+## September 4, 2026 — Truthful Assets previews across desktop and mobile
+
+- Replaced the constructed asset thumbnails with the canonical output renderer in the desktop Brand Kit, selected-asset workspace, theme catalog, theme comparison, and matching mobile surfaces.
+- Preserved every generated page/card ratio with contained fitting, so dark/light artwork, QR codes, two-face assets, portrait pages, and landscape cards are shown completely rather than flattened or cropped.
+- Added a 1200 px screen-preview edge cap that leaves full-resolution downloads unchanged, near-viewport loading and off-screen unloading, a bounded 12-result in-memory cache, a two-job browser render queue, lifecycle-safe Blob URL cleanup, and hashed current-data cache keys to keep the 47-theme catalog responsive, private, and safe on owner phones.
+- Kept Complete Menu Kit truthful as a labelled multi-file set instead of inventing one final-image preview, and added regression checks that reject the retired fake QR/decorative preview component.
+- Verified representative Japanese Night Luxe and Mindful Motion outputs across six asset types. The change adds no Firestore write, Storage upload, Function, API route, deployment, or generated-artifact persistence.
+
 ## September 3, 2026 — Assets delivery and recovery hardening
 
 - Made runtime details visibly dirty until previewed, and made download, mobile Share/Save, and desktop editor entry refresh the exact current input before continuing.

@@ -191,11 +191,12 @@ async function testCollapsedHoverAndPersistentExpansion(): Promise<void> {
             relatedTarget: document.body,
         }));
     });
-    await flush(1);
     assert.equal(host.querySelector('nav')?.style.width, '200px', 'Hover must target the full expanded width immediately.');
-    assert.equal(hasText(host, 'Account and team'), false, 'Labels must wait until width expansion completes.');
-    await flush();
-    assert.equal(hasText(host, 'Account and team'), true, 'Labels must appear after width expansion completes.');
+    assert.equal(
+        hasText(host, 'Account and team'),
+        true,
+        'Hover expansion must render labels immediately instead of depending on an animation completion callback.',
+    );
     assert.deepEqual(layoutStates, [false], 'Hover expansion must overlay content without shifting the page layout.');
 
     await act(async () => root.unmount());
@@ -220,9 +221,11 @@ async function testCollapsedHoverAndPersistentExpansion(): Promise<void> {
         />,
     ));
     assert.equal(host.querySelector('nav')?.style.width, '200px');
-    assert.equal(hasText(host, 'Account and team'), false, 'Persistent expansion must also wait for width completion.');
-    await flush();
-    assert.equal(hasText(host, 'Account and team'), true);
+    assert.equal(
+        hasText(host, 'Account and team'),
+        true,
+        'Persistent expansion must restore labels in the same render as the expanded width.',
+    );
     assert.equal(layoutStates.at(-1), true, 'Top-bar expansion must report the persistent 200px layout state.');
 
     await act(async () => persistentRoot.unmount());
@@ -243,11 +246,29 @@ function testSourceContracts(): void {
         path.join(repositoryRoot, 'src/components/organisms/sidebar/index.tsx'),
         'utf8',
     );
+    const ownerNavigation = fs.readFileSync(
+        path.join(repositoryRoot, 'src/constants/navigations.ts'),
+        'utf8',
+    );
+    const sharedSidebarShell = fs.readFileSync(
+        path.join(repositoryRoot, 'src/components/shared/dashboardShell/DashboardSidebarShell.tsx'),
+        'utf8',
+    );
 
     assert.match(
         sidebarStyles,
         /\.navSectionLabel\s*\{[\s\S]*?white-space:\s*nowrap;/,
         'Section labels must never wrap vertically during width changes.',
+    );
+    assert.match(
+        sharedSidebarShell,
+        /const showExpandedContent = showExpandedSidebar;/,
+        'Expanded sidebar content must derive from the same state as its width.',
+    );
+    assert.doesNotMatch(
+        sharedSidebarShell,
+        /expandedContentReady|onAnimationComplete=/,
+        'Sidebar labels must not depend on a width-animation completion callback.',
     );
     assert.match(
         menuListLayout,
@@ -269,6 +290,49 @@ function testSourceContracts(): void {
         /const visibleTarget = resolveVisibleNavigationTarget\(navItem\);/,
         'Owner sidebar group clicks must resolve destinations from the filtered visible navigation item.',
     );
+    const ownerNavigationStart = ownerNavigation.indexOf('export const SIDEBAR_DASHBOARD_LAYOUT');
+    const ownerNavigationEnd = ownerNavigation.indexOf('// Support menu options for help popover');
+    const ownerNavigationLayout = ownerNavigation.slice(ownerNavigationStart, ownerNavigationEnd);
+    const requiredSections = [
+        'Check feedback and activity',
+        'Update what customers see',
+        'Share and place the link',
+        'Account and team',
+        'Advanced setup',
+    ];
+    requiredSections.forEach((sectionLabel) => {
+        assert.equal(
+            ownerNavigationLayout.match(new RegExp(`sectionLabel: '${sectionLabel}'`, 'g'))?.length,
+            1,
+            `Desktop owner navigation must render ${sectionLabel} exactly once.`,
+        );
+    });
+    assert.doesNotMatch(
+        ownerNavigationLayout,
+        /ownerLabelKey: 'more'/,
+        'Desktop owner navigation must not hide normal owner destinations under a generic More group.',
+    );
+    assert.match(
+        ownerNavigationLayout,
+        /label: 'Users List',[\s\S]*?defaultRoute: NAVIGARIONS_ROUTINGS\.USERS_LIST,[\s\S]*?subNav: \[[\s\S]*?label: 'Users List', route: NAVIGARIONS_ROUTINGS\.USERS_LIST[\s\S]*?label: 'Roles', route: NAVIGARIONS_ROUTINGS\.USERS_ROLES/,
+        'Users List must keep the reference hierarchy by grouping the related Roles destination.',
+    );
+    [
+        'NAVIGARIONS_ROUTINGS.DASHBOARD',
+        'NAVIGARIONS_ROUTINGS.BUSINESS_SETTINGS',
+        'NAVIGARIONS_ROUTINGS.LOCATIONS',
+        'NAVIGARIONS_ROUTINGS.BILLING',
+        'NAVIGARIONS_ROUTINGS.TRANSACTIONS',
+        'NAVIGARIONS_ROUTINGS.HELP',
+        'NAVIGARIONS_ROUTINGS.AI_MENU_MANAGER',
+        'NAVIGARIONS_ROUTINGS.GROWTH_KITS',
+    ].forEach((routeToken) => {
+        assert.match(
+            ownerNavigationLayout,
+            new RegExp(`\\{ label: '[^']+', route: ${routeToken.replace('.', '\\.')}`),
+            `${routeToken} must remain a directly discoverable desktop destination.`,
+        );
+    });
 }
 
 function testVisibleNavigationTargets(): void {

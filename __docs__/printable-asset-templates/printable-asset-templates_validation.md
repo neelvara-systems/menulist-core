@@ -1,7 +1,34 @@
 # Printable Asset Templates - Validation
 
-> **Last Updated:** September 3, 2026
-> **Verdict:** PASS for runtime-details and final delivery hardening scope
+> **Last Updated:** September 5, 2026
+> **Verdict:** PASS for the right-side theme-preview drawer source, accessibility, TypeScript, preference, and production-build gates. Live Chrome visual capture remains pending because the existing Assets tabs are owned by another active browser-debug session.
+
+## September 5 desktop theme-library navigation audit
+
+| Area | Implemented contract |
+| --- | --- |
+| Catalog space | The desktop theme catalog owns the full modal body width and scrolls independently; no persistent detail column reduces laptop card count. |
+| Focused inspection | Selecting a current or alternate theme opens the existing six canonical rendered assets in a right-side drawer above the catalog; the two-column bento gives portrait outputs the taller cells. |
+| Safe application | Card selection still performs no write. Menu/business Apply actions live in the drawer only while reviewing an unapplied theme and retain the existing synchronous write lock. |
+| Navigation continuity | The catalog stays mounted behind the drawer, preserving search, filter, scroll position, visible thumbnail Blob URLs, and keyboard focus. Back, drawer Close, mask dismissal, and Escape close the drawer and clear the unapplied temporary selection so no stale `Previewing` badge remains. |
+| Responsive boundary | The full-width catalog retains its responsive card count while the drawer is bounded by the viewport and its bento collapses safely at narrow widths. The separate MobileShell theme picker and bento are unchanged. |
+| Cost and persistence | The presentation change adds no Firestore read/write, Storage upload, Function, API route, or generated-file persistence. |
+
+## September 4 renderer-backed preview audit
+
+| Area | Verified implementation |
+| --- | --- |
+| Output fidelity | Desktop and mobile preview placements call the same `renderPrintableAsset()` adapter as download and request canonical PNG output from the current `PrintableAssetRenderInput`. |
+| No synthetic output | The retired component containing fake QR modules, generic menu bars, guessed aspect ratios, and hand-built theme decoration is removed; the verifier fails if it returns. |
+| Geometry | Generated images use contained fitting, so portrait, landscape, square, two-face, and full-page output remains complete rather than cropped into a card-shaped thumbnail. |
+| Runtime truth | Preview invalidation includes the selected project/menu version, business identity/contact facts, runtime content drafts, selected staff record, and parent theme. |
+| Performance | The canonical PNG is reduced to a maximum 1200 px long edge for screen display only; downloads remain full print resolution. Catalog previews load only near the viewport, unload after genuinely leaving that window, share a bounded 12-result promise cache, and pass through a two-job queue. The desktop drawer leaves visible catalog preview components mounted, so drawer round-trips retain their active Blob URLs instead of regenerating them. Focused and comparison previews remain eager. |
+| Lifecycle | Component-owned Blob URLs are revoked when a catalogue preview moves off-screen, changes, or unmounts; raw business/contact content is hashed before it becomes an in-memory cache key. |
+| Bundle truth | Complete Menu Kit is labelled as a multi-file asset set instead of presenting an invented single-page output. |
+| Cross-surface paths | Product Tag and Campaign Poster entry points on desktop and mobile share the canonical workflow modal; the modal renders a fresh PNG with contained fitting and revokes its Blob URL. Saved custom-design and platform-management cards may use their actual persisted document thumbnail, but the selected live asset preview cannot prefer it over current runtime output. |
+| Cost and persistence | Preview rendering stays in the browser and adds no write, upload, Function, API route, or generated-artifact persistence. |
+
+Fresh visual fixtures for Japanese Night Luxe and Mindful Motion passed across all 13 editor-renderable asset types (26 PNGs total). The dark, light, portrait, landscape, square, two-face, QR, paired-card, personalized, and promotional representatives retained their complete canonical composition.
 
 ## September 3 final delivery hardening audit
 
@@ -60,6 +87,7 @@ No new schema, collection, Firebase rule, index, API route, provider call, or de
 - Printable 47-theme artwork geometry test
 - Targeted ESLint
 - TypeScript typecheck
+- Next.js production build (passed; existing Sass `@import` deprecation warnings remain outside this scope)
 - Scoped `git diff --check`
 
 The repository-wide mobile-shell route-map verifier currently has an unrelated stale assertion for the former inline `hasPendingSubscription` expression. Current `MobileShell` uses the separate owner-access recovery resolver. This validation does not alter or claim completion of that concurrent scope.

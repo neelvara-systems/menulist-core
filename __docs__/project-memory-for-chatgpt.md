@@ -152,7 +152,7 @@ Observed behavior:
 ## 5) Stack and execution constraints
 
 ### 5.1 Core stack (current package reality)
-- Next.js 16.3.0, React 19.2.8, TypeScript 5.8.3 strict mode.
+- Next.js 16.3.4, React 19.2.8, TypeScript 5.8.3 strict mode.
 - Node 22 (`.nvmrc` 22.23.1), Firebase client 11.7.3, root Firebase Admin 14.2.0 through modular entry points, MenuList, Answerlattice, and SignalDesk Functions Firebase Admin 13.10.0 / Firebase Functions 6.6.0 through modular entry points, NextAuth 4.24.15.
 - Ant Design 5.25.1 on desktop, Tailwind-driven mobile surfaces in the current desktop/mobile split.
 - Redux Toolkit + Redux Persist, SWR, Sentry, Upstash, Zod.

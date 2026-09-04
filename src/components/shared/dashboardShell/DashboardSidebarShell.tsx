@@ -75,12 +75,11 @@ export default function DashboardSidebarShell({
     const { token } = theme.useToken();
     const [hoverId, setHoverId] = useState<string | null>(null);
     const [isHover, setIsHover] = useState(false);
-    const [expandedContentReady, setExpandedContentReady] = useState(mobile || !isCollapsed);
     const menuItemsRef = useRef<HTMLDivElement | null>(null);
     const pendingParentScrollRef = useRef<{ element: HTMLElement; top: number } | null>(null);
     const suppressNextActiveParentScrollRef = useRef(false);
     const showExpandedSidebar = mobile || !isCollapsed || isHover;
-    const showExpandedContent = mobile || (showExpandedSidebar && expandedContentReady);
+    const showExpandedContent = showExpandedSidebar;
     const isLayoutExpanded = mobile || !isCollapsed;
     const activeParentKey = useMemo(() => (
         navItems.find((item) => item.active || item.subNavActive)?.key || null
@@ -89,17 +88,6 @@ export default function DashboardSidebarShell({
     useEffect(() => {
         onExpandedChange?.(isLayoutExpanded);
     }, [isLayoutExpanded, onExpandedChange]);
-
-    useEffect(() => {
-        if (mobile) {
-            setExpandedContentReady(true);
-            return;
-        }
-
-        if (!showExpandedSidebar) {
-            setExpandedContentReady(false);
-        }
-    }, [mobile, showExpandedSidebar]);
 
     useEffect(() => {
         if (!showExpandedSidebar || !activeParentKey) return;
@@ -322,11 +310,6 @@ export default function DashboardSidebarShell({
             animate={{ width: mobile ? '100%' : (showExpandedSidebar ? `${expandedWidth}px` : `${collapsedWidth}px`) }}
             aria-label={ariaLabel}
             className={`${styles.sidebarContainer} ${className}`}
-            onAnimationComplete={() => {
-                if (showExpandedSidebar) {
-                    setExpandedContentReady(true);
-                }
-            }}
             onMouseEnter={() => setIsHover(true)}
             onMouseLeave={() => setIsHover(false)}
             role="navigation"

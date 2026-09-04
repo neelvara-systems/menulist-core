@@ -15,7 +15,7 @@ import Typography from '@tiptap/extension-typography';
 import Underline from '@tiptap/extension-underline';
 import StarterKit from '@tiptap/starter-kit';
 import type { Extensions } from '@tiptap/core';
-import { mergeAttributes } from '@tiptap/core';
+import { mergeSafeTiptapAttributes } from '@lib/tiptap/safeAttributes';
 import {
     normalizeTiptapImageUrl,
     normalizeTiptapLinkUrl,
@@ -37,7 +37,7 @@ const SafeImage = Image.extend({
             return ['span', { 'aria-label': 'Invalid image', role: 'img' }];
         }
 
-        return ['img', mergeAttributes(this.options.HTMLAttributes, HTMLAttributes, { src })];
+        return ['img', mergeSafeTiptapAttributes(this.options.HTMLAttributes, HTMLAttributes, { src })];
     },
 });
 

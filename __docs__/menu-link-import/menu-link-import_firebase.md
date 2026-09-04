@@ -1,10 +1,12 @@
 # Menu Link Import Firebase
 
-**Boundary Reviewed:** July 13, 2026
+**Boundary Reviewed:** September 4, 2026
 
 > **Launch boundary:** Not current launch certification or deploy approval. This document records source-gated Menu Link Import evidence only. Both current intake paths require a signed-in owner before source acquisition or extraction: the owner app uses `/api/menu-link-imports`, while the public `/create-menu` page submits through the authenticated `/api/public/create-menu` route. Current release approval still requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md), `npm run verify:production-readiness-local`, `npm run verify:menu-extraction-pipeline`, `npm run verify:functions-deploy-preflight`, authenticated desktop/mobile owner-flow QA, signed-in `/create-menu` browser QA, direct and rendered source-acquisition smoke, Gemini extraction provider smoke where fallback is used, applicable target Firebase/Vercel deploy evidence, and production-host smoke.
 
 The authenticated owner route re-reads `stores/{sId}` and requires current persisted `canUseMenuExtraction` after bounded input validation and before project reads, HTTP/render acquisition, Storage writes, artifact creation, or job creation. This adds one store permission read per valid non-platform owner-route request; rejected requests produce none of the downstream operations. Platform sessions retain the shared permission helper's explicit zero-read bypass. The signed-in public-draft adapter keeps its separate existing admission contract.
+
+Before that permission read, the route requires the normalized project ID to match the authenticated `{tId}-...-{sId}` project scope. Cross-scope project IDs return 403 without a Firestore project read, external fetch, Storage write, artifact write, or job write. The rate-limit provider also fails closed; an unavailable limiter returns a fixed 503 before those cost-producing operations. Every response is private/no-store and `nosniff`.
 
 ## Collections
 
@@ -80,6 +82,8 @@ menuLinkImports/{tId}/{sId}/{projectId}/{jobId}/source.jpg
 
 Artifacts are private and immutable. The extraction job receives a tokenized Firebase download URL for the single artifact it must process. Raw HTML is not stored separately in v1.
 
+The deterministic text path verifies the configured Storage bucket and exact current-job or public-draft `source.txt` object path before download. Direct PDF/image artifacts additionally require matching file signatures before the route writes Storage, preventing MIME/extension-spoofed content from entering the extraction pipeline.
+
 The consolidated MenuList maintenance scheduler retains authenticated link-import sources for the same seven-day window as terminal extraction jobs. Its daily `menu_old_cleanup` task scans at most 100 old artifact rows, batch-loads their jobs, and deletes only exact tenant/store/project/owner/job-bound `source.txt`, `source.pdf`, `source.jpg`, `source.png`, or `source.webp` paths. Active jobs are skipped. Storage is deleted before `menuLinkImportArtifacts` metadata; unsafe bindings or failed Storage deletes preserve the metadata as the durable retry record and fail the scheduler task observably.
 
 July 28 audit hardening also covers pre-job cleanup. Storage is necessarily written before the atomic active-job claim. If a concurrent request loses that claim or later job persistence fails, immediate Storage deletion now returns an acknowledged outcome. When deletion fails, the route creates the already validated artifact row as the durable cleanup record before it discards the local path; if neither action succeeds, the route returns failure and emits bounded diagnostics. This prevents a private loser object from becoming invisible to retention. The failure-only recovery adds at most one artifact write and the existing bounded seven-day cleanup work.
@@ -92,7 +96,7 @@ July 28 audit hardening also covers pre-job cleanup. Storage is necessarily writ
 - HTML/text/JSON link imports store a normalized text artifact only. Raw HTML is not stored separately.
 - Link import metadata stores source text presence and length only; it does not store raw source text previews in artifact, job, or public draft metadata.
 - Same-origin discovery can add bounded server fetches before artifact creation: up to 6 candidate URLs are considered and up to 4 high-confidence HTML pages can be combined into the single text artifact.
-- Rendered fallback adds bounded app-server Chrome CPU and one additional render-target DNS validation only when static acquisition cannot read a safe client-routed menu page. It does not add an extra Storage write beyond the final text artifact.
+- Rendered fallback adds bounded app-server Chrome CPU only when static acquisition cannot read a safe client-routed menu page. Dependency discovery inspects at most 12 same-origin script responses capped at 512 KiB each, validates at most 16 total render hosts, and does not add a Firestore or Storage write beyond the final text artifact.
 - Deterministic text extraction can process high-confidence `html_text`, `rendered_html_text`, `plain_text`, and `json_text` artifacts with zero model charge. The existing AI extraction cost applies only when the deterministic parser cannot produce a reliable draft or when the artifact is PDF/image.
 - Deterministic text extraction diagnostics add no Firestore reads/writes and no model calls. Success/skip logs use bounded job ID length/count/source metadata and stable local failure codes instead of raw job IDs or exception messages.
 - Failed/lost job creation after Storage writes requires either confirmed object deletion or a durable artifact cleanup record; failure-only recovery may add one metadata write.
@@ -114,7 +118,7 @@ July 28 audit hardening also covers pre-job cleanup. Storage is necessarily writ
 - DNS and redirect validation before each fetch.
 - Request lookup is pinned to the validated public DNS address to reduce DNS rebinding risk.
 - Private, loopback, link-local, multicast, and metadata targets blocked.
-- Rendered fallback revalidates and DNS-pins the render URL before Chrome starts, skips IP-literal render targets, sends non-target hostnames through a dead proxy, and removes Chrome's implicit loopback proxy bypass.
+- Rendered fallback revalidates the source and every discovered dependency host before Chrome starts, skips IP-literal source targets, DNS-pins at most 16 admitted public hosts, sends every unlisted hostname through a dead proxy, and removes Chrome's implicit loopback proxy bypass.
 - Response size cap.
 - Bounded total acquisition budget.
 - Content type allowlist.

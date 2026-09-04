@@ -18,6 +18,81 @@ export type ValidatedPublicDraftSource = {
     storagePath: string;
 };
 
+export type ValidatedPublicDraftLinkSourceMetadata = {
+    acquisitionProvider: 'direct-http';
+    contentHash: string;
+    finalUrl: string;
+    sourceKind: string;
+    sourceTextLength: number;
+    sourceTextPresent: boolean;
+    sourceUrl: string;
+    storagePath: string;
+};
+
+const PUBLIC_DRAFT_LINK_SOURCE_KINDS = new Set([
+    'html_text',
+    'rendered_html_text',
+    'plain_text',
+    'json_text',
+    'pdf',
+    'image',
+]);
+const SHA_256_HEX_PATTERN = /^[a-f0-9]{64}$/;
+
+const normalizePublicHttpUrl = (value: unknown): string | null => {
+    if (typeof value !== 'string' || value.length > 4_000) return null;
+    try {
+        const url = new URL(value.trim());
+        if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password) return null;
+        return url.href;
+    } catch {
+        return null;
+    }
+};
+
+export function normalizePublicDraftLinkSourceMetadataForProject(
+    draft: Record<string, unknown>,
+    source: ValidatedPublicDraftSource,
+): ValidatedPublicDraftLinkSourceMetadata | null {
+    if (draft.sourceType !== 'menu_link_import') return null;
+    const metadata = draft.sourceMetadata;
+    if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) return null;
+    const record = metadata as Record<string, unknown>;
+    const sourceUrl = normalizePublicHttpUrl(record.sourceUrl);
+    const finalUrl = normalizePublicHttpUrl(record.finalUrl);
+    const sourceKind = typeof record.sourceKind === 'string' ? record.sourceKind.trim() : '';
+    const contentHash = typeof record.contentHash === 'string' ? record.contentHash.trim().toLowerCase() : '';
+    const sourceTextLength = Number(record.sourceTextLength);
+    const sourceTextPresent = record.sourceTextPresent === true;
+
+    if (
+        record.acquisitionProvider !== 'direct-http'
+        || record.permissionConfirmed !== true
+        || record.storagePath !== source.storagePath
+        || !sourceUrl
+        || !finalUrl
+        || !PUBLIC_DRAFT_LINK_SOURCE_KINDS.has(sourceKind)
+        || !SHA_256_HEX_PATTERN.test(contentHash)
+        || !Number.isSafeInteger(sourceTextLength)
+        || sourceTextLength < 0
+        || sourceTextLength > 8 * 1024 * 1024
+        || sourceTextPresent !== (sourceTextLength > 0)
+    ) {
+        return null;
+    }
+
+    return {
+        acquisitionProvider: 'direct-http',
+        contentHash,
+        finalUrl,
+        sourceKind,
+        sourceTextLength,
+        sourceTextPresent,
+        sourceUrl,
+        storagePath: source.storagePath,
+    };
+}
+
 const isVersionedSourceEnvelope = (draft: Record<string, unknown>): boolean => (
     draft.sourceFilesVersion === PUBLIC_MENU_DRAFT_SOURCE_FILES_VERSION
     && Array.isArray(draft.sourceFiles)

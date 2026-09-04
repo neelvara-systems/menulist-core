@@ -27,7 +27,10 @@ import {
     createOrReuseActiveMenuExtractionJob,
     MENU_EXTRACTION_ACTIVE_JOB_STATUSES,
 } from '@lib/menu-extraction/activeJobClaim';
-import { normalizeMenuExtractionProjectId } from '@lib/menu-extraction/projectIdBoundary';
+import {
+    isMenuExtractionProjectIdInScope,
+    normalizeMenuExtractionProjectId,
+} from '@lib/menu-extraction/projectIdBoundary';
 import { checkSafeMode } from '@lib/ops/safeMode';
 import { requireAnyStorePermission } from '@lib/permissions/server';
 import { checkRateLimit } from '@lib/rateLimit';
@@ -37,7 +40,7 @@ import { STORAGE_CACHE_CONTROL } from '@lib/storage/cacheControl';
 import crypto from 'crypto';
 import { Timestamp, type DocumentReference } from 'firebase-admin/firestore';
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyTenantAccess, withAuth } from 'src/middleware/auth';
+import { type AuthenticatedHandler, verifyTenantAccess, withAuth } from 'src/middleware/auth';
 import { hashPublicRateLimitValue } from 'src/middleware/publicApi';
 import { z } from 'zod';
 
@@ -55,6 +58,24 @@ const ACTIVE_JOB_STATUSES = MENU_EXTRACTION_ACTIVE_JOB_STATUSES;
 const MENU_LINK_IMPORT_MAX_BODY_BYTES = 8 * 1024;
 const MENU_LINK_IMPORT_STORAGE_CLEANUP_FAILED = 'menu_link_import_storage_cleanup_failed';
 const MENU_LINK_IMPORT_PERSISTENCE_PROBE_FAILED = 'menu_link_import_persistence_probe_failed';
+const MENU_LINK_IMPORT_PRIVATE_RESPONSE_HEADERS = {
+    'Cache-Control': 'private, no-store, max-age=0',
+    'X-Content-Type-Options': 'nosniff',
+} as const;
+
+const withMenuLinkImportResponseHeaders = <T extends NextResponse>(response: T): T => {
+    Object.entries(MENU_LINK_IMPORT_PRIVATE_RESPONSE_HEADERS).forEach(([name, value]) => {
+        response.headers.set(name, value);
+    });
+    return response;
+};
+
+const withMenuLinkImportAuth = (handler: AuthenticatedHandler) => {
+    const authenticatedHandler = withAuth(handler);
+    return async (...args: Parameters<typeof authenticatedHandler>): Promise<NextResponse> => (
+        withMenuLinkImportResponseHeaders(await authenticatedHandler(...args))
+    );
+};
 
 function resolveTargetLanguages(projectData: unknown): Array<{ code: string; name: string }> {
     const projectRecord = projectData && typeof projectData === 'object' && !Array.isArray(projectData)
@@ -140,7 +161,7 @@ async function persistMenuLinkImportCleanupRecord(
     }
 }
 
-export const POST = withAuth(async (request: NextRequest, session) => {
+export const POST = withMenuLinkImportAuth(async (request: NextRequest, session) => {
     if (!FEATURE_FLAGS.ENABLE_MENU_LINK_IMPORT) {
         return NextResponse.json(
             { success: false, error: 'This feature is not available.' },
@@ -167,8 +188,15 @@ export const POST = withAuth(async (request: NextRequest, session) => {
     const rateLimit = await checkRateLimit({
         key: `menu-link-import:${userRateLimitHash}:${tenantRateLimitHash}:${storeRateLimitHash}`,
         ...getRateLimitForFeature('MENU_LINK_IMPORT'),
+        failClosedOnProviderError: true,
     });
     if (!rateLimit.allowed) {
+        if (rateLimit.reason === 'provider_unavailable') {
+            return NextResponse.json(
+                { success: false, error: 'Menu link import is temporarily unavailable. Please try again later.' },
+                { status: 503 },
+            );
+        }
         const waitSeconds = Math.max(1, Math.ceil((rateLimit.resetAt - Date.now()) / 1000));
         return NextResponse.json(
             { success: false, error: 'Too many import attempts. Please wait before trying again.', retryAfter: waitSeconds },
@@ -188,6 +216,10 @@ export const POST = withAuth(async (request: NextRequest, session) => {
     }
 
     const { projectId, url } = validation.data;
+    if (!isMenuExtractionProjectIdInScope(projectId, ids.tId, ids.sId)) {
+        return NextResponse.json({ success: false, error: 'Menu does not belong to this store.' }, { status: 403 });
+    }
+
     const permissionResponse = await requireAnyStorePermission(
         request,
         session,

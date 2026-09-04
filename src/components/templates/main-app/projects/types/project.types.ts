@@ -152,6 +152,8 @@ export interface ProjectFileType {
     chargePerToken?: any;
     processingTime?: number; // Time taken to process in milliseconds
     combinedWithFileId?: string; // Reference to file containing combined extraction (for parallel processing)
+    source?: string;
+    sourceMetadata?: Record<string, unknown>;
 }
 
 /**

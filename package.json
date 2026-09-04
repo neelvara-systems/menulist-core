@@ -236,7 +236,8 @@
     "test:tiptap-slash-command-boundary": "ts-node --compiler-options '{\"module\":\"CommonJS\",\"target\":\"ES2022\"}' -r tsconfig-paths/register scripts/verification/test-tiptap-slash-command-boundary.ts",
     "test:functions-monitoring-thresholds": "ts-node --compiler-options '{\"module\":\"CommonJS\",\"target\":\"ES2022\"}' -r tsconfig-paths/register scripts/verification/test-functions-monitoring-thresholds.ts",
     "test:functions-ai-key-attribution": "ts-node --compiler-options '{\"module\":\"CommonJS\"}' -r tsconfig-paths/register scripts/verification/test-functions-ai-key-attribution.ts",
-    "verify:answerlattice-security-audit": "node scripts/verification/verify-answerlattice-security-audit.js",
+    "test:tiptap-attribute-security-boundary": "ts-node --compiler-options '{\"module\":\"CommonJS\",\"target\":\"ES2022\"}' -r tsconfig-paths/register scripts/verification/test-tiptap-attribute-security-boundary.ts",
+    "verify:answerlattice-security-audit": "npm run test:tiptap-attribute-security-boundary && node scripts/verification/verify-answerlattice-security-audit.js",
     "verify:answerlattice-backup-recovery": "node scripts/verification/test-answerlattice-backup-recovery.js",
     "answerlattice:backup": "node scripts/answerlattice/backup-recovery.js",
     "answerlattice:seed-local-browser-fixture": "ts-node --compiler-options '{\"module\":\"CommonJS\",\"target\":\"ES2022\"}' -r tsconfig-paths/register scripts/answerlattice/seed-local-browser-fixture.ts",
@@ -503,7 +504,7 @@
     "test:scheduler-task-status-boundary": "ts-node --compiler-options '{\"module\":\"CommonJS\"}' scripts/verification/test-scheduler-task-status-boundary.ts",
     "verify:recycle-bin": "node scripts/verification/verify-recycle-bin.js",
     "verify:menu-export": "node scripts/verification/verify-menu-export.js",
-    "verify:menu-extraction-pipeline": "node scripts/verification/verify-menu-extraction-pipeline.js && npm run test:menu-extraction-result-summary && npm run test:bounded-response-body && npm run test:menu-extraction-integrity && npm run test:menu-extraction-job-start-failure && npm run test:menu-processing-job-listener-boundary && npm run test:menu-processing-dismissal-boundary && npm run test:extraction-monitor-data-boundary && npm run test:extraction-platform-retry-boundary && npm run test:menu-link-import-artifact-retention && npm run test:menu-link-import-url-boundary && npm run test:menu-extraction-job-rules && npm run test:messaging-asset-validation && npm run test:messaging-extraction-lifecycle:emulator && npm run test:messaging-extraction-job-boundary && npm run test:messaging-asset-storage-boundary && npm run test:messaging-asset-model-input-boundary && npm run test:messaging-preview-response-boundary && npm run test:messaging-publish-session-boundary && npm run test:messaging-publish-validation-boundary && npm run test:messaging-publish-retry-boundary && npm run test:messaging-session-concurrency:emulator && npm run test:messaging-replacement-upload-lifecycle:emulator && npm run test:messaging-inbound-queue:emulator && npm run test:messaging-fix-request:emulator && npm run test:messaging-owner-claim:emulator && npm run test:messaging-session-cleanup-boundary && npm run test:messaging-session-cleanup:emulator && npm run test:messaging-reminder-lease:emulator && npm run test:messaging-health-data-boundary && npm run test:messaging-event-boundary && npm run test:messaging-whatsapp-adapter && npm run test:messaging-upload-content-validation",
+    "verify:menu-extraction-pipeline": "node scripts/verification/verify-menu-extraction-pipeline.js && npm run test:menu-extraction-result-summary && npm run test:bounded-response-body && npm run test:menu-extraction-integrity && npm run test:menu-extraction-job-start-failure && npm run test:menu-processing-job-listener-boundary && npm run test:menu-processing-dismissal-boundary && npm run test:extraction-monitor-data-boundary && npm run test:extraction-platform-retry-boundary && npm run test:menu-link-import-artifact-retention && npm run test:menu-link-import-url-boundary && npm run test:menu-link-import-text-artifact-boundary && npm run test:menu-extraction-job-rules && npm run test:messaging-asset-validation && npm run test:messaging-extraction-lifecycle:emulator && npm run test:messaging-extraction-job-boundary && npm run test:messaging-asset-storage-boundary && npm run test:messaging-asset-model-input-boundary && npm run test:messaging-preview-response-boundary && npm run test:messaging-publish-session-boundary && npm run test:messaging-publish-validation-boundary && npm run test:messaging-publish-retry-boundary && npm run test:messaging-session-concurrency:emulator && npm run test:messaging-replacement-upload-lifecycle:emulator && npm run test:messaging-inbound-queue:emulator && npm run test:messaging-fix-request:emulator && npm run test:messaging-owner-claim:emulator && npm run test:messaging-session-cleanup-boundary && npm run test:messaging-session-cleanup:emulator && npm run test:messaging-reminder-lease:emulator && npm run test:messaging-health-data-boundary && npm run test:messaging-event-boundary && npm run test:messaging-whatsapp-adapter && npm run test:messaging-upload-content-validation",
     "test:menu-extraction-result-summary": "ts-node --compiler-options '{\"module\":\"CommonJS\"}' -r tsconfig-paths/register scripts/verification/test-menu-extraction-result-summary.ts",
     "verify:public-menu-entry-boundary": "node scripts/verification/verify-public-menu-entry-boundary.js && npm run test:public-menu-entry-boundary",
     "verify:menu-extraction-pipeline:dry-run": "ts-node --compiler-options '{\"module\":\"CommonJS\"}' -r tsconfig-paths/register scripts/verification/verify-menu-extraction-pipeline-dry-run.ts",
@@ -516,6 +517,7 @@
     "test:extraction-platform-retry-boundary": "ts-node --compiler-options '{\"module\":\"CommonJS\"}' -r tsconfig-paths/register scripts/verification/test-extraction-platform-retry-boundary.ts",
     "test:menu-link-import-artifact-retention": "ts-node --compiler-options '{\"module\":\"CommonJS\"}' -r tsconfig-paths/register scripts/verification/test-menu-link-import-artifact-retention.ts",
     "test:menu-link-import-url-boundary": "ts-node --compiler-options '{\"module\":\"CommonJS\"}' -r tsconfig-paths/register scripts/verification/test-menu-link-import-url-boundary.ts",
+    "test:menu-link-import-text-artifact-boundary": "env -u GOOGLE_APPLICATION_CREDENTIALS FUNCTIONS_EMULATOR=true GCLOUD_PROJECT=demo-menu-link-text-boundary FIREBASE_CONFIG='{\"projectId\":\"demo-menu-link-text-boundary\",\"storageBucket\":\"demo-menu-link-text-boundary.appspot.com\"}' ts-node --compiler-options '{\"module\":\"CommonJS\"}' -r tsconfig-paths/register scripts/verification/test-menu-link-import-text-artifact-boundary.ts",
     "test:menu-extraction-job-rules": "env -u GOOGLE_APPLICATION_CREDENTIALS GCLOUD_PROJECT=demo-menu-extraction-job-rules FIRESTORE_EMULATOR_HOST=127.0.0.1:8080 ts-node --compiler-options '{\"module\":\"CommonJS\"}' -r tsconfig-paths/register scripts/verification/test-menu-extraction-job-rules.ts",
     "test:menu-extraction-concurrency:emulator": "env -u GOOGLE_APPLICATION_CREDENTIALS GCLOUD_PROJECT=demo-menu-extraction-concurrency firebase emulators:exec --only firestore --project demo-menu-extraction-concurrency \"env -u GOOGLE_APPLICATION_CREDENTIALS ts-node --compiler-options '{\\\"module\\\":\\\"CommonJS\\\"}' -r tsconfig-paths/register scripts/verification/test-menu-extraction-job-concurrency-emulator.ts\"",
     "verify:menu-design-presentation-boundary": "node scripts/verification/verify-menu-design-presentation-boundary.js",
@@ -903,11 +905,13 @@
     "verify:whatsapp-os": "node scripts/verification/verify-whatsapp-os.js && ts-node --compiler-options '{\"module\":\"CommonJS\",\"target\":\"ES2022\"}' -r tsconfig-paths/register scripts/verification/test-whatsapp-os.ts"
   },
   "overrides": {
+    "browserslist": "4.28.9",
     "dompurify": "3.4.13",
     "exceljs": {
       "archiver": "8.0.0",
       "unzipper": "0.12.5"
     },
+    "fflate": "0.8.3",
     "google-gax": {
       "rimraf": "6.1.3"
     },
@@ -916,6 +920,7 @@
     },
     "js-yaml": "4.3.1",
     "nanoid": "3.3.18",
+    "postcss-selector-parser": "6.1.3",
     "sucrase": {
       "glob": "13.0.6"
     },
@@ -983,7 +988,7 @@
     "jspdf": "4.2.1",
     "jszip": "3.10.1",
     "lenis": "1.3.23",
-    "next": "16.3.0",
+    "next": "16.3.4",
     "next-auth": "4.24.15",
     "next-intl": "4.13.4",
     "nodemailer9": "npm:nodemailer@9.0.3",
@@ -1013,7 +1018,7 @@
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "4.0.1",
-    "@next/bundle-analyzer": "16.3.0",
+    "@next/bundle-analyzer": "16.3.4",
     "@serwist/turbopack": "9.5.12",
     "@svgr/webpack": "8.1.0",
     "@swc/helpers": "0.5.23",
@@ -1026,8 +1031,8 @@
     "brace-expansion": "1.1.18",
     "esbuild": "0.28.1",
     "eslint": "9.39.5",
-    "eslint-config-next": "16.3.0",
-    "fast-uri": "3.1.5",
+    "eslint-config-next": "16.3.4",
+    "fast-uri": "3.1.7",
     "picomatch": "4.0.5",
     "postcss": "8.5.23",
     "sass": "1.101.7",

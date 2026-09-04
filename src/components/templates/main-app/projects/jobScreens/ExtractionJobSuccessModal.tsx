@@ -8,6 +8,7 @@ import { LuCheckCircle, LuDollarSign, LuFileText, LuLayoutGrid, LuList } from 'r
 const { Text, Title } = Typography;
 
 interface ExtractionStats {
+    appliedChangesCount?: number;
     qualityScore?: number;
     qualityDetails?: {
         categoryQuality: number;
@@ -45,6 +46,8 @@ export default function ExtractionJobSuccessModal({
     const labels = useOfferingLabels();
 
     const qualityScore = extractionStats?.qualityScore ?? 0;
+    const appliedChangesCount = extractionStats?.appliedChangesCount;
+    const hasAppliedChangesCount = typeof appliedChangesCount === 'number';
     const qualityDetails = extractionStats?.qualityDetails;
     const categoriesCount = extractionStats?.categoriesCount ?? 0;
     const itemsCount = extractionStats?.itemsCount ?? 0;
@@ -76,7 +79,9 @@ export default function ExtractionJobSuccessModal({
                 <LuCheckCircle size={56} style={{ color: token.colorSuccess }} />
                 <Title level={4} style={{ margin: 0 }}>Extraction Complete</Title>
                 <Text type="secondary" style={{ textAlign: 'center' }}>
-                    All uploaded files have been processed and merged into your {labels.offeringPhrase}.
+                    {hasAppliedChangesCount
+                        ? `${appliedChangesCount} approved ${appliedChangesCount === 1 ? 'change' : 'changes'} applied to your ${labels.offeringPhrase}.`
+                        : `Your import has been processed and saved to your ${labels.offeringPhrase}.`}
                 </Text>
 
                 {extractionStats && (
@@ -89,18 +94,29 @@ export default function ExtractionJobSuccessModal({
                     }}>
                         {/* Summary counts */}
                         <Flex justify="center" gap={32}>
-                            <Flex vertical align="center" gap={2}>
-                                <Text strong style={{ fontSize: 24, lineHeight: 1 }}>
-                                    {categoriesCount}
-                                </Text>
-                                <Text type="secondary" style={{ fontSize: 12 }}>Categories</Text>
-                            </Flex>
-                            <Flex vertical align="center" gap={2}>
-                                <Text strong style={{ fontSize: 24, lineHeight: 1 }}>
-                                    {itemsCount}
-                                </Text>
-                                <Text type="secondary" style={{ fontSize: 12 }}>{titleCase(labels.itemsPlural)}</Text>
-                            </Flex>
+                            {hasAppliedChangesCount ? (
+                                <Flex vertical align="center" gap={2}>
+                                    <Text strong style={{ fontSize: 24, lineHeight: 1 }}>
+                                        {appliedChangesCount}
+                                    </Text>
+                                    <Text type="secondary" style={{ fontSize: 12 }}>Approved changes</Text>
+                                </Flex>
+                            ) : (
+                                <>
+                                    <Flex vertical align="center" gap={2}>
+                                        <Text strong style={{ fontSize: 24, lineHeight: 1 }}>
+                                            {categoriesCount}
+                                        </Text>
+                                        <Text type="secondary" style={{ fontSize: 12 }}>Categories</Text>
+                                    </Flex>
+                                    <Flex vertical align="center" gap={2}>
+                                        <Text strong style={{ fontSize: 24, lineHeight: 1 }}>
+                                            {itemsCount}
+                                        </Text>
+                                        <Text type="secondary" style={{ fontSize: 12 }}>{titleCase(labels.itemsPlural)}</Text>
+                                    </Flex>
+                                </>
+                            )}
                             <Flex vertical align="center" gap={2}>
                                 <Text strong style={{
                                     fontSize: 24,

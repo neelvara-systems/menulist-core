@@ -158,6 +158,7 @@ const publicLinkJob: DryRunJob = {
   projectId: '0-public-draft-2-0',
   source: MENU_EXTRACTION_SOURCES.MENU_LINK_IMPORT,
   sourceMetadata: {
+    publicDraftId: 'draft-2',
     sourceType: 'menu_link_import',
     storagePath: 'publicMenuDrafts/draft-2/source.html',
   },

@@ -22,7 +22,7 @@ import { runComparisonEngine } from '@lib/extraction/comparisonEngine';
 import type { ComparisonEngineOutput, ComparisonMode } from '@lib/extraction/comparisonEngine.types';
 import { buildComparisonProjectInput, getLinkedMasterComparisonInput } from '@lib/extraction/projectInput';
 import { buildExtractedProfileProjectPatch, mergeProjectWithExtractedProfileDefaults } from '@lib/extraction/projectVisualDefaults';
-import { getReviewPreviewIdentity } from '@lib/extraction/reviewPreview';
+import { countReviewCandidates, getReviewPreviewIdentity, type ReviewPreviewState } from '@lib/extraction/reviewPreview';
 import { checkExistingActiveJob } from '@lib/firebase/menuProcessing';
 import { generateAndSaveProjectImageIfMissing, getProjectImageDataFromComparisonPreview } from '@lib/image/projectImageGeneration';
 import { buildExtractedProfileHighlights, type OwnerDetectedDetail } from '@lib/menu-intake-identity/ownerPresentation';
@@ -601,6 +601,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
     const [showFailureState, setShowFailureState] = useState(false);
     const [failureMessage, setFailureMessage] = useState('');
     const [extractionStats, setExtractionStats] = useState<{
+        appliedChangesCount?: number;
         qualityScore?: number;
         qualityDetails?: { categoryQuality: number; itemQuality: number; priceQuality: number; descriptionQuality: number };
         categoriesCount?: number;
@@ -1643,6 +1644,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
 
         if (jobIsCompleted) {
             const result = activeJob?.result;
+            const reviewAppliedChangeCount = activeJob?.appliedChangeCount;
             if (result) {
                 const extractedProfile = result.extractedBusinessProfile || result.combinedData?.extractedBusinessProfile;
                 const resultSummary = result.summary || {};
@@ -1652,18 +1654,21 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
                     categoriesCount: result.combinedData?.categories?.length || Number(resultSummary.categoriesCount || 0),
                     itemsCount: result.combinedData?.items?.length || Number(resultSummary.itemsCount || 0),
                     profileHighlights: buildExtractedProfileHighlights(extractedProfile),
+                    ...(typeof reviewAppliedChangeCount === 'number' ? { appliedChangesCount: reviewAppliedChangeCount } : {}),
                 });
-                void maybeAutoGenerateProjectImage({
-                    categories: result.combinedData?.categories || [],
-                    items: result.combinedData?.items || [],
-                    projectData: mergeProjectWithExtractedProfileDefaults(
-                        menuData,
-                        result.extractedBusinessProfile || result.combinedData?.extractedBusinessProfile,
-                    ),
-                    projectId: activeProcessingState?.projectId || menuData?.projectId,
-                    projectSummary: selectedProjectSummary,
-                });
-                void applyMenuDerivedBusinessAttributeDefaults(result.combinedData);
+                if (typeof reviewAppliedChangeCount !== 'number') {
+                    void maybeAutoGenerateProjectImage({
+                        categories: result.combinedData?.categories || [],
+                        items: result.combinedData?.items || [],
+                        projectData: mergeProjectWithExtractedProfileDefaults(
+                            menuData,
+                            result.extractedBusinessProfile || result.combinedData?.extractedBusinessProfile,
+                        ),
+                        projectId: activeProcessingState?.projectId || menuData?.projectId,
+                        projectSummary: selectedProjectSummary,
+                    });
+                    void applyMenuDerivedBusinessAttributeDefaults(result.combinedData);
+                }
             }
             setActiveProcessingState(null);
             setShowReviewSheet(false);
@@ -4119,10 +4124,12 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
                             </Button>,
                         ]}
                         status="success"
-                        subTitle={t('processingSuccessDesc', {
-                            categories: extractionStats?.categoriesCount || 0,
-                            items: extractionStats?.itemsCount || 0,
-                        })}
+                        subTitle={typeof extractionStats?.appliedChangesCount === 'number'
+                            ? t('changesAppliedCount', { count: extractionStats.appliedChangesCount })
+                            : t('processingSuccessDesc', {
+                                categories: extractionStats?.categoriesCount || 0,
+                                items: extractionStats?.itemsCount || 0,
+                            })}
                         title={t('processingSuccessTitle')}
                     />
                     {extractionStats?.profileHighlights?.length ? (
@@ -5261,10 +5268,13 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
                         setComparisonResult(null);
                         setActiveProcessingState(null);
                     }}
-                    onSaveComplete={() => {
+                    onSaveComplete={(appliedChangesCount, appliedPreview: ReviewPreviewState) => {
                         emitMenuListAnswerlatticeWorkflowEvent(MENULIST_ANSWERLATTICE_EVENTS.MENU_IMPORT_COMPLETED);
-                        const previewData = getProjectImageDataFromComparisonPreview(comparisonResult);
-                        const extractedProfile = activeJob?.result?.extractedBusinessProfile || activeJob?.result?.combinedData?.extractedBusinessProfile;
+                        const previewData = getProjectImageDataFromComparisonPreview({ ...comparisonResult, preview: appliedPreview });
+                        const appliedEntirePreview = appliedChangesCount === countReviewCandidates(appliedPreview);
+                        const extractedProfile = appliedEntirePreview
+                            ? activeJob?.result?.extractedBusinessProfile || activeJob?.result?.combinedData?.extractedBusinessProfile
+                            : undefined;
                         void maybeAutoGenerateProjectImage({
                             categories: previewData.categories,
                             items: previewData.items,
@@ -5275,12 +5285,15 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
                         void applyExtractedProfileProjectDefaults(extractedProfile);
                         const attributePreviewData = {
                             ...previewData,
-                            businessAttributeSuggestions: activeJob?.result?.combinedData?.businessAttributeSuggestions,
+                            ...(appliedEntirePreview ? {
+                                businessAttributeSuggestions: activeJob?.result?.combinedData?.businessAttributeSuggestions,
+                            } : {}),
                         };
                         void applyMenuDerivedBusinessAttributeDefaults(attributePreviewData);
                         setShowReviewSheet(false);
                         setComparisonResult(null);
                         setActiveProcessingState(null);
+                        setExtractionStats((current) => current ? { ...current, appliedChangesCount } : { appliedChangesCount });
                         void refreshCachedProject(menuData.projectId);
                         setShowSuccessState(true);
                     }}

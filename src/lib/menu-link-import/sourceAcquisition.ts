@@ -32,6 +32,9 @@ const MENU_LINK_CANDIDATE_LIMIT = 6;
 const MAX_COMBINED_HTML_SOURCES = 4;
 const RENDER_FALLBACK_TIMEOUT_MS = 18_000;
 const MAX_RENDERED_HTML_BYTES = 8 * 1024 * 1024;
+const RENDER_DEPENDENCY_HOST_LIMIT = 16;
+const RENDER_DISCOVERY_SCRIPT_LIMIT = 12;
+const RENDER_DISCOVERY_SCRIPT_MAX_BYTES = 512 * 1024;
 const MENU_LINK_IMPORT_RENDER_FALLBACK_FAILED = 'menu_link_import_render_fallback_failed';
 const MENU_LINK_IMPORT_RENDER_TMP_CLEANUP_FAILED = 'menu_link_import_render_tmp_cleanup_failed';
 
@@ -287,6 +290,7 @@ const MENU_LINK_IMPORT_CLIENT_MESSAGES: Record<string, string> = {
     INVALID_URL: 'Enter a valid public menu link.',
     UNSAFE_HOSTNAME: 'Use a public menu link.',
     UNSAFE_IP: 'Use a public menu link.',
+    UNSAFE_PORT: 'Use a standard public website link.',
     UNSAFE_RESOLVED_IP: 'Use a public menu link.',
     UNSUPPORTED_PROTOCOL: 'Use a public http or https menu link.',
     URL_CREDENTIALS_BLOCKED: 'Use a public menu link without login details.',
@@ -319,6 +323,9 @@ function normalizeUrl(input: string): URL {
     if (!['http:', 'https:'].includes(url.protocol)) {
         throw new MenuLinkImportError('UNSUPPORTED_PROTOCOL', 'Use a public http or https menu link.');
     }
+    if (url.port && !((url.protocol === 'http:' && url.port === '80') || (url.protocol === 'https:' && url.port === '443'))) {
+        throw new MenuLinkImportError('UNSAFE_PORT', 'Use a standard public website link.');
+    }
 
     url.hash = '';
     return url;
@@ -350,17 +357,22 @@ function formatChromeResolverAddress(address: string): string {
     return net.isIP(address) === 6 ? `[${address}]` : address;
 }
 
-function buildChromeNetworkIsolationArgs(renderTarget: SafeUrl): string[] {
-    const hostPattern = formatChromeHostPattern(renderTarget.hostname);
+function buildChromeNetworkIsolationArgs(renderTargets: SafeUrl[]): string[] {
+    const uniqueTargets = Array.from(new Map(
+        renderTargets.map((target) => [target.hostname, target]),
+    ).values());
+    const hostPatterns = uniqueTargets.map((target) => formatChromeHostPattern(target.hostname));
     const hostResolverRules = [
-        `MAP ${hostPattern} ${formatChromeResolverAddress(renderTarget.address)}`,
+        ...uniqueTargets.map((target) => (
+            `MAP ${formatChromeHostPattern(target.hostname)} ${formatChromeResolverAddress(target.address)}`
+        )),
         'MAP * ~NOTFOUND',
     ].join(', ');
 
     return [
         `--host-resolver-rules=${hostResolverRules}`,
         '--proxy-server=http://127.0.0.1:9',
-        `--proxy-bypass-list=${hostPattern},<-loopback>`,
+        `--proxy-bypass-list=${[...hostPatterns, '<-loopback>'].join(';')}`,
     ];
 }
 
@@ -398,6 +410,12 @@ function isUnsafeIpv4(address: string): boolean {
 function isUnsafeIpv6(address: string): boolean {
     const lower = address.toLowerCase();
     const firstHextet = Number.parseInt(lower.split(':', 1)[0] || '0', 16);
+    // Link import has no reason to reach transition, translation, or other
+    // special-purpose IPv6 space. Restrict direct IPv6 targets to global
+    // unicast before applying the narrower exclusions below. This also blocks
+    // IPv4-compatible forms such as ::127.0.0.1 and NAT64 literals that can
+    // otherwise encode a private IPv4 destination.
+    if (!Number.isFinite(firstHextet) || firstHextet < 0x2000 || firstHextet > 0x3fff) return true;
     if (lower === '::' || lower === '::1') return true;
     if (lower.startsWith('fc') || lower.startsWith('fd')) return true;
     // IPv6 link-local addresses occupy fe80::/10 (fe80:: through febf::), not
@@ -491,14 +509,14 @@ async function assertSafeUrl(input: string, deadlineMs = Date.now() + MAX_ACQUIS
     };
 }
 
-async function readIncomingBody(response: IncomingMessage): Promise<Buffer> {
+async function readIncomingBody(response: IncomingMessage, maxBytes = MAX_RESPONSE_BYTES): Promise<Buffer> {
     return new Promise((resolve, reject) => {
         const chunks: Buffer[] = [];
         let total = 0;
 
         response.on('data', (chunk: Buffer) => {
             total += chunk.byteLength;
-            if (total > MAX_RESPONSE_BYTES) {
+            if (total > maxBytes) {
                 reject(new MenuLinkImportError('CONTENT_TOO_LARGE', 'This menu link is too large to import.'));
                 response.destroy();
                 return;
@@ -518,7 +536,7 @@ function getRemainingTimeout(deadlineMs: number): number {
     return Math.min(FETCH_TIMEOUT_MS, remainingMs);
 }
 
-async function requestPinnedUrl(safe: SafeUrl, timeoutMs: number): Promise<{
+async function requestPinnedUrl(safe: SafeUrl, timeoutMs: number, maxBytes = MAX_RESPONSE_BYTES): Promise<{
     buffer: Buffer;
     contentType: string;
     headers: http.IncomingHttpHeaders;
@@ -560,13 +578,13 @@ async function requestPinnedUrl(safe: SafeUrl, timeoutMs: number): Promise<{
                     ? response.headers['content-length'][0]
                     : response.headers['content-length'];
                 const contentLength = Number(contentLengthHeader || 0);
-                if (contentLength > MAX_RESPONSE_BYTES) {
+                if (contentLength > maxBytes) {
                     response.destroy();
                     reject(new MenuLinkImportError('CONTENT_TOO_LARGE', 'This menu link is too large to import.'));
                     return;
                 }
 
-                const buffer = await readIncomingBody(response);
+                const buffer = await readIncomingBody(response, maxBytes);
                 const contentTypeHeader = Array.isArray(response.headers['content-type'])
                     ? response.headers['content-type'][0]
                     : response.headers['content-type'];
@@ -600,7 +618,12 @@ async function requestPinnedUrl(safe: SafeUrl, timeoutMs: number): Promise<{
     });
 }
 
-async function fetchSafeUrl(input: string, redirectCount = 0, deadlineMs = Date.now() + MAX_ACQUISITION_MS): Promise<FetchedUrl> {
+async function fetchSafeUrl(
+    input: string,
+    redirectCount = 0,
+    deadlineMs = Date.now() + MAX_ACQUISITION_MS,
+    maxBytes = MAX_RESPONSE_BYTES,
+): Promise<FetchedUrl> {
     const safe = await assertSafeUrl(input, deadlineMs);
 
     try {
@@ -612,6 +635,7 @@ async function fetchSafeUrl(input: string, redirectCount = 0, deadlineMs = Date.
                 response = await requestPinnedUrl(
                     { ...safe, address: candidate.address, family: candidate.family },
                     getRemainingTimeout(deadlineMs),
+                    maxBytes,
                 );
                 break;
             } catch (error: any) {
@@ -640,7 +664,7 @@ async function fetchSafeUrl(input: string, redirectCount = 0, deadlineMs = Date.
                 throw new MenuLinkImportError('INVALID_REDIRECT', 'We could not read this menu link.');
             }
             const nextUrl = new URL(location, safe.href).href;
-            return fetchSafeUrl(nextUrl, redirectCount + 1, deadlineMs);
+            return fetchSafeUrl(nextUrl, redirectCount + 1, deadlineMs, maxBytes);
         }
 
         if (response.statusCode < 200 || response.statusCode >= 300) {
@@ -673,6 +697,34 @@ function inferContentType(contentType: string, url: string): string {
     if (pathname.endsWith('.json')) return 'application/json';
     if (pathname.endsWith('.txt')) return 'text/plain';
     return contentType || 'application/octet-stream';
+}
+
+export function isValidMenuLinkBinarySignature(buffer: Buffer, contentType: string): boolean {
+    if (contentType === 'application/pdf') {
+        return buffer.length >= 5 && buffer.subarray(0, 5).equals(Buffer.from('%PDF-'));
+    }
+    if (contentType === 'image/jpeg') {
+        return buffer.length >= 3
+            && buffer[0] === 0xff
+            && buffer[1] === 0xd8
+            && buffer[2] === 0xff;
+    }
+    if (contentType === 'image/png') {
+        return buffer.length >= 8
+            && buffer.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]));
+    }
+    if (contentType === 'image/webp') {
+        return buffer.length >= 12
+            && buffer.subarray(0, 4).equals(Buffer.from('RIFF'))
+            && buffer.subarray(8, 12).equals(Buffer.from('WEBP'));
+    }
+    return false;
+}
+
+function assertSupportedBinarySignature(buffer: Buffer, contentType: string): void {
+    if (!isValidMenuLinkBinarySignature(buffer, contentType)) {
+        throw new MenuLinkImportError('CONTENT_TYPE_MISMATCH', 'We could not read this menu link.');
+    }
 }
 
 function isLikelyHomepage(url: string): boolean {
@@ -1175,9 +1227,96 @@ async function resolveChromeExecutable(): Promise<string | null> {
     return null;
 }
 
+function extractRenderScriptUrls(html: string, baseUrl: string): string[] {
+    const urls = new Set<string>();
+    const matches = Array.from(html.matchAll(/<script\b[^>]*\bsrc=["']([^"']+)["'][^>]*>/gi));
+    for (const match of matches) {
+        try {
+            const url = new URL(decodeHtmlEntities(match[1] || ''), baseUrl);
+            if (url.protocol === 'http:' || url.protocol === 'https:') {
+                url.hash = '';
+                urls.add(url.href);
+            }
+        } catch {
+            // Ignore malformed script references from untrusted pages.
+        }
+    }
+    return Array.from(urls);
+}
+
+function getRenderDiscoveryScriptPriority(url: string): number {
+    try {
+        const pathname = new URL(url).pathname.toLowerCase();
+        if (/(?:^|[/._-])(?:app|bootstrap|config|index|main|runtime|service|services)(?:[/._-]|$)/.test(pathname)) {
+            return 2;
+        }
+        if (/(?:bundle|chunk)/.test(pathname)) return 1;
+    } catch {
+        return 0;
+    }
+    return 0;
+}
+
+function extractEmbeddedHttpUrls(source: string): string[] {
+    const urls = new Set<string>();
+    const matches = Array.from(source.matchAll(/https?:\/\/[^\s"'`\\<>]+/gi));
+    for (const match of matches) {
+        const value = (match[0] || '').replace(/[),.;]+$/, '');
+        if (value) urls.add(value);
+    }
+    return Array.from(urls);
+}
+
+async function discoverSafeRenderTargets(params: {
+    deadlineMs: number;
+    html: string;
+    renderTarget: SafeUrl;
+}): Promise<SafeUrl[]> {
+    const scriptUrls = extractRenderScriptUrls(params.html, params.renderTarget.href);
+    const sameOriginScripts = scriptUrls
+        .filter((url) => new URL(url).origin === new URL(params.renderTarget.href).origin)
+        .sort((left, right) => getRenderDiscoveryScriptPriority(right) - getRenderDiscoveryScriptPriority(left))
+        .slice(0, RENDER_DISCOVERY_SCRIPT_LIMIT);
+
+    const scriptFetches = await Promise.allSettled(sameOriginScripts.map((url) => (
+        fetchSafeUrl(url, 0, params.deadlineMs, RENDER_DISCOVERY_SCRIPT_MAX_BYTES)
+    )));
+    const embeddedUrls = scriptFetches.flatMap((result) => (
+        result.status === 'fulfilled'
+            ? extractEmbeddedHttpUrls(result.value.buffer.toString('utf8'))
+            : []
+    ));
+
+    const candidateUrls = [
+        ...embeddedUrls,
+        ...scriptUrls.filter((url) => new URL(url).origin !== new URL(params.renderTarget.href).origin),
+    ];
+    const uniqueHostUrls = new Map<string, string>();
+    for (const candidate of candidateUrls) {
+        try {
+            const url = new URL(candidate);
+            if (url.protocol !== 'http:' && url.protocol !== 'https:') continue;
+            if (net.isIP(url.hostname)) continue;
+            if (url.hostname === params.renderTarget.hostname || uniqueHostUrls.has(url.hostname)) continue;
+            uniqueHostUrls.set(url.hostname, url.href);
+            if (uniqueHostUrls.size >= RENDER_DEPENDENCY_HOST_LIMIT - 1) break;
+        } catch {
+            // Ignore malformed URL-like strings from untrusted scripts.
+        }
+    }
+
+    const resolved = await Promise.allSettled(
+        Array.from(uniqueHostUrls.values()).map((url) => assertSafeUrl(url, params.deadlineMs)),
+    );
+    return [
+        params.renderTarget,
+        ...resolved.flatMap((result) => result.status === 'fulfilled' ? [result.value] : []),
+    ];
+}
+
 function runChromeDumpDom(params: {
     chromePath: string;
-    renderTarget: SafeUrl;
+    renderTargets: SafeUrl[];
     renderUrl: string;
     timeoutMs: number;
     userDataDir: string;
@@ -1201,7 +1340,7 @@ function runChromeDumpDom(params: {
             '--no-first-run',
             '--run-all-compositor-stages-before-draw',
             '--blink-settings=imagesEnabled=false',
-            ...buildChromeNetworkIsolationArgs(params.renderTarget),
+            ...buildChromeNetworkIsolationArgs(params.renderTargets),
             `--user-data-dir=${params.userDataDir}`,
             `--virtual-time-budget=${virtualTimeBudget}`,
             '--dump-dom',
@@ -1249,6 +1388,7 @@ function runChromeDumpDom(params: {
 async function tryRenderHtmlSource(
     originalSourceUrl: string,
     safeFinalUrl: string,
+    sourceHtml: string,
     deadlineMs: number,
     context?: MenuLinkAcquisitionContext,
 ): Promise<MenuLinkAcquisitionResult | null> {
@@ -1257,13 +1397,18 @@ async function tryRenderHtmlSource(
     const chromePath = await resolveChromeExecutable();
     if (!chromePath) return null;
 
+    const renderUrl = buildRenderableUrl(originalSourceUrl, safeFinalUrl);
+    const renderTarget = await assertSafeUrl(renderUrl, deadlineMs);
+    if (net.isIP(renderTarget.hostname)) return null;
+    const renderTargets = await discoverSafeRenderTargets({
+        deadlineMs,
+        html: sourceHtml,
+        renderTarget,
+    });
     const remainingMs = deadlineMs - Date.now();
     if (remainingMs < 5_000) return null;
 
     const timeoutMs = Math.max(5_000, Math.min(RENDER_FALLBACK_TIMEOUT_MS, remainingMs));
-    const renderUrl = buildRenderableUrl(originalSourceUrl, safeFinalUrl);
-    const renderTarget = await assertSafeUrl(renderUrl, deadlineMs);
-    if (net.isIP(renderTarget.hostname)) return null;
 
     let userDataDir: string | null = null;
 
@@ -1271,7 +1416,7 @@ async function tryRenderHtmlSource(
         userDataDir = await mkdtemp(path.join(os.tmpdir(), 'menulist-link-render-'));
         const renderedHtml = await runChromeDumpDom({
             chromePath,
-            renderTarget,
+            renderTargets,
             renderUrl,
             timeoutMs,
             userDataDir,
@@ -1309,6 +1454,7 @@ async function tryRenderHtmlSource(
         logMenuProcessingFailure(MENU_LINK_IMPORT_RENDER_FALLBACK_FAILED, error, {
             fallbackPolicy: 'skip_rendered_html',
             renderFallbackTimeoutMs: timeoutMs,
+            renderDependencyHostCount: renderTargets.length,
             renderFallbackUserDataDirCreated: Boolean(userDataDir),
             ...getBoundedMenuProcessingStringContext('renderHostname', renderTarget.hostname),
             ...getBoundedMenuProcessingStringContext('businessCategory', context?.businessCategory),
@@ -1343,9 +1489,11 @@ async function tryAcquireLinkedAsset(
             const fetched = await fetchSafeUrl(candidate, 0, deadlineMs);
             const contentType = inferContentType(fetched.contentType, fetched.finalUrl);
             if (contentType === 'application/pdf') {
+                assertSupportedBinarySignature(fetched.buffer, contentType);
                 return buildBinaryResult(fetched, 'pdf', 'pdf', contentType);
             }
             if (SUPPORTED_IMAGE_TYPES.has(contentType)) {
+                assertSupportedBinarySignature(fetched.buffer, contentType);
                 const extension = contentType === 'image/png' ? 'png' : contentType === 'image/webp' ? 'webp' : 'jpg';
                 return buildBinaryResult(fetched, 'image', extension, contentType);
             }
@@ -1371,10 +1519,12 @@ export async function acquireMenuLinkSource(
     const contentType = inferContentType(fetched.contentType, fetched.finalUrl);
 
     if (contentType === 'application/pdf') {
+        assertSupportedBinarySignature(fetched.buffer, contentType);
         return buildBinaryResult(fetched, 'pdf', 'pdf', contentType);
     }
 
     if (SUPPORTED_IMAGE_TYPES.has(contentType)) {
+        assertSupportedBinarySignature(fetched.buffer, contentType);
         const extension = contentType === 'image/png' ? 'png' : contentType === 'image/webp' ? 'webp' : 'jpg';
         return buildBinaryResult(fetched, 'image', extension, contentType);
     }
@@ -1401,7 +1551,13 @@ export async function acquireMenuLinkSource(
             const linkedAsset = await tryAcquireLinkedAsset(originalHtml, fetched.finalUrl, deadlineMs, context);
             if (linkedAsset) return linkedAsset;
 
-            const renderedSource = await tryRenderHtmlSource(best.renderUrl || sourceUrl, best.finalUrl, deadlineMs, context);
+            const renderedSource = await tryRenderHtmlSource(
+                best.renderUrl || sourceUrl,
+                best.finalUrl,
+                best.rawHtml,
+                deadlineMs,
+                context,
+            );
             if (renderedSource) return renderedSource;
 
             throw new MenuLinkImportError(
@@ -1417,7 +1573,13 @@ export async function acquireMenuLinkSource(
             const linkedOriginalAsset = await originalLinkedAsset();
             if (linkedOriginalAsset) return linkedOriginalAsset;
 
-            const renderedSource = await tryRenderHtmlSource(best.renderUrl || sourceUrl, best.finalUrl, deadlineMs, context);
+            const renderedSource = await tryRenderHtmlSource(
+                best.renderUrl || sourceUrl,
+                best.finalUrl,
+                best.rawHtml,
+                deadlineMs,
+                context,
+            );
             if (renderedSource) return renderedSource;
 
             throw new MenuLinkImportError(
@@ -1432,7 +1594,13 @@ export async function acquireMenuLinkSource(
             const linkedOriginalAsset = await originalLinkedAsset();
             if (linkedOriginalAsset) return linkedOriginalAsset;
 
-            const renderedSource = await tryRenderHtmlSource(best.renderUrl || sourceUrl, best.finalUrl, deadlineMs, context);
+            const renderedSource = await tryRenderHtmlSource(
+                best.renderUrl || sourceUrl,
+                best.finalUrl,
+                best.rawHtml,
+                deadlineMs,
+                context,
+            );
             if (renderedSource) return renderedSource;
 
             throw new MenuLinkImportError(
